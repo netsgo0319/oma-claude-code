@@ -51,16 +51,26 @@ MyBatis/iBatis XML 기반 Oracle SQL을 PostgreSQL로 자동 변환, 검증, 학
 
 ### 3. 서브에이전트 호출 패턴
 
+`.claude/agents/` 디렉토리에 정의된 에이전트를 `subagent_type`으로 호출한다:
+
 ```
 Agent({
   description: "Phase 2: LLM 변환 - {filename}",
-  prompt: "<converter prompt 내용> + 대상 파일: {filename}, 버전: v{n}",
-  model: "sonnet"
+  subagent_type: "converter",
+  prompt: "대상 파일: {filename}, 버전: v{n}, conversion-report.json의 unconverted 패턴을 LLM으로 변환하라."
 })
 ```
 
-프롬프트 파일 위치: `.claude/prompts/{agent-name}.md`
-각 서브에이전트 spawn 시 해당 프롬프트 파일을 Read 후 prompt에 포함하라.
+에이전트 정의 파일: `.claude/agents/{agent-name}.md`
+각 에이전트는 frontmatter에 model, allowed-tools, description이 정의되어 있다.
+
+| 에이전트 | 파일 | 모델 | 역할 |
+|---------|------|------|------|
+| converter | .claude/agents/converter.md | sonnet | Oracle→PG 변환 (룰+LLM) |
+| test-generator | .claude/agents/test-generator.md | opus | Oracle 딕셔너리 기반 테스트 |
+| validator | .claude/agents/validator.md | sonnet | EXPLAIN/실행/비교 검증 |
+| reviewer | .claude/agents/reviewer.md | opus | 실패 분석 + SQL 수정안 |
+| learner | .claude/agents/learner.md | sonnet | 에지케이스 학습 + PR |
 
 병렬 처리: 같은 레이어 내 독립적인 파일은 여러 Agent를 동시에 spawn할 수 있다.
 
@@ -250,18 +260,9 @@ schemas/        JSON Schema (에이전트 간 통신 계약)
 | report | skills/report/SKILL.md | Phase 6 |
 | learn-edge-case | skills/learn-edge-case/SKILL.md | Phase 5 |
 
-## Oracle→PostgreSQL 변환 룰 (요약)
+## Oracle→PostgreSQL 변환 룰
 
-상세 룰은 `steering/oracle-pg-rules.md` 참조.
-
-핵심 변환:
-- NVL → COALESCE, DECODE → CASE, SYSDATE → CURRENT_TIMESTAMP
-- ROWNUM → ROW_NUMBER() OVER() 또는 LIMIT/OFFSET
-- CONNECT BY → WITH RECURSIVE
-- MERGE INTO → INSERT ... ON CONFLICT
-- (+) 조인 → LEFT/RIGHT JOIN
-- sequence.NEXTVAL → nextval('sequence')
-- FROM DUAL → FROM 절 제거
+전체 룰셋은 `steering/oracle-pg-rules.md` 참조. Learner가 갱신하므로 항상 최신 파일을 Read하라.
 
 ## 초기화
 

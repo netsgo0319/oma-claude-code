@@ -43,7 +43,7 @@ description: 변환 과정에서 발견된 새 패턴과 에지케이스를 stee
 
 4. Git 커밋:
    ```bash
-   git add .kiro/steering/edge-cases.md .kiro/steering/oracle-pg-rules.md
+   git add steering/edge-cases.md steering/oracle-pg-rules.md
    git commit -m "chore: add learned edge case - {패턴 요약}"
    ```
 
