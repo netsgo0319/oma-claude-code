@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.OrgMapper">
+
+  <!-- CONNECT BY hierarchical query -->
+  <select id="getOrgHierarchy" parameterType="int" resultType="com.example.model.OrgNode">
+    SELECT org_id, parent_id, org_name, LEVEL,
+           SYS_CONNECT_BY_PATH(org_name, '/') AS path
+    FROM org_tree
+    START WITH org_id = #{rootId}
+    CONNECT BY NOCYCLE PRIOR org_id = parent_id
+    ORDER SIBLINGS BY org_name
+  </select>
+
+  <!-- MERGE INTO -->
+  <update id="upsertOrgMember" parameterType="com.example.model.OrgMember">
+    MERGE INTO org_members t
+    USING (SELECT #{orgId} AS org_id, #{userId} AS user_id, #{role} AS role FROM DUAL) s
+    ON (t.org_id = s.org_id AND t.user_id = s.user_id)
+    WHEN MATCHED THEN
+      UPDATE SET t.role = s.role, t.updated_at = SYSDATE
+    WHEN NOT MATCHED THEN
+      INSERT (org_id, user_id, role, created_at)
+      VALUES (s.org_id, s.user_id, s.role, SYSDATE)
+  </update>
+
+  <!-- LISTAGG -->
+  <select id="getOrgMemberNames" parameterType="int" resultType="map">
+    SELECT org_id,
+           LISTAGG(user_name, ', ') WITHIN GROUP (ORDER BY user_name) AS member_names
+    FROM org_members om
+    JOIN users u ON om.user_id = u.id
+    WHERE om.org_id = #{orgId}
+    GROUP BY org_id
+  </select>
+
+  <!-- Analytic function with ROWNUM paging -->
+  <select id="getOrgMembersPaged" parameterType="map" resultType="com.example.model.OrgMember">
+    SELECT * FROM (
+      SELECT a.*, ROWNUM rn FROM (
+        SELECT om.user_id, u.name, om.role, om.created_at
+        FROM org_members om
+        JOIN users u ON om.user_id = u.id
+        WHERE om.org_id = #{orgId}
+        ORDER BY om.created_at DESC
+      ) a
+      WHERE ROWNUM &lt;= #{endRow}
+    )
+    WHERE rn > #{startRow}
+  </select>
+
+  <!-- Oracle hints -->
+  <select id="getActiveOrgs" resultType="com.example.model.Org">
+    SELECT /*+ INDEX(o IDX_ORG_STATUS) */
+      o.org_id, o.org_name, o.status
+    FROM org_tree o
+    WHERE o.status = 'ACTIVE'
+  </select>
+
+  <!-- NVL2 + TO_CHAR + ADD_MONTHS -->
+  <select id="getOrgReport" parameterType="map" resultType="map">
+    SELECT org_id, org_name,
+      NVL2(parent_id, 'Sub-org', 'Root') AS org_type,
+      TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_str,
+      ADD_MONTHS(created_at, 12) AS renewal_date,
+      MONTHS_BETWEEN(SYSDATE, created_at) AS age_months
+    FROM org_tree
+    WHERE created_at >= TO_DATE(#{fromDate}, 'YYYY-MM-DD')
+  </select>
+
+</mapper>

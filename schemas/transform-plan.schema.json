@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Query Transform Plan",
+  "description": "L3~L4 복잡 쿼리의 변환 DAG (서브 태스크 분해 계획).",
+  "type": "object",
+  "required": ["version", "query_id", "source_file", "complexity_level", "patterns_detected", "steps"],
+  "properties": {
+    "version": { "type": "integer" },
+    "query_id": { "type": "string" },
+    "source_file": { "type": "string" },
+    "complexity_level": { "type": "string", "enum": ["L3", "L4"] },
+    "complexity_score": { "type": "integer" },
+    "patterns_detected": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["ROWNUM_PAGINATION", "INLINE_CONNECT_BY", "STANDALONE_CONNECT_BY", "MERGE_INTO", "PIVOT_UNPIVOT", "PLSQL_CALL", "DYNAMIC_SQL_BRANCHES", "NESTED_SUBQUERY", "NVL", "DECODE", "LISTAGG", "OUTER_JOIN_PLUS"] }
+    },
+    "transformation_strategy": { "type": "string", "enum": ["inside_out", "top_down", "branch_by_branch", "sequential"] },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "action", "description"],
+        "properties": {
+          "step": { "type": "integer" },
+          "action": { "type": "string", "enum": ["EXTRACT_INNER_QUERY", "RULE_CONVERT_BRANCHES", "RULE_CONVERT_STATIC", "EXTRACT_CTE", "RESTRUCTURE_PAGINATION", "LLM_CONVERT_PATTERN", "CONVERT_PARAM_TYPES", "ASSEMBLE"] },
+          "description": { "type": "string" },
+          "input": { "type": "string" },
+          "output": { "type": "string" },
+          "targets": { "type": "array" },
+          "reference": { "type": "string" },
+          "preserves_dynamic_sql": { "type": "boolean" },
+          "dynamic_sql_preserved": { "type": "boolean" }
+        }
+      }
+    },
+    "estimated_difficulty": { "type": "string", "enum": ["medium", "high", "very_high"] },
+    "manual_review_recommended": { "type": "boolean" },
+    "notes": { "type": "string" }
+  }
+}

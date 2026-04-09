@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap namespace="User">
+
+  <typeAlias alias="User" type="com.example.model.User"/>
+
+  <cacheModel id="user-cache" type="LRU" readOnly="true">
+    <flushInterval hours="24"/>
+    <flushOnExecute statement="User.insertUser"/>
+    <property name="cache-size" value="500"/>
+  </cacheModel>
+
+  <resultMap id="userResult" class="User">
+    <result property="id" column="ID"/>
+    <result property="name" column="NAME"/>
+    <result property="email" column="EMAIL"/>
+    <result property="status" column="STATUS"/>
+  </resultMap>
+
+  <!-- iBatis dynamic SQL: isNotNull, isNotEmpty, isEqual -->
+  <select id="searchUsers" parameterClass="map" resultMap="userResult" cacheModel="user-cache">
+    SELECT ID, NAME, EMAIL, STATUS FROM USERS
+    <dynamic prepend="WHERE">
+      <isNotNull property="name" prepend="AND">
+        NAME LIKE '%' || #name# || '%'
+      </isNotNull>
+      <isNotEmpty property="status" prepend="AND">
+        STATUS = #status#
+      </isNotEmpty>
+      <isEqual property="activeOnly" compareValue="true" prepend="AND">
+        STATUS = 'ACTIVE'
+      </isEqual>
+      <isGreaterThan property="minId" compareValue="0" prepend="AND">
+        ID > #minId#
+      </isGreaterThan>
+    </dynamic>
+    AND ROWNUM &lt;= #limit#
+  </select>
+
+  <!-- iBatis iterate -->
+  <select id="selectByIds" parameterClass="map" resultMap="userResult">
+    SELECT ID, NAME, EMAIL, STATUS FROM USERS
+    WHERE ID IN
+    <iterate property="idList" open="(" close=")" conjunction=",">
+      #idList[]#
+    </iterate>
+  </select>
+
+  <!-- iBatis selectKey with type="pre" -->
+  <insert id="insertUser" parameterClass="User">
+    <selectKey keyProperty="id" resultClass="long" type="pre">
+      SELECT SEQ_USER.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO USERS (ID, NAME, EMAIL, STATUS, CREATED_AT)
+    VALUES (#id#, #name#, #email#, NVL(#status#, 'ACTIVE'), SYSDATE)
+  </insert>
+
+  <!-- iBatis procedure call -->
+  <procedure id="callUserProc" parameterClass="map">
+    {call PKG_USER.UPDATE_STATUS(#userId#, #newStatus#, #result,mode=OUT,jdbcType=VARCHAR#)}
+  </procedure>
+
+</sqlMap>

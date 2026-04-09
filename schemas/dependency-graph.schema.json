@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Query Dependency Graph",
+  "description": "쿼리 간 의존성 그래프. 위상 정렬 기반 변환 순서 결정에 사용.",
+  "type": "object",
+  "required": ["version", "source_file", "nodes", "edges"],
+  "properties": {
+    "version": { "type": "integer" },
+    "source_file": { "type": "string" },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "type"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["sql_fragment", "select", "insert", "update", "delete", "statement", "procedure"] },
+          "depends_on": { "type": "array", "items": { "type": "string" } },
+          "dependents": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": { "type": "string", "enum": ["SQL_FRAGMENT", "NESTED_SELECT", "NESTED_COLLECTION", "SUBQUERY", "SEQUENCE"] }
+        }
+      }
+    },
+    "cycles": { "type": "array" },
+    "total_nodes": { "type": "integer" },
+    "total_edges": { "type": "integer" }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Converted SQL Output",
+  "description": "converter 에이전트의 출력. Oracle SQL → PostgreSQL 변환 결과.",
+  "type": "object",
+  "required": ["version", "source_file", "total_queries", "conversions"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "source_file": { "type": "string" },
+    "total_queries": { "type": "integer" },
+    "conversions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "method", "original_sql", "converted_sql", "confidence"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "method": { "type": "string", "enum": ["rule", "llm"] },
+          "rules_applied": { "type": "array", "items": { "type": "string" } },
+          "pattern": { "type": "string" },
+          "original_sql": { "type": "string" },
+          "converted_sql": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

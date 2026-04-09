@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cross-File Dependency Graph",
+  "description": "여러 XML 매퍼 파일 간의 크로스 파일 의존성 그래프.",
+  "type": "object",
+  "required": ["version", "total_files", "namespace_map", "cross_file_edges", "file_dependency_order"],
+  "properties": {
+    "version": { "type": "integer" },
+    "total_files": { "type": "integer" },
+    "total_queries": { "type": "integer" },
+    "namespace_map": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "cross_file_edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from_file", "from_query", "to_file", "to_query", "type"],
+        "properties": {
+          "from_file": { "type": "string" },
+          "from_query": { "type": "string" },
+          "to_file": { "type": "string" },
+          "to_query": { "type": "string" },
+          "type": { "type": "string", "enum": ["ASSOCIATION_SELECT", "COLLECTION_SELECT", "CROSS_INCLUDE", "RESULT_MAP_EXTENDS", "CACHE_REF"] },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "file_dependency_order": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "files"],
+        "properties": {
+          "layer": { "type": "integer" },
+          "files": { "type": "array", "items": { "type": "string" } },
+          "depends_on": { "type": "array", "items": { "type": "string" } },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "cycles": { "type": "array" },
+    "isolated_files": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMA Kiro Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #0d1117; color: #c9d1d9; }
+  .nav { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 20px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
+  .nav h1 { color: #58a6ff; font-size: 16px; }
+  .nav .sep { color: #30363d; }
+  .nav button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .nav button:hover { background: #30363d; }
+  .nav button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .card .label { color: #8b949e; font-size: 11px; text-transform: uppercase; }
+  .card .value { color: #f0f6fc; font-size: 24px; font-weight: bold; margin-top: 4px; }
+  .card .sub { color: #8b949e; font-size: 11px; margin-top: 4px; }
+  .card.green .value { color: #3fb950; }
+  .card.blue .value { color: #58a6ff; }
+  .card.yellow .value { color: #d29922; }
+  .card.red .value { color: #f85149; }
+  h2 { color: #58a6ff; margin: 24px 0 12px; font-size: 16px; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+  h3 { color: #8b949e; margin: 16px 0 8px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #21262d; }
+  th { background: #161b22; color: #8b949e; font-size: 11px; text-transform: uppercase; position: sticky; top: 50px; }
+  tr:hover { background: #161b22; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .b-green { background: #238636; color: #fff; }
+  .b-blue { background: #1f6feb; color: #fff; }
+  .b-yellow { background: #9e6a03; color: #fff; }
+  .b-red { background: #da3633; color: #fff; }
+  .b-gray { background: #30363d; color: #8b949e; }
+  .b-purple { background: #8957e5; color: #fff; }
+  .b-orange { background: #f0883e; color: #fff; }
+  .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #21262d; }
+  .section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .pbar { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .pbar-name { width: 140px; font-size: 11px; color: #8b949e; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pbar-fill { height: 14px; border-radius: 3px; min-width: 2px; background: #58a6ff; }
+  .pbar-cnt { font-size: 11px; color: #c9d1d9; width: 36px; }
+  .log-entry { padding: 8px; border-bottom: 1px solid #21262d; font-size: 12px; font-family: monospace; margin: 4px 0; background: #0d1117; border-radius: 4px; }
+  .log-header { display: flex; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .log-field { font-size: 11px; }
+  .log-field-label { color: #484f58; }
+  .log-detail { margin-top: 6px; padding: 8px; background: #161b22; border-radius: 4px; font-size: 11px; max-height: 200px; overflow: auto; }
+  .log-detail-toggle { color: #58a6ff; cursor: pointer; text-decoration: underline; font-size: 11px; }
+  .lt-ERROR { color: #f85149; }
+  .lt-SUCCESS { color: #3fb950; }
+  .lt-DECISION { color: #58a6ff; }
+  .lt-WARNING { color: #d29922; }
+  .lt-PHASE_START, .lt-PHASE_END { color: #bc8cff; }
+  .lt-FIX { color: #f0883e; }
+  .lt-HUMAN_INPUT { color: #39d353; }
+  .lt-LEARNING { color: #a5d6ff; }
+  .lt-INFO { color: #8b949e; }
+  .log-time { color: #484f58; }
+  .log-filters { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .log-filters button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+  .log-filters button:hover { background: #30363d; }
+  .log-filters button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  pre.json { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow: auto; font-size: 11px; max-height: 500px; color: #c9d1d9; }
+  .empty { color: #484f58; font-style: italic; padding: 24px; text-align: center; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-ok { background: #3fb950; }
+  .dot-warn { background: #d29922; }
+  .dot-err { background: #f85149; }
+  .dot-none { background: #484f58; }
+  .file-select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px; border-radius: 6px; width: 100%; margin: 8px 0; }
+  .refresh-hint { color: #484f58; font-size: 11px; margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .progress-bar-wrapper { margin: 12px 0; }
+  .progress-bar { height: 24px; background: #21262d; border-radius: 8px; overflow: hidden; position: relative; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #1f6feb, #58a6ff); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: bold; }
+  .phase-list { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .phase-item { padding: 4px 10px; border-radius: 4px; font-size: 11px; }
+  .phase-completed { background: #238636; color: #fff; }
+  .phase-current { background: #1f6feb; color: #fff; }
+  .phase-pending { background: #30363d; color: #8b949e; }
+  .pipeline-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin: 8px 0; }
+  .pipeline-stat { text-align: center; padding: 8px; background: #0d1117; border-radius: 4px; }
+  .pipeline-stat-value { font-size: 20px; font-weight: bold; }
+  .pipeline-stat-label { font-size: 10px; color: #8b949e; text-transform: uppercase; margin-top: 2px; }
+  .file-status-badge { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>OMA Kiro</h1>
+  <span class="sep">|</span>
+  <button class="active" onclick="showPage('overview')">Overview</button>
+  <button onclick="showPage('files')">Files</button>
+  <button onclick="showPage('patterns')">Patterns</button>
+  <button onclick="showPage('complexity')">Complexity</button>
+  <button onclick="showPage('log')">Activity Log</button>
+  <button onclick="showPage('raw')">Raw JSON</button>
+  <button onclick="loadAll()" title="새로고침">↻ Reload</button>
+  <span class="refresh-hint">
+    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+      <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()" style="cursor: pointer;">
+      <span>자동 새로고침 (10초)</span>
+    </label>
+    <span id="last-update" style="margin-left: 8px;"></span>
+  </span>
+</div>
+
+<div class="main">
+
+<!-- Overview -->
+<div id="page-overview" class="page active">
+  <div class="cards" id="overview-cards"><div class="empty">Loading...</div></div>
+  <div id="overview-progress"></div>
+  <div id="overview-phase"></div>
+  <div id="overview-files"></div>
+</div>
+
+<!-- Files -->
+<div id="page-files" class="page">
+  <h2>파일별 상세</h2>
+  <select class="file-select" id="file-select" onchange="showFileDetail()">
+    <option value="">-- 파일 선택 --</option>
+  </select>
+  <div id="file-detail"></div>
+</div>
+
+<!-- Patterns -->
+<div id="page-patterns" class="page">
+  <h2>Oracle 패턴 분포</h2>
+  <div id="pattern-charts"></div>
+</div>
+
+<!-- Complexity -->
+<div id="page-complexity" class="page">
+  <h2>복잡도 분류 (L0~L4)</h2>
+  <div id="complexity-view"></div>
+</div>
+
+<!-- Activity Log -->
+<div id="page-log" class="page">
+  <h2>감사 로그</h2>
+  <div class="log-filters" id="log-filters"></div>
+  <div id="log-view"></div>
+</div>
+
+<!-- Raw JSON -->
+<div id="page-raw" class="page">
+  <h2>Raw JSON Viewer</h2>
+  <select class="file-select" id="raw-select" onchange="showRawJson()">
+    <option value="">-- 파일 선택 --</option>
+  </select>
+  <pre class="json" id="raw-view"></pre>
+</div>
+
+</div>
+
+<script>
+const BASE = '.';
+let data = { progress: null, files: {}, log: [], rawMap: {} };
+let autoRefreshInterval = null;
+let logTypeFilter = null;
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleAutoRefresh() {
+  const enabled = document.getElementById('auto-refresh-toggle').checked;
+  if (enabled) {
+    autoRefreshInterval = setInterval(() => loadAll(), 10000);
+  } else {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  }
+}
+
+async function fetchJson(path) {
+  try {
+    const r = await fetch(path, { cache: 'no-store' });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function fetchJsonl(path) {
+  try {
+    const r = await fetch(path, { cache: 'no-store' });
+    if (!r.ok) return [];
+    const text = await r.text();
+    return text.trim().split('\n').filter(l => l).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  } catch { return []; }
+}
+
+async function fetchHead(path) {
+  try {
+    const r = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+    return r.ok;
+  } catch { return false; }
+}
+
+async function discoverFiles() {
+  const possibleDirs = [];
+
+  // Method 1: Read results/_index.json (generated by tools)
+  try {
+    const r = await fetch('results/_index.json', { cache: 'no-store' });
+    if (r.ok) {
+      const idx = await r.json();
+      if (Array.isArray(idx)) possibleDirs.push(...idx);
+      else if (idx.directories) possibleDirs.push(...idx.directories);
+    }
+  } catch {}
+
+  // Method 2: Check progress.json for file names
+  if (data.progress) {
+    for (const key of Object.keys(data.progress)) {
+      if (key.startsWith('_') || ['status', 'phase', 'started_at', 'preflight', 'phases_completed'].includes(key)) continue;
+      const name = key.replace('.xml', '');
+      if (name && name.length > 2) possibleDirs.push(name);
+    }
+    const files = data.progress.files || {};
+    for (const key of Object.keys(files)) {
+      const name = key.replace('.xml', '');
+      if (name && name.length > 2) possibleDirs.push(name);
+    }
+  }
+
+  // Method 3: Read input/ XML file names as potential result dirs
+  try {
+    // Try to infer from progress.json summary or any available data
+    const inputNames = [];
+    if (data.progress) {
+      const summary = data.progress._pipeline || data.progress;
+      // Extract file names from any nested objects
+      const scan = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        for (const [k, v] of Object.entries(obj)) {
+          if (k.endsWith('.xml')) inputNames.push(k.replace('.xml', ''));
+          if (typeof v === 'object') scan(v);
+        }
+      };
+      scan(data.progress);
+    }
+    possibleDirs.push(...inputNames);
+  } catch {}
+
+  // Method 3: Probe for existence of known files in each possible dir
+  const confirmed = [];
+  for (const name of [...new Set(possibleDirs)]) {
+    // Try to fetch any known file to confirm the directory exists
+    const testFiles = [
+      `results/${name}/v1/parsed.json`,
+      `results/${name}/v1/chunks/_metadata.json`,
+      `results/${name}/v1/conversion-report.json`,
+      `results/${name}/v1/complexity-scores.json`
+    ];
+    for (const tf of testFiles) {
+      const exists = await fetchHead(tf);
+      if (exists) {
+        confirmed.push(name);
+        break;
+      }
+    }
+  }
+  return confirmed;
+}
+
+async function loadAll() {
+  data.progress = await fetchJson('progress.json');
+  data.log = await fetchJsonl('logs/activity-log.jsonl');
+  data.files = {};
+  data.rawMap = {};
+
+  if (data.progress) data.rawMap['progress.json'] = data.progress;
+  if (data.log.length) data.rawMap['logs/activity-log.jsonl'] = data.log;
+
+  const dirs = await discoverFiles();
+  for (const dir of dirs) {
+    const base = `results/${dir}/v1`;
+    const fileData = { _dir: dir, _exists: {} };
+
+    // Try to load all known JSON files
+    const files = ['parsed', 'conversion-report', 'complexity-scores', 'dependency-graph', 'conversion-order'];
+    for (const name of files) {
+      const d = await fetchJson(`${base}/${name}.json`);
+      if (d) {
+        fileData[name] = d;
+        fileData._exists[name] = true;
+        data.rawMap[`${dir}/${name}.json`] = d;
+      } else {
+        fileData._exists[name] = false;
+      }
+    }
+
+    // Check chunks metadata
+    const chunkMeta = await fetchJson(`${base}/chunks/_metadata.json`);
+    if (chunkMeta) {
+      fileData['chunks-metadata'] = chunkMeta;
+      fileData._exists['chunks-metadata'] = true;
+      data.rawMap[`${dir}/chunks/_metadata.json`] = chunkMeta;
+    } else {
+      fileData._exists['chunks-metadata'] = false;
+    }
+
+    // Always add the directory if we found at least one file
+    if (Object.keys(fileData).some(k => !k.startsWith('_'))) {
+      data.files[dir] = fileData;
+    }
+  }
+
+  // Update last update time
+  const now = new Date();
+  document.getElementById('last-update').textContent = `마지막 업데이트: ${now.toLocaleTimeString('ko-KR')}`;
+
+  renderOverview();
+  renderFileSelect();
+  renderPatterns();
+  renderComplexity();
+  renderLog();
+  renderRawSelect();
+}
+
+function renderOverview() {
+  let totalQ = 0, totalRule = 0, totalLlm = 0, totalConv = 0, totalUnconv = 0;
+  for (const [, fd] of Object.entries(data.files)) {
+    const m = fd.parsed?.metadata || {};
+    totalQ += m.total_queries || 0;
+    totalRule += m.rule_tagged || 0;
+    totalLlm += m.llm_tagged || 0;
+    const cr = fd['conversion-report'] || {};
+    totalConv += cr.total_replacements || 0;
+    totalUnconv += cr.unconverted_count || 0;
+  }
+
+  const p = data.progress || {};
+  const pl = p._pipeline || {};
+  const phase = p.phase || pl.current_phase_name || (p.status ? p.status : 'N/A');
+
+  document.getElementById('overview-cards').innerHTML = `
+    <div class="card blue"><div class="label">총 쿼리</div><div class="value">${totalQ}</div><div class="sub">${Object.keys(data.files).length}개 파일</div></div>
+    <div class="card green"><div class="label">Rule 변환</div><div class="value">${totalConv}</div><div class="sub">기계적 치환</div></div>
+    <div class="card yellow"><div class="label">LLM 필요</div><div class="value">${totalLlm}</div><div class="sub">구조적 변환</div></div>
+    <div class="card ${totalUnconv > 0 ? 'red' : ''}"><div class="label">미변환</div><div class="value">${totalUnconv}</div></div>
+    <div class="card"><div class="label">Phase</div><div class="value" style="font-size:14px">${phase}</div></div>
+    <div class="card"><div class="label">로그</div><div class="value">${data.log.length}</div><div class="sub">entries</div></div>
+  `;
+
+  // Progress tracking
+  renderProgressSection();
+
+  // File summary table
+  let html = '<h2>파일 요약</h2><table><tr><th>파일</th><th>쿼리</th><th>Rule</th><th>LLM</th><th>변환</th><th>미변환</th><th>파일 상태</th></tr>';
+  for (const [fname, fd] of Object.entries(data.files)) {
+    const m = fd.parsed?.metadata || {};
+    const cr = fd['conversion-report'] || {};
+    const dot = cr.unconverted_count > 0 ? 'dot-warn' : (cr.total_replacements > 0 ? 'dot-ok' : 'dot-none');
+
+    // File status badges
+    const exists = fd._exists || {};
+    const fileStatuses = [];
+    const fileNames = ['parsed', 'conversion-report', 'complexity-scores', 'dependency-graph', 'conversion-order', 'chunks-metadata'];
+    const fileLabels = ['Parsed', 'Convert', 'Complex', 'Deps', 'Order', 'Chunks'];
+    for (let i = 0; i < fileNames.length; i++) {
+      const fn = fileNames[i];
+      const label = fileLabels[i];
+      if (exists[fn] === true) {
+        fileStatuses.push(`<span class="badge b-green">${label}</span>`);
+      } else if (exists[fn] === false) {
+        fileStatuses.push(`<span class="badge b-gray">미생성</span>`);
+      }
+    }
+
+    html += `<tr><td><span class="status-dot ${dot}"></span>${fname}</td>
+      <td>${m.total_queries||0}</td><td>${m.rule_tagged||0}</td><td>${m.llm_tagged||0}</td>
+      <td><span class="badge b-green">${cr.total_replacements||0}</span></td>
+      <td><span class="badge ${cr.unconverted_count>0?'b-red':'b-gray'}">${cr.unconverted_count||0}</span></td>
+      <td class="file-status-badge">${fileStatuses.join(' ')}</td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('overview-files').innerHTML = html;
+}
+
+function renderProgressSection() {
+  const p = data.progress || {};
+  const pl = p._pipeline || {};
+
+  const currentPhase = p.phase || pl.current_phase_name || 'Unknown';
+  const completedPhases = p.phases_completed || pl.phases_completed || [];
+  const allPhases = ['preflight', 'phase1', 'phase1.5', 'phase2', 'phase3', 'validation', 'finalization'];
+
+  // Calculate progress percentage
+  const progressPct = completedPhases.length / allPhases.length * 100;
+
+  // Pipeline summary from progress
+  const summary = pl.summary || {
+    success: 0,
+    failed: 0,
+    pending: 0,
+    escalated: 0
+  };
+
+  let html = '<h2>진행 상태</h2><div class="section">';
+
+  // Progress bar
+  html += `<div class="progress-bar-wrapper">
+    <div class="progress-bar">
+      <div class="progress-bar-fill" style="width: ${progressPct}%">${Math.round(progressPct)}%</div>
+    </div>
+  </div>`;
+
+  // Current phase
+  html += `<p style="margin: 8px 0;"><strong>현재 Phase:</strong> <span class="badge b-blue">${currentPhase}</span></p>`;
+
+  // Phase list
+  html += '<h3>Phase 진행 상황</h3><div class="phase-list">';
+  for (const phase of allPhases) {
+    let cssClass = 'phase-pending';
+    if (completedPhases.includes(phase)) {
+      cssClass = 'phase-completed';
+    } else if (phase === currentPhase) {
+      cssClass = 'phase-current';
+    }
+    html += `<div class="phase-item ${cssClass}">${phase}</div>`;
+  }
+  html += '</div>';
+
+  // Pipeline summary
+  if (summary.success + summary.failed + summary.pending + summary.escalated > 0) {
+    html += '<h3>파이프라인 요약</h3><div class="pipeline-summary">';
+    html += `<div class="pipeline-stat" style="color: #3fb950;"><div class="pipeline-stat-value">${summary.success}</div><div class="pipeline-stat-label">Success</div></div>`;
+    html += `<div class="pipeline-stat" style="color: #f85149;"><div class="pipeline-stat-value">${summary.failed}</div><div class="pipeline-stat-label">Failed</div></div>`;
+    html += `<div class="pipeline-stat" style="color: #d29922;"><div class="pipeline-stat-value">${summary.pending}</div><div class="pipeline-stat-label">Pending</div></div>`;
+    html += `<div class="pipeline-stat" style="color: #f0883e;"><div class="pipeline-stat-value">${summary.escalated}</div><div class="pipeline-stat-label">Escalated</div></div>`;
+    html += '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('overview-progress').innerHTML = html;
+}
+
+function renderFileSelect() {
+  const sel = document.getElementById('file-select');
+  sel.innerHTML = '<option value="">-- 파일 선택 --</option>';
+  for (const fname of Object.keys(data.files)) {
+    sel.innerHTML += `<option value="${fname}">${fname}</option>`;
+  }
+}
+
+function showFileDetail() {
+  const fname = document.getElementById('file-select').value;
+  const el = document.getElementById('file-detail');
+  if (!fname) { el.innerHTML = ''; return; }
+  const fd = data.files[fname];
+  if (!fd) { el.innerHTML = '<div class="empty">데이터 없음</div>'; return; }
+
+  let html = '';
+
+  // Parsed info
+  if (fd.parsed) {
+    const m = fd.parsed.metadata;
+    html += `<div class="section"><h3>파싱 결과</h3>
+      <p>쿼리: ${m.total_queries} (rule: ${m.rule_tagged}, llm: ${m.llm_tagged})</p>
+      <p>동적SQL: ${m.has_dynamic_sql}, Include: ${m.has_includes}, SelectKey: ${m.has_select_key}</p>
+      ${fd.parsed.warnings?.length ? `<p style="color:#d29922">경고: ${fd.parsed.warnings.length}건</p>` : ''}
+    </div>`;
+
+    // Query list
+    html += '<h3>쿼리 목록</h3><table><tr><th>ID</th><th>타입</th><th>태그</th><th>Oracle 패턴</th></tr>';
+    for (const q of fd.parsed.queries) {
+      const tags = q.oracle_tags.map(t => `<span class="badge ${t==='llm'?'b-red':'b-blue'}">${t}</span>`).join(' ');
+      const pats = q.oracle_patterns.join(', ');
+      html += `<tr><td>${q.query_id}</td><td>${q.type}</td><td>${tags}</td><td style="font-size:11px">${pats}</td></tr>`;
+    }
+    html += '</table>';
+  }
+
+  // Conversion report
+  if (fd['conversion-report']) {
+    const cr = fd['conversion-report'];
+    html += `<h3>변환 리포트</h3><div class="section">
+      <p>총 변환: ${cr.total_replacements}건, CDATA: ${cr.cdata_conversions}건</p></div>`;
+
+    if (cr.rules_applied && Object.keys(cr.rules_applied).length) {
+      html += '<table><tr><th>룰</th><th>횟수</th></tr>';
+      for (const [rule, cnt] of Object.entries(cr.rules_applied).sort((a,b) => b[1]-a[1])) {
+        html += `<tr><td>${rule}</td><td>${cnt}</td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    if (cr.unconverted?.length) {
+      html += '<h3>미변환 패턴</h3><table><tr><th>패턴</th><th>심각도</th></tr>';
+      for (const u of cr.unconverted) {
+        html += `<tr><td>${u.pattern}</td><td><span class="badge ${u.severity==='needs_llm'?'b-red':'b-yellow'}">${u.severity}</span></td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    if (cr.residual_oracle_patterns?.length) {
+      html += `<h3>잔존 Oracle 패턴 (${cr.residual_oracle_patterns.length}건)</h3><table><tr><th>라인</th><th>패턴</th><th>쿼리</th><th>컨텍스트</th></tr>`;
+      for (const r of cr.residual_oracle_patterns.slice(0, 50)) {
+        html += `<tr><td>${r.line}</td><td>${r.pattern}</td><td>${r.query_id||''}</td><td style="font-size:10px;color:#8b949e;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.context||'').substring(0,80)}</td></tr>`;
+      }
+      if (cr.residual_oracle_patterns.length > 50) {
+        html += `<tr><td colspan="4" style="text-align:center;color:#8b949e;font-style:italic;">... 그 외 ${cr.residual_oracle_patterns.length - 50}건</td></tr>`;
+      }
+      html += '</table>';
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+function renderPatterns() {
+  let allPatterns = {};
+  for (const [fname, fd] of Object.entries(data.files)) {
+    if (!fd.parsed) continue;
+    for (const q of fd.parsed.queries) {
+      for (const p of q.oracle_patterns || []) {
+        allPatterns[p] = (allPatterns[p] || 0) + 1;
+      }
+    }
+  }
+
+  const sorted = Object.entries(allPatterns).sort((a,b) => b[1]-a[1]);
+  if (!sorted.length) {
+    document.getElementById('pattern-charts').innerHTML = '<div class="empty">패턴 데이터 없음 (Phase 1 실행 후 확인)</div>';
+    return;
+  }
+
+  const max = sorted[0][1];
+  let html = '<div class="section">';
+  for (const [pat, cnt] of sorted) {
+    const pct = cnt / max * 100;
+    html += `<div class="pbar"><div class="pbar-name">${pat}</div><div style="flex:1"><div class="pbar-fill" style="width:${pct}%"></div></div><div class="pbar-cnt">${cnt}</div></div>`;
+  }
+  html += '</div>';
+  document.getElementById('pattern-charts').innerHTML = html;
+}
+
+function renderComplexity() {
+  let html = '';
+  const colors = { L0: '#3fb950', L1: '#58a6ff', L2: '#d29922', L3: '#f0883e', L4: '#f85149' };
+  const names = { L0: 'Static', L1: 'Simple Rule', L2: 'Dynamic Simple', L3: 'Dynamic Complex', L4: 'Oracle Complex' };
+
+  for (const [fname, fd] of Object.entries(data.files)) {
+    if (!fd['complexity-scores']) continue;
+    const cs = fd['complexity-scores'];
+    const summary = cs.summary || {};
+    const total = summary.total || 1;
+
+    html += `<h3>${fname}</h3><div class="section">`;
+    html += '<div class="bar">';
+    for (const lvl of ['L0','L1','L2','L3','L4']) {
+      const cnt = summary[lvl] || 0;
+      if (cnt > 0) html += `<div style="width:${cnt/total*100}%;height:100%;background:${colors[lvl]}"></div>`;
+    }
+    html += '</div><div style="display:flex;gap:16px;margin:8px 0;font-size:12px">';
+    for (const lvl of ['L0','L1','L2','L3','L4']) {
+      const cnt = summary[lvl] || 0;
+      if (cnt > 0) html += `<span style="color:${colors[lvl]}">${lvl} ${names[lvl]}: ${cnt}</span>`;
+    }
+    html += `</div><p style="font-size:12px;color:#8b949e">평균 복잡도: ${summary.average_score || '-'}</p>`;
+
+    // Top 10 complex queries
+    const top = (cs.queries || []).sort((a,b) => b.score - a.score).slice(0, 10);
+    if (top.length) {
+      html += '<table><tr><th>쿼리</th><th>점수</th><th>레벨</th><th>상세</th></tr>';
+      for (const q of top) {
+        html += `<tr><td>${q.query_id}</td><td>${q.score}</td><td><span class="badge" style="background:${colors[q.level]};color:#fff">${q.level}</span></td><td style="font-size:10px;color:#8b949e">${Object.entries(q.breakdown||{}).map(([k,v])=>`${k}:${v}`).join(', ')}</td></tr>`;
+      }
+      html += '</table>';
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('complexity-view').innerHTML = html || '<div class="empty">복잡도 데이터 없음 (Phase 1.5 실행 후 확인)</div>';
+}
+
+function renderLog() {
+  if (!data.log.length) {
+    document.getElementById('log-view').innerHTML = '<div class="empty">감사 로그 없음 (workspace/logs/activity-log.jsonl)</div>';
+    document.getElementById('log-filters').innerHTML = '';
+    return;
+  }
+
+  // Get all unique log types
+  const logTypes = [...new Set(data.log.map(e => e.type || 'UNKNOWN'))];
+
+  // Render filter buttons
+  let filterHtml = '<button onclick="setLogFilter(null)" class="' + (logTypeFilter === null ? 'active' : '') + '">전체 (' + data.log.length + ')</button>';
+  for (const type of logTypes.sort()) {
+    const count = data.log.filter(e => e.type === type).length;
+    filterHtml += `<button onclick="setLogFilter('${type}')" class="${logTypeFilter === type ? 'active' : ''}">${type} (${count})</button>`;
+  }
+  document.getElementById('log-filters').innerHTML = filterHtml;
+
+  // Filter logs
+  let filteredLogs = data.log;
+  if (logTypeFilter) {
+    filteredLogs = data.log.filter(e => e.type === logTypeFilter);
+  }
+
+  // Render logs (newest first)
+  let html = '<div class="section">';
+  for (const entry of filteredLogs.slice().reverse()) {
+    const t = entry.type || 'UNKNOWN';
+    const ts = (entry.timestamp || '').substring(0, 19).replace('T', ' ');
+    const entryId = 'log-detail-' + Math.random().toString(36).substr(2, 9);
+
+    html += `<div class="log-entry">`;
+    html += `<div class="log-header">`;
+    html += `<span class="log-time">${ts}</span>`;
+    html += `<span class="lt-${t}">[${t}]</span>`;
+    if (entry.phase) html += `<span class="log-field"><span class="log-field-label">Phase:</span> ${entry.phase}</span>`;
+    if (entry.agent) html += `<span class="log-field"><span class="log-field-label">Agent:</span> ${entry.agent}</span>`;
+    if (entry.file_name) html += `<span class="log-field"><span class="log-field-label">File:</span> ${entry.file_name}</span>`;
+    if (entry.query_id) html += `<span class="log-field"><span class="log-field-label">Query:</span> ${entry.query_id}</span>`;
+    html += `</div>`;
+    html += `<div style="margin-top: 4px;">${entry.summary || entry.message || JSON.stringify(entry).substring(0, 200)}</div>`;
+
+    // Show detail if available
+    if (entry.detail && Object.keys(entry.detail).length > 0) {
+      html += `<div><span class="log-detail-toggle" onclick="toggleLogDetail('${entryId}')">▸ 상세 보기</span></div>`;
+      html += `<div id="${entryId}" class="log-detail" style="display:none;"><pre>${JSON.stringify(entry.detail, null, 2)}</pre></div>`;
+    }
+
+    html += `</div>`;
+  }
+  html += '</div>';
+  document.getElementById('log-view').innerHTML = html;
+}
+
+function setLogFilter(type) {
+  logTypeFilter = type;
+  renderLog();
+}
+
+function toggleLogDetail(id) {
+  const el = document.getElementById(id);
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    event.target.textContent = '▾ 상세 숨기기';
+  } else {
+    el.style.display = 'none';
+    event.target.textContent = '▸ 상세 보기';
+  }
+}
+
+function renderRawSelect() {
+  const sel = document.getElementById('raw-select');
+  sel.innerHTML = '<option value="">-- 파일 선택 --</option>';
+  for (const key of Object.keys(data.rawMap).sort()) {
+    sel.innerHTML += `<option value="${key}">${key}</option>`;
+  }
+}
+
+function showRawJson() {
+  const key = document.getElementById('raw-select').value;
+  document.getElementById('raw-view').textContent = key ? JSON.stringify(data.rawMap[key], null, 2) : '';
+}
+
+// Auto-load on page open
+loadAll();
+</script>
+</body>
+</html>

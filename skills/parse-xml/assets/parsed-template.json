@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "source_file": "UserMapper.xml",
+  "framework": "mybatis3",
+  "namespace": "com.example.mapper.UserMapper",
+  "sql_fragments": [
+    {
+      "id": "commonColumns",
+      "sql": "id, name, email, created_at"
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "selectUserById",
+      "type": "select",
+      "parameter_type": "int",
+      "result_type": "com.example.model.User",
+      "result_map": null,
+      "statement_type": "PREPARED",
+      "sql_raw": "SELECT id, name, email FROM users WHERE id = #{id} AND status = NVL(#{status}, 'ACTIVE')",
+      "sql_branches": [
+        {
+          "condition": "always",
+          "sql": "SELECT id, name, email FROM users WHERE id = ? AND status = NVL(?, 'ACTIVE')"
+        }
+      ],
+      "dynamic_elements": [
+        {
+          "tag": "if",
+          "test": "name != null",
+          "content": "AND name = #{name}"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "id",
+          "jdbc_type": null,
+          "notation": "#{}"
+        },
+        {
+          "name": "status",
+          "jdbc_type": "VARCHAR",
+          "notation": "#{}"
+        }
+      ],
+      "oracle_tags": ["rule"],
+      "oracle_patterns": ["NVL"],
+      "includes": [],
+      "select_key": null
+    },
+    {
+      "query_id": "getOrgHierarchy",
+      "type": "select",
+      "parameter_type": "int",
+      "result_type": "com.example.model.Org",
+      "result_map": null,
+      "statement_type": "PREPARED",
+      "sql_raw": "SELECT org_id, parent_id, org_name, LEVEL FROM org_tree START WITH org_id = #{rootId} CONNECT BY PRIOR org_id = parent_id",
+      "sql_branches": [
+        {
+          "condition": "always",
+          "sql": "SELECT org_id, parent_id, org_name, LEVEL FROM org_tree START WITH org_id = ? CONNECT BY PRIOR org_id = parent_id"
+        }
+      ],
+      "dynamic_elements": [],
+      "parameters": [
+        {
+          "name": "rootId",
+          "jdbc_type": null,
+          "notation": "#{}"
+        }
+      ],
+      "oracle_tags": ["llm"],
+      "oracle_patterns": ["CONNECT BY", "START WITH", "LEVEL"],
+      "includes": [],
+      "select_key": null
+    },
+    {
+      "query_id": "insertUser",
+      "type": "insert",
+      "parameter_type": "com.example.model.User",
+      "result_type": null,
+      "result_map": null,
+      "statement_type": "PREPARED",
+      "sql_raw": "INSERT INTO users (id, name, email) VALUES (#{id}, #{name}, #{email})",
+      "sql_branches": [
+        {
+          "condition": "always",
+          "sql": "INSERT INTO users (id, name, email) VALUES (?, ?, ?)"
+        }
+      ],
+      "dynamic_elements": [],
+      "parameters": [
+        { "name": "id", "jdbc_type": null, "notation": "#{}" },
+        { "name": "name", "jdbc_type": null, "notation": "#{}" },
+        { "name": "email", "jdbc_type": null, "notation": "#{}" }
+      ],
+      "oracle_tags": ["rule"],
+      "oracle_patterns": ["SEQUENCE"],
+      "includes": [],
+      "select_key": {
+        "key_property": "id",
+        "result_type": "int",
+        "order": "BEFORE",
+        "sql": "SELECT SEQ_USER.NEXTVAL FROM DUAL"
+      }
+    }
+  ],
+  "metadata": {
+    "total_queries": 3,
+    "rule_tagged": 2,
+    "llm_tagged": 1,
+    "has_dynamic_sql": true,
+    "has_includes": false,
+    "has_select_key": true,
+    "ibatis_specific": false
+  }
+}

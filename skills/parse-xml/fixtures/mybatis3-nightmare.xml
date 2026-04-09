@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.NightmareMapper">
+
+  <sql id="userBaseColumns">
+    u.id, NVL(u.name, 'Unknown') AS name, u.email, u.status
+  </sql>
+
+  <!-- L4: ROWNUM 3중 페이징 + CONNECT BY 서브쿼리 + 동적SQL + (+)조인 + 스칼라 서브쿼리 + DECODE + NVL + LISTAGG -->
+  <select id="nightmareQuery" parameterType="map" resultType="map">
+    SELECT * FROM (
+      SELECT a.*, ROWNUM rn FROM (
+        SELECT
+          <include refid="userBaseColumns"/>,
+          DECODE(u.status, 'A', 'Active', 'I', 'Inactive', 'P', 'Pending', 'Unknown') AS status_text,
+          NVL(d.dept_name, 'No Dept') AS dept_name,
+          (SELECT LISTAGG(r.role_name, ', ') WITHIN GROUP (ORDER BY r.role_name)
+           FROM user_roles ur, roles r
+           WHERE ur.user_id = u.id AND ur.role_id = r.id(+)) AS role_names,
+          (SELECT COUNT(*) FROM audit_log al
+           WHERE al.user_id = u.id
+           AND al.log_date >= ADD_MONTHS(SYSDATE, -6)) AS recent_actions
+        FROM users u, departments d
+        WHERE u.dept_id = d.id(+)
+        <if test="orgId != null">
+          AND u.org_id IN (
+            SELECT org_id FROM org_tree
+            START WITH org_id = #{orgId}
+            CONNECT BY NOCYCLE PRIOR org_id = parent_id
+          )
+        </if>
+        <if test="name != null and name != ''">
+          AND REGEXP_LIKE(u.name, #{name}, 'i')
+        </if>
+        <choose>
+          <when test="status != null">
+            AND u.status = #{status}
+          </when>
+          <otherwise>
+            AND u.status IN ('A', 'P')
+          </otherwise>
+        </choose>
+        <if test="roleIds != null and roleIds.size() > 0">
+          AND u.id IN (
+            SELECT ur.user_id FROM user_roles ur
+            WHERE ur.role_id IN
+            <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+              #{roleId}
+            </foreach>
+          )
+        </if>
+        <choose>
+          <when test="sortType == 'name'">ORDER BY u.name</when>
+          <when test="sortType == 'date'">ORDER BY u.created_at DESC</when>
+          <otherwise>ORDER BY u.id</otherwise>
+        </choose>
+      ) a WHERE ROWNUM &lt;= #{pageEnd}
+    ) WHERE rn &gt; #{pageStart}
+  </select>
+
+  <!-- L4: 다중 CONNECT BY + 동적SQL -->
+  <select id="orgUserReport" parameterType="map" resultType="map">
+    SELECT u.name, org.path, dept.root_dept,
+           GREATEST(NVL(u.last_login, TO_DATE('19700101','YYYYMMDD')),
+                    NVL(u.created_at, TO_DATE('19700101','YYYYMMDD'))) AS last_active
+    FROM users u
+    LEFT JOIN (
+        SELECT org_id, SYS_CONNECT_BY_PATH(org_name, ' > ') AS path,
+               CONNECT_BY_ISLEAF AS is_leaf
+        FROM org_tree
+        START WITH parent_id IS NULL
+        CONNECT BY PRIOR org_id = parent_id
+    ) org ON u.org_id = org.org_id
+    LEFT JOIN (
+        SELECT dept_id, CONNECT_BY_ROOT dept_name AS root_dept
+        FROM dept_tree
+        START WITH parent_dept_id IS NULL
+        CONNECT BY PRIOR dept_id = parent_dept_id
+    ) dept ON u.dept_id = dept.dept_id
+    <where>
+      <if test="orgId != null">
+        AND u.org_id IN (
+          SELECT org_id FROM org_tree
+          START WITH org_id = #{orgId}
+          CONNECT BY PRIOR org_id = parent_id
+        )
+      </if>
+      <if test="activeOnly == true">
+        AND u.status = 'A'
+        AND u.last_login >= ADD_MONTHS(SYSDATE, -3)
+      </if>
+    </where>
+    ORDER BY org.path, u.name
+  </select>
+
+  <!-- L3: MERGE INTO + 동적 SQL -->
+  <update id="upsertUserStatus" parameterType="map">
+    MERGE INTO user_status_history t
+    USING (
+      SELECT #{userId} AS user_id, #{newStatus} AS status,
+             SYSDATE AS changed_at,
+             NVL(#{reason}, 'System') AS reason
+      FROM DUAL
+    ) s ON (t.user_id = s.user_id AND t.status = s.status AND TRUNC(t.changed_at) = TRUNC(SYSDATE))
+    WHEN MATCHED THEN
+      UPDATE SET t.reason = s.reason, t.updated_at = SYSDATE
+      <if test="deleteOld == true">
+        DELETE WHERE t.changed_at &lt; ADD_MONTHS(SYSDATE, -12)
+      </if>
+    WHEN NOT MATCHED THEN
+      INSERT (user_id, status, changed_at, reason)
+      VALUES (s.user_id, s.status, s.changed_at, s.reason)
+  </update>
+
+  <!-- L3: DBMS_LOB + 정규식 + 분석함수 -->
+  <select id="articleSearch" parameterType="map" resultType="map">
+    SELECT id, title,
+           DBMS_LOB.SUBSTR(content, 200, 1) AS preview,
+           DBMS_LOB.GETLENGTH(content) AS content_len,
+           REGEXP_REPLACE(title, '\s+', ' ') AS clean_title,
+           ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY created_at DESC) AS rn
+    FROM articles
+    WHERE REGEXP_LIKE(title, #{keyword}, 'i')
+       OR DBMS_LOB.INSTR(content, #{keyword}) > 0
+    ORDER BY created_at DESC
+    FETCH FIRST #{limit} ROWS ONLY
+  </select>
+
+</mapper>

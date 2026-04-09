@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Query Complexity Scores",
+  "description": "쿼리별 복잡도 점수 및 레벨 분류.",
+  "type": "object",
+  "required": ["version", "source_file", "queries", "summary"],
+  "properties": {
+    "version": { "type": "integer" },
+    "source_file": { "type": "string" },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "score", "level", "level_name", "breakdown"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "score": { "type": "integer", "minimum": 0 },
+          "level": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4"] },
+          "level_name": { "type": "string", "enum": ["Static", "Simple Rule", "Dynamic Simple", "Dynamic Complex", "Oracle Complex"] },
+          "breakdown": { "type": "object" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["L0", "L1", "L2", "L3", "L4", "total"],
+      "properties": {
+        "L0": { "type": "integer" },
+        "L1": { "type": "integer" },
+        "L2": { "type": "integer" },
+        "L3": { "type": "integer" },
+        "L4": { "type": "integer" },
+        "total": { "type": "integer" },
+        "average_score": { "type": "number" }
+      }
+    }
+  }
+}

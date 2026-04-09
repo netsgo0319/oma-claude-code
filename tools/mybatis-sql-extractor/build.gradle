@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.oma'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // MyBatis 3.x
+    implementation 'org.mybatis:mybatis:3.5.16'
+
+    // JSON output
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+    // Oracle JDBC (for type resolution, optional)
+    compileOnly 'com.oracle.database.jdbc:ojdbc11:23.4.0.24.05'
+
+    // H2 for dummy datasource (in-memory, no real DB needed)
+    implementation 'com.h2database:h2:2.2.224'
+}
+
+application {
+    mainClass = 'com.oma.extractor.SqlExtractor'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.oma.extractor.SqlExtractor'
+    }
+    // Fat jar for easy distribution
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

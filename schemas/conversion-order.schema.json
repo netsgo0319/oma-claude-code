@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Conversion Order",
+  "description": "위상 정렬 기반 레이어별 변환 순서.",
+  "type": "object",
+  "required": ["version", "source_file", "layers", "total_layers"],
+  "properties": {
+    "version": { "type": "integer" },
+    "source_file": { "type": "string" },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "queries", "strategy"],
+        "properties": {
+          "layer": { "type": "integer", "minimum": 0 },
+          "description": { "type": "string" },
+          "queries": { "type": "array", "items": { "type": "string" } },
+          "depends_on_layers": { "type": "array", "items": { "type": "integer" } },
+          "strategy": { "type": "string" }
+        }
+      }
+    },
+    "total_layers": { "type": "integer" },
+    "conversion_strategy": { "type": "string" }
+  }
+}

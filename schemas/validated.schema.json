@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validation Results",
+  "description": "validator 에이전트의 출력. 3단계 검증 + Result Integrity Guard 결과.",
+  "type": "object",
+  "required": ["version", "source_file", "results", "summary"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "source_file": { "type": "string" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "explain"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "explain": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
+              "plan": { "type": "string" },
+              "error": { "type": "string" }
+            }
+          },
+          "execute": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
+              "rows": { "type": "integer" },
+              "columns": { "type": "array", "items": { "type": "string" } },
+              "duration_ms": { "type": "number" },
+              "error": { "type": "string" }
+            }
+          },
+          "compare": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["pass", "warn", "fail", "skipped", "partial_fail"] },
+              "oracle_rows": { "type": "integer" },
+              "pg_rows": { "type": "integer" },
+              "match": { "type": "boolean" },
+              "differences": { "type": "array" },
+              "test_case_results": { "type": "array" }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "severity", "message"],
+              "properties": {
+                "code": { "type": "string", "pattern": "^WARN_" },
+                "severity": { "type": "string", "enum": ["critical", "high", "medium"] },
+                "message": { "type": "string" },
+                "test_case_id": { "type": "string" },
+                "expected_rows_hint": { "type": ["integer", "null"] },
+                "actual_rows": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "pass", "fail"],
+      "properties": {
+        "total": { "type": "integer" },
+        "pass": { "type": "integer" },
+        "fail": { "type": "integer" },
+        "warn": { "type": "integer" }
+      }
+    }
+  }
+}

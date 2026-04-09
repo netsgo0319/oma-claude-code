@@ -1,0 +1,63 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); upper=$(echo \"$input\" | tr \"[:lower:]\" \"[:upper:]\"); for pat in \"DROP \" \"DROP\\t\" \"TRUNCATE \" \"TRUNCATE\\t\" \"ALTER TABLE\" \"CREATE TABLE\" \"GRANT \" \"GRANT\\t\" \"REVOKE \" \"REVOKE\\t\"; do if echo \"$upper\" | grep -q \"$pat\"; then echo \"BLOCKED: Destructive SQL command detected (matched: $pat). Use a migration script instead of raw DDL.\" >&2; exit 1; fi; done'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); if echo \"$input\" | grep -qiE \"(psql|pg_dump|pg_restore|sqlplus|SELECT |INSERT |UPDATE |DELETE )\"; then mkdir -p /home/ec2-user/workspace/oracle-migration-accelerator-appmig-0408-cc/workspace/logs; ts=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\"); echo \"{\\\"event\\\": \\\"db_query_executed\\\", \\\"timestamp\\\": \\\"$ts\\\"}\" >> /home/ec2-user/workspace/oracle-migration-accelerator-appmig-0408-cc/workspace/logs/db-query-audit.log; echo \"DB query logged at $ts\"; fi'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'PROGRESS=/home/ec2-user/workspace/oracle-migration-accelerator-appmig-0408-cc/workspace/progress.json; if [ -f \"$PROGRESS\" ]; then echo \"=== OMA Pipeline Cycle Summary ===\"; python3 -c \"import json,sys; d=json.load(open(sys.argv[1])); phases=d.get(\\\"phases\\\",{}); total=len(phases); done=sum(1 for p in phases.values() if p.get(\\\"status\\\")==\\\"complete\\\"); print(f\\\"Completed: {done}/{total} phases\\\"); [print(f\\\"  Phase {k}: {v.get(\\\"status\\\",\\\"unknown\\\")}\\\") for k,v in sorted(phases.items())]; errs=d.get(\\\"errors\\\",[]); print(f\\\"Errors: {len(errs)}\\\") if errs else None\" \"$PROGRESS\" 2>/dev/null || echo \"Progress file exists but could not be parsed.\"; else echo \"No progress.json found. Pipeline has not been started.\"; fi'"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python3 tools/*)",
+      "Bash(bash tools/*)",
+      "Bash(bash scripts/*)",
+      "Bash(wc *)",
+      "Bash(ls *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(mkdir *)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(rm *)",
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(sudo *)",
+      "Bash(kill *)"
+    ]
+  }
+}

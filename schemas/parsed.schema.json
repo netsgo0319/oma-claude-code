@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Parsed XML Output",
+  "description": "parse-xml 스킬의 출력. MyBatis/iBatis XML에서 추출한 쿼리 목록.",
+  "type": "object",
+  "required": ["version", "source_file", "framework", "namespace", "queries", "metadata"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "source_file": { "type": "string" },
+    "framework": { "type": "string", "enum": ["mybatis3", "ibatis2"] },
+    "namespace": { "type": "string" },
+    "sql_fragments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "sql"],
+        "properties": {
+          "id": { "type": "string" },
+          "sql": { "type": "string" }
+        }
+      }
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "type", "sql_raw", "oracle_tags", "parameters"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["select", "insert", "update", "delete", "statement", "procedure"] },
+          "parameter_type": { "type": ["string", "null"] },
+          "result_type": { "type": ["string", "null"] },
+          "result_map": { "type": ["string", "null"] },
+          "statement_type": { "type": "string", "default": "PREPARED" },
+          "sql_raw": { "type": "string" },
+          "sql_branches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["condition", "sql"],
+              "properties": {
+                "condition": { "type": "string" },
+                "sql": { "type": "string" }
+              }
+            }
+          },
+          "dynamic_elements": { "type": "array" },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "notation"],
+              "properties": {
+                "name": { "type": "string" },
+                "jdbc_type": { "type": ["string", "null"] },
+                "notation": { "type": "string", "enum": ["#{}", "#prop#"] }
+              }
+            }
+          },
+          "oracle_tags": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["rule", "llm"] }
+          },
+          "oracle_patterns": { "type": "array", "items": { "type": "string" } },
+          "includes": { "type": "array" },
+          "select_key": {
+            "type": ["object", "null"],
+            "properties": {
+              "key_property": { "type": "string" },
+              "result_type": { "type": "string" },
+              "order": { "type": "string" },
+              "sql": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["total_queries", "rule_tagged", "llm_tagged"],
+      "properties": {
+        "total_queries": { "type": "integer" },
+        "rule_tagged": { "type": "integer" },
+        "llm_tagged": { "type": "integer" },
+        "has_dynamic_sql": { "type": "boolean" },
+        "has_includes": { "type": "boolean" },
+        "has_select_key": { "type": "boolean" },
+        "ibatis_specific": { "type": "boolean" }
+      }
+    }
+  }
+}
