@@ -876,24 +876,33 @@ function renderPhaseBars(){
   const pipeline=DATA.pipeline||{};
   const phases=pipeline.phases||{};
   const progress=DATA.progress||{};
-  const phaseNames={
-  'phase_0':'Phase 0: Pre-flight','phase_1':'Phase 1: Parse+Convert',
-  'phase_1.5':'Phase 1.5: Analyze','phase_2':'Phase 2: LLM Convert',
-  'phase_2.5':'Phase 2.5: Test Cases','phase_2_rule':'Phase 2: Rule Convert',
-  'phase_2_llm':'Phase 2: LLM Convert',
-  'phase_3':'Phase 3: Validate','phase_3_compare':'Phase 3: Compare',
-  'phase_3_explain':'Phase 3: EXPLAIN',
-  'phase_3.5':'Phase 3.5: MyBatis','phase_3_5':'Phase 3.5: MyBatis',
-  'phase_4':'Phase 4: Self-healing','phase_5':'Phase 5: Learning',
-  'phase_6':'Phase 6: DBA Review','phase_7':'Phase 7: Report',
-  'phase_6_old':'Phase 7: Report (legacy)','phase_7_old':'Phase 3.5: MyBatis (legacy)'
-};
-  // If no pipeline phases, derive from currentPhase
+  // Core phases to display (in order)
+  const displayPhases=[
+    'phase_0','phase_1','phase_2','phase_2.5',
+    'phase_3','phase_3.5','phase_4','phase_5','phase_6','phase_7'
+  ];
+  const phaseLabels={
+    'phase_0':'Phase 0: Pre-flight','phase_1':'Phase 1: Parse+Convert',
+    'phase_2':'Phase 2: Convert (Rule+LLM)','phase_2.5':'Phase 2.5: Test Cases',
+    'phase_3':'Phase 3: Validate','phase_3.5':'Phase 3.5: MyBatis',
+    'phase_4':'Phase 4: Self-healing','phase_5':'Phase 5: Learning',
+    'phase_6':'Phase 6: DBA Review','phase_7':'Phase 7: Report'
+  };
+  // Merge aliases into phases (sub-phases count toward parent)
+  const aliases={'phase_1.5':'phase_1','phase_2_rule':'phase_2','phase_2_llm':'phase_2',
+    'phase_3_compare':'phase_3','phase_3_explain':'phase_3','phase_3_5':'phase_3.5',
+    'phase_6_old':'phase_7','phase_7_old':'phase_3.5'};
+  for(let [alias,target] of Object.entries(aliases)){
+    if(phases[alias]&&phases[alias].status==='done'&&!phases[target]){
+      phases[target]=phases[alias];
+    }
+  }
+
   let currentPhase=progress.currentPhase||0;
   let html='';
 
   if(Object.keys(phases).length>0){
-    for(let pid of Object.keys(phaseNames)){
+    for(let pid of displayPhases){
       let pd=phases[pid]||{};
       let st=pd.status||'pending';
       if(st==='done'||st==='completed')st='done';
@@ -903,7 +912,7 @@ function renderPhaseBars(){
                 st==='running'?'<span class="phase-badge badge-run">RUNNING</span>':
                 '<span class="phase-badge badge-pending">PENDING</span>';
       let pct=st==='done'?100:st==='running'?50:0;
-      html+=`<div class="phase-row"><span class="phase-name">${phaseNames[pid]||pid}</span>`+
+      html+=`<div class="phase-row"><span class="phase-name">${phaseLabels[pid]||pid}</span>`+
         `<div class="phase-bar"><div class="phase-fill ${cls}" style="width:${pct}%"></div></div>`+
         `<span class="phase-info">${dur} ${badge}</span></div>`;
     }
@@ -917,7 +926,7 @@ function renderPhaseBars(){
                 st==='running'?'<span class="phase-badge badge-run">RUNNING</span>':
                 '<span class="phase-badge badge-pending">PENDING</span>';
       let pct=st==='done'?100:st==='running'?50:0;
-      html+=`<div class="phase-row"><span class="phase-name">${phaseNames[pid]||pid}</span>`+
+      html+=`<div class="phase-row"><span class="phase-name">${phaseLabels[pid]||pid}</span>`+
         `<div class="phase-bar"><div class="phase-fill ${cls}" style="width:${pct}%"></div></div>`+
         `<span class="phase-info">${badge}</span></div>`;
     }
