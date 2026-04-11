@@ -84,6 +84,17 @@ mkdir -p "$EXTRACTED_DIR"
 
 java -jar "$JAR_PATH" --input "$INPUT_DIR" --output "$EXTRACTED_DIR"
 
+# Step 4b: Extract PG SQL variants from converted output XML
+PG_EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted_pg"
+echo ""
+echo "--- Extracting PG SQL variants from output XML ---"
+mkdir -p "$PG_EXTRACTED_DIR"
+
+java -jar "$JAR_PATH" --input "$OUTPUT_DIR" --output "$PG_EXTRACTED_DIR"
+
+PG_EXTRACTED_COUNT=$(ls "$PG_EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
+echo "PG output files: $PG_EXTRACTED_COUNT"
+
 # Step 5: Validate with converted output (if exists)
 if [ "$DO_VALIDATE" = true ]; then
     echo ""
@@ -111,10 +122,13 @@ fi
 # Step 6: Summary
 echo ""
 echo "=== Phase 3.5 Complete ==="
-echo "Extracted: $EXTRACTED_DIR/"
+echo "Extracted (Oracle): $EXTRACTED_DIR/"
+echo "Extracted (PG):     $PG_EXTRACTED_DIR/"
 
 EXTRACTED_COUNT=$(ls "$EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
-echo "Output files: $EXTRACTED_COUNT"
+PG_EXTRACTED_COUNT=$(ls "$PG_EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
+echo "Oracle input files: $EXTRACTED_COUNT"
+echo "PG output files:    $PG_EXTRACTED_COUNT"
 
 if [ -f "$VALIDATION_DIR/validated.json" ]; then
     echo "Validation: $VALIDATION_DIR/validated.json"

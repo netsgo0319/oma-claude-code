@@ -176,14 +176,24 @@ def main():
             cases = [
                 {'name': 'default', 'params': binds, 'source': 'COLUMN_METADATA'},
             ]
+            total_cases += 1
 
             # NULL 케이스 추가
             null_binds = gen_null_case(params, binds)
             if null_binds != binds:
                 cases.append({'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'})
+                total_cases += 1
+
+            # Empty string case (Oracle '' = NULL vs PG '' != NULL)
+            empty_binds = dict(binds)
+            for p in params[:3]:
+                if isinstance(binds.get(p), str):
+                    empty_binds[p] = ''
+            if empty_binds != binds:
+                cases.append({'name': 'empty_string', 'params': empty_binds, 'source': 'EMPTY_STRING_SEMANTICS'})
+                total_cases += 1
 
             file_tc[qid] = cases
-            total_cases += len(cases)
 
         if file_tc:
             tc_path = parsed_path.parent / 'test-cases.json'

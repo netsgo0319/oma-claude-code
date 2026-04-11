@@ -94,50 +94,51 @@ unconverted 패턴이 남아있으면 **반드시** Converter 서브에이전트
 python3 tools/generate-test-cases.py
 ```
 
-### Phase 3: Validation (EXPLAIN + Compare)
+### Phase 3: Validation (3단계: EXPLAIN → 실행 → 비교)
 
-**반드시 validate-queries.py 사용. Oracle 접속 가능하면 --compare 필수.**
+**3단계 모두 실행해야 한다. Stage 1만 하고 넘어가지 마라.**
+**Oracle 접속 가능하면 Stage 2, 3 필수. 건너뛰면 안 된다.**
 
+**Stage 1: EXPLAIN (PG 문법 검증)**
 ```bash
-# Step 1: EXPLAIN (빠름 — 직접 실행 가능)
-python3 tools/validate-queries.py --local --output workspace/results/_validation/ --tracking-dir workspace/results/
-```
-
-**Step 2: Compare — 배치 SQL 파일 방식으로 실행 (빠름)**
-validate-queries.py의 --compare는 쿼리당 subprocess를 띄워서 느림. 대신 **배치 SQL 파일**을 생성하고 psql/sqlplus로 한번에 실행하라:
-
-```bash
-# 1) generate가 explain_test.sql + execute_test.sql을 생성
 python3 tools/validate-queries.py --generate --output workspace/results/_validation/ --tracking-dir workspace/results/
-
-# 2) PG: psql로 배치 실행 (수천 쿼리를 한번에 — 빠름)
-PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation/explain_test.sql \
-  > workspace/results/_validation/explain_results.txt 2>&1
-
-PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation/execute_test.sql \
-  > workspace/results/_validation/execute_results.txt 2>&1
-
-# 3) Oracle: sqlplus로 동일 쿼리 배치 실행 (비교용)
-# sqlplus에서는 explain_test.sql을 Oracle 원본 SQL 버전으로 생성하여 실행
-
-# 4) 결과 파싱
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/ --tracking-dir workspace/results/
+psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/
 ```
 
-**핵심: psql -f / sqlplus @파일 로 한번에 실행하면 프로세스 오버헤드 없이 수천 쿼리를 초 단위로 처리.**
-**validate-queries.py --compare는 쿼리가 많을 때 쓰지 마라 (subprocess per query = 느림).**
+**Stage 2: 실행 (TC 바인드로 양쪽 실행)**
+```bash
+# PG 실행
+psql -f workspace/results/_validation/execute_test.sql > workspace/results/_validation/execute_results.txt 2>&1
+# Oracle 실행 (같은 TC, 원본 SQL)
+sqlplus @workspace/results/_validation/oracle_compare.sql > workspace/results/_validation/oracle_results.txt 2>&1
+```
 
-쿼리가 많으면(100+) Validator 서브에이전트에 배치 분배도 가능 (`--files` 옵션).
+**Stage 3: 비교 (Oracle vs PG 결과 매칭)**
+```bash
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/
+```
+양쪽 결과 파일에서 test_id별로 row count를 비교. 불일치 시 Phase 4 대상.
 
-### Phase 3.5: MyBatis Engine Validation (Java 있을 때)
+**동적 SQL 쿼리는 Phase 3.5에서 MyBatis로 해결.**
 
-**Phase 4 (힐링) 전에 실행.** 동적 SQL을 MyBatis 엔진이 정확히 resolve.
+### Phase 3.5: MyBatis Engine (양쪽 추출 + 비교)
+
+**Java가 설치되어 있으면 반드시 실행. 건너뛰지 마라.**
+**Phase 3에서 동적 SQL 때문에 비교 못 한 쿼리들이 여기서 해결된다.**
+
+**input XML과 output XML 양쪽에서 MyBatis SqlSessionFactory로 SQL 추출:**
 ```bash
 bash tools/run-extractor.sh --validate
-python3 tools/validate-queries.py --compare --extracted workspace/results/_extracted/ --output workspace/results/_validation_phase7/
 ```
+이 명령이:
+1. input XML → Oracle SQL variants 추출 (workspace/results/_extracted/)
+2. output XML → PG SQL variants 추출 (workspace/results/_extracted_pg/)
+3. 양쪽 SQL을 TC 바인드로 배치 생성
+4. psql -f / sqlplus @파일로 배치 실행
+5. 결과 비교
+
+**Phase 3에서 동적 SQL로 비교 못 한 쿼리들이 여기서 해결된다.**
 
 ### Phase 4: Self-healing
 
