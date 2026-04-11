@@ -439,7 +439,12 @@ def compute_summary(data):
             s['truly_done'] = s.get('validation_pass', 0)
         s['needs_manual'] = needs_manual
         s['escalated_queries'] = escalated
-        s['readiness_pct'] = round(s['truly_done'] * 100 / total_q) if total_q > 0 else 0
+        # Readiness = pass / tested (not pass / total)
+        # Queries not tested (no TC, dynamic SQL) are "unverified", not "failed"
+        tested = s.get('phase7_compare_total') or s.get('compare_total') or s.get('phase7_explain_total') or s.get('validation_total') or 0
+        s['tested_queries'] = tested
+        s['unverified_queries'] = total_q - tested
+        s['readiness_pct'] = round(s['truly_done'] * 100 / tested) if tested > 0 else 0
     else:
         s['truly_done'] = 0
         s['needs_manual'] = 0
@@ -836,7 +841,7 @@ function renderOverview(){
     `<div class="card" style="grid-column:1/-1;text-align:center;padding:20px;border-color:${rdPct>=90?'var(--success)':rdPct>=70?'var(--warn)':'var(--fail)'}">
       <div class="lbl">Migration Readiness</div>
       <div class="val ${rdCls}" style="font-size:36px">${rdPct}%</div>
-      <div class="det">${rdDone} verified OK | ${rdManual} need attention${rdEsc?' | '+rdEsc+' escalated (manual migration)':''}</div>
+      <div class="det">${rdDone}/${S.tested_queries||'?'} verified OK${S.unverified_queries?' | '+S.unverified_queries+' unverified (no TC)':''}${rdManual?' | '+rdManual+' need attention':''}${rdEsc?' | '+rdEsc+' escalated':''}</div>
     </div>`+
     `<div class="card"><div class="lbl">Input Files</div><div class="val">${S.total_input_files}</div><div class="det">${S.total_input_lines.toLocaleString()} lines, ${S.total_input_queries} queries</div></div>`+
     `<div class="card"><div class="lbl">Output Files</div><div class="val">${S.total_output_files}</div><div class="det">${S.total_output_lines.toLocaleString()} lines</div></div>`+
