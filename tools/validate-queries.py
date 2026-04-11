@@ -167,7 +167,7 @@ SET HEADING ON
         """Extract row count from query output."""
         if db_type == 'pg':
             # PostgreSQL: "(N rows)" or "(N row)"
-            m = re.search(r'\((\d+) rows?\)', output)
+            m = re.search(r'\((\d+) (?:rows?|행)\)', output)
             if m:
                 return int(m.group(1))
             # DML: "INSERT 0 N", "UPDATE N", "DELETE N"
@@ -176,7 +176,7 @@ SET HEADING ON
                 return int(m.group(1))
         elif db_type == 'oracle':
             # Oracle: "N rows selected" or "N row selected"
-            m = re.search(r'(\d+) rows? selected', output)
+            m = re.search(r'(\d+) (?:rows? selected|행)', output)
             if m:
                 return int(m.group(1))
             # DML: "1 row created", "N rows updated", "N rows deleted"
@@ -686,7 +686,7 @@ SET HEADING ON
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
 
-                # EXECUTE (SELECT only, with LIMIT for safety)
+                # EXECUTE
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
                     if 'LIMIT' not in safe_sql.upper():
@@ -694,6 +694,14 @@ SET HEADING ON
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
+                    execute_lines.append("")
+                else:
+                    # DML: wrap in BEGIN/ROLLBACK
+                    execute_lines.append(f"\\echo === {test_id} ===")
+                    execute_lines.append(f"SET statement_timeout = '30s';")
+                    execute_lines.append(f"BEGIN;")
+                    execute_lines.append(f"{bound_sql.rstrip(';')};")
+                    execute_lines.append(f"ROLLBACK;")
                     execute_lines.append("")
 
             else:
@@ -725,7 +733,7 @@ SET HEADING ON
                     explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                     explain_lines.append("")
 
-                    # EXECUTE (SELECT only)
+                    # EXECUTE
                     if qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
                         if 'LIMIT' not in safe_sql.upper():
@@ -733,6 +741,14 @@ SET HEADING ON
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"SET statement_timeout = '30s';")
                         execute_lines.append(f"{safe_sql};")
+                        execute_lines.append("")
+                    else:
+                        # DML: wrap in BEGIN/ROLLBACK
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"SET statement_timeout = '30s';")
+                        execute_lines.append(f"BEGIN;")
+                        execute_lines.append(f"{bound_sql.rstrip(';')};")
+                        execute_lines.append(f"ROLLBACK;")
                         execute_lines.append("")
 
         # Write scripts
@@ -962,7 +978,7 @@ SET HEADING ON
                 failures.append({'test': current_test, 'error': line.strip()})
                 current_test = None
             elif current_test:
-                row_match = re.match(r'\((\d+) rows?\)', line.strip())
+                row_match = re.match(r'\((\d+) (?:rows?|행)\)', line.strip())
                 if row_match:
                     rows = int(row_match.group(1))
                     pass_count += 1
@@ -1173,8 +1189,8 @@ SET HEADING ON
                     parts = current_test.split('.')
                     if len(parts) >= 2:
                         query_results.setdefault(parts[1], []).append(0)
-                elif current_test and re.match(r'\((\d+) rows?\)', line):
-                    m = re.match(r'\((\d+) rows?\)', line)
+                elif current_test and re.match(r'\((\d+) (?:rows?|행)\)', line):
+                    m = re.match(r'\((\d+) (?:rows?|행)\)', line)
                     parts = current_test.split('.')
                     if len(parts) >= 2:
                         query_results.setdefault(parts[1], []).append(int(m.group(1)))
