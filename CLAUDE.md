@@ -96,17 +96,40 @@ python3 tools/generate-test-cases.py
 
 ### Phase 3: Validation (EXPLAIN + Compare)
 
-**Oracle 접속 가능하면 --compare 필수. EXPLAIN만 하고 넘어가지 마라.**
-**100쿼리+ 일 때 직접 실행 금지. Validator 서브에이전트 병렬 배치로 위임:**
+**반드시 validate-queries.py 사용. Oracle 접속 가능하면 --compare 필수.**
 
 ```bash
 # Step 1: EXPLAIN (빠름 — 직접 실행 가능)
 python3 tools/validate-queries.py --local --output workspace/results/_validation/ --tracking-dir workspace/results/
-
-# Step 2: Compare (느림 — Validator 병렬 배치)
-# Validator A: python3 tools/validate-queries.py --compare --files "file1.xml,file2.xml" --output workspace/results/_validation_batch1/
-# Validator B: python3 tools/validate-queries.py --compare --files "file3.xml,file4.xml" --output workspace/results/_validation_batch2/
 ```
+
+**Step 2: Compare — 배치 SQL 파일 방식으로 실행 (빠름)**
+validate-queries.py의 --compare는 쿼리당 subprocess를 띄워서 느림. 대신 **배치 SQL 파일**을 생성하고 psql/sqlplus로 한번에 실행하라:
+
+```bash
+# 1) generate가 explain_test.sql + execute_test.sql을 생성
+python3 tools/validate-queries.py --generate --output workspace/results/_validation/ --tracking-dir workspace/results/
+
+# 2) PG: psql로 배치 실행 (수천 쿼리를 한번에 — 빠름)
+PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
+  -f workspace/results/_validation/explain_test.sql \
+  > workspace/results/_validation/explain_results.txt 2>&1
+
+PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
+  -f workspace/results/_validation/execute_test.sql \
+  > workspace/results/_validation/execute_results.txt 2>&1
+
+# 3) Oracle: sqlplus로 동일 쿼리 배치 실행 (비교용)
+# sqlplus에서는 explain_test.sql을 Oracle 원본 SQL 버전으로 생성하여 실행
+
+# 4) 결과 파싱
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/ --tracking-dir workspace/results/
+```
+
+**핵심: psql -f / sqlplus @파일 로 한번에 실행하면 프로세스 오버헤드 없이 수천 쿼리를 초 단위로 처리.**
+**validate-queries.py --compare는 쿼리가 많을 때 쓰지 마라 (subprocess per query = 느림).**
+
+쿼리가 많으면(100+) Validator 서브에이전트에 배치 분배도 가능 (`--files` 옵션).
 
 ### Phase 3.5: MyBatis Engine Validation (Java 있을 때)
 
