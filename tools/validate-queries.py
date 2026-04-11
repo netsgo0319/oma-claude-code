@@ -618,13 +618,19 @@ SET HEADING ON
         return result
 
     def generate_scripts(self, output_dir):
-        """Generate SQL test scripts for remote execution."""
+        """Generate SQL test scripts for remote execution.
+        Generates: explain_test.sql (PG), execute_test.sql (PG), oracle_compare.sql (Oracle)"""
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         all_tests = []
         explain_lines = ["\\set ON_ERROR_STOP off", ""]
         execute_lines = ["\\set ON_ERROR_STOP off", ""]
+        # Oracle compare script (sqlplus format)
+        oracle_lines = [
+            "SET PAGESIZE 0", "SET FEEDBACK ON", "SET HEADING ON",
+            "SET LINESIZE 32767", "SET TRIMSPOOL ON", ""
+        ]
 
         for query in self.queries:
             qid = query['id']
@@ -696,13 +702,25 @@ SET HEADING ON
                     execute_lines.append(f"{safe_sql};")
                     execute_lines.append("")
                 else:
-                    # DML: wrap in BEGIN/ROLLBACK
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"BEGIN;")
                     execute_lines.append(f"{bound_sql.rstrip(';')};")
                     execute_lines.append(f"ROLLBACK;")
                     execute_lines.append("")
+
+                # Oracle compare (use original SQL with same binds)
+                oracle_sql = self.oracle_queries.get(qid, '')
+                if oracle_sql:
+                    ora_bound = self.bind_params(oracle_sql, binds if isinstance(binds, dict) else {})
+                    oracle_lines.append(f"PROMPT === {test_id} ===")
+                    if qtype == 'select':
+                        safe_ora = ora_bound.rstrip(';')
+                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                    else:
+                        oracle_lines.append(f"{ora_bound.rstrip(';')};")
+                        oracle_lines.append(f"ROLLBACK;")
+                    oracle_lines.append("")
 
             else:
                 for i, case in enumerate(cases):
@@ -751,6 +769,24 @@ SET HEADING ON
                         execute_lines.append(f"ROLLBACK;")
                         execute_lines.append("")
 
+                    # Oracle compare
+                    oracle_sql = self.oracle_queries.get(qid, '')
+                    if oracle_sql:
+                        ora_bound = self.bind_params(oracle_sql, binds)
+                        oracle_lines.append(f"PROMPT === {test_id} ===")
+                        if qtype == 'select':
+                            safe_ora = ora_bound.rstrip(';')
+                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                        else:
+                            oracle_lines.append(f"{ora_bound.rstrip(';')};")
+                            oracle_lines.append(f"ROLLBACK;")
+                        oracle_lines.append("")
+
+        # Write Oracle compare script
+        oracle_lines.append("EXIT;")
+        with open(output_path / 'oracle_compare.sql', 'w', encoding='utf-8') as f:
+            f.write('\n'.join(oracle_lines))
+
         # Write scripts
         with open(output_path / 'explain_test.sql', 'w', encoding='utf-8') as f:
             f.write('\n'.join(explain_lines))
@@ -790,6 +826,7 @@ SET HEADING ON
         print(f"  {len(all_tests)} test cases")
         print(f"  {output_path / 'explain_test.sql'} ({len(explain_lines)} lines)")
         print(f"  {output_path / 'execute_test.sql'} ({len(execute_lines)} lines)")
+        print(f"  {output_path / 'oracle_compare.sql'} ({len(oracle_lines)} lines)")
         print(f"  {output_path / 'test_manifest.json'}")
         print(f"  {total_batches} SSM batches in {batch_dir}/")
 
@@ -1280,6 +1317,7 @@ def main():
         else:
             validator.load_queries()
             validator.load_test_cases()
+        validator.load_oracle_queries()  # For oracle_compare.sql generation
         apply_file_filter()
         validator.generate_scripts(args.output)
 
