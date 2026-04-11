@@ -38,7 +38,7 @@ fi
 
 mkdir -p "$OUTPUT_DIR" "$RESULTS_DIR"
 
-XML_COUNT=$(ls "$INPUT_DIR"/*.xml 2>/dev/null | wc -l | tr -d ' ')
+XML_COUNT=$(find "$INPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
 echo "Input files: $XML_COUNT"
 echo "Parallelism: $PARALLEL"
 echo ""
@@ -210,7 +210,7 @@ if [ "$DO_CONVERT" = true ]; then
     echo "=== Phase 1 (Convert): Rule-based Convert (parallel $PARALLEL) ==="
     START_TIME=$(date +%s)
 
-    DONE_BEFORE=$(ls "$OUTPUT_DIR"/*.xml 2>/dev/null | wc -l | tr -d ' ')
+    DONE_BEFORE=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
     REMAINING=$((XML_COUNT - DONE_BEFORE))
     echo "  Already converted: $DONE_BEFORE, Remaining: $REMAINING"
 
@@ -220,7 +220,7 @@ if [ "$DO_CONVERT" = true ]; then
         echo ""
     fi
 
-    CONVERTED_COUNT=$(ls "$OUTPUT_DIR"/*.xml 2>/dev/null | wc -l | tr -d ' ')
+    CONVERTED_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
     END_TIME=$(date +%s)
     ELAPSED=$((END_TIME - START_TIME))
 

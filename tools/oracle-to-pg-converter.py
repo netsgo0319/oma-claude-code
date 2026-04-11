@@ -468,8 +468,8 @@ class OracleToPgConverter:
         return ''.join(result)
 
     def _convert_sysdate(self, sql):
-        """SYSDATE -> CURRENT_TIMESTAMP."""
-        new_sql = re.sub(r'\bSYSDATE\b', 'CURRENT_TIMESTAMP', sql, flags=re.IGNORECASE)
+        """SYSDATE -> CURRENT_TIMESTAMP. Excludes #{sysdate} MyBatis parameters."""
+        new_sql = re.sub(r'(?<!#\{)\bSYSDATE\b(?!\})', 'CURRENT_TIMESTAMP', sql, flags=re.IGNORECASE)
         if new_sql != sql:
             self._count_rule('SYSDATE->CURRENT_TIMESTAMP')
         return new_sql
