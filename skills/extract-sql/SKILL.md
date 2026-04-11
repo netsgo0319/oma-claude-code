@@ -126,7 +126,7 @@ classpath에 없는 경우, **자동으로 `java.util.HashMap`으로 대체**한
 - 11/11 파일 독립 처리 → 0건 충돌
 
 ### Wrapper Script
-Phase 7 전체 파이프라인을 한 명령으로 실행:
+Phase 3.5 전체 파이프라인을 한 명령으로 실행:
 ```bash
 bash tools/run-extractor.sh              # 빌드 + 추출
 bash tools/run-extractor.sh --validate   # + EXPLAIN 검증

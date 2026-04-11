@@ -124,8 +124,21 @@ trailing space 감지:
 - `high` → migration-guide.md 수동 검토 항목
 - `medium` → conversion-report.md 경고 기록
 
+## DML 비교
+
+INSERT/UPDATE/DELETE도 비교 대상이다:
+- Oracle: `{DML}; ROLLBACK;` — affected rows 기록
+- PostgreSQL: `BEGIN; {DML}; ROLLBACK;` — affected rows 기록
+- 비교: affected rows가 동일해야 PASS
+- DML affected rows 불일치 → WHERE 조건 변환 오류 의심
+
+## 도구 실행
+
+```bash
+python3 tools/validate-queries.py --compare --output workspace/results/_validation/ --tracking-dir workspace/results/
+```
+
 ## 주의사항
-- Oracle과 PostgreSQL 양쪽 모두 읽기 전용 실행
-- INSERT/UPDATE/DELETE는 비교 대상 아님 (execute-test에서 이미 검증)
+- Oracle과 PostgreSQL 양쪽 모두 ROLLBACK 필수 (데이터 변경 방지)
 - 대량 결과 시 상위 100행만 비교 (성능)
 - 비교 불가 시 (Oracle 접속 실패 등) → status: "skipped", reason 기록

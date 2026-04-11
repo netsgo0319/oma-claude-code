@@ -51,7 +51,16 @@ description: 변환된 PostgreSQL 쿼리를 실제 실행하여 런타임 오류
    }
    ```
 
+## Oracle vs PostgreSQL 비교 실행 (--compare 모드)
+
+validate-queries.py --compare 사용 시 SELECT과 DML 모두 양쪽에서 실행:
+
+- **SELECT**: Oracle과 PG 양쪽에서 실행, row count + 값 비교
+- **INSERT/UPDATE/DELETE**: Oracle(ROLLBACK) + PG(BEGIN/ROLLBACK), affected rows 비교
+- DML affected rows가 다르면 WHERE 조건 변환 오류 의심
+
 ## 주의사항
-- DML은 반드시 BEGIN/ROLLBACK으로 감싸기 — 데이터 변경 방지
+- DML은 반드시 BEGIN/ROLLBACK으로 감싸기 — 데이터 변경 방지 (Oracle/PG 모두)
 - statement_timeout 30초 — 무한 재귀 방지
 - 실행 결과 데이터는 저장하지 않음 (행 수/컬럼 구조만)
+- Oracle 접속 불가 시 PG만 실행 (비교 불가 안내)

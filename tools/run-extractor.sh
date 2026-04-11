@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Phase 7: MyBatis SQL Extractor + Validation Pipeline
-# 한 번의 명령으로 전체 Phase 7을 실행한다.
+# Phase 3.5: MyBatis SQL Extractor + Validation Pipeline
+# 한 번의 명령으로 전체 Phase 3.5를 실행한다.
 #
 # Usage:
 #   bash tools/run-extractor.sh                    # build + extract + generate validation
@@ -35,12 +35,12 @@ for arg in "$@"; do
     esac
 done
 
-echo "=== Phase 7: MyBatis SQL Extractor ==="
+echo "=== Phase 3.5: MyBatis SQL Extractor ==="
 echo ""
 
 # Step 1: Check Java
 if ! command -v java &>/dev/null; then
-    echo "ERROR: Java not found. Install Java 11+ to use Phase 7."
+    echo "ERROR: Java not found. Install Java 11+ to use Phase 3.5."
     exit 1
 fi
 JAVA_VER=$(java -version 2>&1 | head -1)
@@ -110,7 +110,7 @@ fi
 
 # Step 6: Summary
 echo ""
-echo "=== Phase 7 Complete ==="
+echo "=== Phase 3.5 Complete ==="
 echo "Extracted: $EXTRACTED_DIR/"
 
 EXTRACTED_COUNT=$(ls "$EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)

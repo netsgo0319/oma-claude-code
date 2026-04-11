@@ -16,7 +16,10 @@ Usage:
     # Parse results from externally executed scripts
     python3 tools/validate-queries.py --parse-results workspace/results/_validation/
 
-    # Use extracted SQL from mybatis-sql-extractor (Phase 7)
+    # Compare Oracle vs PostgreSQL results (the core migration validation)
+    python3 tools/validate-queries.py --compare --output workspace/results/_validation/
+
+    # Use extracted SQL from mybatis-sql-extractor (Phase 3.5)
     python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation/
 """
 
@@ -32,11 +35,399 @@ from datetime import datetime
 
 
 class QueryValidator:
-    def __init__(self, output_dir='workspace/output', results_dir='workspace/results'):
+    def __init__(self, output_dir='workspace/output', results_dir='workspace/results',
+                 input_dir='workspace/input'):
         self.output_dir = Path(output_dir)
         self.results_dir = Path(results_dir)
+        self.input_dir = Path(input_dir)
         self.queries = []
+        self.oracle_queries = {}  # {query_id: oracle_sql} from input XML
         self.test_cases = {}
+
+    def _resolve_tracking_dirs(self, tracking_dir):
+        """Resolve tracking directory paths. If 'auto', scan for all query-tracking.json files."""
+        if tracking_dir == 'auto':
+            dirs = []
+            for qt in self.results_dir.glob('*/v*/query-tracking.json'):
+                dirs.append(str(qt.parent))
+            return dirs
+        else:
+            return [tracking_dir]
+
+    def load_oracle_queries(self):
+        """Load original Oracle SQL from input XML files and/or query-tracking.json."""
+        # Method 1: From query-tracking.json (preferred — has oracle_sql field)
+        for qt_file in self.results_dir.glob('*/v*/query-tracking.json'):
+            try:
+                with open(qt_file, 'r', encoding='utf-8') as f:
+                    tracking = json.load(f)
+                for q in tracking.get('queries', []):
+                    qid = q.get('query_id', '')
+                    oracle_sql = q.get('oracle_sql', '')
+                    if qid and oracle_sql:
+                        self.oracle_queries[qid] = oracle_sql
+            except Exception:
+                pass
+
+        # Method 2: From input XML files (fallback)
+        if not self.oracle_queries and self.input_dir.exists():
+            for xml_file in sorted(self.input_dir.glob('*.xml')):
+                try:
+                    tree = ET.parse(xml_file)
+                    root = tree.getroot()
+                except ET.ParseError:
+                    continue
+                for tag in ['select', 'insert', 'update', 'delete']:
+                    for elem in root.findall(f'.//{tag}'):
+                        qid = elem.get('id', 'unknown')
+                        parts = []
+                        for text in elem.itertext():
+                            parts.append(text.strip())
+                        raw_sql = ' '.join(parts)
+                        raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
+                        raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
+                        if qid and raw_sql:
+                            self.oracle_queries[qid] = raw_sql
+
+        print(f"Loaded {len(self.oracle_queries)} Oracle (original) queries")
+
+    @staticmethod
+    def _oracle_available():
+        """Check if sqlplus and Oracle env vars are available."""
+        import shutil
+        if not shutil.which('sqlplus'):
+            return False, "sqlplus not found"
+        host = os.environ.get('ORACLE_HOST', '')
+        if not host:
+            return False, "ORACLE_HOST not set"
+        return True, "OK"
+
+    @staticmethod
+    def _pg_available():
+        """Check if psql and PG env vars are available."""
+        import shutil
+        if not shutil.which('psql'):
+            return False, "psql not found"
+        host = os.environ.get('PG_HOST', os.environ.get('PGHOST', ''))
+        if not host:
+            return False, "PG_HOST not set"
+        return True, "OK"
+
+    def _run_oracle_sql(self, sql, timeout=30):
+        """Execute SQL on Oracle via sqlplus and return output."""
+        ora_user = os.environ.get('ORACLE_USER', '')
+        ora_pass = os.environ.get('ORACLE_PASSWORD', '')
+        ora_host = os.environ.get('ORACLE_HOST', '')
+        ora_port = os.environ.get('ORACLE_PORT', '1521')
+        ora_sid = os.environ.get('ORACLE_SID', '')
+
+        conn_str = f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
+        sqlplus_input = f"""SET LINESIZE 32767
+SET PAGESIZE 50000
+SET FEEDBACK ON
+SET HEADING ON
+{sql}
+"""
+        try:
+            result = subprocess.run(
+                ['sqlplus', '-S', conn_str],
+                input=sqlplus_input, capture_output=True, text=True, timeout=timeout
+            )
+            return result.stdout + result.stderr
+        except subprocess.TimeoutExpired:
+            return "ORA-TIMEOUT: query exceeded timeout"
+        except Exception as e:
+            return f"ORA-ERROR: {e}"
+
+    def _run_pg_sql(self, sql, timeout=30):
+        """Execute SQL on PostgreSQL via psql and return output."""
+        pg_host = os.environ.get('PG_HOST', os.environ.get('PGHOST', ''))
+        pg_port = os.environ.get('PG_PORT', os.environ.get('PGPORT', '5432'))
+        pg_db = os.environ.get('PG_DATABASE', os.environ.get('PGDATABASE', ''))
+        pg_user = os.environ.get('PG_USER', os.environ.get('PGUSER', ''))
+        pg_pass = os.environ.get('PG_PASSWORD', os.environ.get('PGPASSWORD', ''))
+
+        env = os.environ.copy()
+        env['PGPASSWORD'] = pg_pass
+
+        try:
+            result = subprocess.run(
+                ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                 '-c', f"SET statement_timeout = '{timeout}s'; {sql}"],
+                capture_output=True, text=True, env=env, timeout=timeout + 5
+            )
+            return result.stdout + result.stderr
+        except subprocess.TimeoutExpired:
+            return "PG-TIMEOUT: query exceeded timeout"
+        except Exception as e:
+            return f"PG-ERROR: {e}"
+
+    @staticmethod
+    def _parse_row_count(output, db_type='pg'):
+        """Extract row count from query output."""
+        if db_type == 'pg':
+            # PostgreSQL: "(N rows)" or "(N row)"
+            m = re.search(r'\((\d+) rows?\)', output)
+            if m:
+                return int(m.group(1))
+            # DML: "INSERT 0 N", "UPDATE N", "DELETE N"
+            m = re.search(r'(?:INSERT \d+ |UPDATE |DELETE )(\d+)', output)
+            if m:
+                return int(m.group(1))
+        elif db_type == 'oracle':
+            # Oracle: "N rows selected" or "N row selected"
+            m = re.search(r'(\d+) rows? selected', output)
+            if m:
+                return int(m.group(1))
+            # DML: "1 row created", "N rows updated", "N rows deleted"
+            m = re.search(r'(\d+) rows? (?:created|updated|deleted|inserted)', output)
+            if m:
+                return int(m.group(1))
+        return None
+
+    def compare_queries(self, output_dir, tracking_dir=None):
+        """Execute queries on BOTH Oracle and PostgreSQL, compare results.
+        This is the core migration validation: before/after must match."""
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        ora_ok, ora_msg = self._oracle_available()
+        pg_ok, pg_msg = self._pg_available()
+
+        if not ora_ok:
+            print(f"ERROR: Oracle not available: {ora_msg}")
+            print("--compare requires both Oracle and PostgreSQL connections")
+            sys.exit(1)
+        if not pg_ok:
+            print(f"ERROR: PostgreSQL not available: {pg_msg}")
+            sys.exit(1)
+
+        print(f"Comparing Oracle vs PostgreSQL results...")
+        print(f"  Oracle queries loaded: {len(self.oracle_queries)}")
+        print(f"  PG queries loaded: {len(self.queries)}")
+        print(f"  Test cases loaded: {sum(len(v) for v in self.test_cases.values())}")
+
+        results = []
+        pass_count = 0
+        fail_count = 0
+        warn_count = 0
+        warnings = []
+
+        for query in self.queries:
+            qid = query['id']
+            pg_sql = query['sql_raw']
+            qtype = query['type']
+            oracle_sql = self.oracle_queries.get(qid, '')
+
+            if not oracle_sql:
+                print(f"  SKIP {qid}: no Oracle SQL found")
+                continue
+
+            cases = self.test_cases.get(qid, [])
+            if not cases:
+                # Single default test
+                cases = [{'name': 'default', 'params': {}}]
+
+            for i, case in enumerate(cases):
+                if isinstance(case, dict):
+                    binds = case.get('binds', case.get('params', {}))
+                    for skip_key in ['name', 'description', 'source', 'case_id', 'not_null_columns', 'expected']:
+                        binds.pop(skip_key, None) if isinstance(binds, dict) else None
+                    case_name = case.get('name', case.get('case_id', f'tc{i}'))
+                else:
+                    binds = {}
+                    case_name = f'tc{i}'
+
+                # Bind params into both SQLs
+                bound_oracle = self.bind_params(oracle_sql, binds)
+                bound_pg = self.bind_params(pg_sql, binds)
+
+                # Wrap DML in transaction
+                if qtype in ('insert', 'update', 'delete'):
+                    exec_oracle = f"{bound_oracle.rstrip(';')};\nROLLBACK;"
+                    exec_pg = f"BEGIN; {bound_pg.rstrip(';')}; ROLLBACK;"
+                else:
+                    # SELECT: add LIMIT for safety on PG side
+                    safe_pg = bound_pg.rstrip(';')
+                    if 'LIMIT' not in safe_pg.upper():
+                        safe_pg += ' LIMIT 100'
+                    exec_pg = safe_pg + ';'
+                    # Oracle: add ROWNUM limit
+                    safe_ora = bound_oracle.rstrip(';')
+                    if 'ROWNUM' not in safe_ora.upper() and 'FETCH FIRST' not in safe_ora.upper():
+                        exec_oracle = f"SELECT * FROM ({safe_ora}) WHERE ROWNUM <= 100;"
+                    else:
+                        exec_oracle = safe_ora + ';'
+
+                # Execute both
+                ora_output = self._run_oracle_sql(exec_oracle)
+                pg_output = self._run_pg_sql(exec_pg)
+
+                # Parse results
+                ora_rows = self._parse_row_count(ora_output, 'oracle')
+                pg_rows = self._parse_row_count(pg_output, 'pg')
+                ora_error = bool(re.search(r'(^ORA-\d|^ERROR)', ora_output, re.MULTILINE))
+                pg_error = bool(re.search(r'^ERROR:', pg_output, re.MULTILINE))
+
+                # Determine status
+                test_id = f"{query['file'].replace('.xml','')}.{qid}.{case_name}"
+                result = {
+                    'test_id': test_id,
+                    'query_id': qid,
+                    'type': qtype,
+                    'case': case_name,
+                    'oracle_rows': ora_rows,
+                    'pg_rows': pg_rows,
+                    'oracle_error': ora_output.strip()[:1000] if ora_error else None,
+                    'pg_error': pg_output.strip()[:1000] if pg_error else None,
+                    'match': False,
+                    'status': 'fail',
+                }
+
+                if ora_error and pg_error:
+                    result['status'] = 'fail'
+                    result['reason'] = 'both_error'
+                    fail_count += 1
+                elif ora_error:
+                    result['status'] = 'warn'
+                    result['reason'] = 'oracle_error_only'
+                    warn_count += 1
+                elif pg_error:
+                    result['status'] = 'fail'
+                    result['reason'] = 'pg_error'
+                    fail_count += 1
+                elif ora_rows is not None and pg_rows is not None:
+                    if ora_rows == pg_rows:
+                        result['match'] = True
+                        result['status'] = 'pass'
+                        pass_count += 1
+                    else:
+                        result['status'] = 'fail'
+                        result['reason'] = f'row_count_mismatch: oracle={ora_rows}, pg={pg_rows}'
+                        fail_count += 1
+                elif ora_rows is None and pg_rows is None:
+                    # Both returned no parseable rows (possibly DDL or empty)
+                    result['match'] = True
+                    result['status'] = 'pass'
+                    pass_count += 1
+                else:
+                    result['status'] = 'warn'
+                    result['reason'] = 'row_count_unparseable'
+                    warn_count += 1
+
+                results.append(result)
+
+                status_icon = {'pass': 'MATCH', 'fail': 'DIFF', 'warn': 'WARN'}[result['status']]
+                print(f"  {status_icon} {test_id}: oracle={ora_rows} pg={pg_rows}")
+
+                # Integrity Guard warnings
+                if result['status'] == 'pass' and ora_rows == 0 and pg_rows == 0:
+                    if qtype in ('insert', 'update', 'delete'):
+                        # DML: 0 affected rows on both sides is normal (data may not exist)
+                        warnings.append({
+                            'code': 'WARN_ZERO_BOTH_DML',
+                            'severity': 'low',
+                            'query_id': qid,
+                            'test_case': case_name,
+                            'message': f'Both Oracle and PG affected 0 rows (DML - data may not exist)',
+                        })
+                    else:
+                        warnings.append({
+                            'code': 'WARN_ZERO_BOTH',
+                            'severity': 'high',
+                            'query_id': qid,
+                            'test_case': case_name,
+                            'message': 'Both Oracle and PG returned 0 rows',
+                        })
+
+        # Aggregated per-query guards
+        query_results_agg = {}  # {qid: [match_booleans]}
+        for r in results:
+            query_results_agg.setdefault(r['query_id'], []).append(r)
+
+        for qid, qresults in query_results_agg.items():
+            ora_rows_list = [r['oracle_rows'] for r in qresults if r['oracle_rows'] is not None]
+            pg_rows_list = [r['pg_rows'] for r in qresults if r['pg_rows'] is not None]
+            if ora_rows_list and all(r == 0 for r in ora_rows_list) and all(r == 0 for r in pg_rows_list):
+                warnings.append({
+                    'code': 'WARN_ZERO_ALL_CASES',
+                    'severity': 'critical',
+                    'query_id': qid,
+                    'message': f'All {len(ora_rows_list)} test cases returned 0 rows on both sides',
+                })
+            elif pg_rows_list and sum(r == 0 for r in pg_rows_list) > len(pg_rows_list) * 0.8:
+                warnings.append({
+                    'code': 'WARN_MOSTLY_ZERO',
+                    'severity': 'high',
+                    'query_id': qid,
+                    'message': f'{sum(r==0 for r in pg_rows_list)}/{len(pg_rows_list)} PG test cases returned 0 rows',
+                })
+
+        # Summary
+        total = pass_count + fail_count + warn_count
+        print(f"\n=== Compare Results ===")
+        print(f"MATCH: {pass_count}, DIFF: {fail_count}, WARN: {warn_count} (total {total})")
+
+        if warnings:
+            print(f"\nIntegrity Guard: {len(warnings)} warnings")
+            for w in warnings[:10]:
+                print(f"  [{w['severity'].upper()}] {w['code']}: {w['query_id']} - {w['message']}")
+
+        # Update query-level tracking
+        if tracking_dir:
+            try:
+                from tracking_utils import TrackingManager
+                tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
+                for tdir in tracking_dirs:
+                    tm = TrackingManager(tdir)
+                    for r in results:
+                        tm.update_test_case(
+                            r['query_id'], r['case'],
+                            binds={},
+                            oracle_result={'rows': r['oracle_rows'], 'error': r.get('oracle_error')},
+                            pg_result={'rows': r['pg_rows'], 'error': r.get('pg_error')},
+                            match=r['match'],
+                            warnings=[w['code'] for w in warnings if w.get('query_id') == r['query_id']]
+                        )
+                        if r['status'] == 'pass':
+                            tm.mark_success(r['query_id'])
+            except Exception as e:
+                print(f"  Warning: Could not update tracking: {e}")
+
+        # Write compare_validated.json
+        validated = {
+            'timestamp': datetime.now().isoformat(),
+            'mode': 'compare',
+            'total': total,
+            'pass': pass_count,
+            'fail': fail_count,
+            'warn': warn_count,
+            'pass_rate': f"{pass_count/total*100:.1f}%" if total > 0 else "N/A",
+            'results': results,
+            'warnings': warnings,
+        }
+        with open(output_path / 'compare_validated.json', 'w') as f:
+            json.dump(validated, f, indent=2, ensure_ascii=False)
+
+        # Auto-update progress.json
+        try:
+            from tracking_utils import TrackingManager
+            TrackingManager.update_pipeline_phase(
+                'workspace/progress.json', 'phase_3_compare', 'Oracle vs PG 비교', 'done',
+                compare_match=pass_count, compare_fail=fail_count, compare_warn=warn_count)
+        except Exception:
+            pass
+
+        # Activity log
+        try:
+            from tracking_utils import log_activity
+            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_compare',
+                         detail=f"Compare: {pass_count} match, {fail_count} fail, {warn_count} warn (total {total})")
+        except Exception:
+            pass
+
+        print(f"\nSaved: {output_path / 'compare_validated.json'}")
+        return validated
 
     def load_queries(self):
         """Load all queries from converted XML files."""
@@ -74,7 +465,7 @@ class QueryValidator:
         print(f"Loaded {len(self.queries)} queries from {len(list(self.output_dir.glob('*.xml')))} files")
 
     def load_extracted(self, extracted_dir):
-        """Load SQL from mybatis-sql-extractor JSON output (Phase 7).
+        """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
         This provides accurate SQL with dynamic branches resolved by the MyBatis engine."""
         extracted_path = Path(extracted_dir)
         if not extracted_path.exists():
@@ -125,31 +516,71 @@ class QueryValidator:
         print(f"Loaded {len(self.queries)} unique SQL variants from extracted JSON")
 
     def load_test_cases(self):
-        """Load test cases from workspace/results/*/v1/test-cases.json."""
-        for tc_file in self.results_dir.glob('*/v1/test-cases.json'):
+        """Load test cases from workspace/results/*/v*/test-cases.json."""
+        # Search all version directories, not just v1
+        found_files = list(self.results_dir.glob('*/v*/test-cases.json'))
+        if not found_files:
+            # Also try direct children (flat structure)
+            found_files = list(self.results_dir.glob('*/test-cases.json'))
+        if not found_files:
+            print(f"  No test-cases.json found under {self.results_dir}")
+            return
+
+        for tc_file in found_files:
             try:
                 with open(tc_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
 
+                loaded_before = len(self.test_cases)
+
                 # Handle different structures
                 if isinstance(data, dict):
-                    cases = data.get('query_test_cases', data.get('test_cases', []))
-                    if isinstance(cases, dict):
-                        # {query_id: [{...}]}
+                    # Structure 1: {query_test_cases: [...]} or {test_cases: [...]}
+                    cases = data.get('query_test_cases', data.get('test_cases', None))
+
+                    if cases is None:
+                        # Structure 2: top-level keys are query IDs directly
+                        # e.g. {"selectUser": [{binds: ...}], "insertUser": [{binds: ...}]}
+                        for key, val in data.items():
+                            if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
+                                # Check if it looks like test cases (has binds or params)
+                                if any(k in val[0] for k in ('binds', 'params', 'case_id', 'description')):
+                                    self.test_cases[key] = val
+
+                    elif isinstance(cases, dict):
+                        # Structure 3: {query_test_cases: {queryId: [...cases]}}
                         for qid, tcs in cases.items():
                             if isinstance(tcs, list):
                                 self.test_cases[qid] = tcs
                             elif isinstance(tcs, dict) and 'test_cases' in tcs:
                                 self.test_cases[qid] = tcs['test_cases']
+
                     elif isinstance(cases, list):
                         for tc in cases:
-                            qid = tc.get('query_id', '')
-                            tcs = tc.get('test_cases', [tc])
-                            self.test_cases[qid] = tcs
+                            if isinstance(tc, dict):
+                                qid = tc.get('query_id', '')
+                                if qid:
+                                    tcs = tc.get('test_cases', [tc])
+                                    self.test_cases[qid] = tcs
+
                 elif isinstance(data, list):
                     for tc in data:
-                        qid = tc.get('query_id', '')
-                        self.test_cases[qid] = tc.get('test_cases', [tc])
+                        if isinstance(tc, dict):
+                            qid = tc.get('query_id', '')
+                            if qid:
+                                self.test_cases[qid] = tc.get('test_cases', [tc])
+
+                loaded_after = len(self.test_cases)
+                loaded_count = loaded_after - loaded_before
+                if loaded_count > 0:
+                    print(f"  Loaded from {tc_file}: {loaded_count} queries")
+                else:
+                    # Debug: show structure to help diagnose
+                    if isinstance(data, dict):
+                        keys = list(data.keys())[:5]
+                        print(f"  WARN: {tc_file} loaded but 0 queries matched. Top keys: {keys}")
+                    elif isinstance(data, list):
+                        print(f"  WARN: {tc_file} is list with {len(data)} items but 0 queries matched")
 
             except (json.JSONDecodeError, Exception) as e:
                 print(f"  WARN: Error loading {tc_file}: {e}")
@@ -164,10 +595,13 @@ class QueryValidator:
             pattern = rf'#\{{{key}(?:,[^}}]*)?\}}'
             if value is None:
                 replacement = 'NULL'
+            elif isinstance(value, bool):
+                replacement = 'TRUE' if value else 'FALSE'
             elif isinstance(value, (int, float)):
                 replacement = str(value)
             elif isinstance(value, str):
-                replacement = f"'{value}'"
+                safe_value = value.replace("'", "''")
+                replacement = f"'{safe_value}'"
             elif isinstance(value, list):
                 # For foreach - join as comma-separated
                 items = ', '.join(f"'{v}'" if isinstance(v, str) else str(v) for v in value)
@@ -179,7 +613,7 @@ class QueryValidator:
         # Replace any remaining unbound params with NULL
         result = re.sub(r'#\{[^}]+\}', 'NULL', result)
         # Replace ${} dollar substitution with placeholder
-        result = re.sub(r'\$\{[^}]+\}', "'placeholder'", result)
+        result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
 
         return result
 
@@ -235,7 +669,7 @@ class QueryValidator:
             if not cases:
                 # No test cases - use default dummy binding
                 bound_sql = re.sub(r'#\{[^}]+\}', "'1'", sql)
-                bound_sql = re.sub(r'\$\{[^}]+\}', "'placeholder'", bound_sql)
+                bound_sql = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", bound_sql)
 
                 test_id = f"{fname}.{qid}.default"
                 all_tests.append({
@@ -345,7 +779,7 @@ class QueryValidator:
 
         return all_tests
 
-    def execute_local(self, output_dir):
+    def execute_local(self, output_dir, tracking_dir=None):
         """Execute validation locally via psql."""
         output_path = Path(output_dir)
 
@@ -406,6 +840,46 @@ class QueryValidator:
             for f in failures[:20]:
                 print(f"  {f['test']}: {f['error']}")
 
+        # Update query-level tracking (EXPLAIN results)
+        if tracking_dir:
+            try:
+                from tracking_utils import TrackingManager
+                tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
+                # Build per-query explain results: collect pass/fail per query_id
+                explain_results = {}  # {query_id: {'status': 'pass'/'fail', 'error': ...}}
+                # Track passes from output
+                current_test = None
+                for line in output.split('\n'):
+                    if line.startswith('=== '):
+                        current_test = line.strip('= ').strip()
+                    elif 'ERROR' in line and current_test:
+                        parts = current_test.split('.')
+                        if len(parts) >= 2:
+                            qid = parts[1]
+                            explain_results[qid] = {'status': 'fail', 'error': line.strip()}
+                        current_test = None
+                    elif 'QUERY PLAN' in line and current_test:
+                        parts = current_test.split('.')
+                        if len(parts) >= 2:
+                            qid = parts[1]
+                            if qid not in explain_results or explain_results[qid]['status'] != 'fail':
+                                explain_results[qid] = {'status': 'pass', 'plan_summary': line.strip()}
+                        current_test = None
+
+                for tdir in tracking_dirs:
+                    tm = TrackingManager(tdir)
+                    for qid, res in explain_results.items():
+                        tm.update_explain(
+                            qid, res['status'],
+                            plan_summary=res.get('plan_summary'),
+                            error=res.get('error')
+                        )
+                tracked_count = len(explain_results)
+                if tracked_count:
+                    print(f"  Query tracking (EXPLAIN): {tracked_count} queries updated")
+            except Exception as e:
+                print(f"  Warning: Could not update query tracking: {e}")
+
         # Write validated.json
         validated = {
             'timestamp': datetime.now().isoformat(),
@@ -417,9 +891,26 @@ class QueryValidator:
         with open(output_path / 'validated.json', 'w') as f:
             json.dump(validated, f, indent=2, ensure_ascii=False)
 
+        # Auto-update progress.json
+        try:
+            from tracking_utils import TrackingManager
+            TrackingManager.update_pipeline_phase(
+                'workspace/progress.json', 'phase_3', '검증', 'done',
+                explain_pass=pass_count, explain_fail=fail_count)
+        except Exception:
+            pass
+
+        # Activity log
+        try:
+            from tracking_utils import log_activity
+            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_explain',
+                         detail=f"EXPLAIN: {pass_count} pass, {fail_count} fail")
+        except Exception:
+            pass
+
         return validated
 
-    def execute_local_queries(self, output_dir):
+    def execute_local_queries(self, output_dir, tracking_dir=None):
         """Execute queries locally via psql (actual execution, not just EXPLAIN)."""
         output_path = Path(output_dir)
 
@@ -515,6 +1006,49 @@ class QueryValidator:
             for f in failures[:20]:
                 print(f"  {f['test']}: {f['error'][:120]}")
 
+        # Update query-level tracking (execution results)
+        if tracking_dir:
+            try:
+                from tracking_utils import TrackingManager
+                tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
+                # Build per-query execution results
+                exec_results = {}  # {query_id: {'status': ..., 'row_count': ..., 'error': ...}}
+                for detail in results_detail:
+                    parts = detail['test'].split('.')
+                    if len(parts) >= 2:
+                        qid = parts[1]
+                        # Keep the best result per query (pass over fail)
+                        if qid not in exec_results or exec_results[qid]['status'] != 'pass':
+                            exec_results[qid] = {
+                                'status': 'pass',
+                                'row_count': detail.get('rows')
+                            }
+                for fail in failures:
+                    parts = fail['test'].split('.')
+                    if len(parts) >= 2:
+                        qid = parts[1]
+                        if qid not in exec_results:
+                            exec_results[qid] = {
+                                'status': 'fail',
+                                'error': fail.get('error', '')
+                            }
+
+                for tdir in tracking_dirs:
+                    tm = TrackingManager(tdir)
+                    for qid, res in exec_results.items():
+                        tm.update_execution(
+                            qid, res['status'],
+                            row_count=res.get('row_count'),
+                            error=res.get('error')
+                        )
+                        if res['status'] == 'pass':
+                            tm.mark_success(qid)
+                tracked_count = len(exec_results)
+                if tracked_count:
+                    print(f"  Query tracking (execution): {tracked_count} queries updated")
+            except Exception as e:
+                print(f"  Warning: Could not update query tracking: {e}")
+
         # Write execute_validated.json
         validated = {
             'timestamp': datetime.now().isoformat(),
@@ -529,6 +1063,14 @@ class QueryValidator:
         }
         with open(output_path / 'execute_validated.json', 'w') as f:
             json.dump(validated, f, indent=2, ensure_ascii=False)
+
+        # Activity log
+        try:
+            from tracking_utils import log_activity
+            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_execute',
+                         detail=f"Execute: {pass_count} pass, {fail_count} fail, {len(warnings)} warnings")
+        except Exception:
+            pass
 
         print(f"\nSaved: {output_path / 'execute_validated.json'}")
         return validated
@@ -683,22 +1225,46 @@ def main():
     parser.add_argument('--generate', action='store_true', help='Generate SQL test scripts')
     parser.add_argument('--local', action='store_true', help='Execute EXPLAIN locally via psql')
     parser.add_argument('--execute', action='store_true', help='Execute queries locally via psql (actual execution)')
+    parser.add_argument('--compare', action='store_true', help='Execute on BOTH Oracle AND PostgreSQL, compare results')
     parser.add_argument('--parse-results', action='store_true', help='Parse results from executed scripts')
     parser.add_argument('--output', default='workspace/results/_validation', help='Output directory')
     parser.add_argument('--xml-dir', default='workspace/output', help='Converted XML directory')
+    parser.add_argument('--input-dir', default='workspace/input', help='Original Oracle XML directory')
+    parser.add_argument('--files', default=None, help='Comma-separated list of XML filenames to process (for parallel batching)')
     parser.add_argument('--results-dir', default='workspace/results', help='Results directory')
-    parser.add_argument('--extracted', default=None, help='Extracted SQL dir from mybatis-sql-extractor (Phase 7)')
+    parser.add_argument('--extracted', default=None, help='Extracted SQL dir from mybatis-sql-extractor (Phase 3.5)')
+    parser.add_argument('--tracking-dir', default=None, help='Path to results dir for query-level tracking, or "auto"')
 
     args = parser.parse_args()
 
-    validator = QueryValidator(args.xml_dir, args.results_dir)
+    validator = QueryValidator(args.xml_dir, args.results_dir, args.input_dir)
 
-    if args.generate:
+    # --files filter: only process specified files
+    file_filter = None
+    if args.files:
+        file_filter = set(f.strip() for f in args.files.split(','))
+        print(f"File filter: {len(file_filter)} files")
+
+    def apply_file_filter():
+        if file_filter:
+            before = len(validator.queries)
+            validator.queries = [q for q in validator.queries if q.get('file', '') in file_filter]
+            print(f"  Filtered: {before} → {len(validator.queries)} queries")
+
+    if args.compare:
+        validator.load_queries()
+        apply_file_filter()
+        validator.load_oracle_queries()
+        validator.load_test_cases()
+        validator.compare_queries(args.output, tracking_dir=args.tracking_dir)
+
+    elif args.generate:
         if args.extracted:
             validator.load_extracted(args.extracted)
         else:
             validator.load_queries()
             validator.load_test_cases()
+        apply_file_filter()
         validator.generate_scripts(args.output)
 
     elif args.local:
@@ -707,8 +1273,9 @@ def main():
         else:
             validator.load_queries()
             validator.load_test_cases()
+        apply_file_filter()
         validator.generate_scripts(args.output)
-        validator.execute_local(args.output)
+        validator.execute_local(args.output, tracking_dir=args.tracking_dir)
 
     elif args.execute:
         if args.extracted:
@@ -716,8 +1283,9 @@ def main():
         else:
             validator.load_queries()
             validator.load_test_cases()
+        apply_file_filter()
         validator.generate_scripts(args.output)
-        validator.execute_local_queries(args.output)
+        validator.execute_local_queries(args.output, tracking_dir=args.tracking_dir)
 
     elif args.parse_results:
         validator.parse_results(args.output)

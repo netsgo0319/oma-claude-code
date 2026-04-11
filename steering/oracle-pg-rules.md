@@ -1,3 +1,6 @@
+---
+inclusion: always
+---
 
 # Oracle → PostgreSQL 변환 룰셋
 
@@ -26,6 +29,10 @@
 | SYSDATE - 30 | CURRENT_TIMESTAMP - INTERVAL '30 days' | Oracle date-number 연산 → PG INTERVAL 필수. timestamp - integer는 PG에서 에러 |
 | SYSDATE + 7 | CURRENT_TIMESTAMP + INTERVAL '7 days' | 위와 동일 |
 | DATE_LITERAL + numeric | DATE_LITERAL + numeric::INTEGER | PG에서 DATE + numeric 불가, DATE + integer 필요. ::INTEGER 캐스트 |
+| date_column - N | date_column - N::INTEGER | 일반 date 컬럼 산술. **converter.py 자동 변환 구현됨** |
+| LPAD(numeric, N, '0') | LPAD(expr::TEXT, N, '0') | PG LPAD는 TEXT만 허용. **converter.py 자동 변환 구현됨** |
+| TO_CLOB(expr) | expr::TEXT | PG에 TO_CLOB 없음. **converter.py 자동 변환 구현됨** |
+| TO_DATE(expr) 단일 인자 | TO_DATE(expr, 'YYYYMMDD') | PG는 포맷 필수. **converter.py 자동 변환 구현됨** |
 | ADD_MONTHS(d, n) | d + INTERVAL 'n months' | |
 | MONTHS_BETWEEN(d1, d2) | EXTRACT(YEAR FROM AGE(d1,d2))*12 + EXTRACT(MONTH FROM AGE(d1,d2)) | **interval 타입 혼용 주의**: d1-d2는 interval 반환 → COALESCE(interval, integer) 타입 불일치 오류. 일수 기반 대안: EXTRACT(DAY FROM (d1-d2))::INTEGER 또는 EXTRACT(EPOCH FROM (d1-d2))/86400 |
 | LAST_DAY(d) | (DATE_TRUNC('month', d) + INTERVAL '1 month - 1 day')::DATE | |
@@ -103,10 +110,11 @@
 | /*+ HINT */ | -- hint: HINT (주석 보존) | 또는 제거 (설정 가능) |
 | ROWID | ctid | 직접 대응 비권장, 로직 재설계 검토 |
 | MINUS | EXCEPT | |
+| DELETE table WHERE ... | DELETE FROM table WHERE ... | Oracle은 FROM 생략 가능, PG는 필수 |
 | table PARTITION(name) | 파티션 문법 다름 | 케이스별 검토 |
-| CONNECT BY 단순 레벨 (LEVEL ≤ N) | generate_series(1, N) | 재귀 불필요 케이스 |
-| GREATEST(a, b, c) | GREATEST(a, b, c) | **NULL 처리 차이**: Oracle은 NULL 무시, PG는 NULL 전파. 안전 변환: GREATEST(COALESCE(a,0), COALESCE(b,0), COALESCE(c,0)) |
-| LEAST(a, b, c) | LEAST(a, b, c) | 위와 동일 NULL 처리 차이. COALESCE 래핑 필요 |
+| CONNECT BY 단순 레벨 (LEVEL ≤ N) | generate_series(1, N) | 재귀 불필요 케이스. **converter.py 자동 변환 구현됨** |
+| GREATEST(a, b, c) | GREATEST(COALESCE(a,0), COALESCE(b,0), COALESCE(c,0)) | **converter.py 자동 COALESCE 래핑 구현됨** |
+| LEAST(a, b, c) | LEAST(COALESCE(a,0), COALESCE(b,0), COALESCE(c,0)) | GREATEST와 동일. **converter.py 자동 COALESCE 래핑 구현됨** |
 | WM_CONCAT(col) | STRING_AGG(col::text, ',') | 비표준이지만 레거시에서 빈번. 정렬 보장 안 됨 |
 | RETURNING id INTO :var | RETURNING id | MyBatis에서는 selectKey 방식으로 대체 가능 |
 | FROM (서브쿼리) | FROM (서브쿼리) AS alias | **서브쿼리 alias 필수**: Oracle은 alias 없이 동작하지만 PG는 syntax error. 모든 인라인 뷰에 alias 추가 필수 |
@@ -123,6 +131,8 @@
 | DBMS_RANDOM.VALUE(low, high) | floor(random() * (high - low + 1) + low) | 범위 지정 |
 | DBMS_CRYPTO.HASH(input, algo) | digest(input, 'sha256') | pgcrypto 확장 필요 |
 | DBMS_OUTPUT.PUT_LINE(msg) | RAISE NOTICE '%', msg | PL/pgSQL 내에서 |
+| PKG_CRYPTO.DECRYPT/ENCRYPT | `/* TODO */ args` 패스스루 | **converter.py 자동 TODO 태깅 구현됨**. 수동 마이그레이션 필요 |
+| PKG_* (커스텀 패키지 일반) | PL/pgSQL 함수 또는 확장 | LLM 태깅됨. 패키지 로직 분석 후 수동 변환 필요 |
 
 ## MyBatis/iBatis 특수 변환
 

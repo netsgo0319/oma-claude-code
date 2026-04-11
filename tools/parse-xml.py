@@ -78,6 +78,7 @@ LLM_PATTERNS = {
     'KEEP_DENSE_RANK': r'\bKEEP\s*\(\s*DENSE_RANK\b',
     'ROWID': r'\bROWID\b',
     'TABLE_FUNC': r'\bTABLE\s*\(\s*\w+',
+    'CUSTOM_PACKAGE': r'\b(?!DBMS_|UTL_|SYS_)[A-Z][A-Z0-9_]+\s*\.\s*[A-Z]\w*\s*\(',
 }
 
 DYNAMIC_TAGS_MYBATIS3 = {'if', 'choose', 'when', 'otherwise', 'where', 'set', 'trim', 'foreach', 'bind'}
@@ -330,11 +331,16 @@ def main():
         print("Run xml-splitter.py first.")
         sys.exit(1)
 
+    import time as _time
+    _start = _time.time()
+
     parsed = parse_chunks(chunks_dir)
 
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(parsed, f, indent=2, ensure_ascii=False)
+
+    _elapsed = int((_time.time() - _start) * 1000)
 
     m = parsed['metadata']
     print(f"Parsed: {parsed['source_file']}")
@@ -346,6 +352,43 @@ def main():
             print(f"    - {w}")
         if len(parsed['warnings']) > 5:
             print(f"    ... and {len(parsed['warnings']) - 5} more")
+
+    # Initialize query tracking
+    try:
+        from tracking_utils import TrackingManager
+        tm = TrackingManager(os.path.dirname(output_path))
+        count = tm.init_tracking(parsed['source_file'], parsed['queries'])
+        print(f"  Query tracking initialized: {count} queries")
+    except Exception as e:
+        print(f"  Warning: Could not initialize query tracking: {e}")
+
+    # Update progress.json
+    try:
+        from tracking_utils import TrackingManager
+        progress_path = os.path.join(os.path.dirname(os.path.dirname(output_path)), '..', 'progress.json')
+        # Normalize: workspace/results/{file}/v1/parsed.json → workspace/progress.json
+        progress_path = str(Path(output_path).parent.parent.parent / 'progress.json')
+        TrackingManager.update_progress(
+            progress_path, parsed['source_file'],
+            status='parsed',
+            queries_total=m['total_queries'],
+            queries_pass=0, queries_fail=0, queries_escalated=0,
+            phase=1,
+        )
+        TrackingManager.update_pipeline_phase(progress_path, 'phase_1', '파싱', 'done',
+                                               files=1, queries=m['total_queries'])
+    except Exception as e:
+        print(f"  Warning: Could not update progress.json: {e}")
+
+    # Activity log
+    try:
+        from tracking_utils import log_activity
+        log_activity('PHASE_END', agent='parse-xml', phase='phase_1',
+                     file=parsed['source_file'],
+                     detail=f"Parsed {m['total_queries']} queries (rule:{m['rule_tagged']}, llm:{m['llm_tagged']})",
+                     duration_ms=_elapsed)
+    except Exception:
+        pass
 
     # Update results/_index.json for dashboard
     update_results_index(output_path)

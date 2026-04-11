@@ -54,7 +54,7 @@ class OracleToPgConverter:
         }
 
     def convert_file(self, input_path, output_path, report_path=None,
-                     progress_path=None, diff_path=None):
+                     progress_path=None, diff_path=None, tracking_dir=None):
         """Convert a single XML file."""
         with open(input_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -65,6 +65,59 @@ class OracleToPgConverter:
         os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else '.', exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(converted)
+
+        # Update query-level tracking
+        if tracking_dir:
+            try:
+                import time
+                from tracking_utils import TrackingManager
+                tm = TrackingManager(tracking_dir)
+                before_queries = self._extract_queries_from_xml(content)
+                after_queries = self._extract_queries_from_xml(converted)
+                tracked = 0
+                for qid in before_queries:
+                    pg_sql = after_queries.get(qid, before_queries[qid])
+                    rules = list(self.stats.get('rules_applied', {}).keys())
+                    changed = before_queries[qid] != pg_sql
+                    tm.update_conversion(
+                        qid, pg_sql,
+                        'rule' if changed else 'no_change',
+                        rules if changed else []
+                    )
+                    tracked += 1
+                if tracked:
+                    print(f"  Query tracking updated: {tracked} queries")
+            except Exception as e:
+                print(f"  Warning: Could not update query tracking: {e}")
+
+        # Auto-update progress.json
+        try:
+            from tracking_utils import TrackingManager
+            # Derive progress.json path from output_path
+            progress_path = str(Path(output_path).parent.parent / 'progress.json')
+            if not Path(progress_path).exists():
+                progress_path = 'workspace/progress.json'
+            fname = os.path.basename(input_path)
+            unconverted_count = report.get('unconverted_count', len(report.get('unconverted', [])))
+            TrackingManager.update_progress(
+                progress_path, fname,
+                status='converted',
+                phase=2,
+                queries_total=report.get('total_queries', 0),
+            )
+        except Exception:
+            pass
+
+        # Activity log
+        try:
+            from tracking_utils import log_activity
+            log_activity('PHASE_END', agent='oracle-to-pg-converter', phase='phase_2',
+                         file=os.path.basename(input_path),
+                         detail=f"Converted: {report.get('total_replacements',0)} replacements, "
+                                f"{len(report.get('unconverted',[]))} unconverted, "
+                                f"{len(report.get('residual_oracle_patterns',[]))} residual")
+        except Exception:
+            pass
 
         # Write report
         if report_path:
@@ -223,11 +276,32 @@ class OracleToPgConverter:
         # 11. Empty string = NULL semantics warning (add comment)
         # (don't auto-convert, just detect)
 
-        # 12. GREATEST/LEAST NULL handling
+        # 12. GREATEST/LEAST NULL handling (auto COALESCE wrap)
         sql = self._convert_greatest_least(sql)
 
         # 13. BITAND
         sql = self._convert_bitand(sql)
+
+        # 14. DELETE without FROM (Oracle allows, PG requires FROM)
+        sql = self._convert_delete_from(sql)
+
+        # 15. CONNECT BY LEVEL <= N -> generate_series(1, N)
+        sql = self._convert_connect_by_level(sql)
+
+        # 16. PKG_CRYPTO.DECRYPT/ENCRYPT -> TODO tagging
+        sql = self._convert_pkg_crypto(sql)
+
+        # 17. LPAD(numeric) -> LPAD(expr::TEXT)
+        sql = self._convert_lpad_numeric(sql)
+
+        # 18. TO_CLOB(expr) -> expr::TEXT
+        sql = self._convert_to_clob(sql)
+
+        # 19. TO_DATE single arg -> TO_DATE(expr, 'YYYYMMDD')
+        sql = self._convert_to_date_single(sql)
+
+        # 20. date_column - numeric -> date_column - numeric::INTEGER
+        sql = self._convert_date_column_arithmetic(sql)
 
         if sql != original:
             self.stats['total_replacements'] += 1
@@ -938,16 +1012,26 @@ class OracleToPgConverter:
         return re.sub(r'/\*\+\s*(.*?)\s*\*/', replace_hint, sql, flags=re.DOTALL)
 
     def _convert_greatest_least(self, sql):
-        """Detect GREATEST/LEAST and add warning comment about NULL handling."""
-        # Don't auto-convert (too risky), just detect and warn
-        if re.search(r'\b(GREATEST|LEAST)\s*\(', sql, re.IGNORECASE):
-            if 'GREATEST/LEAST NULL semantics' not in [u.get('pattern') for u in self.stats['unconverted']]:
-                self.stats['unconverted'].append({
-                    'pattern': 'GREATEST/LEAST NULL semantics',
-                    'reason': 'Oracle ignores NULL, PostgreSQL propagates NULL. May need COALESCE wrapping.',
-                    'severity': 'warning'
-                })
-        return sql
+        """GREATEST/LEAST: wrap arguments with COALESCE for NULL safety.
+        Oracle ignores NULL in GREATEST/LEAST, PostgreSQL propagates NULL."""
+        def wrap_args(match):
+            func = match.group(1)  # GREATEST or LEAST
+            args_str = match.group(2)
+            args = [a.strip() for a in args_str.split(',')]
+            wrapped = []
+            for arg in args:
+                if arg.upper().startswith('COALESCE(') or arg.lstrip('-').isdigit():
+                    wrapped.append(arg)
+                else:
+                    wrapped.append(f'COALESCE({arg}, 0)')
+            self._count_rule(f'{func.upper()}->COALESCE_wrap')
+            return f'{func}({", ".join(wrapped)})'
+
+        new_sql = re.sub(
+            r'\b(GREATEST|LEAST)\s*\(\s*([^()]+)\)',
+            wrap_args, sql, flags=re.IGNORECASE
+        )
+        return new_sql
 
     def _convert_bitand(self, sql):
         """BITAND(a, b) -> (a & b)."""
@@ -974,6 +1058,155 @@ class OracleToPgConverter:
 
         result.append(sql[last_end:])
         return ''.join(result)
+
+    def _convert_delete_from(self, sql):
+        """DELETE table WHERE ... -> DELETE FROM table WHERE ...
+        Oracle allows DELETE without FROM, PostgreSQL requires it."""
+        new_sql = re.sub(
+            r'\bDELETE\s+(?!FROM\b)(\w+)',
+            r'DELETE FROM \1',
+            sql,
+            flags=re.IGNORECASE
+        )
+        if new_sql != sql:
+            self._count_rule('DELETE->DELETE_FROM')
+        return new_sql
+
+    def _convert_connect_by_level(self, sql):
+        """CONNECT BY LEVEL <= N -> generate_series(1, N).
+        Only handles simple CONNECT BY LEVEL (no PRIOR, no START WITH)."""
+        new_sql = re.sub(
+            r'\bCONNECT\s+BY\s+LEVEL\s*<=\s*(\S+)',
+            r'FROM generate_series(1, \1) AS lvl(LEVEL)',
+            sql, flags=re.IGNORECASE
+        )
+        if new_sql != sql:
+            self._count_rule('CONNECT_BY_LEVEL->generate_series')
+            return new_sql
+
+        new_sql = re.sub(
+            r'\bCONNECT\s+BY\s+LEVEL\s*<\s*(\S+)',
+            r'FROM generate_series(1, \1 - 1) AS lvl(LEVEL)',
+            sql, flags=re.IGNORECASE
+        )
+        if new_sql != sql:
+            self._count_rule('CONNECT_BY_LEVEL->generate_series')
+        return new_sql
+
+    def _convert_pkg_crypto(self, sql):
+        """PKG_CRYPTO.DECRYPT/ENCRYPT(args) -> TODO tagging with passthrough."""
+        new_sql = re.sub(
+            r'\bPKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(([^()]+)\)',
+            r'/* TODO: PKG_CRYPTO.\1 - manual migration required */ \2',
+            sql, flags=re.IGNORECASE
+        )
+        if new_sql != sql:
+            self._count_rule('PKG_CRYPTO->TODO')
+        return new_sql
+
+    def _convert_lpad_numeric(self, sql):
+        """LPAD(numeric_expr, N, '0') -> LPAD(expr::TEXT, N, '0').
+        Oracle auto-casts number to string, PG requires explicit ::TEXT."""
+        pattern = re.compile(r'\bLPAD\s*\(', re.IGNORECASE | re.DOTALL)
+        result = []
+        last_end = 0
+
+        for match in pattern.finditer(sql):
+            start = match.start()
+            paren_start = match.end() - 1
+            paren_end = self._find_matching_paren(sql, paren_start)
+            if paren_end == -1:
+                continue
+
+            args_str = sql[paren_start + 1:paren_end]
+            args = self._split_args(args_str)
+            if len(args) >= 2:
+                first_arg = args[0].strip()
+                # Only cast if not already ::TEXT and not a string literal
+                if '::TEXT' not in first_arg.upper() and not first_arg.startswith("'"):
+                    args[0] = f'{first_arg}::TEXT'
+                    result.append(sql[last_end:start])
+                    result.append(f'LPAD({", ".join(args)})')
+                    last_end = paren_end + 1
+                    self._count_rule('LPAD->LPAD_TEXT_CAST')
+
+        result.append(sql[last_end:])
+        return ''.join(result) if len(result) > 1 else sql
+
+    def _convert_to_clob(self, sql):
+        """TO_CLOB(expr) -> expr::TEXT. PG has no TO_CLOB function."""
+        pattern = re.compile(r'\bTO_CLOB\s*\(', re.IGNORECASE | re.DOTALL)
+        result = []
+        last_end = 0
+
+        for match in pattern.finditer(sql):
+            start = match.start()
+            paren_start = match.end() - 1
+            paren_end = self._find_matching_paren(sql, paren_start)
+            if paren_end == -1:
+                continue
+
+            arg = sql[paren_start + 1:paren_end].strip()
+            result.append(sql[last_end:start])
+            result.append(f'{arg}::TEXT')
+            last_end = paren_end + 1
+            self._count_rule('TO_CLOB->TEXT_CAST')
+
+        result.append(sql[last_end:])
+        return ''.join(result) if len(result) > 1 else sql
+
+    def _convert_to_date_single(self, sql):
+        """TO_DATE(expr) single arg -> TO_DATE(expr, 'YYYYMMDD').
+        Oracle allows TO_DATE without format (uses NLS_DATE_FORMAT), PG requires format."""
+        pattern = re.compile(r'\bTO_DATE\s*\(', re.IGNORECASE | re.DOTALL)
+        result = []
+        last_end = 0
+
+        for match in pattern.finditer(sql):
+            start = match.start()
+            paren_start = match.end() - 1
+            paren_end = self._find_matching_paren(sql, paren_start)
+            if paren_end == -1:
+                continue
+
+            args_str = sql[paren_start + 1:paren_end]
+            args = self._split_args(args_str)
+            if len(args) == 1:
+                # Single arg TO_DATE — add default format
+                arg = args[0].strip()
+                result.append(sql[last_end:start])
+                result.append(f"TO_DATE({arg}, 'YYYYMMDD')")
+                last_end = paren_end + 1
+                self._count_rule('TO_DATE_SINGLE->TO_DATE_FMT')
+            # 2+ args: already has format, leave as-is
+
+        result.append(sql[last_end:])
+        return ''.join(result) if len(result) > 1 else sql
+
+    def _convert_date_column_arithmetic(self, sql):
+        """date_column - 30 -> date_column - 30::INTEGER.
+        Extends timestamp_arithmetic for non-CURRENT_TIMESTAMP date columns.
+        Only targets: column_name - bare_integer (not already INTERVAL or ::INTEGER)."""
+        # Pattern: column_or_table.column - bare_integer
+        # Exclude CURRENT_TIMESTAMP (already handled by _convert_timestamp_arithmetic)
+        def replace_date_arith(match):
+            expr = match.group(1)
+            num = match.group(2)
+            suffix = match.group(3)
+            if 'CURRENT_TIMESTAMP' in expr.upper() or 'CURRENT_DATE' in expr.upper():
+                return match.group(0)  # Already handled
+            if '::' in match.group(0) or 'INTERVAL' in match.group(0):
+                return match.group(0)
+            self._count_rule('DATE_COL-N->INTEGER_CAST')
+            return f"{expr}- {num}::INTEGER{suffix}"
+
+        new_sql = re.sub(
+            r'(\b\w+(?:\.\w+)?\s*)-\s*(\d+)(\s*(?:AND|OR|THEN|ELSE|END|,|\)|$))',
+            replace_date_arith, sql, flags=re.IGNORECASE
+        )
+        if new_sql != sql:
+            self._count_rule('DATE_COL-N->INTEGER_CAST')
+        return new_sql
 
     # ========== ROWNUM Pagination & FETCH FIRST ==========
 
@@ -1216,6 +1449,11 @@ class OracleToPgConverter:
                 'name': 'SYS_CONTEXT()',
                 'suggestion': 'Convert to current_setting() or session variables',
             },
+            {
+                'regex': r'\b(?!DBMS_|UTL_|SYS_)[A-Z][A-Z0-9_]+\s*\.\s*[A-Z]\w*\s*\(',
+                'name': 'Custom Oracle package call',
+                'suggestion': 'Requires manual migration: create equivalent PG function, use pgcrypto extension, or convert PL/SQL to PL/pgSQL',
+            },
         ]
 
         # Track current query_id from XML context
@@ -1284,6 +1522,31 @@ class OracleToPgConverter:
                 })
 
         return outer_join_details
+
+    # ========== Query Extraction for Tracking ==========
+
+    def _extract_queries_from_xml(self, content):
+        """Extract query_id -> sql_text mapping from XML content."""
+        import xml.etree.ElementTree as ET
+        queries = {}
+        try:
+            # Wrap in root if needed
+            if not content.strip().startswith('<?xml'):
+                wrapped = f'<root>{content}</root>'
+            else:
+                wrapped = content
+            root = ET.fromstring(wrapped)
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.iter(tag):
+                    qid = elem.get('id', '')
+                    if qid:
+                        text_parts = []
+                        for t in elem.itertext():
+                            text_parts.append(t.strip())
+                        queries[qid] = ' '.join(text_parts)
+        except ET.ParseError:
+            pass
+        return queries
 
     # ========== Diff Generation ==========
 
@@ -1405,6 +1668,7 @@ def main():
     parser.add_argument('--report-dir', help='Report directory (batch mode)')
     parser.add_argument('--update-progress', help='Path to progress.json to update with conversion results')
     parser.add_argument('--diff', help='Path to write unified diff of changes')
+    parser.add_argument('--tracking-dir', help='Path to results directory for query-level tracking (e.g. workspace/results/file/v1)')
 
     args = parser.parse_args()
     converter = OracleToPgConverter()
@@ -1429,6 +1693,7 @@ def main():
                 report_path=str(rep_file) if rep_file else None,
                 progress_path=args.update_progress,
                 diff_path=str(diff_file) if diff_file else None,
+                tracking_dir=args.tracking_dir,
             )
             all_reports.append(report)
 
@@ -1451,6 +1716,7 @@ def main():
             report_path=args.report,
             progress_path=args.update_progress,
             diff_path=args.diff,
+            tracking_dir=args.tracking_dir,
         )
         print(f"Converted: {args.input} -> {args.output}")
         print(f"  Replacements: {report['total_replacements']}")

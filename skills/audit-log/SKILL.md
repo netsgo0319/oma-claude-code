@@ -22,9 +22,22 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
   "version": 1,
   "type": "아래 타입 중 하나",
   "summary": "한 줄 요약",
+  "duration_ms": 1234,
   "detail": { ... }
 }
 ```
+
+### 필드 설명
+- **timestamp**: ISO 8601 형식의 기록 시각
+- **phase**: 현재 Phase (phase_0 ~ phase_6)
+- **agent**: 기록 주체 에이전트
+- **file**: 대상 파일명
+- **query_id**: 대상 쿼리 ID
+- **version**: 변환 버전
+- **type**: 로그 타입 (아래 참조)
+- **summary**: 한 줄 요약
+- **duration_ms**: (선택) 작업 소요 시간 (밀리초). Phase/변환/검증 등의 실행 시간
+- **detail**: 타입별 상세 정보 객체
 
 ## 로그 타입
 
@@ -47,6 +60,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 {
   "type": "PHASE_END",
   "summary": "Phase 2 완료: 50파일 변환, 1200룰/300LLM",
+  "duration_ms": 45000,
   "detail": {
     "phase": "phase_2",
     "duration_ms": 45000,
@@ -76,6 +90,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 {
   "type": "ATTEMPT",
   "summary": "selectUserById v1 변환 시도: rule-convert",
+  "duration_ms": 120,
   "detail": {
     "action": "rule_convert",
     "input_sql": "SELECT ... NVL(status, 'ACTIVE') ...",

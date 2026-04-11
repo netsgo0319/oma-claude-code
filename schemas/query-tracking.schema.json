@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Query Tracking",
+  "description": "쿼리 단위 변환/검증/비교 추적. Phase별로 점진적으로 채워진다.",
+  "type": "object",
+  "required": ["version", "file", "created_at", "queries"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "file": { "type": "string", "description": "소스 XML 파일명" },
+    "file_version": { "type": "integer", "description": "변환 버전 (v1, v2, ...)" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "type", "status"],
+        "properties": {
+          "query_id": { "type": "string" },
+          "type": { "type": "string", "enum": ["select", "insert", "update", "delete", "procedure"] },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "parsed", "analyzed", "converting", "converted", "testing", "validating", "validated", "failed", "retry_1", "retry_2", "retry_3", "escalated", "success"]
+          },
+          "complexity": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4"] },
+          "layer": { "type": "integer" },
+
+          "oracle_sql": { "type": "string", "description": "변환 전 원본 Oracle SQL" },
+          "pg_sql": { "type": "string", "description": "변환 후 PostgreSQL SQL" },
+          "oracle_patterns": { "type": "array", "items": { "type": "string" } },
+          "conversion_method": { "type": "string", "enum": ["rule", "llm", "manual", "none"] },
+          "rules_applied": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+
+          "dynamic_elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": { "type": "string" },
+                "test": { "type": "string" },
+                "content": { "type": "string" }
+              }
+            }
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "jdbc_type": { "type": ["string", "null"] },
+                "notation": { "type": "string" }
+              }
+            }
+          },
+
+          "explain": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
+              "plan_summary": { "type": "string" },
+              "error": { "type": ["string", "null"] },
+              "executed_at": { "type": "string", "format": "date-time" },
+              "duration_ms": { "type": "integer" }
+            }
+          },
+
+          "execution": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
+              "row_count": { "type": "integer" },
+              "columns": { "type": "array", "items": { "type": "string" } },
+              "duration_ms": { "type": "integer" },
+              "error": { "type": ["string", "null"] },
+              "executed_at": { "type": "string", "format": "date-time" }
+            }
+          },
+
+          "test_cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "case_id": { "type": "string" },
+                "binds": { "type": "object" },
+                "oracle_result": {
+                  "type": "object",
+                  "properties": {
+                    "rows": { "type": "integer" },
+                    "columns": { "type": "array", "items": { "type": "string" } },
+                    "sample": { "type": "array" },
+                    "duration_ms": { "type": "integer" }
+                  }
+                },
+                "pg_result": {
+                  "type": "object",
+                  "properties": {
+                    "rows": { "type": "integer" },
+                    "columns": { "type": "array", "items": { "type": "string" } },
+                    "sample": { "type": "array" },
+                    "duration_ms": { "type": "integer" }
+                  }
+                },
+                "match": { "type": "boolean" },
+                "warnings": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+
+          "timing": {
+            "type": "object",
+            "properties": {
+              "parse_started": { "type": "string", "format": "date-time" },
+              "parse_ms": { "type": "integer" },
+              "convert_started": { "type": "string", "format": "date-time" },
+              "convert_ms": { "type": "integer" },
+              "explain_started": { "type": "string", "format": "date-time" },
+              "explain_ms": { "type": "integer" },
+              "execute_started": { "type": "string", "format": "date-time" },
+              "execute_ms": { "type": "integer" },
+              "compare_started": { "type": "string", "format": "date-time" },
+              "compare_ms": { "type": "integer" },
+              "total_ms": { "type": "integer" }
+            }
+          },
+
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "version": { "type": "integer" },
+                "status": { "type": "string" },
+                "error": { "type": "string" },
+                "fix": { "type": "string" },
+                "agent": { "type": "string" },
+                "timestamp": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

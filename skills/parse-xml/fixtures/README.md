@@ -15,8 +15,8 @@ MyBatis/iBatis XML 샘플 파일 — parse-xml 스킬의 스모크 테스트 및
 
 ```bash
 # parse-xml 스모크 테스트
-cp skills/parse-xml/fixtures/*.xml workspace/input/
-claude   # Claude Code 실행 후 "변환해줘"
+cp .kiro/skills/parse-xml/fixtures/*.xml workspace/input/
+kiro-cli --agent oracle-pg-leader
 # workspace/results/ 에서 parsed.json 확인
 ```
 

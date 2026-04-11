@@ -35,76 +35,223 @@ allowed-tools:
 ## 핵심 원칙
 
 **기계적 변환은 이미 Leader가 `tools/oracle-to-pg-converter.py`로 완료했다.**
-당신의 역할은 기계적 변환이 처리하지 못한 복잡 패턴(CONNECT BY, MERGE INTO, (+) 조인 등)만 LLM으로 변환하는 것이다.
+**당신의 역할은 기계적 변환이 처리하지 못한 복잡 패턴(CONNECT BY, MERGE INTO, (+) 조인 등)만 LLM으로 변환하는 것이다.**
 
 conversion-report.json의 `unconverted` 목록 = 당신이 처리할 대상.
 `unconverted`가 비어있으면 당신이 할 일은 없다.
 
 **금지:**
 - Python 파서/변환기 스크립트를 새로 작성하는 것
-- NVL→COALESCE 같은 기계적 치환을 직접 하는 것 (이미 도구가 했음)
+- NVL→COALESCE, DECODE→CASE 같은 기계적 치환을 직접 하는 것 (이미 도구가 했음)
 - XML 전체를 읽어서 처음부터 변환하는 것
 
-## 대형 파일 처리
+## 역할
+- conversion-report.json의 unconverted 패턴을 LLM으로 변환
+- CONNECT BY → WITH RECURSIVE, MERGE INTO → ON CONFLICT 등 구조적 변환
+- 변환 결과를 converted.json과 output XML로 기록
 
-1000줄 이상 XML은 반드시 분할 후 처리:
+## 입력
+Leader로부터 전달받는 정보:
+- 대상 파일 목록 (예: ["UserMapper.xml", "OrderMapper.xml"])
+- 버전 번호 (예: 1, 재시도 시 2, 3...)
+
+## 대형 파일 처리 (필수 규칙)
+
+**절대로 Python 스크립트를 직접 작성하지 마라. 이미 만들어진 도구를 사용하라.**
+
+### 1000줄 이상 XML 파일:
+반드시 기존 도구로 분할 후 처리:
 ```bash
 python3 tools/xml-splitter.py workspace/input/{filename}.xml workspace/results/{filename}/v1/chunks/
 ```
+분할 후 chunks/_metadata.json을 읽어 chunk 단위로 처리.
+
+### MyBatis BoundSql 기반 SQL 추출 (Java 환경일 때):
+```bash
+java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar \
+  --input workspace/input --output workspace/results/_extracted
+```
+
+### chunks/ 디렉토리가 존재하면:
+- _metadata.json을 읽어 chunk 목록 확인
+- 각 chunk 파일을 개별적으로 변환 (한 번에 하나씩)
+- **전체 XML을 한번에 읽지 않는다** — 컨텍스트 초과 방지
+
+### chunks/ 디렉토리가 없고 파일이 작으면:
+- 기존 방식대로 parsed.json 기반 처리
 
 ## 처리 절차
 
-### 0. 기계적 변환 결과 확인
-conversion-report.json의 `unconverted` 확인. 비어있으면 완료 반환.
+### 0. 기계적 변환 (rule-convert-tool, 최우선 실행)
+
+**모든 변환 작업의 첫 번째 단계. LLM 변환 전에 반드시 실행한다.**
+
+```bash
+python3 tools/oracle-to-pg-converter.py workspace/input/{filename}.xml workspace/output/{filename}.xml \
+  --report workspace/results/{filename}/v1/conversion-report.json
+```
+
+또는 chunk 단위:
+```bash
+python3 tools/oracle-to-pg-converter.py workspace/results/{filename}/v1/chunks/{chunk}.xml \
+  workspace/results/{filename}/v1/chunks/{chunk}.pg.xml \
+  --report workspace/results/{filename}/v1/chunks/{chunk}.report.json
+```
+
+실행 후:
+- conversion-report.json의 `rules_applied` 확인 -> 어떤 룰이 적용됐는지
+- `unconverted` 목록 확인 -> LLM이 처리해야 할 나머지
+- `unconverted_count == 0`이면 -> 기계적 변환만으로 완료
+- `unconverted`에 `needs_llm` 항목이 있으면 -> 아래 LLM 변환 진행
 
 ### 1. 파싱 결과 로드
-workspace/results/{filename}/v{n}/parsed.json 읽기
+각 파일의 workspace/results/{filename}/v{n}/parsed.json 읽기
 
-### 2. 룰 기반 변환
+### 2. 룰 기반 변환 (rule-convert 스킬)
+parsed.json에서 oracle_tags에 "rule"이 포함된 쿼리:
 - steering/oracle-pg-rules.md 룰셋 참조
 - steering/edge-cases.md 학습 패턴 우선 적용
-- 잔존 Oracle 구문 → LLM으로 에스컬레이션
+- 변환 후 Oracle 구문 잔존 검사 → 남으면 LLM으로 에스컬레이션
 
-### 3. LLM 기반 변환
-- edge-cases.md 동일 패턴 선례 확인
+### 3. LLM 기반 변환 (llm-convert 스킬)
+oracle_tags에 "llm"이 포함되거나 룰에서 에스컬레이션된 쿼리:
+- edge-cases.md에서 동일 패턴 선례 확인
 - references/ 패턴 가이드 참조
 - confidence 평가 (high/medium/low)
 
 ### 4. 재시도 건 처리 (v2 이상)
-review.json 존재 시 리뷰어의 수정안 기반으로 변환
+review.json이 존재하면:
+- review.json의 fix_applied와 fixed_sql 참조
+- 기존 변환이 아닌 리뷰어의 수정안을 기반으로 변환
 
 ### 5. 결과 기록
-- workspace/output/{filename}.xml — 변환된 XML (구조 유지, SQL만 교체)
+- workspace/output/{filename}.xml — 변환된 XML (원본 구조 유지, SQL만 교체)
 - workspace/results/{filename}/v{n}/converted.json — 변환 메타데이터
 - **출력 JSON은 schemas/converted.schema.json에 맞게 작성**
 
-### 6. 파라미터 타입 변환
-SQL 변환 후 `#{param, jdbcType=XXX}` 패턴도 변환:
-BLOB→BINARY, CLOB→VARCHAR, CURSOR→OTHER, DATE→TIMESTAMP
+### 6. query-tracking.json 갱신 (필수)
 
-## 복잡도 레벨별 전략
+변환 완료 후 반드시 query-tracking.json을 갱신한다:
+- 각 쿼리의 pg_sql (변환된 SQL)
+- conversion_method: "rule" 또는 "llm"
+- rules_applied: 적용된 룰 목록
+- confidence: "high" / "medium" / "low"
 
-| Level | 전략 |
-|-------|------|
-| L0 | 변환 불필요 |
-| L1 | rule-convert만 |
-| L2 | rule-convert 우선, 동적 SQL 주의 |
-| L3 | rule + llm 혼합, transform-plan 사용 |
-| L4 | llm 위주, edge-cases 필수 참조, 수동 검토 표시 |
+Leader가 --tracking-dir 옵션으로 경로를 전달하면, oracle-to-pg-converter.py가 자동 갱신한다.
+LLM 변환한 쿼리는 Converter가 직접 query-tracking.json에 기록:
+  results/{filename}/v{n}/query-tracking.json → 해당 query의 pg_sql, conversion_method="llm" 갱신
+
+### 7. Leader에게 반환
+한 줄 요약만: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"
 
 ## XML 생성 규칙
-- 원본 XML 구조(태그, 속성, 네임스페이스) 유지
-- SQL 본문만 Oracle → PostgreSQL 교체
-- 동적 SQL, selectKey 내부도 변환
-- resultMap, parameterMap, cache 등 비SQL 요소 변경 금지
+- 원본 XML의 구조(태그, 속성, 네임스페이스)를 그대로 유지
+- SQL 본문만 Oracle → PostgreSQL로 교체
+- 동적 SQL 태그 내부의 SQL도 변환
+- selectKey 내부 SQL도 변환
+- resultMap, parameterMap, cache 등 비SQL 요소는 변경하지 않음
+
+## converted.json 형식
+assets/parsed-template.json의 conversions 배열 참조:
+- query_id, method (rule/llm), rules_applied, original_sql, converted_sql, confidence, notes
+
+## 레이어 기반 변환
+
+Leader로부터 레이어 정보와 복잡도 레벨을 전달받는다.
+
+### 레이어 컨텍스트 활용
+- 이전 레이어에서 성공한 변환 결과를 참조할 수 있다
+- `<include refid="X">`의 X가 이전 레이어에서 이미 변환되었다면 → 변환된 SQL fragment 사용
+- `<association select="ns.queryId">`의 대상이 이미 변환되었다면 → 해당 변환 결과 참조
+
+### 복잡도 레벨별 전략
+| Level | 전략 |
+|-------|------|
+| L0 (Static) | 변환 불필요, Oracle 구문 없으면 그대로 복사 |
+| L1 (Simple Rule) | rule-convert만 사용. 높은 confidence 기대. |
+| L2 (Dynamic Simple) | rule-convert 우선, 동적 SQL 분기별 각각 확인 |
+| L3 (Dynamic Complex) | rule + llm 혼합. 중첩 동적 SQL 주의. confidence: medium 이하 가능. |
+| L4 (Oracle Complex) | llm 위주. edge-cases.md 반드시 참조. confidence: low 가능. 수동 검토 표시. |
+
+## L3~L4 쿼리: 단계적 변환 (필수)
+
+L3~L4 쿼리는 한번에 전체를 바꾸면 실수 확률이 높다. **반드시 아래 순서를 따르라:**
+
+1. **패턴 나열**: 쿼리 안의 모든 Oracle 패턴을 먼저 나열하라 (예: "CONNECT BY + NVL + ROWNUM 3중 페이징")
+2. **안쪽부터 변환 (Inside-Out)**: 가장 깊이 중첩된 서브쿼리/패턴부터 변환하라
+   - 예: 서브쿼리 안의 NVL → COALESCE 먼저
+   - 그다음 CONNECT BY → WITH RECURSIVE
+   - 마지막으로 ROWNUM 외부 구조 → LIMIT/OFFSET
+3. **하나씩 변환**: 한 패턴을 변환하고, 중간 SQL이 문법적으로 유효한지 확인한 후 다음 패턴으로
+4. **동적 SQL 태그 보존**: `<if>`, `<choose>`, `<foreach>` 태그는 절대 제거하지 마라. SQL 본문만 교체
+5. **`<sql>` fragment 주의**: `<include refid="X">`가 참조하는 `<sql id="X">`에 Oracle 패턴이 있으면, **fragment 자체를 변환하라** (include하는 쿼리가 아니라)
+6. **최종 검증**: 조립된 전체 SQL의 괄호 짝, JOIN 구조, alias를 확인
+
+transform-plan.json이 있으면 참조하되, 없어도 위 순서대로 직접 수행하라.
+
+**분기별 변환:**
+- <choose>/<when>/<otherwise> 각 분기의 SQL이 다른 복잡도를 가질 수 있음
+- 각 분기를 독립적으로 변환 (L1 분기는 rule, L4 분기는 llm)
+- 변환 후 다시 <choose> 구조에 재조립
+
+## <sql> Fragment 처리
+
+1. `<sql id="X">` fragment는 독립적으로 변환한다
+2. fragment 내부의 Oracle 구문을 직접 변환 (NVL→COALESCE 등)
+3. `<include refid="X">`는 **변경하지 않고 그대로 유지**
+4. fragment가 변환되면 include하는 모든 쿼리가 자동으로 변환된 SQL을 사용
+
+### ${property} 오버라이드가 있는 경우
+```xml
+<sql id="cols">${prefix}id, ${prefix}name</sql>
+<include refid="cols"><property name="prefix" value="u."/></include>
+```
+이 경우 fragment 자체에 Oracle 구문이 없으면 변환 불필요.
+${property}가 있는 fragment는 inline 전개하지 않고 그대로 둔다.
+
+## 동적 SQL 분기별 변환
+
+**각 분기를 독립적으로 변환하라. 하나의 분기 변환이 다른 분기에 영향을 주면 안 된다.**
+
+```xml
+<choose>
+  <when test="type == 'admin'">
+    AND role IN (SELECT role_id FROM admin_roles)  <!-- Oracle 구문 없음, 변환 불필요 -->
+  </when>
+  <otherwise>
+    AND status = NVL(#{status}, 'ACTIVE')  <!-- NVL만 변환 -->
+  </otherwise>
+</choose>
+```
+
+각 분기에서:
+1. Oracle 구문 존재 여부 개별 판단
+2. 변환이 필요한 분기만 변환
+3. 변환 불필요한 분기는 그대로 유지
+4. DECISION 로그: "when[0]: Oracle 구문 없음, 변환 스킵 / otherwise: NVL 감지, rule-convert 적용"
+
+## 파라미터 타입 변환
+
+SQL 본문 변환 후, 파라미터 매핑 속성도 변환한다 (param-type-convert 스킬 참조).
+
+1. 각 쿼리의 `#{param, jdbcType=XXX}` 패턴에서 jdbcType 확인
+2. 변환 필요 시 교체: BLOB→BINARY, CLOB→VARCHAR, CURSOR→OTHER, DATE→TIMESTAMP 등
+3. typeHandler 속성에 Oracle 전용 핸들러가 있으면 WARNING 기록
+4. mode=OUT + jdbcType=CURSOR → jdbcType=OTHER
+5. 변환 내역을 converted.json의 param_type_changes에 기록
+6. output XML에서도 해당 속성 교체
+
+**SQL 본문과 파라미터 속성을 모두 변환해야 완전한 변환이다. 하나라도 누락하면 런타임 에러 발생.**
 
 ## 로깅 (필수)
 
-모든 변환을 workspace/logs/activity-log.jsonl에 기록:
-- DECISION: 왜 rule/llm 선택, 어떤 패턴 감지
-- ATTEMPT: 입력/출력 SQL, 적용 룰
-- SUCCESS: 결과 요약, confidence
-- ERROR: 잔존 Oracle 구문, 에러 메시지 전문
+**모든 변환 활동을 workspace/logs/activity-log.jsonl에 기록한다.**
 
-## Return
-한 줄 요약: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"
+1. **쿼리별 변환 판단** — DECISION: 왜 rule/llm을 선택했는지, 어떤 패턴을 감지했는지
+2. **변환 시도** — ATTEMPT: 입력 SQL, 출력 SQL, 적용된 룰 목록
+3. **변환 성공** — SUCCESS: 변환 결과 요약, confidence
+4. **변환 실패/에스컬레이션** — ERROR: 룰 적용 후 잔존 Oracle 구문, 에러 메시지
+5. **edge-cases.md 참조 시** — DECISION: 어떤 선례를 참조했는지
+
+**특히 DECISION 로그가 중요하다. "왜 이렇게 변환했는지"를 반드시 남겨라.**
+**에러 발생 시 에러 메시지 전문과 시도한 SQL 전문을 반드시 포함하라.**

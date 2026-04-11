@@ -1,3 +1,6 @@
+---
+inclusion: manual
+---
 
 # DB 접속 설정
 
