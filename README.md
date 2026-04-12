@@ -120,6 +120,9 @@ Learner가 자동 PR을 생성하고 팀이 리뷰/머지하면 전원이 혜택
 | `tools/oracle-to-pg-converter.py` | Phase 2 | 기계적 SQL 변환 (40+ 룰, CDATA/멀티라인/ROWNUM/INTERVAL) |
 | `tools/validate-queries.py` | Phase 3 | EXPLAIN + 실제 실행 + SSM 원격 검증 + Result Integrity Guard |
 | `tools/generate-report.py` | Phase 7 | 전체 결과 종합 → 단일 HTML 리포트 |
+| `tools/generate-query-matrix.py` | Phase 7 | 전체 쿼리 × 3항목 (변환/EXPLAIN/비교) CSV |
+| `tools/generate-test-cases.py` | Phase 2.5 | Oracle 딕셔너리 기반 TC 자동 생성 |
+| `tools/sync-tracking-to-xml.py` | 유틸 | query-tracking.json → output XML 동기화 |
 | `tools/run-extractor.sh` | Phase 3.5 | MyBatis 엔진 SQL 추출 + 검증 (원커맨드) |
 | `tools/mybatis-sql-extractor/` | Phase 3.5 | Java/Gradle — SqlSessionFactory + BoundSql API |
 | `tools/reset-workspace.sh` | 초기화 | workspace 초기화 (input 보존) |
@@ -258,6 +261,13 @@ git clone https://github.com/netsgo0319/oma_kiro.git
 - [ ] **Healer 서브에이전트 추가** — Phase 4 셀프 힐링 루프를 내부에서 자체 수행. 실패 건 목록을 받아 Reviewer→Converter→Validator 루프를 3회까지 돌리고 결과만 반환 (최대 54 calls → 1 call)
 - [ ] **Leader 대형 JSON 직접 읽기 금지** — progress.json, query-tracking.json 등을 `fs_read`로 읽지 않고 `shell`로 요약만 추출하도록 프롬프트 규칙 추가
 - [ ] **토큰 사용량 추적** — Kiro가 Hook에 토큰 데이터를 노출하면 Phase/에이전트별 토큰 소모량을 progress.json과 HTML 리포트에 반영
+- [ ] **PreToolUse Hook 강화** — SQL DDL 차단 hook 우회 방지 (JSON 파싱, 코멘트 기반 우회 차단)
+- [ ] **Secret 감지 Hook 추가** — Bash 명령에서 비밀번호/API키 패턴 감지
+- [ ] **자동화 테스트 인프라** — pytest 기반, 6,991줄 도구 코드 테스트 커버리지
+- [ ] **JSON Schema 런타임 검증** — 10개 스키마의 실시간 검증 (jsonschema 패키지)
+- [ ] **compare 성능 개선** — subprocess per query → 배치 SQL 전용 (psql -f, sqlplus @)
+- [ ] **보고서 HTML 크기 제한** — 5000쿼리+ 시 SQL 잘라내기 또는 lazy loading
+- [ ] **steering 파일 졸업/아카이브** — edge-cases.md append-only → 룰 승격 시 제거
 
 ## 기여
 
