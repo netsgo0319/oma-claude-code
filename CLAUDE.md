@@ -157,10 +157,20 @@ python3 tools/validate-queries.py --parse-results --output workspace/results/_va
 
 Phase 3 + Phase 3.5 실패 건 모두 대상. 없으면 Phase 5로.
 
-루프: Reviewer → Converter → Validator. 최대 3회.
+**output XML 수정 전 반드시 백업:**
+```bash
+cp -r workspace/output/ workspace/output_v{N}_backup/
+```
+수정 후 regression이 발생하면 백업에서 복원 가능. **output은 git에 미트래킹이므로 백업이 유일한 롤백 수단.**
+
+**Leader가 직접 fix 스크립트를 작성하여 output XML을 수정하지 마라.**
+반드시 Converter 서브에이전트에 위임하라. Leader가 직접 sed/Python으로 output을 수정하면 regression이 발생한다.
+
+루프: Reviewer(원인 분석) → Converter(재변환) → Validator(재검증). 최대 3회.
 상태 전이: validating → retry_1 → retry_2 → retry_3 → escalated (또는 → success).
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
+**매 retry 후 반드시 EXPLAIN 재검증.** regression 확인 없이 다음 retry로 넘어가지 마라.
 
 ### Phase 5: Learning
 
