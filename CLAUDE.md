@@ -228,10 +228,23 @@ python3 tools/generate-report.py
 
 ## 상태 표시 (매 응답 시작에 필수)
 
+● 완료, ◐ 진행중, ○ 대기:
 ```
-[DONE] Phase 0~2  [>>  ] Phase 3 (80/150)  [    ] Phase 3.5~7
-Progress: 80/150 (53%) | OK:80 FAIL:0 WAIT:70 ESC:0
+● Phase 0: Pre-flight ✓
+● Phase 1: Parse+Convert (426파일, 4953쿼리)
+● Phase 2: LLM Convert (26건)
+◐ Phase 3: Validation (80/150)
+○ Phase 3.5: MyBatis Engine
+○ Phase 4~7
+─────────────────────
+Progress: 53% | OK:80 FAIL:0 WAIT:70 ESC:0
 ```
+
+## TODO 관리
+
+TODO(TaskCreate)를 사용할 때 **반드시 Phase 순서대로 생성**하라:
+Phase 0 → 1 → 2 → 2.5 → 3 → 3.5 → 4 → 5 → 6 → 7.
+뒤죽박죽으로 만들면 사용자가 진행 상황을 파악하기 어렵다.
 
 ## Resume (중단 후 재개)
 
