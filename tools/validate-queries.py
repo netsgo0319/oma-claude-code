@@ -429,6 +429,109 @@ SET HEADING ON
         print(f"\nSaved: {output_path / 'compare_validated.json'}")
         return validated
 
+    @staticmethod
+    def _extract_mybatis_sql(elem):
+        """Extract SQL from MyBatis XML element, handling dynamic SQL tags intelligently.
+        Instead of blindly joining all itertext(), this understands:
+        - <if>: include content (assume condition true for max coverage)
+        - <choose>/<when>/<otherwise>: pick first <when> only (avoid duplicate branches)
+        - <where>: wrap content with WHERE, strip leading AND/OR
+        - <set>: wrap content with SET, strip trailing comma
+        - <trim>: apply prefix/suffix/prefixOverrides/suffixOverrides
+        - <foreach>: generate single iteration placeholder
+        - <include>: skip (already expanded in output XML, or placeholder)
+        - <selectKey>: skip (separate statement)
+        - <bind>: skip
+        """
+        def _walk(el):
+            parts = []
+            # Element's own text
+            if el.text and el.text.strip():
+                parts.append(el.text.strip())
+
+            for child in el:
+                tag = child.tag if isinstance(child.tag, str) else ''
+
+                if tag == 'if':
+                    # Include content (assume condition true)
+                    parts.append(_walk(child))
+
+                elif tag == 'choose':
+                    # Pick first <when> only, or <otherwise> if no <when>
+                    when = child.find('when')
+                    if when is not None:
+                        parts.append(_walk(when))
+                    else:
+                        otherwise = child.find('otherwise')
+                        if otherwise is not None:
+                            parts.append(_walk(otherwise))
+
+                elif tag == 'when':
+                    parts.append(_walk(child))
+
+                elif tag == 'otherwise':
+                    # Only reached if no <when> matched above
+                    parts.append(_walk(child))
+
+                elif tag == 'where':
+                    inner = _walk(child).strip()
+                    if inner:
+                        # Strip leading AND/OR
+                        inner = re.sub(r'^(?:AND|OR)\s+', '', inner, flags=re.IGNORECASE)
+                        parts.append(f'WHERE {inner}')
+
+                elif tag == 'set':
+                    inner = _walk(child).strip()
+                    # Remove trailing comma (MyBatis <set> does this)
+                    inner = re.sub(r',\s*$', '', inner)
+                    if inner:
+                        parts.append(f'SET {inner}')
+
+                elif tag == 'trim':
+                    inner = _walk(child).strip()
+                    prefix = child.get('prefix', '')
+                    suffix = child.get('suffix', '')
+                    prefix_overrides = child.get('prefixOverrides', '')
+                    suffix_overrides = child.get('suffixOverrides', '')
+                    if prefix_overrides and inner:
+                        for po in prefix_overrides.split('|'):
+                            po = po.strip()
+                            if po and inner.upper().startswith(po.upper()):
+                                inner = inner[len(po):].strip()
+                                break
+                    if suffix_overrides and inner:
+                        for so in suffix_overrides.split('|'):
+                            so = so.strip()
+                            if so and inner.upper().endswith(so.upper()):
+                                inner = inner[:-len(so)].strip()
+                                break
+                    if inner:
+                        parts.append(f'{prefix} {inner} {suffix}'.strip())
+
+                elif tag == 'foreach':
+                    # Generate single item placeholder
+                    item = child.get('item', 'item')
+                    open_str = child.get('open', '')
+                    close_str = child.get('close', '')
+                    inner = _walk(child).strip()
+                    if inner:
+                        parts.append(f'{open_str}{inner}{close_str}')
+
+                elif tag in ('include', 'selectKey', 'bind'):
+                    pass  # Skip
+
+                else:
+                    # Unknown tag — include text content
+                    parts.append(_walk(child))
+
+                # Tail text (text after closing tag)
+                if child.tail and child.tail.strip():
+                    parts.append(child.tail.strip())
+
+            return ' '.join(p for p in parts if p)
+
+        return _walk(elem)
+
     def load_queries(self):
         """Load all queries from converted XML files."""
         for xml_file in sorted(self.output_dir.glob('*.xml')):
@@ -442,12 +545,7 @@ SET HEADING ON
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.findall(f'.//{tag}'):
                     qid = elem.get('id', 'unknown')
-                    # Get all text content
-                    parts = []
-                    for text in elem.itertext():
-                        parts.append(text.strip())
-                    raw_sql = ' '.join(parts)
-                    # Remove SQL comments (-- ...) that may contain non-ASCII chars
+                    raw_sql = self._extract_mybatis_sql(elem)
                     raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
                     raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
 
