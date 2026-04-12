@@ -125,46 +125,92 @@ python3 tools/validate-queries.py --parse-results --output workspace/results/_va
 ### Phase 3.5: MyBatis Engine (양쪽 추출 + 비교)
 
 **Java가 설치되어 있으면 반드시 실행. 건너뛰지 마라.**
-**Phase 3에서 동적 SQL 때문에 비교 못 한 쿼리들이 여기서 해결된다.**
 
-**input XML과 output XML 양쪽에서 MyBatis SqlSessionFactory로 SQL 추출:**
 ```bash
+# Step 1: 양쪽 SQL 추출
 bash tools/run-extractor.sh --validate
-```
-이 명령이:
-1. input XML → Oracle SQL variants 추출 (workspace/results/_extracted/)
-2. output XML → PG SQL variants 추출 (workspace/results/_extracted_pg/)
-3. 양쪽 SQL을 TC 바인드로 배치 생성
-4. psql -f / sqlplus @파일로 배치 실행
-5. 결과 비교
 
-**Phase 3에서 동적 SQL로 비교 못 한 쿼리들이 여기서 해결된다.**
+# Step 2: 추출된 SQL로 배치 스크립트 생성 (--compare 쓰지 마라, OOM 위험)
+python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation_phase7/ --tracking-dir workspace/results/
+
+# Step 3: psql/sqlplus 배치 실행 (빠름)
+PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
+  -f workspace/results/_validation_phase7/explain_test.sql \
+  > workspace/results/_validation_phase7/explain_results.txt 2>&1
+
+PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
+  -f workspace/results/_validation_phase7/execute_test.sql \
+  > workspace/results/_validation_phase7/execute_results.txt 2>&1
+
+sqlplus -S $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID \
+  @workspace/results/_validation_phase7/oracle_compare.sql \
+  > workspace/results/_validation_phase7/oracle_results.txt 2>&1
+
+# Step 4: 결과 파싱
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation_phase7/ --tracking-dir workspace/results/
+```
+
+**절대 `--compare` 옵션으로 직접 실행하지 마라 (subprocess per query = OOM/타임아웃).**
+**항상 --generate → psql -f / sqlplus @ → --parse-results 3단계로 하라.**
 
 ### Phase 4: Self-healing
 
-Phase 3 + 3.5 실패 건 모두 대상. 루프: Reviewer → Converter → Validator. 최대 3회.
-**병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬.
+Phase 3 + Phase 3.5 실패 건 모두 대상. 없으면 Phase 5로.
+
+루프: Reviewer → Converter → Validator. 최대 3회.
+상태 전이: validating → retry_1 → retry_2 → retry_3 → escalated (또는 → success).
+
+**병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
 
 ### Phase 5: Learning
 
-Learner 서브에이전트 → steering 갱신 + PR + **main으로 checkout 복귀**.
+Learner 서브에이전트가:
+1. 반복 실패→성공 패턴 → oracle-pg-rules.md 룰 추가
+2. 새 LLM 패턴 → edge-cases.md 등록
+3. Git branch + PR 자동 생성 → **main으로 checkout 복귀**
 
 ### Phase 6: DBA/Expert Final Review (필수)
 
-Reviewer 서브에이전트에 위임. 검증 항목:
-1. XML 문법, 태그 구조, 동적 SQL 보존
-2. include 참조 무결성, 파라미터 바인딩
-3. Oracle 잔여 패턴, CDATA, selectKey
-4. **Phase 완료 점검**: 모든 Phase 실행됐는지, --compare 실행됐는지, TC 사용됐는지
+**output XML의 최종 품질을 검증한다. 보고서 생성 전 마지막 관문.**
 
-결과: `workspace/results/_dba_review/review-result.json`
+Reviewer 서브에이전트에 위임하여 아래 항목을 검증:
+1. **MyBatis XML 문법**: 모든 output XML이 valid XML인지 (파싱 에러 없음)
+2. **태그 구조**: `<select>`, `<insert>`, `<update>`, `<delete>` 태그가 올바르게 닫혔는지
+3. **동적 SQL 보존**: `<if>`, `<choose>`, `<foreach>` 등 동적 태그가 원본과 동일하게 보존됐는지
+4. **include 참조 무결성**: `<include refid="X">` 가 참조하는 `<sql id="X">`가 모두 존재하는지
+5. **파라미터 바인딩**: `#{param}` 이 원본과 동일한지 (누락/변경 없음)
+6. **PostgreSQL 잔여 패턴**: 변환 후에도 Oracle 구문이 남아있지 않은지 (SYSDATE, NVL, ROWNUM 등)
+7. **CDATA 블록**: CDATA 안의 SQL이 올바르게 변환됐는지
+8. **selectKey**: sequence 변환이 올바른지 (NEXTVAL → nextval)
+
+**파이프라인 완료 점검 (Phase 6에서 함께 수행):**
+9. **Phase 완료 확인**: Phase 0~5가 모두 실행됐는지. 빠진 Phase 보고
+10. **쿼리 매트릭스 확인**: `python3 tools/generate-query-matrix.py` 실행하여 전체 쿼리의 3항목 현황 확인:
+    - **변환**: converted / no_change / pending
+    - **EXPLAIN**: pass / fail / not_tested
+    - **비교(Source vs Target)**: pass(TC N건 중 M건 성공) / fail(사유) / not_tested
+11. **미완료 항목 보고**: EXPLAIN_ONLY, CONVERTED_ONLY, PENDING 쿼리 목록과 사유
+12. **Compare 검증 완료 확인**: TC를 MyBatis SqlSessionFactory로 수행했는지, psql -f 배치로 실행했는지
+13. **에스컬레이션 처리 확인**: 에스컬레이션된 쿼리가 사용자에게 보고됐는지
+
+검증 결과를 `workspace/results/_dba_review/review-result.json`에 저장.
+문제 발견 시 목록과 함께 사용자에게 보고. Phase 4로 돌아가지 않음 (보고만).
 
 ### Phase 7: Report (마지막)
 
 ```bash
+# 쿼리 매트릭스 CSV 생성 (전체 쿼리 × 3항목)
+python3 tools/generate-query-matrix.py --output workspace/reports/query-matrix.csv --json
+
+# HTML 리포트 생성
 python3 tools/generate-report.py
 ```
-→ workspace/reports/migration-report.html (Phase 6 완료 후에만)
+
+산출물:
+- `workspace/reports/query-matrix.csv` — 전체 쿼리별 변환/EXPLAIN/비교 현황
+- `workspace/reports/migration-report.html` — 통합 HTML 리포트
+
+**Phase 6 (DBA Review) 완료 후에만 실행.** 모든 검증 결과를 포함.
 
 ## progress.json
 
