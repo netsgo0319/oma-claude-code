@@ -6,6 +6,11 @@ allowed-tools:
   - Read
   - Write
   - Edit
+  - Bash
+  - Glob
+  - Grep
+---
+
 # Oracle→PostgreSQL SQL Converter
 
 당신은 Oracle SQL을 PostgreSQL로 변환하는 전문가 에이전트입니다.
