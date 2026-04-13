@@ -162,7 +162,7 @@ TC 소스 우선순위: **샘플 데이터(실제값)** > Java VO 타입 > V$SQL
 
 ### Phase 3: Validation (MyBatis 기반, 3단계)
 
-**Java 필수. MyBatis 엔진이 유일한 SQL 렌더링 경로.**
+**Java 권장. MyBatis 엔진이 기본 SQL 렌더링 경로.**
 **정적 XML 추출은 fallback일 뿐. Java 없으면 검증 정확도가 크게 떨어진다.**
 **DML: SELECT COUNT(*) WHERE로 Oracle 비교. PG는 BEGIN/ROLLBACK + 5s timeout.**
 
@@ -235,26 +235,20 @@ cp -r workspace/output/ workspace/output_v{N}_backup/
 
 상태 전이: open → in_progress → retry_1 → ... → retry_5 → escalated (또는 → resolved).
 
-**Step 3: 티켓 분류별 처리 전략**
-| 카테고리 | 처리 | 스킵? | 비고 |
-|---------|------|------|------|
-| xml_invalid | CDATA 래핑 | **힐링** | Converter에 위임 |
-| syntax_error | SQL 수정 또는 TC 바인드 변경 | **힐링 (스킵 금지)** | 바인드값 바꿔서 MyBatis 재시도 |
-| type_mismatch | TC 바인드값 타입/길이 조정 | **힐링 (스킵 금지)** | value too long → 짧은 값, 타입 불일치 → 타입 변경 |
-| residual_oracle | 미변환 패턴 재변환 | **힐링** | Converter에 위임 |
-| operator_mismatch | 명시적 캐스트 추가 | **힐링** | ::TEXT, ::INTEGER 등 |
-| relation_missing | 테이블 미존재 | **스킵 (유일한 스킵 대상)** | DBA 스키마 이관 필요 → Phase 6 보고 |
-| column_missing | 컬럼 미존재 | **스킵** | DBA 확인 필요 |
+**Step 3: 힐링 정책**
 
-**relation_missing/column_missing 외에는 전부 최소 3회 Reviewer→Converter(LLM포함)→재검증 루프를 돌려라.**
-- syntax_error: 바인드값 변경, SQL 구조 수정, MyBatis 재렌더링
-- type_mismatch: 바인드값 타입/길이 조정 (value too long → 짧은 값)
-- operator_mismatch: 명시적 캐스트 추가 (::TEXT, ::INTEGER)
-- xml_invalid: CDATA 래핑, 태그 수정
-- residual_oracle: 미변환 패턴 LLM 재변환
-**3회 실패 후에도 해결 안 되면 2회 더 시도 (총 5회). 그래도 실패 시 escalated.**
-**relation_missing/column_missing만 DBA 대상으로 스킵 (힐링 불가).**
-| operator_mismatch | 타입 캐스트 추가 | Converter | ::TEXT, ::INTEGER 등 |
+| 카테고리 | 최소 재시도 | 처리 루프 |
+|---------|-----------|----------|
+| syntax_error | **3회 필수** | Reviewer(진단) → Converter(**LLM**, SQL/바인드 수정) → 재검증 |
+| type_mismatch | **3회 필수** | Reviewer → Converter(바인드값 타입/길이 조정) → 재검증 |
+| operator_mismatch | **3회 필수** | Reviewer → Converter(캐스트 추가 ::TEXT 등) → 재검증 |
+| xml_invalid | **3회 필수** | Reviewer → Converter(CDATA 래핑) → 재검증 |
+| residual_oracle | **3회 필수** | Reviewer → Converter(**LLM** 재변환) → 재검증 |
+| relation_missing | **스킵** | DBA 스키마 이관 → Phase 6 보고 |
+| column_missing | **스킵** | DBA 확인 → Phase 6 보고 |
+
+3회 실패 → 2회 추가 (총 5회). 5회 실패 → escalated.
+**relation_missing/column_missing만 스킵. 나머지 전부 최소 3회 힐링 루프 필수.**
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
 **매 retry 후 반드시 EXPLAIN 재검증.** regression 확인 없이 다음 retry로 넘어가지 마라.
@@ -335,7 +329,7 @@ Progress: 53% | OK:80 FAIL:0 WAIT:70 ESC:0
 ## TODO 관리
 
 TODO(TaskCreate)를 사용할 때 **반드시 Phase 순서대로 생성**하라:
-Phase 0 → 1 → 2 → 2.5 → 3 → 3.5 → 4 → 5 → 6 → 7.
+Phase 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7.
 뒤죽박죽으로 만들면 사용자가 진행 상황을 파악하기 어렵다.
 
 ## Resume (중단 후 재개)
