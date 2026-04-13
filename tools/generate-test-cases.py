@@ -34,12 +34,24 @@ def _sqlplus():
     return 'sqlplus'
 
 def _run_sql(sql, timeout=120):
+    """sqlplus로 SQL 실행. oracledb가 있으면 그쪽을 직접 사용하는 게 낫지만,
+    generate-test-cases의 딕셔너리 쿼리는 sqlplus 파이프라인 형태라 유지."""
     try:
         r = subprocess.run([_sqlplus(), '-S', _oracle_conn_str()],
                            input=sql, capture_output=True, text=True, timeout=timeout)
         return r.stdout.strip()
     except Exception as e:
         print(f"  WARNING: sqlplus error: {e}"); return ''
+
+def _get_oracle_conn():
+    """oracledb Python 패키지로 Oracle 접속. 없으면 None."""
+    try:
+        import oracledb
+        dsn = f"{os.environ.get('ORACLE_HOST','')}:{os.environ.get('ORACLE_PORT','1521')}/{os.environ.get('ORACLE_SID','')}"
+        return oracledb.connect(user=os.environ.get('ORACLE_USER',''),
+                                password=os.environ.get('ORACLE_PASSWORD',''), dsn=dsn)
+    except Exception:
+        return None
 
 def _ora_ok():
     import shutil

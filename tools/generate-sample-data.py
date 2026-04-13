@@ -75,8 +75,53 @@ def collect_all_tables(input_dir):
 
 # ── Oracle 샘플 데이터 수집 ──
 
+def _get_oracle_connection():
+    """oracledb Python 패키지로 Oracle 접속. 없으면 None."""
+    try:
+        import oracledb
+    except ImportError:
+        return None, 'oracledb not installed'
+    host = os.environ.get('ORACLE_HOST', '')
+    port = os.environ.get('ORACLE_PORT', '1521')
+    sid = os.environ.get('ORACLE_SID', '')
+    user = os.environ.get('ORACLE_USER', '')
+    pwd = os.environ.get('ORACLE_PASSWORD', '')
+    if not host or not user:
+        return None, 'ORACLE_HOST/USER not set'
+    try:
+        dsn = f"{host}:{port}/{sid}"
+        conn = oracledb.connect(user=user, password=pwd, dsn=dsn)
+        return conn, None
+    except Exception as e:
+        return None, str(e)
+
+
 def query_sample_rows(table_name, schema):
-    """테이블에서 최대 10행을 가져온다. Returns (result_dict|None, error_msg|None)."""
+    """테이블에서 최대 10행. oracledb 우선, sqlplus fallback."""
+    # Priority 1: oracledb (깔끔, 파싱 불필요)
+    conn, err = _get_oracle_connection()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute(f"SELECT * FROM {schema}.{table_name} WHERE ROWNUM <= 10")
+            columns = [col[0] for col in cur.description]
+            raw_rows = cur.fetchall()
+            rows = []
+            for row in raw_rows:
+                rows.append({col: (str(v) if v is not None else None) for col, v in zip(columns, row)})
+            cur.close()
+            conn.close()
+            return {'table': table_name, 'columns': columns, 'rows': rows, 'row_count': len(rows)}, None
+        except Exception as e:
+            conn.close()
+            err_str = str(e)
+            if 'ORA-00942' in err_str:
+                return None, 'table or view does not exist (ORA-00942)'
+            if 'ORA-01031' in err_str:
+                return None, 'insufficient privileges (ORA-01031)'
+            return None, err_str
+
+    # Priority 2: sqlplus (fallback — 텍스트 파싱)
     sql = (f"SET PAGESIZE 50000 FEEDBACK OFF LINESIZE 32767 TRIMSPOOL ON\n"
            f"SET COLSEP '|'\nSET HEADING ON\nSET UNDERLINE OFF\n"
            f"SELECT * FROM {schema}.{table_name} WHERE ROWNUM <= 10;\nEXIT;\n")
@@ -92,7 +137,6 @@ def query_sample_rows(table_name, schema):
         m = re.search(r'(ORA-\d+[^\n]*)', output)
         return None, m.group(1) if m else 'unknown Oracle error'
 
-    # Parse: header | separator | data rows
     data_lines = [l for l in output.split('\n')
                   if l.strip() and not l.strip().startswith('SQL>')]
     if not data_lines:
@@ -102,7 +146,6 @@ def query_sample_rows(table_name, schema):
     if not columns:
         return None, 'could not parse column headers'
 
-    # Skip dash-separator lines
     row_start = 1
     for i in range(1, min(3, len(data_lines))):
         if not data_lines[i].replace('-', '').replace(' ', '').replace('|', ''):
