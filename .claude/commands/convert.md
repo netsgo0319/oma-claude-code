@@ -11,7 +11,6 @@ Execute the full OMA (Oracle Migration Accelerator) pipeline from Phase 0 throug
    - **Phase 2 - LLM Convert**: unconverted 패턴을 Converter 서브에이전트에 위임 (CONNECT BY, MERGE, (+) 등).
    - **Phase 2.5 - Test Cases**: `python3 tools/generate-test-cases.py`. Oracle 딕셔너리 4소스에서 TC 생성.
    - **Phase 3 - Validation**: EXPLAIN → Execute → Compare (3단계). MyBatis 추출 SQL 우선 사용 (`--extracted`).
-   - **Phase 3.5 - MyBatis Engine**: `bash tools/run-extractor.sh --validate`. Java로 동적 SQL 렌더링 후 재검증.
    - **Phase 4 - Self-healing**: `python3 tools/generate-healing-tickets.py`. 티켓 기반 최대 5회 힐링 루프.
    - **Phase 5 - Learning**: Learner 서브에이전트가 edge-cases/rules 갱신 + Git PR.
    - **Phase 6 - DBA Review**: Reviewer 서브에이전트가 XML 무결성 + 잔여 패턴 최종 검증.

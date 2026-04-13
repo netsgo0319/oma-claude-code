@@ -90,7 +90,7 @@ Oracle 패턴이 아니므로 "잔여 Oracle 구문"으로 분류하지 마라.
   "previous_sql": "WITH RECURSIVE ... UNION ALL ...",
   "fixed_sql": "WITH RECURSIVE ... WHERE NOT (id = ANY(path))",
   "attempt": 2,
-  "max_attempts": 3,
+  "max_attempts": 5,
   "confidence": "medium"
 }
 ```
