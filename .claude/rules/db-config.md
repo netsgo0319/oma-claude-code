@@ -48,6 +48,9 @@ export ORACLE_USER=wmson
 export ORACLE_PASSWORD=****
 export ORACLE_SCHEMA=WMSON          # 딕셔너리 쿼리 대상 스키마 (admin 계정 사용 시)
 
+# Java 소스 (VO/DTO 분석용 — 복사 불필요, 경로 참조만)
+export JAVA_SRC_DIR=/path/to/app/src/main/java
+
 # PostgreSQL
 export PG_HOST=pg.example.com
 export PG_PORT=5432

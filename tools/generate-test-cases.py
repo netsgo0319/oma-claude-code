@@ -343,7 +343,8 @@ def main():
     print("=== Phase 2.5: Test Case Generator (sample-data-first) ===\n")
 
     # Collect sources
-    vo_map = parse_java_vo(args.java_src) if args.java_src else {}
+    java_src = args.java_src or os.environ.get('JAVA_SRC_DIR', '')
+    vo_map = parse_java_vo(java_src) if java_src else {}
     sample_data = load_sample_data(samples_dir)
     pt_map = parse_parameter_types(results_dir)
 

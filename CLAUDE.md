@@ -109,12 +109,16 @@ echo "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema = 
 ```
 pgcrypto 미설치 시: `CREATE EXTENSION IF NOT EXISTS pgcrypto;` 실행을 사용자에게 안내.
 
-**테이블 샘플 데이터 수집 (Phase 3 TC에 사용):**
+**Java 소스 경로 확인 (VO/DTO 분석용, 선택):**
+`JAVA_SRC_DIR` 환경변수가 설정되어 있으면 Phase 2.5에서 Java VO 클래스를 분석하여 TC 정확도를 높인다.
+복사 불필요 — 원본 프로젝트 경로를 참조만 한다. 없으면 스키마+샘플 데이터로 대체.
+
+**테이블 샘플 데이터 수집 (TC에 사용):**
 ```bash
 python3 tools/generate-sample-data.py
 ```
 XML에서 참조되는 테이블별 10행 샘플 조회 → `workspace/results/_samples/{TABLE}.json`.
-이후 Phase 2.5 TC 생성에서 실제 데이터 값으로 사용.
+이후 Phase 2.5 TC 생성 + Phase 3 MyBatis 검증에서 실제 데이터 값으로 사용.
 
 ### Phase 1: Parse + Analyze + Rule Convert
 
