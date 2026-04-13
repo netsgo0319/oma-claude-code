@@ -82,8 +82,10 @@ Agent({
 
 **XML 복사 주의: `*-sql-oracle.xml` 같은 패턴으로 필터하지 마라.** `LoggingMapper.xml`, `CommonMapper.xml` 등 비표준 네이밍도 MyBatis mapper이다. 소스 디렉토리에서 `*.xml` 전부 복사하라. `find src/ -name "*.xml" -path "*/mapper/*"` 권장.
 | Python 3 | `python3 --version` | **필수** | 설치 안내 |
+| oracledb | `python3 -c "import oracledb; print(oracledb.__version__)"` | **권장** | `pip install oracledb`. 없으면 sqlplus fallback (파싱 취약) |
+| psycopg2 | `python3 -c "import psycopg2; print(psycopg2.__version__)"` | **권장** | `pip install psycopg2-binary`. 없으면 psql fallback |
 | psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
-| sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
+| sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내. oracledb 있으면 불필요 |
 | Java 11+ | `java -version` | **권장** Phase 3 | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
 | Gradle | — | 불필요 | **레포에 gradlew 포함됨.** Java만 있으면 `tools/mybatis-sql-extractor/gradlew`가 Gradle을 자동 다운로드 |
 | Java 소스 | `$JAVA_SRC_DIR` 경로 + VO/DTO/DAO 수 확인 | 선택 | 사용자에게 경로 안내. VO/DTO 분석으로 TC ↑ |
