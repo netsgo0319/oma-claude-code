@@ -1571,15 +1571,15 @@ document.getElementById('refresh-toggle').addEventListener('click',function(){
   }
 });
 
-// ========== Init ==========
-renderOverview();
-renderTickets();
-renderFiles();
-renderTimeline();
+// ========== Init (try-catch per section so one failure doesn't block others) ==========
+try{renderOverview();}catch(e){console.error('renderOverview:',e);}
+try{renderTickets();}catch(e){console.error('renderTickets:',e);}
+try{renderFiles();}catch(e){console.error('renderFiles:',e);}
+try{renderTimeline();}catch(e){console.error('renderTimeline:',e);}
 
 // ========== Explorer 3-Panel Navigation ==========
 var expSelectedFile=null, expSelectedQuery=null;
-expRenderFiles();
+try{expRenderFiles();}catch(e){console.error('expRenderFiles:',e);}
 
 function expRenderFiles(){
   let files=DATA.files||{};
@@ -1726,7 +1726,7 @@ function expSelectQuery(fname, qid){
 
   document.getElementById('exp-panel-detail').innerHTML=html;
 }
-renderLog();
+try{renderLog();}catch(e){console.error("renderLog:",e);}
 
 function renderTickets(){
   let html='';
