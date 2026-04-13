@@ -41,8 +41,10 @@ echo ""
 
 # Step 1: Check Java
 if ! command -v java &>/dev/null; then
-    echo "ERROR: Java not found. Install Java 11+ to use Phase 3.5."
-    exit 1
+    echo "WARNING: Java not found. Phase 3.5 skipped. Install Java 11+ for MyBatis engine validation."
+    mkdir -p "$EXTRACTED_DIR"
+    echo '{"skipped": true, "reason": "java_not_found"}' > "$EXTRACTED_DIR/.skipped"
+    exit 0
 fi
 JAVA_VER=$(java -version 2>&1 | head -1)
 echo "Java: $JAVA_VER"

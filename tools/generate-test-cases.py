@@ -576,7 +576,7 @@ def main():
                     mybatis_params = []
                     for c in cases:
                         params = c.get('params', {})
-                        if params and not c.get('execute_skip'):
+                        if params:  # include execute_skip too — MyBatis rendering is safe (no execution)
                             mybatis_params.append(params)
                     if mybatis_params:
                         merged_tc[qid] = mybatis_params

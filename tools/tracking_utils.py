@@ -179,12 +179,13 @@ class TrackingManager:
 
     # ===== Phase 3: 검증 결과 기록 =====
 
-    def update_explain(self, query_id, status, plan_summary=None, error=None, duration_ms=None, phase='3'):
-        """Update EXPLAIN result. phase='3' or '3.5' to avoid overwrite."""
+    def update_explain(self, query_id, status, plan_summary=None, error=None, duration_ms=None, phase='3', source='static'):
+        """Update EXPLAIN result. phase='3' or '3.5', source='static' or 'mybatis'."""
         q = self._find_query(query_id)
         if q:
             result = {
                 'status': status,
+                'validation_source': source,
                 'plan_summary': plan_summary,
                 'error': error,
                 'executed_at': now_iso(),
