@@ -246,8 +246,14 @@ cp -r workspace/output/ workspace/output_v{N}_backup/
 | relation_missing | 테이블 미존재 | **스킵 (유일한 스킵 대상)** | DBA 스키마 이관 필요 → Phase 6 보고 |
 | column_missing | 컬럼 미존재 | **스킵** | DBA 확인 필요 |
 
-**syntax_error와 type_mismatch를 스킵하지 마라.** 이들은 바인드값을 바꾸거나 SQL을 수정하면 해결 가능하다.
-relation_missing/column_missing만 DBA 대상으로 스킵.
+**relation_missing/column_missing 외에는 전부 최소 3회 Reviewer→Converter(LLM포함)→재검증 루프를 돌려라.**
+- syntax_error: 바인드값 변경, SQL 구조 수정, MyBatis 재렌더링
+- type_mismatch: 바인드값 타입/길이 조정 (value too long → 짧은 값)
+- operator_mismatch: 명시적 캐스트 추가 (::TEXT, ::INTEGER)
+- xml_invalid: CDATA 래핑, 태그 수정
+- residual_oracle: 미변환 패턴 LLM 재변환
+**3회 실패 후에도 해결 안 되면 2회 더 시도 (총 5회). 그래도 실패 시 escalated.**
+**relation_missing/column_missing만 DBA 대상으로 스킵 (힐링 불가).**
 | operator_mismatch | 타입 캐스트 추가 | Converter | ::TEXT, ::INTEGER 등 |
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
