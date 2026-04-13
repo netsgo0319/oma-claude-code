@@ -65,15 +65,21 @@ Agent({
 
 ## Phase별 실행
 
-### Phase 0: Pre-flight Check
+### Phase 0: Pre-flight Check + 환경 설치
 
-| 항목 | 확인 방법 | 필수 |
-|------|----------|------|
-| XML 파일 | `ls workspace/input/*.xml` | **필수** |
-| sqlplus | `which sqlplus` | 선택 (없으면 Phase 2.5 스킵) |
-| psql | `which psql` | 선택 (없으면 Phase 3 스킵) |
-| Oracle 접속 | sqlplus로 SELECT 1 FROM DUAL | 선택 |
-| PG 접속 | psql로 SELECT 1 | 선택 |
+| 항목 | 확인 방법 | 필수 | 미설치 시 |
+|------|----------|------|----------|
+| XML 파일 | `ls workspace/input/*.xml` | **필수** | 중단 |
+| Python 3 | `python3 --version` | **필수** | 설치 안내 |
+| psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
+| sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
+| Java 11+ | `java -version` | 선택 (Phase 3.5) | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
+| Gradle | `gradle --version` 또는 `./gradlew --version` | 선택 (Phase 3.5) | `brew install gradle` 또는 `apt install gradle` 안내. 없으면 `tools/mybatis-sql-extractor/gradlew` 사용 |
+| Oracle 접속 | sqlplus로 SELECT 1 FROM DUAL | 선택 | 환경변수 확인 안내 |
+| PG 접속 | psql로 SELECT 1 | 선택 | 환경변수 확인 안내 |
+
+**미설치 도구가 있으면 설치 명령을 사용자에게 안내하라. 자동 설치하지 마라 (sudo 필요).**
+**Java/Gradle이 없으면 Phase 3.5 스킵 가능하다고 안내하되, 설치를 권장하라.**
 
 ### Phase 1: Parse + Analyze + Rule Convert
 
