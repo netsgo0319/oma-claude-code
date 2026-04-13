@@ -236,13 +236,18 @@ cp -r workspace/output/ workspace/output_v{N}_backup/
 상태 전이: open → in_progress → retry_1 → ... → retry_5 → escalated (또는 → resolved).
 
 **Step 3: 티켓 분류별 처리 전략**
-| 카테고리 | 처리 | 에이전트 | 비고 |
-|---------|------|---------|------|
-| xml_invalid | CDATA 래핑 | Converter | 즉시 수정 가능 |
-| syntax_error | SQL 구문 수정 | Reviewer→Converter | 딥다이브 5회 |
-| residual_oracle | 미변환 패턴 재변환 | Converter | 룰 재적용 |
-| type_mismatch | TC 바인드값 조정 | 자동 (스킵 가능) | DBA 불필요 |
-| relation_missing | 테이블 미존재 | 스킵 (DBA 티켓) | Phase 6 보고 |
+| 카테고리 | 처리 | 스킵? | 비고 |
+|---------|------|------|------|
+| xml_invalid | CDATA 래핑 | **힐링** | Converter에 위임 |
+| syntax_error | SQL 수정 또는 TC 바인드 변경 | **힐링 (스킵 금지)** | 바인드값 바꿔서 MyBatis 재시도 |
+| type_mismatch | TC 바인드값 타입/길이 조정 | **힐링 (스킵 금지)** | value too long → 짧은 값, 타입 불일치 → 타입 변경 |
+| residual_oracle | 미변환 패턴 재변환 | **힐링** | Converter에 위임 |
+| operator_mismatch | 명시적 캐스트 추가 | **힐링** | ::TEXT, ::INTEGER 등 |
+| relation_missing | 테이블 미존재 | **스킵 (유일한 스킵 대상)** | DBA 스키마 이관 필요 → Phase 6 보고 |
+| column_missing | 컬럼 미존재 | **스킵** | DBA 확인 필요 |
+
+**syntax_error와 type_mismatch를 스킵하지 마라.** 이들은 바인드값을 바꾸거나 SQL을 수정하면 해결 가능하다.
+relation_missing/column_missing만 DBA 대상으로 스킵.
 | operator_mismatch | 타입 캐스트 추가 | Converter | ::TEXT, ::INTEGER 등 |
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
