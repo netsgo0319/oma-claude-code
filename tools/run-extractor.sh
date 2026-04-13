@@ -51,12 +51,14 @@ if [ "$SKIP_BUILD" = false ]; then
     echo ""
     echo "--- Building extractor ---"
     cd "$EXTRACTOR_DIR"
-    if command -v gradle &>/dev/null; then
-        gradle build -q 2>&1
-    elif [ -f ./gradlew ]; then
+    if [ -f ./gradlew ]; then
+        # gradlew 우선 사용 (Gradle 미설치 환경에서도 자동 다운로드)
         ./gradlew build -q 2>&1
+    elif command -v gradle &>/dev/null; then
+        gradle build -q 2>&1
     else
-        echo "ERROR: Gradle not found. Install Gradle or use ./gradlew"
+        echo "ERROR: Gradle not found and gradlew missing."
+        echo "Fix: cd $EXTRACTOR_DIR && gradle wrapper --gradle-version 8.7"
         exit 1
     fi
     cd "$PROJECT_DIR"

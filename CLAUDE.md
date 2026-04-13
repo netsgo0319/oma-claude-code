@@ -73,13 +73,14 @@ Agent({
 | Python 3 | `python3 --version` | **필수** | 설치 안내 |
 | psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
 | sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
-| Java 11+ | `java -version` | 선택 (Phase 3.5) | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
-| Gradle | `gradle --version` 또는 `./gradlew --version` | 선택 (Phase 3.5) | `brew install gradle` 또는 `apt install gradle` 안내. 없으면 `tools/mybatis-sql-extractor/gradlew` 사용 |
+| Java 11+ | `java -version` | **권장** (Phase 3.5) | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
+| Gradle | — | 불필요 | **레포에 gradlew 포함됨.** Java만 있으면 `tools/mybatis-sql-extractor/gradlew`가 Gradle을 자동 다운로드 |
 | Oracle 접속 | sqlplus로 SELECT 1 FROM DUAL | 선택 | 환경변수 확인 안내 |
 | PG 접속 | psql로 SELECT 1 | 선택 | 환경변수 확인 안내 |
 
 **미설치 도구가 있으면 설치 명령을 사용자에게 안내하라. 자동 설치하지 마라 (sudo 필요).**
-**Java/Gradle이 없으면 Phase 3.5 스킵 가능하다고 안내하되, 설치를 권장하라.**
+**Java만 있으면 Phase 3.5 실행 가능 (Gradle 별도 설치 불필요, gradlew가 자동 처리).**
+**Java가 없으면 Phase 3.5를 스킵할 수 있다고 안내하되, 설치를 강력 권장하라. Phase 3.5 없이는 동적 SQL 검증이 불완전하다.**
 
 ### Phase 1: Parse + Analyze + Rule Convert
 
