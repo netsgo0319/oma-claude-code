@@ -191,7 +191,7 @@ sqlplus -S $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID \
   > workspace/results/_validation_phase35/oracle_results.txt 2>&1
 
 # Step 4: 결과 파싱
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation_phase7/ --tracking-dir workspace/results/
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation_phase35/ --tracking-dir workspace/results/
 ```
 
 **절대 `--compare` 옵션으로 직접 실행하지 마라 (subprocess per query = OOM/타임아웃).**

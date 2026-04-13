@@ -264,7 +264,7 @@ def collect_data(base_dir):
             data['comparison'] = load_json(val_dir / 'compare_results.json')
 
     # 4b. Phase 3.5 validation (separate directory)
-    val7_dir = ws / 'results' / '_validation_phase7'
+    val7_dir = ws / 'results' / '_validation_phase35'
     if val7_dir.exists():
         data['validation_phase7'] = load_json(val7_dir / 'validated.json')
         data['comparison_phase7'] = load_json(val7_dir / 'compare_validated.json')
@@ -1061,6 +1061,21 @@ function renderValidationSec(){
       html+='<table><tr><th>File</th><th>Escalated Queries</th></tr>';
       for(let e of escList)html+=`<tr><td style="font-family:var(--mono)">${esc(e.file)}</td><td>${e.count}</td></tr>`;
       html+='</table>';
+    }
+    // Show escalated query details from healing tickets
+    if(DATA.healing&&DATA.healing.tickets){
+      let escTickets=DATA.healing.tickets.filter(t=>t.status==='escalated');
+      if(escTickets.length){
+        html+='<h3 style="margin-top:12px">Escalated Query Details</h3>';
+        html+='<table><tr><th>Ticket</th><th>Query</th><th>File</th><th>Category</th><th>Error</th><th>Retries</th></tr>';
+        for(let t of escTickets){
+          html+=`<tr><td>${esc(t.ticket_id||'')}</td><td style="font-family:var(--mono)">${esc(t.query_id||'')}</td>`;
+          html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category||'')}</td>`;
+          html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,200))}</td>`;
+          html+=`<td>${t.retry_count||0}/${t.max_retries||5}</td></tr>`;
+        }
+        html+='</table>';
+      }
     }
     html+='</div>';
   }

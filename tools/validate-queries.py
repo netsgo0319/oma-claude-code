@@ -448,10 +448,23 @@ SET HEADING ON
         - <set>: wrap content with SET, strip trailing comma
         - <trim>: apply prefix/suffix/prefixOverrides/suffixOverrides
         - <foreach>: generate single iteration placeholder
-        - <include>: skip (already expanded in output XML, or placeholder)
+        - <include>: resolve by looking up <sql id="X"> in same tree, fallback to skip
         - <selectKey>: skip (separate statement)
         - <bind>: skip
         """
+        # Pre-build sql fragment map for <include refid="X"> resolution
+        sql_fragments = {}
+        root = elem
+        while root.getparent() is not None if hasattr(root, 'getparent') else False:
+            root = root.getparent()
+        # Fallback: search from elem's tree root
+        try:
+            for sql_elem in (root if root.tag == 'mapper' else elem).iter():
+                if sql_elem.tag == 'sql' and sql_elem.get('id'):
+                    sql_fragments[sql_elem.get('id')] = sql_elem
+        except Exception:
+            pass
+
         def _walk(el):
             parts = []
             # Element's own text
@@ -526,7 +539,13 @@ SET HEADING ON
                     if inner:
                         parts.append(f'{open_str}{inner}{close_str}')
 
-                elif tag in ('include', 'selectKey', 'bind'):
+                elif tag == 'include':
+                    refid = child.get('refid', '')
+                    if refid and refid in sql_fragments:
+                        parts.append(_walk(sql_fragments[refid]))
+                    # else: skip (not found or already expanded)
+
+                elif tag in ('selectKey', 'bind'):
                     pass  # Skip
 
                 else:
@@ -774,10 +793,14 @@ SET HEADING ON
         explain_lines = ["\\set ON_ERROR_STOP off", ""]
         execute_lines = ["\\set ON_ERROR_STOP off", ""]
         # Oracle compare script (sqlplus format)
+        ora_schema = os.environ.get('ORACLE_SCHEMA', '')
         oracle_lines = [
             "SET PAGESIZE 0", "SET FEEDBACK ON", "SET HEADING ON",
-            "SET LINESIZE 32767", "SET TRIMSPOOL ON", ""
+            "SET LINESIZE 32767", "SET TRIMSPOOL ON",
         ]
+        if ora_schema:
+            oracle_lines.append(f"ALTER SESSION SET CURRENT_SCHEMA = {ora_schema};")
+        oracle_lines.append("")
 
         for query in self.queries:
             qid = query['id']
@@ -799,6 +822,9 @@ SET HEADING ON
 
                 # Replace ? with TC values positionally
                 parts = sql.split('?')
+                placeholder_count = len(parts) - 1
+                if param_names and len(param_names) != placeholder_count:
+                    print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
                 bound_parts = [parts[0]]
                 for i in range(1, len(parts)):
                     pname = param_names[i-1] if i-1 < len(param_names) else ''

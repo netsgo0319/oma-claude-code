@@ -53,7 +53,7 @@ def classify_error(error_msg):
 def main():
     parser = argparse.ArgumentParser(description='Phase 4: Healing Ticket Generator')
     parser.add_argument('--validation-dir', default='workspace/results/_validation/')
-    parser.add_argument('--validation-phase7-dir', default='workspace/results/_validation_phase7/')
+    parser.add_argument('--validation-phase7-dir', default='workspace/results/_validation_phase35/')
     parser.add_argument('--output', default='workspace/results/_healing/')
     parser.add_argument('--max-retries', type=int, default=5)
     args = parser.parse_args()

@@ -1168,14 +1168,26 @@ class OracleToPgConverter:
         Converts custom Oracle crypto package to PG-compatible function wrapper.
         Requires: CREATE EXTENSION IF NOT EXISTS pgcrypto; + wrapper functions in PG."""
         # Schema-qualified: WMSON.PKG_CRYPTO.DECRYPT(args) or PKG_CRYPTO.DECRYPT(args)
-        new_sql = re.sub(
-            r'\b(?:\w+\.)?PKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(([^()]+)\)',
-            lambda m: f"pkg_crypto_{m.group(1).lower()}({m.group(2)})",
-            sql, flags=re.IGNORECASE
-        )
-        if new_sql != sql:
+        # Uses _find_matching_paren for nested parentheses like PKG_CRYPTO.DECRYPT(SUBSTR(col,1,10), key)
+        pattern = re.compile(r'\b(?:\w+\.)?PKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(', re.IGNORECASE)
+        result = []
+        last_end = 0
+        for match in pattern.finditer(sql):
+            start = match.start()
+            if start < last_end:
+                continue
+            func_name = match.group(1).lower()
+            paren_start = match.end() - 1
+            paren_end = self._find_matching_paren(sql, paren_start)
+            if paren_end == -1:
+                continue
+            args = sql[paren_start + 1:paren_end]
+            result.append(sql[last_end:start])
+            result.append(f'pkg_crypto_{func_name}({args})')
+            last_end = paren_end + 1
             self._count_rule('PKG_CRYPTO->pgcrypto_func')
-        return new_sql
+        result.append(sql[last_end:])
+        return ''.join(result) if last_end > 0 else sql
 
     def _convert_lpad_numeric(self, sql):
         """LPAD(numeric_expr, N, '0') -> LPAD(expr::TEXT, N, '0').
