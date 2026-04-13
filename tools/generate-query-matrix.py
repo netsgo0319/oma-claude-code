@@ -215,16 +215,26 @@ def main():
                 overall_detail = f'힐링 해결 (retry {ticket_retry}회)' if ticket_skip != 'resolved_by_mybatis_engine' else 'MyBatis 엔진으로 자동 해결'
             elif ticket_status == 'escalated':
                 overall = 'ESCALATED'
-                overall_detail = f'수동 검토 필요 ({ticket_retry}회 시도 후 실패)'
+                esc_err = ticket.get('error', '')[:150]
+                esc_cat = ticket.get('category', '')
+                overall_detail = f'수동 검토 필요 — {esc_cat}: {esc_err} ({ticket_retry}회 시도)'
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'COMPLETE'
                 overall_detail = OVERALL_LABELS['COMPLETE']
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass':
                 overall = 'EXPLAIN_PASS'
-                overall_detail = OVERALL_LABELS['EXPLAIN_PASS']
+                if compare_status == 'not_tested':
+                    overall_detail = 'EXPLAIN 통과 — Compare 미실행: Oracle/PG 양쪽 실행 비교가 수행되지 않음 (Stage 2/3 미실행 또는 결과 파싱 미완료)'
+                else:
+                    overall_detail = 'EXPLAIN 통과'
             elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested':
                 overall = 'CONVERTED'
-                overall_detail = OVERALL_LABELS['CONVERTED']
+                if mybatis == 'no':
+                    overall_detail = '변환완료 — EXPLAIN 미실행: MyBatis 추출 불가 (동적 SQL fragment 또는 파라미터 없는 쿼리)'
+                elif mybatis in ('both', 'pg_only'):
+                    overall_detail = '변환완료 — EXPLAIN 미실행: MyBatis 추출됨이나 EXPLAIN 테스트 SQL에 미포함 (validate-queries.py에서 매핑 실패)'
+                else:
+                    overall_detail = '변환완료 — EXPLAIN 미실행: 테스트 대상에 포함되지 않음'
             elif explain_status == 'fail':
                 overall = 'EXPLAIN_FAIL'
                 overall_detail = f'{explain_category}: {explain_error}'
@@ -286,7 +296,18 @@ def main():
     for label in ['COMPLETE', 'HEALED', 'EXPLAIN_PASS', 'CONVERTED', 'EXPLAIN_FAIL', 'COMPARE_FAIL', 'ESCALATED', 'PENDING']:
         cnt = overall_counts.get(label, 0)
         if cnt:
-            print(f"    {label}: {cnt} ({cnt*100/len(rows):.1f}%) — {OVERALL_LABELS.get(label, '')}")
+            pct = cnt*100/len(rows)
+            desc = OVERALL_LABELS.get(label, '')
+            print(f"    {label}: {cnt} ({pct:.1f}%) — {desc}")
+            # 미실행 사유 추가 설명
+            if label == 'EXPLAIN_PASS':
+                print(f"      ↳ Compare 미실행 사유: Stage 2/3(Oracle/PG 비교)가 실행되지 않았거나 결과 파싱 미완료")
+            elif label == 'CONVERTED':
+                no_mybatis = sum(1 for r in rows if r['overall_status'] == 'CONVERTED' and r['mybatis_extracted'] == 'no')
+                has_mybatis = cnt - no_mybatis
+                print(f"      ↳ MyBatis 추출 불가: {no_mybatis}건 (동적 SQL fragment/파라미터 없음)")
+                if has_mybatis:
+                    print(f"      ↳ MyBatis 추출됨이나 매핑 실패: {has_mybatis}건 (validate-queries.py에서 query_id 미매핑)")
 
     if explain_cats:
         print(f"\n  EXPLAIN 에러 카테고리:")
