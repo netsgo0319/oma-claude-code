@@ -11,7 +11,7 @@ description: 변환 과정에서 발견된 새 패턴과 에지케이스를 stee
 
 ### 2. 새로운 LLM 변환 패턴
 - converted.json에서 method: "llm"인 변환 중
-- steering/edge-cases.md에 없는 새 패턴 → 에지케이스 등록
+- .claude/rules/edge-cases.md에 없는 새 패턴 → 에지케이스 등록
 
 ### 3. 사용자 에스컬레이션 후 해결
 - progress.json에서 status가 "escalated" → "success"로 변한 건
@@ -27,8 +27,8 @@ description: 변환 과정에서 발견된 새 패턴과 에지케이스를 stee
    - manual_resolved: 사용자 해결 건
 
 3. steering 파일 갱신:
-   - rule_candidate → steering/oracle-pg-rules.md에 새 룰 추가
-   - edge_case, manual_resolved → steering/edge-cases.md에 항목 추가
+   - rule_candidate → .claude/rules/oracle-pg-rules.md에 새 룰 추가
+   - edge_case, manual_resolved → .claude/rules/edge-cases.md에 항목 추가
 
    edge-cases.md 항목 형식:
    ```markdown
@@ -43,7 +43,7 @@ description: 변환 과정에서 발견된 새 패턴과 에지케이스를 stee
 
 4. Git 커밋:
    ```bash
-   git add .kiro/steering/edge-cases.md .kiro/steering/oracle-pg-rules.md
+   git add .claude/rules/edge-cases.md .claude/rules/oracle-pg-rules.md
    git commit -m "chore: add learned edge case - {패턴 요약}"
    ```
 

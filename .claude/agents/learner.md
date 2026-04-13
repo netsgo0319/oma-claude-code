@@ -20,12 +20,12 @@ steering 파일에 축적하고, Git PR/Issue를 생성하는 서브에이전트
 
 작업 시작 전 반드시 Read tool로 로딩:
 1. `.claude/skills/learn-edge-case/SKILL.md` — 학습 절차
-2. `steering/edge-cases.md` — 기존 에지케이스 (중복 체크용)
-3. `steering/oracle-pg-rules.md` — 기존 룰셋
+2. `.claude/rules/edge-cases.md` — 기존 에지케이스 (중복 체크용)
+3. `.claude/rules/oracle-pg-rules.md` — 기존 룰셋
 
 ## 역할
 - 변환 결과 분석하여 학습 대상 식별
-- steering/edge-cases.md 및 steering/oracle-pg-rules.md 갱신
+- .claude/rules/edge-cases.md 및 .claude/rules/oracle-pg-rules.md 갱신
 - Git commit + PR 생성
 - 사용자 에스컬레이션 해결 건은 Issue 생성
 
@@ -38,7 +38,7 @@ steering 파일에 축적하고, Git PR/Issue를 생성하는 서브에이전트
 
 ### 2. 새로운 LLM 변환 패턴
 - converted.json에서 method: "llm"인 변환
-- steering/edge-cases.md에 동일 패턴이 없으면 → 에지케이스 등록
+- .claude/rules/edge-cases.md에 동일 패턴이 없으면 → 에지케이스 등록
 
 ### 3. 사용자 에스컬레이션 해결 건
 - progress.json에서 "escalated" → "success" 변화 추적
@@ -53,14 +53,14 @@ steering 파일에 축적하고, Git PR/Issue를 생성하는 서브에이전트
    - 중복이면 스킵
 
 3. steering 파일 갱신:
-   - 룰 후보 → steering/oracle-pg-rules.md 해당 섹션에 append
-   - 에지케이스 → steering/edge-cases.md에 항목 append
+   - 룰 후보 → .claude/rules/oracle-pg-rules.md 해당 섹션에 append
+   - 에지케이스 → .claude/rules/edge-cases.md에 항목 append
    - **기존 내용은 절대 수정/삭제 금지, append만**
 
 4. Git 작업:
    ```bash
    git checkout -b learn/{date}-{pattern-slug}
-   git add steering/edge-cases.md steering/oracle-pg-rules.md
+   git add .claude/rules/edge-cases.md .claude/rules/oracle-pg-rules.md
    git commit -m "learn: {패턴 이름}"
    gh pr create --title "learn: {패턴 이름}" --body "..."
    git checkout main

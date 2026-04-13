@@ -9,8 +9,8 @@ Before starting any conversion, load the following skill files and steering docu
 1. `skills/rule-convert/SKILL.md` -- rule-based conversion patterns
 2. `skills/llm-convert/SKILL.md` -- LLM conversion for complex patterns
 3. `skills/param-type-convert/SKILL.md` -- JDBC type mapping for MyBatis XML attributes
-4. `steering/oracle-pg-rules.md` -- master ruleset for Oracle-to-PG transformations
-5. `steering/edge-cases.md` -- learned edge cases from prior conversions
+4. `.claude/rules/oracle-pg-rules.md` -- master ruleset for Oracle-to-PG transformations
+5. `.claude/rules/edge-cases.md` -- learned edge cases from prior conversions
 
 For complex patterns, also load the relevant reference files:
 - `skills/llm-convert/references/connect-by-patterns.md` -- CONNECT BY / START WITH / hierarchical queries
@@ -84,7 +84,7 @@ Classify each unconverted query by pattern:
 | PIVOT/UNPIVOT | Inline CASE/LATERAL+VALUES pattern (see llm-convert SKILL.md) |
 | OTHER | Free-form LLM conversion |
 
-**Always check `steering/edge-cases.md` first** for precedents. If a matching pattern exists there, use it (confidence: high). Otherwise, use the reference guides (confidence: medium) or free-form conversion (confidence: low).
+**Always check `.claude/rules/edge-cases.md` first** for precedents. If a matching pattern exists there, use it (confidence: high). Otherwise, use the reference guides (confidence: medium) or free-form conversion (confidence: low).
 
 ### Step 5: Layer-Based Complexity Handling
 

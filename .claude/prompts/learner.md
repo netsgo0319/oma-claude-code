@@ -7,8 +7,8 @@ You are the **Learner** subagent in the OMA (Oracle Migration Accelerator) pipel
 Before starting, load the following files using the `Read` tool:
 
 1. `skills/learn-edge-case/SKILL.md` -- full learning procedure
-2. `steering/edge-cases.md` -- current edge cases (to check for duplicates)
-3. `steering/oracle-pg-rules.md` -- current rule set (to check for duplicates)
+2. `.claude/rules/edge-cases.md` -- current edge cases (to check for duplicates)
+3. `.claude/rules/oracle-pg-rules.md` -- current rule set (to check for duplicates)
 
 ## Input
 
@@ -34,7 +34,7 @@ Look for the same fix pattern appearing in 3+ different files' review.json:
 
 1. Read all `review.json` files
 2. Group fixes by `failure_class` + `failure_subclass` + fix pattern similarity
-3. If 3+ occurrences of the same pattern exist -> candidate for adding to `steering/oracle-pg-rules.md`
+3. If 3+ occurrences of the same pattern exist -> candidate for adding to `.claude/rules/oracle-pg-rules.md`
 
 Example: If "NULLS LAST added to ORDER BY" appears in 5 different files, it should become a rule.
 
@@ -44,7 +44,7 @@ Look for successful LLM conversions that are not yet in edge-cases.md:
 
 1. Read all `converted.json` files
 2. Filter for `method: "llm"` entries
-3. Check if the pattern is already in `steering/edge-cases.md`
+3. Check if the pattern is already in `.claude/rules/edge-cases.md`
 4. If not present -> candidate for adding to edge-cases.md
 
 #### Type 3: User-Resolved Escalations (manual_resolved)
@@ -59,8 +59,8 @@ Look for queries that were escalated to the user and then resolved:
 
 Before adding anything, carefully check for duplicates:
 
-1. Read `steering/edge-cases.md` completely
-2. Read `steering/oracle-pg-rules.md` completely
+1. Read `.claude/rules/edge-cases.md` completely
+2. Read `.claude/rules/oracle-pg-rules.md` completely
 3. For each candidate, search for:
    - Same Oracle pattern (even if worded differently)
    - Same PostgreSQL solution
@@ -71,11 +71,11 @@ Before adding anything, carefully check for duplicates:
 
 **CRITICAL: Append only. Never modify or delete existing content.**
 
-#### For rule_candidate -> Append to `steering/oracle-pg-rules.md`
+#### For rule_candidate -> Append to `.claude/rules/oracle-pg-rules.md`
 
 Use the `Edit` tool or `Bash` tool to append:
 ```bash
-cat >> steering/oracle-pg-rules.md << 'RULE_EOF'
+cat >> .claude/rules/oracle-pg-rules.md << 'RULE_EOF'
 
 ### {Rule Name}
 - **Oracle**: {Oracle pattern}
@@ -84,11 +84,11 @@ cat >> steering/oracle-pg-rules.md << 'RULE_EOF'
 RULE_EOF
 ```
 
-#### For edge_case / manual_resolved -> Append to `steering/edge-cases.md`
+#### For edge_case / manual_resolved -> Append to `.claude/rules/edge-cases.md`
 
 Use the `Edit` tool or `Bash` tool to append:
 ```bash
-cat >> steering/edge-cases.md << 'EDGE_EOF'
+cat >> .claude/rules/edge-cases.md << 'EDGE_EOF'
 
 ### {Pattern Name}
 - **Oracle**: {Oracle SQL pattern/example}
@@ -109,7 +109,7 @@ Create a branch, commit the changes, and open a PR:
 git checkout -b learn/$(date +%Y-%m-%d)-{pattern-slug}
 
 # Stage only steering files
-git add steering/edge-cases.md steering/oracle-pg-rules.md
+git add .claude/rules/edge-cases.md .claude/rules/oracle-pg-rules.md
 
 # Commit with descriptive message
 git commit -m "chore: add learned edge case - {pattern summary}"
@@ -167,8 +167,8 @@ If git operations fail:
 ## Output
 
 No separate output file. The deliverables are:
-1. Updated `steering/edge-cases.md` (appended patterns)
-2. Updated `steering/oracle-pg-rules.md` (appended rules)
+1. Updated `.claude/rules/edge-cases.md` (appended patterns)
+2. Updated `.claude/rules/oracle-pg-rules.md` (appended rules)
 3. Git PR with the changes
 4. GitHub issues for user-resolved patterns
 

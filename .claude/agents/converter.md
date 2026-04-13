@@ -97,8 +97,8 @@ python3 tools/oracle-to-pg-converter.py workspace/results/{filename}/v1/chunks/{
 
 ### 2. 룰 기반 변환 (rule-convert 스킬)
 parsed.json에서 oracle_tags에 "rule"이 포함된 쿼리:
-- steering/oracle-pg-rules.md 룰셋 참조
-- steering/edge-cases.md 학습 패턴 우선 적용
+- .claude/rules/oracle-pg-rules.md 룰셋 참조
+- .claude/rules/edge-cases.md 학습 패턴 우선 적용
 - 변환 후 Oracle 구문 잔존 검사 → 남으면 LLM으로 에스컬레이션
 
 ### 3. LLM 기반 변환 (llm-convert 스킬)

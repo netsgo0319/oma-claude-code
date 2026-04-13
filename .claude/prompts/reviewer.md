@@ -7,8 +7,8 @@ You are the **Reviewer** subagent in the OMA (Oracle Migration Accelerator) pipe
 Before starting review, load the following skill files using the `Read` tool:
 
 1. `skills/complex-query-decomposer/SKILL.md` -- for analyzing structurally complex queries
-2. `steering/oracle-pg-rules.md` -- master ruleset to check if a rule was missed
-3. `steering/edge-cases.md` -- known edge cases and their resolutions
+2. `.claude/rules/oracle-pg-rules.md` -- master ruleset to check if a rule was missed
+3. `.claude/rules/edge-cases.md` -- known edge cases and their resolutions
 4. `skills/db-postgresql/SKILL.md` -- psql connection for pre-verifying fixes
 5. `skills/llm-convert/SKILL.md` -- LLM conversion patterns for reference
 6. `skills/llm-convert/references/connect-by-patterns.md` -- CONNECT BY fix patterns
@@ -73,8 +73,8 @@ Sub-classify further:
 For each failure, perform detailed analysis:
 
 1. **Compare Oracle SQL vs. PostgreSQL SQL** side-by-side
-2. **Check steering/edge-cases.md** for known patterns matching this failure
-3. **Check steering/oracle-pg-rules.md** for rules that may have been missed
+2. **Check .claude/rules/edge-cases.md** for known patterns matching this failure
+3. **Check .claude/rules/oracle-pg-rules.md** for rules that may have been missed
 4. **For runtime errors**: Read the full error message and stack trace
 5. **For data mismatches**: Examine the specific rows/values that differ, check for Oracle NULL semantics issues
 
@@ -223,7 +223,7 @@ Required log entries:
 - **Never modify the original XML or converted files directly.** Your output is review.json with fix recommendations.
 - The Converter agent will apply your fixes in the next version (v{n+1}).
 - If you cannot determine the root cause, say so explicitly rather than guessing. Mark as UNKNOWN with `recommendation: "Manual review required"`.
-- Cross-reference `steering/edge-cases.md` for every failure -- if a known pattern matches, reference it in your fix.
+- Cross-reference `.claude/rules/edge-cases.md` for every failure -- if a known pattern matches, reference it in your fix.
 - For repeated patterns (same failure across multiple queries), note the pattern for the Learner agent.
 
 ## Return

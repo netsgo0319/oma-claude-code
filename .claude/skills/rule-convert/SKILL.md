@@ -1,6 +1,6 @@
 ---
 name: rule-convert
-description: Oracle SQL을 PostgreSQL로 기계적으로 변환하는 룰셋을 적용한다. parsed.json에서 "rule" 태그된 쿼리에 대해 패턴 매칭 기반 치환을 수행한다. steering/oracle-pg-rules.md의 룰셋을 참조한다.
+description: Oracle SQL을 PostgreSQL로 기계적으로 변환하는 룰셋을 적용한다. parsed.json에서 "rule" 태그된 쿼리에 대해 패턴 매칭 기반 치환을 수행한다. .claude/rules/oracle-pg-rules.md의 룰셋을 참조한다.
 ---
 
 ## 입력
@@ -12,7 +12,7 @@ description: Oracle SQL을 PostgreSQL로 기계적으로 변환하는 룰셋을 
 
 1. parsed.json 로드 후 `oracle_tags`에 "rule"이 포함된 쿼리 필터링
 
-2. steering/oracle-pg-rules.md 룰셋 로드
+2. .claude/rules/oracle-pg-rules.md 룰셋 로드
 
 3. 각 쿼리에 대해 순서대로 룰 적용:
    a. 함수 변환 (NVL → COALESCE, DECODE → CASE 등)
@@ -45,4 +45,4 @@ description: Oracle SQL을 PostgreSQL로 기계적으로 변환하는 룰셋을 
 - 하나의 쿼리에 여러 룰이 중복 적용될 수 있음 (NVL + SYSDATE + DUAL 등)
 - 동적 SQL 태그의 속성(test 조건 등)은 변환하지 않음 — SQL 본문만 변환
 - 룰 적용 순서: 함수 → 조인 → 타입 → 포맷 → 기타 → MyBatis 특수
-- steering/edge-cases.md도 참조하여 학습된 패턴이 있으면 우선 적용
+- .claude/rules/edge-cases.md도 참조하여 학습된 패턴이 있으면 우선 적용

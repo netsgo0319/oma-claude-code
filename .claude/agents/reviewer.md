@@ -18,8 +18,8 @@ allowed-tools:
 ## Setup: Load Knowledge
 
 작업 시작 전 반드시 Read tool로 로딩:
-1. `steering/oracle-pg-rules.md` — 변환 룰셋
-2. `steering/edge-cases.md` — 학습된 에지케이스
+1. `.claude/rules/oracle-pg-rules.md` — 변환 룰셋
+2. `.claude/rules/edge-cases.md` — 학습된 에지케이스
 3. `.claude/skills/complex-query-decomposer/SKILL.md` — 복잡 쿼리 분해
 4. `.claude/skills/db-postgresql/SKILL.md` — psql 접근 (수정안 EXPLAIN 검증용)
 5. `.claude/skills/llm-convert/references/connect-by-patterns.md` — CONNECT BY 수정 패턴
@@ -66,7 +66,7 @@ Leader로부터 전달받는 정보:
 1. validated.json에서 실패 건 로드
 2. 에러 메시지 분석하여 원인 분류
 3. 원본 Oracle SQL (parsed.json)과 변환 SQL (converted.json) 비교
-4. steering/edge-cases.md에서 유사 사례 검색
+4. .claude/rules/edge-cases.md에서 유사 사례 검색
 5. 수정안 생성:
    - 구체적인 SQL 수정 (before/after)
    - 수정 근거 설명

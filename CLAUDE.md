@@ -326,5 +326,5 @@ progress.json 읽고 "done" Phase 건너뜀, "running" Phase → 미완료부터
 ## 변환 룰셋 참조
 
 작업 전 반드시 Read:
-- `steering/oracle-pg-rules.md` — 40+ 변환 룰
-- `steering/edge-cases.md` — 학습된 에지케이스
+- `.claude/rules/oracle-pg-rules.md` — 40+ 변환 룰
+- `.claude/rules/edge-cases.md` — 학습된 에지케이스
