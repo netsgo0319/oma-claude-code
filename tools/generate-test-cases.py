@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Phase 2.5: Test Case Generator (sqlplus 기반)
-Oracle 딕셔너리에서 컬럼 메타데이터를 수집하고, 쿼리별 test-cases.json을 생성한다.
+Phase 2.5: Test Case Generator (sqlplus 기반, 다중 소스)
+
+4가지 소스에서 바인드 값을 수집하여 다양한 테스트 케이스를 생성한다:
+  1. V$SQL_BIND_CAPTURE — 실제 운영에서 캡처된 바인드 값 (가장 현실적)
+  2. ALL_TAB_COL_STATISTICS — MIN/MAX/NUM_DISTINCT로 경계값 테스트
+  3. ALL_CONSTRAINTS (FK) — 참조 테이블에서 실제 존재하는 값 샘플링
+  4. 이름/타입 추론 — 메타데이터 없을 때 fallback
 
 Usage:
     python3 tools/generate-test-cases.py
-    python3 tools/generate-test-cases.py --parallel 8
+    python3 tools/generate-test-cases.py --results-dir workspace/results
 
 Output:
     workspace/results/{file}/v1/test-cases.json (파일별)
 
 Requires:
-    - sqlplus + Oracle 환경변수 (ORACLE_HOST, ORACLE_PORT, ORACLE_SID, ORACLE_USER, ORACLE_PASSWORD)
+    - sqlplus + Oracle 환경변수
 """
 
 import json
@@ -25,63 +30,226 @@ from pathlib import Path
 from datetime import datetime
 
 
-def get_oracle_columns():
-    """Oracle ALL_TAB_COLUMNS에서 컬럼 메타데이터 수집."""
+# ──────────────────────────────────────────────
+# Oracle 접속 헬퍼
+# ──────────────────────────────────────────────
+
+def _oracle_conn_str():
+    """Build Oracle sqlplus connection string."""
     ora_user = os.environ.get('ORACLE_USER', '')
     ora_pass = os.environ.get('ORACLE_PASSWORD', '')
     ora_host = os.environ.get('ORACLE_HOST', '')
     ora_port = os.environ.get('ORACLE_PORT', '1521')
     ora_sid = os.environ.get('ORACLE_SID', '')
-    # ORACLE_SCHEMA: 대상 스키마 (admin 계정으로 접속 시 실제 스키마 지정)
-    ora_schema = os.environ.get('ORACLE_SCHEMA', ora_user).upper()
-
-    if not ora_user or not ora_host:
-        print("WARNING: Oracle 환경변수 미설정. 컬럼 메타데이터 없이 이름 기반으로만 생성.")
-        return {}
-
-    # SID vs Service Name
     conn_type = os.environ.get('ORACLE_CONN_TYPE', 'service')
     if conn_type == 'sid':
-        conn_str = f"{ora_user}/{ora_pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={ora_host})(PORT={ora_port}))(CONNECT_DATA=(SID={ora_sid})))"
-    else:
-        conn_str = f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
+        return f"{ora_user}/{ora_pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={ora_host})(PORT={ora_port}))(CONNECT_DATA=(SID={ora_sid})))"
+    return f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
 
-    # Find sqlplus
-    sqlplus = 'sqlplus'
+
+def _find_sqlplus():
     for path in ['/opt/oracle/instantclient_23_3/sqlplus', '/usr/bin/sqlplus']:
         if os.path.exists(path):
-            sqlplus = path
-            break
+            return path
+    return 'sqlplus'
 
-    sql_input = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 500 TRIMSPOOL ON
-SELECT TABLE_NAME || '|' || COLUMN_NAME || '|' || DATA_TYPE || '|' || NULLABLE
+
+def _run_sqlplus(sql_input, timeout=120):
+    """Run SQL via sqlplus, return stdout."""
+    conn_str = _oracle_conn_str()
+    try:
+        result = subprocess.run(
+            [_find_sqlplus(), '-S', conn_str],
+            input=sql_input, capture_output=True, text=True, timeout=timeout
+        )
+        return result.stdout.strip()
+    except Exception as e:
+        print(f"  WARNING: sqlplus 실행 실패: {e}")
+        return ''
+
+
+def _oracle_available():
+    ora_user = os.environ.get('ORACLE_USER', '')
+    ora_host = os.environ.get('ORACLE_HOST', '')
+    import shutil
+    return bool(ora_user and ora_host and shutil.which('sqlplus'))
+
+
+def _oracle_schema():
+    return os.environ.get('ORACLE_SCHEMA', os.environ.get('ORACLE_USER', '')).upper()
+
+
+# ──────────────────────────────────────────────
+# 소스 1: ALL_TAB_COLUMNS (컬럼 타입)
+# ──────────────────────────────────────────────
+
+def get_oracle_columns():
+    """Oracle ALL_TAB_COLUMNS에서 컬럼 메타데이터 수집."""
+    if not _oracle_available():
+        print("  WARNING: Oracle 미연결. 이름 기반으로만 TC 생성.")
+        return {}
+
+    schema = _oracle_schema()
+    sql = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 500 TRIMSPOOL ON
+SELECT TABLE_NAME || '|' || COLUMN_NAME || '|' || DATA_TYPE || '|' || NULLABLE || '|' || NVL(DATA_LENGTH, 0)
 FROM ALL_TAB_COLUMNS
-WHERE OWNER = '{ora_schema}'
+WHERE OWNER = '{schema}'
 ORDER BY TABLE_NAME, COLUMN_NAME;
 EXIT;
 """
-    try:
-        result = subprocess.run(
-            [sqlplus, '-S', conn_str],
-            input=sql_input, capture_output=True, text=True, timeout=60
-        )
-        col_types = {}
-        for line in result.stdout.strip().split('\n'):
-            parts = line.strip().split('|')
-            if len(parts) == 4:
-                table, col, dtype, nullable = [p.strip() for p in parts]
-                col_types[f"{table}.{col}"] = {'type': dtype, 'nullable': nullable}
-                col_types[col] = {'type': dtype, 'nullable': nullable}
-        print(f"  Oracle 컬럼 메타데이터: {len(col_types)}개")
-        return col_types
-    except Exception as e:
-        print(f"WARNING: Oracle 메타데이터 수집 실패: {e}")
+    output = _run_sqlplus(sql)
+    col_types = {}
+    for line in output.split('\n'):
+        parts = line.strip().split('|')
+        if len(parts) >= 4:
+            table, col, dtype, nullable = [p.strip() for p in parts[:4]]
+            data_len = int(parts[4].strip()) if len(parts) > 4 and parts[4].strip().isdigit() else 0
+            info = {'type': dtype, 'nullable': nullable, 'data_length': data_len}
+            col_types[f"{table}.{col}"] = info
+            col_types[col] = info
+    print(f"  소스1 ALL_TAB_COLUMNS: {len(col_types)}개 컬럼")
+    return col_types
+
+
+# ──────────────────────────────────────────────
+# 소스 2: V$SQL_BIND_CAPTURE (실제 바인드 값)
+# ──────────────────────────────────────────────
+
+def get_bind_captures():
+    """V$SQL_BIND_CAPTURE에서 실제 캡처된 바인드 값 수집."""
+    if not _oracle_available():
         return {}
 
+    sql = """SET PAGESIZE 0 FEEDBACK OFF LINESIZE 1000 TRIMSPOOL ON
+SELECT DISTINCT
+    NAME || '|' || NVL(TO_CHAR(VALUE_STRING), 'NULL') || '|' || NVL(DATATYPE_STRING, 'VARCHAR2(32)')
+FROM V$SQL_BIND_CAPTURE
+WHERE VALUE_STRING IS NOT NULL
+  AND ROWNUM <= 5000
+ORDER BY 1;
+EXIT;
+"""
+    output = _run_sqlplus(sql, timeout=30)
+    captures = {}  # {param_name: [captured_values]}
+    for line in output.split('\n'):
+        parts = line.strip().split('|')
+        if len(parts) >= 2:
+            name = parts[0].strip().lstrip(':').lower()
+            value = parts[1].strip()
+            if name and value != 'NULL':
+                captures.setdefault(name, []).append(value)
 
-def gen_value(param_name, col_info=None):
-    """파라미터 이름 + 컬럼 타입으로 테스트 값 생성."""
+    # 각 파라미터당 최대 5개 값만 유지
+    for k in captures:
+        captures[k] = list(dict.fromkeys(captures[k]))[:5]
+
+    total = sum(len(v) for v in captures.values())
+    print(f"  소스2 V$SQL_BIND_CAPTURE: {len(captures)}개 파라미터, {total}개 값")
+    return captures
+
+
+# ──────────────────────────────────────────────
+# 소스 3: ALL_TAB_COL_STATISTICS (경계값)
+# ──────────────────────────────────────────────
+
+def get_column_stats():
+    """ALL_TAB_COL_STATISTICS에서 MIN/MAX 값 수집."""
+    if not _oracle_available():
+        return {}
+
+    schema = _oracle_schema()
+    sql = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 1000 TRIMSPOOL ON
+SELECT TABLE_NAME || '|' || COLUMN_NAME || '|' || NVL(TO_CHAR(LOW_VALUE), 'NULL') || '|' || NVL(TO_CHAR(HIGH_VALUE), 'NULL') || '|' || NVL(NUM_DISTINCT, 0)
+FROM ALL_TAB_COL_STATISTICS
+WHERE OWNER = '{schema}'
+  AND LOW_VALUE IS NOT NULL
+  AND ROWNUM <= 10000
+ORDER BY TABLE_NAME, COLUMN_NAME;
+EXIT;
+"""
+    output = _run_sqlplus(sql, timeout=60)
+    stats = {}  # {TABLE.COLUMN: {low, high, distinct}}
+    for line in output.split('\n'):
+        parts = line.strip().split('|')
+        if len(parts) >= 4:
+            table, col = parts[0].strip(), parts[1].strip()
+            low, high = parts[2].strip(), parts[3].strip()
+            distinct = int(parts[4].strip()) if len(parts) > 4 and parts[4].strip().isdigit() else 0
+            if low != 'NULL':
+                stats[f"{table}.{col}"] = {'low': low, 'high': high, 'distinct': distinct}
+                stats[col] = {'low': low, 'high': high, 'distinct': distinct}
+
+    print(f"  소스3 ALL_TAB_COL_STATISTICS: {len(stats)}개 컬럼 통계")
+    return stats
+
+
+# ──────────────────────────────────────────────
+# 소스 4: ALL_CONSTRAINTS (FK → 실제 값 샘플링)
+# ──────────────────────────────────────────────
+
+def get_fk_samples():
+    """FK 관계에서 참조 테이블의 실제 값 샘플링."""
+    if not _oracle_available():
+        return {}
+
+    schema = _oracle_schema()
+    # FK 컬럼 → 참조 테이블.컬럼 매핑
+    sql = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 1000 TRIMSPOOL ON
+SELECT CC.TABLE_NAME || '|' || CC.COLUMN_NAME || '|' || RC.TABLE_NAME || '|' || RC.COLUMN_NAME
+FROM ALL_CONS_COLUMNS CC
+JOIN ALL_CONSTRAINTS C ON CC.CONSTRAINT_NAME = C.CONSTRAINT_NAME AND CC.OWNER = C.OWNER
+JOIN ALL_CONS_COLUMNS RC ON C.R_CONSTRAINT_NAME = RC.CONSTRAINT_NAME AND C.R_OWNER = RC.OWNER
+WHERE C.CONSTRAINT_TYPE = 'R'
+  AND C.OWNER = '{schema}'
+  AND ROWNUM <= 3000
+ORDER BY 1, 2;
+EXIT;
+"""
+    output = _run_sqlplus(sql, timeout=60)
+    fk_map = {}  # {TABLE.COLUMN: (ref_table, ref_col)}
+    for line in output.split('\n'):
+        parts = line.strip().split('|')
+        if len(parts) >= 4:
+            table, col, ref_table, ref_col = [p.strip() for p in parts[:4]]
+            fk_map[f"{table}.{col}"] = (ref_table, ref_col)
+            fk_map[col] = (ref_table, ref_col)
+
+    # 참조 테이블에서 실제 값 샘플링 (유니크한 ref_table.ref_col 조합)
+    fk_values = {}  # {column: [sampled_values]}
+    sampled = set()
+    for key, (ref_table, ref_col) in fk_map.items():
+        sample_key = f"{ref_table}.{ref_col}"
+        if sample_key in sampled:
+            # 이미 샘플링된 참조 컬럼 재사용
+            for k, v in fk_values.items():
+                if k.endswith(f".{ref_col}") or k == ref_col:
+                    fk_values[key] = v
+                    break
+            continue
+        sampled.add(sample_key)
+
+        sample_sql = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 500 TRIMSPOOL ON
+SELECT DISTINCT {ref_col} FROM {schema}.{ref_table} WHERE {ref_col} IS NOT NULL AND ROWNUM <= 3;
+EXIT;
+"""
+        sample_output = _run_sqlplus(sample_sql, timeout=10)
+        values = [l.strip() for l in sample_output.split('\n') if l.strip() and 'ERROR' not in l and 'ORA-' not in l]
+        if values:
+            fk_values[key] = values[:3]
+
+    total = sum(len(v) for v in fk_values.values())
+    print(f"  소스4 FK 샘플링: {len(fk_values)}개 FK 컬럼, {total}개 실제 값")
+    return fk_values
+
+
+# ──────────────────────────────────────────────
+# 값 생성
+# ──────────────────────────────────────────────
+
+def gen_value(param_name, col_info=None, captures=None, col_stats=None, fk_values=None):
+    """파라미터별 최적 테스트 값 생성. 우선순위: captures > fk > stats > 타입 > 이름."""
     pn = param_name.lower()
+    pu = param_name.upper()
 
     # 특수 파라미터 (비즈니스 관행)
     special = {
@@ -94,62 +262,147 @@ def gen_value(param_name, col_info=None):
     if pn in special:
         return special[pn]
 
-    # 타입 기반 (Oracle 메타데이터에서 가져온 경우)
+    # 소스 1: V$SQL_BIND_CAPTURE (실제 캡처된 값 — 최우선)
+    if captures:
+        for key in [pn, pu, param_name]:
+            if key in captures and captures[key]:
+                return captures[key][0]  # 첫 번째 캡처 값
+
+    # 소스 2: FK 샘플링 (참조 테이블에서 실제 존재하는 값)
+    if fk_values:
+        for key in [pu, pn, param_name]:
+            if key in fk_values and fk_values[key]:
+                return fk_values[key][0]
+
+    # 소스 3: 타입 기반 (ALL_TAB_COLUMNS)
     dtype = col_info.get('type', '').upper() if col_info else ''
+    data_len = col_info.get('data_length', 0) if col_info else 0
+
     if dtype in ('NUMBER', 'NUMERIC', 'INTEGER', 'FLOAT', 'BINARY_FLOAT', 'BINARY_DOUBLE',
                  'INT', 'BIGINT', 'SMALLINT', 'DECIMAL'):
-        return 100
+        # 통계에서 범위 값 사용
+        if col_stats:
+            for key in [pu, pn]:
+                if key in col_stats and col_stats[key].get('low', '').replace('.', '').replace('-', '').isdigit():
+                    return int(float(col_stats[key]['low']))
+        return 1
     if dtype in ('DATE', 'TIMESTAMP', 'TIMESTAMP(6)', 'TIMESTAMP WITH TIME ZONE',
                  'TIMESTAMP WITH LOCAL TIME ZONE'):
         return '2026-01-15 10:30:00'
-    if dtype in ('CHAR', 'NCHAR') and col_info:
-        # CHAR(1) 등 짧은 컬럼에 맞게 1글자 반환
+    if dtype in ('CHAR', 'NCHAR'):
+        # CHAR(N) → N글자에 맞는 값
+        if data_len and data_len <= 2:
+            return 'Y'
         return 'T'
+    if dtype in ('VARCHAR2', 'NVARCHAR2', 'VARCHAR', 'NVARCHAR', 'CLOB', 'NCLOB'):
+        if data_len and data_len <= 1:
+            return 'T'
+        if data_len and data_len <= 5:
+            return 'A1'
+        return 'TEST'
     if dtype in ('BOOLEAN',):
         return True
     if dtype in ('BLOB', 'RAW', 'LONG RAW'):
-        return None  # binary 타입은 NULL로
+        return None
 
-    # 이름 기반 추론 (메타데이터 없을 때)
+    # 소스 4: 이름 기반 추론 (fallback)
     if any(k in pn for k in ('qty', 'cnt', 'amt', 'price', 'prc', 'rate', 'seq',
                               'no', 'num', 'idx', 'id', 'size', 'len', 'weight',
                               'page', 'limit', 'offset', 'rowcnt', 'pagesize')):
-        return 100
+        return 1
     if any(k in pn for k in ('date', 'day', 'dt', 'time', 'tm')):
         return '20260115'
     if pn.endswith('yn') or pn in ('yn',):
         return 'Y'
     if any(k in pn for k in ('key', 'cd', 'code', 'type', 'div', 'gb', 'flag', 'stat')):
-        return 'A1'  # 짧은 코드값 (value too long 방지)
+        return 'A1'
     if any(k in pn for k in ('nm', 'name', 'desc', 'msg', 'text', 'remark', 'note')):
         return 'TEST'
 
-    return 'T'  # 기본값을 짧게 (varchar(1) 호환)
+    return 'T'
 
 
-def gen_null_case(params, binds):
-    """NULL 테스트 케이스 — 각 nullable 파라미터를 NULL로."""
-    null_binds = dict(binds)
-    for p in params[:3]:  # 최대 3개만
-        null_binds[p] = None
-    return null_binds
+def gen_boundary_case(params, binds, col_stats):
+    """경계값 테스트: MIN/MAX 값 사용."""
+    boundary = dict(binds)
+    changed = False
+    for p in params:
+        pu = p.upper()
+        if pu in col_stats and col_stats[pu].get('high'):
+            high = col_stats[pu]['high']
+            # 숫자면 숫자로, 아니면 문자열로
+            try:
+                boundary[p] = int(float(high))
+            except ValueError:
+                boundary[p] = str(high)[:50]
+            changed = True
+        if changed and len([k for k in boundary if boundary[k] != binds.get(k)]) >= 3:
+            break
+    return boundary if changed else None
 
+
+def gen_capture_case(params, binds, captures):
+    """캡처된 실제 바인드 값으로 TC 생성."""
+    captured = dict(binds)
+    changed = False
+    for p in params:
+        for key in [p.lower(), p.upper(), p]:
+            if key in captures and len(captures[key]) > 1:
+                # 두 번째 캡처 값 사용 (첫 번째는 default에서 사용)
+                captured[p] = captures[key][1]
+                changed = True
+                break
+    return captured if changed else None
+
+
+def gen_fk_case(params, binds, fk_values):
+    """FK에서 샘플링한 실제 값으로 TC 생성."""
+    fk_binds = dict(binds)
+    changed = False
+    for p in params:
+        for key in [p.upper(), p.lower(), p]:
+            if key in fk_values and fk_values[key]:
+                vals = fk_values[key]
+                # default와 다른 값 선택
+                for v in vals:
+                    if v != str(binds.get(p, '')):
+                        fk_binds[p] = v
+                        changed = True
+                        break
+                break
+    return fk_binds if changed else None
+
+
+# ──────────────────────────────────────────────
+# 메인
+# ──────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description='Phase 2.5: Test Case Generator')
+    parser = argparse.ArgumentParser(description='Phase 2.5: Test Case Generator (다중 소스)')
     parser.add_argument('--results-dir', default='workspace/results', help='Results directory')
-    parser.add_argument('--parallel', type=int, default=1, help='(reserved)')
+    parser.add_argument('--skip-oracle', action='store_true', help='Oracle 접속 없이 이름 기반으로만 생성')
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
-    print("=== Phase 2.5: Test Case Generator ===")
+    print("=== Phase 2.5: Test Case Generator (다중 소스) ===\n")
 
-    # 1. Oracle 메타데이터 수집
-    col_types = get_oracle_columns()
+    # 1. Oracle 메타데이터 수집 (4소스)
+    if args.skip_oracle or not _oracle_available():
+        col_types, captures, col_stats, fk_values = {}, {}, {}, {}
+        print("  Oracle 미연결 — 이름 기반으로만 TC 생성\n")
+    else:
+        print("  Oracle 메타데이터 수집 중...")
+        col_types = get_oracle_columns()
+        captures = get_bind_captures()
+        col_stats = get_column_stats()
+        fk_values = get_fk_samples()
+        print()
 
-    # 2. parsed.json에서 쿼리별 파라미터 추출 + 테스트 케이스 생성
+    # 2. parsed.json에서 쿼리별 TC 생성
     total_files = 0
     total_cases = 0
+    source_counts = {'COLUMN_METADATA': 0, 'NULL_SEMANTICS': 0, 'EMPTY_STRING': 0,
+                     'BIND_CAPTURE': 0, 'BOUNDARY': 0, 'FK_SAMPLE': 0}
 
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try:
@@ -172,13 +425,13 @@ def main():
             if not params:
                 continue
 
-            # 테이블명 추출 (메타데이터 매핑용)
+            # 테이블명 추출
             tables = re.findall(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(\w+)', raw, re.IGNORECASE)
             tables = [t.upper() for t in tables
                       if t.upper() not in ('DUAL', 'SELECT', 'WHERE', 'SET', 'VALUES')]
 
-            # 파라미터별 값 생성
-            binds = {}
+            # 파라미터별 메타데이터 매핑
+            param_col_info = {}
             for p in params:
                 col_info = None
                 for t in tables:
@@ -188,29 +441,57 @@ def main():
                         break
                 if not col_info:
                     col_info = col_types.get(p.upper())
-                binds[p] = gen_value(p, col_info)
+                param_col_info[p] = col_info
 
-            # 테스트 케이스 목록 (validate-queries.py가 기대하는 형식)
-            cases = [
-                {'name': 'default', 'params': binds, 'source': 'COLUMN_METADATA'},
-            ]
-            total_cases += 1
+            # --- TC 생성 ---
+            cases = []
 
-            # NULL 케이스 추가
-            null_binds = gen_null_case(params, binds)
+            # TC 1: Default (타입/캡처 기반)
+            binds = {}
+            for p in params:
+                binds[p] = gen_value(p, param_col_info.get(p), captures, col_stats, fk_values)
+            cases.append({'name': 'default', 'params': binds, 'source': 'COLUMN_METADATA'})
+            source_counts['COLUMN_METADATA'] += 1
+
+            # TC 2: NULL 케이스
+            null_binds = dict(binds)
+            for p in params[:3]:
+                null_binds[p] = None
             if null_binds != binds:
                 cases.append({'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'})
-                total_cases += 1
+                source_counts['NULL_SEMANTICS'] += 1
 
-            # Empty string case (Oracle '' = NULL vs PG '' != NULL)
+            # TC 3: Empty string (Oracle '' = NULL semantics)
             empty_binds = dict(binds)
             for p in params[:3]:
                 if isinstance(binds.get(p), str):
                     empty_binds[p] = ''
             if empty_binds != binds:
-                cases.append({'name': 'empty_string', 'params': empty_binds, 'source': 'EMPTY_STRING_SEMANTICS'})
-                total_cases += 1
+                cases.append({'name': 'empty_string', 'params': empty_binds, 'source': 'EMPTY_STRING'})
+                source_counts['EMPTY_STRING'] += 1
 
+            # TC 4: Bind Capture (실제 캡처된 값)
+            if captures:
+                cap_case = gen_capture_case(params, binds, captures)
+                if cap_case:
+                    cases.append({'name': 'bind_capture', 'params': cap_case, 'source': 'BIND_CAPTURE'})
+                    source_counts['BIND_CAPTURE'] += 1
+
+            # TC 5: Boundary (MIN/MAX)
+            if col_stats:
+                bound_case = gen_boundary_case(params, binds, col_stats)
+                if bound_case:
+                    cases.append({'name': 'boundary', 'params': bound_case, 'source': 'BOUNDARY'})
+                    source_counts['BOUNDARY'] += 1
+
+            # TC 6: FK sample (참조 테이블 실제 값)
+            if fk_values:
+                fk_case = gen_fk_case(params, binds, fk_values)
+                if fk_case:
+                    cases.append({'name': 'fk_sample', 'params': fk_case, 'source': 'FK_SAMPLE'})
+                    source_counts['FK_SAMPLE'] += 1
+
+            total_cases += len(cases)
             file_tc[qid] = cases
 
         if file_tc:
@@ -219,16 +500,23 @@ def main():
                 json.dump(file_tc, f, indent=2, ensure_ascii=False)
             total_files += 1
 
-    print(f"\n=== 완료 ===")
+    print(f"=== 완료 ===")
     print(f"  파일: {total_files}개")
     print(f"  테스트 케이스: {total_cases}개")
+    print(f"  소스별:")
+    for src, cnt in sorted(source_counts.items(), key=lambda x: -x[1]):
+        if cnt > 0:
+            print(f"    {src}: {cnt}")
 
     # Activity log
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
         log_activity('PHASE_END', agent='generate-test-cases', phase='phase_2.5',
-                     detail=f"TC 생성: {total_files}파일, {total_cases}건")
+                     detail=f"TC: {total_files}파일, {total_cases}건 "
+                            f"(capture:{source_counts['BIND_CAPTURE']}, "
+                            f"boundary:{source_counts['BOUNDARY']}, "
+                            f"fk:{source_counts['FK_SAMPLE']})")
     except Exception:
         pass
 
