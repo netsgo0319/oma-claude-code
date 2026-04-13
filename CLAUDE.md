@@ -158,29 +158,37 @@ python3 tools/validate-queries.py --parse-results --output workspace/results/_va
 
 **동적 SQL 쿼리는 Phase 3.5에서 MyBatis로 해결.**
 
+**TC 통합 원칙:**
+- Phase 2.5에서 만든 TC가 Phase 3/3.5 **모든 검증에서 공유**되어야 한다.
+- Phase 3.5 MyBatis variant는 TC와 별도의 소스이다 (동적 SQL 분기 평가).
+- **Phase 3과 3.5는 반드시 다른 출력 디렉토리를 사용하라. 덮어쓰기 금지.**
+  - Phase 3 → `_validation/`
+  - Phase 3.5 → `_validation_phase35/`
+- query-matrix는 Phase 3 + Phase 3.5 결과를 **merge** (같은 query_id는 더 나은 결과 채택).
+
 ### Phase 3.5: MyBatis Engine (양쪽 추출 + 비교)
 
 **Java가 설치되어 있으면 반드시 실행. 건너뛰지 마라.**
 
 ```bash
-# Step 1: 양쪽 SQL 추출
+# Step 1: 양쪽 SQL 추출 (출력: _validation_phase35/ — Phase 3 결과 보존!)
 bash tools/run-extractor.sh --validate
 
-# Step 2: 추출된 SQL로 배치 스크립트 생성 (--compare 쓰지 마라, OOM 위험)
-python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation_phase7/ --tracking-dir workspace/results/
+# Step 2: 추출된 SQL로 배치 스크립트 생성
+python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation_phase35/ --tracking-dir workspace/results/
 
-# Step 3: psql/sqlplus 배치 실행 (빠름)
+# Step 3: psql/sqlplus 배치 실행
 PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation_phase7/explain_test.sql \
-  > workspace/results/_validation_phase7/explain_results.txt 2>&1
+  -f workspace/results/_validation_phase35/explain_test.sql \
+  > workspace/results/_validation_phase35/explain_results.txt 2>&1
 
 PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation_phase7/execute_test.sql \
-  > workspace/results/_validation_phase7/execute_results.txt 2>&1
+  -f workspace/results/_validation_phase35/execute_test.sql \
+  > workspace/results/_validation_phase35/execute_results.txt 2>&1
 
 sqlplus -S $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID \
-  @workspace/results/_validation_phase7/oracle_compare.sql \
-  > workspace/results/_validation_phase7/oracle_results.txt 2>&1
+  @workspace/results/_validation_phase35/oracle_compare.sql \
+  > workspace/results/_validation_phase35/oracle_results.txt 2>&1
 
 # Step 4: 결과 파싱
 python3 tools/validate-queries.py --parse-results --output workspace/results/_validation_phase7/ --tracking-dir workspace/results/

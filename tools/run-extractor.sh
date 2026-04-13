@@ -20,7 +20,8 @@ JAR_PATH="$EXTRACTOR_DIR/build/libs/mybatis-sql-extractor-1.0.0.jar"
 INPUT_DIR="$PROJECT_DIR/workspace/input"
 OUTPUT_DIR="$PROJECT_DIR/workspace/output"
 EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted"
-VALIDATION_DIR="$PROJECT_DIR/workspace/results/_validation"
+# Phase 3.5는 Phase 3과 다른 디렉토리에 출력해야 함 (덮어쓰기 방지)
+VALIDATION_DIR="$PROJECT_DIR/workspace/results/_validation_phase35"
 
 SKIP_BUILD=false
 DO_VALIDATE=false

@@ -179,22 +179,31 @@ class TrackingManager:
 
     # ===== Phase 3: 검증 결과 기록 =====
 
-    def update_explain(self, query_id, status, plan_summary=None, error=None, duration_ms=None):
+    def update_explain(self, query_id, status, plan_summary=None, error=None, duration_ms=None, phase='3'):
+        """Update EXPLAIN result. phase='3' or '3.5' to avoid overwrite."""
         q = self._find_query(query_id)
         if q:
-            q['explain'] = {
+            result = {
                 'status': status,
                 'plan_summary': plan_summary,
                 'error': error,
                 'executed_at': now_iso(),
                 'duration_ms': duration_ms
             }
-            if status == 'pass' and (q['status'] in ('converted', 'validating')):
-                q['status'] = 'validating'
-            elif status == 'fail':
-                q['status'] = 'failed'
+            if phase == '3.5':
+                # Phase 3.5 결과는 별도 필드에 저장 (Phase 3 결과 보존)
+                q['explain_phase35'] = result
+                # Phase 3에서 fail이었는데 3.5에서 pass이면 status 복구
+                if status == 'pass' and q.get('explain', {}).get('status') == 'fail':
+                    q['status'] = 'validating'
+            else:
+                q['explain'] = result
+                if status == 'pass' and (q['status'] in ('converted', 'validating')):
+                    q['status'] = 'validating'
+                elif status == 'fail':
+                    q['status'] = 'failed'
             if duration_ms is not None:
-                q['timing']['explain_ms'] = duration_ms
+                q['timing'][f'explain{"_phase35" if phase == "3.5" else ""}_ms'] = duration_ms
             self._save()
 
     def update_execution(self, query_id, status, row_count=None, columns=None,
