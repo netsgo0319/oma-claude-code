@@ -1466,6 +1466,89 @@ SET HEADING ON
                         'message': f'{sum(r==0 for r in rows)}/{len(rows)} test cases returned 0 rows',
                     })
 
+        # Parse Oracle vs PG compare results
+        compare_results = []
+        oracle_results_file = output_path / 'oracle_results.txt'
+        if execute_results_file.exists() and oracle_results_file.exists():
+            print("\nParsing Oracle vs PG compare results...")
+            # Parse PG row counts
+            pg_rows = {}  # {test_id: row_count}
+            current_test = None
+            for line in exec_output.split('\n'):
+                if line.startswith('=== ') and line.endswith(' ==='):
+                    current_test = line.strip('= ')
+                elif current_test:
+                    m = re.match(r'\((\d+) (?:rows?|행)\)', line.strip())
+                    if m:
+                        pg_rows[current_test] = int(m.group(1))
+                        current_test = None
+                    elif 'ERROR' in line:
+                        pg_rows[current_test] = -1  # error marker
+                        current_test = None
+
+            # Parse Oracle row counts
+            with open(oracle_results_file) as f:
+                ora_output = f.read()
+            ora_rows = {}
+            current_test = None
+            for line in ora_output.split('\n'):
+                if line.startswith('=== ') and line.endswith(' ==='):
+                    current_test = line.strip('= ')
+                elif current_test:
+                    # Oracle COUNT(*) result: just a number on its own line
+                    stripped = line.strip()
+                    if stripped.isdigit():
+                        ora_rows[current_test] = int(stripped)
+                        current_test = None
+                    elif 'SP2-' in line or 'ORA-' in line or 'ERROR' in line:
+                        ora_rows[current_test] = -1
+                        current_test = None
+
+            # Compare
+            all_test_ids = set(pg_rows.keys()) | set(ora_rows.keys())
+            for tid in sorted(all_test_ids):
+                parts = tid.split('.')
+                qid = parts[1] if len(parts) >= 2 else tid
+                pg_r = pg_rows.get(tid)
+                ora_r = ora_rows.get(tid)
+
+                if pg_r is None or ora_r is None:
+                    continue  # one side missing
+                if pg_r == -1 or ora_r == -1:
+                    compare_results.append({
+                        'query_id': qid, 'test_id': tid, 'match': False,
+                        'oracle_rows': ora_r, 'pg_rows': pg_r,
+                        'reason': 'execution_error'
+                    })
+                elif pg_r == ora_r:
+                    compare_results.append({
+                        'query_id': qid, 'test_id': tid, 'match': True,
+                        'oracle_rows': ora_r, 'pg_rows': pg_r
+                    })
+                else:
+                    compare_results.append({
+                        'query_id': qid, 'test_id': tid, 'match': False,
+                        'oracle_rows': ora_r, 'pg_rows': pg_r,
+                        'reason': f'row_count_diff: oracle={ora_r} pg={pg_r}'
+                    })
+
+            if compare_results:
+                match_count = sum(1 for c in compare_results if c['match'])
+                fail_count_cmp = len(compare_results) - match_count
+                compare_data = {
+                    'timestamp': datetime.now().isoformat(),
+                    'total': len(compare_results),
+                    'pass': match_count,
+                    'matched': match_count,
+                    'fail': fail_count_cmp,
+                    'mismatched': fail_count_cmp,
+                    'results': compare_results,
+                }
+                with open(output_path / 'compare_validated.json', 'w') as f:
+                    json.dump(compare_data, f, indent=2, ensure_ascii=False)
+                print(f"  Compare: {match_count} match, {fail_count_cmp} mismatch out of {len(compare_results)}")
+                print(f"  Saved: {output_path / 'compare_validated.json'}")
+
         if warnings:
             print(f"\nResult Integrity Guard: {len(warnings)} warnings")
             for w in warnings[:10]:
