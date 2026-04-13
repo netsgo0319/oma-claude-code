@@ -881,48 +881,49 @@ function renderOverview(){
   const S=DATA.summary;
   document.getElementById('gen-time').textContent='Generated: '+(DATA.generated_at||'').replace('T',' ').substring(0,19)+' | OMA Migration Accelerator';
 
-  // Summary cards
-  let valRate=S.validation_total>0?S.validation_pass+'/'+S.validation_total+' ('+(S.validation_pass*100/S.validation_total|0)+'%)':'N/A';
-  let valCls=S.validation_total>0?(S.validation_fail===0?'ok':S.validation_fail<5?'wn':'fl'):'';
-  let execRate=S.execution_total>0?S.execution_pass+'/'+S.execution_total+' ('+(S.execution_pass*100/S.execution_total|0)+'%)':'N/A';
-  let execCls=S.execution_total>0?(S.execution_fail===0?'ok':'wn'):'';
-  let compRate=S.compare_total>0?S.compare_match+'/'+S.compare_total+' ('+(S.compare_match*100/S.compare_total|0)+'%)':'N/A';
-  let compCls=S.compare_total>0?(S.compare_fail===0?'ok':S.compare_fail<3?'wn':'fl'):'';
-  let patTotal=Object.values(S.oracle_patterns||{}).reduce((a,b)=>a+b,0);
+  // Query matrix counts
+  let qm=DATA.query_matrix||{};
+  let qmS=qm.summary||{};
+  let totalQ=qm.total||S.total_input_queries||0;
+  let complete=qmS.COMPLETE||0;
+  let explainPass=qmS.EXPLAIN_PASS||0;
+  let converted=qmS.CONVERTED||0;
+  let explainFail=qmS.EXPLAIN_FAIL||0;
+  let compareFail=qmS.COMPARE_FAIL||0;
+  let healed=qmS.HEALED||0;
+  let escalated=qmS.ESCALATED||0;
+  let allFail=explainFail+compareFail+escalated;
+  let successTotal=complete+healed;
 
-  // Readiness card (full width)
-  let rdPct=S.readiness_pct||0;
-  let rdCls=rdPct>=90?'ok':rdPct>=70?'wn':'fl';
-  let rdDone=S.truly_done||0;
-  let rdManual=S.needs_manual||0;
-  let rdEsc=S.escalated_queries||0;
-
+  // Top summary: files, queries, complete, fail
   document.getElementById('summary-cards').innerHTML=
-    `<div class="card" style="grid-column:1/-1;text-align:center;padding:20px;border-color:${rdPct>=90?'var(--success)':rdPct>=70?'var(--warn)':'var(--fail)'}">
-      <div class="lbl">Migration Readiness</div>
-      <div class="val ${rdCls}" style="font-size:36px">${rdPct}%</div>
-      <div class="det">${rdDone}/${S.tested_queries||'?'} verified OK${S.unverified_queries?' | '+S.unverified_queries+' unverified (no TC)':''}${rdManual?' | '+rdManual+' need attention':''}${rdEsc?' | '+rdEsc+' escalated':''}</div>
-    </div>`+
-    `<div class="card"><div class="lbl">Input Files</div><div class="val">${S.total_input_files}</div><div class="det">${S.total_input_lines.toLocaleString()} lines, ${S.total_input_queries} queries</div></div>`+
-    `<div class="card"><div class="lbl">Output Files</div><div class="val">${S.total_output_files}</div><div class="det">${S.total_output_lines.toLocaleString()} lines</div></div>`+
-    `<div class="card"><div class="lbl">EXPLAIN</div><div class="val ${valCls}">${valRate}</div><div class="det">${S.validation_total>0?(S.validation_fail>0?S.validation_fail+' failures':'All passed'):'Not run yet'}</div></div>`+
-    `<div class="card"><div class="lbl">Execute</div><div class="val ${execCls}">${execRate}</div><div class="det">${S.execution_total>0?(S.execution_fail>0?S.execution_fail+' failures':'All passed'):'Not run yet'}</div></div>`+
-    `<div class="card"><div class="lbl">Compare</div><div class="val ${compCls}">${compRate}</div><div class="det">${S.compare_total>0?(S.compare_fail>0?S.compare_fail+' mismatch':'All matched'):'Not run yet'}</div></div>`+
-    `<div class="card"><div class="lbl">Oracle Patterns</div><div class="val">${patTotal.toLocaleString()}</div><div class="det">${Object.keys(S.oracle_patterns||{}).length} types</div></div>`;
+    `<div class="card"><div class="lbl">파일</div><div class="val">${S.total_input_files}</div><div class="det">${S.total_input_lines.toLocaleString()} lines</div></div>`+
+    `<div class="card"><div class="lbl">전체 쿼리</div><div class="val">${totalQ}</div><div class="det">SELECT ${S.total_input_queries||totalQ}</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--success)">완료 (변환+테스트)</div><div class="val ok">${successTotal}</div><div class="det">COMPLETE ${complete}${healed?' + HEALED '+healed:''}</div></div>`+
+    `<div class="card"><div class="lbl">EXPLAIN 통과</div><div class="val" style="color:var(--accent2)">${explainPass}</div><div class="det">비교 미실행</div></div>`+
+    `<div class="card"><div class="lbl">변환만</div><div class="val" style="color:var(--dim)">${converted}</div><div class="det">테스트 미실행</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--fail)">실패</div><div class="val fl">${allFail}</div><div class="det">EXPLAIN ${explainFail} | Compare ${compareFail}${escalated?' | 에스컬레이션 '+escalated:''}</div></div>`;
 
-  // Phase 3.5 cards (if available)
-  if(S.phase7_explain_total>0){
-    let p7eRate=S.phase7_explain_pass+'/'+S.phase7_explain_total+' ('+(S.phase7_explain_pass*100/S.phase7_explain_total|0)+'%)';
-    let p7eCls=S.phase7_explain_fail===0?'ok':'wn';
-    document.getElementById('summary-cards').innerHTML+=
-      `<div class="card"><div class="lbl">Phase 3.5 EXPLAIN</div><div class="val ${p7eCls}">${p7eRate}</div><div class="det">MyBatis engine resolved SQL</div></div>`;
+  // Failure summary paragraph
+  if(allFail>0){
+    let cats=qm.explain_error_categories||{};
+    let healS=qm.healing_summary||{};
+    let catStr=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}건`).join(', ');
+    let healStr=Object.entries(healS).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}건`).join(', ');
+
+    let para=`<div class="sec" style="margin-top:12px;padding:16px;border-left:3px solid var(--fail)"><h2 style="font-size:14px;margin-bottom:8px">실패 요약</h2><p style="font-size:13px;line-height:1.8;color:var(--text)">`;
+    para+=`총 ${totalQ}개 쿼리 중 <strong style="color:var(--fail)">${allFail}건이 실패</strong>했습니다. `;
+    if(explainFail)para+=`EXPLAIN 실패 ${explainFail}건의 주요 원인은 ${catStr||'미분류'}입니다. `;
+    if(compareFail)para+=`Oracle↔PG 비교 불일치 ${compareFail}건이 발견되었습니다. `;
+    if(escalated)para+=`자동 힐링 불가로 ${escalated}건이 에스컬레이션되어 수동 검토가 필요합니다. `;
+    if(healStr)para+=`힐링 티켓 현황: ${healStr}. `;
+    if(explainPass)para+=`EXPLAIN 통과했지만 Compare 미실행인 ${explainPass}건은 Oracle↔PG 양쪽 실행 비교를 추가로 수행해야 합니다. `;
+    if(converted)para+=`변환만 완료되고 테스트 미실행인 ${converted}건은 MyBatis 엔진 검증이 필요합니다.`;
+    para+=`</p></div>`;
+    document.getElementById('summary-cards').insertAdjacentHTML('afterend',para);
   }
-  if(S.phase7_compare_total>0){
-    let p7cRate=S.phase7_compare_match+'/'+S.phase7_compare_total+' ('+(S.phase7_compare_match*100/S.phase7_compare_total|0)+'%)';
-    let p7cCls=S.phase7_compare_fail===0?'ok':S.phase7_compare_fail<3?'wn':'fl';
-    document.getElementById('summary-cards').innerHTML+=
-      `<div class="card"><div class="lbl">Phase 3.5 Compare</div><div class="val ${p7cCls}">${p7cRate}</div><div class="det">MyBatis resolved Oracle vs PG</div></div>`;
-  }
+
+  let patTotal=Object.values(S.oracle_patterns||{}).reduce((a,b)=>a+b,0);
 
   // Action Items (collapsible, at top)
   renderActionItems();

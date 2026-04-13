@@ -124,7 +124,10 @@ if [ -n "$JAVA_SRC_DIR" ] && [ -d "$JAVA_SRC_DIR" ]; then
     find "$JAVA_SRC_DIR" -name "*Mapper.java" -o -name "*Repository.java" -o -name "*Dao.java" | wc -l  # DAO/Repository
 fi
 ```
-설정 안 되어 있으면 사용자에게 물어보라: "Java 소스 경로가 있으면 `export JAVA_SRC_DIR=/path/to/src/main/java`로 설정하세요. VO/DTO 분석으로 TC 정확도가 높아집니다."
+**미설정 시 반드시 사용자에게 물어보라 (스킵하지 마라):**
+"Java 소스(VO/DTO/Repository) 경로를 알려주세요. 예: `export JAVA_SRC_DIR=/path/to/src/main/java`
+VO/DTO 클래스를 분석하면 TC 바인드값 타입이 정확해져서 테스트 품질이 크게 향상됩니다.
+없으면 '없음'이라고 말씀해주세요."
 복사 불필요 — 원본 프로젝트 경로를 참조만 한다. 없으면 스키마+샘플 데이터로 대체.
 
 **테이블 샘플 데이터 수집 (TC에 사용):**
