@@ -1565,7 +1565,11 @@ function renderTickets(){
 
   // Summary
   html+=`<div class="sec"><h2>Healing Tickets Summary</h2>`;
-  html+=`<p>Total: <strong>${tickets.length}</strong> | <span style="color:var(--success)">Resolved: ${resolved.length}</span> | <span style="color:var(--fail)">Escalated: ${escalated.length}</span> | <span style="color:var(--dim)">Skipped: ${skipped.length}</span></p>`;
+  let mybatisResolved=resolved.filter(t=>t.skip_reason==='resolved_by_mybatis_engine').length;
+  let healResolved=resolved.length-mybatisResolved;
+  html+=`<p>Total: <strong>${tickets.length}</strong> | <span style="color:var(--success)">Resolved: ${resolved.length}</span>`;
+  if(mybatisResolved)html+=` (MyBatis: ${mybatisResolved}, Healing: ${healResolved})`;
+  html+=` | <span style="color:var(--fail)">Escalated: ${escalated.length}</span> | <span style="color:var(--dim)">Skipped: ${skipped.length}</span></p>`;
 
   // Category breakdown
   if(h.by_category){

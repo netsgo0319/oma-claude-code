@@ -65,6 +65,22 @@ def main():
     ticket_id = 0
     seen_queries = set()  # Deduplicate by query_id
 
+    # Load Phase 3.5 passes — queries that passed in MyBatis engine don't need healing
+    phase35_passes = set()
+    for p35_dir in [args.validation_phase7_dir]:
+        p35_path = Path(p35_dir) / 'validated.json'
+        if p35_path.exists():
+            p35data = json.load(open(p35_path))
+            for p in p35data.get('passes', []):
+                # Extract query_id from test_id (format: file.queryId.variant)
+                tid = p if isinstance(p, str) else p.get('test', '')
+                if '.' in tid:
+                    segments = tid.split('.')
+                    qid = segments[-1] if len(segments) >= 2 else tid
+                    phase35_passes.add(qid)
+    if phase35_passes:
+        print(f"  Phase 3.5 passes: {len(phase35_passes)} queries (will auto-resolve if Phase 3 failed)")
+
     # Load validation results
     for val_dir in [args.validation_dir, args.validation_phase7_dir]:
         val_path = Path(val_dir) / 'validated.json'
@@ -97,15 +113,23 @@ def main():
                 continue
             seen_queries.add(dedup_key)
 
+            # Auto-resolve if Phase 3.5 MyBatis engine passed this query
+            auto_status = 'open'
+            auto_skip = ''
+            if query_id in phase35_passes:
+                auto_status = 'resolved'
+                auto_skip = 'resolved_by_mybatis_engine'
+
             ticket_id += 1
             tickets.append({
                 'ticket_id': f'HT-{ticket_id:04d}',
-                'status': 'open',
+                'status': auto_status,
                 'category': category,
-                'severity': severity,
+                'severity': severity if auto_status == 'open' else 'low',
                 'query_id': query_id,
                 'file': file_name,
                 'error': str(error)[:500],
+                'skip_reason': auto_skip,
                 'test_id': test_id,
                 'retry_count': 0,
                 'max_retries': args.max_retries,

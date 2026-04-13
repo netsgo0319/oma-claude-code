@@ -206,8 +206,11 @@ Phase 3 + Phase 3.5 실패 건 모두 대상. 없으면 Phase 5로.
 **Step 1: 힐링 티켓 생성**
 EXPLAIN FAIL, COMPARE FAIL 결과에서 에러를 분류하여 `workspace/results/_healing/tickets.json`에 티켓 생성:
 ```bash
-python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --output workspace/results/_healing/
+python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --validation-phase7-dir workspace/results/_validation_phase35/ --output workspace/results/_healing/
 ```
+**MyBatis 엔진 활용:** Phase 3에서 실패했지만 Phase 3.5 MyBatis에서 통과한 쿼리는 자동 resolved.
+동적 SQL (`<if>`, `<include>` 등) 때문에 static 추출이 불완전한 쿼리는 Phase 3.5로 검증 가능.
+티켓에 `skip_reason: resolved_by_mybatis_engine`으로 표시.
 
 티켓 구조:
 ```json
@@ -230,11 +233,16 @@ python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_va
 for each ticket (severity순, critical → high → medium):
   1. Reviewer(원인 분석) → ticket.history에 분석 결과 기록
   2. Converter(재변환) → output XML 수정 + ticket.history에 수정 내용 기록
-  3. Validator(EXPLAIN 재검증) → 결과를 ticket에 기록
+  3. 재검증 (2단계):
+     a. EXPLAIN 재검증 (빠른 문법 체크)
+     b. Java 설치 시 → MyBatis 엔진으로 동적 SQL 렌더링 후 재검증 (정확도 높음)
+        bash tools/run-extractor.sh --skip-build 로 수정된 output XML 재추출
   4. 성공 → ticket.status = "resolved"
   5. 실패 → ticket.retry_count++ → 다음 retry (최대 5회)
   6. 5회 실패 → ticket.status = "escalated"
 ```
+**동적 SQL 쿼리는 static EXPLAIN만으로 검증 불가.** `<if>`, `<include>`, `<foreach>` 때문에
+추출 SQL이 불완전할 수 있으므로, **MyBatis 엔진 재검증을 우선**하라.
 
 **output XML 수정 전 반드시 백업:**
 ```bash
