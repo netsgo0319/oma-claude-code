@@ -1049,7 +1049,7 @@ function renderValidationSec(){
   let summary=pipeline.summary||{};
   if(summary.escalated>0){
     html+=`<div class="sec"><h2>Escalated Queries (Manual Review Required)</h2>`;
-    html+=`<p><span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">${summary.escalated} queries escalated after 3 retries</span></p>`;
+    html+=`<p><span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">${summary.escalated} queries escalated (max retries reached)</span></p>`;
     // List escalated files
     let files=DATA.progress?.files||DATA.files||{};
     let escList=[];

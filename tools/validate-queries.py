@@ -439,7 +439,7 @@ SET HEADING ON
         return validated
 
     @staticmethod
-    def _extract_mybatis_sql(elem):
+    def _extract_mybatis_sql(elem, mapper_root=None):
         """Extract SQL from MyBatis XML element, handling dynamic SQL tags intelligently.
         Instead of blindly joining all itertext(), this understands:
         - <if>: include content (assume condition true for max coverage)
@@ -448,18 +448,18 @@ SET HEADING ON
         - <set>: wrap content with SET, strip trailing comma
         - <trim>: apply prefix/suffix/prefixOverrides/suffixOverrides
         - <foreach>: generate single iteration placeholder
-        - <include>: resolve by looking up <sql id="X"> in same tree, fallback to skip
+        - <include>: resolve by looking up <sql id="X"> in mapper root
         - <selectKey>: skip (separate statement)
         - <bind>: skip
+
+        mapper_root: the <mapper> root element (for <sql> fragment lookup).
+                     If None, falls back to searching within elem only.
         """
         # Pre-build sql fragment map for <include refid="X"> resolution
         sql_fragments = {}
-        root = elem
-        while root.getparent() is not None if hasattr(root, 'getparent') else False:
-            root = root.getparent()
-        # Fallback: search from elem's tree root
+        search_root = mapper_root or elem
         try:
-            for sql_elem in (root if root.tag == 'mapper' else elem).iter():
+            for sql_elem in search_root.iter():
                 if sql_elem.tag == 'sql' and sql_elem.get('id'):
                     sql_fragments[sql_elem.get('id')] = sql_elem
         except Exception:
@@ -573,7 +573,7 @@ SET HEADING ON
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.findall(f'.//{tag}'):
                     qid = elem.get('id', 'unknown')
-                    raw_sql = self._extract_mybatis_sql(elem)
+                    raw_sql = self._extract_mybatis_sql(elem, mapper_root=root)
                     raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
                     raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
 
