@@ -45,6 +45,10 @@
       "Bash(head *)",
       "Bash(tail *)",
       "Bash(mkdir *)",
+      "Bash(rm workspace/*)",
+      "Bash(rm -r workspace/*)",
+      "Bash(rm -rf workspace/*)",
+      "Bash(cp -r workspace/*)",
       "Read",
       "Write",
       "Edit",
@@ -52,7 +56,6 @@
       "Grep"
     ],
     "deny": [
-      "Bash(rm *)",
       "Bash(chmod *)",
       "Bash(chown *)",
       "Bash(curl *)",
