@@ -720,6 +720,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .refresh-toggle.on{border-color:var(--success);color:var(--success)}
 .refresh-dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
 .refresh-toggle.on .refresh-dot{background:var(--success);animation:pulse 1.5s infinite}
+/* Tables */
+table{width:100%;border-collapse:collapse;margin-top:6px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:12px}
+th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;background:var(--card2)}
+/* Filter buttons (Files tab) */
+.filter-btn{padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--dim);font-size:11px;cursor:pointer;transition:all .2s}
+.filter-btn.active{border-color:var(--accent);color:var(--accent2);background:rgba(59,130,246,.1)}
 /* Status colors */
 .st-success,.st-converted,.st-pass{color:var(--success)}.st-failed,.st-fail,.st-escalated{color:var(--fail)}
 .st-running,.st-validating,.st-converting{color:var(--accent2)}.st-parsed,.st-analyzed,.st-pending{color:var(--dim)}
@@ -1086,7 +1093,7 @@ function renderValidationSec(){
     if(c.results&&c.results.length){
       html+='<table style="margin-top:10px"><tr><th>Query</th><th>Case</th><th>Oracle Rows</th><th>PG Rows</th><th>Status</th><th>Detail</th></tr>';
       for(let r of c.results){
-        let st=r.match?'<span style="color:var(--pass)">MATCH</span>':
+        let st=r.match?'<span style="color:var(--success)">MATCH</span>':
           (r.oracle_error||r.pg_error||r.ora_error)?'<span style="color:var(--fail)">ERROR</span>':
           '<span style="color:var(--fail)">DIFF</span>';
         let detail=r.reason||r.oracle_error||r.ora_error||r.pg_error||'';
@@ -1236,18 +1243,18 @@ function renderExtractionSec(){
 
 // ========== Render Files Tab ==========
 let fileFilter='all'; // 'all', 'fail', 'escalated', 'pass'
-function setFileFilter(f){fileFilter=f;renderFiles();document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
+function setFileFilter(f,el){fileFilter=f;renderFiles();document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');}
 function renderFiles(){
   let files=DATA.files||{};
   let names=Object.keys(files).sort();
   if(names.length===0){document.getElementById('file-list').innerHTML='<div style="color:var(--dim)">No files found</div>';return;}
   // Filter buttons
   let html='<div style="margin-bottom:12px;display:flex;gap:6px">';
-  html+=`<button class="filter-btn phase-badge ${fileFilter==='all'?'active':''}" onclick="setFileFilter('all')" style="cursor:pointer">All (${names.length})</button>`;
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='all'?'active':''}" onclick="setFileFilter('all',this)" style="cursor:pointer">All (${names.length})</button>`;
   let failNames=names.filter(n=>(files[n].fail_count||0)>0);
-  html+=`<button class="filter-btn phase-badge ${fileFilter==='fail'?'active':''}" onclick="setFileFilter('fail')" style="cursor:pointer;background:rgba(239,68,68,.15);color:var(--fail)">Fail (${failNames.length})</button>`;
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='fail'?'active':''}" onclick="setFileFilter('fail',this)" style="cursor:pointer;background:rgba(239,68,68,.15);color:var(--fail)">Fail (${failNames.length})</button>`;
   let passNames=names.filter(n=>(files[n].fail_count||0)===0&&(files[n].pass_count||0)>0);
-  html+=`<button class="filter-btn phase-badge ${fileFilter==='pass'?'active':''}" onclick="setFileFilter('pass')" style="cursor:pointer;background:rgba(34,197,94,.15);color:var(--success)">Pass (${passNames.length})</button>`;
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='pass'?'active':''}" onclick="setFileFilter('pass',this)" style="cursor:pointer;background:rgba(34,197,94,.15);color:var(--success)">Pass (${passNames.length})</button>`;
   html+=`</div>`;
   // Apply filter
   if(fileFilter==='fail')names=failNames;
@@ -1620,7 +1627,6 @@ function renderTickets(){
   document.getElementById('tickets-detail').innerHTML=html;
 }
 
-// Legacy: keep renderPipeline as alias
 </script>
 </body>
 </html>'''
