@@ -80,20 +80,27 @@ if [ "$XML_COUNT" -eq 0 ]; then
 fi
 echo "XML files: $XML_COUNT"
 
-# Step 4: Run extraction
+# Step 4: Run extraction (with TC params if available)
+MERGED_TC="$PROJECT_DIR/workspace/results/_test-cases/merged-tc.json"
+PARAMS_OPT=""
+if [ -f "$MERGED_TC" ]; then
+    PARAMS_OPT="--params $MERGED_TC"
+    echo "--- TC params found: $MERGED_TC ---"
+fi
+
 echo ""
-echo "--- Extracting SQL (individual file mode, auto DTO fallback) ---"
+echo "--- Extracting Oracle SQL (input XML, with TC params) ---"
 mkdir -p "$EXTRACTED_DIR"
 
-java -jar "$JAR_PATH" --input "$INPUT_DIR" --output "$EXTRACTED_DIR"
+java -jar "$JAR_PATH" --input "$INPUT_DIR" --output "$EXTRACTED_DIR" $PARAMS_OPT
 
 # Step 4b: Extract PG SQL variants from converted output XML
 PG_EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted_pg"
 echo ""
-echo "--- Extracting PG SQL variants from output XML ---"
+echo "--- Extracting PG SQL variants (output XML, with TC params) ---"
 mkdir -p "$PG_EXTRACTED_DIR"
 
-java -jar "$JAR_PATH" --input "$OUTPUT_DIR" --output "$PG_EXTRACTED_DIR"
+java -jar "$JAR_PATH" --input "$OUTPUT_DIR" --output "$PG_EXTRACTED_DIR" $PARAMS_OPT
 
 PG_EXTRACTED_COUNT=$(ls "$PG_EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
 echo "PG output files: $PG_EXTRACTED_COUNT"

@@ -138,8 +138,14 @@ python3 tools/generate-test-cases.py
 **병렬 Validator는 반드시 다른 파일(--files)을 분배하라. 같은 파일의 query-tracking.json 동시 쓰기 금지.**
 
 **Stage 1: EXPLAIN (PG 문법 검증)**
+**MyBatis 추출 SQL이 있으면 `--extracted`로 우선 사용 (동적 SQL 정확도 ↑).**
 ```bash
+# MyBatis 추출이 있으면 (Phase 3.5 이후 또는 Java 설치 시):
+python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted_pg/ --output workspace/results/_validation/ --tracking-dir workspace/results/
+
+# MyBatis 미사용 시 (Java 미설치):
 python3 tools/validate-queries.py --generate --output workspace/results/_validation/ --tracking-dir workspace/results/
+
 psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
 python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/
 ```

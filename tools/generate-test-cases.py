@@ -563,7 +563,33 @@ def main():
                 json.dump(file_tc, f, indent=2, ensure_ascii=False)
             total_files += 1
 
-    print(f"=== 완료 ===")
+    # Write merged TC for MyBatis extractor (--params)
+    merged_tc = {}
+    for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
+        tc_path = parsed_path.parent / 'test-cases.json'
+        if tc_path.exists():
+            try:
+                with open(tc_path) as f:
+                    file_tcs = json.load(f)
+                # Convert to MyBatis-consumable format: {queryId: [{param_map}, ...]}
+                for qid, cases in file_tcs.items():
+                    mybatis_params = []
+                    for c in cases:
+                        params = c.get('params', {})
+                        if params and not c.get('execute_skip'):
+                            mybatis_params.append(params)
+                    if mybatis_params:
+                        merged_tc[qid] = mybatis_params
+            except Exception:
+                pass
+
+    merged_path = results_dir / '_test-cases' / 'merged-tc.json'
+    merged_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(merged_path, 'w', encoding='utf-8') as f:
+        json.dump(merged_tc, f, indent=2, ensure_ascii=False)
+    print(f"\n  Merged TC for MyBatis: {merged_path} ({len(merged_tc)} queries)")
+
+    print(f"\n=== 완료 ===")
     print(f"  파일: {total_files}개")
     print(f"  테스트 케이스: {total_cases}개")
     print(f"  소스별:")
