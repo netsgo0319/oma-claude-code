@@ -162,6 +162,8 @@ def collect_data(base_dir):
         'validation_phase7': None,
         'comparison_phase7': None,
         'dba_review': None,
+        'healing': None,
+        'query_matrix': None,
         'extracted': [],
         'activity_log': [],
         'input_files': [],
@@ -273,6 +275,16 @@ def collect_data(base_dir):
     dba_dir = ws / 'results' / '_dba_review'
     if dba_dir.exists():
         data['dba_review'] = load_json(dba_dir / 'review-result.json')
+
+    # 4d. Healing tickets (Phase 4)
+    healing_dir = ws / 'results' / '_healing'
+    if healing_dir.exists():
+        data['healing'] = load_json(healing_dir / 'tickets.json')
+
+    # 4e. Query Matrix
+    qm_path = ws / 'reports' / 'query-matrix.json'
+    if qm_path.exists():
+        data['query_matrix'] = load_json(qm_path)
 
     # 5. Extracted (Phase 3.5)
     ext_dir = ws / 'results' / '_extracted'
@@ -460,6 +472,7 @@ def build_embedded_data(data):
         'generated_at': data['generated_at'],
         'summary': data['summary'],
         'progress': data.get('progress') or {},
+        'pipeline': (data.get('progress') or {}).get('_pipeline', {}),
         'input_files': data['input_files'],
         'output_files': data['output_files'],
         'activity_log': data['activity_log'],
@@ -470,6 +483,8 @@ def build_embedded_data(data):
         'validation_phase7': data.get('validation_phase7'),
         'comparison_phase7': data.get('comparison_phase7'),
         'dba_review': data.get('dba_review'),
+        'healing': data.get('healing'),
+        'query_matrix': data.get('query_matrix'),
         'files': {},
     }
 
@@ -878,7 +893,7 @@ function renderOverview(){
 }
 
 function renderPhaseBars(){
-  const pipeline=DATA.pipeline||{};
+  const pipeline=DATA.pipeline||(DATA.progress||{})._pipeline||{};
   const phases=pipeline.phases||{};
   const progress=DATA.progress||{};
   // Core phases to display (in order)
@@ -977,9 +992,10 @@ function renderValidationSec(){
       '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+fail+' FAILURES</span>';
     html+=`<div class="sec"><h2>EXPLAIN Validation</h2><p>${badge} ${pass}/${total}</p>`;
     if(v.failures&&v.failures.length){
+      html+=`<p style="font-size:11px;color:var(--dim)">Showing ${Math.min(v.failures.length,100)} of ${v.failures.length} failures. Full list: validated.json</p>`;
       html+='<table style="margin-top:10px"><tr><th>Test</th><th>Error</th></tr>';
-      for(let f of v.failures.slice(0,30)){
-        html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(f.test||'')}</td><td style="color:var(--fail);font-size:11px">${esc(String(f.error||'').substring(0,150))}</td></tr>`;
+      for(let f of v.failures.slice(0,100)){
+        html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(f.test||'')}</td><td style="color:var(--fail);font-size:11px">${esc(String(f.error||'').substring(0,250))}</td></tr>`;
       }
       html+='</table>';
     }
@@ -1029,7 +1045,7 @@ function renderValidationSec(){
     html+='</div>';
   }
   // Escalated queries from progress
-  let pipeline=DATA.pipeline||{};
+  let pipeline=DATA.pipeline||(DATA.progress||{})._pipeline||{};
   let summary=pipeline.summary||{};
   if(summary.escalated>0){
     html+=`<div class="sec"><h2>Escalated Queries (Manual Review Required)</h2>`;
@@ -1047,6 +1063,66 @@ function renderValidationSec(){
       html+='</table>';
     }
     html+='</div>';
+  }
+  // Query Matrix Summary
+  if(DATA.query_matrix){
+    let qm=DATA.query_matrix;
+    let s=qm.summary||{};
+    html+=`<div class="sec"><h2>Query Validation Matrix</h2>`;
+    html+=`<p>Total: ${qm.total||0} queries</p>`;
+    html+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">`;
+    for(let [k,v] of Object.entries(s)){
+      let bg=k==='COMPLETE'?'rgba(34,197,94,.15)':k.includes('FAIL')?'rgba(239,68,68,.15)':'rgba(148,163,184,.1)';
+      let col=k==='COMPLETE'?'var(--success)':k.includes('FAIL')?'var(--fail)':'var(--dim)';
+      html+=`<span class="phase-badge" style="background:${bg};color:${col}">${k}: ${v}</span>`;
+    }
+    html+=`</div></div>`;
+  }
+  // Healing Tickets (Phase 4)
+  if(DATA.healing&&DATA.healing.tickets&&DATA.healing.tickets.length){
+    let h=DATA.healing;
+    let resolved=h.tickets.filter(t=>t.status==='resolved').length;
+    let escalated=h.tickets.filter(t=>t.status==='escalated').length;
+    let open=h.tickets.filter(t=>t.status==='open'||t.status==='in_progress').length;
+    html+=`<div class="sec"><h2>Phase 4: Healing Tickets</h2>`;
+    html+=`<p>Total: ${h.total_tickets} | Resolved: ${resolved} | Escalated: ${escalated} | Open: ${open}</p>`;
+    // By category
+    if(h.by_category){
+      html+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">`;
+      for(let [k,v] of Object.entries(h.by_category).sort((a,b)=>b[1]-a[1])){
+        html+=`<span class="phase-badge" style="background:rgba(148,163,184,.1);color:var(--dim)">${k}: ${v}</span>`;
+      }
+      html+=`</div>`;
+    }
+    // Escalated tickets detail
+    let escTickets=h.tickets.filter(t=>t.status==='escalated'||t.severity==='critical'||t.severity==='high');
+    if(escTickets.length){
+      html+=`<h3 style="margin-top:12px">Action Required (${escTickets.length}건)</h3>`;
+      html+=`<table><tr><th>ID</th><th>Severity</th><th>Category</th><th>File</th><th>Query</th><th>Error</th><th>Retries</th></tr>`;
+      for(let t of escTickets.slice(0,50)){
+        let sevCls=t.severity==='critical'?'style="color:var(--fail);font-weight:bold"':t.severity==='high'?'style="color:var(--fail)"':'';
+        html+=`<tr><td>${esc(t.ticket_id)}</td><td ${sevCls}>${esc(t.severity)}</td><td>${esc(t.category)}</td>`;
+        html+=`<td style="font-family:var(--mono);font-size:11px">${esc(t.file||'')}</td>`;
+        html+=`<td style="font-family:var(--mono);font-size:11px">${esc(t.query_id||'')}</td>`;
+        html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,200))}</td>`;
+        html+=`<td>${t.retry_count||0}/${t.max_retries||5}</td></tr>`;
+      }
+      html+=`</table>`;
+    }
+    html+=`</div>`;
+  }
+  // EXPLAIN failures by category
+  if(DATA.validation&&DATA.validation.failure_categories){
+    let cats=DATA.validation.failure_categories;
+    if(Object.keys(cats).length>0){
+      html+=`<div class="sec"><h2>EXPLAIN Failure Categories</h2>`;
+      html+=`<table><tr><th>Category</th><th>Count</th><th>Action</th></tr>`;
+      let actions={'SYNTAX_ERROR':'Phase 4 셀프힐링 대상','MISSING_OBJECT':'DBA 스키마 이관 필요','TYPE_MISMATCH':'TC 바인드값 또는 타입 캐스트 수정','PERMISSION':'DB 권한 확인','OTHER':'수동 분석 필요'};
+      for(let [k,v] of Object.entries(cats).sort((a,b)=>b[1]-a[1])){
+        html+=`<tr><td>${esc(k)}</td><td>${v}</td><td style="font-size:11px;color:var(--dim)">${esc(actions[k]||'')}</td></tr>`;
+      }
+      html+=`</table></div>`;
+    }
   }
   if(DATA.dba_review){
     let dr=DATA.dba_review;
@@ -1083,11 +1159,23 @@ function renderExtractionSec(){
 }
 
 // ========== Render Files Tab ==========
+let fileFilter='all'; // 'all', 'fail', 'escalated', 'pass'
+function setFileFilter(f){fileFilter=f;renderFiles();document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
 function renderFiles(){
   let files=DATA.files||{};
   let names=Object.keys(files).sort();
   if(names.length===0){document.getElementById('file-list').innerHTML='<div style="color:var(--dim)">No files found</div>';return;}
-  let html='';
+  // Filter buttons
+  let html='<div style="margin-bottom:12px;display:flex;gap:6px">';
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='all'?'active':''}" onclick="setFileFilter('all')" style="cursor:pointer">All (${names.length})</button>`;
+  let failNames=names.filter(n=>(files[n].fail_count||0)>0);
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='fail'?'active':''}" onclick="setFileFilter('fail')" style="cursor:pointer;background:rgba(239,68,68,.15);color:var(--fail)">Fail (${failNames.length})</button>`;
+  let passNames=names.filter(n=>(files[n].fail_count||0)===0&&(files[n].pass_count||0)>0);
+  html+=`<button class="filter-btn phase-badge ${fileFilter==='pass'?'active':''}" onclick="setFileFilter('pass')" style="cursor:pointer;background:rgba(34,197,94,.15);color:var(--success)">Pass (${passNames.length})</button>`;
+  html+=`</div>`;
+  // Apply filter
+  if(fileFilter==='fail')names=failNames;
+  else if(fileFilter==='pass')names=passNames;
   for(let name of names){
     let f=files[name];
     let queries=f.queries||[];
@@ -1382,7 +1470,7 @@ renderLog();
 
 function renderPipeline(){
   const S=DATA.summary;
-  const pipeline=DATA.pipeline||{};
+  const pipeline=DATA.pipeline||(DATA.progress||{})._pipeline||{};
   const phases=pipeline.phases||{};
   const phaseDefs=[
     {id:'phase_0',name:'Phase 0: Pre-flight',desc:'XML 존재, DB 접속, CLI 도구 확인',
