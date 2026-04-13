@@ -1116,51 +1116,46 @@ function renderBarsOrdered(containerId,obj,order,colors){
 
 function renderValidationSec(){
   let html='';
+  // Overview에는 최종 실패/미해결 건만 표시 (성공한 것은 안 보임)
   if(DATA.validation){
     let v=DATA.validation;
-    let pass=v.pass||0,fail=v.fail||0,total=v.total||0;
-    let badge=fail===0?'<span class="phase-badge badge-done">ALL PASSED</span>':
-      '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+fail+' FAILURES</span>';
-    html+=`<div class="sec"><h2>EXPLAIN Validation</h2><p>${badge} ${pass}/${total}</p>`;
-    if(v.failures&&v.failures.length){
-      html+=`<p style="font-size:11px;color:var(--dim)">Showing ${Math.min(v.failures.length,100)} of ${v.failures.length} failures. Full list: validated.json</p>`;
-      html+='<table style="margin-top:10px"><tr><th>Test</th><th>Error</th></tr>';
-      for(let f of v.failures.slice(0,100)){
+    let fail=v.fail||0;
+    if(fail>0 && v.failures && v.failures.length){
+      html+=`<div class="sec"><h2>미해결 EXPLAIN 실패 (${fail}건)</h2>`;
+      html+=`<p style="font-size:11px;color:var(--dim)">최종적으로 해결되지 않은 실패 건. 힐링 완료된 건은 제외.</p>`;
+      html+='<table style="margin-top:10px"><tr><th>쿼리</th><th>에러</th></tr>';
+      for(let f of v.failures.slice(0,50)){
         html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(f.test||'')}</td><td style="color:var(--fail);font-size:11px">${esc(String(f.error||'').substring(0,250))}</td></tr>`;
       }
-      html+='</table>';
+      if(v.failures.length>50)html+=`<tr><td colspan="2" style="color:var(--dim)">... +${v.failures.length-50}건 (전체: validated.json)</td></tr>`;
+      html+='</table></div>';
     }
-    html+='</div>';
   }
   if(DATA.execution){
     let e=DATA.execution;
-    let pass=e.pass||0,fail=e.fail||0,total=e.total||0;
-    let badge=fail===0?'<span class="phase-badge badge-done">ALL PASSED</span>':
-      '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+fail+' FAILURES</span>';
-    html+=`<div class="sec"><h2>Execution Validation</h2><p>${badge} ${pass}/${total}</p>`;
-    if(e.failures&&e.failures.length){
-      html+='<table style="margin-top:10px"><tr><th>Test</th><th>Error</th></tr>';
+    let fail=e.fail||0;
+    if(fail>0 && e.failures && e.failures.length){
+      html+=`<div class="sec"><h2>미해결 실행 실패 (${fail}건)</h2>`;
+      html+='<table style="margin-top:10px"><tr><th>쿼리</th><th>에러</th></tr>';
       for(let f of e.failures.slice(0,30)){
         html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(f.test||'')}</td><td style="color:var(--fail);font-size:11px">${esc(String(f.error||'').substring(0,150))}</td></tr>`;
       }
-      html+='</table>';
+      html+='</table></div>';
     }
-    html+='</div>';
   }
   if(DATA.comparison){
     let c=DATA.comparison;
-    let match=c.pass||c.matched||0,fail=c.fail||c.mismatched||0,warn=c.warn||0,total=c.total||0;
-    let badge=fail===0?'<span class="phase-badge badge-done">ALL MATCHED</span>':
-      '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+fail+' MISMATCH</span>';
-    html+=`<div class="sec"><h2>Oracle vs PostgreSQL Compare</h2><p>${badge} ${match}/${total} matched${warn?' ('+warn+' warnings)':''}</p>`;
-    if(c.results&&c.results.length){
-      html+='<table style="margin-top:10px"><tr><th>Query</th><th>Case</th><th>Oracle Rows</th><th>PG Rows</th><th>Status</th><th>Detail</th></tr>';
-      for(let r of c.results){
-        let st=r.match?'<span style="color:var(--success)">MATCH</span>':
-          (r.oracle_error||r.pg_error||r.ora_error)?'<span style="color:var(--fail)">ERROR</span>':
-          '<span style="color:var(--fail)">DIFF</span>';
+    let fail=c.fail||c.mismatched||0;
+    // 불일치 건만 표시 (MATCH는 Overview에서 안 보임)
+    let failResults=(c.results||[]).filter(r=>!r.match);
+    if(failResults.length){
+      html+=`<div class="sec"><h2>Oracle↔PG 불일치 (${failResults.length}건)</h2>`;
+      html+='<table style="margin-top:10px"><tr><th>쿼리</th><th>Oracle</th><th>PG</th><th>사유</th></tr>';
+      for(let r of failResults){
         let detail=r.reason||r.oracle_error||r.ora_error||r.pg_error||'';
-        html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(r.query_id||'')}</td><td>${esc(r.case||'')}</td><td>${r.oracle_rows!=null?r.oracle_rows:(r.ora_rows!=null?r.ora_rows:'?')}</td><td>${r.pg_rows!=null?r.pg_rows:'?'}</td><td>${st}</td><td style="font-size:11px;color:var(--dim)">${esc(String(detail).substring(0,120))}</td></tr>`;
+        let oraR=r.oracle_rows!=null?r.oracle_rows:'?';
+        let pgR=r.pg_rows!=null?r.pg_rows:'?';
+        html+=`<tr><td style="font-family:var(--mono);font-size:12px">${esc(r.query_id||'')}</td><td>${oraR}행</td><td>${pgR}행</td><td style="font-size:11px;color:var(--fail)">${esc(String(detail).substring(0,150))}</td></tr>`;
       }
       html+='</table>';
     }
