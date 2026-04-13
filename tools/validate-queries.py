@@ -715,6 +715,12 @@ SET HEADING ON
 
         return result
 
+    @staticmethod
+    def _flatten_sql(sql):
+        """Flatten multi-line SQL to single line for sqlplus compatibility.
+        sqlplus treats newlines as command terminators, causing SP2-0734 errors."""
+        return re.sub(r'\s+', ' ', sql).strip()
+
     def generate_scripts(self, output_dir):
         """Generate SQL test scripts for remote execution.
         Generates: explain_test.sql (PG), execute_test.sql (PG), oracle_compare.sql (Oracle)"""
@@ -810,7 +816,7 @@ SET HEADING ON
                 # Oracle compare (use original SQL with same binds)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self.bind_params(oracle_sql, binds if isinstance(binds, dict) else {})
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds if isinstance(binds, dict) else {}))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
@@ -870,7 +876,7 @@ SET HEADING ON
                     # Oracle compare
                     oracle_sql = self.oracle_queries.get(qid, '')
                     if oracle_sql:
-                        ora_bound = self.bind_params(oracle_sql, binds)
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds))
                         oracle_lines.append(f"PROMPT === {test_id} ===")
                         if qtype == 'select':
                             safe_ora = ora_bound.rstrip(';')
@@ -1252,6 +1258,7 @@ SET HEADING ON
         # Parse
         pass_count = 0
         fail_count = 0
+        passes = []
         failures = []
         current_test = None
 
@@ -1264,6 +1271,7 @@ SET HEADING ON
                 current_test = None
             elif ('QUERY PLAN' in line or 'Seq Scan' in line or 'Index Scan' in line) and current_test:
                 pass_count += 1
+                passes.append(current_test)
                 current_test = None
 
         print(f"\nParsed Results: PASS={pass_count}, FAIL={fail_count}")
@@ -1360,6 +1368,7 @@ SET HEADING ON
             'fail': fail_count,
             'pass_rate': f"{pass_count/(pass_count+fail_count)*100:.1f}%" if (pass_count+fail_count) > 0 else "N/A",
             'failure_categories': {k: len(v) for k, v in categories.items()},
+            'passes': passes,
             'failures': failures,
             'warnings': warnings,
             'warning_count': len(warnings),

@@ -374,13 +374,17 @@ class OracleToPgConverter:
         return args
 
     def _convert_nvl(self, sql):
-        """NVL(a, b) -> COALESCE(a, b) -- multi-line aware."""
+        """NVL(a, b) -> COALESCE(a, b) -- multi-line aware.
+        Handles nested NVL by skipping matches inside already-converted regions."""
         pattern = re.compile(r'\bNVL\s*\(', re.IGNORECASE | re.DOTALL)
         result = []
         last_end = 0
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches that fall inside an already-converted region
+            if start < last_end:
+                continue
             paren_start = match.end() - 1  # position of (
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -407,6 +411,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -433,6 +440,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -560,6 +570,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -583,6 +596,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -610,6 +626,9 @@ class OracleToPgConverter:
         for match in pattern.finditer(sql):
             # Skip if preceded by DATE_ (already DATE_TRUNC)
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             if start >= 5 and sql[start-5:start].upper() == 'DATE_':
                 continue
 
@@ -644,6 +663,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -672,6 +694,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -700,6 +725,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -723,6 +751,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -757,6 +788,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -793,6 +827,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -856,6 +893,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -886,6 +926,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -931,6 +974,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -1045,6 +1091,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
 
@@ -1117,6 +1166,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
             if paren_end == -1:
@@ -1145,6 +1197,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
             if paren_end == -1:
@@ -1168,6 +1223,9 @@ class OracleToPgConverter:
 
         for match in pattern.finditer(sql):
             start = match.start()
+            # Skip matches inside already-converted regions
+            if start < last_end:
+                continue
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
             if paren_end == -1:

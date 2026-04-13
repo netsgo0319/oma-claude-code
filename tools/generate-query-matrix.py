@@ -39,6 +39,9 @@ def main():
     val_path = results_dir / '_validation' / 'validated.json'
     if val_path.exists():
         vdata = json.load(open(val_path))
+        for p in vdata.get('passes', []):
+            tid = p if isinstance(p, str) else p.get('test', p.get('test_id', ''))
+            val_results[tid] = {'status': 'pass', 'error': ''}
         for f in vdata.get('failures', []):
             tid = f.get('test', f.get('test_id', ''))
             val_results[tid] = {'status': 'fail', 'error': f.get('error', '')[:200]}

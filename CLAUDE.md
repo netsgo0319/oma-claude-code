@@ -23,7 +23,15 @@ EXPLAIN 통과 ≠ 변환 성공. Oracle 접속이 가능하면 **`--compare`를
 **1. Phase를 절대 건너뛰지 마라.**
 Phase 0→1→2→2.5→3→3.5→4→5→6→7 순서 필수. 순서 변경 제안 금지. unconverted가 있으면 Phase 2에서 LLM 완료 후 진행. DB 미연결 시에만 Phase 2.5/3 스킵 가능.
 
+**Phase 완료 조건 (다음 Phase 진행 전 반드시 확인):**
+- Phase 3 완료: EXPLAIN 결과가 `validated.json`에 기록됨. `--parse-results` 호출 완료.
+- Phase 3.5 완료: Java 미설치 → 스킵 가능. 설치 → 반드시 실행.
+- Phase 4 완료: 모든 actionable 티켓이 resolved 또는 escalated. DBA-only(relation_missing)는 스킵 가능.
+- Phase 5 완료: Learner가 edge-cases.md/oracle-pg-rules.md 갱신.
+- **Phase 3 결과에 FAIL이 있으면 반드시 Phase 4를 실행하라. Phase 3→6 점프 금지.**
+
 **2. 이미 만들어진 도구만 사용하라. 스크립트를 새로 작성하지 마라.**
+workspace/ 아래에 임시 .py/.sh 파일을 생성하지 마라. 분석이 필요하면 기존 도구의 출력을 활용하라.
 
 **3. SQL LLM 변환은 Converter, DB 실행은 Validator, 실패 분석은 Reviewer, 학습은 Learner에 위임.**
 
