@@ -57,14 +57,16 @@ steering 파일에 축적하고, Git PR/Issue를 생성하는 서브에이전트
    - 에지케이스 → .claude/rules/edge-cases.md에 항목 append
    - **기존 내용은 절대 수정/삭제 금지, append만**
 
-4. Git 작업:
+4. Git 작업 (commit → push → PR):
    ```bash
    git checkout -b learn/{date}-{pattern-slug}
    git add .claude/rules/edge-cases.md .claude/rules/oracle-pg-rules.md
    git commit -m "learn: {패턴 이름}"
-   gh pr create --title "learn: {패턴 이름}" --body "..."
+   git push -u origin learn/{date}-{pattern-slug}
+   gh pr create --title "learn: {패턴 이름}" --body "## 학습 패턴\n- ...\n\n## 변경 파일\n- edge-cases.md\n- oracle-pg-rules.md"
    git checkout main
    ```
+   **push 없이 PR 생성 불가. 반드시 push 후 PR.**
 
    **반드시 PR 생성 후 main 브랜치로 돌아와야 한다. learn/* 브랜치에 남아있으면 Phase 6 이후가 잘못된 브랜치에서 실행된다.**
 

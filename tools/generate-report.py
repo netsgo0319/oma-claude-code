@@ -1568,11 +1568,11 @@ document.getElementById('refresh-toggle').addEventListener('click',function(){
 renderOverview();
 renderTickets();
 renderFiles();
-expRenderFiles();
 renderTimeline();
 
 // ========== Explorer 3-Panel Navigation ==========
-let expSelectedFile=null, expSelectedQuery=null;
+var expSelectedFile=null, expSelectedQuery=null;
+expRenderFiles();
 
 function expRenderFiles(){
   let files=DATA.files||{};
