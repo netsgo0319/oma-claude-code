@@ -154,9 +154,9 @@ def _derive_progress(ws):
     if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
         progress['_pipeline']['phases']['phase_6'] = {'status': 'done'}
 
-    # Phase 7: report
-    if (ws / 'reports' / 'migration-report.html').exists():
-        progress['_pipeline']['phases']['phase_7'] = {'status': 'done'}
+    # Phase 7: report — 이 함수가 실행 중이면 Phase 7이 진행 중이므로 항상 done
+    # (migration-report.html은 이 함수가 만드는 것이라 아직 없을 수 있음)
+    progress['_pipeline']['phases']['phase_7'] = {'status': 'done'}
 
     return progress
 
