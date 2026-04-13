@@ -742,6 +742,7 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="explorer">Explorer</button>
   <button class="tab-btn" data-tab="files">Query Detail</button>
   <button class="tab-btn" data-tab="tickets">Tickets</button>
   <button class="tab-btn" data-tab="timeline">Timeline</button>
@@ -762,6 +763,25 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
   </div>
   <div id="validation-sec"></div>
   <div id="extraction-sec"></div>
+</div>
+
+<!-- ========== EXPLORER TAB (3-panel navigation) ========== -->
+<div class="tab-content" id="tab-explorer">
+  <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input id="exp-search" placeholder="검색: 파일명, 쿼리ID, SQL..." style="flex:1;min-width:200px;padding:8px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--fg);font-size:13px" oninput="expRenderFiles()">
+    <select id="exp-status" onchange="expRenderFiles()" style="padding:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--fg)">
+      <option value="">전체</option><option value="pass">PASS</option><option value="fail">FAIL</option><option value="not_tested">미테스트</option>
+    </select>
+    <select id="exp-type" onchange="expRenderFiles()" style="padding:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--fg)">
+      <option value="">전체</option><option value="select">SELECT</option><option value="insert">INSERT</option><option value="update">UPDATE</option><option value="delete">DELETE</option>
+    </select>
+    <span id="exp-count" style="color:var(--dim);font-size:12px"></span>
+  </div>
+  <div style="display:flex;gap:1px;height:calc(100vh - 180px);min-height:400px">
+    <div id="exp-panel-files" style="width:25%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:4px"></div>
+    <div id="exp-panel-queries" style="width:25%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:4px"></div>
+    <div id="exp-panel-detail" style="width:50%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:8px"></div>
+  </div>
 </div>
 
 <!-- ========== FILES TAB ========== -->
@@ -1548,7 +1568,157 @@ document.getElementById('refresh-toggle').addEventListener('click',function(){
 renderOverview();
 renderTickets();
 renderFiles();
+expRenderFiles();
 renderTimeline();
+
+// ========== Explorer 3-Panel Navigation ==========
+let expSelectedFile=null, expSelectedQuery=null;
+
+function expRenderFiles(){
+  let files=DATA.files||{};
+  let search=((document.getElementById('exp-search')||{}).value||'').toLowerCase();
+  let statusF=(document.getElementById('exp-status')||{}).value||'';
+  let typeF=(document.getElementById('exp-type')||{}).value||'';
+  let names=Object.keys(files).sort();
+  let html='', total=0, shown=0;
+
+  for(let name of names){
+    let f=files[name];
+    let queries=f.queries||[];
+    total+=queries.length;
+    // Filter queries
+    let filtered=queries.filter(q=>{
+      let qid=(q.query_id||q.id||'').toLowerCase();
+      let st=(q.explain||{}).status||'';
+      if(search && !name.toLowerCase().includes(search) && !qid.includes(search)
+         && !(q.oracle_sql||'').toLowerCase().includes(search)) return false;
+      if(statusF && st!==statusF) return false;
+      if(typeF && (q.type||'')!==typeF) return false;
+      return true;
+    });
+    if(filtered.length===0) continue;
+    shown+=filtered.length;
+    let failC=filtered.filter(q=>(q.explain||{}).status==='fail').length;
+    let passC=filtered.filter(q=>(q.explain||{}).status==='pass').length;
+    let sel=expSelectedFile===name?'background:rgba(99,102,241,.2);':'';
+    let bar=failC>0?`<span style="color:var(--fail)">${failC}F</span> `:'';
+    bar+=passC>0?`<span style="color:var(--success)">${passC}P</span>`:'';
+    html+=`<div onclick="expSelectFile('${esc(name)}')" style="padding:6px 8px;cursor:pointer;border-radius:4px;margin-bottom:2px;font-size:12px;${sel}border-left:3px solid ${failC>0?'var(--fail)':passC>0?'var(--success)':'var(--dim)'}">`;
+    html+=`<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name.replace('.xml',''))}</div>`;
+    html+=`<div style="color:var(--dim)">${filtered.length}q ${bar}</div>`;
+    html+=`</div>`;
+  }
+  document.getElementById('exp-panel-files').innerHTML=html||'<p style="color:var(--dim)">없음</p>';
+  document.getElementById('exp-count').textContent=`${shown}/${total}`;
+  if(!expSelectedFile && names.length) expSelectFile(names[0]);
+}
+
+function expSelectFile(name){
+  expSelectedFile=name;
+  expSelectedQuery=null;
+  expRenderFiles();  // re-highlight
+  let f=(DATA.files||{})[name];
+  if(!f){document.getElementById('exp-panel-queries').innerHTML='';return;}
+  let queries=f.queries||[];
+  let html='';
+  for(let q of queries){
+    let qid=q.query_id||q.id||'';
+    let st=(q.explain||{}).status||'';
+    let icon=st==='pass'?'<span style="color:var(--success)">&#10003;</span>':st==='fail'?'<span style="color:var(--fail)">&#10007;</span>':'<span style="color:var(--dim)">&#9679;</span>';
+    let method=q.conversion_method||q.method||'';
+    let sel=expSelectedQuery===qid?'background:rgba(99,102,241,.2);':'';
+    html+=`<div onclick="expSelectQuery('${esc(name)}','${esc(qid)}')" style="padding:5px 8px;cursor:pointer;border-radius:4px;margin-bottom:1px;font-size:12px;${sel}">`;
+    html+=`${icon} <strong>${esc(qid)}</strong> <span style="color:var(--dim)">${esc((q.type||'').toUpperCase())} ${esc(method)}</span>`;
+    html+=`</div>`;
+  }
+  document.getElementById('exp-panel-queries').innerHTML=html;
+  if(queries.length) expSelectQuery(name, queries[0].query_id||queries[0].id||'');
+}
+
+function expSelectQuery(fname, qid){
+  expSelectedQuery=qid;
+  // Re-highlight query list
+  let items=document.getElementById('exp-panel-queries').children;
+  for(let it of items) it.style.background=it.querySelector('strong')?.textContent===qid?'rgba(99,102,241,.2)':'';
+
+  let f=(DATA.files||{})[fname];
+  if(!f) return;
+  let q=(f.queries||[]).find(x=>(x.query_id||x.id)===qid);
+  if(!q){document.getElementById('exp-panel-detail').innerHTML='';return;}
+
+  let html='';
+  // Header
+  html+=`<h3 style="margin:0 0 8px">${esc(qid)} <span style="color:var(--dim);font-weight:normal">${esc((q.type||'').toUpperCase())} / ${esc(q.conversion_method||q.method||'')}</span></h3>`;
+
+  // SQL side-by-side
+  let oraSQL=q.oracle_sql||'';
+  let pgSQL=q.pg_sql||'';
+  if(oraSQL||pgSQL){
+    html+=`<div style="display:flex;gap:4px;margin-bottom:8px">`;
+    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">Oracle</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${esc(oraSQL)}</pre></div>`;
+    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">PostgreSQL</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${esc(pgSQL)}</pre></div>`;
+    html+=`</div>`;
+  }
+
+  // EXPLAIN
+  let explain=q.explain||{};
+  if(explain.status){
+    let col=explain.status==='pass'?'var(--success)':'var(--fail)';
+    html+=`<div style="padding:6px 8px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:6px;border-left:3px solid ${col}">`;
+    html+=`<strong>EXPLAIN:</strong> <span style="color:${col}">${esc(explain.status)}</span>`;
+    if(explain.error)html+=`<div style="color:var(--fail);font-size:11px;margin-top:4px">${esc(String(explain.error))}</div>`;
+    html+=`</div>`;
+  }
+
+  // Compare results (TC별)
+  let compResults=q.compare_results||[];
+  if(compResults.length){
+    html+=`<div style="margin:8px 0"><strong>TC 비교 결과 (${compResults.length}건):</strong></div>`;
+    for(let cr of compResults){
+      let icon=cr.match?'<span style="color:var(--success)">&#10003; MATCH</span>':'<span style="color:var(--fail)">&#10007; DIFF</span>';
+      let oraR=cr.oracle_rows!=null?cr.oracle_rows:'?';
+      let pgR=cr.pg_rows!=null?cr.pg_rows:'?';
+      html+=`<div style="padding:4px 8px;margin-bottom:3px;background:rgba(255,255,255,.02);border-radius:4px;font-size:12px;border-left:2px solid ${cr.match?'var(--success)':'var(--fail)'}">`;
+      html+=`<strong>${esc(cr.case||cr.test_id||'')}</strong> ${icon} Oracle:${oraR}행 PG:${pgR}행`;
+      if(cr.reason)html+=`<div style="color:var(--fail);font-size:11px">사유: ${esc(String(cr.reason))}</div>`;
+      html+=`</div>`;
+    }
+  }
+
+  // Test Cases (바인드 변수 상세)
+  let tcs=q.test_cases||[];
+  if(tcs.length){
+    html+=`<div style="margin:8px 0"><strong>테스트 케이스 (${tcs.length}건):</strong></div>`;
+    for(let tc of tcs){
+      let binds=tc.binds||tc.params||{};
+      html+=`<div style="padding:4px 8px;margin-bottom:2px;background:rgba(255,255,255,.02);border-radius:4px;font-size:11px">`;
+      html+=`<strong>${esc(tc.case_id||tc.name||'')}</strong>`;
+      html+=`<div style="font-family:var(--mono);color:var(--dim)">`;
+      for(let [k,v] of Object.entries(binds)){
+        html+=`${esc(k)}=<span style="color:var(--accent)">${esc(String(v))}</span> `;
+      }
+      html+=`</div></div>`;
+    }
+  }
+
+  // Healing ticket
+  let ticket=null;
+  if(DATA.healing&&DATA.healing.tickets){
+    ticket=DATA.healing.tickets.find(t=>t.query_id===qid);
+  }
+  if(ticket){
+    let col=ticket.status==='resolved'?'var(--success)':ticket.status==='escalated'?'var(--fail)':'var(--dim)';
+    html+=`<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,.03);border-radius:4px;border-left:3px solid ${col}">`;
+    html+=`<strong>&#127915; ${esc(ticket.ticket_id||'')}</strong> <span style="color:${col}">[${esc(ticket.status||'')}]</span>`;
+    html+=` ${esc(ticket.category||'')}`;
+    if(ticket.retry_count)html+=` (${ticket.retry_count}회 시도)`;
+    if(ticket.skip_reason)html+=`<div style="color:var(--dim);font-size:11px">사유: ${esc(ticket.skip_reason)}</div>`;
+    if(ticket.error)html+=`<div style="color:var(--fail);font-size:11px;margin-top:4px">${esc(String(ticket.error).substring(0,300))}</div>`;
+    html+=`</div>`;
+  }
+
+  document.getElementById('exp-panel-detail').innerHTML=html;
+}
 renderLog();
 
 function renderTickets(){
