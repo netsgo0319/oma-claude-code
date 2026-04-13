@@ -762,7 +762,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <div id="file-list"></div>
 </div>
 
-<!-- ========== PIPELINE TAB ========== -->
+<!-- ========== TICKETS TAB ========== -->
 <div class="tab-content" id="tab-tickets">
   <div id="tickets-detail"></div>
 </div>
@@ -1005,18 +1005,11 @@ function renderPhaseBars(){
         `<span class="phase-info">${dur} ${badge}</span></div>`;
     }
   }else{
-    // Derive from currentPhase number
-    for(let i=0;i<=7;i++){
-      let pid='phase_'+i;
-      let st=i<currentPhase?'done':i===currentPhase?'running':'pending';
-      let cls=st==='done'?'done':st==='running'?'running':'pending';
-      let badge=st==='done'?'<span class="phase-badge badge-done">DONE</span>':
-                st==='running'?'<span class="phase-badge badge-run">RUNNING</span>':
-                '<span class="phase-badge badge-pending">PENDING</span>';
-      let pct=st==='done'?100:st==='running'?50:0;
+    // Fallback: show all phases with pending status
+    for(let pid of displayPhases){
       html+=`<div class="phase-row"><span class="phase-name">${phaseLabels[pid]||pid}</span>`+
-        `<div class="phase-bar"><div class="phase-fill ${cls}" style="width:${pct}%"></div></div>`+
-        `<span class="phase-info">${badge}</span></div>`;
+        `<div class="phase-bar"><div class="phase-fill pending" style="width:0%"></div></div>`+
+        `<span class="phase-info"><span class="phase-badge badge-pending">PENDING</span></span></div>`;
     }
   }
   document.getElementById('phase-bars').innerHTML=html;
@@ -1628,96 +1621,6 @@ function renderTickets(){
 }
 
 // Legacy: keep renderPipeline as alias
-function renderPipeline(){renderTickets();}
-
-function _renderPipelineOld(){
-  const S=DATA.summary;
-  const pipeline=DATA.pipeline||(DATA.progress||{})._pipeline||{};
-  const phases=pipeline.phases||{};
-  const phaseDefs=[
-    {id:'phase_0',name:'Phase 0: Pre-flight',desc:'XML 존재, DB 접속, CLI 도구 확인',
-     check:()=>phases.phase_0?.status==='done',
-     detail:()=>'sqlplus/psql 설치 + Oracle/PG 접속 테스트'},
-    {id:'phase_1',name:'Phase 1: Parse + Analyze + Convert',desc:'XML 파싱, 복잡도 분류, 룰 기반 변환',
-     check:()=>phases.phase_1?.status==='done',
-     detail:()=>`${S.total_input_files} files, ${S.total_input_queries} queries, rule: ${S.conversion_methods?.rule||0}`},
-    {id:'phase_2',name:'Phase 2: LLM Convert',desc:'unconverted 패턴 LLM 변환',
-     check:()=>phases.phase_2?.status==='done'||phases.phase_2_llm?.status==='done',
-     detail:()=>`llm: ${S.conversion_methods?.llm||0}`},
-    {id:'phase_2.5',name:'Phase 2.5: Test Cases',desc:'Oracle 딕셔너리 기반 TC 생성',
-     check:()=>phases['phase_2.5']?.status==='done',
-     detail:()=>'test-cases.json 생성'},
-    {id:'phase_3',name:'Phase 3: Validation',desc:'EXPLAIN + Compare (Oracle vs PG)',
-     check:()=>phases.phase_3?.status==='done',
-     detail:()=>{
-       let parts=[];
-       if(S.validation_total)parts.push(`EXPLAIN: ${S.validation_pass}/${S.validation_total}`);
-       if(S.compare_total)parts.push(`Compare: ${S.compare_match}/${S.compare_total}`);
-       if(S.execution_total)parts.push(`Execute: ${S.execution_pass}/${S.execution_total}`);
-       return parts.join(' | ')||'N/A';
-     }},
-    {id:'phase_3.5',name:'Phase 3.5: MyBatis Engine',desc:'동적 SQL 정밀 검증 (Java)',
-     check:()=>phases['phase_3.5']?.status==='done'||phases.phase_3_5?.status==='done',
-     detail:()=>{
-       let p7=S.phase7_explain_total?`EXPLAIN: ${S.phase7_explain_pass}/${S.phase7_explain_total}`:'';
-       let p7c=S.phase7_compare_total?`Compare: ${S.phase7_compare_match}/${S.phase7_compare_total}`:'';
-       return [p7,p7c].filter(Boolean).join(' | ')||`${S.extracted_queries||0} queries, ${S.extracted_variants||0} variants`;
-     }},
-    {id:'phase_4',name:'Phase 4: Self-healing',desc:'실패 건 자동 수정 (최대 3회)',
-     check:()=>phases.phase_4?.status==='done',
-     detail:()=>{let s=pipeline.summary||{};return s.escalated?`escalated: ${s.escalated}`:'실패 건 없음 또는 전부 해결';}},
-    {id:'phase_5',name:'Phase 5: Learning',desc:'에지케이스 축적, steering 갱신, PR',
-     check:()=>phases.phase_5?.status==='done',
-     detail:()=>'edge-cases.md / oracle-pg-rules.md 갱신'},
-    {id:'phase_6',name:'Phase 6: DBA/Expert Review',desc:'output XML 최종 품질 검증',
-     check:()=>phases.phase_6?.status==='done',
-     detail:()=>DATA.dba_review?`${(DATA.dba_review.issues||DATA.dba_review.findings||[]).length} checks`:'미실행'},
-    {id:'phase_7',name:'Phase 7: Report',desc:'통합 HTML 리포트 생성',
-     check:()=>phases.phase_7?.status==='done',
-     detail:()=>'migration-report.html'},
-  ];
-
-  let html='<div class="sec"><h2>Pipeline Execution Summary</h2>';
-  html+='<table style="width:100%"><tr><th style="width:25%">Phase</th><th style="width:8%">Status</th><th style="width:25%">Description</th><th style="width:25%">Result</th><th style="width:12%">Duration</th></tr>';
-
-  for(let pd of phaseDefs){
-    let done=pd.check();
-    let phaseData=phases[pd.id]||phases[pd.id.replace('.','_')]||{};
-    let st=phaseData.status||'pending';
-    let dur=phaseData.duration_ms?fmtMs(phaseData.duration_ms):'-';
-    let icon=done?'<span style="color:var(--success)">&#10003;</span>':
-             st==='running'?'<span style="color:var(--accent2)">&#9654;</span>':
-             st==='skipped'?'<span style="color:var(--dim)">SKIP</span>':
-             '<span style="color:var(--dim)">&#9679;</span>';
-    let detail='';
-    try{detail=pd.detail();}catch(e){detail='-';}
-    html+=`<tr><td style="font-weight:600">${pd.name}</td><td style="text-align:center">${icon}</td><td style="color:var(--dim);font-size:12px">${esc(pd.desc)}</td><td style="font-size:12px;font-family:var(--mono)">${esc(detail)}</td><td style="text-align:center;font-family:var(--mono)">${dur}</td></tr>`;
-  }
-  html+='</table></div>';
-
-  // Completeness check
-  html+='<div class="sec"><h2>Completeness Check</h2>';
-  let checks=[
-    {name:'XML 파싱 완료',pass:S.total_input_files>0&&S.total_input_queries>0,detail:`${S.total_input_files} files, ${S.total_input_queries} queries`},
-    {name:'룰 변환 실행',pass:(S.conversion_methods?.rule||0)>0,detail:`${S.conversion_methods?.rule||0} rules applied`},
-    {name:'LLM 변환 실행',pass:(S.conversion_methods?.llm||0)>0||true,detail:`${S.conversion_methods?.llm||0} llm conversions (0이면 unconverted 없었음)`},
-    {name:'테스트 케이스 생성',pass:!!phases['phase_2.5']?.status,detail:phases['phase_2.5']?.status||'미실행'},
-    {name:'EXPLAIN 검증',pass:S.validation_total>0,detail:S.validation_total?`${S.validation_pass}/${S.validation_total}`:'미실행'},
-    {name:'Oracle vs PG Compare',pass:S.compare_total>0,detail:S.compare_total?`${S.compare_match}/${S.compare_total} matched`:'미실행'},
-    {name:'MyBatis 엔진 검증',pass:S.extracted_queries>0,detail:S.extracted_queries?`${S.extracted_queries} queries`:'미실행 (Java 없음?)'},
-    {name:'셀프 힐링',pass:!!phases.phase_4?.status,detail:phases.phase_4?.status||'미실행 (실패 건 없음?)'},
-    {name:'DBA 최종 검증',pass:!!DATA.dba_review,detail:DATA.dba_review?'실행됨':'미실행'},
-    {name:'에스컬레이션 처리',pass:!(pipeline.summary?.escalated>0)||true,detail:pipeline.summary?.escalated?`${pipeline.summary.escalated} queries 에스컬레이션됨 (수동 확인 필요)`:'에스컬레이션 없음'},
-  ];
-  html+='<table><tr><th>항목</th><th>Status</th><th>Detail</th></tr>';
-  for(let c of checks){
-    let icon=c.pass?'<span style="color:var(--success)">&#10003;</span>':'<span style="color:var(--warn)">&#9888;</span>';
-    html+=`<tr><td>${esc(c.name)}</td><td style="text-align:center">${icon}</td><td style="font-size:12px;color:var(--dim)">${esc(c.detail)}</td></tr>`;
-  }
-  html+='</table></div>';
-
-  document.getElementById('pipeline-detail').innerHTML=html;
-}
 </script>
 </body>
 </html>'''
