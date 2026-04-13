@@ -172,6 +172,10 @@ class OracleToPgConverter:
             text = match.group(2)    # text content (greedy — captures full multi-line text)
             suffix = match.group(3)  # <
             converted = self._apply_all_rules(text)
+            # If conversion introduced bare < or <= that wasn't in original,
+            # wrap in CDATA to prevent XML parse errors
+            if converted != text and '<' in converted and '<' not in text:
+                converted = f'<![CDATA[{converted}]]>'
             return f'{prefix}{converted}{suffix}'
 
         # Match text between XML tags — greedy [^<]+ to capture full text nodes

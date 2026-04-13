@@ -35,6 +35,7 @@ Phase 0→1→2→2.5→3→3.5→4→5→6→7 순서 필수. 순서 변경 제
 | `tools/generate-test-cases.py` | **Phase 2.5 TC 생성** | `python3 tools/generate-test-cases.py` |
 | `tools/validate-queries.py` | Phase 3 검증 | 아래 Phase 3 참고 |
 | `tools/run-extractor.sh` | Phase 3.5 MyBatis 검증 | `bash tools/run-extractor.sh [--validate]` |
+| `tools/generate-healing-tickets.py` | **Phase 4 힐링 티켓 생성** | `python3 tools/generate-healing-tickets.py` |
 | `tools/generate-report.py` | Phase 7 HTML 리포트 | `python3 tools/generate-report.py` |
 | `tools/sync-tracking-to-xml.py` | tracking→XML 동기화 | `python3 tools/sync-tracking-to-xml.py` |
 | `tools/reset-workspace.sh` | 초기화 | `bash tools/reset-workspace.sh --force` |
@@ -160,9 +161,42 @@ python3 tools/validate-queries.py --parse-results --output workspace/results/_va
 **절대 `--compare` 옵션으로 직접 실행하지 마라 (subprocess per query = OOM/타임아웃).**
 **항상 --generate → psql -f / sqlplus @ → --parse-results 3단계로 하라.**
 
-### Phase 4: Self-healing
+### Phase 4: Self-healing (티켓 기반, 최대 5회)
 
 Phase 3 + Phase 3.5 실패 건 모두 대상. 없으면 Phase 5로.
+
+**Step 1: 힐링 티켓 생성**
+EXPLAIN FAIL, COMPARE FAIL 결과에서 에러를 분류하여 `workspace/results/_healing/tickets.json`에 티켓 생성:
+```bash
+python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --output workspace/results/_healing/
+```
+
+티켓 구조:
+```json
+{
+  "ticket_id": "HT-001",
+  "status": "open",           // open → in_progress → resolved / escalated
+  "category": "syntax_error", // syntax_error, type_mismatch, residual_oracle, xml_invalid, ...
+  "severity": "high",         // critical(XML깨짐), high(syntax), medium(type), low(schema)
+  "query_id": "selectXxx",
+  "file": "xxx-sql-oracle.xml",
+  "error": "syntax error at or near ...",
+  "retry_count": 0,
+  "max_retries": 5,
+  "history": []               // 각 retry의 시도/결과 기록
+}
+```
+
+**Step 2: 티켓별 힐링 루프 (최대 5회)**
+```
+for each ticket (severity순, critical → high → medium):
+  1. Reviewer(원인 분석) → ticket.history에 분석 결과 기록
+  2. Converter(재변환) → output XML 수정 + ticket.history에 수정 내용 기록
+  3. Validator(EXPLAIN 재검증) → 결과를 ticket에 기록
+  4. 성공 → ticket.status = "resolved"
+  5. 실패 → ticket.retry_count++ → 다음 retry (최대 5회)
+  6. 5회 실패 → ticket.status = "escalated"
+```
 
 **output XML 수정 전 반드시 백업:**
 ```bash
@@ -173,11 +207,26 @@ cp -r workspace/output/ workspace/output_v{N}_backup/
 **Leader가 직접 fix 스크립트를 작성하여 output XML을 수정하지 마라.**
 반드시 Converter 서브에이전트에 위임하라. Leader가 직접 sed/Python으로 output을 수정하면 regression이 발생한다.
 
-루프: Reviewer(원인 분석) → Converter(재변환) → Validator(재검증). 최대 3회.
-상태 전이: validating → retry_1 → retry_2 → retry_3 → escalated (또는 → success).
+상태 전이: open → in_progress → retry_1 → ... → retry_5 → escalated (또는 → resolved).
+
+**Step 3: 티켓 분류별 처리 전략**
+| 카테고리 | 처리 | 에이전트 | 비고 |
+|---------|------|---------|------|
+| xml_invalid | CDATA 래핑 | Converter | 즉시 수정 가능 |
+| syntax_error | SQL 구문 수정 | Reviewer→Converter | 딥다이브 5회 |
+| residual_oracle | 미변환 패턴 재변환 | Converter | 룰 재적용 |
+| type_mismatch | TC 바인드값 조정 | 자동 (스킵 가능) | DBA 불필요 |
+| relation_missing | 테이블 미존재 | 스킵 (DBA 티켓) | Phase 6 보고 |
+| operator_mismatch | 타입 캐스트 추가 | Converter | ::TEXT, ::INTEGER 등 |
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
 **매 retry 후 반드시 EXPLAIN 재검증.** regression 확인 없이 다음 retry로 넘어가지 마라.
+
+**Step 4: 힐링 완료 후 요약**
+`workspace/results/_healing/summary.json`에 결과 기록:
+- resolved 건수, escalated 건수, 카테고리별 통계
+- 평균 retry 횟수, 가장 많이 발생한 에러 패턴
+- Phase 6/7 리포트에 자동 반영
 
 ### Phase 5: Learning
 

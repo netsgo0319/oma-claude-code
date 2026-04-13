@@ -87,26 +87,37 @@ def gen_value(param_name, col_info=None):
     if pn in special:
         return special[pn]
 
-    # 타입 기반
-    dtype = col_info.get('type', '') if col_info else ''
-    if dtype in ('NUMBER', 'NUMERIC', 'INTEGER', 'FLOAT', 'BINARY_FLOAT', 'BINARY_DOUBLE'):
+    # 타입 기반 (Oracle 메타데이터에서 가져온 경우)
+    dtype = col_info.get('type', '').upper() if col_info else ''
+    if dtype in ('NUMBER', 'NUMERIC', 'INTEGER', 'FLOAT', 'BINARY_FLOAT', 'BINARY_DOUBLE',
+                 'INT', 'BIGINT', 'SMALLINT', 'DECIMAL'):
         return 100
-    if dtype in ('DATE', 'TIMESTAMP', 'TIMESTAMP(6)'):
+    if dtype in ('DATE', 'TIMESTAMP', 'TIMESTAMP(6)', 'TIMESTAMP WITH TIME ZONE',
+                 'TIMESTAMP WITH LOCAL TIME ZONE'):
         return '2026-01-15 10:30:00'
+    if dtype in ('CHAR', 'NCHAR') and col_info:
+        # CHAR(1) 등 짧은 컬럼에 맞게 1글자 반환
+        return 'T'
+    if dtype in ('BOOLEAN',):
+        return True
+    if dtype in ('BLOB', 'RAW', 'LONG RAW'):
+        return None  # binary 타입은 NULL로
 
-    # 이름 기반 추론
-    if any(k in pn for k in ('qty', 'cnt', 'amt', 'price', 'prc', 'rate', 'seq', 'no', 'num')):
+    # 이름 기반 추론 (메타데이터 없을 때)
+    if any(k in pn for k in ('qty', 'cnt', 'amt', 'price', 'prc', 'rate', 'seq',
+                              'no', 'num', 'idx', 'id', 'size', 'len', 'weight',
+                              'page', 'limit', 'offset', 'rowcnt', 'pagesize')):
         return 100
     if any(k in pn for k in ('date', 'day', 'dt', 'time', 'tm')):
         return '20260115'
     if pn.endswith('yn') or pn in ('yn',):
         return 'Y'
-    if any(k in pn for k in ('key', 'cd', 'code', 'type', 'div')):
+    if any(k in pn for k in ('key', 'cd', 'code', 'type', 'div', 'gb', 'flag', 'stat')):
+        return 'A1'  # 짧은 코드값 (value too long 방지)
+    if any(k in pn for k in ('nm', 'name', 'desc', 'msg', 'text', 'remark', 'note')):
         return 'TEST'
-    if any(k in pn for k in ('nm', 'name', 'desc', 'msg', 'text', 'remark')):
-        return 'TEST_VALUE'
 
-    return 'TEST'
+    return 'T'  # 기본값을 짧게 (varchar(1) 호환)
 
 
 def gen_null_case(params, binds):

@@ -30,6 +30,7 @@ def log_activity(action, agent='tool', phase=None, file=None, query_id=None,
 
     entry = {
         'timestamp': now_iso(),
+        'type': action,
         'agent': agent,
         'action': action,
     }
