@@ -120,17 +120,29 @@ review.json이 존재하면:
 - workspace/output/{filename}.xml — 변환된 XML (원본 구조 유지, SQL만 교체)
 - workspace/results/{filename}/v{n}/converted.json — 변환 메타데이터
 
-### 6. query-tracking.json 갱신 (필수)
+### 6. query-tracking.json 갱신 (필수 — 빠뜨리면 리포트에 반영 안 됨!)
 
-변환 완료 후 반드시 query-tracking.json을 갱신한다:
-- 각 쿼리의 pg_sql (변환된 SQL)
-- conversion_method: "rule" 또는 "llm"
-- rules_applied: 적용된 룰 목록
-- confidence: "high" / "medium" / "low"
+**output XML 수정 후 반드시 query-tracking.json을 갱신해야 한다.**
+갱신하지 않으면 query-matrix, 보고서, Phase 4 힐링에서 해당 쿼리가 "미변환"으로 표시된다.
 
-Leader가 --tracking-dir 옵션으로 경로를 전달하면, oracle-to-pg-converter.py가 자동 갱신한다.
-LLM 변환한 쿼리는 Converter가 직접 query-tracking.json에 기록:
-  results/{filename}/v{n}/query-tracking.json → 해당 query의 pg_sql, conversion_method="llm" 갱신
+LLM 변환한 각 쿼리에 대해 직접 갱신:
+```python
+# workspace/results/{filename}/v{n}/query-tracking.json
+# queries 배열에서 해당 query_id를 찾아 아래 필드 갱신:
+{
+  "pg_sql": "변환된 SQL 전문",
+  "conversion_method": "llm",
+  "status": "converted",
+  "rules_applied": ["CONNECT_BY->WITH_RECURSIVE"],
+  "confidence": "high"  # high/medium/low
+}
+```
+
+**갱신 체크리스트 (Leader 반환 전 반드시 확인):**
+- [ ] output/{filename}.xml 수정됨
+- [ ] query-tracking.json의 pg_sql 갱신됨
+- [ ] query-tracking.json의 conversion_method = "llm"
+- [ ] query-tracking.json의 status = "converted"
 
 ### 7. Leader에게 반환
 한 줄 요약만: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"

@@ -18,7 +18,7 @@ inclusion: always
 ## 외부 도구
 - gh CLI: PR/Issue 자동 생성 (learner 에이전트)
 - git: 형상관리
-- Java 11+ / Gradle: Phase 3.5 MyBatis SQL Extractor (선택)
+- Java 11+ / Gradle: Phase 3 (MyBatis) MyBatis SQL Extractor (선택)
 
 ## 파일 형식
 - 입력: MyBatis 3.x / iBatis 2.x XML
@@ -30,7 +30,7 @@ inclusion: always
 - workspace/output/      — 최종 변환 결과
 - workspace/results/     — 버전별 중간 산출물 ({filename}/v{n}/)
 - workspace/results/_validation/ — EXPLAIN/실행 검증 스크립트 + 결과
-- workspace/results/_extracted/  — Phase 3.5 MyBatis 추출 결과
+- workspace/results/_extracted/  — Phase 3 (MyBatis) MyBatis 추출 결과
 - workspace/reports/     — 리포트 (migration-report.html 등)
 - workspace/progress.json — 진행 상황 추적
 - workspace/logs/        — 감사 로그 (activity-log.jsonl)
@@ -54,6 +54,6 @@ inclusion: always
 | `tools/validate-queries.py` | Phase 3 | EXPLAIN (--local) + 실행 (--execute) + SSM 원격 + Integrity Guard |
 | `tools/generate-test-cases.py` | Phase 2.5 | 테스트 케이스 자동 생성 (V$SQL_BIND_CAPTURE, 컬럼 통계, FK) |
 | `tools/generate-report.py` | Phase 7 | 전체 결과 종합 → 단일 HTML 리포트 |
-| `tools/run-extractor.sh` | Phase 3.5 | MyBatis SQL 추출 + 검증 (빌드/추출/EXPLAIN/실행 원커맨드) |
-| `tools/mybatis-sql-extractor/` | Phase 3.5 | Java — SqlSessionFactory + BoundSql (DTO 자동 대체, 파일별 독립 처리) |
+| `tools/run-extractor.sh` | Phase 3 (MyBatis) | MyBatis SQL 추출 + 검증 (빌드/추출/EXPLAIN/실행 원커맨드) |
+| `tools/mybatis-sql-extractor/` | Phase 3 (MyBatis) | Java — SqlSessionFactory + BoundSql (DTO 자동 대체, 파일별 독립 처리) |
 | `tools/reset-workspace.sh` | 초기화 | workspace 초기화 (input 보존) |

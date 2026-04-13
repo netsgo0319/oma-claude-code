@@ -21,11 +21,10 @@ EXPLAIN 통과 ≠ 변환 성공. Oracle 접속이 가능하면 **`--compare`를
 쿼리가 많으면(100+) Validator 서브에이전트 여러 개에 `--files` 옵션으로 **병렬 배치**하라.
 
 **1. Phase를 절대 건너뛰지 마라.**
-Phase 0→1→2→2.5→3→3.5→4→5→6→7 순서 필수. 순서 변경 제안 금지. unconverted가 있으면 Phase 2에서 LLM 완료 후 진행. DB 미연결 시에만 Phase 2.5/3 스킵 가능.
+Phase 0→1→2→2.5→3→4→5→6→7 순서 필수. 순서 변경 제안 금지. unconverted가 있으면 Phase 2에서 LLM 완료 후 진행. DB 미연결 시에만 Phase 2.5/3 스킵 가능.
 
 **Phase 완료 조건 (다음 Phase 진행 전 반드시 확인):**
 - Phase 3 완료: EXPLAIN 결과가 `validated.json`에 기록됨. `--parse-results` 호출 완료.
-- Phase 3.5 완료: Java 미설치 → 스킵 가능. 설치 → 반드시 실행.
 - Phase 4 완료: 모든 actionable 티켓이 resolved 또는 escalated. DBA-only(relation_missing)는 스킵 가능.
 - Phase 5 완료: Learner가 edge-cases.md/oracle-pg-rules.md 갱신.
 - **Phase 3 결과에 FAIL이 있으면 반드시 Phase 4를 실행하라. Phase 3→6 점프 금지.**
@@ -40,9 +39,10 @@ workspace/ 아래에 임시 .py/.sh 파일을 생성하지 마라. 분석이 필
 | 도구 | 용도 | 실행 |
 |------|------|------|
 | `tools/batch-process.sh` | **Phase 1 일괄 병렬 (parse+analyze+convert)** | `bash tools/batch-process.sh --all --parallel 8` |
-| `tools/generate-test-cases.py` | **Phase 2.5 TC 생성** | `python3 tools/generate-test-cases.py` |
+| `tools/generate-sample-data.py` | **Phase 0 테이블 샘플 수집** | `python3 tools/generate-sample-data.py` |
+| `tools/generate-test-cases.py` | **Phase 2.5 TC 생성 (샘플+Java)** | `python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/` |
 | `tools/validate-queries.py` | Phase 3 검증 | 아래 Phase 3 참고 |
-| `tools/run-extractor.sh` | Phase 3.5 MyBatis 검증 | `bash tools/run-extractor.sh [--validate]` |
+| `tools/run-extractor.sh` | Phase 3 MyBatis 렌더링 (통합) | `bash tools/run-extractor.sh [--validate]` |
 | `tools/generate-healing-tickets.py` | **Phase 4 힐링 티켓 생성** | `python3 tools/generate-healing-tickets.py` |
 | `tools/generate-report.py` | Phase 7 HTML 리포트 | `python3 tools/generate-report.py` |
 | `tools/sync-tracking-to-xml.py` | tracking→XML 동기화 | `python3 tools/sync-tracking-to-xml.py` |
@@ -82,14 +82,14 @@ Agent({
 | Python 3 | `python3 --version` | **필수** | 설치 안내 |
 | psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
 | sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
-| Java 11+ | `java -version` | **권장** (Phase 3.5) | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
+| Java 11+ | `java -version` | **권장** Phase 3 | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
 | Gradle | — | 불필요 | **레포에 gradlew 포함됨.** Java만 있으면 `tools/mybatis-sql-extractor/gradlew`가 Gradle을 자동 다운로드 |
 | Oracle 접속 | sqlplus로 SELECT 1 FROM DUAL | 선택 | 환경변수 확인 안내 |
 | PG 접속 | psql로 SELECT 1 | 선택 | 환경변수 확인 안내 |
 
 **미설치 도구가 있으면 설치 명령을 사용자에게 안내하라. 자동 설치하지 마라 (sudo 필요).**
-**Java만 있으면 Phase 3.5 실행 가능 (Gradle 별도 설치 불필요, gradlew가 자동 처리).**
-**Java가 없으면 Phase 3.5를 스킵할 수 있다고 안내하되, 설치를 강력 권장하라. Phase 3.5 없이는 동적 SQL 검증이 불완전하다.**
+**Java만 있으면 MyBatis 검증 가능 (Gradle 별도 설치 불필요, gradlew가 자동 처리).**
+**Java가 없으면 MyBatis 검증을 스킵할 수 있다고 안내하되, 설치를 강력 권장하라. MyBatis 없이는 동적 SQL 검증이 불완전하다.**
 
 **Oracle 접속 성공 시 추가 체크:**
 ```bash
@@ -109,6 +109,13 @@ echo "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema = 
 ```
 pgcrypto 미설치 시: `CREATE EXTENSION IF NOT EXISTS pgcrypto;` 실행을 사용자에게 안내.
 
+**테이블 샘플 데이터 수집 (Phase 3 TC에 사용):**
+```bash
+python3 tools/generate-sample-data.py
+```
+XML에서 참조되는 테이블별 10행 샘플 조회 → `workspace/results/_samples/{TABLE}.json`.
+이후 Phase 2.5 TC 생성에서 실제 데이터 값으로 사용.
+
 ### Phase 1: Parse + Analyze + Rule Convert
 
 ```bash
@@ -121,102 +128,48 @@ bash tools/batch-process.sh --all --parallel 8
 unconverted 패턴이 남아있으면 **반드시** Converter 서브에이전트에 위임.
 **병렬 배치:** 3파일/30쿼리 단위로 Converter 여러 개에 동시 위임.
 
-### Phase 2.5: Test Case 생성
+### Phase 2.5: Test Case 생성 (샘플 데이터 기반)
 
-**sqlplus 있으면 필수.**
 ```bash
-python3 tools/generate-test-cases.py
+# Java 소스가 있으면 (VO/DTO 분석 정확도 ↑):
+python3 tools/generate-test-cases.py --java-src workspace/java-src/ --samples-dir workspace/results/_samples/
+# Java 소스 없으면:
+python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/
 ```
+TC 소스 우선순위: **샘플 데이터(실제값)** > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
+**정적 XML 태그 조작 금지.** 모든 SQL은 MyBatis 엔진이 렌더링한다.
 
-### Phase 3: Validation (3단계: EXPLAIN → 실행 → 비교)
+### Phase 3: Validation (MyBatis 기반, 3단계)
 
-**3단계 모두 실행해야 한다. Stage 1만 하고 넘어가지 마라.**
-**Oracle 접속 가능하면 Stage 2, 3 필수. 건너뛰면 안 된다.**
-**DML이 Oracle에서 timeout되면 → DML은 스킵하고 SELECT만이라도 비교하라. 전체 스킵 금지.**
-**Partial Compare 원칙: SELECT는 반드시 양쪽 실행 비교. DML은 SELECT COUNT(*) WHERE로 대체.**
-**TC가 10,000+건이면 psql -f 단일 실행으로 충분 (psql은 스트리밍 처리, 메모리 문제 없음).**
-**병렬 Validator는 반드시 다른 파일(--files)을 분배하라. 같은 파일의 query-tracking.json 동시 쓰기 금지.**
+**Java 필수. MyBatis 엔진이 유일한 SQL 렌더링 경로.**
+**정적 XML 추출은 fallback일 뿐. Java 없으면 검증 정확도가 크게 떨어진다.**
+**DML: SELECT COUNT(*) WHERE로 Oracle 비교. PG는 BEGIN/ROLLBACK + 5s timeout.**
 
-**Stage 1: EXPLAIN (PG 문법 검증)**
-**MyBatis 추출 SQL이 있으면 `--extracted`로 우선 사용 (동적 SQL 정확도 ↑).**
+**Step 1: MyBatis 엔진으로 SQL 렌더링 + TC params 주입**
 ```bash
-# MyBatis 추출이 있으면 (Phase 3.5 이후 또는 Java 설치 시):
-python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted_pg/ --output workspace/results/_validation/ --tracking-dir workspace/results/
-
-# MyBatis 미사용 시 (Java 미설치):
-python3 tools/validate-queries.py --generate --output workspace/results/_validation/ --tracking-dir workspace/results/
-
-psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/
-```
-
-**Stage 2: 실행 (TC 바인드로 양쪽 실행)**
-```bash
-# PG 실행
-psql -f workspace/results/_validation/execute_test.sql > workspace/results/_validation/execute_results.txt 2>&1
-# Oracle 실행 (같은 TC, 원본 SQL)
-sqlplus @workspace/results/_validation/oracle_compare.sql > workspace/results/_validation/oracle_results.txt 2>&1
-```
-
-**Stage 3: 비교 (Oracle vs PG 결과 매칭)**
-```bash
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/
-```
-양쪽 결과 파일에서 test_id별로 row count를 비교. 불일치 시 Phase 4 대상.
-
-**동적 SQL 쿼리는 Phase 3.5에서 MyBatis로 해결.**
-
-**TC 통합 원칙:**
-- Phase 2.5에서 만든 TC가 Phase 3/3.5 **모든 검증에서 공유**되어야 한다.
-- Phase 3.5 MyBatis variant는 TC와 별도의 소스이다 (동적 SQL 분기 평가).
-- **Phase 3과 3.5는 반드시 다른 출력 디렉토리를 사용하라. 덮어쓰기 금지.**
-  - Phase 3 → `_validation/`
-  - Phase 3.5 → `_validation_phase35/`
-- query-matrix는 Phase 3 + Phase 3.5 결과를 **merge** (같은 query_id는 더 나은 결과 채택).
-
-### Phase 3.5: MyBatis Engine (양쪽 추출 + 비교)
-
-**Java가 설치되어 있으면 반드시 실행. 건너뛰지 마라.**
-
-```bash
-# Step 1: 양쪽 SQL 추출 (출력: _validation_phase35/ — Phase 3 결과 보존!)
 bash tools/run-extractor.sh --validate
+```
+input XML(Oracle) + output XML(PG) 양쪽에서 TC params로 동적 SQL 평가 → 완전한 SQL.
 
-# Step 2: 추출된 SQL로 배치 스크립트 생성
-python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation_phase35/ --tracking-dir workspace/results/
-
-# Step 3: psql/sqlplus 배치 실행
-PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation_phase35/explain_test.sql \
-  > workspace/results/_validation_phase35/explain_results.txt 2>&1
-
-PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DATABASE \
-  -f workspace/results/_validation_phase35/execute_test.sql \
-  > workspace/results/_validation_phase35/execute_results.txt 2>&1
-
-sqlplus -S $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID \
-  @workspace/results/_validation_phase35/oracle_compare.sql \
-  > workspace/results/_validation_phase35/oracle_results.txt 2>&1
-
-# Step 4: 결과 파싱
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation_phase35/ --tracking-dir workspace/results/
+**Step 2: EXPLAIN + Execute + Compare**
+```bash
+python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted_pg/ --output workspace/results/_validation/ --tracking-dir workspace/results/
+psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
+psql -f workspace/results/_validation/execute_test.sql > workspace/results/_validation/execute_results.txt 2>&1
+sqlplus @workspace/results/_validation/oracle_compare.sql > workspace/results/_validation/oracle_results.txt 2>&1
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/ --tracking-dir workspace/results/
 ```
 
-**절대 `--compare` 옵션으로 직접 실행하지 마라 (subprocess per query = OOM/타임아웃).**
-**항상 --generate → psql -f / sqlplus @ → --parse-results 3단계로 하라.**
+EXPLAIN은 문법 게이트. 실행+비교가 주 검증. 양쪽 결과에서 test_id별 row count 비교, 불일치 시 Phase 4 대상.
 
 ### Phase 4: Self-healing (티켓 기반, 최대 5회)
 
-Phase 3 + Phase 3.5 실패 건 모두 대상. 없으면 Phase 5로.
+Phase 3 실패 건 대상. 없으면 Phase 5로.
 
 **Step 1: 힐링 티켓 생성**
-EXPLAIN FAIL, COMPARE FAIL 결과에서 에러를 분류하여 `workspace/results/_healing/tickets.json`에 티켓 생성:
 ```bash
-python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --validation-phase7-dir workspace/results/_validation_phase35/ --output workspace/results/_healing/
+python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --output workspace/results/_healing/
 ```
-**MyBatis 엔진 활용:** Phase 3에서 실패했지만 Phase 3.5 MyBatis에서 통과한 쿼리는 자동 resolved.
-동적 SQL (`<if>`, `<include>` 등) 때문에 static 추출이 불완전한 쿼리는 Phase 3.5로 검증 가능.
-티켓에 `skip_reason: resolved_by_mybatis_engine`으로 표시.
 
 티켓 구조:
 ```json
@@ -342,7 +295,6 @@ python3 tools/generate-report.py
 ● Phase 1: Parse+Convert (426파일, 4953쿼리)
 ● Phase 2: LLM Convert (26건)
 ◐ Phase 3: Validation (80/150)
-○ Phase 3.5: MyBatis Engine
 ○ Phase 4~7
 ─────────────────────
 Progress: 53% | OK:80 FAIL:0 WAIT:70 ESC:0

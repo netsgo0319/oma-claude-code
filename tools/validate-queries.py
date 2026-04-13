@@ -438,157 +438,25 @@ SET HEADING ON
         print(f"\nSaved: {output_path / 'compare_validated.json'}")
         return validated
 
-    @staticmethod
-    def _extract_mybatis_sql(elem, mapper_root=None):
-        """Extract SQL from MyBatis XML element, handling dynamic SQL tags intelligently.
-        Instead of blindly joining all itertext(), this understands:
-        - <if>: include content (assume condition true for max coverage)
-        - <choose>/<when>/<otherwise>: pick first <when> only (avoid duplicate branches)
-        - <where>: wrap content with WHERE, strip leading AND/OR
-        - <set>: wrap content with SET, strip trailing comma
-        - <trim>: apply prefix/suffix/prefixOverrides/suffixOverrides
-        - <foreach>: generate single iteration placeholder
-        - <include>: resolve by looking up <sql id="X"> in mapper root
-        - <selectKey>: skip (separate statement)
-        - <bind>: skip
-
-        mapper_root: the <mapper> root element (for <sql> fragment lookup).
-                     If None, falls back to searching within elem only.
-        """
-        # Pre-build sql fragment map for <include refid="X"> resolution
-        sql_fragments = {}
-        search_root = mapper_root or elem
-        try:
-            for sql_elem in search_root.iter():
-                if sql_elem.tag == 'sql' and sql_elem.get('id'):
-                    sql_fragments[sql_elem.get('id')] = sql_elem
-        except Exception:
-            pass
-
-        def _walk(el):
-            parts = []
-            # Element's own text
-            if el.text and el.text.strip():
-                parts.append(el.text.strip())
-
-            for child in el:
-                tag = child.tag if isinstance(child.tag, str) else ''
-
-                if tag == 'if':
-                    # Include content (assume condition true)
-                    parts.append(_walk(child))
-
-                elif tag == 'choose':
-                    # Pick first <when> only, or <otherwise> if no <when>
-                    when = child.find('when')
-                    if when is not None:
-                        parts.append(_walk(when))
-                    else:
-                        otherwise = child.find('otherwise')
-                        if otherwise is not None:
-                            parts.append(_walk(otherwise))
-
-                elif tag == 'when':
-                    parts.append(_walk(child))
-
-                elif tag == 'otherwise':
-                    # Only reached if no <when> matched above
-                    parts.append(_walk(child))
-
-                elif tag == 'where':
-                    inner = _walk(child).strip()
-                    if inner:
-                        # Strip leading AND/OR
-                        inner = re.sub(r'^(?:AND|OR)\s+', '', inner, flags=re.IGNORECASE)
-                        parts.append(f'WHERE {inner}')
-
-                elif tag == 'set':
-                    inner = _walk(child).strip()
-                    # Remove trailing comma (MyBatis <set> does this)
-                    inner = re.sub(r',\s*$', '', inner)
-                    if inner:
-                        parts.append(f'SET {inner}')
-
-                elif tag == 'trim':
-                    inner = _walk(child).strip()
-                    prefix = child.get('prefix', '')
-                    suffix = child.get('suffix', '')
-                    prefix_overrides = child.get('prefixOverrides', '')
-                    suffix_overrides = child.get('suffixOverrides', '')
-                    if prefix_overrides and inner:
-                        for po in prefix_overrides.split('|'):
-                            po = po.strip()
-                            if po and inner.upper().startswith(po.upper()):
-                                inner = inner[len(po):].strip()
-                                break
-                    if suffix_overrides and inner:
-                        for so in suffix_overrides.split('|'):
-                            so = so.strip()
-                            if so and inner.upper().endswith(so.upper()):
-                                inner = inner[:-len(so)].strip()
-                                break
-                    if inner:
-                        parts.append(f'{prefix} {inner} {suffix}'.strip())
-
-                elif tag == 'foreach':
-                    # Generate single item placeholder
-                    item = child.get('item', 'item')
-                    open_str = child.get('open', '')
-                    close_str = child.get('close', '')
-                    inner = _walk(child).strip()
-                    if inner:
-                        parts.append(f'{open_str}{inner}{close_str}')
-
-                elif tag == 'include':
-                    refid = child.get('refid', '')
-                    if refid and refid in sql_fragments:
-                        parts.append(_walk(sql_fragments[refid]))
-                    # else: skip (not found or already expanded)
-
-                elif tag in ('selectKey', 'bind'):
-                    pass  # Skip
-
-                else:
-                    # Unknown tag — include text content
-                    parts.append(_walk(child))
-
-                # Tail text (text after closing tag)
-                if child.tail and child.tail.strip():
-                    parts.append(child.tail.strip())
-
-            return ' '.join(p for p in parts if p)
-
-        return _walk(elem)
-
     def load_queries(self):
-        """Load all queries from converted XML files."""
+        """Discover query IDs and types from XML files. SQL comes from MyBatis engine."""
         for xml_file in sorted(self.output_dir.glob('*.xml')):
             try:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
-            except ET.ParseError as e:
-                print(f"  SKIP {xml_file.name}: XML parse error: {e}")
+            except ET.ParseError:
                 continue
-
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.findall(f'.//{tag}'):
                     qid = elem.get('id', 'unknown')
-                    raw_sql = self._extract_mybatis_sql(elem, mapper_root=root)
-                    raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
-                    raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
-
-                    # Extract parameter names
-                    params = re.findall(r'#\{(\w+)(?:,[^}]*)?\}', raw_sql)
-
                     self.queries.append({
                         'file': xml_file.name,
                         'id': qid,
                         'type': tag,
-                        'sql_raw': raw_sql,
-                        'params': list(set(params)),
+                        'sql_raw': '',  # Will be filled by load_extracted()
+                        'params': [],
                     })
-
-        print(f"Loaded {len(self.queries)} queries from {len(list(self.output_dir.glob('*.xml')))} files")
+        print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('*.xml')))} files")
 
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
@@ -810,7 +678,7 @@ SET HEADING ON
             is_extracted = query.get('from_extracted', False)
             variant_name = query.get('variant', '')
 
-            # Extracted SQL has ? placeholders from MyBatis — bind with TC values if available
+            # MAIN PATH: Extracted SQL from MyBatis engine (has ? placeholders)
             if is_extracted:
                 param_names = query.get('param_names_for_bind', [])
                 tc_binds = {}
@@ -862,8 +730,40 @@ SET HEADING ON
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
                     execute_lines.append("")
+                else:
+                    # DML: wrap in BEGIN/ROLLBACK with short timeout
+                    execute_lines.append(f"\\echo === {test_id} ===")
+                    execute_lines.append(f"SET statement_timeout = '5s';")
+                    execute_lines.append(f"BEGIN;")
+                    execute_lines.append(f"{bound_sql.rstrip(';')};")
+                    execute_lines.append(f"ROLLBACK;")
+                    execute_lines.append("")
+
+                # Oracle compare
+                oracle_sql = self.oracle_queries.get(qid, '')
+                if oracle_sql:
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
+                    oracle_lines.append(f"PROMPT === {test_id} ===")
+                    if qtype == 'select':
+                        safe_ora = ora_bound.rstrip(';')
+                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                    else:
+                        dml_where = self._extract_dml_where(ora_bound)
+                        if dml_where:
+                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                        else:
+                            oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
+                    oracle_lines.append("")
 
                 continue
+
+            # FALLBACK PATH: Static XML extraction (no MyBatis engine)
+            # This path has limited accuracy — dynamic tags are not resolved
+            if not sql:
+                print(f"  WARN: {qid} has no SQL (static fallback). Skipping.")
+                continue
+
+            print(f"  WARN: {qid} using static extraction (limited accuracy)")
 
             # Get test cases for this query
             cases = self.test_cases.get(qid, [])
@@ -915,8 +815,6 @@ SET HEADING ON
                         safe_ora = ora_bound.rstrip(';')
                         oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
                     else:
-                        # DML: SELECT COUNT(*) 로 영향 행수만 예측 (실제 UPDATE/DELETE 실행 안 함)
-                        # Oracle sqlplus에 statement_timeout이 없어서 대형 DML이 무한 실행됨
                         dml_where = self._extract_dml_where(ora_bound)
                         if dml_where:
                             oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
@@ -951,12 +849,12 @@ SET HEADING ON
                         'execute_skip': execute_skip,
                     })
 
-                    # EXPLAIN (always — even for skipped DML, syntax check is safe)
+                    # EXPLAIN (always -- even for skipped DML, syntax check is safe)
                     explain_lines.append(f"\\echo === {test_id} ===")
                     explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                     explain_lines.append("")
 
-                    # EXECUTE — skip if marked dangerous (large table DML)
+                    # EXECUTE -- skip if marked dangerous (large table DML)
                     if execute_skip:
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"\\echo SKIPPED: {skip_reason}")
@@ -987,7 +885,6 @@ SET HEADING ON
                             safe_ora = ora_bound.rstrip(';')
                             oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
                         else:
-                            # DML: SELECT COUNT(*) WHERE로 영향 행수만 예측
                             dml_where = self._extract_dml_where(ora_bound)
                             if dml_where:
                                 oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
@@ -1611,41 +1508,53 @@ def main():
         if file_filter:
             before = len(validator.queries)
             validator.queries = [q for q in validator.queries if q.get('file', '') in file_filter]
-            print(f"  Filtered: {before} → {len(validator.queries)} queries")
+            print(f"  Filtered: {before} -> {len(validator.queries)} queries")
+
+    def load_queries_with_extracted_priority():
+        """Always try load_extracted() first. Fall back to load_queries() with WARNING."""
+        # Auto-detect extracted dir if not specified
+        extracted_dir = args.extracted
+        if not extracted_dir:
+            # Search common locations for extracted SQL
+            candidates = [
+                Path(args.results_dir) / '_extracted',
+                Path('workspace/results/_extracted'),
+            ]
+            for c in candidates:
+                if c.exists() and list(c.glob('*-extracted.json')):
+                    extracted_dir = str(c)
+                    break
+
+        if extracted_dir:
+            validator.load_extracted(extracted_dir)
+
+        if not validator.queries:
+            print("WARNING: No MyBatis extracted SQL found. Using static extraction (limited). "
+                  "Install Java 11+ for accurate validation.")
+            validator.load_queries()
+
+        validator.load_test_cases()
 
     if args.compare:
-        validator.load_queries()
+        load_queries_with_extracted_priority()
         apply_file_filter()
         validator.load_oracle_queries()
-        validator.load_test_cases()
         validator.compare_queries(args.output, tracking_dir=args.tracking_dir)
 
     elif args.generate:
-        if args.extracted:
-            validator.load_extracted(args.extracted)
-        else:
-            validator.load_queries()
-            validator.load_test_cases()
+        load_queries_with_extracted_priority()
         validator.load_oracle_queries()  # For oracle_compare.sql generation
         apply_file_filter()
         validator.generate_scripts(args.output)
 
     elif args.local:
-        if args.extracted:
-            validator.load_extracted(args.extracted)
-        else:
-            validator.load_queries()
-            validator.load_test_cases()
+        load_queries_with_extracted_priority()
         apply_file_filter()
         validator.generate_scripts(args.output)
         validator.execute_local(args.output, tracking_dir=args.tracking_dir)
 
     elif args.execute:
-        if args.extracted:
-            validator.load_extracted(args.extracted)
-        else:
-            validator.load_queries()
-            validator.load_test_cases()
+        load_queries_with_extracted_priority()
         apply_file_filter()
         validator.generate_scripts(args.output)
         validator.execute_local_queries(args.output, tracking_dir=args.tracking_dir)
