@@ -1568,7 +1568,41 @@ def main():
         validator.execute_local_queries(args.output, tracking_dir=args.tracking_dir)
 
     elif args.parse_results:
-        validator.parse_results(args.output)
+        result = validator.parse_results(args.output)
+
+        # Update query-level tracking from parsed results
+        if args.tracking_dir and result:
+            try:
+                tracking_dir = args.tracking_dir
+                if tracking_dir == 'auto':
+                    tracking_dirs = list(Path(args.results_dir).glob('*/v*/'))
+                else:
+                    tracking_dirs = list(Path(tracking_dir).glob('*/v*/'))
+
+                from tracking_utils import TrackingManager
+                explain_results = {}
+                for p in result.get('passes', []):
+                    tid = p if isinstance(p, str) else ''
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        qid = parts[-2] if len(parts) >= 3 else parts[-1]
+                        if qid not in explain_results:
+                            explain_results[qid] = {'status': 'pass'}
+                for f in result.get('failures', []):
+                    tid = f.get('test', '')
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        qid = parts[-2] if len(parts) >= 3 else parts[-1]
+                        explain_results[qid] = {'status': 'fail', 'error': f.get('error', '')}
+
+                for tdir in tracking_dirs:
+                    tm = TrackingManager(tdir)
+                    for qid, res in explain_results.items():
+                        tm.update_explain(qid, res['status'], error=res.get('error'))
+                    tm._save()
+                print(f"  Query tracking updated: {len(explain_results)} queries")
+            except Exception as e:
+                print(f"  Warning: Could not update query tracking: {e}")
 
     else:
         parser.print_help()
