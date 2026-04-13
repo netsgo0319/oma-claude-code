@@ -908,11 +908,13 @@ SET HEADING ON
             f.write('\n'.join(execute_lines))
 
         # Write test manifest
+        # Write test manifest (lightweight — bound_sql excluded to save space)
+        manifest_tests = [{k: v for k, v in t.items() if k != 'bound_sql'} for t in all_tests]
         with open(output_path / 'test_manifest.json', 'w', encoding='utf-8') as f:
             json.dump({
                 'generated_at': datetime.now().isoformat(),
                 'total_tests': len(all_tests),
-                'tests': all_tests,
+                'tests': manifest_tests,
             }, f, indent=2, ensure_ascii=False)
 
         # Split into batches for SSM (max ~50KB per batch)
@@ -1369,6 +1371,13 @@ SET HEADING ON
             for w in warnings[:10]:
                 print(f"  [{w['severity'].upper()}] {w['code']}: {w['query_id']} - {w['message']}")
 
+        # Deduplicate passes to query level for smaller JSON
+        # passes list can be 20,000+ test_ids — compress to unique query_ids
+        pass_query_ids = list(set(
+            '.'.join(tid.split('.')[:-1]) if '.' in tid else tid
+            for tid in passes
+        ))
+
         # Write validated.json
         validated = {
             'timestamp': datetime.now().isoformat(),
@@ -1378,6 +1387,7 @@ SET HEADING ON
             'pass_rate': f"{pass_count/(pass_count+fail_count)*100:.1f}%" if (pass_count+fail_count) > 0 else "N/A",
             'failure_categories': {k: len(v) for k, v in categories.items()},
             'passes': passes,
+            'pass_query_ids': pass_query_ids,
             'failures': failures,
             'warnings': warnings,
             'warning_count': len(warnings),

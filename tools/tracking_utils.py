@@ -87,10 +87,13 @@ class TrackingManager:
 
     def _save(self):
         if self._data:
+            import fcntl
             self._data['updated_at'] = now_iso()
             self.results_dir.mkdir(parents=True, exist_ok=True)
             with open(self.tracking_path, 'w', encoding='utf-8') as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
                 json.dump(self._data, f, indent=2, ensure_ascii=False)
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     def _find_query(self, query_id):
         data = self._load()

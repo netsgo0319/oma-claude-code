@@ -132,6 +132,8 @@ python3 tools/generate-test-cases.py
 
 **3단계 모두 실행해야 한다. Stage 1만 하고 넘어가지 마라.**
 **Oracle 접속 가능하면 Stage 2, 3 필수. 건너뛰면 안 된다.**
+**TC가 10,000+건이면 psql -f 단일 실행으로 충분 (psql은 스트리밍 처리, 메모리 문제 없음).**
+**병렬 Validator는 반드시 다른 파일(--files)을 분배하라. 같은 파일의 query-tracking.json 동시 쓰기 금지.**
 
 **Stage 1: EXPLAIN (PG 문법 검증)**
 ```bash
