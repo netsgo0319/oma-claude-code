@@ -19,7 +19,7 @@ steering 파일에 축적하고, Git PR/Issue를 생성하는 서브에이전트
 ## Setup: Load Knowledge
 
 작업 시작 전 반드시 Read tool로 로딩:
-1. `skills/learn-edge-case/SKILL.md` — 학습 절차
+1. `.claude/skills/learn-edge-case/SKILL.md` — 학습 절차
 2. `steering/edge-cases.md` — 기존 에지케이스 (중복 체크용)
 3. `steering/oracle-pg-rules.md` — 기존 룰셋
 

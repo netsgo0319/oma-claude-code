@@ -1,5 +1,5 @@
 ---
-name: report
+name: report-guide
 description: 변환 완료 후 전체 결과를 취합하여 4-탭 드릴다운 HTML 리포트를 생성한다. query-tracking.json, progress.json, validated.json 등 모든 데이터 소스를 통합한다.
 ---
 

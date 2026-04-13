@@ -20,10 +20,10 @@ allowed-tools:
 작업 시작 전 반드시 Read tool로 로딩:
 1. `steering/oracle-pg-rules.md` — 변환 룰셋
 2. `steering/edge-cases.md` — 학습된 에지케이스
-3. `skills/complex-query-decomposer/SKILL.md` — 복잡 쿼리 분해
-4. `skills/db-postgresql/SKILL.md` — psql 접근 (수정안 EXPLAIN 검증용)
-5. `skills/llm-convert/references/connect-by-patterns.md` — CONNECT BY 수정 패턴
-6. `skills/llm-convert/references/merge-into-patterns.md` — MERGE INTO 수정 패턴
+3. `.claude/skills/complex-query-decomposer/SKILL.md` — 복잡 쿼리 분해
+4. `.claude/skills/db-postgresql/SKILL.md` — psql 접근 (수정안 EXPLAIN 검증용)
+5. `.claude/skills/llm-convert/references/connect-by-patterns.md` — CONNECT BY 수정 패턴
+6. `.claude/skills/llm-convert/references/merge-into-patterns.md` — MERGE INTO 수정 패턴
 
 ## 역할
 - 실패 원인 분류 및 근본 원인 분석

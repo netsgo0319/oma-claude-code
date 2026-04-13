@@ -17,9 +17,9 @@ allowed-tools:
 ## Setup: Load Knowledge
 
 작업 시작 전 반드시 Read tool로 로딩:
-1. `skills/generate-test-cases/SKILL.md` — 테스트 케이스 생성 절차
-2. `skills/generate-test-cases/references/oracle-dictionary-queries.md` — 40+ 딕셔너리 쿼리
-3. `skills/db-oracle/SKILL.md` — sqlplus CLI 접근
+1. `.claude/skills/generate-test-cases/SKILL.md` — 테스트 케이스 생성 절차
+2. `.claude/skills/generate-test-cases/references/oracle-dictionary-queries.md` — 40+ 딕셔너리 쿼리
+3. `.claude/skills/db-oracle/SKILL.md` — sqlplus CLI 접근
 
 ## 역할
 - 쿼리 구조 분석 (파라미터, 동적 SQL 분기, 참조 테이블)

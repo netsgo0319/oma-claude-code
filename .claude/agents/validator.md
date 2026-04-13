@@ -17,11 +17,11 @@ allowed-tools:
 ## Setup: Load Knowledge
 
 작업 시작 전 반드시 Read tool로 로딩:
-1. `skills/explain-test/SKILL.md` — EXPLAIN 검증 절차
-2. `skills/execute-test/SKILL.md` — 실행 검증 절차
-3. `skills/compare-test/SKILL.md` — 비교 검증 + Result Integrity Guard
-4. `skills/db-postgresql/SKILL.md` — psql CLI 접근
-5. `skills/db-oracle/SKILL.md` — sqlplus CLI 접근
+1. `.claude/skills/explain-test/SKILL.md` — EXPLAIN 검증 절차
+2. `.claude/skills/execute-test/SKILL.md` — 실행 검증 절차
+3. `.claude/skills/compare-test/SKILL.md` — 비교 검증 + Result Integrity Guard
+4. `.claude/skills/db-postgresql/SKILL.md` — psql CLI 접근
+5. `.claude/skills/db-oracle/SKILL.md` — sqlplus CLI 접근
 
 ## 역할
 - EXPLAIN으로 문법 검증
