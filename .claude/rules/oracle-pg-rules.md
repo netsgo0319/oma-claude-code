@@ -131,8 +131,8 @@ inclusion: always
 | DBMS_RANDOM.VALUE(low, high) | floor(random() * (high - low + 1) + low) | 범위 지정 |
 | DBMS_CRYPTO.HASH(input, algo) | digest(input, 'sha256') | pgcrypto 확장 필요 |
 | DBMS_OUTPUT.PUT_LINE(msg) | RAISE NOTICE '%', msg | PL/pgSQL 내에서 |
-| PKG_CRYPTO.DECRYPT(input, key) | pkg_crypto_decrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
-| PKG_CRYPTO.ENCRYPT(input, key) | pkg_crypto_encrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
+| PKG_CRYPTO.DECRYPT(input, key) | pkg_crypto$decrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
+| PKG_CRYPTO.ENCRYPT(input, key) | pkg_crypto$encrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
 | WMSON.PKG_CRYPTO.FUNC(args) | pkg_crypto_func(args) | 스키마 접두사 자동 제거 |
 | PKG_* (커스텀 패키지 일반) | PL/pgSQL 함수 또는 확장 | LLM 태깅됨. 패키지 로직 분석 후 수동 변환 필요 |
 
@@ -140,11 +140,11 @@ inclusion: always
 Oracle 패키지 `PKG_CRYPTO`는 PG에서 개별 함수로 변환됨:
 | Oracle | PostgreSQL | 비고 |
 |--------|-----------|------|
-| `PKG_CRYPTO.DECRYPT(input, key)` | `pkg_crypto_decrypt(input, key)` | 복호화 |
-| `PKG_CRYPTO.ENCRYPT(input, key)` | `pkg_crypto_encrypt(input, key)` | 암호화 |
-| `PKG_CRYPTO.DECRYPT_SESSION_KEY(key)` | `decrypt_session_key(key)` | 패키지 내부용 |
-| `PKG_CRYPTO.ENCRYPT_SESSION_KEY(key)` | `encrypt_session_key(key)` | 패키지 내부용 |
-| `PKG_CRYPTO.MASTER_KEY()` | `crypto_master_key()` | 패키지 내부용 |
+| `PKG_CRYPTO.DECRYPT(input, key)` | `pkg_crypto$decrypt(input, key)` | 복호화 |
+| `PKG_CRYPTO.ENCRYPT(input, key)` | `pkg_crypto$encrypt(input, key)` | 암호화 |
+| `PKG_CRYPTO.DECRYPT_SESSION_KEY(key)` | `pkg_crypto$decrypt_session_key(key)` | 패키지 내부용 |
+| `PKG_CRYPTO.ENCRYPT_SESSION_KEY(key)` | `pkg_crypto$encrypt_session_key(key)` | 패키지 내부용 |
+| `PKG_CRYPTO.MASTER_KEY()` | `PG에 없음 (WARNING)` | 패키지 내부용 |
 PG prerequisite: `CREATE EXTENSION IF NOT EXISTS pgcrypto;` + 위 5개 함수 DDL
 
 ## MyBatis/iBatis 특수 변환

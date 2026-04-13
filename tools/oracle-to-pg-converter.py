@@ -1165,11 +1165,11 @@ class OracleToPgConverter:
 
     # PKG_CRYPTO function name mapping (Oracle package → PG standalone function)
     _PKG_CRYPTO_MAP = {
-        'decrypt': 'pkg_crypto_decrypt',
-        'encrypt': 'pkg_crypto_encrypt',
-        'decrypt_session_key': 'decrypt_session_key',
-        'encrypt_session_key': 'encrypt_session_key',
-        'master_key': 'crypto_master_key',
+        'decrypt': 'pkg_crypto$decrypt',
+        'encrypt': 'pkg_crypto$encrypt',
+        'decrypt_session_key': 'pkg_crypto$decrypt_session_key',
+        'encrypt_session_key': 'pkg_crypto$encrypt_session_key',
+        # master_key: PG에 없음 — 변환 시 WARNING
     }
 
     def _convert_pkg_crypto(self, sql):
