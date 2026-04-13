@@ -84,6 +84,7 @@ Agent({
 | sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
 | Java 11+ | `java -version` | **권장** Phase 3 | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
 | Gradle | — | 불필요 | **레포에 gradlew 포함됨.** Java만 있으면 `tools/mybatis-sql-extractor/gradlew`가 Gradle을 자동 다운로드 |
+| Java 소스 | `$JAVA_SRC_DIR` 경로 + VO/DTO/DAO 수 확인 | 선택 | 사용자에게 경로 안내. VO/DTO 분석으로 TC ↑ |
 | Oracle 접속 | sqlplus로 SELECT 1 FROM DUAL | 선택 | 환경변수 확인 안내 |
 | PG 접속 | psql로 SELECT 1 | 선택 | 환경변수 확인 안내 |
 
@@ -109,8 +110,17 @@ echo "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema = 
 ```
 pgcrypto 미설치 시: `CREATE EXTENSION IF NOT EXISTS pgcrypto;` 실행을 사용자에게 안내.
 
-**Java 소스 경로 확인 (VO/DTO 분석용, 선택):**
-`JAVA_SRC_DIR` 환경변수가 설정되어 있으면 Phase 2.5에서 Java VO 클래스를 분석하여 TC 정확도를 높인다.
+**Java 소스 경로 확인 (VO/DTO/Repository 분석용):**
+```bash
+# JAVA_SRC_DIR 설정 확인
+if [ -n "$JAVA_SRC_DIR" ] && [ -d "$JAVA_SRC_DIR" ]; then
+    echo "Java 소스: $JAVA_SRC_DIR"
+    find "$JAVA_SRC_DIR" -name "*.java" | wc -l    # Java 파일 수
+    find "$JAVA_SRC_DIR" -name "*VO.java" -o -name "*Vo.java" -o -name "*DTO.java" -o -name "*Dto.java" | wc -l  # VO/DTO
+    find "$JAVA_SRC_DIR" -name "*Mapper.java" -o -name "*Repository.java" -o -name "*Dao.java" | wc -l  # DAO/Repository
+fi
+```
+설정 안 되어 있으면 사용자에게 물어보라: "Java 소스 경로가 있으면 `export JAVA_SRC_DIR=/path/to/src/main/java`로 설정하세요. VO/DTO 분석으로 TC 정확도가 높아집니다."
 복사 불필요 — 원본 프로젝트 경로를 참조만 한다. 없으면 스키마+샘플 데이터로 대체.
 
 **테이블 샘플 데이터 수집 (TC에 사용):**
