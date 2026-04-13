@@ -91,6 +91,24 @@ Agent({
 **Java만 있으면 Phase 3.5 실행 가능 (Gradle 별도 설치 불필요, gradlew가 자동 처리).**
 **Java가 없으면 Phase 3.5를 스킵할 수 있다고 안내하되, 설치를 강력 권장하라. Phase 3.5 없이는 동적 SQL 검증이 불완전하다.**
 
+**Oracle 접속 성공 시 추가 체크:**
+```bash
+# Oracle 오브젝트 스캔 (FUNCTION, PROCEDURE, PACKAGE 의존성 파악)
+echo "SELECT OBJECT_TYPE, COUNT(*) CNT FROM ALL_OBJECTS WHERE OWNER = '${ORACLE_SCHEMA:-$ORACLE_USER}' GROUP BY OBJECT_TYPE ORDER BY 1;" | sqlplus -S $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID
+```
+결과를 progress.json에 기록. FUNCTION/PROCEDURE/PACKAGE가 있으면 사용자에게 보고.
+
+**PG 접속 성공 시 추가 체크:**
+```bash
+# pgcrypto extension 확인 (PKG_CRYPTO 변환에 필수)
+echo "SELECT extname FROM pg_extension WHERE extname = 'pgcrypto';" | psql
+# 테이블 수 확인
+echo "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '${PG_SCHEMA:-public}';" | psql
+# 시퀀스 수 확인
+echo "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema = '${PG_SCHEMA:-public}';" | psql
+```
+pgcrypto 미설치 시: `CREATE EXTENSION IF NOT EXISTS pgcrypto;` 실행을 사용자에게 안내.
+
 ### Phase 1: Parse + Analyze + Rule Convert
 
 ```bash

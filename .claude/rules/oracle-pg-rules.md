@@ -131,7 +131,8 @@ inclusion: always
 | DBMS_RANDOM.VALUE(low, high) | floor(random() * (high - low + 1) + low) | 범위 지정 |
 | DBMS_CRYPTO.HASH(input, algo) | digest(input, 'sha256') | pgcrypto 확장 필요 |
 | DBMS_OUTPUT.PUT_LINE(msg) | RAISE NOTICE '%', msg | PL/pgSQL 내에서 |
-| PKG_CRYPTO.DECRYPT/ENCRYPT | `/* TODO */ args` 패스스루 | **converter.py 자동 TODO 태깅 구현됨**. 수동 마이그레이션 필요 |
+| PKG_CRYPTO.DECRYPT/ENCRYPT(args) | pkg_crypto_decrypt/encrypt(args) | **converter.py 자동 변환**. PG에 pgcrypto extension + 래퍼 함수 필요 |
+| SCHEMA.PKG_CRYPTO.FUNC(args) | pkg_crypto_func(args) | 스키마 접두사 자동 제거 |
 | PKG_* (커스텀 패키지 일반) | PL/pgSQL 함수 또는 확장 | LLM 태깅됨. 패키지 로직 분석 후 수동 변환 필요 |
 
 ## MyBatis/iBatis 특수 변환
@@ -143,3 +144,7 @@ inclusion: always
 | 파라미터 표기 | #prop# (iBatis) | #{prop} (MyBatis) |
 | 파라미터 표기 | $prop$ (iBatis) | ${prop} (MyBatis) |
 | procedure 호출 | {call PKG.PROC()} | SELECT * FROM proc() |
+
+**주의: `#{sysdate}`, `#{delyn}` 등 MyBatis 바인드 파라미터는 Oracle 패턴이 아니다.**
+`#{...}` 안의 문자열은 Java 코드에서 전달되는 값이며, SQL 변환 대상이 절대 아니다.
+`SYSDATE` 변환은 `#{sysdate}` 밖의 bare `SYSDATE`에만 적용된다.

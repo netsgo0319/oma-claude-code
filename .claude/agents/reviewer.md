@@ -61,6 +61,10 @@ Leader로부터 전달받는 정보:
 ### UNKNOWN
 - 분류 불가 → 상세 에러 메시지와 함께 기록
 
+## MyBatis 파라미터 주의 (필수)
+`#{sysdate}`, `#{delyn}` 등 `#{...}` 안의 문자열은 MyBatis 바인드 파라미터다.
+Oracle 패턴이 아니므로 "잔여 Oracle 구문"으로 분류하지 마라.
+
 ## 분석 절차
 
 1. validated.json에서 실패 건 로드

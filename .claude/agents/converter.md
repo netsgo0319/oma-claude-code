@@ -70,11 +70,15 @@ java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar
 
 ## 처리 절차
 
-### 0. 기계적 변환 (rule-convert-tool, 최우선 실행)
+### 0. 기계적 변환 (rule-convert-tool, v1에서만 실행)
 
-**모든 변환 작업의 첫 번째 단계. LLM 변환 전에 반드시 실행한다.**
+**Phase 1에서 이미 실행됐으면 재실행하지 마라.**
+룰 컨버터는 input XML에서 output XML을 새로 생성하므로, **LLM 변환 후 재실행하면 LLM 수정이 덮어씌워진다.**
+- **v1 (최초)**: 룰 컨버터 실행 OK
+- **v2+ (재시도)**: output XML에 Edit으로 직접 수정. 룰 컨버터 재실행 금지.
 
 ```bash
+# v1에서만:
 python3 tools/oracle-to-pg-converter.py workspace/input/{filename}.xml workspace/output/{filename}.xml \
   --report workspace/results/{filename}/v1/conversion-report.json
 ```
@@ -137,6 +141,13 @@ LLM 변환한 쿼리는 Converter가 직접 query-tracking.json에 기록:
 - 동적 SQL 태그 내부의 SQL도 변환
 - selectKey 내부 SQL도 변환
 - resultMap, parameterMap, cache 등 비SQL 요소는 변경하지 않음
+
+## MyBatis 파라미터 주의 (필수)
+**`#{sysdate}`, `#{delyn}`, `#{useyn}` 등 `#{...}` 안의 문자열은 MyBatis 바인드 파라미터다.**
+Java 코드에서 전달되는 값이며, **Oracle 패턴이 아니다. 절대 변환하지 마라.**
+- `#{sysdate}` → 그대로 유지 (SYSDATE 변환 대상 아님)
+- `#{rownum}` → 그대로 유지 (ROWNUM 변환 대상 아님)
+- bare `SYSDATE` (#{} 밖) → CURRENT_TIMESTAMP (이것만 변환)
 
 ## converted.json 형식
 assets/parsed-template.json의 conversions 배열 참조:

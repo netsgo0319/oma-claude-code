@@ -531,14 +531,31 @@ class OracleToPgConverter:
         return new_sql
 
     def _convert_sequences(self, sql):
-        """sequence.NEXTVAL -> nextval('sequence'), sequence.CURRVAL -> currval('sequence')."""
+        """sequence.NEXTVAL -> nextval('sequence'), sequence.CURRVAL -> currval('sequence').
+        Handles schema-qualified: SCHEMA.SEQ.NEXTVAL -> nextval('schema.seq')."""
         def replace_seq(match):
+            full = match.group(0)
+            # Check for schema.seq.NEXTVAL (3-part)
+            m3 = re.match(r'(\w+)\.(\w+)\.(NEXTVAL|CURRVAL)', full, re.IGNORECASE)
+            if m3:
+                schema, seq_name, func = m3.group(1), m3.group(2), m3.group(3).lower()
+                pg_func = 'nextval' if 'next' in func else 'currval'
+                self._count_rule(f'sequence.{func}->{pg_func}()')
+                return f"{pg_func}('{schema.lower()}.{seq_name.lower()}')"
+            # 2-part: SEQ.NEXTVAL
             seq_name = match.group(1)
             func = match.group(2).lower()
             pg_func = 'nextval' if 'next' in func else 'currval'
             self._count_rule(f'sequence.{func}->{pg_func}()')
             return f"{pg_func}('{seq_name.lower()}')"
 
+        # 3-part first (schema.seq.NEXTVAL)
+        new_sql = re.sub(
+            r'(\w+)\.(\w+)\.(NEXTVAL|CURRVAL)',
+            replace_seq,
+            sql, flags=re.IGNORECASE
+        )
+        # 2-part fallback (seq.NEXTVAL)
         new_sql = re.sub(
             r'(\w+)\.(NEXTVAL|CURRVAL)',
             replace_seq,
@@ -1147,14 +1164,17 @@ class OracleToPgConverter:
         return new_sql
 
     def _convert_pkg_crypto(self, sql):
-        """PKG_CRYPTO.DECRYPT/ENCRYPT(args) -> TODO tagging with passthrough."""
+        """PKG_CRYPTO.DECRYPT/ENCRYPT(args) -> pgcrypto-based function call.
+        Converts custom Oracle crypto package to PG-compatible function wrapper.
+        Requires: CREATE EXTENSION IF NOT EXISTS pgcrypto; + wrapper functions in PG."""
+        # Schema-qualified: WMSON.PKG_CRYPTO.DECRYPT(args) or PKG_CRYPTO.DECRYPT(args)
         new_sql = re.sub(
-            r'\bPKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(([^()]+)\)',
-            r'/* TODO: PKG_CRYPTO.\1 - manual migration required */ \2',
+            r'\b(?:\w+\.)?PKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(([^()]+)\)',
+            lambda m: f"pkg_crypto_{m.group(1).lower()}({m.group(2)})",
             sql, flags=re.IGNORECASE
         )
         if new_sql != sql:
-            self._count_rule('PKG_CRYPTO->TODO')
+            self._count_rule('PKG_CRYPTO->pgcrypto_func')
         return new_sql
 
     def _convert_lpad_numeric(self, sql):
@@ -1512,9 +1532,9 @@ class OracleToPgConverter:
                 'suggestion': 'Convert to current_setting() or session variables',
             },
             {
-                'regex': r'\b(?!DBMS_|UTL_|SYS_)[A-Z][A-Z0-9_]+\s*\.\s*[A-Z]\w*\s*\(',
+                'regex': r'\b(?!DBMS_|UTL_|SYS_|pkg_crypto_)[A-Za-z][A-Za-z0-9_]+\s*\.\s*[A-Za-z]\w*\s*\(',
                 'name': 'Custom Oracle package call',
-                'suggestion': 'Requires manual migration: create equivalent PG function, use pgcrypto extension, or convert PL/SQL to PL/pgSQL',
+                'suggestion': 'Requires manual migration: create equivalent PG function or convert PL/SQL to PL/pgSQL',
             },
         ]
 
@@ -1527,8 +1547,14 @@ class OracleToPgConverter:
             if id_match:
                 current_query_id = id_match.group(1)
 
+            # Skip MyBatis parameter bindings — #{param} is NOT an Oracle pattern
+            # Also skip XML tags, comments, CDATA markers
+            stripped = re.sub(r'#\{[^}]+\}', '', line)  # Remove #{...} before scanning
+            stripped = re.sub(r'<[^>]+>', '', stripped)    # Remove XML tags
+            stripped = re.sub(r'/\*.*?\*/', '', stripped)  # Remove comments
+
             for pat_info in residual_patterns:
-                if re.search(pat_info['regex'], line, re.IGNORECASE):
+                if re.search(pat_info['regex'], stripped, re.IGNORECASE):
                     self.stats['residual_oracle_patterns'].append({
                         'line': line_num,
                         'pattern': pat_info['name'],

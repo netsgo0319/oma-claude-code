@@ -32,12 +32,19 @@ def get_oracle_columns():
     ora_host = os.environ.get('ORACLE_HOST', '')
     ora_port = os.environ.get('ORACLE_PORT', '1521')
     ora_sid = os.environ.get('ORACLE_SID', '')
+    # ORACLE_SCHEMA: 대상 스키마 (admin 계정으로 접속 시 실제 스키마 지정)
+    ora_schema = os.environ.get('ORACLE_SCHEMA', ora_user).upper()
 
     if not ora_user or not ora_host:
         print("WARNING: Oracle 환경변수 미설정. 컬럼 메타데이터 없이 이름 기반으로만 생성.")
         return {}
 
-    conn_str = f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
+    # SID vs Service Name
+    conn_type = os.environ.get('ORACLE_CONN_TYPE', 'service')
+    if conn_type == 'sid':
+        conn_str = f"{ora_user}/{ora_pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={ora_host})(PORT={ora_port}))(CONNECT_DATA=(SID={ora_sid})))"
+    else:
+        conn_str = f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
 
     # Find sqlplus
     sqlplus = 'sqlplus'
@@ -49,7 +56,7 @@ def get_oracle_columns():
     sql_input = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 500 TRIMSPOOL ON
 SELECT TABLE_NAME || '|' || COLUMN_NAME || '|' || DATA_TYPE || '|' || NULLABLE
 FROM ALL_TAB_COLUMNS
-WHERE OWNER = '{ora_user.upper()}'
+WHERE OWNER = '{ora_schema}'
 ORDER BY TABLE_NAME, COLUMN_NAME;
 EXIT;
 """

@@ -113,15 +113,24 @@ class QueryValidator:
             return False, "PG_HOST not set"
         return True, "OK"
 
-    def _run_oracle_sql(self, sql, timeout=30):
-        """Execute SQL on Oracle via sqlplus and return output."""
+    @staticmethod
+    def _oracle_conn_str():
+        """Build Oracle connection string. Supports SID and Service Name."""
         ora_user = os.environ.get('ORACLE_USER', '')
         ora_pass = os.environ.get('ORACLE_PASSWORD', '')
         ora_host = os.environ.get('ORACLE_HOST', '')
         ora_port = os.environ.get('ORACLE_PORT', '1521')
         ora_sid = os.environ.get('ORACLE_SID', '')
+        # Service Name uses /service, SID uses :sid
+        # Default: treat as Service Name (host:port/service) — most common for PDB
+        conn_type = os.environ.get('ORACLE_CONN_TYPE', 'service')  # 'service' or 'sid'
+        if conn_type == 'sid':
+            return f"{ora_user}/{ora_pass}@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={ora_host})(PORT={ora_port}))(CONNECT_DATA=(SID={ora_sid})))"
+        return f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
 
-        conn_str = f"{ora_user}/{ora_pass}@{ora_host}:{ora_port}/{ora_sid}"
+    def _run_oracle_sql(self, sql, timeout=30):
+        """Execute SQL on Oracle via sqlplus and return output."""
+        conn_str = self._oracle_conn_str()
         sqlplus_input = f"""SET LINESIZE 32767
 SET PAGESIZE 50000
 SET FEEDBACK ON
