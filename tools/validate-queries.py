@@ -800,7 +800,7 @@ SET HEADING ON
                     'bound_sql': bound_sql,
                 })
 
-                # EXPLAIN
+                # EXPLAIN (always)
                 explain_lines.append(f"\\echo === {test_id} ===")
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
@@ -815,8 +815,9 @@ SET HEADING ON
                     execute_lines.append(f"{safe_sql};")
                     execute_lines.append("")
                 else:
+                    # DML: EXPLAIN first to check cost, then execute with short timeout
                     execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '30s';")
+                    execute_lines.append(f"SET statement_timeout = '5s';")
                     execute_lines.append(f"BEGIN;")
                     execute_lines.append(f"{bound_sql.rstrip(';')};")
                     execute_lines.append(f"ROLLBACK;")
@@ -846,6 +847,8 @@ SET HEADING ON
                             binds.pop(skip_key, None)
 
                     case_name = case.get('name', case.get('case_id', f'tc{i}')) if isinstance(case, dict) else f'tc{i}'
+                    execute_skip = case.get('execute_skip', False) if isinstance(case, dict) else False
+                    skip_reason = case.get('skip_reason', '') if isinstance(case, dict) else ''
                     bound_sql = self.bind_params(sql, binds)
 
                     test_id = f"{fname}.{qid}.{case_name}"
@@ -857,15 +860,20 @@ SET HEADING ON
                         'case': case_name,
                         'binds': binds,
                         'bound_sql': bound_sql,
+                        'execute_skip': execute_skip,
                     })
 
-                    # EXPLAIN
+                    # EXPLAIN (always — even for skipped DML, syntax check is safe)
                     explain_lines.append(f"\\echo === {test_id} ===")
                     explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                     explain_lines.append("")
 
-                    # EXECUTE
-                    if qtype == 'select':
+                    # EXECUTE — skip if marked dangerous (large table DML)
+                    if execute_skip:
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"\\echo SKIPPED: {skip_reason}")
+                        execute_lines.append("")
+                    elif qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
                         if 'LIMIT' not in safe_sql.upper():
                             safe_sql += ' LIMIT 5'
@@ -874,9 +882,9 @@ SET HEADING ON
                         execute_lines.append(f"{safe_sql};")
                         execute_lines.append("")
                     else:
-                        # DML: wrap in BEGIN/ROLLBACK
+                        # DML: wrap in BEGIN/ROLLBACK with short timeout (prevent mass UPDATE)
                         execute_lines.append(f"\\echo === {test_id} ===")
-                        execute_lines.append(f"SET statement_timeout = '30s';")
+                        execute_lines.append(f"SET statement_timeout = '5s';")
                         execute_lines.append(f"BEGIN;")
                         execute_lines.append(f"{bound_sql.rstrip(';')};")
                         execute_lines.append(f"ROLLBACK;")

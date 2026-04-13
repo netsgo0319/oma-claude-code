@@ -374,6 +374,36 @@ def gen_fk_case(params, binds, fk_values):
 
 
 # ──────────────────────────────────────────────
+# 소스 5: 테이블 행수 (DML 위험도 판단)
+# ──────────────────────────────────────────────
+
+def get_table_row_counts():
+    """ALL_TABLES에서 NUM_ROWS 수집. DML이 대량 행에 영향줄 위험 판단용."""
+    if not _oracle_available():
+        return {}
+
+    schema = _oracle_schema()
+    sql = f"""SET PAGESIZE 0 FEEDBACK OFF LINESIZE 500 TRIMSPOOL ON
+SELECT TABLE_NAME || '|' || NVL(NUM_ROWS, 0)
+FROM ALL_TABLES
+WHERE OWNER = '{schema}'
+ORDER BY NUM_ROWS DESC NULLS LAST;
+EXIT;
+"""
+    output = _run_sqlplus(sql, timeout=30)
+    row_counts = {}
+    for line in output.split('\n'):
+        parts = line.strip().split('|')
+        if len(parts) == 2 and parts[1].strip().isdigit():
+            row_counts[parts[0].strip()] = int(parts[1].strip())
+    print(f"  소스5 ALL_TABLES: {len(row_counts)}개 테이블 행수")
+    return row_counts
+
+
+DML_ROW_LIMIT = 10000  # 이 이상이면 DML TC를 EXPLAIN_ONLY로 표시
+
+
+# ──────────────────────────────────────────────
 # 메인
 # ──────────────────────────────────────────────
 
@@ -381,14 +411,19 @@ def main():
     parser = argparse.ArgumentParser(description='Phase 2.5: Test Case Generator (다중 소스)')
     parser.add_argument('--results-dir', default='workspace/results', help='Results directory')
     parser.add_argument('--skip-oracle', action='store_true', help='Oracle 접속 없이 이름 기반으로만 생성')
+    parser.add_argument('--dml-row-limit', type=int, default=10000,
+                        help='DML 대상 테이블이 이 행수 이상이면 execute 스킵 (기본: 10000)')
     args = parser.parse_args()
+
+    global DML_ROW_LIMIT
+    DML_ROW_LIMIT = args.dml_row_limit
 
     results_dir = Path(args.results_dir)
     print("=== Phase 2.5: Test Case Generator (다중 소스) ===\n")
 
-    # 1. Oracle 메타데이터 수집 (4소스)
+    # 1. Oracle 메타데이터 수집 (5소스)
     if args.skip_oracle or not _oracle_available():
-        col_types, captures, col_stats, fk_values = {}, {}, {}, {}
+        col_types, captures, col_stats, fk_values, table_rows = {}, {}, {}, {}, {}
         print("  Oracle 미연결 — 이름 기반으로만 TC 생성\n")
     else:
         print("  Oracle 메타데이터 수집 중...")
@@ -396,6 +431,7 @@ def main():
         captures = get_bind_captures()
         col_stats = get_column_stats()
         fk_values = get_fk_samples()
+        table_rows = get_table_row_counts()
         print()
 
     # 2. parsed.json에서 쿼리별 TC 생성
@@ -443,6 +479,16 @@ def main():
                     col_info = col_types.get(p.upper())
                 param_col_info[p] = col_info
 
+            # --- DML 위험도 판단 ---
+            qtype = q.get('type', 'select').lower()
+            is_dml = qtype in ('insert', 'update', 'delete')
+            dml_large_table = False
+            if is_dml and table_rows:
+                for t in tables:
+                    if table_rows.get(t, 0) >= DML_ROW_LIMIT:
+                        dml_large_table = True
+                        break
+
             # --- TC 생성 ---
             cases = []
 
@@ -450,35 +496,51 @@ def main():
             binds = {}
             for p in params:
                 binds[p] = gen_value(p, param_col_info.get(p), captures, col_stats, fk_values)
-            cases.append({'name': 'default', 'params': binds, 'source': 'COLUMN_METADATA'})
+            tc_meta = {'name': 'default', 'params': binds, 'source': 'COLUMN_METADATA'}
+            if dml_large_table:
+                tc_meta['execute_skip'] = True
+                tc_meta['skip_reason'] = f'DML on large table ({max(table_rows.get(t,0) for t in tables):,} rows)'
+            cases.append(tc_meta)
             source_counts['COLUMN_METADATA'] += 1
 
             # TC 2: NULL 케이스
+            # DML + NULL: WHERE col = NULL은 0행 매칭이라 안전하지만,
+            # Oracle에서 '' = NULL이므로 empty_string이 위험 (아래에서 DML 제외)
             null_binds = dict(binds)
             for p in params[:3]:
                 null_binds[p] = None
             if null_binds != binds:
-                cases.append({'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'})
+                tc_null = {'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'}
+                if dml_large_table:
+                    tc_null['execute_skip'] = True
+                    tc_null['skip_reason'] = 'DML on large table'
+                cases.append(tc_null)
                 source_counts['NULL_SEMANTICS'] += 1
 
-            # TC 3: Empty string (Oracle '' = NULL semantics)
-            empty_binds = dict(binds)
-            for p in params[:3]:
-                if isinstance(binds.get(p), str):
-                    empty_binds[p] = ''
-            if empty_binds != binds:
-                cases.append({'name': 'empty_string', 'params': empty_binds, 'source': 'EMPTY_STRING'})
-                source_counts['EMPTY_STRING'] += 1
+            # TC 3: Empty string — DML에서는 생성하지 않음!
+            # Oracle '' = NULL이므로 WHERE key = '' → WHERE key IS NULL → 풀스캔 UPDATE 위험
+            if not is_dml:
+                empty_binds = dict(binds)
+                for p in params[:3]:
+                    if isinstance(binds.get(p), str):
+                        empty_binds[p] = ''
+                if empty_binds != binds:
+                    cases.append({'name': 'empty_string', 'params': empty_binds, 'source': 'EMPTY_STRING'})
+                    source_counts['EMPTY_STRING'] += 1
 
             # TC 4: Bind Capture (실제 캡처된 값)
             if captures:
                 cap_case = gen_capture_case(params, binds, captures)
                 if cap_case:
-                    cases.append({'name': 'bind_capture', 'params': cap_case, 'source': 'BIND_CAPTURE'})
+                    tc_cap = {'name': 'bind_capture', 'params': cap_case, 'source': 'BIND_CAPTURE'}
+                    if dml_large_table:
+                        tc_cap['execute_skip'] = True
+                        tc_cap['skip_reason'] = 'DML on large table'
+                    cases.append(tc_cap)
                     source_counts['BIND_CAPTURE'] += 1
 
-            # TC 5: Boundary (MIN/MAX)
-            if col_stats:
+            # TC 5: Boundary (MIN/MAX) — DML에서는 경계값이 위험할 수 있으므로 스킵
+            if col_stats and not is_dml:
                 bound_case = gen_boundary_case(params, binds, col_stats)
                 if bound_case:
                     cases.append({'name': 'boundary', 'params': bound_case, 'source': 'BOUNDARY'})
@@ -488,7 +550,11 @@ def main():
             if fk_values:
                 fk_case = gen_fk_case(params, binds, fk_values)
                 if fk_case:
-                    cases.append({'name': 'fk_sample', 'params': fk_case, 'source': 'FK_SAMPLE'})
+                    tc_fk = {'name': 'fk_sample', 'params': fk_case, 'source': 'FK_SAMPLE'}
+                    if dml_large_table:
+                        tc_fk['execute_skip'] = True
+                        tc_fk['skip_reason'] = 'DML on large table'
+                    cases.append(tc_fk)
                     source_counts['FK_SAMPLE'] += 1
 
             total_cases += len(cases)
