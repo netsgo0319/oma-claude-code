@@ -503,19 +503,16 @@ def main():
             cases.append(tc_meta)
             source_counts['COLUMN_METADATA'] += 1
 
-            # TC 2: NULL 케이스
-            # DML + NULL: WHERE col = NULL은 0행 매칭이라 안전하지만,
-            # Oracle에서 '' = NULL이므로 empty_string이 위험 (아래에서 DML 제외)
-            null_binds = dict(binds)
-            for p in params[:3]:
-                null_binds[p] = None
-            if null_binds != binds:
-                tc_null = {'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'}
-                if dml_large_table:
-                    tc_null['execute_skip'] = True
-                    tc_null['skip_reason'] = 'DML on large table'
-                cases.append(tc_null)
-                source_counts['NULL_SEMANTICS'] += 1
+            # TC 2: NULL 케이스 — DML에서는 생성하지 않음
+            # DML + NULL 바인딩: MyBatis <if test="param != null"> 분기를 타면
+            # WHERE 절 조건이 빠져서 풀스캔 UPDATE/DELETE 위험
+            if not is_dml:
+                null_binds = dict(binds)
+                for p in params[:3]:
+                    null_binds[p] = None
+                if null_binds != binds:
+                    cases.append({'name': 'null_test', 'params': null_binds, 'source': 'NULL_SEMANTICS'})
+                    source_counts['NULL_SEMANTICS'] += 1
 
             # TC 3: Empty string — DML에서는 생성하지 않음!
             # Oracle '' = NULL이므로 WHERE key = '' → WHERE key IS NULL → 풀스캔 UPDATE 위험
