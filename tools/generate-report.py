@@ -831,12 +831,18 @@ function fmtMs(ms){if(ms==null)return '-';if(ms<1000)return ms+'ms';return(ms/10
 function statusClass(s){return 'st-'+(s||'pending').replace(/\s/g,'_')}
 function statusIcon(s){
   if(!s)return '';
-  if(['success','pass','validated'].includes(s))return '<span style="color:var(--success)">&#10003;</span>';
-  if(s==='converted')return '<span style="color:var(--accent2)">&#8594;</span>';
-  if(['failed','fail','escalated'].includes(s))return '<span style="color:var(--fail)">&#10007;</span>';
-  if(s.startsWith('retry'))return '<span style="color:var(--warn)">&#8635;</span>';
-  if(s==='needs_llm_review')return '<span style="color:var(--orange)">&#9888;</span>';
-  return '<span style="color:var(--dim)">&#9679;</span>';
+  if(['success','pass','validated','complete'].includes(s))return '<span style="color:var(--success)" title="통과">&#10003;</span>';
+  if(s==='validating')return '<span style="color:var(--accent2)" title="EXPLAIN 통과, 비교 대기">&#10003;</span>';
+  if(s==='converted')return '<span style="color:var(--accent2)" title="변환 완료">&#8594;</span>';
+  if(['failed','fail','escalated'].includes(s))return '<span style="color:var(--fail)" title="실패">&#10007;</span>';
+  if(s.startsWith('retry'))return '<span style="color:var(--warn)" title="재시도 중">&#8635;</span>';
+  if(s==='needs_llm_review')return '<span style="color:var(--orange)" title="LLM 검토 필요">&#9888;</span>';
+  return '<span style="color:var(--dim)" title="대기">&#9679;</span>';
+}
+// Status label translation for display
+function statusLabel(s){
+  const labels={'validating':'EXPLAIN통과','converted':'변환완료','success':'완료','failed':'실패','escalated':'에스컬레이션','parsed':'파싱완료','pending':'대기'};
+  return labels[s]||s;
 }
 function highlightSQL(sql){
   if(!sql)return '<span style="color:var(--dim)">N/A</span>';
@@ -1347,7 +1353,7 @@ function renderFiles(){
       html+=`<span class="q-id">${esc(qid)}</span>`;
       html+=`<span class="q-badge" style="background:rgba(148,163,184,.1);color:var(--dim)">${esc(comp)}</span>`;
       html+=`<span class="q-badge" style="background:rgba(168,85,247,.1);color:${methodColor}">${esc(method)}</span>`;
-      html+=`<span class="q-badge" style="color:${stColor}">${esc(qStatus)}</span>`;
+      html+=`<span class="q-badge" style="color:${stColor}">${statusLabel(qStatus)}</span>`;
       html+=`</div>`;
 
       // Query body (hidden by default)

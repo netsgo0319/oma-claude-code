@@ -1587,12 +1587,25 @@ def main():
                         qid = parts[-2] if len(parts) >= 3 else parts[-1]
                         explain_results[qid] = {'status': 'fail', 'error': f.get('error', '')}
 
+                # Also load compare results for success marking
+                compare_path = Path(args.output) / 'compare_validated.json'
+                compare_pass_qids = set()
+                if compare_path.exists():
+                    cdata = json.load(open(compare_path))
+                    for cr in cdata.get('results', []):
+                        if cr.get('match'):
+                            compare_pass_qids.add(cr.get('query_id', ''))
+
                 for tdir in tracking_dirs:
                     tm = TrackingManager(tdir)
                     for qid, res in explain_results.items():
                         tm.update_explain(qid, res['status'], error=res.get('error'))
+                        # EXPLAIN pass + Compare pass → success
+                        if res['status'] == 'pass' and qid in compare_pass_qids:
+                            tm.mark_success(qid)
                     tm._save()
-                print(f"  Query tracking updated: {len(explain_results)} queries")
+                success_count = sum(1 for qid in explain_results if explain_results[qid]['status'] == 'pass' and qid in compare_pass_qids)
+                print(f"  Query tracking updated: {len(explain_results)} queries ({success_count} marked success)")
             except Exception as e:
                 print(f"  Warning: Could not update query tracking: {e}")
 

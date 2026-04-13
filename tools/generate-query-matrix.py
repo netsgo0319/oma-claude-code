@@ -221,6 +221,9 @@ def main():
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'COMPLETE'
                 overall_detail = OVERALL_LABELS['COMPLETE']
+            elif compare_status == 'fail':
+                overall = 'COMPARE_FAIL'
+                overall_detail = f'결과 불일치: {compare_fail_reason}'
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass':
                 overall = 'EXPLAIN_PASS'
                 if compare_status == 'not_tested':
@@ -238,9 +241,6 @@ def main():
             elif explain_status == 'fail':
                 overall = 'EXPLAIN_FAIL'
                 overall_detail = f'{explain_category}: {explain_error}'
-            elif compare_status == 'fail':
-                overall = 'COMPARE_FAIL'
-                overall_detail = f'결과 불일치: {compare_fail_reason}'
             else:
                 overall = 'PENDING'
                 overall_detail = OVERALL_LABELS['PENDING']
