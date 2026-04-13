@@ -725,6 +725,25 @@ SET HEADING ON
         return result
 
     @staticmethod
+    def _extract_dml_where(sql):
+        """DML (UPDATE/DELETE)에서 테이블명과 WHERE 절을 추출하여 SELECT COUNT(*)로 변환.
+        Oracle sqlplus에 statement_timeout이 없으므로 DML 실행 대신 영향 행수만 예측.
+        예: UPDATE T SET col=1 WHERE id=1 → SELECT * FROM T WHERE id=1"""
+        flat = re.sub(r'\s+', ' ', sql).strip().rstrip(';')
+        # UPDATE table SET ... WHERE ...
+        m = re.match(r'UPDATE\s+(\S+)\s+.*?(WHERE\s+.+)$', flat, re.IGNORECASE)
+        if m:
+            table = m.group(1)
+            where = m.group(2)
+            return f"SELECT * FROM {table} {where}"
+        # DELETE FROM table WHERE ...
+        m = re.match(r'DELETE\s+(?:FROM\s+)?(\S+)\s+(WHERE\s+.+)$', flat, re.IGNORECASE)
+        if m:
+            return f"SELECT * FROM {m.group(1)} {m.group(2)}"
+        # INSERT — 행수 예측 불가, 스킵
+        return None
+
+    @staticmethod
     def _flatten_sql(sql):
         """Flatten multi-line SQL to single line for sqlplus compatibility.
         sqlplus treats newlines as command terminators, causing SP2-0734 errors."""
@@ -832,8 +851,13 @@ SET HEADING ON
                         safe_ora = ora_bound.rstrip(';')
                         oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
                     else:
-                        oracle_lines.append(f"{ora_bound.rstrip(';')};")
-                        oracle_lines.append(f"ROLLBACK;")
+                        # DML: SELECT COUNT(*) 로 영향 행수만 예측 (실제 UPDATE/DELETE 실행 안 함)
+                        # Oracle sqlplus에 statement_timeout이 없어서 대형 DML이 무한 실행됨
+                        dml_where = self._extract_dml_where(ora_bound)
+                        if dml_where:
+                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                        else:
+                            oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
                     oracle_lines.append("")
 
             else:
@@ -899,8 +923,12 @@ SET HEADING ON
                             safe_ora = ora_bound.rstrip(';')
                             oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
                         else:
-                            oracle_lines.append(f"{ora_bound.rstrip(';')};")
-                            oracle_lines.append(f"ROLLBACK;")
+                            # DML: SELECT COUNT(*) WHERE로 영향 행수만 예측
+                            dml_where = self._extract_dml_where(ora_bound)
+                            if dml_where:
+                                oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                            else:
+                                oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
                         oracle_lines.append("")
 
         # Write Oracle compare script
