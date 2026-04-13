@@ -160,10 +160,18 @@ python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/
 TC 소스 우선순위: **샘플 데이터(실제값)** > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
 **정적 XML 태그 조작 금지.** 모든 SQL은 MyBatis 엔진이 렌더링한다.
 
-### Phase 3: Validation (MyBatis 기반, 3단계)
+### Phase 3: Validation (MyBatis 기반, 3단계 전부 실행 필수)
+
+**EXPLAIN만 하고 끝내지 마라. Execute + Compare까지 반드시 실행하라.**
+**이 파이프라인의 핵심 목적은 Oracle↔PG 값 비교이다. EXPLAIN은 게이트일 뿐.**
+
+실행 순서 (전부 필수, 하나도 빠뜨리지 마라):
+1. MyBatis 렌더링 → EXPLAIN (문법 체크)
+2. PG Execute (실제 실행) → execute_results.txt
+3. Oracle Compare (양쪽 값 비교) → oracle_results.txt
+4. --parse-results (compare_validated.json 생성)
 
 **Java 권장. MyBatis 엔진이 기본 SQL 렌더링 경로.**
-**정적 XML 추출은 fallback일 뿐. Java 없으면 검증 정확도가 크게 떨어진다.**
 **DML: SELECT COUNT(*) WHERE로 Oracle 비교. PG는 BEGIN/ROLLBACK + 5s timeout.**
 
 **Step 1: MyBatis 엔진으로 SQL 렌더링 + TC params 주입**
@@ -187,10 +195,11 @@ EXPLAIN은 문법 게이트. 실행+비교가 주 검증. 양쪽 결과에서 te
 
 Phase 3 실패 건 대상. 없으면 Phase 5로.
 
-**Step 1: 힐링 티켓 생성**
+**Step 1: 힐링 티켓 생성 (도구 실행 필수, 수기 작성 금지)**
 ```bash
 python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --output workspace/results/_healing/
 ```
+**summary.json을 수기로 작성하지 마라.** 반드시 위 도구를 실행하여 tickets.json + summary.json을 자동 생성하라.
 
 티켓 구조:
 ```json
