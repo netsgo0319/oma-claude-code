@@ -825,7 +825,7 @@ SET HEADING ON
                 # Oracle compare (use original SQL with same binds)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds if isinstance(binds, dict) else {}))
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, {}))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
