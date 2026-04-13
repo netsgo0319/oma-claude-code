@@ -56,14 +56,15 @@ def main():
                 qid = r.get('query_id', '')
                 compare_results.setdefault(qid, []).append(r)
             break
-    # Phase 3.5 compare
-    for cfile in ['compare_validated.json', 'compare_results.json']:
-        cp = results_dir / '_validation_phase7' / cfile
-        if cp.exists():
-            cdata = json.load(open(cp))
-            for r in cdata.get('results', []):
-                qid = r.get('query_id', '')
-                compare_results.setdefault(qid, []).append(r)
+    # Phase 3.5 compare (check _validation_phase35 and legacy _validation_phase7)
+    for phase35_dir in ['_validation_phase35', '_validation_phase7']:
+        for cfile in ['compare_validated.json', 'compare_results.json']:
+            cp = results_dir / phase35_dir / cfile
+            if cp.exists():
+                cdata = json.load(open(cp))
+                for r in cdata.get('results', []):
+                    qid = r.get('query_id', '')
+                    compare_results.setdefault(qid, []).append(r)
 
     # Load extracted flags
     extracted_queries = set()

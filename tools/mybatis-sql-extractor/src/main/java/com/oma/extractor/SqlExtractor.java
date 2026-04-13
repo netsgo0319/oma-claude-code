@@ -414,6 +414,24 @@ public class SqlExtractor {
             }
         }
 
+        // Collect all unique parameter names across all variants into a top-level list.
+        // This provides a quick summary of which named parameters map to the '?' placeholders.
+        LinkedHashSet<String> paramNameSet = new LinkedHashSet<>();
+        for (Map<String, Object> variant : sqlVariants) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> mappings =
+                (List<Map<String, String>>) variant.get("parameter_mappings");
+            if (mappings != null) {
+                for (Map<String, String> m : mappings) {
+                    String prop = m.get("property");
+                    if (prop != null) {
+                        paramNameSet.add(prop);
+                    }
+                }
+            }
+        }
+        query.put("param_names", new ArrayList<>(paramNameSet));
+
         return query;
     }
 

@@ -591,6 +591,14 @@ SET HEADING ON
                 source_file = data.get('source_file', json_file.stem.replace('-extracted', '.xml'))
                 queries_data = data.get('queries', [])
 
+                # param_names for TC binding (from BoundSql.getParameterMappings)
+                query_param_names = {}
+                for q in queries_data:
+                    qid = q.get('query_id', 'unknown')
+                    pnames = q.get('param_names', [])
+                    if pnames:
+                        query_param_names[qid] = pnames
+
                 for q in queries_data:
                     qid = q.get('query_id', 'unknown')
                     qtype = q.get('type', 'select')
@@ -598,6 +606,8 @@ SET HEADING ON
                     # Collect unique SQL variants
                     seen_sql = set()
                     variants = q.get('sql_variants', [])
+                    param_names = query_param_names.get(qid, [])
+
                     for variant in variants:
                         sql = variant.get('sql', '')
                         if not sql or 'error' in variant:
@@ -606,15 +616,20 @@ SET HEADING ON
                             continue
                         seen_sql.add(sql)
 
+                        # Also get per-variant param_mappings if available
+                        v_params = [pm.get('property', '') for pm in variant.get('parameter_mappings', [])]
+                        effective_params = v_params or param_names
+
                         variant_name = variant.get('params', 'default')
                         self.queries.append({
                             'file': source_file,
                             'id': qid,
                             'type': qtype,
                             'sql_raw': sql,
-                            'params': [],  # Already bound by MyBatis engine
+                            'params': effective_params,
                             'variant': variant_name,
                             'from_extracted': True,
+                            'param_names_for_bind': effective_params,
                         })
 
             except (json.JSONDecodeError, Exception) as e:
@@ -772,9 +787,32 @@ SET HEADING ON
             is_extracted = query.get('from_extracted', False)
             variant_name = query.get('variant', '')
 
-            # Extracted SQL already has ? placeholders from MyBatis — replace with dummy values
+            # Extracted SQL has ? placeholders from MyBatis — bind with TC values if available
             if is_extracted:
-                bound_sql = sql.replace('?', "'1'")
+                param_names = query.get('param_names_for_bind', [])
+                tc_binds = {}
+                # Try to find TC values for these parameter names
+                if param_names:
+                    tc_cases = self.test_cases.get(qid, [])
+                    if tc_cases and isinstance(tc_cases[0], dict):
+                        tc_binds = tc_cases[0].get('params', tc_cases[0].get('binds', {}))
+
+                # Replace ? with TC values positionally
+                parts = sql.split('?')
+                bound_parts = [parts[0]]
+                for i in range(1, len(parts)):
+                    pname = param_names[i-1] if i-1 < len(param_names) else ''
+                    val = tc_binds.get(pname)
+                    if val is None:
+                        bound_parts.append("'1'")  # fallback
+                    elif isinstance(val, (int, float)):
+                        bound_parts.append(str(val))
+                    elif isinstance(val, str):
+                        bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
+                    else:
+                        bound_parts.append("'1'")
+                    bound_parts.append(parts[i])
+                bound_sql = ''.join(bound_parts)
                 test_id = f"{fname}.{qid}.{variant_name}" if variant_name else f"{fname}.{qid}.default"
                 all_tests.append({
                     'test_id': test_id,
