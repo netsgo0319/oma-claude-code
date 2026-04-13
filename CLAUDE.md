@@ -78,7 +78,9 @@ Agent({
 
 | 항목 | 확인 방법 | 필수 | 미설치 시 |
 |------|----------|------|----------|
-| XML 파일 | `ls workspace/input/*.xml` | **필수** | 중단 |
+| XML 파일 | `find workspace/input/ -name "*.xml" -type f \| wc -l` | **필수** | 중단 |
+
+**XML 복사 주의: `*-sql-oracle.xml` 같은 패턴으로 필터하지 마라.** `LoggingMapper.xml`, `CommonMapper.xml` 등 비표준 네이밍도 MyBatis mapper이다. 소스 디렉토리에서 `*.xml` 전부 복사하라. `find src/ -name "*.xml" -path "*/mapper/*"` 권장.
 | Python 3 | `python3 --version` | **필수** | 설치 안내 |
 | psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
 | sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
