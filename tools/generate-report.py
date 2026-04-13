@@ -116,35 +116,47 @@ def _derive_progress(ws):
 
             progress['files'][fname] = fdata
 
-    # Check validation
+    # Phase 0: if any results exist, phase 0 must have run
+    if progress['files']:
+        progress['_pipeline']['phases']['phase_0'] = {'status': 'done'}
+
+    # Phase 2.5: test-cases.json
+    if any((ws / 'results').glob('*/v*/test-cases.json')):
+        progress['_pipeline']['phases']['phase_2.5'] = {'status': 'done'}
+
+    # Phase 3: validation
     val_dir = ws / 'results' / '_validation'
-    if val_dir.exists():
-        if (val_dir / 'validated.json').exists():
-            progress['_pipeline']['phases']['phase_3'] = {'status': 'done'}
-        if (val_dir / 'compare_validated.json').exists() or (val_dir / 'compare_results.json').exists():
-            progress['_pipeline']['phases']['phase_3_compare'] = {'status': 'done'}
+    if val_dir.exists() and (val_dir / 'validated.json').exists():
+        progress['_pipeline']['phases']['phase_3'] = {'status': 'done'}
 
-    # Check report
-    if (ws / 'reports' / 'migration-report.html').exists():
-        progress['_pipeline']['phases']['phase_6'] = {'status': 'done'}
-
-    # Check extracted
+    # Phase 3.5: extracted
     ext_dir = ws / 'results' / '_extracted'
     if ext_dir.exists() and list(ext_dir.glob('*-extracted.json')):
-        progress['_pipeline']['phases']['phase_7'] = {'status': 'done'}
+        progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
 
-    # Set current phase
-    phases = progress['_pipeline']['phases']
-    if 'phase_7' in phases:
-        progress['_pipeline']['current_phase_name'] = '완료'
-    elif 'phase_6' in phases:
-        progress['_pipeline']['current_phase_name'] = '리포트 완료'
-    elif 'phase_3' in phases:
-        progress['_pipeline']['current_phase_name'] = '검증 완료'
-    elif 'phase_2' in phases:
-        progress['_pipeline']['current_phase_name'] = '변환 완료'
-    elif 'phase_1' in phases:
-        progress['_pipeline']['current_phase_name'] = '파싱 완료'
+    # Phase 3.5 validation (separate dir)
+    for d35 in ['_validation_phase35', '_validation_phase7']:
+        if (ws / 'results' / d35 / 'validated.json').exists():
+            progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
+
+    # Phase 4: healing
+    if (ws / 'results' / '_healing' / 'tickets.json').exists():
+        progress['_pipeline']['phases']['phase_4'] = {'status': 'done'}
+
+    # Phase 5: learning (edge-cases updated)
+    for rules_dir in [ws.parent / '.claude' / 'rules', ws.parent / '.kiro' / 'steering']:
+        ec = rules_dir / 'edge-cases.md'
+        if ec.exists():
+            progress['_pipeline']['phases']['phase_5'] = {'status': 'done'}
+            break
+
+    # Phase 6: DBA review
+    if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
+        progress['_pipeline']['phases']['phase_6'] = {'status': 'done'}
+
+    # Phase 7: report
+    if (ws / 'reports' / 'migration-report.html').exists():
+        progress['_pipeline']['phases']['phase_7'] = {'status': 'done'}
 
     return progress
 
@@ -724,7 +736,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="files">Query Detail</button>
-  <button class="tab-btn" data-tab="pipeline">Pipeline</button>
+  <button class="tab-btn" data-tab="tickets">Tickets</button>
   <button class="tab-btn" data-tab="timeline">Timeline</button>
   <button class="tab-btn" data-tab="log">Log</button>
 </div>
@@ -751,8 +763,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 </div>
 
 <!-- ========== PIPELINE TAB ========== -->
-<div class="tab-content" id="tab-pipeline">
-  <div id="pipeline-detail"></div>
+<div class="tab-content" id="tab-tickets">
+  <div id="tickets-detail"></div>
 </div>
 
 <!-- ========== TIMELINE TAB ========== -->
@@ -879,6 +891,8 @@ function renderOverview(){
       `<div class="card"><div class="lbl">Phase 3.5 Compare</div><div class="val ${p7cCls}">${p7cRate}</div><div class="det">MyBatis resolved Oracle vs PG</div></div>`;
   }
 
+  // Action Items (collapsible, at top)
+  renderActionItems();
   // Phase bars
   renderPhaseBars();
   // Pattern bars
@@ -890,6 +904,60 @@ function renderOverview(){
   renderValidationSec();
   // Extraction section
   renderExtractionSec();
+}
+
+function renderActionItems(){
+  let html='<div class="sec"><div class="file-item"><div class="file-hdr" onclick="toggleItem(this.parentElement)" style="cursor:pointer">';
+  html+='<span class="file-arrow">&#9654;</span>';
+  html+='<h2 style="display:inline;margin:0">Action Items</h2></div>';
+  html+='<div class="file-body">';
+  // Build action items from healing tickets + validation
+  let actions=[];
+  // From healing tickets
+  if(DATA.healing&&DATA.healing.tickets){
+    let cats={};
+    DATA.healing.tickets.forEach(t=>{
+      let c=t.category||'other';
+      if(!cats[c])cats[c]={count:0,severity:t.severity,sample_error:t.error,sample_file:t.file};
+      cats[c].count++;
+    });
+    let catActions={
+      'relation_missing':{who:'DBA',action:'PG 스키마에 누락 테이블 생성 (DDL 이관)'},
+      'column_missing':{who:'DBA',action:'누락 컬럼 확인 및 DDL 추가'},
+      'syntax_error':{who:'개발자/에이전트',action:'SQL 구문 수정 (Phase 4 셀프힐링 대상)'},
+      'type_mismatch':{who:'도구',action:'TC 바인드값 타입 개선 (generate-test-cases.py)'},
+      'function_missing':{who:'DBA',action:'PG 호환 함수 생성 (substrb, instr 등)'},
+      'operator_mismatch':{who:'개발자',action:'명시적 타입 캐스트 추가 (::TEXT, ::INTEGER)'},
+      'xml_invalid':{who:'개발자',action:'XML 파싱 에러 수정 (CDATA, 주석)'},
+      'other':{who:'개발자/DBA',action:'수동 분석 필요'},
+    };
+    for(let [cat,info] of Object.entries(cats).sort((a,b)=>b[1].count-a[1].count)){
+      let ca=catActions[cat]||{who:'팀',action:'확인 필요'};
+      actions.push({who:ca.who,category:cat,count:info.count,severity:info.severity,action:ca.action});
+    }
+  }
+  // DBA review issues
+  if(DATA.dba_review&&DATA.dba_review.check_results){
+    for(let [k,v] of Object.entries(DATA.dba_review.check_results)){
+      if(v.status==='FAIL'||v.status==='WARN'){
+        let ic=v.issues_count||v.invalid_count||(v.issues?v.issues.length:0);
+        if(ic>0)actions.push({who:'DBA/개발자',category:k,count:ic,severity:v.status==='FAIL'?'critical':'medium',action:v.description||k});
+      }
+    }
+  }
+  if(actions.length===0){html+='<p style="color:var(--dim)">No action items</p>';}
+  else{
+    html+='<table><tr><th>담당</th><th>카테고리</th><th>건수</th><th>심각도</th><th>조치</th></tr>';
+    for(let a of actions){
+      let sevCls=a.severity==='critical'?'style="color:var(--fail);font-weight:bold"':a.severity==='high'?'style="color:var(--fail)"':'';
+      html+=`<tr><td><strong>${esc(a.who)}</strong></td><td>${esc(a.category)}</td><td>${a.count}</td><td ${sevCls}>${esc(a.severity||'')}</td><td style="font-size:12px">${esc(a.action)}</td></tr>`;
+    }
+    html+='</table>';
+  }
+  html+='</div></div></div>';
+  // Insert before phase-progress
+  let pp=document.getElementById('phase-progress');
+  pp.insertAdjacentHTML('beforebegin',html);
 }
 
 function renderPhaseBars(){
@@ -1478,12 +1546,91 @@ document.getElementById('refresh-toggle').addEventListener('click',function(){
 
 // ========== Init ==========
 renderOverview();
-renderPipeline();
+renderTickets();
 renderFiles();
 renderTimeline();
 renderLog();
 
-function renderPipeline(){
+function renderTickets(){
+  let html='';
+  if(!DATA.healing||!DATA.healing.tickets||DATA.healing.tickets.length===0){
+    document.getElementById('tickets-detail').innerHTML='<div class="sec"><p style="color:var(--dim)">No healing tickets generated. Run Phase 4.</p></div>';
+    return;
+  }
+  let h=DATA.healing;
+  let tickets=h.tickets;
+  let resolved=tickets.filter(t=>t.status==='resolved');
+  let escalated=tickets.filter(t=>t.status==='escalated');
+  let skipped=tickets.filter(t=>t.status!=='resolved'&&t.status!=='escalated');
+
+  // Summary
+  html+=`<div class="sec"><h2>Healing Tickets Summary</h2>`;
+  html+=`<p>Total: <strong>${tickets.length}</strong> | <span style="color:var(--success)">Resolved: ${resolved.length}</span> | <span style="color:var(--fail)">Escalated: ${escalated.length}</span> | <span style="color:var(--dim)">Skipped: ${skipped.length}</span></p>`;
+
+  // Category breakdown
+  if(h.by_category){
+    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">`;
+    for(let [k,v] of Object.entries(h.by_category).sort((a,b)=>b[1]-a[1])){
+      html+=`<span class="phase-badge" style="background:rgba(148,163,184,.1);color:var(--dim)">${k}: ${v}</span>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // Resolved tickets
+  if(resolved.length){
+    html+=`<div class="sec"><h2 style="color:var(--success)">Resolved (${resolved.length})</h2>`;
+    html+=`<table><tr><th>ID</th><th>Query</th><th>File</th><th>Category</th><th>Retries</th><th>Error (before fix)</th></tr>`;
+    for(let t of resolved.slice(0,100)){
+      html+=`<tr><td>${esc(t.ticket_id)}</td><td style="font-family:var(--mono);font-size:11px">${esc(t.query_id||'')}</td>`;
+      html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category)}</td>`;
+      html+=`<td>${t.retry_count||0}</td><td style="font-size:11px;color:var(--dim)">${esc(String(t.error||'').substring(0,150))}</td></tr>`;
+    }
+    html+=`</table></div>`;
+  }
+
+  // Escalated tickets (with full detail)
+  if(escalated.length){
+    html+=`<div class="sec"><h2 style="color:var(--fail)">Escalated — Manual Action Required (${escalated.length})</h2>`;
+    html+=`<table><tr><th>ID</th><th>Query</th><th>File</th><th>Category</th><th>Severity</th><th>Retries</th><th>Error</th></tr>`;
+    for(let t of escalated){
+      let sevCls=t.severity==='critical'?'style="color:var(--fail);font-weight:bold"':'style="color:var(--fail)"';
+      html+=`<tr><td>${esc(t.ticket_id)}</td><td style="font-family:var(--mono)">${esc(t.query_id||'')}</td>`;
+      html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category)}</td>`;
+      html+=`<td ${sevCls}>${esc(t.severity)}</td><td>${t.retry_count||0}/${t.max_retries||5}</td>`;
+      html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,250))}</td></tr>`;
+    }
+    html+=`</table></div>`;
+  }
+
+  // Skipped tickets (grouped by skip_reason)
+  if(skipped.length){
+    html+=`<div class="sec"><h2 style="color:var(--dim)">Skipped / Non-Actionable (${skipped.length})</h2>`;
+    html+=`<p style="font-size:12px;color:var(--dim)">DBA 스키마 이관, TC 바인드 타입 불일치, 동적 SQL fragment 등 자동 힐링 불가 항목</p>`;
+    // Group by skip_reason
+    let skipGroups={};
+    for(let t of skipped){
+      let reason=t.skip_reason||t.category||'unknown';
+      if(!skipGroups[reason])skipGroups[reason]={count:0,samples:[]};
+      skipGroups[reason].count++;
+      if(skipGroups[reason].samples.length<3)skipGroups[reason].samples.push(t);
+    }
+    html+=`<table><tr><th>사유</th><th>건수</th><th>예시 쿼리</th><th>예시 에러</th></tr>`;
+    for(let [reason,info] of Object.entries(skipGroups).sort((a,b)=>b[1].count-a[1].count)){
+      let samples=info.samples.map(s=>esc(s.query_id||'')).join(', ');
+      let sampleErr=info.samples[0]?esc(String(info.samples[0].error||'').substring(0,100)):'';
+      html+=`<tr><td>${esc(reason)}</td><td>${info.count}</td><td style="font-family:var(--mono);font-size:11px">${samples}</td><td style="font-size:11px;color:var(--dim)">${sampleErr}</td></tr>`;
+    }
+    html+=`</table></div>`;
+  }
+
+  document.getElementById('tickets-detail').innerHTML=html;
+}
+
+// Legacy: keep renderPipeline as alias
+function renderPipeline(){renderTickets();}
+
+function _renderPipelineOld(){
   const S=DATA.summary;
   const pipeline=DATA.pipeline||(DATA.progress||{})._pipeline||{};
   const phases=pipeline.phases||{};
