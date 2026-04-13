@@ -227,10 +227,10 @@ def main():
                 overall_detail = OVERALL_LABELS['CONVERTED']
             elif explain_status == 'fail':
                 overall = 'EXPLAIN_FAIL'
-                overall_detail = f'{explain_category}: {explain_error[:80]}'
+                overall_detail = f'{explain_category}: {explain_error}'
             elif compare_status == 'fail':
                 overall = 'COMPARE_FAIL'
-                overall_detail = f'결과 불일치: {compare_fail_reason[:80]}'
+                overall_detail = f'결과 불일치: {compare_fail_reason}'
             else:
                 overall = 'PENDING'
                 overall_detail = OVERALL_LABELS['PENDING']
@@ -245,12 +245,12 @@ def main():
                 'explain_status': explain_status,
                 'explain_source': explain_source,
                 'explain_error_category': explain_category,
-                'explain_error_detail': explain_error[:300],
+                'explain_error_detail': explain_error,  # 전문 보존 (CSV에서는 자동 escape)
                 'compare_status': compare_status,
                 'compare_tc_total': tc_total,
                 'compare_tc_pass': tc_pass,
                 'compare_tc_fail': tc_fail,
-                'compare_fail_reason': compare_fail_reason[:300],
+                'compare_fail_reason': compare_fail_reason,
                 'healing_ticket_id': ticket_id,
                 'healing_status': ticket_status,
                 'healing_skip_reason': ticket_skip,
