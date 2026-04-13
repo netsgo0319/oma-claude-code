@@ -38,7 +38,7 @@ fi
 
 mkdir -p "$OUTPUT_DIR" "$RESULTS_DIR"
 
-XML_COUNT=$(find "$INPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
+XML_COUNT=$(find "$INPUT_DIR" -name "*.xml" -type f 2>/dev/null | wc -l | tr -d ' ')
 echo "Input files: $XML_COUNT"
 echo "Parallelism: $PARALLEL"
 echo ""
@@ -124,7 +124,7 @@ if [ "$DO_PARSE" = true ]; then
 
     if [ "$REMAINING" -gt 0 ]; then
         # Use find + xargs with null delimiter (handles any filename)
-        find "$INPUT_DIR" -maxdepth 1 -name "*.xml" -print0 | \
+        find "$INPUT_DIR" -name "*.xml" -type f -print0 | \
             xargs -0 -P "$PARALLEL" -I{} bash -c '_parse_one "$@"' _ {}
         echo ""
     fi
@@ -210,17 +210,17 @@ if [ "$DO_CONVERT" = true ]; then
     echo "=== Phase 1 (Convert): Rule-based Convert (parallel $PARALLEL) ==="
     START_TIME=$(date +%s)
 
-    DONE_BEFORE=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
+    DONE_BEFORE=$(find "$OUTPUT_DIR" -name "*.xml" -type f 2>/dev/null | wc -l | tr -d ' ')
     REMAINING=$((XML_COUNT - DONE_BEFORE))
     echo "  Already converted: $DONE_BEFORE, Remaining: $REMAINING"
 
     if [ "$REMAINING" -gt 0 ]; then
-        find "$INPUT_DIR" -maxdepth 1 -name "*.xml" -print0 | \
+        find "$INPUT_DIR" -name "*.xml" -type f -print0 | \
             xargs -0 -P "$PARALLEL" -I{} bash -c '_convert_one "$@"' _ {}
         echo ""
     fi
 
-    CONVERTED_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.xml" 2>/dev/null | wc -l | tr -d ' ')
+    CONVERTED_COUNT=$(find "$OUTPUT_DIR" -name "*.xml" -type f 2>/dev/null | wc -l | tr -d ' ')
     END_TIME=$(date +%s)
     ELAPSED=$((END_TIME - START_TIME))
 

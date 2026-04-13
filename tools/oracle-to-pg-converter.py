@@ -1791,7 +1791,7 @@ def main():
         output_dir = Path(args.outdir or 'workspace/output')
         report_dir = Path(args.report_dir) if args.report_dir else None
 
-        xml_files = list(input_dir.glob('*.xml'))
+        xml_files = list(input_dir.glob('**/*.xml'))
         print(f"Found {len(xml_files)} XML files in {input_dir}")
 
         all_reports = []

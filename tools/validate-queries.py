@@ -71,7 +71,7 @@ class QueryValidator:
 
         # Method 2: From input XML files (fallback)
         if not self.oracle_queries and self.input_dir.exists():
-            for xml_file in sorted(self.input_dir.glob('*.xml')):
+            for xml_file in sorted(self.input_dir.glob('**/*.xml')):
                 try:
                     tree = ET.parse(xml_file)
                     root = tree.getroot()
@@ -440,7 +440,7 @@ SET HEADING ON
 
     def load_queries(self):
         """Discover query IDs and types from XML files. SQL comes from MyBatis engine."""
-        for xml_file in sorted(self.output_dir.glob('*.xml')):
+        for xml_file in sorted(self.output_dir.glob('**/*.xml')):
             try:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
@@ -456,7 +456,7 @@ SET HEADING ON
                         'sql_raw': '',  # Will be filled by load_extracted()
                         'params': [],
                     })
-        print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('*.xml')))} files")
+        print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('**/*.xml')))} files")
 
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
