@@ -1163,27 +1163,39 @@ class OracleToPgConverter:
             self._count_rule('CONNECT_BY_LEVEL->generate_series')
         return new_sql
 
+    # PKG_CRYPTO function name mapping (Oracle package → PG standalone function)
+    _PKG_CRYPTO_MAP = {
+        'decrypt': 'pkg_crypto_decrypt',
+        'encrypt': 'pkg_crypto_encrypt',
+        'decrypt_session_key': 'decrypt_session_key',
+        'encrypt_session_key': 'encrypt_session_key',
+        'master_key': 'crypto_master_key',
+    }
+
     def _convert_pkg_crypto(self, sql):
-        """PKG_CRYPTO.DECRYPT/ENCRYPT(args) -> pgcrypto-based function call.
-        Converts custom Oracle crypto package to PG-compatible function wrapper.
-        Requires: CREATE EXTENSION IF NOT EXISTS pgcrypto; + wrapper functions in PG."""
-        # Schema-qualified: WMSON.PKG_CRYPTO.DECRYPT(args) or PKG_CRYPTO.DECRYPT(args)
-        # Uses _find_matching_paren for nested parentheses like PKG_CRYPTO.DECRYPT(SUBSTR(col,1,10), key)
-        pattern = re.compile(r'\b(?:\w+\.)?PKG_CRYPTO\s*\.\s*(DECRYPT|ENCRYPT)\s*\(', re.IGNORECASE)
+        """PKG_CRYPTO.FUNC(args) -> PG function call.
+        Handles: DECRYPT, ENCRYPT, DECRYPT_SESSION_KEY, ENCRYPT_SESSION_KEY, MASTER_KEY.
+        Also handles schema-qualified: WMSON.PKG_CRYPTO.FUNC(args)."""
+        func_names = '|'.join(self._PKG_CRYPTO_MAP.keys())
+        pattern = re.compile(
+            rf'\b(?:\w+\.)?PKG_CRYPTO\s*\.\s*({func_names})\s*\(',
+            re.IGNORECASE
+        )
         result = []
         last_end = 0
         for match in pattern.finditer(sql):
             start = match.start()
             if start < last_end:
                 continue
-            func_name = match.group(1).lower()
+            ora_func = match.group(1).lower()
+            pg_func = self._PKG_CRYPTO_MAP.get(ora_func, f'pkg_crypto_{ora_func}')
             paren_start = match.end() - 1
             paren_end = self._find_matching_paren(sql, paren_start)
             if paren_end == -1:
                 continue
             args = sql[paren_start + 1:paren_end]
             result.append(sql[last_end:start])
-            result.append(f'pkg_crypto_{func_name}({args})')
+            result.append(f'{pg_func}({args})')
             last_end = paren_end + 1
             self._count_rule('PKG_CRYPTO->pgcrypto_func')
         result.append(sql[last_end:])
