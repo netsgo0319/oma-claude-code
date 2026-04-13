@@ -293,10 +293,46 @@ def collect_data(base_dir):
     if healing_dir.exists():
         data['healing'] = load_json(healing_dir / 'tickets.json')
 
-    # 4e. Query Matrix
+    # 4e. Query Matrix — try reports/ first, then derive from tracking
     qm_path = ws / 'reports' / 'query-matrix.json'
     if qm_path.exists():
         data['query_matrix'] = load_json(qm_path)
+    else:
+        # Derive basic matrix from query-tracking + validation
+        qm_queries = []
+        val_data = data.get('validation') or {}
+        pass_ids = set(val_data.get('pass_query_ids', []))
+        fail_map = {f.get('test', '').split('.')[-2] if '.' in f.get('test', '') else '': f.get('error', '')
+                    for f in val_data.get('failures', [])}
+        for fname, finfo in data.get('files', {}).items():
+            for q in finfo.get('queries', []):
+                qid = q.get('query_id', q.get('id', ''))
+                exp = q.get('explain', {}) or {}
+                exp_st = exp.get('status', '')
+                if not exp_st:
+                    for pid in pass_ids:
+                        if qid in pid:
+                            exp_st = 'pass'
+                            break
+                    if not exp_st and qid in fail_map:
+                        exp_st = 'fail'
+                cmp = q.get('compare_results', [])
+                cmp_st = 'pass' if cmp and all(c.get('match') for c in cmp) else ('fail' if cmp else 'not_tested')
+                conv = q.get('conversion_method', '')
+                if exp_st == 'pass' and cmp_st == 'pass':
+                    overall = 'COMPLETE'
+                elif exp_st == 'pass':
+                    overall = 'EXPLAIN_PASS'
+                elif exp_st == 'fail':
+                    overall = 'EXPLAIN_FAIL'
+                elif conv:
+                    overall = 'CONVERTED'
+                else:
+                    overall = 'PENDING'
+                qm_queries.append({'query_id': qid, 'overall_status': overall})
+        from collections import Counter
+        qm_summary = dict(Counter(q['overall_status'] for q in qm_queries))
+        data['query_matrix'] = {'total': len(qm_queries), 'summary': qm_summary, 'queries': qm_queries}
 
     # 5. Extracted (Phase 3.5)
     ext_dir = ws / 'results' / '_extracted'
