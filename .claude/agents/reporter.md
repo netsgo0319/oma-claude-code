@@ -106,6 +106,34 @@ for d in workspace/results/_validation*/; do
 done
 ```
 
+### 2c. Compare 커버리지 검증 (BLOCK 조건)
+
+DBA 3종 외 모든 쿼리는 Compare까지 완료해야 보고서 생성 가능.
+
+```bash
+python3 -c "
+import json, glob
+# query-matrix.json 또는 query-tracking에서 상태 집계
+qm = json.load(open('workspace/reports/query-matrix.json')) if __import__('os').path.exists('workspace/reports/query-matrix.json') else {'queries': []}
+total = len(qm.get('queries', []))
+dba_skip = sum(1 for q in qm['queries'] if q.get('overall_status','').startswith('FAIL_') and any(x in q.get('overall_status','') for x in ['SCHEMA','COLUMN','FUNCTION']))
+compare_done = sum(1 for q in qm['queries'] if q.get('compare_status') in ('pass','fail'))
+compare_target = total - dba_skip
+compare_missing = compare_target - compare_done
+print(f'Compare 대상: {compare_target} (전체 {total} - DBA {dba_skip})')
+print(f'Compare 완료: {compare_done}')
+print(f'Compare 미실행: {compare_missing}')
+if compare_missing > 0:
+    print(f'BLOCKED: Compare 미실행 {compare_missing}건. --full 재실행 필요.')
+else:
+    print('OK: Compare 커버리지 100%')
+"
+```
+
+**BLOCKED이면 보고서 생성 불가.** 메인 에이전트에게 보고:
+- "Compare 미실행 N건. validate-and-fix에 --full 재실행 위임 필요."
+- 면제 사유: FAIL_SCHEMA_MISSING, FAIL_COLUMN_MISSING, FAIL_FUNCTION_MISSING만
+
 ### 3. 쿼리 매트릭스 생성
 
 ```bash
