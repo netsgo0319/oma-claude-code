@@ -22,7 +22,8 @@ inclusion: always
 ### 검증 원칙
 - **EXPLAIN 통과 ≠ 변환 성공.** Execute + Compare까지 필수
 - **0건==0건도 유효한 PASS.** Compare를 스킵하지 마라
-- 스키마 에러(relation/column/function_missing)는 수정 루프 돌리지 않고 즉시 DBA 마킹
+- **Compare mismatch(Oracle≠PG)도 FAIL이다.** EXPLAIN+Execute PASS여도 Compare 불일치면 수정 루프 대상
+- 스키마 에러(relation/column/function_missing)만 수정 루프 면제. 나머지 전부 수정 시도
 
 ### PG 환경
 - **search_path 필수 확인.** 스키마가 public이 아니면 `SET search_path TO {schema}, public;`
