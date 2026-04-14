@@ -724,8 +724,7 @@ SET HEADING ON
 
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
-                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
+                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
@@ -791,8 +790,7 @@ SET HEADING ON
                 # EXECUTE
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
-                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
+                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
@@ -861,8 +859,7 @@ SET HEADING ON
                         execute_lines.append("")
                     elif qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
-                        # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
-                            safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
+                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"SET statement_timeout = '30s';")
                         execute_lines.append(f"{safe_sql};")
