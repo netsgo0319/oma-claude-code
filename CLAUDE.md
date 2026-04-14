@@ -158,7 +158,9 @@ python3 tools/generate-test-cases.py --java-src workspace/java-src/ --samples-di
 # Java 소스 없으면:
 python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/
 ```
-TC 소스 우선순위: **샘플 데이터(실제값)** > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
+TC 소스 우선순위: **고객 제공 바인드값** > 샘플 데이터(실제값) > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
+**고객이 바인드변수 값을 제공하면 최우선으로 TC에 반영하라.** 나머지 파라미터는 기본값으로 채워서라도 **무조건 테스트하라** (EXPLAIN + Execute + Compare 양쪽 모두).
+고객 바인드값은 `workspace/input/custom-binds.json` 또는 사용자 메시지에서 받는다.
 **정적 XML 태그 조작 금지.** 모든 SQL은 MyBatis 엔진이 렌더링한다.
 
 ### Phase 3: Validation (MyBatis 기반, 3단계 전부 실행 필수)
