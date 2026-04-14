@@ -38,6 +38,13 @@ inclusion: always
 수정 루프 완료 후, TC 보강 후, 어떤 재검증이든 끝나면 → **반드시 reporter에 위임하여 3개 파일 재생성.**
 query-matrix.json에 필수 필드(query_id, original_file, sql_before, sql_after, final_state, test_cases, attempts, conversion_history)가 없으면 불완전.
 
+## 대량 unconverted 패턴 처리
+
+(+) outer join, MERGE INTO 등 대량 unconverted 패턴이 있을 때:
+- **새 변환 스크립트를 만들지 마라.** `oracle-to-pg-converter.py`에 룰을 추가하라.
+- LLM 개별 변환이 비효율적이면 → **converter 에이전트가 output XML을 직접 Edit**하라.
+- 한 파일 안의 동일 패턴은 한번에 일괄 Edit. 쿼리별로 따로 하지 마라.
+
 ## 리더 전용 금지
 
 - 리더가 직접 validate-queries.py를 실행하는 것 → **validate-and-fix에 위임**
