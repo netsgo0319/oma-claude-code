@@ -119,6 +119,10 @@ Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, ..
 **모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
 reporter가 `_validation*/validated.json`을 모두 읽어서 통합 집계한다.
 
+**NOT_TESTED_NO_RENDER가 많으면:** MyBatis가 빈 SQL을 반환한 것.
+validate-and-fix에 재지시: "NOT_TESTED_NO_RENDER 쿼리의 TC를 실값으로 보강 후 MyBatis 재렌더링하라."
+에이전트가 merged-tc.json을 갱신 → run-extractor.sh 재실행 → --full 재검증.
+
 **금지 (위반 시 결과 손실):**
 - "결과가 분산되어 있어 전체 통합 검증하겠다" → **금지.** reporter가 glob으로 통합한다.
 - "전체 EXPLAIN 먼저 돌리고 그다음 Execute" → **금지.** --full 원자적 실행만.

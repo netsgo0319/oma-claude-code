@@ -107,6 +107,36 @@ for attempt in 1..5:
 **매 시도마다 반드시 다른 접근법을 사용하라.**
 같은 수정을 반복하면 같은 결과만 나온다.
 
+### 3b. NOT_TESTED_NO_RENDER 쿼리 재시도
+
+검증 후 NOT_TESTED_NO_RENDER 쿼리가 있으면 — MyBatis가 빈 SQL을 반환한 것.
+원인: `<if test="param != null">`이 전체를 감싸고 null 파라미터로 렌더링.
+
+**재시도 절차:**
+1. 해당 쿼리의 TC에서 실값이 있는 TC를 확인 (custom, sample_row, default)
+2. 실값 TC가 없으면: query-tracking.json에서 파라미터 이름 확인 → 추론값 생성
+3. merged-tc.json을 해당 쿼리의 실값으로 갱신:
+   ```bash
+   python3 -c "
+   import json
+   tc = json.load(open('workspace/results/_test-cases/merged-tc.json'))
+   tc['{query_id}'] = [{'param1': 'value1', 'param2': 'value2'}]
+   json.dump(tc, open('workspace/results/_test-cases/merged-tc.json', 'w'), ensure_ascii=False, indent=2)
+   "
+   ```
+4. MyBatis 재렌더링 + 재검증:
+   ```bash
+   bash tools/run-extractor.sh --skip-build --validate
+   python3 tools/validate-queries.py --full \
+     --files {file} \
+     --extracted workspace/results/_extracted_pg/ \
+     --output workspace/results/{배치별 output}/ \
+     --tracking-dir workspace/results/
+   ```
+5. 여전히 빈 SQL → static fallback이 자동 적용됨 (validate-queries.py 내부)
+
+**이 재시도는 수정 루프 5회와 별개.** 렌더링 문제는 SQL 수정이 아니라 TC 보강으로 해결.
+
 ### 4. 시도 기록 (필수)
 
 **모든 시도를 query-tracking.json의 attempts 배열에 기록:**
