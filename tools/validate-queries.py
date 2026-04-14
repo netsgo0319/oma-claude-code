@@ -848,23 +848,22 @@ SET HEADING ON
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
 
+                # Execute: SELECT → COUNT(*), DML → COUNT(*) WHERE (양쪽 대칭)
+                execute_lines.append(f"\\echo === {test_id} ===")
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
+                    execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                 else:
-                    # DML: wrap in BEGIN/ROLLBACK with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                    dml_where_pg = self._extract_dml_where(bound_sql)
+                    if dml_where_pg:
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                    else:
+                        execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
+                execute_lines.append("")
 
-                # Oracle compare
+                # Oracle compare — 동일 로직 (SELECT: COUNT, DML: COUNT WHERE)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
                     ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds, default_unbound="'1'"))
@@ -919,22 +918,20 @@ SET HEADING ON
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
 
-                # EXECUTE
+                # EXECUTE: SELECT → COUNT(*), DML → COUNT(*) WHERE
+                execute_lines.append(f"\\echo === {test_id} ===")
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
+                    execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                 else:
-                    # DML: EXPLAIN first to check cost, then execute with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                    dml_where_pg = self._extract_dml_where(bound_sql)
+                    if dml_where_pg:
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                    else:
+                        execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
+                execute_lines.append("")
 
                 # Oracle compare (use original SQL with same binds)
                 oracle_sql = self.oracle_queries.get(qid, '')
@@ -991,18 +988,19 @@ SET HEADING ON
                         execute_lines.append("")
                     elif qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
-                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"SET statement_timeout = '30s';")
-                        execute_lines.append(f"{safe_sql};")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                         execute_lines.append("")
                     else:
-                        # DML: wrap in BEGIN/ROLLBACK with short timeout (prevent mass UPDATE)
+                        # DML: COUNT(*) WHERE로 영향 행수 예측 (Oracle과 대칭)
                         execute_lines.append(f"\\echo === {test_id} ===")
-                        execute_lines.append(f"SET statement_timeout = '5s';")
-                        execute_lines.append(f"BEGIN;")
-                        execute_lines.append(f"{bound_sql.rstrip(';')};")
-                        execute_lines.append(f"ROLLBACK;")
+                        dml_where_pg = self._extract_dml_where(bound_sql)
+                        if dml_where_pg:
+                            execute_lines.append(f"SET statement_timeout = '5s';")
+                            execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                        else:
+                            execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
                         execute_lines.append("")
 
                     # Oracle compare
