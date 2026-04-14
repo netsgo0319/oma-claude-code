@@ -198,13 +198,14 @@ def main():
                 explain_source = 'mybatis'
 
             # Fallback: check from validation results (bare query_id lookup)
-            if not explain_status:
+            # query-tracking.json에 결과가 없거나 빈 값이면 validated.json에서 보충
+            if not explain_status or explain_status == 'not_tested':
                 vr = val_by_qid.get(qid)
                 if vr:
                     explain_status = vr['status']
                     explain_error = vr.get('error', '')
                     explain_source = vr.get('source', 'static')
-                if not explain_status:
+                elif not explain_status:
                     explain_status = 'not_tested'
 
             explain_category = classify_explain_error(explain_error) if explain_status == 'fail' else ''
