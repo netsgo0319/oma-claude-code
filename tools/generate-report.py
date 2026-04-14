@@ -786,17 +786,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 <!-- ========== OVERVIEW TAB ========== -->
 <div class="tab-content active" id="tab-overview">
   <div id="summary-cards" class="cards"></div>
-  <div id="phase-progress" class="sec"><h2>Phase Progress</h2><div id="phase-bars"></div></div>
-  <div class="cols2">
-    <div class="sec"><h2>Oracle Pattern Distribution</h2><div id="pattern-bars"></div></div>
-    <div class="sec"><h2>Complexity Distribution</h2><div id="complexity-bars"></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--dim)">
-        L0: Standard SQL &middot; L1: Simple swap &middot; L2: Multi-pattern &middot; L3: Structural change &middot; L4: Complex + dynamic
-      </div>
-    </div>
-  </div>
-  <div id="validation-sec"></div>
-  <div id="extraction-sec"></div>
 </div>
 
 <!-- ========== EXPLORER TAB (3-panel navigation) ========== -->
@@ -932,59 +921,7 @@ function renderOverview(){
     `<div class="card"><div class="lbl" style="color:var(--warn)">FAIL (DBA)</div><div class="val wn">${failDba}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.includes('SCHEMA')||k.includes('COLUMN')||k.includes('FUNCTION')).map(([k,v])=>k.replace('FAIL_','')+':'+v).join(' ')}</div></div>`+
     `<div class="card"><div class="lbl" style="color:var(--dim)">미테스트</div><div class="val">${notTested}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.startsWith('NOT_TESTED')).map(([k,v])=>k.replace('NOT_TESTED_','')+':'+v).join(' ')}</div></div>`;
 
-  // Failure summary paragraph
-  if(allFail>0){
-    let cats=qm.explain_error_categories||{};
-    let healS=qm.healing_summary||{};
-    let catStr=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}건`).join(', ');
-    let healStr=Object.entries(healS).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}건`).join(', ');
-
-    let para=`<div class="sec" style="margin-top:12px;padding:16px;border-left:3px solid var(--fail)"><h2 style="font-size:14px;margin-bottom:8px">실패 요약</h2><p style="font-size:13px;line-height:1.8;color:var(--text)">`;
-    para+=`총 ${totalQ}개 쿼리 중 <strong style="color:var(--fail)">${allFail}건이 실패</strong>했습니다. `;
-    if(explainFail)para+=`EXPLAIN 실패 ${explainFail}건의 주요 원인은 ${catStr||'미분류'}입니다. `;
-    if(compareFail)para+=`Oracle↔PG 비교 불일치 ${compareFail}건이 발견되었습니다. `;
-    if(escalated)para+=`자동 힐링 불가로 ${escalated}건이 에스컬레이션되어 수동 검토가 필요합니다. `;
-    if(healStr)para+=`힐링 티켓 현황: ${healStr}. `;
-    if(explainPass)para+=`EXPLAIN 통과했지만 Compare 미실행인 ${explainPass}건은 Oracle↔PG 양쪽 실행 비교를 추가로 수행해야 합니다. `;
-    if(converted)para+=`변환만 완료되고 테스트 미실행인 ${converted}건은 MyBatis 엔진 검증이 필요합니다.`;
-    para+=`</p></div>`;
-    document.getElementById('summary-cards').insertAdjacentHTML('afterend',para);
-  }
-
-  let patTotal=Object.values(S.oracle_patterns||{}).reduce((a,b)=>a+b,0);
-
-  // Action Items (collapsible, at top)
-  // Status legend
-  let legendHtml='<div class="sec"><div class="file-item"><div class="file-hdr" onclick="toggleItem(this.parentElement)" style="cursor:pointer">';
-  legendHtml+='<span class="file-arrow">&#9654;</span><h2 style="display:inline;margin:0">상태 정의</h2></div>';
-  legendHtml+='<div class="file-body"><table style="font-size:12px">';
-  legendHtml+='<tr><th>상태</th><th>의미</th><th>담당</th></tr>';
-  let defs=[
-    ['PASS_COMPLETE','변환+비교 통과','완료'],['PASS_HEALED','힐링 후 비교 통과','완료'],['PASS_NO_CHANGE','변환 불필요 + 비교 통과','완료'],
-    ['FAIL_SCHEMA_MISSING','PG 테이블 없음','DBA'],['FAIL_COLUMN_MISSING','PG 컬럼 없음','DBA'],['FAIL_FUNCTION_MISSING','PG 함수 없음','DBA'],
-    ['FAIL_ESCALATED','5회 힐링 후 미해결','개발자'],['FAIL_SYNTAX','SQL 문법 에러','에이전트'],['FAIL_COMPARE_DIFF','Oracle↔PG 행수 불일치','에이전트'],
-    ['FAIL_TC_TYPE_MISMATCH','바인드값 타입/길이 불일치','도구'],['FAIL_TC_OPERATOR','연산자 타입 불일치','도구'],
-    ['NOT_TESTED_NO_RENDER','MyBatis 렌더링 실패','인프라'],['NOT_TESTED_NO_DB','DB 미접속','인프라'],['NOT_TESTED_PENDING','변환 미완료','에이전트']
-  ];
-  for(let [st,desc,who] of defs){
-    let col=st.startsWith('PASS')?'var(--success)':st.startsWith('FAIL')?'var(--fail)':'var(--dim)';
-    legendHtml+=`<tr><td style="color:${col};font-family:var(--mono)">${st}</td><td>${desc}</td><td>${who}</td></tr>`;
-  }
-  legendHtml+='</table></div></div></div>';
-  document.getElementById('summary-cards').insertAdjacentHTML('afterend',legendHtml);
-
-  renderActionItems();
-  // Phase bars
-  renderPhaseBars();
-  // Pattern bars
-  renderBars('pattern-bars',S.oracle_patterns||{},'var(--accent)');
-  // Complexity bars
-  let compColors={L0:'#22c55e',L1:'#84cc16',L2:'#eab308',L3:'#f97316',L4:'#ef4444'};
-  renderBarsOrdered('complexity-bars',S.complexity_dist||{},['L0','L1','L2','L3','L4'],compColors);
-  // Validation section
-  renderValidationSec();
-  // Extraction section
-  renderExtractionSec();
+  // Overview는 카드만. 상세는 Explorer에서.
 }
 
 function renderActionItems(){
@@ -1731,35 +1668,37 @@ function expSelectQuery(fname, qid){
     html+=`</div>`;
   }
 
-  // Compare results (TC별)
+  // TC별 결과 (바인드값 + Oracle + PG + MATCH)
   let compResults=q.compare_results||[];
-  if(compResults.length){
-    html+=`<div style="margin:8px 0"><strong>TC 비교 결과 (${compResults.length}건):</strong></div>`;
-    for(let cr of compResults){
-      let icon=cr.match?'<span style="color:var(--success)">&#10003; MATCH</span>':'<span style="color:var(--fail)">&#10007; DIFF</span>';
-      let oraR=cr.oracle_rows!=null?cr.oracle_rows:'?';
-      let pgR=cr.pg_rows!=null?cr.pg_rows:'?';
-      html+=`<div style="padding:4px 8px;margin-bottom:3px;background:rgba(255,255,255,.02);border-radius:4px;font-size:12px;border-left:2px solid ${cr.match?'var(--success)':'var(--fail)'}">`;
-      html+=`<strong>${esc(cr.case||cr.test_id||'')}</strong> ${icon} Oracle:${oraR}행 PG:${pgR}행`;
-      if(cr.reason)html+=`<div style="color:var(--fail);font-size:11px">사유: ${esc(String(cr.reason))}</div>`;
-      html+=`</div>`;
-    }
-  }
-
-  // Test Cases (바인드 변수 상세)
   let tcs=q.test_cases||[];
-  if(tcs.length){
-    html+=`<div style="margin:8px 0"><strong>테스트 케이스 (${tcs.length}건):</strong></div>`;
-    for(let tc of tcs){
-      let binds=tc.binds||tc.params||{};
-      html+=`<div style="padding:4px 8px;margin-bottom:2px;background:rgba(255,255,255,.02);border-radius:4px;font-size:11px">`;
-      html+=`<strong>${esc(tc.case_id||tc.name||'')}</strong>`;
-      html+=`<div style="font-family:var(--mono);color:var(--dim)">`;
-      for(let [k,v] of Object.entries(binds)){
-        html+=`${esc(k)}=<span style="color:var(--accent)">${esc(String(v))}</span> `;
-      }
-      html+=`</div></div>`;
+  let allTCs=[...compResults,...tcs]; // merge both sources
+  if(compResults.length||tcs.length){
+    html+=`<div style="margin:8px 0"><strong>TC 결과:</strong></div>`;
+    html+=`<table style="font-size:11px"><tr><th>TC</th><th>바인드 변수</th><th>Oracle</th><th>PG</th><th>결과</th><th>사유</th></tr>`;
+
+    // Compare results first (have Oracle/PG row counts)
+    for(let cr of compResults){
+      let icon=cr.match?'<span style="color:var(--success)">MATCH</span>':'<span style="color:var(--fail)">DIFF</span>';
+      let oraR=cr.oracle_rows!=null?cr.oracle_rows+'행':'?';
+      let pgR=cr.pg_rows!=null?cr.pg_rows+'행':'?';
+      let reason=cr.reason||cr.warning||'';
+      let binds=cr.binds?JSON.stringify(cr.binds).substring(0,60):'';
+      html+=`<tr><td>${esc(cr.case||cr.test_id||'')}</td><td style="font-family:var(--mono)">${esc(binds)}</td>`;
+      html+=`<td>${oraR}</td><td>${pgR}</td><td>${icon}</td>`;
+      html+=`<td style="color:var(--dim)">${esc(String(reason).substring(0,100))}</td></tr>`;
     }
+
+    // Test cases that don't have compare results (just bind values)
+    let compQids=new Set(compResults.map(c=>c.case||c.test_id));
+    for(let tc of tcs){
+      let tcName=tc.case_id||tc.name||'';
+      if(compQids.has(tcName))continue; // already shown above
+      let binds=tc.binds||tc.params||{};
+      let bindStr=Object.entries(binds).map(([k,v])=>k+'='+v).join(', ').substring(0,60);
+      html+=`<tr><td>${esc(tcName)}</td><td style="font-family:var(--mono)">${esc(bindStr)}</td>`;
+      html+=`<td>-</td><td>-</td><td style="color:var(--dim)">미실행</td><td></td></tr>`;
+    }
+    html+=`</table>`;
   }
 
   // Healing ticket
