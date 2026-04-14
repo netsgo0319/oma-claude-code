@@ -79,7 +79,12 @@ validated.json + query-tracking.json에서 FAIL 쿼리를 읽고 분류:
 **스키마 에러(relation/column/function_missing)는 루프에 진입하지 않는다.**
 FAIL_SCHEMA_MISSING, FAIL_COLUMN_MISSING, FAIL_FUNCTION_MISSING으로 마킹하고 스킵.
 
-### 3. 수정 루프 (쿼리당 최대 5회)
+**DBA 3종 외의 모든 FAIL은 반드시 수정을 시도하라.**
+- 분석만 하고 "어떻게 할까요?" 질문하지 마라. 직접 수정하라.
+- 에러를 보고만 하고 멈추지 마라. output XML을 Edit하고 재검증하라.
+- 커버리지가 낮다고 조기 중단하지 마라. 할당된 파일의 모든 FAIL을 처리하라.
+
+### 3. 수정 루프 (쿼리당 최대 5회) — 반드시 실행
 
 **수정 전 반드시 query-tracking.json의 `conversion_history`를 읽어라.**
 converter가 어떤 패턴을 어떻게 변환했는지(CONNECT BY→WITH RECURSIVE 등) 알아야
@@ -185,7 +190,9 @@ for attempt in 1..5:
 
 ## 반환
 
-메인 에이전트에게 한 줄 요약:
+메인 에이전트에게 한 줄 요약 (수정 시도 건수 필수 포함):
 ```
-{file}: N resolved, M escalated, K skipped(DBA)
+{file}: N resolved, M escalated, K skipped(DBA), L fix_attempted
 ```
+
+**fix_attempted가 0이면 리더가 재위임한다.** 분석만 하고 수정을 안 했다는 뜻이므로.
