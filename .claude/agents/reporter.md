@@ -132,7 +132,8 @@ else:
 
 **BLOCKED이면 보고서 생성 불가.** 메인 에이전트에게 보고:
 - "Compare 미실행 N건. validate-and-fix에 --full 재실행 위임 필요."
-- 면제 사유: FAIL_SCHEMA_MISSING, FAIL_COLUMN_MISSING, FAIL_FUNCTION_MISSING만
+- 면제 사유: FAIL_SCHEMA_MISSING, FAIL_COLUMN_MISSING, FAIL_FUNCTION_MISSING
+- Compare 실행됐지만 양쪽 에러(oracle=None pg=None)인 경우: TC 품질 문제로 별도 보고 (BLOCK은 아님)
 
 ### 3. 쿼리 매트릭스 생성
 
