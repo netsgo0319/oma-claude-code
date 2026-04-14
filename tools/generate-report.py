@@ -779,9 +779,7 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="explorer">Explorer</button>
-  <button class="tab-btn" data-tab="files">Query Detail</button>
   <button class="tab-btn" data-tab="tickets">Tickets</button>
-  <button class="tab-btn" data-tab="timeline">Timeline</button>
   <button class="tab-btn" data-tab="log">Log</button>
 </div>
 
@@ -820,9 +818,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
   </div>
 </div>
 
-<!-- ========== FILES TAB ========== -->
-<div class="tab-content" id="tab-files">
-  <div id="file-list"></div>
 </div>
 
 <!-- ========== TICKETS TAB ========== -->
@@ -830,9 +825,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
   <div id="tickets-detail"></div>
 </div>
 
-<!-- ========== TIMELINE TAB ========== -->
-<div class="tab-content" id="tab-timeline">
-  <div class="sec"><h2>Event Timeline</h2><div id="timeline-list"></div></div>
 </div>
 
 <!-- ========== LOG TAB ========== -->
@@ -917,28 +909,28 @@ function renderOverview(){
   const S=DATA.summary;
   document.getElementById('gen-time').textContent='Generated: '+(DATA.generated_at||'').replace('T',' ').substring(0,19)+' | OMA Migration Accelerator';
 
-  // Query matrix counts
+  // 14개 flat 상태 집계
   let qm=DATA.query_matrix||{};
   let qmS=qm.summary||{};
   let totalQ=qm.total||S.total_input_queries||0;
-  let complete=qmS.COMPLETE||0;
-  let explainPass=qmS.EXPLAIN_PASS||0;
-  let converted=qmS.CONVERTED||0;
-  let explainFail=qmS.EXPLAIN_FAIL||0;
-  let compareFail=qmS.COMPARE_FAIL||0;
-  let healed=qmS.HEALED||0;
-  let escalated=qmS.ESCALATED||0;
-  let allFail=explainFail+compareFail+escalated;
-  let successTotal=complete+healed;
 
-  // Top summary: files, queries, complete, fail
+  // Group by prefix
+  let pass=0, fail=0, notTested=0;
+  for(let [k,v] of Object.entries(qmS)){
+    if(k.startsWith('PASS_'))pass+=v;
+    else if(k.startsWith('FAIL_'))fail+=v;
+    else if(k.startsWith('NOT_TESTED'))notTested+=v;
+  }
+  let failDba=(qmS.FAIL_SCHEMA_MISSING||0)+(qmS.FAIL_COLUMN_MISSING||0)+(qmS.FAIL_FUNCTION_MISSING||0);
+  let failCode=fail-failDba;
+
   document.getElementById('summary-cards').innerHTML=
-    `<div class="card"><div class="lbl">파일</div><div class="val">${S.total_input_files}</div><div class="det">${S.total_input_lines.toLocaleString()} lines</div></div>`+
-    `<div class="card"><div class="lbl">전체 쿼리</div><div class="val">${totalQ}</div><div class="det">SELECT ${S.total_input_queries||totalQ}</div></div>`+
-    `<div class="card"><div class="lbl" style="color:var(--success)">완료 (변환+테스트)</div><div class="val ok">${successTotal}</div><div class="det">COMPLETE ${complete}${healed?' + HEALED '+healed:''}</div></div>`+
-    `<div class="card"><div class="lbl">EXPLAIN 통과</div><div class="val" style="color:var(--accent2)">${explainPass}</div><div class="det">비교 미실행</div></div>`+
-    `<div class="card"><div class="lbl">변환만</div><div class="val" style="color:var(--dim)">${converted}</div><div class="det">테스트 미실행</div></div>`+
-    `<div class="card"><div class="lbl" style="color:var(--fail)">실패</div><div class="val fl">${allFail}</div><div class="det">EXPLAIN ${explainFail} | Compare ${compareFail}${escalated?' | 에스컬레이션 '+escalated:''}</div></div>`;
+    `<div class="card"><div class="lbl">파일</div><div class="val">${S.total_input_files}</div><div class="det">${S.total_input_lines?S.total_input_lines.toLocaleString():'-'} lines</div></div>`+
+    `<div class="card"><div class="lbl">전체 쿼리</div><div class="val">${totalQ}</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--success)">PASS</div><div class="val ok">${pass}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.startsWith('PASS_')).map(([k,v])=>k.replace('PASS_','')+':'+v).join(' ')}</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--fail)">FAIL (코드)</div><div class="val fl">${failCode}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.startsWith('FAIL_')&&!k.includes('SCHEMA')&&!k.includes('COLUMN')&&!k.includes('FUNCTION')).map(([k,v])=>k.replace('FAIL_','')+':'+v).join(' ')}</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--warn)">FAIL (DBA)</div><div class="val wn">${failDba}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.includes('SCHEMA')||k.includes('COLUMN')||k.includes('FUNCTION')).map(([k,v])=>k.replace('FAIL_','')+':'+v).join(' ')}</div></div>`+
+    `<div class="card"><div class="lbl" style="color:var(--dim)">미테스트</div><div class="val">${notTested}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.startsWith('NOT_TESTED')).map(([k,v])=>k.replace('NOT_TESTED_','')+':'+v).join(' ')}</div></div>`;
 
   // Failure summary paragraph
   if(allFail>0){
@@ -962,6 +954,25 @@ function renderOverview(){
   let patTotal=Object.values(S.oracle_patterns||{}).reduce((a,b)=>a+b,0);
 
   // Action Items (collapsible, at top)
+  // Status legend
+  let legendHtml='<div class="sec"><div class="file-item"><div class="file-hdr" onclick="toggleItem(this.parentElement)" style="cursor:pointer">';
+  legendHtml+='<span class="file-arrow">&#9654;</span><h2 style="display:inline;margin:0">상태 정의</h2></div>';
+  legendHtml+='<div class="file-body"><table style="font-size:12px">';
+  legendHtml+='<tr><th>상태</th><th>의미</th><th>담당</th></tr>';
+  let defs=[
+    ['PASS_COMPLETE','변환+비교 통과','완료'],['PASS_HEALED','힐링 후 비교 통과','완료'],['PASS_NO_CHANGE','변환 불필요 + 비교 통과','완료'],
+    ['FAIL_SCHEMA_MISSING','PG 테이블 없음','DBA'],['FAIL_COLUMN_MISSING','PG 컬럼 없음','DBA'],['FAIL_FUNCTION_MISSING','PG 함수 없음','DBA'],
+    ['FAIL_ESCALATED','5회 힐링 후 미해결','개발자'],['FAIL_SYNTAX','SQL 문법 에러','에이전트'],['FAIL_COMPARE_DIFF','Oracle↔PG 행수 불일치','에이전트'],
+    ['FAIL_TC_TYPE_MISMATCH','바인드값 타입/길이 불일치','도구'],['FAIL_TC_OPERATOR','연산자 타입 불일치','도구'],
+    ['NOT_TESTED_NO_RENDER','MyBatis 렌더링 실패','인프라'],['NOT_TESTED_NO_DB','DB 미접속','인프라'],['NOT_TESTED_PENDING','변환 미완료','에이전트']
+  ];
+  for(let [st,desc,who] of defs){
+    let col=st.startsWith('PASS')?'var(--success)':st.startsWith('FAIL')?'var(--fail)':'var(--dim)';
+    legendHtml+=`<tr><td style="color:${col};font-family:var(--mono)">${st}</td><td>${desc}</td><td>${who}</td></tr>`;
+  }
+  legendHtml+='</table></div></div></div>';
+  document.getElementById('summary-cards').insertAdjacentHTML('afterend',legendHtml);
+
   renderActionItems();
   // Phase bars
   renderPhaseBars();
@@ -1685,8 +1696,20 @@ function expSelectQuery(fname, qid){
   if(!q){document.getElementById('exp-panel-detail').innerHTML='';return;}
 
   let html='';
-  // Header
-  html+=`<h3 style="margin:0 0 8px">${esc(qid)} <span style="color:var(--dim);font-weight:normal">${esc((q.type||'').toUpperCase())} / ${esc(q.conversion_method||q.method||'')}</span></h3>`;
+
+  // Find this query's overall_status from query_matrix
+  let qmQueries=(DATA.query_matrix||{}).queries||[];
+  let qmEntry=qmQueries.find(x=>x.query_id===qid)||{};
+  let finalStatus=qmEntry.overall_status||'NOT_TESTED_PENDING';
+  let finalDetail=qmEntry.overall_detail||'';
+  let stColor=finalStatus.startsWith('PASS_')?'var(--success)':finalStatus.startsWith('FAIL_')?'var(--fail)':'var(--dim)';
+
+  // Header with status badge
+  html+=`<h3 style="margin:0 0 4px">${esc(qid)} <span style="color:var(--dim);font-weight:normal">${esc((q.type||'').toUpperCase())} / ${esc(q.conversion_method||q.method||'')}</span></h3>`;
+  html+=`<div style="padding:6px 10px;background:rgba(255,255,255,.03);border-radius:6px;margin-bottom:8px;border-left:3px solid ${stColor}">`;
+  html+=`<strong style="color:${stColor}">${esc(finalStatus)}</strong>`;
+  if(finalDetail)html+=`<div style="font-size:11px;color:var(--dim);margin-top:2px">${esc(finalDetail)}</div>`;
+  html+=`</div>`;
 
   // SQL side-by-side
   let oraSQL=q.oracle_sql||'';

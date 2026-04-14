@@ -51,14 +51,25 @@ def classify_explain_error(error):
 
 
 OVERALL_LABELS = {
-    'COMPLETE': '완료 — 변환+EXPLAIN+비교 모두 통과',
-    'EXPLAIN_PASS': '부분통과 — EXPLAIN 통과, 비교 미실행',
-    'CONVERTED': '변환완료 — EXPLAIN 미실행',
-    'EXPLAIN_FAIL': '실패 — EXPLAIN 문법 에러',
-    'COMPARE_FAIL': '실패 — Oracle/PG 결과 불일치',
-    'PENDING': '대기 — 변환 미완료',
-    'HEALED': '수정완료 — 힐링으로 해결',
-    'ESCALATED': '에스컬레이션 — 수동 검토 필요',
+    # 성공
+    'PASS_COMPLETE': '변환+비교 통과',
+    'PASS_HEALED': '힐링 후 비교 통과',
+    'PASS_NO_CHANGE': '변환 불필요 + 비교 통과',
+    # 실패 — 힐링 시도 후
+    'FAIL_ESCALATED': '5회 힐링 후 미해결',
+    'FAIL_SYNTAX': 'SQL 문법 에러',
+    'FAIL_COMPARE_DIFF': 'Oracle↔PG 행수 불일치',
+    # 실패 — DBA 필요
+    'FAIL_SCHEMA_MISSING': 'PG 테이블 없음 (DBA)',
+    'FAIL_COLUMN_MISSING': 'PG 컬럼 없음 (DBA)',
+    'FAIL_FUNCTION_MISSING': 'PG 함수 없음 (DBA)',
+    # 실패 — TC/바인드
+    'FAIL_TC_TYPE_MISMATCH': '바인드값 타입/길이 불일치',
+    'FAIL_TC_OPERATOR': '연산자 타입 불일치',
+    # 미테스트
+    'NOT_TESTED_NO_RENDER': 'MyBatis 렌더링 실패',
+    'NOT_TESTED_NO_DB': 'DB 미접속/비교 미실행',
+    'NOT_TESTED_PENDING': '변환 미완료',
 }
 
 
@@ -209,41 +220,71 @@ def main():
                       'oracle_only' if qid in extracted_queries else \
                       'pg_only' if qid in pg_extracted else 'no'
 
-            # --- Overall (사람이 읽을 수 있는 상태) ---
+            # --- 최종 상태 (14개 flat, 하나의 쿼리 = 하나의 상태) ---
+            ticket_cat = ticket.get('category', '')
+
+            # 성공
             if ticket_status == 'resolved':
-                overall = 'HEALED'
-                overall_detail = f'힐링 해결 (retry {ticket_retry}회)' if ticket_skip != 'resolved_by_mybatis_engine' else 'MyBatis 엔진으로 자동 해결'
-            elif ticket_status == 'escalated':
-                overall = 'ESCALATED'
-                esc_err = ticket.get('error', '')[:150]
-                esc_cat = ticket.get('category', '')
-                overall_detail = f'수동 검토 필요 — {esc_cat}: {esc_err} ({ticket_retry}회 시도)'
+                overall = 'PASS_HEALED'
+                overall_detail = f'힐링 {ticket_retry}회 후 통과'
+            elif conv_status == 'no_change' and explain_status == 'pass' and compare_status == 'pass':
+                overall = 'PASS_NO_CHANGE'
+                overall_detail = 'Oracle 패턴 없어 변환 불필요, 비교 통과'
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'pass':
-                overall = 'COMPLETE'
-                overall_detail = OVERALL_LABELS['COMPLETE']
+                overall = 'PASS_COMPLETE'
+                overall_detail = '변환+비교 통과'
+
+            # 실패 — DBA 필요
+            elif ticket_cat == 'relation_missing' or (explain_category == 'MISSING_TABLE'):
+                overall = 'FAIL_SCHEMA_MISSING'
+                overall_detail = f'PG 테이블 없음: {explain_error[:150]}'
+            elif ticket_cat == 'column_missing' or (explain_category == 'MISSING_COLUMN'):
+                overall = 'FAIL_COLUMN_MISSING'
+                overall_detail = f'PG 컬럼 없음: {explain_error[:150]}'
+            elif ticket_cat == 'function_missing' or (explain_category == 'MISSING_FUNCTION'):
+                overall = 'FAIL_FUNCTION_MISSING'
+                overall_detail = f'PG 함수 없음: {explain_error[:150]}'
+
+            # 실패 — 힐링 시도 후
+            elif ticket_status == 'escalated':
+                overall = 'FAIL_ESCALATED'
+                overall_detail = f'{ticket_retry}회 시도 후 실패: {ticket.get("error","")[:150]}'
             elif compare_status == 'fail':
-                overall = 'COMPARE_FAIL'
-                overall_detail = f'결과 불일치: {compare_fail_reason}'
-            elif conv_status in ('converted', 'no_change') and explain_status == 'pass':
-                overall = 'EXPLAIN_PASS'
-                if compare_status == 'not_tested':
-                    overall_detail = 'EXPLAIN 통과 — Compare 미실행: Oracle/PG 양쪽 실행 비교가 수행되지 않음 (Stage 2/3 미실행 또는 결과 파싱 미완료)'
-                else:
-                    overall_detail = 'EXPLAIN 통과'
-            elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested':
-                overall = 'CONVERTED'
-                if mybatis == 'no':
-                    overall_detail = '변환완료 — EXPLAIN 미실행: MyBatis 추출 불가 (동적 SQL fragment 또는 파라미터 없는 쿼리)'
-                elif mybatis in ('both', 'pg_only'):
-                    overall_detail = '변환완료 — EXPLAIN 미실행: MyBatis 추출됨이나 EXPLAIN 테스트 SQL에 미포함 (validate-queries.py에서 매핑 실패)'
-                else:
-                    overall_detail = '변환완료 — EXPLAIN 미실행: 테스트 대상에 포함되지 않음'
+                overall = 'FAIL_COMPARE_DIFF'
+                overall_detail = f'Oracle↔PG 불일치: {compare_fail_reason[:150]}'
+            elif explain_status == 'fail' and explain_category == 'SYNTAX_ERROR':
+                overall = 'FAIL_SYNTAX'
+                overall_detail = f'SQL 문법 에러: {explain_error[:150]}'
+
+            # 실패 — TC/바인드 문제
+            elif ticket_cat == 'type_mismatch' or (explain_category == 'TYPE_MISMATCH'):
+                overall = 'FAIL_TC_TYPE_MISMATCH'
+                overall_detail = f'바인드값 타입/길이 불일치: {explain_error[:150]}'
+            elif ticket_cat == 'operator_mismatch' or (explain_category == 'TYPE_OPERATOR'):
+                overall = 'FAIL_TC_OPERATOR'
+                overall_detail = f'연산자 타입 불일치: {explain_error[:150]}'
+
+            # 기타 실패
             elif explain_status == 'fail':
-                overall = 'EXPLAIN_FAIL'
-                overall_detail = f'{explain_category}: {explain_error}'
+                overall = 'FAIL_SYNTAX'
+                overall_detail = f'{explain_category}: {explain_error[:150]}'
+
+            # 미테스트
+            elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested' and mybatis == 'no':
+                overall = 'NOT_TESTED_NO_RENDER'
+                overall_detail = 'MyBatis 렌더링 실패 (동적 SQL 평가 불가)'
+            elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested':
+                overall = 'NOT_TESTED_NO_DB'
+                overall_detail = 'DB 미접속 또는 --full 미실행'
+            elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'not_tested':
+                overall = 'NOT_TESTED_NO_DB'
+                overall_detail = 'EXPLAIN 통과했지만 Oracle↔PG 비교 미실행'
+            elif conv_status == 'pending':
+                overall = 'NOT_TESTED_PENDING'
+                overall_detail = '변환 미완료'
             else:
-                overall = 'PENDING'
-                overall_detail = OVERALL_LABELS['PENDING']
+                overall = 'NOT_TESTED_PENDING'
+                overall_detail = f'상태 미분류: conv={conv_status} explain={explain_status} compare={compare_status}'
 
             rows.append({
                 'file': fname,
@@ -291,23 +332,26 @@ def main():
     explain_cats = Counter(r['explain_error_category'] for r in rows if r['explain_error_category'])
     healing_counts = Counter(r['healing_status'] for r in rows if r['healing_status'])
 
+    # Group by prefix for summary
+    pass_count = sum(v for k, v in overall_counts.items() if k.startswith('PASS_'))
+    fail_count = sum(v for k, v in overall_counts.items() if k.startswith('FAIL_'))
+    not_tested = sum(v for k, v in overall_counts.items() if k.startswith('NOT_TESTED'))
+
     print(f"Query Matrix: {len(rows)} queries")
-    print(f"\n  Overall:")
-    for label in ['COMPLETE', 'HEALED', 'EXPLAIN_PASS', 'CONVERTED', 'EXPLAIN_FAIL', 'COMPARE_FAIL', 'ESCALATED', 'PENDING']:
+    print(f"\n  PASS: {pass_count} | FAIL: {fail_count} | NOT_TESTED: {not_tested}")
+    print(f"\n  상세:")
+    display_order = [
+        'PASS_COMPLETE', 'PASS_HEALED', 'PASS_NO_CHANGE',
+        'FAIL_SCHEMA_MISSING', 'FAIL_COLUMN_MISSING', 'FAIL_FUNCTION_MISSING',
+        'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
+        'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',
+        'NOT_TESTED_NO_RENDER', 'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
+    ]
+    for label in display_order:
         cnt = overall_counts.get(label, 0)
         if cnt:
-            pct = cnt*100/len(rows)
             desc = OVERALL_LABELS.get(label, '')
-            print(f"    {label}: {cnt} ({pct:.1f}%) — {desc}")
-            # 미실행 사유 추가 설명
-            if label == 'EXPLAIN_PASS':
-                print(f"      ↳ Compare 미실행 사유: Stage 2/3(Oracle/PG 비교)가 실행되지 않았거나 결과 파싱 미완료")
-            elif label == 'CONVERTED':
-                no_mybatis = sum(1 for r in rows if r['overall_status'] == 'CONVERTED' and r['mybatis_extracted'] == 'no')
-                has_mybatis = cnt - no_mybatis
-                print(f"      ↳ MyBatis 추출 불가: {no_mybatis}건 (동적 SQL fragment/파라미터 없음)")
-                if has_mybatis:
-                    print(f"      ↳ MyBatis 추출됨이나 매핑 실패: {has_mybatis}건 (validate-queries.py에서 query_id 미매핑)")
+            print(f"    {label}: {cnt} — {desc}")
 
     if explain_cats:
         print(f"\n  EXPLAIN 에러 카테고리:")
