@@ -1,34 +1,37 @@
-Run Phase 3 validation only -- generate test scripts and execute EXPLAIN/execution validation against PostgreSQL.
+Run Phase 3 validation using `--full` atomic mode (EXPLAIN + Execute + Compare in one pass).
 
 ## Instructions
 
-1. Check that converted SQL files exist in `workspace/output/`. If no converted files are found, report that conversion (Phase 3) must be run first via `/convert --from 3 --to 3` or the full pipeline.
+1. Check that converted SQL files exist in `workspace/output/`. If not found, report that conversion must be run first via `/convert`.
 
-2. Generate test cases for all converted queries:
-   - Read the converted SQL files from `workspace/output/`
-   - For each query, generate an EXPLAIN-based test that verifies PostgreSQL can parse and plan the query
-   - For queries with parameter placeholders, generate reasonable test parameter values based on the query context
+2. Run MyBatis rendering first (if Java available):
+   ```bash
+   bash tools/run-extractor.sh --validate
+   ```
 
-3. Execute validation:
+3. Execute full validation (--full does EXPLAIN + Execute + Compare + parse atomically):
+   ```bash
+   python3 tools/validate-queries.py --full \
+     --extracted workspace/results/_extracted_pg/ \
+     --output workspace/results/_validation/ \
+     --tracking-dir workspace/results/
    ```
-   python3 tools/validate-queries.py
-   ```
+   **개별 단계(--generate, --local, --execute, --compare, --parse-results)를 따로 실행하지 마라.**
 
 4. Collect and summarize results:
-   - **Pass count**: Queries that passed EXPLAIN validation
+   - **Pass count**: Queries that passed all 3 stages (EXPLAIN + Execute + Compare)
    - **Fail count**: Queries that failed with errors
-   - **Error breakdown**: Group failures by error type (syntax error, missing function, type mismatch, etc.)
-   - **Details**: For each failure, show the query ID, the original Oracle SQL, the converted PostgreSQL SQL, and the error message
+   - **Error breakdown**: Group failures by error type and stage
+   - **Details**: For each failure, show query ID, Oracle SQL, PG SQL, and error message
 
-5. Write validation results to `workspace/results/` and update `workspace/progress.json` if it exists.
+5. Update `workspace/progress.json` with Phase 3 status.
 
-6. If there are failures, suggest running the fix-and-retry cycle (Phase 5) or provide specific guidance on what needs manual correction.
+6. If failures exist, suggest running Phase 4 (Self-healing) via the full pipeline.
 
 ## Arguments
 
 $ARGUMENTS
 
 If arguments are provided, interpret them as:
-- `--file FILENAME` -- validate only queries from a specific source file
-- `--explain-only` -- run EXPLAIN without executing queries
-- `--verbose` -- show full EXPLAIN output for all queries, not just failures
+- `--files FILE1,FILE2` -- validate only specific files (passed to --files)
+- `--verbose` -- show full output for all queries, not just failures

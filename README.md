@@ -129,7 +129,7 @@ claude                    # Claude Code 실행
 
 # 또는 개별 도구
 python3 tools/oracle-to-pg-converter.py workspace/input/Mapper.xml workspace/output/Mapper.xml
-python3 tools/validate-queries.py --generate --output workspace/results/_validation/
+python3 tools/validate-queries.py --full --output workspace/results/_validation/ --tracking-dir workspace/results/
 python3 tools/generate-report.py
 ```
 

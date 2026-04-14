@@ -24,7 +24,7 @@ EXPLAIN 통과 ≠ 변환 성공. Oracle 접속이 가능하면 **`--compare`를
 Phase 0→1→2→2.5→3→4→5→6→7 순서 필수. 순서 변경 제안 금지. unconverted가 있으면 Phase 2에서 LLM 완료 후 진행. DB 미연결 시에만 Phase 2.5/3 스킵 가능.
 
 **Phase 완료 조건 (다음 Phase 진행 전 반드시 확인):**
-- Phase 3 완료: `--full` 실행 완료되어 validated.json + compare_validated.json 생성됨.
+- Phase 3 완료: EXPLAIN 결과가 `validated.json`에 기록됨. `--parse-results` 호출 완료.
 - Phase 4 완료: 모든 actionable 티켓이 resolved 또는 escalated. DBA-only(relation_missing)는 스킵 가능.
 - Phase 5 완료: Learner가 edge-cases.md/oracle-pg-rules.md 갱신.
 - **Phase 3 결과에 FAIL이 있으면 반드시 Phase 4를 실행하라. Phase 3→6 점프 금지.**
@@ -44,7 +44,6 @@ workspace/ 아래에 임시 .py/.sh 파일을 생성하지 마라. 분석이 필
 | `tools/validate-queries.py` | Phase 3 검증 | 아래 Phase 3 참고 |
 | `tools/run-extractor.sh` | Phase 3 MyBatis 렌더링 (통합) | `bash tools/run-extractor.sh [--validate]` |
 | `tools/generate-healing-tickets.py` | **Phase 4 힐링 티켓 생성** | `python3 tools/generate-healing-tickets.py` |
-| `tools/pre-report-check.py` | **Phase 7 사전 점검** | `python3 tools/pre-report-check.py` |
 | `tools/generate-report.py` | Phase 7 HTML 리포트 | `python3 tools/generate-report.py` |
 | `tools/sync-tracking-to-xml.py` | tracking→XML 동기화 | `python3 tools/sync-tracking-to-xml.py` |
 | `tools/reset-workspace.sh` | 초기화 | `bash tools/reset-workspace.sh --force` |
@@ -67,9 +66,8 @@ Agent({
 |---------|------|------|------|
 | converter | .claude/agents/converter.md | sonnet | Oracle→PG 변환 (룰+LLM) |
 | test-generator | .claude/agents/test-generator.md | opus | Oracle 딕셔너리 기반 TC |
-| validator | .claude/agents/validator.md | sonnet | --full 검증 (EXPLAIN+Execute+Compare 원자적) |
-| healer | .claude/agents/healer.md | sonnet | Phase 4 힐링 루프 (분석→수정→재검증) |
-| reviewer | .claude/agents/reviewer.md | opus | Phase 6 DBA 최종 검증 |
+| validator | .claude/agents/validator.md | sonnet | EXPLAIN/실행/비교 검증 |
+| reviewer | .claude/agents/reviewer.md | opus | 실패 분석 + DBA 최종 검증 |
 | learner | .claude/agents/learner.md | sonnet | 에지케이스 학습 + PR |
 
 **배치 크기:** 1개당 최대 30쿼리 또는 3파일. 큰 파일은 쿼리 ID로 분할. 동시 여러 Agent spawn 가능.
@@ -80,14 +78,10 @@ Agent({
 
 | 항목 | 확인 방법 | 필수 | 미설치 시 |
 |------|----------|------|----------|
-| XML 파일 | `find workspace/input/ -name "*.xml" -type f \| wc -l` | **필수** | 중단 |
-
-**XML 복사 주의: `*-sql-oracle.xml` 같은 패턴으로 필터하지 마라.** `LoggingMapper.xml`, `CommonMapper.xml` 등 비표준 네이밍도 MyBatis mapper이다. 소스 디렉토리에서 `*.xml` 전부 복사하라. `find src/ -name "*.xml" -path "*/mapper/*"` 권장.
+| XML 파일 | `ls workspace/input/*.xml` | **필수** | 중단 |
 | Python 3 | `python3 --version` | **필수** | 설치 안내 |
-| oracledb | `python3 -c "import oracledb; print(oracledb.__version__)"` | **권장** | `pip install oracledb`. 없으면 sqlplus fallback (파싱 취약) |
-| psycopg2 | `python3 -c "import psycopg2; print(psycopg2.__version__)"` | **권장** | `pip install psycopg2-binary`. 없으면 psql fallback |
 | psql | `which psql` | 선택 | `brew install postgresql` 또는 `apt install postgresql-client` 안내 |
-| sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내. oracledb 있으면 불필요 |
+| sqlplus | `which sqlplus` | 선택 | Oracle Instant Client 설치 안내 |
 | Java 11+ | `java -version` | **권장** Phase 3 | `brew install openjdk@21` 또는 `apt install default-jdk` 안내 |
 | Gradle | — | 불필요 | **레포에 gradlew 포함됨.** Java만 있으면 `tools/mybatis-sql-extractor/gradlew`가 Gradle을 자동 다운로드 |
 | Java 소스 | `$JAVA_SRC_DIR` 경로 + VO/DTO/DAO 수 확인 | 선택 | 사용자에게 경로 안내. VO/DTO 분석으로 TC ↑ |
@@ -126,10 +120,7 @@ if [ -n "$JAVA_SRC_DIR" ] && [ -d "$JAVA_SRC_DIR" ]; then
     find "$JAVA_SRC_DIR" -name "*Mapper.java" -o -name "*Repository.java" -o -name "*Dao.java" | wc -l  # DAO/Repository
 fi
 ```
-**미설정 시 반드시 사용자에게 물어보라 (스킵하지 마라):**
-"Java 소스(VO/DTO/Repository) 경로를 알려주세요. 예: `export JAVA_SRC_DIR=/path/to/src/main/java`
-VO/DTO 클래스를 분석하면 TC 바인드값 타입이 정확해져서 테스트 품질이 크게 향상됩니다.
-없으면 '없음'이라고 말씀해주세요."
+설정 안 되어 있으면 사용자에게 물어보라: "Java 소스 경로가 있으면 `export JAVA_SRC_DIR=/path/to/src/main/java`로 설정하세요. VO/DTO 분석으로 TC 정확도가 높아집니다."
 복사 불필요 — 원본 프로젝트 경로를 참조만 한다. 없으면 스키마+샘플 데이터로 대체.
 
 **테이블 샘플 데이터 수집 (TC에 사용):**
@@ -159,46 +150,28 @@ python3 tools/generate-test-cases.py --java-src workspace/java-src/ --samples-di
 # Java 소스 없으면:
 python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/
 ```
-TC 소스 우선순위: **고객 제공 바인드값** > 샘플 데이터(실제값) > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
-**고객이 바인드변수 값을 제공하면 최우선으로 TC에 반영하라.** 나머지 파라미터는 기본값으로 채워서라도 **무조건 테스트하라** (EXPLAIN + Execute + Compare 양쪽 모두).
-고객 바인드값은 `workspace/input/custom-binds.json` 또는 사용자 메시지에서 받는다.
+TC 소스 우선순위: **샘플 데이터(실제값)** > Java VO 타입 > V$SQL_BIND_CAPTURE > 통계 > FK > 추론.
 **정적 XML 태그 조작 금지.** 모든 SQL은 MyBatis 엔진이 렌더링한다.
 
-### Phase 3: Validation (MyBatis 기반, 3단계 전부 실행 필수)
+### Phase 3: Validation (MyBatis 기반, 3단계)
 
-**EXPLAIN만 하고 끝내지 마라. Execute + Compare까지 반드시 실행하라.**
-**이 파이프라인의 핵심 목적은 Oracle↔PG 값 비교이다. EXPLAIN은 구문 검증일 뿐.**
-**0건이 나오더라도 비교 검증은 반드시 수행하라.** 기본 변수로 양쪽 0건이 나오는 것은 정상이다.
-0건==0건은 유효한 PASS. "0건이니 의미 없다"고 Compare를 스킵하면 안 된다.
-
-`--full`이 내부에서 수행하는 4단계 (개별 실행 금지, --full 하나로 끝):
-1. MyBatis 렌더링 → EXPLAIN (문법 체크)
-2. PG Execute (실제 실행) → execute_results.txt
-3. Oracle Compare (양쪽 값 비교) → oracle_results.txt
-4. 결과 파싱 → validated.json + compare_validated.json
-
-**Java 권장. MyBatis 엔진이 기본 SQL 렌더링 경로.**
+**Java 필수. MyBatis 엔진이 유일한 SQL 렌더링 경로.**
+**정적 XML 추출은 fallback일 뿐. Java 없으면 검증 정확도가 크게 떨어진다.**
 **DML: SELECT COUNT(*) WHERE로 Oracle 비교. PG는 BEGIN/ROLLBACK + 5s timeout.**
 
-**Step 1: MyBatis 렌더링**
+**Step 1: MyBatis 엔진으로 SQL 렌더링 + TC params 주입**
 ```bash
 bash tools/run-extractor.sh --validate
 ```
+input XML(Oracle) + output XML(PG) 양쪽에서 TC params로 동적 SQL 평가 → 완전한 SQL.
 
-**Step 2: 전체 검증 (--full: EXPLAIN + Execute + Compare 원자적 실행)**
+**Step 2: EXPLAIN + Execute + Compare**
 ```bash
-python3 tools/validate-queries.py --full \
-  --extracted workspace/results/_extracted_pg/ \
-  --output workspace/results/_validation/ \
-  --tracking-dir workspace/results/
-```
-**--full은 내부에서 EXPLAIN → PG Execute → Oracle Compare → 결과 파싱을 전부 수행한다.**
-**개별 단계(--generate, psql -f, --parse-results)를 따로 실행하지 마라. --full 하나로 끝.**
-
-100쿼리 이상: Validator 서브에이전트에 분배
-```
-Agent(validator, "--full --files batch1 --output _validation_batch1/")
-Agent(validator, "--full --files batch2 --output _validation_batch2/")
+python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted_pg/ --output workspace/results/_validation/ --tracking-dir workspace/results/
+psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
+psql -f workspace/results/_validation/execute_test.sql > workspace/results/_validation/execute_results.txt 2>&1
+sqlplus @workspace/results/_validation/oracle_compare.sql > workspace/results/_validation/oracle_results.txt 2>&1
+python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/ --tracking-dir workspace/results/
 ```
 
 EXPLAIN은 문법 게이트. 실행+비교가 주 검증. 양쪽 결과에서 test_id별 row count 비교, 불일치 시 Phase 4 대상.
@@ -207,11 +180,10 @@ EXPLAIN은 문법 게이트. 실행+비교가 주 검증. 양쪽 결과에서 te
 
 Phase 3 실패 건 대상. 없으면 Phase 5로.
 
-**Step 1: 힐링 티켓 생성 (도구 실행 필수, 수기 작성 금지)**
+**Step 1: 힐링 티켓 생성**
 ```bash
 python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_validation/ --output workspace/results/_healing/
 ```
-**summary.json을 수기로 작성하지 마라.** 반드시 위 도구를 실행하여 tickets.json + summary.json을 자동 생성하라.
 
 티켓 구조:
 ```json
@@ -229,15 +201,18 @@ python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_va
 }
 ```
 
-**Step 2: Healer 서브에이전트에 위임 (Leader가 직접 루프 돌리지 마라)**
+**Step 2: 티켓별 힐링 루프 (최대 5회)**
 ```
-# 티켓을 배치로 나눠 Healer 서브에이전트에 병렬 위임
-Agent(healer, "tickets HT-001~HT-020, workspace/results/_healing/")
-Agent(healer, "tickets HT-021~HT-040, workspace/results/_healing/")
-```
-**Healer가 내부에서 분석→수정→`--full` 재검증 루프를 자체 수행.**
-**Leader는 Healer 결과만 받는다. Leader가 직접 Reviewer→Converter 루프를 돌리지 마라.**
-각 Healer: 최소 3회 시도, 최대 5회. resolved 또는 escalated로 종료.
+for each ticket (severity순, critical → high → medium):
+  1. Reviewer(원인 분석) → ticket.history에 분석 결과 기록
+  2. Converter(재변환) → output XML 수정 + ticket.history에 수정 내용 기록
+  3. 재검증 (2단계):
+     a. EXPLAIN 재검증 (빠른 문법 체크)
+     b. Java 설치 시 → MyBatis 엔진으로 동적 SQL 렌더링 후 재검증 (정확도 높음)
+        bash tools/run-extractor.sh --skip-build 로 수정된 output XML 재추출
+  4. 성공 → ticket.status = "resolved"
+  5. 실패 → ticket.retry_count++ → 다음 retry (최대 5회)
+  6. 5회 실패 → ticket.status = "escalated"
 ```
 **동적 SQL 쿼리는 static EXPLAIN만으로 검증 불가.** `<if>`, `<include>`, `<foreach>` 때문에
 추출 SQL이 불완전할 수 있으므로, **MyBatis 엔진 재검증을 우선**하라.
@@ -253,20 +228,15 @@ cp -r workspace/output/ workspace/output_v{N}_backup/
 
 상태 전이: open → in_progress → retry_1 → ... → retry_5 → escalated (또는 → resolved).
 
-**Step 3: 힐링 정책**
-
-| 카테고리 | 최소 재시도 | 처리 루프 |
-|---------|-----------|----------|
-| syntax_error | **3회 필수** | Reviewer(진단) → Converter(**LLM**, SQL/바인드 수정) → 재검증 |
-| type_mismatch | **3회 필수** | Reviewer → Converter(바인드값 타입/길이 조정) → 재검증 |
-| operator_mismatch | **3회 필수** | Reviewer → Converter(캐스트 추가 ::TEXT 등) → 재검증 |
-| xml_invalid | **3회 필수** | Reviewer → Converter(CDATA 래핑) → 재검증 |
-| residual_oracle | **3회 필수** | Reviewer → Converter(**LLM** 재변환) → 재검증 |
-| relation_missing | **스킵** | DBA 스키마 이관 → Phase 6 보고 |
-| column_missing | **스킵** | DBA 확인 → Phase 6 보고 |
-
-3회 실패 → 2회 추가 (총 5회). 5회 실패 → escalated.
-**relation_missing/column_missing만 스킵. 나머지 전부 최소 3회 힐링 루프 필수.**
+**Step 3: 티켓 분류별 처리 전략**
+| 카테고리 | 처리 | 에이전트 | 비고 |
+|---------|------|---------|------|
+| xml_invalid | CDATA 래핑 | Converter | 즉시 수정 가능 |
+| syntax_error | SQL 구문 수정 | Reviewer→Converter | 딥다이브 5회 |
+| residual_oracle | 미변환 패턴 재변환 | Converter | 룰 재적용 |
+| type_mismatch | TC 바인드값 조정 | 자동 (스킵 가능) | DBA 불필요 |
+| relation_missing | 테이블 미존재 | 스킵 (DBA 티켓) | Phase 6 보고 |
+| operator_mismatch | 타입 캐스트 추가 | Converter | ::TEXT, ::INTEGER 등 |
 
 **병렬 힐링:** 10~20건 단위 배치. 쿼리 간 병렬, 쿼리 내 retry는 순차.
 **매 retry 후 반드시 EXPLAIN 재검증.** regression 확인 없이 다음 retry로 넘어가지 마라.
@@ -313,30 +283,19 @@ Reviewer 서브에이전트에 위임하여 아래 항목을 검증:
 
 ### Phase 7: Report (마지막)
 
-**Step 1: Pre-Report 체크리스트 (절대 스킵 금지)**
 ```bash
-python3 tools/pre-report-check.py
-```
-**이 도구가 exit 0 (PASS) 을 반환할 때까지 generate-report.py를 실행하지 마라.**
-**FAIL이 나오면 해당 항목을 해결하고 다시 pre-report-check.py를 실행하라.**
-**해결 → 재점검 → PASS 확인 → 리포트 생성. 이 순서를 절대 건너뛰지 마라.**
-FAIL 무시하고 리포트를 생성하면 **빈 데이터, 0건 카드, 누락된 비교** 등 무의미한 리포트가 만들어진다.
-
-체크 항목:
-- Execute/Compare 실행 여부 (EXPLAIN만 하고 끝냈는지)
-- 힐링 티켓 open 건수 (힐링 안 돌렸는지)
-- tickets.json 존재 (수기 summary만 있는지)
-- 양쪽 0건 비교 과다 (Oracle 접속 정보 틀렸는지)
-
-**Step 2: 리포트 생성**
-```bash
+# 쿼리 매트릭스 CSV 생성 (전체 쿼리 × 3항목)
 python3 tools/generate-query-matrix.py --output workspace/reports/query-matrix.csv --json
+
+# HTML 리포트 생성
 python3 tools/generate-report.py
 ```
 
 산출물:
 - `workspace/reports/query-matrix.csv` — 전체 쿼리별 변환/EXPLAIN/비교 현황
 - `workspace/reports/migration-report.html` — 통합 HTML 리포트
+
+**Phase 6 (DBA Review) 완료 후에만 실행.** 모든 검증 결과를 포함.
 
 ## progress.json
 
@@ -358,7 +317,7 @@ Progress: 53% | OK:80 FAIL:0 WAIT:70 ESC:0
 ## TODO 관리
 
 TODO(TaskCreate)를 사용할 때 **반드시 Phase 순서대로 생성**하라:
-Phase 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6 → 7.
+Phase 0 → 1 → 2 → 2.5 → 3 → 3.5 → 4 → 5 → 6 → 7.
 뒤죽박죽으로 만들면 사용자가 진행 상황을 파악하기 어렵다.
 
 ## Resume (중단 후 재개)
