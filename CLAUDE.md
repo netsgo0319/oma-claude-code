@@ -153,16 +153,22 @@ Agent({
 | NOT_TESTED_NO_DB | DB 미접속 |
 | NOT_TESTED_PENDING | 변환 미완료 |
 
-## 상태 표시
+## 상태 표시 (매 응답 시작에 필수)
+
+**사용자에게 보내는 모든 응답의 첫 줄에 현재 파이프라인 상태를 표시하라.**
+● 완료, ◐ 진행중, ○ 대기:
 
 ```
 ● Step 0: 환경점검 ✓
 ● Step 1: 변환 (converter 완료: 426파일 4953쿼리)
-◐ Step 3: 검증+수정 (validate-and-fix 3/5 완료)
+● Step 2: TC (tc-generator 완료: 4800쿼리, CUSTOM:50 SAMPLE:3200 INFERRED:1550)
+◐ Step 3: 검증+수정 (validate-and-fix 3/5 에이전트 완료)
 ○ Step 4: 보고서
 ─────────────────────
 Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 ```
+
+Step 완료 시마다 갱신. 서브에이전트 반환 결과를 요약에 반영.
 
 ## 로깅
 
