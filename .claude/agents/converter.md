@@ -70,7 +70,15 @@ java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar
 
 ## 처리 절차
 
-### 0. 기계적 변환 (rule-convert-tool, v1에서만 실행)
+### 0. 파싱 + 룰 변환 (첫 실행 시 필수)
+
+아직 output XML이 없으면 (최초 실행) batch-process.sh로 전체 파싱+룰 변환:
+```bash
+bash tools/batch-process.sh --all --parallel 8
+```
+이미 output이 있으면 스킵.
+
+### 0b. 기계적 변환 (rule-convert-tool, v1에서만 실행)
 
 **Step 1에서 이미 실행됐으면 재실행하지 마라.**
 룰 컨버터는 input XML에서 output XML을 새로 생성하므로, **LLM 변환 후 재실행하면 LLM 수정이 덮어씌워진다.**
