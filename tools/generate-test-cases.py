@@ -452,7 +452,7 @@ def main():
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('STEP_END', agent='generate-test-cases', phase='step_2',
+        log_activity('STEP_END', agent='generate-test-cases', step='step_2',
                      detail=f"TC: {total_files} files, {total_cases} cases "
                             f"(sample:{source_counts.get('SAMPLE_DATA',0)}, "
                             f"capture:{source_counts.get('BIND_CAPTURE',0)}, "

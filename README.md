@@ -2,7 +2,7 @@
 
 MyBatis/iBatis XML 기반 Oracle SQL을 PostgreSQL로 자동 변환, 검증하는 AI 에이전트 시스템.
 
-Claude Code 기반으로 2개 서브에이전트(converter, validate-and-fix)가 5단계 파이프라인을 실행합니다.
+Claude Code 기반으로 4개 서브에이전트(converter, tc-generator, validate-and-fix, reporter)가 5단계 파이프라인을 실행합니다.
 
 ## 전체 파이프라인
 
@@ -37,7 +37,7 @@ workspace/reports/migration-report.html
 
 ```
 .claude/
-  agents/         2개 에이전트 (converter, validate-and-fix)
+  agents/         4개 에이전트 (converter, tc-generator, validate-and-fix, reporter)
   skills/         스킬 (SKILL.md + references)
   rules/          룰 (oracle-pg-rules, edge-cases, db-config, product, tech)
   commands/       명령 (convert, validate, report, status, reset)
@@ -71,7 +71,9 @@ workspace/
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
 | **converter** | Sonnet | Oracle→PG 변환. 룰 컨버터 v1만 실행, v2+는 output Edit만. #{sysdate} 변환 안 함 |
+| **tc-generator** | Sonnet | 테스트 케이스 생성. 4소스(샘플/VO/바인드캡처/FK)에서 바인드값 수집 |
 | **validate-and-fix** | Sonnet | 3단계 검증 (EXPLAIN→실행→비교) + 실패 시 원인 분석 + SQL 수정 + 재검증 루프 |
+| **reporter** | Sonnet | Query Matrix CSV/JSON + HTML 리포트 생성 |
 
 ## 환경변수
 

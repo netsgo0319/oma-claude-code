@@ -431,7 +431,7 @@ def main():
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='generate-query-matrix', phase='phase_4',
+        log_activity('STEP_END', agent='generate-query-matrix', step='step_4',
                      detail=f"Matrix: {len(rows)} queries, PASS:{pass_count}, "
                             f"FAIL:{fail_count}, NOT_TESTED:{not_tested}")
     except Exception:

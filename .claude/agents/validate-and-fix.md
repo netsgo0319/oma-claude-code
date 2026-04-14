@@ -100,6 +100,7 @@ for attempt in 1..5:
   "attempts": [
     {
       "attempt": 1,
+      "ts": 1713100860,
       "error_category": "syntax_error",
       "error_detail": "syntax error at or near \"NVL\"",
       "fix_applied": "NVL→COALESCE 변환 누락 수정",
@@ -108,6 +109,7 @@ for attempt in 1..5:
     },
     {
       "attempt": 2,
+      "ts": 1713100920,
       "error_category": "type_mismatch",
       "error_detail": "operator does not exist: text = integer",
       "fix_applied": "::TEXT 캐스트 추가",

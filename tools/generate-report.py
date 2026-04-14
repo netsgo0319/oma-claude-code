@@ -135,13 +135,9 @@ def _derive_progress(ws):
         progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
 
     # MyBatis extraction validation (separate dir, backward compat)
-    for d35 in ['_validation_phase35', '_validation_phase7']:
+    for d35 in ['_validation_phase35']:
         if (ws / 'results' / d35 / 'validated.json').exists():
             progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
-
-    # DBA review (legacy data, backward compat)
-    if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
-        progress['_pipeline']['phases']['phase_4'] = {'status': 'done'}
 
     # Step 4: report — 이 함수가 실행 중이면 Step 4가 진행 중이므로 항상 done
     # (migration-report.html은 이 함수가 만드는 것이라 아직 없을 수 있음)
@@ -867,15 +863,7 @@ function renderActionItems(){
   html+='<div class="file-body">';
   // Build action items from validation results
   let actions=[];
-  // DBA review issues
-  if(DATA.dba_review&&DATA.dba_review.check_results){
-    for(let [k,v] of Object.entries(DATA.dba_review.check_results)){
-      if(v.status==='FAIL'||v.status==='WARN'){
-        let ic=v.issues_count||v.invalid_count||(v.issues?v.issues.length:0);
-        if(ic>0)actions.push({who:'DBA/개발자',category:k,count:ic,severity:v.status==='FAIL'?'critical':'medium',action:v.description||k});
-      }
-    }
-  }
+  // (action items from validation results can be added here)
   if(actions.length===0){html+='<p style="color:var(--dim)">No action items</p>';}
   else{
     html+='<table><tr><th>담당</th><th>카테고리</th><th>건수</th><th>심각도</th><th>조치</th></tr>';
@@ -1076,24 +1064,6 @@ function renderValidationSec(){
       }
       html+=`</table></div>`;
     }
-  }
-  if(DATA.dba_review){
-    let dr=DATA.dba_review;
-    let issues=dr.issues||dr.findings||[];
-    let passCount=issues.filter(i=>i.status==='pass'||i.pass).length;
-    let failCount=issues.length-passCount;
-    let badge=failCount===0?'<span class="phase-badge badge-done">ALL CLEAR</span>':
-      '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+failCount+' ISSUES</span>';
-    html+=`<div class="sec"><h2>DBA/Expert Review</h2><p>${badge}</p>`;
-    if(issues.length){
-      html+='<table style="margin-top:10px"><tr><th>Check</th><th>Status</th><th>Detail</th></tr>';
-      for(let issue of issues){
-        let st=issue.status==='pass'||issue.pass?'<span style="color:var(--success)">PASS</span>':'<span style="color:var(--fail)">FAIL</span>';
-        html+=`<tr><td>${esc(issue.check||issue.name||'')}</td><td>${st}</td><td style="font-size:11px">${esc(String(issue.detail||issue.message||'').substring(0,200))}</td></tr>`;
-      }
-      html+='</table>';
-    }
-    html+='</div>';
   }
   document.getElementById('validation-sec').innerHTML=html;
 }

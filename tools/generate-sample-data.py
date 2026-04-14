@@ -234,7 +234,7 @@ def main():
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='generate-sample-data', phase='phase_0',
+        log_activity('STEP_END', agent='generate-sample-data', step='step_0',
                      detail=f"tables:{len(tables)}, sampled:{sampled}, "
                             f"skipped:{skipped}, errored:{errored}",
                      duration_ms=elapsed_ms)

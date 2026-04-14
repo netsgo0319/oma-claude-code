@@ -433,7 +433,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_compare',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_compare',
                          detail=f"Compare: {pass_count} match, {fail_count} fail, {warn_count} warn (total {total})")
         except Exception:
             pass
@@ -1068,7 +1068,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_explain',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_explain',
                          detail=f"EXPLAIN: {pass_count} pass, {fail_count} fail")
         except Exception:
             pass
@@ -1232,7 +1232,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_execute',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_execute',
                          detail=f"Execute: {pass_count} pass, {fail_count} fail, {len(warnings)} warnings")
         except Exception:
             pass
