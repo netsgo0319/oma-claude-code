@@ -732,7 +732,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .log-entry{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;font-family:var(--mono);display:flex;gap:8px}
 .log-entry.hidden{display:none}
 .log-ts{color:var(--dim);width:70px;flex-shrink:0}.log-evt{width:110px;flex-shrink:0;font-weight:600}.log-msg{flex:1;word-break:break-all;color:var(--dim)}
-.log-evt.error{color:var(--fail)}.log-evt.decision{color:var(--accent2)}.log-evt.learning{color:var(--purple)}.log-evt.warning{color:var(--warn)}
+.log-evt.error{color:var(--fail)}.log-evt.decision{color:var(--accent2)}.log-evt.warning{color:var(--warn)}
 /* Refresh toggle */
 .refresh-toggle{position:fixed;bottom:16px;right:16px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:11px;color:var(--dim);cursor:pointer;z-index:100;display:flex;align-items:center;gap:6px}
 .refresh-toggle.on{border-color:var(--success);color:var(--success)}
@@ -1400,7 +1400,7 @@ function renderLog(){
     let evtClass='';
     if(evtLower.includes('error')||evtLower.includes('fail'))evtClass='error';
     else if(evtLower.includes('decision'))evtClass='decision';
-    else if(evtLower.includes('learn'))evtClass='learning';
+    else if(evtLower.includes('warn'))evtClass='warning';
     else if(evtLower.includes('warn'))evtClass='warning';
     html+=`<div class="log-entry" data-type="${evtClass}" data-text="${esc((evt+' '+msg).toLowerCase())}">`;
     html+=`<span class="log-ts">${esc(String(ts))}</span>`;
