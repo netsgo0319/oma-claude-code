@@ -56,6 +56,18 @@
         ]
       }
     ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'echo \"=== [PostCompact] 상태 복구 ===\"; cat workspace/state-snapshot.json 2>/dev/null | python3 -c \"import json,sys;d=json.load(sys.stdin);print(f\\\"Total: {d.get(\\\\\\\"total\\\\\\\",0)}\\\");[print(f\\\"  {k}: {v}\\\") for k,v in d.get(\\\"summary\\\",{}).items() if v];print(f\\\"Next: {d.get(\\\\\\\"next_action\\\\\\\",\\\\\\\"unknown\\\\\\\")}\\\")\" 2>/dev/null || echo \"No state snapshot found\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",

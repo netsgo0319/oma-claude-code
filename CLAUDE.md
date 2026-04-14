@@ -117,8 +117,8 @@ Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 
 ## 컴팩팅 후 상태 복구 (필수)
 
-**대화가 컴팩팅되면 이전 맥락이 사라진다. 반드시 파일에서 상태를 복구하라.**
-컴팩팅 감지 시 (또는 응답 시작 시 상태가 불확실하면):
+**대화가 컴팩팅되면 이전 맥락이 사라진다.**
+**서브에이전트를 spawn하기 전, 또는 다음 Step으로 넘어가기 전에 반드시 읽어라:**
 ```bash
 cat workspace/state-snapshot.json 2>/dev/null | python3 -m json.tool
 ```
