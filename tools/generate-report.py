@@ -249,18 +249,24 @@ def collect_data(base_dir):
     # 4. Validation — merge all _validation* directories (supports batch splits)
     merged_validation = {'passes': [], 'failures': [], 'total': 0, 'pass': 0, 'fail': 0}
     merged_comparison = {'results': []}
-    for val_dir in sorted((ws / 'results').glob('_validation*')):
-        vj = load_json(val_dir / 'validated.json')
+    # _validation/, _validation_batch1/, _validation/ams/ 등 모든 하위 구조 지원
+    for vj_path in sorted((ws / 'results').glob('_validation*/**/validated.json')):
+        val_dir = vj_path.parent
+        vj = load_json(vj_path)
         if vj:
             merged_validation['passes'].extend(vj.get('passes', []))
             merged_validation['failures'].extend(vj.get('failures', []))
             merged_validation['total'] += vj.get('total', 0)
             merged_validation['pass'] += vj.get('pass', 0)
             merged_validation['fail'] += vj.get('fail', 0)
-        for cfile in ['compare_validated.json', 'compare_results.json']:
-            cj = load_json(val_dir / cfile)
-            if cj:
-                merged_comparison['results'].extend(cj.get('results', []))
+    for cfile_path in sorted((ws / 'results').glob('_validation*/**/compare_validated.json')):
+        cj = load_json(cfile_path)
+        if cj:
+            merged_comparison['results'].extend(cj.get('results', []))
+    for cfile_path in sorted((ws / 'results').glob('_validation*/**/compare_results.json')):
+        cj = load_json(cfile_path)
+        if cj:
+            merged_comparison['results'].extend(cj.get('results', []))
     data['validation'] = merged_validation if merged_validation['total'] > 0 else None
     data['execution'] = None  # deprecated — merged into validation
     data['comparison'] = merged_comparison if merged_comparison['results'] else None
@@ -275,9 +281,8 @@ def collect_data(base_dir):
         import os as _os
         qm_mtime = _os.path.getmtime(qm_path) if qm_path.exists() else 0
         val_mtime = max(
-            (_os.path.getmtime(str(vd / 'validated.json'))
-             for vd in (ws / 'results').glob('_validation*')
-             if (vd / 'validated.json').exists()),
+            (_os.path.getmtime(str(vp))
+             for vp in (ws / 'results').glob('_validation*/**/validated.json')),
             default=0
         )
         if val_mtime > qm_mtime:

@@ -94,10 +94,8 @@ def main():
 
     val_results = {}       # keyed by full test_id
     val_by_qid = {}        # keyed by bare query_id (best result wins)
-    for val_dir in sorted(results_dir.glob('_validation*')):
-        vp = val_dir / 'validated.json'
-        if not vp.exists():
-            continue
+    for vp in sorted(results_dir.glob('_validation*/**/validated.json')):
+        val_dir = vp.parent
         vdata = json.load(open(vp))
         source = 'mybatis' if 'phase35' in val_dir.name else 'static'
         for p in vdata.get('passes', []):
@@ -121,16 +119,18 @@ def main():
     # Load compare results — glob all _validation* directories
     # Also index by bare query_id (compare_results uses query_id or test_id)
     compare_results = {}
-    for val_dir in sorted(results_dir.glob('_validation*')):
-        for cfile in ['compare_validated.json', 'compare_results.json']:
-            cp = val_dir / cfile
-            if cp.exists():
-                cdata = json.load(open(cp))
-                for r in cdata.get('results', []):
-                    # query_id might be bare or full test_id
-                    raw_qid = r.get('query_id', r.get('test_id', ''))
-                    bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
-                    compare_results.setdefault(bare, []).append(r)
+    for cp in sorted(results_dir.glob('_validation*/**/compare_validated.json')):
+        cdata = json.load(open(cp))
+        for r in cdata.get('results', []):
+            raw_qid = r.get('query_id', r.get('test_id', ''))
+            bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
+            compare_results.setdefault(bare, []).append(r)
+    for cp in sorted(results_dir.glob('_validation*/**/compare_results.json')):
+        cdata = json.load(open(cp))
+        for r in cdata.get('results', []):
+            raw_qid = r.get('query_id', r.get('test_id', ''))
+            bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
+            compare_results.setdefault(bare, []).append(r)
 
     # Load test-cases.json files (keyed by query_id)
     test_cases_by_qid = {}
