@@ -430,6 +430,9 @@ def main():
             total_files += 1
 
     # Merged TC for MyBatis extractor
+    # null_test, empty_string TC는 제외 — MyBatis 동적 SQL이 불완전하게 렌더링됨
+    # custom, sample_row, default, boundary, bind_capture, fk_sample만 포함
+    _SKIP_TC_NAMES = {'null_test', 'empty_string'}
     merged_tc = {}
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         tc_path = parsed_path.parent / 'test-cases.json'
@@ -437,7 +440,10 @@ def main():
         try: ftcs = json.loads(tc_path.read_text(encoding='utf-8'))
         except Exception: continue
         for qid, cases in ftcs.items():
-            pl = [c['params'] for c in cases if c.get('params')]
+            # 실값이 있는 TC만 (null_test/empty_string 제외)
+            pl = [c['params'] for c in cases
+                  if c.get('params') and c.get('name', '') not in _SKIP_TC_NAMES
+                  and not all(v is None for v in c['params'].values())]
             if pl: merged_tc[qid] = pl
     merged_path = results_dir / '_test-cases' / 'merged-tc.json'
     merged_path.parent.mkdir(parents=True, exist_ok=True)

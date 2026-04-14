@@ -685,10 +685,19 @@ SET HEADING ON
             if is_extracted:
                 param_names = query.get('param_names_for_bind', [])
                 tc_binds = {}
-                # Try to find TC values for these parameter names
+                # Try to find TC values — prefer non-null TC over null_test
                 if param_names:
                     tc_cases = self.test_cases.get(qid, [])
-                    if tc_cases and isinstance(tc_cases[0], dict):
+                    for tc in (tc_cases or []):
+                        if not isinstance(tc, dict):
+                            continue
+                        candidate = tc.get('params', tc.get('binds', {}))
+                        # Skip null_test / empty_string (모든 값이 None이거나 빈 문자열)
+                        if candidate and not all(v is None or v == '' for v in candidate.values()):
+                            tc_binds = candidate
+                            break
+                    # Fallback: 실값 TC가 없으면 첫 번째 TC
+                    if not tc_binds and tc_cases and isinstance(tc_cases[0], dict):
                         tc_binds = tc_cases[0].get('params', tc_cases[0].get('binds', {}))
 
                 # Replace ? with TC values positionally
