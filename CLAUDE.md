@@ -24,7 +24,7 @@ EXPLAIN 통과 ≠ 변환 성공. Oracle 접속이 가능하면 **`--compare`를
 Phase 0→1→2→2.5→3→4→5→6→7 순서 필수. 순서 변경 제안 금지. unconverted가 있으면 Phase 2에서 LLM 완료 후 진행. DB 미연결 시에만 Phase 2.5/3 스킵 가능.
 
 **Phase 완료 조건 (다음 Phase 진행 전 반드시 확인):**
-- Phase 3 완료: EXPLAIN 결과가 `validated.json`에 기록됨. `--parse-results` 호출 완료.
+- Phase 3 완료: `--full` 실행 완료되어 validated.json + compare_validated.json 생성됨.
 - Phase 4 완료: 모든 actionable 티켓이 resolved 또는 escalated. DBA-only(relation_missing)는 스킵 가능.
 - Phase 5 완료: Learner가 edge-cases.md/oracle-pg-rules.md 갱신.
 - **Phase 3 결과에 FAIL이 있으면 반드시 Phase 4를 실행하라. Phase 3→6 점프 금지.**
