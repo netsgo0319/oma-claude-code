@@ -54,6 +54,7 @@ Oracle 접속 시 오브젝트 스캔 (TABLE/FUNCTION/PACKAGE). PG 접속 시 pg
 
 ### Step 1: 파싱 + 변환 → converter에 위임
 
+**소규모 (30쿼리 이하):** 서브에이전트 1개
 ```
 Agent({
   subagent_type: "converter",
@@ -61,7 +62,14 @@ Agent({
 })
 ```
 
-파일이 많으면 3파일/30쿼리 단위로 **여러 converter 병렬** spawn.
+**대규모 (100+ 쿼리):** 팀 모드로 converter 여러 개 병렬 spawn
+```
+# 3파일 단위로 팀 멤버에게 분배
+Agent({ subagent_type: "converter", prompt: "files=[UserMapper.xml, OrderMapper.xml, CodeMapper.xml]" })
+Agent({ subagent_type: "converter", prompt: "files=[ProductMapper.xml, StatsMapper.xml, LogMapper.xml]" })
+```
+팀 멤버 간 파일 중복 할당 금지. 각자 독립 파일 담당.
+
 반환 결과 확인: 변환된 파일 수, unconverted 잔여 수.
 
 **unconverted가 0이면 → Step 2로.**
@@ -93,11 +101,12 @@ Agent({
 - syntax_error, type_mismatch, operator_mismatch, residual_oracle → **최대 5회 루프**
 - 매 시도마다 다른 접근법 필수. output XML 수정 전 반드시 버저닝 (`.v{N}.bak`).
 
-100+ 쿼리면 파일 단위로 **여러 validate-and-fix 병렬** spawn:
+**대규모 (100+ 쿼리):** 팀 모드로 validate-and-fix 여러 개 병렬 spawn
 ```
 Agent({ subagent_type: "validate-and-fix", prompt: "files=[UserMapper.xml, OrderMapper.xml, ...]" })
 Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, StatsMapper.xml, ...]" })
 ```
+팀 멤버 간 파일 중복 할당 금지. 각자 독립 파일 담당.
 
 **모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
 
@@ -122,7 +131,11 @@ Agent({
 | **validate-and-fix** | 3 | 검증 + 에러분류 + 수정 루프 (최대 5회) |
 | **reporter** | 4 | 파이프라인 점검 + 상태 검증 + 보고서 |
 
-배치: 1개당 최대 30쿼리 / 3파일. 동시 여러 에이전트 spawn 가능.
+배치: 1개당 최대 30쿼리 / 3파일.
+
+**병렬 실행:** 대규모일 때 동일 에이전트를 여러 개 동시 spawn.
+팀 멤버 간 파일 중복 할당 금지. 반환 결과를 모두 모아서 다음 Step으로.
+`settings.json`에 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 활성화됨.
 
 ## 리더가 하는 것 vs 안 하는 것
 

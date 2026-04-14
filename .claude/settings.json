@@ -50,11 +50,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'PROGRESS=workspace/progress.json; if [ -f \"$PROGRESS\" ]; then echo \"=== OMA Pipeline Cycle Summary ===\"; python3 -c \"import json,sys; d=json.load(open(sys.argv[1])); p=d.get(\\\"_pipeline\\\",{}); phases=p.get(\\\"phases\\\",{}); total=len(phases); done=sum(1 for v in phases.values() if v.get(\\\"status\\\")==\\\"done\\\"); s=p.get(\\\"summary\\\",{}); print(f\\\"Completed: {done}/{total} phases\\\"); [print(f\\\"  Phase {k}: {v.get(\\\"status\\\",\\\"unknown\\\")}\\\") for k,v in sorted(phases.items())]; print(f\\\"OK:{s.get(\\\"success\\\",0)} FAIL:{s.get(\\\"fail\\\",0)} WAIT:{s.get(\\\"pending\\\",0)} ESC:{s.get(\\\"escalated\\\",0)}\\\")\" \"$PROGRESS\" 2>/dev/null || echo \"Progress file exists but could not be parsed.\"; else echo \"No progress.json found. Pipeline has not been started.\"; fi'"
+            "command": "bash -c 'PROGRESS=workspace/progress.json; if [ -f \"$PROGRESS\" ]; then echo \"=== OMA Pipeline Summary ===\"; python3 -c \"import json,sys; d=json.load(open(sys.argv[1])); p=d.get(\\\"_pipeline\\\",{}); steps=p.get(\\\"phases\\\",p.get(\\\"steps\\\",{})); total=len(steps); done=sum(1 for v in steps.values() if v.get(\\\"status\\\")==\\\"done\\\"); s=p.get(\\\"summary\\\",{}); print(f\\\"Completed: {done}/{total} steps\\\"); [print(f\\\"  {k}: {v.get(\\\"status\\\",\\\"unknown\\\")}\\\") for k,v in sorted(steps.items())]; print(f\\\"PASS:{s.get(\\\"success\\\",0)} FAIL:{s.get(\\\"fail\\\",0)} WAIT:{s.get(\\\"pending\\\",0)}\\\")\" \"$PROGRESS\" 2>/dev/null || echo \"Progress file exists but could not be parsed.\"; else echo \"No progress.json found. Pipeline has not been started.\"; fi'"
           }
         ]
       }
     ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "model": "opus",
   "permissions": {

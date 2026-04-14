@@ -133,15 +133,30 @@ LLM 변환한 각 쿼리에 대해 직접 갱신:
   "conversion_method": "llm",
   "status": "converted",
   "rules_applied": ["CONNECT_BY->WITH_RECURSIVE"],
-  "confidence": "high"  # high/medium/low
+  "confidence": "high",  # high/medium/low
+  "conversion_history": [
+    {
+      "ts": 1713100800,
+      "pattern": "CONNECT BY PRIOR",
+      "approach": "WITH RECURSIVE CTE로 변환",
+      "before_snippet": "CONNECT BY PRIOR parent_id = id",
+      "after_snippet": "WITH RECURSIVE cte AS (...)",
+      "confidence": "medium",
+      "notes": "LEVEL 참조가 있어 depth 컬럼 추가"
+    }
+  ]
 }
 ```
+
+**conversion_history는 validate-and-fix 에이전트가 수정 루프에서 참조한다.**
+어떤 패턴을 어떻게 변환했는지 알아야 에러 원인을 빠르게 진단할 수 있다.
 
 **갱신 체크리스트 (반환 전 반드시 확인):**
 - [ ] output/{filename}.xml 수정됨
 - [ ] query-tracking.json의 pg_sql 갱신됨
 - [ ] query-tracking.json의 conversion_method = "llm"
 - [ ] query-tracking.json의 status = "converted"
+- [ ] query-tracking.json의 conversion_history 기록됨
 
 ### 7. 메인 에이전트에게 반환
 한 줄 요약만: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"
