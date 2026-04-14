@@ -21,6 +21,9 @@ Usage:
 
     # Use extracted SQL from mybatis-sql-extractor (Phase 3.5)
     python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation/
+
+    # Full atomic validation (generate + EXPLAIN + Execute + Oracle Compare + parse)
+    python3 tools/validate-queries.py --full --output workspace/results/_validation/
 """
 
 import xml.etree.ElementTree as ET
@@ -1237,6 +1240,203 @@ SET HEADING ON
         print(f"\nSaved: {output_path / 'execute_validated.json'}")
         return validated
 
+    def full_validate(self, output_dir, tracking_dir=None):
+        """Full atomic validation: generate + EXPLAIN + Execute + Oracle Compare + parse.
+        One command does everything, no intermediate stopping."""
+        import shutil
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Step 1: generate scripts (explain_test.sql, execute_test.sql, oracle_compare.sql)
+        print("\n[full] Step 1/5: Generating SQL scripts...")
+        self.generate_scripts(output_dir)
+
+        # Helper: resolve PG connection params
+        pg_host = os.environ.get('PG_HOST', os.environ.get('PGHOST', ''))
+        pg_port = os.environ.get('PG_PORT', os.environ.get('PGPORT', '5432'))
+        pg_db = os.environ.get('PG_DATABASE', os.environ.get('PGDATABASE', ''))
+        pg_user = os.environ.get('PG_USER', os.environ.get('PGUSER', ''))
+        pg_pass = os.environ.get('PG_PASSWORD', os.environ.get('PGPASSWORD', ''))
+
+        def run_psql(sql_file, result_file, timeout=300):
+            """Run psql against a .sql file, write output to result_file."""
+            # Try psycopg2 first (no psql binary needed)
+            try:
+                import psycopg2
+                conn = psycopg2.connect(host=pg_host, port=pg_port, dbname=pg_db,
+                                        user=pg_user, password=pg_pass)
+                conn.autocommit = True
+                cur = conn.cursor()
+                with open(sql_file, 'r', encoding='utf-8') as f:
+                    sql_content = f.read()
+                # psycopg2 can't handle psql meta-commands (\echo, \set) — fall through
+                if '\\echo' in sql_content or '\\set' in sql_content:
+                    raise RuntimeError("psql meta-commands detected, use psql binary")
+                cur.execute(sql_content)
+                rows = cur.fetchall() if cur.description else []
+                conn.close()
+                output = '\n'.join(str(r) for r in rows)
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    f.write(output)
+                return True
+            except Exception:
+                pass
+            # Fallback: psql binary
+            if not shutil.which('psql'):
+                print(f"  ERROR: psql not found and psycopg2 fallback failed")
+                return False
+            env = os.environ.copy()
+            env['PGPASSWORD'] = pg_pass
+            try:
+                result = subprocess.run(
+                    ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                     '-f', str(sql_file)],
+                    capture_output=True, text=True, env=env, timeout=timeout
+                )
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    f.write(result.stdout + result.stderr)
+                return True
+            except Exception as e:
+                print(f"  ERROR running psql: {e}")
+                return False
+
+        def run_oracle(sql_file, result_file, timeout=300):
+            """Run Oracle SQL file, write output to result_file."""
+            # Try oracledb first
+            try:
+                import oracledb
+                ora_host = os.environ.get('ORACLE_HOST', '')
+                ora_port = os.environ.get('ORACLE_PORT', '1521')
+                ora_sid = os.environ.get('ORACLE_SID', '')
+                ora_user = os.environ.get('ORACLE_USER', '')
+                ora_pass = os.environ.get('ORACLE_PASSWORD', '')
+                dsn = f"{ora_host}:{ora_port}/{ora_sid}"
+                conn = oracledb.connect(user=ora_user, password=ora_pass, dsn=dsn)
+                cur = conn.cursor()
+                with open(sql_file, 'r', encoding='utf-8') as f:
+                    sql_content = f.read()
+                # Parse PROMPT markers and SQL statements
+                output_lines = []
+                for block in re.split(r'(?m)^PROMPT\s+', sql_content):
+                    block = block.strip()
+                    if not block or block.startswith('SET ') or block == 'EXIT;':
+                        continue
+                    lines = block.split('\n', 1)
+                    if len(lines) == 2:
+                        output_lines.append(lines[0])  # The marker (=== test_id ===)
+                        stmt = lines[1].strip().rstrip(';')
+                        if stmt and not stmt.startswith('PROMPT') and not stmt.startswith('SET '):
+                            try:
+                                cur.execute(stmt)
+                                rows = cur.fetchall() if cur.description else []
+                                for row in rows:
+                                    output_lines.append(' '.join(str(c) for c in row))
+                                if cur.description:
+                                    output_lines.append(f"{len(rows)} rows selected.")
+                            except Exception as e:
+                                output_lines.append(f"ORA-ERROR: {e}")
+                conn.close()
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(output_lines))
+                return True
+            except ImportError:
+                pass
+            except Exception:
+                pass
+            # Fallback: sqlplus binary
+            if not shutil.which('sqlplus'):
+                print(f"  ERROR: sqlplus not found and oracledb fallback failed")
+                return False
+            conn_str = self._oracle_conn_str()
+            try:
+                with open(sql_file, 'r', encoding='utf-8') as f:
+                    sql_input = f.read()
+                result = subprocess.run(
+                    ['sqlplus', '-S', conn_str],
+                    input=sql_input, capture_output=True, text=True, timeout=timeout
+                )
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    f.write(result.stdout + result.stderr)
+                return True
+            except Exception as e:
+                print(f"  ERROR running sqlplus: {e}")
+                return False
+
+        # Step 2: EXPLAIN
+        explain_sql = output_path / 'explain_test.sql'
+        explain_out = output_path / 'explain_results.txt'
+        if pg_host and pg_db and explain_sql.exists():
+            print("[full] Step 2/5: Running EXPLAIN via psql...")
+            run_psql(explain_sql, explain_out)
+        else:
+            print("[full] Step 2/5: SKIP EXPLAIN (PG_HOST/PG_DATABASE not set or no script)")
+
+        # Step 3: Execute
+        execute_sql = output_path / 'execute_test.sql'
+        execute_out = output_path / 'execute_results.txt'
+        if pg_host and pg_db and execute_sql.exists():
+            print("[full] Step 3/5: Running Execute via psql...")
+            run_psql(execute_sql, execute_out, timeout=600)
+        else:
+            print("[full] Step 3/5: SKIP Execute (PG_HOST/PG_DATABASE not set or no script)")
+
+        # Step 4: Oracle Compare
+        oracle_sql = output_path / 'oracle_compare.sql'
+        oracle_out = output_path / 'oracle_results.txt'
+        ora_host = os.environ.get('ORACLE_HOST', '')
+        if ora_host and oracle_sql.exists():
+            print("[full] Step 4/5: Running Oracle Compare...")
+            run_oracle(oracle_sql, oracle_out, timeout=600)
+        else:
+            print("[full] Step 4/5: SKIP Oracle Compare (ORACLE_HOST not set or no script)")
+
+        # Step 5: Parse all results
+        print("[full] Step 5/5: Parsing results...")
+        result = self.parse_results(output_dir)
+
+        # Update query tracking
+        if tracking_dir and result:
+            try:
+                from tracking_utils import TrackingManager
+                tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
+                explain_results = {}
+                for p in result.get('passes', []):
+                    parts = (p if isinstance(p, str) else '').split('.')
+                    if len(parts) >= 2:
+                        qid = parts[1]
+                        if qid not in explain_results:
+                            explain_results[qid] = {'status': 'pass'}
+                for f_item in result.get('failures', []):
+                    parts = f_item.get('test', '').split('.')
+                    if len(parts) >= 2:
+                        explain_results[parts[1]] = {'status': 'fail', 'error': f_item.get('error', '')}
+
+                compare_path = output_path / 'compare_validated.json'
+                compare_pass_qids = set()
+                if compare_path.exists():
+                    cdata = json.load(open(compare_path))
+                    for cr in cdata.get('results', []):
+                        if cr.get('match'):
+                            compare_pass_qids.add(cr.get('query_id', ''))
+
+                for tdir in tracking_dirs:
+                    tm = TrackingManager(tdir)
+                    for qid, res in explain_results.items():
+                        tm.update_explain(qid, res['status'], error=res.get('error'))
+                        if res['status'] == 'pass' and qid in compare_pass_qids:
+                            tm.mark_success(qid)
+                    tm._save()
+                print(f"  Query tracking updated: {len(explain_results)} queries")
+            except Exception as e:
+                print(f"  Warning: Could not update tracking: {e}")
+
+        total = result.get('total', 0) if result else 0
+        p = result.get('pass', 0) if result else 0
+        fl = result.get('fail', 0) if result else 0
+        print(f"\n[full] DONE — {p} pass, {fl} fail (total {total})")
+        print(f"  Output: {output_path}")
+        return result
+
     def parse_results(self, output_dir):
         """Parse results from externally executed SQL scripts."""
         output_path = Path(output_dir)
@@ -1492,6 +1692,7 @@ def main():
     parser.add_argument('--execute', action='store_true', help='Execute queries locally via psql (actual execution)')
     parser.add_argument('--compare', action='store_true', help='Execute on BOTH Oracle AND PostgreSQL, compare results')
     parser.add_argument('--parse-results', action='store_true', help='Parse results from executed scripts')
+    parser.add_argument('--full', action='store_true', help='Full validation: generate + EXPLAIN + Execute + Compare + parse (atomic)')
     parser.add_argument('--output', default='workspace/results/_validation', help='Output directory')
     parser.add_argument('--xml-dir', default='workspace/output', help='Converted XML directory')
     parser.add_argument('--input-dir', default='workspace/input', help='Original Oracle XML directory')
@@ -1564,6 +1765,12 @@ def main():
         apply_file_filter()
         validator.generate_scripts(args.output)
         validator.execute_local_queries(args.output, tracking_dir=args.tracking_dir)
+
+    elif args.full:
+        load_queries_with_extracted_priority()
+        apply_file_filter()
+        validator.load_oracle_queries()
+        validator.full_validate(args.output, tracking_dir=args.tracking_dir)
 
     elif args.parse_results:
         result = validator.parse_results(args.output)

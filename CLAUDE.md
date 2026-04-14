@@ -67,8 +67,9 @@ Agent({
 |---------|------|------|------|
 | converter | .claude/agents/converter.md | sonnet | Oracle→PG 변환 (룰+LLM) |
 | test-generator | .claude/agents/test-generator.md | opus | Oracle 딕셔너리 기반 TC |
-| validator | .claude/agents/validator.md | sonnet | EXPLAIN/실행/비교 검증 |
-| reviewer | .claude/agents/reviewer.md | opus | 실패 분석 + DBA 최종 검증 |
+| validator | .claude/agents/validator.md | sonnet | --full 검증 (EXPLAIN+Execute+Compare 원자적) |
+| healer | .claude/agents/healer.md | sonnet | Phase 4 힐링 루프 (분석→수정→재검증) |
+| reviewer | .claude/agents/reviewer.md | opus | Phase 6 DBA 최종 검증 |
 | learner | .claude/agents/learner.md | sonnet | 에지케이스 학습 + PR |
 
 **배치 크기:** 1개당 최대 30쿼리 또는 3파일. 큰 파일은 쿼리 ID로 분할. 동시 여러 Agent spawn 가능.
@@ -179,19 +180,25 @@ TC 소스 우선순위: **고객 제공 바인드값** > 샘플 데이터(실제
 **Java 권장. MyBatis 엔진이 기본 SQL 렌더링 경로.**
 **DML: SELECT COUNT(*) WHERE로 Oracle 비교. PG는 BEGIN/ROLLBACK + 5s timeout.**
 
-**Step 1: MyBatis 엔진으로 SQL 렌더링 + TC params 주입**
+**Step 1: MyBatis 렌더링**
 ```bash
 bash tools/run-extractor.sh --validate
 ```
-input XML(Oracle) + output XML(PG) 양쪽에서 TC params로 동적 SQL 평가 → 완전한 SQL.
 
-**Step 2: EXPLAIN + Execute + Compare**
+**Step 2: 전체 검증 (--full: EXPLAIN + Execute + Compare 원자적 실행)**
 ```bash
-python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted_pg/ --output workspace/results/_validation/ --tracking-dir workspace/results/
-psql -f workspace/results/_validation/explain_test.sql > workspace/results/_validation/explain_results.txt 2>&1
-psql -f workspace/results/_validation/execute_test.sql > workspace/results/_validation/execute_results.txt 2>&1
-sqlplus @workspace/results/_validation/oracle_compare.sql > workspace/results/_validation/oracle_results.txt 2>&1
-python3 tools/validate-queries.py --parse-results --output workspace/results/_validation/ --tracking-dir workspace/results/
+python3 tools/validate-queries.py --full \
+  --extracted workspace/results/_extracted_pg/ \
+  --output workspace/results/_validation/ \
+  --tracking-dir workspace/results/
+```
+**--full은 내부에서 EXPLAIN → PG Execute → Oracle Compare → 결과 파싱을 전부 수행한다.**
+**개별 단계(--generate, psql -f, --parse-results)를 따로 실행하지 마라. --full 하나로 끝.**
+
+100쿼리 이상: Validator 서브에이전트에 분배
+```
+Agent(validator, "--full --files batch1 --output _validation_batch1/")
+Agent(validator, "--full --files batch2 --output _validation_batch2/")
 ```
 
 EXPLAIN은 문법 게이트. 실행+비교가 주 검증. 양쪽 결과에서 test_id별 row count 비교, 불일치 시 Phase 4 대상.
@@ -222,18 +229,15 @@ python3 tools/generate-healing-tickets.py --validation-dir workspace/results/_va
 }
 ```
 
-**Step 2: 티켓별 힐링 루프 (최대 5회)**
+**Step 2: Healer 서브에이전트에 위임 (Leader가 직접 루프 돌리지 마라)**
 ```
-for each ticket (severity순, critical → high → medium):
-  1. Reviewer(원인 분석) → ticket.history에 분석 결과 기록
-  2. Converter(재변환) → output XML 수정 + ticket.history에 수정 내용 기록
-  3. 재검증 (2단계):
-     a. EXPLAIN 재검증 (빠른 문법 체크)
-     b. Java 설치 시 → MyBatis 엔진으로 동적 SQL 렌더링 후 재검증 (정확도 높음)
-        bash tools/run-extractor.sh --skip-build 로 수정된 output XML 재추출
-  4. 성공 → ticket.status = "resolved"
-  5. 실패 → ticket.retry_count++ → 다음 retry (최대 5회)
-  6. 5회 실패 → ticket.status = "escalated"
+# 티켓을 배치로 나눠 Healer 서브에이전트에 병렬 위임
+Agent(healer, "tickets HT-001~HT-020, workspace/results/_healing/")
+Agent(healer, "tickets HT-021~HT-040, workspace/results/_healing/")
+```
+**Healer가 내부에서 분석→수정→`--full` 재검증 루프를 자체 수행.**
+**Leader는 Healer 결과만 받는다. Leader가 직접 Reviewer→Converter 루프를 돌리지 마라.**
+각 Healer: 최소 3회 시도, 최대 5회. resolved 또는 escalated로 종료.
 ```
 **동적 SQL 쿼리는 static EXPLAIN만으로 검증 불가.** `<if>`, `<include>`, `<foreach>` 때문에
 추출 SQL이 불완전할 수 있으므로, **MyBatis 엔진 재검증을 우선**하라.
