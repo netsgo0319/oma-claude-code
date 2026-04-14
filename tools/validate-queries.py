@@ -745,11 +745,11 @@ SET HEADING ON
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
-                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
                     else:
                         dml_where = self._extract_dml_where(ora_bound)
                         if dml_where:
-                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
                         else:
                             oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
                     oracle_lines.append("")
@@ -811,11 +811,11 @@ SET HEADING ON
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
-                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
                     else:
                         dml_where = self._extract_dml_where(ora_bound)
                         if dml_where:
-                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
                         else:
                             oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
                     oracle_lines.append("")
@@ -880,11 +880,11 @@ SET HEADING ON
                         oracle_lines.append(f"PROMPT === {test_id} ===")
                         if qtype == 'select':
                             safe_ora = ora_bound.rstrip(';')
-                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora}) WHERE ROWNUM <= 50;")
+                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
                         else:
                             dml_where = self._extract_dml_where(ora_bound)
                             if dml_where:
-                                oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where}) WHERE ROWNUM <= 50;")
+                                oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
                             else:
                                 oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
                         oracle_lines.append("")

@@ -133,7 +133,7 @@ inclusion: always
 | DBMS_OUTPUT.PUT_LINE(msg) | RAISE NOTICE '%', msg | PL/pgSQL 내에서 |
 | PKG_CRYPTO.DECRYPT(input, key) | pkg_crypto$decrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
 | PKG_CRYPTO.ENCRYPT(input, key) | pkg_crypto$encrypt(input, key) | **converter.py 자동 변환**. PG에 래퍼 함수 필수 |
-| WMSON.PKG_CRYPTO.FUNC(args) | pkg_crypto_func(args) | 스키마 접두사 자동 제거 |
+| SCHEMA.PKG_CRYPTO.FUNC(args) | pkg_crypto_func(args) | 스키마 접두사 자동 제거 |
 | PKG_* (커스텀 패키지 일반) | PL/pgSQL 함수 또는 확장 | LLM 태깅됨. 패키지 로직 분석 후 수동 변환 필요 |
 
 **PKG_CRYPTO PG 함수 매핑 (DBA 제공):**

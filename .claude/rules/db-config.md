@@ -40,13 +40,13 @@ inclusion: manual
 
 ```bash
 # Oracle
-export ORACLE_HOST=10.0.139.149
+export ORACLE_HOST=oracle.example.com
 export ORACLE_PORT=1521
-export ORACLE_SID=ORCLPDB1          # PDB Service Name
+export ORACLE_SID=ORCL          # PDB Service Name
 export ORACLE_CONN_TYPE=service     # 'service' (기본) 또는 'sid'
-export ORACLE_USER=wmson
+export ORACLE_USER=migration_user
 export ORACLE_PASSWORD=****
-export ORACLE_SCHEMA=WMSON          # 딕셔너리 쿼리 대상 스키마 (admin 계정 사용 시)
+export ORACLE_SCHEMA=APP_SCHEMA          # 딕셔너리 쿼리 대상 스키마 (admin 계정 사용 시)
 
 # Java 소스 (VO/DTO 분석용 — 복사 불필요, 경로 참조만)
 export JAVA_SRC_DIR=/path/to/app/src/main/java

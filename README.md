@@ -102,13 +102,13 @@ workspace/
 
 ```bash
 # Oracle
-export ORACLE_HOST=10.0.139.149
+export ORACLE_HOST=oracle.example.com
 export ORACLE_PORT=1521
-export ORACLE_SID=ORCLPDB1              # PDB Service Name
+export ORACLE_SID=ORCL              # PDB Service Name
 export ORACLE_CONN_TYPE=service         # 'service' (기본) 또는 'sid'
-export ORACLE_USER=wmson
+export ORACLE_USER=migration_user
 export ORACLE_PASSWORD=****
-export ORACLE_SCHEMA=WMSON              # 딕셔너리 대상 스키마
+export ORACLE_SCHEMA=APP_SCHEMA              # 딕셔너리 대상 스키마
 
 # PostgreSQL
 export PG_HOST=pg.example.com
