@@ -17,7 +17,7 @@ allowed-tools:
 
 ## 핵심 원칙
 
-**기계적 변환은 이미 Leader가 `tools/oracle-to-pg-converter.py`로 완료했다.**
+**기계적 변환은 이미 메인 에이전트가 `tools/oracle-to-pg-converter.py`로 완료했다.**
 **당신의 역할은 기계적 변환이 처리하지 못한 복잡 패턴(CONNECT BY, MERGE INTO, (+) 조인 등)만 LLM으로 변환하는 것이다.**
 
 conversion-report.json의 `unconverted` 목록 = 당신이 처리할 대상.
@@ -34,7 +34,7 @@ conversion-report.json의 `unconverted` 목록 = 당신이 처리할 대상.
 - 변환 결과를 converted.json과 output XML로 기록
 
 ## 입력
-Leader로부터 전달받는 정보:
+메인 에이전트로부터 전달받는 정보:
 - 대상 파일 목록 (예: ["UserMapper.xml", "OrderMapper.xml"])
 - 버전 번호 (예: 1, 재시도 시 2, 3...)
 
@@ -72,7 +72,7 @@ java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar
 
 ### 0. 기계적 변환 (rule-convert-tool, v1에서만 실행)
 
-**Phase 1에서 이미 실행됐으면 재실행하지 마라.**
+**Step 1에서 이미 실행됐으면 재실행하지 마라.**
 룰 컨버터는 input XML에서 output XML을 새로 생성하므로, **LLM 변환 후 재실행하면 LLM 수정이 덮어씌워진다.**
 - **v1 (최초)**: 룰 컨버터 실행 OK
 - **v2+ (재시도)**: output XML에 Edit으로 직접 수정. 룰 컨버터 재실행 금지.
@@ -112,9 +112,8 @@ oracle_tags에 "llm"이 포함되거나 룰에서 에스컬레이션된 쿼리:
 - confidence 평가 (high/medium/low)
 
 ### 4. 재시도 건 처리 (v2 이상)
-review.json이 존재하면:
-- review.json의 fix_applied와 fixed_sql 참조
-- 기존 변환이 아닌 리뷰어의 수정안을 기반으로 변환
+이전 검증에서 실패한 쿼리의 수정안이 있으면:
+- 기존 변환이 아닌 수정안을 기반으로 변환
 
 ### 5. 결과 기록
 - workspace/output/{filename}.xml — 변환된 XML (원본 구조 유지, SQL만 교체)
@@ -123,7 +122,7 @@ review.json이 존재하면:
 ### 6. query-tracking.json 갱신 (필수 — 빠뜨리면 리포트에 반영 안 됨!)
 
 **output XML 수정 후 반드시 query-tracking.json을 갱신해야 한다.**
-갱신하지 않으면 query-matrix, 보고서, Phase 4 힐링에서 해당 쿼리가 "미변환"으로 표시된다.
+갱신하지 않으면 query-matrix, 보고서에서 해당 쿼리가 "미변환"으로 표시된다.
 
 LLM 변환한 각 쿼리에 대해 직접 갱신:
 ```python
@@ -138,13 +137,13 @@ LLM 변환한 각 쿼리에 대해 직접 갱신:
 }
 ```
 
-**갱신 체크리스트 (Leader 반환 전 반드시 확인):**
+**갱신 체크리스트 (반환 전 반드시 확인):**
 - [ ] output/{filename}.xml 수정됨
 - [ ] query-tracking.json의 pg_sql 갱신됨
 - [ ] query-tracking.json의 conversion_method = "llm"
 - [ ] query-tracking.json의 status = "converted"
 
-### 7. Leader에게 반환
+### 7. 메인 에이전트에게 반환
 한 줄 요약만: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"
 
 ## XML 생성 규칙
@@ -167,7 +166,7 @@ assets/parsed-template.json의 conversions 배열 참조:
 
 ## 레이어 기반 변환
 
-Leader로부터 레이어 정보와 복잡도 레벨을 전달받는다.
+메인 에이전트로부터 레이어 정보와 복잡도 레벨을 전달받는다.
 
 ### 레이어 컨텍스트 활용
 - 이전 레이어에서 성공한 변환 결과를 참조할 수 있다

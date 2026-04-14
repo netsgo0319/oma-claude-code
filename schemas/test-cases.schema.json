@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Test Cases",
-  "description": "test-generator 에이전트의 출력. Oracle 딕셔너리 기반 테스트 케이스.",
+  "description": "TC 생성 도구의 출력. Oracle 딕셔너리 기반 테스트 케이스.",
   "type": "object",
   "required": ["version", "source_file", "query_test_cases"],
   "properties": {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Review Result",
-  "description": "reviewer 에이전트의 출력. 실패 원인 분석 및 수정안.",
+  "description": "validate-and-fix 에이전트의 출력. 실패 원인 분석 및 수정안.",
   "type": "object",
   "required": ["version", "query_id", "failure_type", "root_cause", "fix_applied", "previous_sql", "fixed_sql", "attempt", "max_attempts"],
   "properties": {

@@ -383,7 +383,7 @@ def main():
     # Activity log
     try:
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='parse-xml', phase='phase_1',
+        log_activity('STEP_END', agent='parse-xml', step='step_1',
                      file=parsed['source_file'],
                      detail=f"Parsed {m['total_queries']} queries (rule:{m['rule_tagged']}, llm:{m['llm_tagged']})",
                      duration_ms=_elapsed)

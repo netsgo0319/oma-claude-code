@@ -15,8 +15,8 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 ```json
 {
   "timestamp": "2026-04-09T12:34:56Z",
-  "phase": "phase_0 | phase_1 | phase_2 | phase_2.5 | phase_3 | phase_4 | phase_5 | phase_6",
-  "agent": "leader | converter | test-generator | validator | reviewer | learner",
+  "phase": "step_0 | step_1 | step_2 | step_3 | step_4",
+  "agent": "converter | validate-and-fix",
   "file": "UserMapper.xml",
   "query_id": "selectUserById",
   "version": 1,
@@ -29,25 +29,25 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 
 ### 필드 설명
 - **timestamp**: ISO 8601 형식의 기록 시각
-- **phase**: 현재 Phase (phase_0 ~ phase_6)
+- **phase**: 현재 Step (step_0 ~ step_4)
 - **agent**: 기록 주체 에이전트
 - **file**: 대상 파일명
 - **query_id**: 대상 쿼리 ID
 - **version**: 변환 버전
 - **type**: 로그 타입 (아래 참조)
 - **summary**: 한 줄 요약
-- **duration_ms**: (선택) 작업 소요 시간 (밀리초). Phase/변환/검증 등의 실행 시간
+- **duration_ms**: (선택) 작업 소요 시간 (밀리초). Step/변환/검증 등의 실행 시간
 - **detail**: 타입별 상세 정보 객체
 
 ## 로그 타입
 
-### PHASE_START — Phase 시작
+### STEP_START — Step 시작
 ```json
 {
-  "type": "PHASE_START",
-  "summary": "Phase 2 시작: 50개 파일 변환",
+  "type": "STEP_START",
+  "summary": "Step 1 시작: 50개 파일 변환",
   "detail": {
-    "phase": "phase_2",
+    "step": "step_1",
     "total_files": 50,
     "batch_size": 5,
     "batch_count": 10
@@ -55,14 +55,14 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 }
 ```
 
-### PHASE_END — Phase 완료
+### STEP_END — Step 완료
 ```json
 {
-  "type": "PHASE_END",
-  "summary": "Phase 2 완료: 50파일 변환, 1200룰/300LLM",
+  "type": "STEP_END",
+  "summary": "Step 1 완료: 50파일 변환, 1200룰/300LLM",
   "duration_ms": 45000,
   "detail": {
-    "phase": "phase_2",
+    "step": "step_1",
     "duration_ms": 45000,
     "success_count": 50,
     "fail_count": 0
@@ -145,7 +145,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
     "fix_description": "UNION ALL을 UNION으로 변경하고, 방문 경로 배열(path)을 추가하여 순환 감지",
     "previous_sql": "WITH RECURSIVE ... UNION ALL ...",
     "fixed_sql": "WITH RECURSIVE ... UNION ... WHERE NOT (id = ANY(path))",
-    "fix_source": "reviewer 분석",
+    "fix_source": "validate-and-fix 분석",
     "root_cause": "CONNECT BY NOCYCLE → WITH RECURSIVE 변환 시 순환 탈출 조건 누락"
   }
 }
@@ -218,7 +218,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 ## 로깅 규칙
 
 ### 반드시 로그를 남겨야 하는 상황:
-1. 모든 Phase 시작/종료 (PHASE_START, PHASE_END)
+1. 모든 Step 시작/종료 (STEP_START, STEP_END)
 2. 모든 변환 판단 (rule vs llm 선택 — DECISION)
 3. 모든 변환 시도 (ATTEMPT)
 4. 모든 검증 결과 (SUCCESS 또는 ERROR)

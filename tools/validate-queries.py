@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 3: Query Validation Tool
+Step 3: Query Validation Tool
 Validates converted PostgreSQL queries using test-cases.json bind values.
 
 Usage:
@@ -19,7 +19,7 @@ Usage:
     # Compare Oracle vs PostgreSQL results (the core migration validation)
     python3 tools/validate-queries.py --compare --output workspace/results/_validation/
 
-    # Use extracted SQL from mybatis-sql-extractor (Phase 3.5)
+    # Use extracted SQL from mybatis-sql-extractor
     python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation/
 
     # Full atomic validation (generate + EXPLAIN + Execute + Oracle Compare + parse)
@@ -433,7 +433,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_compare',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_compare',
                          detail=f"Compare: {pass_count} match, {fail_count} fail, {warn_count} warn (total {total})")
         except Exception:
             pass
@@ -460,6 +460,83 @@ SET HEADING ON
                         'params': [],
                     })
         print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('**/*.xml')))} files")
+
+    def _supplement_static_queries(self, extracted_qids_by_file):
+        """Add static XML queries for IDs not covered by MyBatis extraction.
+        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH.
+        Resolves <include refid="..."/> by looking up <sql id="..."> fragments."""
+        import xml.etree.ElementTree as ET
+        added = 0
+        for xml_file in sorted(self.output_dir.glob('**/*.xml')):
+            try:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+            except ET.ParseError:
+                continue
+            # Build sql fragment map for <include refid="..."/> resolution
+            sql_fragments = {}
+            for sql_elem in root.findall('.//{http://mybatis.org/dtd/mybatis-3-mapper.dtd}sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+            # Also try without namespace
+            for sql_elem in root.findall('.//sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.findall(f'.//{tag}'):
+                    qid = elem.get('id', 'unknown')
+                    key = (xml_file.name, qid)
+                    if key not in extracted_qids_by_file:
+                        sql_text = self._extract_sql_text(elem, sql_fragments)
+                        if sql_text and sql_text.strip():
+                            self.queries.append({
+                                'file': xml_file.name,
+                                'id': qid,
+                                'type': tag,
+                                'sql_raw': sql_text,
+                                'params': [],
+                            })
+                            added += 1
+        return added
+
+    @staticmethod
+    def _extract_sql_text(elem, sql_fragments=None):
+        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags."""
+        if sql_fragments is None:
+            sql_fragments = {}
+        parts = []
+        if elem.text:
+            parts.append(elem.text)
+        for child in elem:
+            if child.tag == 'include':
+                # Resolve <include refid="..."/>
+                refid = child.get('refid', '')
+                if refid and refid in sql_fragments:
+                    frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                    parts.append(frag_sql)
+            else:
+                # Include text content of dynamic tags (<if>, <choose>, <where>, etc.)
+                if child.text:
+                    parts.append(child.text)
+                # Recurse into nested elements
+                for sub in child.iter():
+                    if sub is not child:
+                        if sub.tag == 'include':
+                            refid = sub.get('refid', '')
+                            if refid and refid in sql_fragments:
+                                frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                                parts.append(frag_sql)
+                        else:
+                            if sub.text:
+                                parts.append(sub.text)
+                            if sub.tail:
+                                parts.append(sub.tail)
+            if child.tail:
+                parts.append(child.tail)
+        return ' '.join(parts)
 
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
@@ -654,6 +731,71 @@ SET HEADING ON
         sqlplus treats newlines as command terminators, causing SP2-0734 errors."""
         return re.sub(r'\s+', ' ', sql).strip()
 
+    @staticmethod
+    def _select_best_tcs(tc_cases, max_tcs=2):
+        """Select best test cases prioritizing CUSTOM > SAMPLE > INFERRED > null/fallback.
+        Returns up to max_tcs entries, each with 'params' (or 'binds'), 'name', 'source'."""
+        if not tc_cases:
+            return []
+
+        # Bucket by source priority
+        priority_map = {'CUSTOM': 0, 'SAMPLE_DATA': 1, 'SAMPLE': 1, 'INFERRED': 2}
+        buckets = {0: [], 1: [], 2: [], 9: []}  # 9 = null/unknown
+
+        for tc in tc_cases:
+            if not isinstance(tc, dict):
+                continue
+            source = str(tc.get('source', tc.get('name', ''))).upper()
+            params = tc.get('params', tc.get('binds', {}))
+
+            # Skip TCs with all-None params (null_test equivalent)
+            if isinstance(params, dict) and params:
+                non_null_count = sum(1 for v in params.values() if v is not None)
+                if non_null_count == 0:
+                    buckets[9].append(tc)
+                    continue
+
+            # Classify by source
+            matched = False
+            for key, pri in priority_map.items():
+                if key in source:
+                    buckets[pri].append(tc)
+                    matched = True
+                    break
+            if not matched:
+                # Check if it's a null_test by name
+                name = str(tc.get('name', '')).lower()
+                if 'null' in name:
+                    buckets[9].append(tc)
+                else:
+                    buckets[2].append(tc)  # treat unknown as INFERRED level
+
+        # Select from highest priority bucket first
+        result = []
+        for pri in [0, 1, 2, 9]:
+            for tc in buckets[pri]:
+                if len(result) >= max_tcs:
+                    break
+                result.append(tc)
+            if len(result) >= max_tcs:
+                break
+
+        return result
+
+    @staticmethod
+    def _strip_leading_comment(sql):
+        """Strip leading /* ... */ comment to avoid nested comment issues.
+        MyBatis extractor adds /* file - queryId - ... */ prefix, but if original SQL
+        also starts with /*, it creates nested /* ... /* ... */ which is invalid SQL."""
+        sql = sql.lstrip()
+        if sql.startswith('/*'):
+            # Find the matching */
+            end = sql.find('*/')
+            if end != -1:
+                # Strip the comment and any following whitespace
+                sql = sql[end+2:].lstrip()
+        return sql
+
     def generate_scripts(self, output_dir):
         """Generate SQL test scripts for remote execution.
         Generates: explain_test.sql (PG), execute_test.sql (PG), oracle_compare.sql (Oracle)"""
@@ -661,8 +803,18 @@ SET HEADING ON
         output_path.mkdir(parents=True, exist_ok=True)
 
         all_tests = []
-        explain_lines = ["\\set ON_ERROR_STOP off", ""]
-        execute_lines = ["\\set ON_ERROR_STOP off", ""]
+        # PostgreSQL scripts
+        pg_schema = os.environ.get('PG_SCHEMA', '')
+        explain_lines = ["\\set ON_ERROR_STOP off"]
+        if pg_schema:
+            explain_lines.append(f"SET search_path TO {pg_schema};")
+        explain_lines.append("")
+
+        execute_lines = ["\\set ON_ERROR_STOP off"]
+        if pg_schema:
+            execute_lines.append(f"SET search_path TO {pg_schema};")
+        execute_lines.append("")
+
         # Oracle compare script (sqlplus format)
         ora_schema = os.environ.get('ORACLE_SCHEMA', '')
         oracle_lines = [
@@ -676,7 +828,7 @@ SET HEADING ON
         for query in self.queries:
             qid = query['id']
             fname = query['file'].replace('.xml', '')
-            sql = query['sql_raw']
+            sql = self._strip_leading_comment(query['sql_raw'])  # Strip nested comments
             qtype = query['type']
             is_extracted = query.get('from_extracted', False)
             variant_name = query.get('variant', '')
@@ -684,78 +836,90 @@ SET HEADING ON
             # MAIN PATH: Extracted SQL from MyBatis engine (has ? placeholders)
             if is_extracted:
                 param_names = query.get('param_names_for_bind', [])
-                tc_binds = {}
-                # Try to find TC values for these parameter names
-                if param_names:
-                    tc_cases = self.test_cases.get(qid, [])
-                    if tc_cases and isinstance(tc_cases[0], dict):
-                        tc_binds = tc_cases[0].get('params', tc_cases[0].get('binds', {}))
 
-                # Replace ? with TC values positionally
-                parts = sql.split('?')
-                placeholder_count = len(parts) - 1
-                if param_names and len(param_names) != placeholder_count:
-                    print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
-                bound_parts = [parts[0]]
-                for i in range(1, len(parts)):
-                    pname = param_names[i-1] if i-1 < len(param_names) else ''
-                    val = tc_binds.get(pname)
-                    if val is None:
-                        bound_parts.append("'1'")  # fallback
-                    elif isinstance(val, (int, float)):
-                        bound_parts.append(str(val))
-                    elif isinstance(val, str):
-                        bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
-                    else:
-                        bound_parts.append("'1'")
-                    bound_parts.append(parts[i])
-                bound_sql = ''.join(bound_parts)
-                test_id = f"{fname}.{qid}.{variant_name}" if variant_name else f"{fname}.{qid}.default"
-                all_tests.append({
-                    'test_id': test_id,
-                    'file': query['file'],
-                    'query_id': qid,
-                    'type': qtype,
-                    'case': variant_name or 'extracted',
-                    'bound_sql': bound_sql,
-                    'from_extracted': True,
-                })
+                # Select best TC bind sets: prioritize CUSTOM > SAMPLE > INFERRED > null
+                tc_cases = self.test_cases.get(qid, [])
+                selected_tcs = self._select_best_tcs(tc_cases, max_tcs=2)
 
-                explain_lines.append(f"\\echo === {test_id} ===")
-                explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
-                explain_lines.append("")
+                # If no real TCs found, use empty dict (fallback to '1')
+                if not selected_tcs:
+                    selected_tcs = [{'name': 'fallback', 'params': {}, 'source': 'FALLBACK'}]
 
-                if qtype == 'select':
-                    safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
-                else:
-                    # DML: wrap in BEGIN/ROLLBACK with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                for tc_idx, tc_entry in enumerate(selected_tcs):
+                    tc_binds = tc_entry.get('params', tc_entry.get('binds', {}))
+                    tc_name = tc_entry.get('name', f'tc{tc_idx}')
+                    tc_source = tc_entry.get('source', 'UNKNOWN')
 
-                # Oracle compare
-                oracle_sql = self.oracle_queries.get(qid, '')
-                if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
-                    oracle_lines.append(f"PROMPT === {test_id} ===")
-                    if qtype == 'select':
-                        safe_ora = ora_bound.rstrip(';')
-                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
-                    else:
-                        dml_where = self._extract_dml_where(ora_bound)
-                        if dml_where:
-                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
+                    # Replace ? with TC values positionally
+                    parts = sql.split('?')
+                    placeholder_count = len(parts) - 1
+                    if param_names and len(param_names) != placeholder_count and tc_idx == 0:
+                        print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
+                    bound_parts = [parts[0]]
+                    for i in range(1, len(parts)):
+                        pname = param_names[i-1] if i-1 < len(param_names) else ''
+                        val = tc_binds.get(pname)
+                        if val is None:
+                            bound_parts.append("'1'")  # fallback
+                        elif isinstance(val, (int, float)):
+                            bound_parts.append(str(val))
+                        elif isinstance(val, str):
+                            bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
                         else:
-                            oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
-                    oracle_lines.append("")
+                            bound_parts.append("'1'")
+                        bound_parts.append(parts[i])
+                    bound_sql = ''.join(bound_parts)
+
+                    # Build test_id: include tc name for multiple TCs
+                    tc_suffix = f".{tc_name}" if len(selected_tcs) > 1 else ""
+                    test_id = f"{fname}.{qid}.{variant_name}{tc_suffix}" if variant_name else f"{fname}.{qid}.default{tc_suffix}"
+                    all_tests.append({
+                        'test_id': test_id,
+                        'file': query['file'],
+                        'query_id': qid,
+                        'type': qtype,
+                        'case': variant_name or 'extracted',
+                        'tc_name': tc_name,
+                        'tc_source': tc_source,
+                        'bound_sql': bound_sql,
+                        'from_extracted': True,
+                    })
+
+                    explain_lines.append(f"\\echo === {test_id} ===")
+                    explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
+                    explain_lines.append("")
+
+                    if qtype == 'select':
+                        safe_sql = bound_sql.rstrip(';')
+                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"SET statement_timeout = '30s';")
+                        execute_lines.append(f"{safe_sql};")
+                        execute_lines.append("")
+                    else:
+                        # DML: wrap in BEGIN/ROLLBACK with short timeout
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"BEGIN;")
+                        execute_lines.append(f"{bound_sql.rstrip(';')};")
+                        execute_lines.append(f"ROLLBACK;")
+                        execute_lines.append("")
+
+                    # Oracle compare
+                    oracle_sql = self.oracle_queries.get(qid, '')
+                    if oracle_sql:
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
+                        oracle_lines.append(f"PROMPT === {test_id} ===")
+                        if qtype == 'select':
+                            safe_ora = ora_bound.rstrip(';')
+                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
+                        else:
+                            dml_where = self._extract_dml_where(ora_bound)
+                            if dml_where:
+                                oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
+                            else:
+                                oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
+                        oracle_lines.append("")
 
                 continue
 
@@ -1068,7 +1232,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_explain',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_explain',
                          detail=f"EXPLAIN: {pass_count} pass, {fail_count} fail")
         except Exception:
             pass
@@ -1232,7 +1396,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_execute',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_execute',
                          detail=f"Execute: {pass_count} pass, {fail_count} fail, {len(warnings)} warnings")
         except Exception:
             pass
@@ -1469,6 +1633,10 @@ SET HEADING ON
 
         for line in output.split('\n'):
             if line.startswith('=== ') and line.endswith(' ==='):
+                # When we see a new test header, the previous test had no ERROR → count as pass
+                if current_test:
+                    pass_count += 1
+                    passes.append(current_test)
                 current_test = line.strip('= ')
             elif 'ERROR' in line and current_test:
                 fail_count += 1
@@ -1478,6 +1646,10 @@ SET HEADING ON
                 pass_count += 1
                 passes.append(current_test)
                 current_test = None
+        # Last test in file: if no ERROR seen, it passed
+        if current_test:
+            pass_count += 1
+            passes.append(current_test)
 
         print(f"\nParsed Results: PASS={pass_count}, FAIL={fail_count}")
 
@@ -1686,7 +1858,7 @@ SET HEADING ON
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Phase 3: Query Validation Tool')
+    parser = argparse.ArgumentParser(description='Step 3: Query Validation Tool')
     parser.add_argument('--generate', action='store_true', help='Generate SQL test scripts')
     parser.add_argument('--local', action='store_true', help='Execute EXPLAIN locally via psql')
     parser.add_argument('--execute', action='store_true', help='Execute queries locally via psql (actual execution)')
@@ -1718,7 +1890,8 @@ def main():
             print(f"  Filtered: {before} -> {len(validator.queries)} queries")
 
     def load_queries_with_extracted_priority():
-        """Always try load_extracted() first. Fall back to load_queries() with WARNING."""
+        """Always try load_extracted() first. Fall back to load_queries() with WARNING.
+        Supplement with static XML queries for any queries not covered by extraction."""
         # Auto-detect extracted dir if not specified
         extracted_dir = args.extracted
         if not extracted_dir:
@@ -1739,6 +1912,17 @@ def main():
             print("WARNING: No MyBatis extracted SQL found. Using static extraction (limited). "
                   "Install Java 11+ for accurate validation.")
             validator.load_queries()
+        else:
+            # Supplement: add static XML queries for any query IDs not covered by extraction
+            # (e.g., queries where MyBatis returned empty SQL due to dynamic conditions)
+            extracted_qids_by_file = set()
+            for q in validator.queries:
+                extracted_qids_by_file.add((q['file'], q['id']))
+            before_count = len(validator.queries)
+            validator._supplement_static_queries(extracted_qids_by_file)
+            added = len(validator.queries) - before_count
+            if added > 0:
+                print(f"Supplemented {added} static XML queries (MyBatis extraction was empty)")
 
         validator.load_test_cases()
 

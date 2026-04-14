@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Phase 2.5: Test Case Generator (sample-data-first)
+Step 2: Test Case Generator (sample-data-first)
 
 TC value sources (priority order):
-  1. Java VO analysis (--java-src) — parse VO/DTO field names + types
-  2. Sample data (_samples/*.json) — real rows from Oracle tables  [PRIMARY]
+  0. Custom binds (workspace/input/custom-binds.json) — 고객 제공 [HIGHEST]
+  1. Sample data (_samples/*.json) — real rows from Oracle tables  [PRIMARY]
+  2. Java VO analysis (--java-src) — parse VO/DTO field names + types
   3. V$SQL_BIND_CAPTURE — captured bind values from production
   4. ALL_TAB_COL_STATISTICS — MIN/MAX boundary values
   5. ALL_CONSTRAINTS (FK) — sampled values from referenced tables
@@ -68,8 +69,8 @@ _JAVA_FIELD_RE = re.compile(r'private\s+(\w+(?:<.*?>)?)\s+(\w+)\s*;')
 JAVA_TYPE_DEFAULTS = {
     'String': 'TEST', 'int': 1, 'Integer': 1, 'long': 1, 'Long': 1,
     'double': 1.0, 'Double': 1.0, 'float': 1.0, 'Float': 1.0, 'BigDecimal': 1,
-    'boolean': True, 'Boolean': True, 'Date': '2026-01-15', 'LocalDate': '2026-01-15',
-    'LocalDateTime': '2026-01-15 10:30:00', 'Timestamp': '2026-01-15 10:30:00',
+    'boolean': True, 'Boolean': True, 'Date': '20260115', 'LocalDate': '20260115',
+    'LocalDateTime': '20260115103000', 'Timestamp': '20260115103000',
 }
 
 def parse_java_vo(java_src_dir):
@@ -215,13 +216,21 @@ def get_table_row_counts():
 # ── Name/type inference (fallback) ──────────────
 
 _SPECIAL = {
-    'sysdate': '2026-01-15 10:30:00', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
+    'sysdate': '20260115103000', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
     'updateurkey': 'SYSTEM', 'delyn': 'N', 'useyn': 'Y',
     'owkey': 'DS', 'ctkey': 'HE', 'interfaceid': 'IF001', 'ifid': '1',
 }
 
+# Framework-injected pagination parameters — empty string at test time
+_FRAMEWORK_PARAMS = {
+    'gridpaging_rownumtype_top', 'gridpaging_rownumtype_bottom',
+    'gridpaging_prefix', 'gridpaging_suffix',
+    'gridpaging_rownum_top', 'gridpaging_rownum_bottom',
+}
+
 def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=None):
     pn, pu = param.lower(), param.upper()
+    if pn in _FRAMEWORK_PARAMS: return ''
     if pn in _SPECIAL: return _SPECIAL[pn]
     if vo_fields and param in vo_fields:
         base = re.sub(r'<.*?>', '', vo_fields[param])
@@ -250,6 +259,26 @@ def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=
 DML_ROW_LIMIT = 10000
 DML_TIMEOUT = 5
 
+# ── Source 0: Custom binds (고객 제공) ────────────
+
+def load_custom_binds(input_dir):
+    """Load workspace/input/custom-binds.json. Returns {query_id: [{name, params}]}."""
+    custom = {}
+    for p in [Path(input_dir) / 'custom-binds.json', Path(input_dir) / 'custom_binds.json']:
+        if p.exists():
+            try:
+                data = json.loads(p.read_text(encoding='utf-8'))
+                if isinstance(data, dict):
+                    for qid, cases in data.items():
+                        if isinstance(cases, dict):
+                            custom[qid] = [cases]  # single bind set
+                        elif isinstance(cases, list):
+                            custom[qid] = cases
+                print(f"  Source-Custom: {len(custom)} queries from {p.name}")
+            except Exception as e:
+                print(f"  WARNING: custom-binds.json parse error: {e}")
+    return custom
+
 def _tables(sql):
     skip = {'DUAL','SELECT','WHERE','SET','VALUES','AND','OR','NOT','NULL'}
     return [t.upper() for t in re.findall(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(\w+)', sql, re.I) if t.upper() not in skip]
@@ -257,7 +286,7 @@ def _tables(sql):
 def _params(sql):
     return list(dict.fromkeys(re.findall(r'#\{(\w+)\}', sql)))
 
-def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows):
+def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None):
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
@@ -278,6 +307,23 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
         cases.append(tc)
 
     def _dup(binds): return any(c['params'] == binds for c in cases)
+
+    # Priority 0: Custom binds (고객 제공 — 최우선)
+    # Try both filename::queryID and just queryID for backward compatibility
+    custom_key = f"{filename}::{qid}" if filename else qid
+    custom_cases = custom_binds.get(custom_key) if custom_binds else None
+    # Fallback to just queryID if filename::queryID not found
+    if not custom_cases and custom_binds and qid in custom_binds:
+        custom_cases = custom_binds.get(qid)
+
+    if custom_cases:
+        for i, cb in enumerate(custom_cases):
+            binds = dict(cb) if isinstance(cb, dict) else {}
+            # 고객이 안 준 나머지 파라미터는 추론으로 채움
+            for p in params:
+                if p not in binds:
+                    binds[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
+            _add(f'custom_{i+1}', binds, 'CUSTOM')
 
     # Priority 1: Sample data TCs (sample_row_1, _2, _3)
     if sample_data:
@@ -352,9 +398,10 @@ def main():
     DML_ROW_LIMIT = args.dml_row_limit
     results_dir = Path(args.results_dir)
     samples_dir = args.samples_dir or str(results_dir / '_samples')
-    print("=== Phase 2.5: Test Case Generator (sample-data-first) ===\n")
+    print("=== Step 2: Test Case Generator ===\n")
 
     # Collect sources
+    custom_binds = load_custom_binds('workspace/input')
     java_src = args.java_src or os.environ.get('JAVA_SRC_DIR', '')
     vo_map = parse_java_vo(java_src) if java_src else {}
     sample_data = load_sample_data(samples_dir)
@@ -376,11 +423,12 @@ def main():
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
+        filename = parsed.get('source_file', '')
         file_tc = {}
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
             tcs = build_query_tcs(qid, q, sample_data, vo_map, pt_map,
-                                  captures, col_stats, fk_values, table_rows)
+                                  captures, col_stats, fk_values, table_rows, custom_binds, filename)
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
@@ -412,7 +460,7 @@ def main():
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='generate-test-cases', phase='phase_2.5',
+        log_activity('STEP_END', agent='generate-test-cases', step='step_2',
                      detail=f"TC: {total_files} files, {total_cases} cases "
                             f"(sample:{source_counts.get('SAMPLE_DATA',0)}, "
                             f"capture:{source_counts.get('BIND_CAPTURE',0)}, "

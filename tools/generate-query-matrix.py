@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Query Validation Matrix Generator
-전체 쿼리에 대해 변환/EXPLAIN/비교/힐링 상태를 한눈에 볼 수 있는 CSV+JSON 출력.
+전체 쿼리에 대해 변환/EXPLAIN/비교/재시도 상태를 한눈에 볼 수 있는 CSV+JSON 출력.
 
 Usage:
     python3 tools/generate-query-matrix.py
@@ -12,7 +12,7 @@ Output columns:
     conversion: method, status,
     explain: status, source (static/mybatis), error_category, error_detail,
     compare: status, tc_total, tc_pass, tc_fail, fail_reason,
-    healing: ticket_id, ticket_status, skip_reason, retry_count,
+    attempt: count, summary,
     mybatis_extracted,
     overall: status, status_detail
 """
@@ -25,7 +25,7 @@ import sys
 import argparse
 from pathlib import Path
 from datetime import datetime
-from collections import Counter
+from collections import Counter, OrderedDict
 
 
 def classify_explain_error(error):
@@ -53,10 +53,10 @@ def classify_explain_error(error):
 OVERALL_LABELS = {
     # 성공
     'PASS_COMPLETE': '변환+비교 통과',
-    'PASS_HEALED': '힐링 후 비교 통과',
+    'PASS_HEALED': '수정 후 비교 통과',
     'PASS_NO_CHANGE': '변환 불필요 + 비교 통과',
-    # 실패 — 힐링 시도 후
-    'FAIL_ESCALATED': '5회 힐링 후 미해결',
+    # 실패 — 재시도 후
+    'FAIL_ESCALATED': '최대 재시도 후 미해결',
     'FAIL_SYNTAX': 'SQL 문법 에러',
     'FAIL_COMPARE_DIFF': 'Oracle↔PG 행수 불일치',
     # 실패 — DBA 필요
@@ -120,15 +120,24 @@ def main():
                     qid = r.get('query_id', '')
                     compare_results.setdefault(qid, []).append(r)
 
-    # Load healing tickets
-    healing_map = {}  # {query_id: ticket}
-    healing_path = results_dir / '_healing' / 'tickets.json'
-    if healing_path.exists():
-        hdata = json.load(open(healing_path))
-        for t in hdata.get('tickets', []):
-            qid = t.get('query_id', '')
+    # Load test-cases.json files (keyed by query_id)
+    test_cases_by_qid = {}
+    for tc_file in glob.glob(str(results_dir / '*/v*/test-cases.json')):
+        try:
+            tc_data = json.load(open(tc_file))
+        except Exception:
+            continue
+        for qtc in tc_data.get('query_test_cases', []):
+            qid = qtc.get('query_id', '')
             if qid:
-                healing_map[qid] = t
+                cases = []
+                for tc in qtc.get('test_cases', []):
+                    cases.append({
+                        'name': tc.get('case_id', tc.get('description', '')),
+                        'params': tc.get('binds', {}),
+                        'source': tc.get('source', ''),
+                    })
+                test_cases_by_qid[qid] = cases
 
     # Load extracted flags
     extracted_queries = set()
@@ -208,12 +217,12 @@ def main():
                 compare_status = 'not_tested'
                 compare_fail_reason = ''
 
-            # --- Healing ---
-            ticket = healing_map.get(qid, {})
-            ticket_id = ticket.get('ticket_id', '')
-            ticket_status = ticket.get('status', '')
-            ticket_skip = ticket.get('skip_reason', '')
-            ticket_retry = ticket.get('retry_count', 0)
+            # --- Attempts (from query-tracking.json attempts array) ---
+            attempts = q.get('attempts', [])
+            attempt_count = len(attempts)
+            attempt_summary = '; '.join(
+                a.get('summary', a.get('error', ''))[:80] for a in attempts[-3:]
+            ) if attempts else ''
 
             # --- MyBatis ---
             mybatis = 'both' if (qid in extracted_queries and qid in pg_extracted) else \
@@ -221,12 +230,11 @@ def main():
                       'pg_only' if qid in pg_extracted else 'no'
 
             # --- 최종 상태 (14개 flat, 하나의 쿼리 = 하나의 상태) ---
-            ticket_cat = ticket.get('category', '')
 
             # 성공
-            if ticket_status == 'resolved':
+            if attempt_count > 0 and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_HEALED'
-                overall_detail = f'힐링 {ticket_retry}회 후 통과'
+                overall_detail = f'수정 {attempt_count}회 후 비교 통과'
             elif conv_status == 'no_change' and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_NO_CHANGE'
                 overall_detail = 'Oracle 패턴 없어 변환 불필요, 비교 통과'
@@ -235,20 +243,21 @@ def main():
                 overall_detail = '변환+비교 통과'
 
             # 실패 — DBA 필요
-            elif ticket_cat == 'relation_missing' or (explain_category == 'MISSING_TABLE'):
+            elif explain_category == 'MISSING_TABLE':
                 overall = 'FAIL_SCHEMA_MISSING'
                 overall_detail = f'PG 테이블 없음: {explain_error[:150]}'
-            elif ticket_cat == 'column_missing' or (explain_category == 'MISSING_COLUMN'):
+            elif explain_category == 'MISSING_COLUMN':
                 overall = 'FAIL_COLUMN_MISSING'
                 overall_detail = f'PG 컬럼 없음: {explain_error[:150]}'
-            elif ticket_cat == 'function_missing' or (explain_category == 'MISSING_FUNCTION'):
+            elif explain_category == 'MISSING_FUNCTION':
                 overall = 'FAIL_FUNCTION_MISSING'
                 overall_detail = f'PG 함수 없음: {explain_error[:150]}'
 
-            # 실패 — 힐링 시도 후
-            elif ticket_status == 'escalated':
+            # 실패 — 재시도 후 (explain 또는 compare 어느 쪽이든 5회 이상 실패)
+            elif attempt_count >= 5 and (explain_status == 'fail' or compare_status == 'fail'):
                 overall = 'FAIL_ESCALATED'
-                overall_detail = f'{ticket_retry}회 시도 후 실패: {ticket.get("error","")[:150]}'
+                detail = explain_error[:150] if explain_status == 'fail' else compare_fail_reason[:150]
+                overall_detail = f'{attempt_count}회 시도 후 실패: {detail}'
             elif compare_status == 'fail':
                 overall = 'FAIL_COMPARE_DIFF'
                 overall_detail = f'Oracle↔PG 불일치: {compare_fail_reason[:150]}'
@@ -257,12 +266,20 @@ def main():
                 overall_detail = f'SQL 문법 에러: {explain_error[:150]}'
 
             # 실패 — TC/바인드 문제
-            elif ticket_cat == 'type_mismatch' or (explain_category == 'TYPE_MISMATCH'):
+            elif explain_category == 'TYPE_MISMATCH':
                 overall = 'FAIL_TC_TYPE_MISMATCH'
                 overall_detail = f'바인드값 타입/길이 불일치: {explain_error[:150]}'
-            elif ticket_cat == 'operator_mismatch' or (explain_category == 'TYPE_OPERATOR'):
+            elif explain_category == 'TYPE_OPERATOR':
                 overall = 'FAIL_TC_OPERATOR'
                 overall_detail = f'연산자 타입 불일치: {explain_error[:150]}'
+
+            # 기타 실패 — 특수 카테고리
+            elif explain_status == 'fail' and explain_category == 'VALUE_TOO_LONG':
+                overall = 'FAIL_TC_TYPE_MISMATCH'
+                overall_detail = f'값 길이 초과: {explain_error[:150]}'
+            elif explain_status == 'fail' and explain_category == 'AMBIGUOUS':
+                overall = 'FAIL_SYNTAX'
+                overall_detail = f'컬럼 모호성: {explain_error[:150]}'
 
             # 기타 실패
             elif explain_status == 'fail':
@@ -286,6 +303,23 @@ def main():
                 overall = 'NOT_TESTED_PENDING'
                 overall_detail = f'상태 미분류: conv={conv_status} explain={explain_status} compare={compare_status}'
 
+            # --- Extra fields for JSON export (not in CSV) ---
+            sql_before = q.get('oracle_sql', '') or ''
+            sql_after = q.get('pg_sql', '') or ''
+            raw_attempts = q.get('attempts', []) or []
+            # Normalize attempts into the spec format
+            json_attempts = []
+            for idx, att in enumerate(raw_attempts, 1):
+                err = att.get('error', '') or ''
+                json_attempts.append(OrderedDict([
+                    ('attempt', idx),
+                    ('error_category', classify_explain_error(err) if err else None),
+                    ('error_detail', err if err else None),
+                    ('fix_applied', att.get('fix', att.get('summary', '')) or ''),
+                    ('result', att.get('status', att.get('result', 'unknown'))),
+                ]))
+            json_test_cases = test_cases_by_qid.get(qid, [])
+
             rows.append({
                 'file': fname,
                 'query_id': qid,
@@ -302,13 +336,16 @@ def main():
                 'compare_tc_pass': tc_pass,
                 'compare_tc_fail': tc_fail,
                 'compare_fail_reason': compare_fail_reason,
-                'healing_ticket_id': ticket_id,
-                'healing_status': ticket_status,
-                'healing_skip_reason': ticket_skip,
-                'healing_retry_count': ticket_retry,
+                'attempt_count': attempt_count,
+                'attempt_summary': attempt_summary,
                 'mybatis_extracted': mybatis,
                 'overall_status': overall,
                 'overall_detail': overall_detail,
+                # JSON-only fields (excluded from CSV fieldnames)
+                '_sql_before': sql_before,
+                '_sql_after': sql_after,
+                '_attempts': json_attempts,
+                '_test_cases': json_test_cases,
             })
 
     # Write CSV
@@ -318,19 +355,18 @@ def main():
         'conversion_method', 'conversion_status',
         'explain_status', 'explain_source', 'explain_error_category', 'explain_error_detail',
         'compare_status', 'compare_tc_total', 'compare_tc_pass', 'compare_tc_fail', 'compare_fail_reason',
-        'healing_ticket_id', 'healing_status', 'healing_skip_reason', 'healing_retry_count',
+        'attempt_count', 'attempt_summary',
         'mybatis_extracted', 'overall_status', 'overall_detail',
     ]
 
     with open(args.output, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
         writer.writerows(rows)
 
     # Summary
     overall_counts = Counter(r['overall_status'] for r in rows)
     explain_cats = Counter(r['explain_error_category'] for r in rows if r['explain_error_category'])
-    healing_counts = Counter(r['healing_status'] for r in rows if r['healing_status'])
 
     # Group by prefix for summary
     pass_count = sum(v for k, v in overall_counts.items() if k.startswith('PASS_'))
@@ -358,35 +394,46 @@ def main():
         for cat, cnt in explain_cats.most_common():
             print(f"    {cat}: {cnt}")
 
-    if healing_counts:
-        print(f"\n  힐링 티켓:")
-        for st, cnt in healing_counts.most_common():
-            print(f"    {st}: {cnt}")
-
     print(f"\nSaved: {args.output}")
 
     # JSON output
     if args.json:
         json_path = args.output.replace('.csv', '.json')
+        # Build per-query detailed entries with exact field order from spec
+        json_queries = []
+        for r in rows:
+            entry = OrderedDict([
+                ('query_id', r['query_id']),
+                ('original_file', r['file']),
+                ('sql_before', r['_sql_before']),
+                ('sql_after', r['_sql_after']),
+                ('final_state', r['overall_status']),
+                ('final_state_detail', r['overall_detail']),
+                ('test_cases', r['_test_cases']),
+                ('attempts', r['_attempts']),
+                ('explain_status', r['explain_status']),
+                ('compare_status', r['compare_status']),
+                ('conversion_method', r['conversion_method']),
+                ('complexity', r['complexity']),
+            ])
+            json_queries.append(entry)
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump({
-                'generated_at': datetime.now().isoformat(),
-                'total': len(rows),
-                'summary': dict(overall_counts),
-                'explain_error_categories': dict(explain_cats),
-                'healing_summary': dict(healing_counts),
-                'queries': rows,
-            }, f, indent=2, ensure_ascii=False)
+            json.dump(OrderedDict([
+                ('generated_at', datetime.now().isoformat()),
+                ('total', len(rows)),
+                ('summary', dict(overall_counts)),
+                ('explain_error_categories', dict(explain_cats)),
+                ('queries', json_queries),
+            ]), f, indent=2, ensure_ascii=False)
         print(f"JSON: {json_path}")
 
     # Activity log
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='generate-query-matrix', phase='phase_6',
-                     detail=f"Matrix: {len(rows)} queries, COMPLETE:{overall_counts.get('COMPLETE',0)}, "
-                            f"HEALED:{overall_counts.get('HEALED',0)}, "
-                            f"FAIL:{overall_counts.get('EXPLAIN_FAIL',0)+overall_counts.get('COMPARE_FAIL',0)}")
+        log_activity('STEP_END', agent='generate-query-matrix', step='step_4',
+                     detail=f"Matrix: {len(rows)} queries, PASS:{pass_count}, "
+                            f"FAIL:{fail_count}, NOT_TESTED:{not_tested}")
     except Exception:
         pass
 

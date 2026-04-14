@@ -21,7 +21,7 @@ from pathlib import Path
 _LOG_PATH = 'workspace/logs/activity-log.jsonl'
 
 
-def log_activity(action, agent='tool', phase=None, file=None, query_id=None,
+def log_activity(action, agent='tool', phase=None, step=None, file=None, query_id=None,
                  detail=None, duration_ms=None, log_path=None):
     """Append a single activity log entry to activity-log.jsonl.
     Called automatically by tools — no Leader intervention needed."""
@@ -29,13 +29,15 @@ def log_activity(action, agent='tool', phase=None, file=None, query_id=None,
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     entry = {
-        'timestamp': now_iso(),
+        'ts': now_iso(),
         'type': action,
         'agent': agent,
         'action': action,
     }
     if phase:
         entry['phase'] = phase
+    if step:
+        entry['step'] = step
     if file:
         entry['file'] = file
     if query_id:
@@ -56,8 +58,8 @@ def log_activity(action, agent='tool', phase=None, file=None, query_id=None,
 
 
 def now_iso():
-    """로컬 시간 + timezone offset. Leader 로깅과 일관되게."""
-    return datetime.now().astimezone().isoformat(timespec='seconds')
+    """UTC Unix timestamp (seconds). 보고서에서 로컬 시간으로 파싱."""
+    return int(datetime.now(timezone.utc).timestamp())
 
 
 class TrackingManager:

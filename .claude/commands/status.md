@@ -5,9 +5,9 @@ Show the current OMA pipeline progress and workspace status.
 1. Read `workspace/progress.json` from the project root. If it does not exist, report that the pipeline has not been started yet and suggest running `/convert` to begin.
 
 2. Display a formatted summary including:
-   - **Overall progress**: How many phases are complete out of total phases
-   - **Current phase**: Which phase is currently in progress (if any)
-   - **Phase-by-phase breakdown**: For each phase (0-7), show:
+   - **Overall progress**: How many steps are complete out of total steps
+   - **Current step**: Which step is currently in progress (if any)
+   - **Step-by-step breakdown**: For each step (0-4), show:
      - Status (pending / in-progress / complete / failed)
      - Start and end timestamps (if available)
      - Duration (if complete)
