@@ -246,15 +246,24 @@ def collect_data(base_dir):
 
                 data['files'][fname] = file_data
 
-    # 4. Validation (all result files)
-    val_dir = ws / 'results' / '_validation'
-    if val_dir.exists():
-        data['validation'] = load_json(val_dir / 'validated.json')
-        data['execution'] = load_json(val_dir / 'execute_validated.json')
-        data['comparison'] = load_json(val_dir / 'compare_validated.json')
-        # Also try Kiro-generated compare_results.json
-        if data['comparison'] is None:
-            data['comparison'] = load_json(val_dir / 'compare_results.json')
+    # 4. Validation — merge all _validation* directories (supports batch splits)
+    merged_validation = {'passes': [], 'failures': [], 'total': 0, 'pass': 0, 'fail': 0}
+    merged_comparison = {'results': []}
+    for val_dir in sorted((ws / 'results').glob('_validation*')):
+        vj = load_json(val_dir / 'validated.json')
+        if vj:
+            merged_validation['passes'].extend(vj.get('passes', []))
+            merged_validation['failures'].extend(vj.get('failures', []))
+            merged_validation['total'] += vj.get('total', 0)
+            merged_validation['pass'] += vj.get('pass', 0)
+            merged_validation['fail'] += vj.get('fail', 0)
+        for cfile in ['compare_validated.json', 'compare_results.json']:
+            cj = load_json(val_dir / cfile)
+            if cj:
+                merged_comparison['results'].extend(cj.get('results', []))
+    data['validation'] = merged_validation if merged_validation['total'] > 0 else None
+    data['execution'] = None  # deprecated — merged into validation
+    data['comparison'] = merged_comparison if merged_comparison['results'] else None
 
     # 4b. Query Matrix — try reports/ first, then derive from tracking
     qm_path = ws / 'reports' / 'query-matrix.json'

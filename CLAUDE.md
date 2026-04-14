@@ -101,14 +101,16 @@ Agent({
 - syntax_error, type_mismatch, operator_mismatch, residual_oracle → **최대 5회 루프**
 - 매 시도마다 다른 접근법 필수. output XML 수정 전 반드시 버저닝 (`.v{N}.bak`).
 
-**대규모 (100+ 쿼리):** 팀 모드로 validate-and-fix 여러 개 병렬 spawn
+**대규모 (100+ 쿼리):** 팀 모드로 validate-and-fix 여러 개 병렬 spawn.
+**각 배치는 --output을 별도 디렉토리로 분리하라.** 같은 디렉토리에 쓰면 결과가 덮어씌워진다.
 ```
-Agent({ subagent_type: "validate-and-fix", prompt: "files=[UserMapper.xml, OrderMapper.xml, ...]" })
-Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, StatsMapper.xml, ...]" })
+Agent({ subagent_type: "validate-and-fix", prompt: "files=[UserMapper.xml, ...], output=_validation_batch1/" })
+Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, ...], output=_validation_batch2/" })
 ```
-팀 멤버 간 파일 중복 할당 금지. 각자 독립 파일 담당.
+팀 멤버 간 파일 중복 할당 금지. 각자 독립 파일 + 독립 output 디렉토리.
 
 **모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
+reporter가 `_validation*/validated.json`을 모두 읽어서 통합 집계한다.
 
 ### Step 4: 보고서 → reporter에 위임
 

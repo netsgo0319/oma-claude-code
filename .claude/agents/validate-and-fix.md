@@ -33,20 +33,24 @@ Validator + Fixer를 하나로 통합한 에이전트.
 
 ### 1. 초기 검증
 
+**반드시 `--files`로 할당된 파일만 검증하라. 전체 파일을 한번에 돌리지 마라.**
+리더가 파일을 나눠서 여러 에이전트에 분배한다. 네가 받은 파일만 처리.
+
 ```bash
-# MyBatis 렌더링
+# MyBatis 렌더링 (할당 파일만)
 bash tools/run-extractor.sh --validate
 
-# 전체 검증 (--full: EXPLAIN → Execute → Compare 원자적)
+# 검증 (--full, 할당 파일만, output 디렉토리 분리)
 python3 tools/validate-queries.py --full \
+  --files {할당된 파일1},{할당된 파일2},{할당된 파일3} \
   --extracted workspace/results/_extracted_pg/ \
-  --output workspace/results/_validation/ \
-  --tracking-dir workspace/results/ \
-  --files {대상파일}
+  --output workspace/results/{배치별 output 디렉토리}/ \
+  --tracking-dir workspace/results/
 ```
 
-`--full`은 EXPLAIN → Execute → Compare → 결과 파싱을 원자적으로 수행.
-**개별 단계를 따로 실행하지 마라. --full 하나로 끝.**
+`--full`은 EXPLAIN → Execute → Compare → 결과 파싱을 **원자적으로** 수행.
+**개별 단계(EXPLAIN만 → Execute만)를 따로 실행하지 마라. --full 하나로 끝.**
+**전체 파일을 한번에 넣지 마라. 할당된 파일만 --files에 넣어라.**
 
 ### 2. FAIL 쿼리 에러 분류
 

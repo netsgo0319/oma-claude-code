@@ -83,37 +83,29 @@ def main():
     results_dir = Path(args.results_dir)
     rows = []
 
-    # Load validation results (Phase 3)
+    # Load validation results — glob all _validation* directories (supports batch splits)
     val_results = {}
-    val_path = results_dir / '_validation' / 'validated.json'
-    if val_path.exists():
-        vdata = json.load(open(val_path))
+    for val_dir in sorted(results_dir.glob('_validation*')):
+        vp = val_dir / 'validated.json'
+        if not vp.exists():
+            continue
+        vdata = json.load(open(vp))
+        source = 'mybatis' if 'phase35' in val_dir.name else 'static'
         for p in vdata.get('passes', []):
             tid = p if isinstance(p, str) else p.get('test', '')
-            val_results[tid] = {'status': 'pass', 'error': ''}
+            # pass가 기존 fail을 덮어씀 (더 좋은 결과 우선)
+            if tid not in val_results or val_results[tid]['status'] == 'fail':
+                val_results[tid] = {'status': 'pass', 'error': '', 'source': source}
         for f in vdata.get('failures', []):
             tid = f.get('test', f.get('test_id', ''))
-            val_results[tid] = {'status': 'fail', 'error': f.get('error', '')[:300]}
+            if tid not in val_results:
+                val_results[tid] = {'status': 'fail', 'error': f.get('error', '')[:300], 'source': source}
 
-    # Load Phase 3.5 validation results
-    for p35dir in ['_validation_phase35', '_validation_phase7']:
-        p35_path = results_dir / p35dir / 'validated.json'
-        if p35_path.exists():
-            p35data = json.load(open(p35_path))
-            for p in p35data.get('passes', []):
-                tid = p if isinstance(p, str) else p.get('test', '')
-                if tid not in val_results or val_results[tid]['status'] == 'fail':
-                    val_results[tid] = {'status': 'pass', 'error': '', 'source': 'mybatis'}
-            for f in p35data.get('failures', []):
-                tid = f.get('test', f.get('test_id', ''))
-                if tid not in val_results:
-                    val_results[tid] = {'status': 'fail', 'error': f.get('error', '')[:300], 'source': 'mybatis'}
-
-    # Load compare results
+    # Load compare results — glob all _validation* directories
     compare_results = {}
-    for base_dir in ['_validation', '_validation_phase35', '_validation_phase7']:
+    for val_dir in sorted(results_dir.glob('_validation*')):
         for cfile in ['compare_validated.json', 'compare_results.json']:
-            cp = results_dir / base_dir / cfile
+            cp = val_dir / cfile
             if cp.exists():
                 cdata = json.load(open(cp))
                 for r in cdata.get('results', []):
