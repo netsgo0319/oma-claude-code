@@ -305,12 +305,20 @@ Reviewer 서브에이전트에 위임하여 아래 항목을 검증:
 
 ### Phase 7: Report (마지막)
 
-**Step 1: Pre-Report 체크리스트 (필수 — FAIL 시 리포트 생성 차단)**
+**Step 1: Pre-Report 체크리스트 (절대 스킵 금지)**
 ```bash
 python3 tools/pre-report-check.py
 ```
-FAIL 항목이 있으면 해결 후 재실행. PASS 되어야 Step 2 진행.
-체크 항목: XML 완전성, 검증 3단계 실행 여부, 힐링 티켓 상태, 트래킹 정합성 등.
+**이 도구가 exit 0 (PASS) 을 반환할 때까지 generate-report.py를 실행하지 마라.**
+**FAIL이 나오면 해당 항목을 해결하고 다시 pre-report-check.py를 실행하라.**
+**해결 → 재점검 → PASS 확인 → 리포트 생성. 이 순서를 절대 건너뛰지 마라.**
+FAIL 무시하고 리포트를 생성하면 **빈 데이터, 0건 카드, 누락된 비교** 등 무의미한 리포트가 만들어진다.
+
+체크 항목:
+- Execute/Compare 실행 여부 (EXPLAIN만 하고 끝냈는지)
+- 힐링 티켓 open 건수 (힐링 안 돌렸는지)
+- tickets.json 존재 (수기 summary만 있는지)
+- 양쪽 0건 비교 과다 (Oracle 접속 정보 틀렸는지)
 
 **Step 2: 리포트 생성**
 ```bash
