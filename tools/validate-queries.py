@@ -724,8 +724,8 @@ SET HEADING ON
 
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    if 'LIMIT' not in safe_sql.upper():
-                        safe_sql += ' LIMIT 5'
+                    # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
+                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
@@ -791,8 +791,8 @@ SET HEADING ON
                 # EXECUTE
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    if 'LIMIT' not in safe_sql.upper():
-                        safe_sql += ' LIMIT 5'
+                    # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
+                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                     execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
                     execute_lines.append(f"{safe_sql};")
@@ -861,8 +861,8 @@ SET HEADING ON
                         execute_lines.append("")
                     elif qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
-                        if 'LIMIT' not in safe_sql.upper():
-                            safe_sql += ' LIMIT 5'
+                        # 양쪽 COUNT(*) 통일 (Oracle도 COUNT)
+                            safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"SET statement_timeout = '30s';")
                         execute_lines.append(f"{safe_sql};")
@@ -1368,19 +1368,25 @@ SET HEADING ON
         oracle_results_file = output_path / 'oracle_results.txt'
         if execute_results_file.exists() and oracle_results_file.exists():
             print("\nParsing Oracle vs PG compare results...")
-            # Parse PG row counts
+            # Parse PG row counts (COUNT(*) results)
             pg_rows = {}  # {test_id: row_count}
             current_test = None
             for line in exec_output.split('\n'):
                 if line.startswith('=== ') and line.endswith(' ==='):
                     current_test = line.strip('= ')
                 elif current_test:
-                    m = re.match(r'\((\d+) (?:rows?|행)\)', line.strip())
-                    if m:
+                    stripped = line.strip()
+                    # COUNT(*) result: just a number on its own line (e.g., "   50")
+                    if stripped.isdigit():
+                        pg_rows[current_test] = int(stripped)
+                        current_test = None
+                    # Old format: (N rows) — still support for non-COUNT queries
+                    elif re.match(r'\((\d+) (?:rows?|행)\)', stripped):
+                        m = re.match(r'\((\d+) (?:rows?|행)\)', stripped)
                         pg_rows[current_test] = int(m.group(1))
                         current_test = None
                     elif 'ERROR' in line:
-                        pg_rows[current_test] = -1  # error marker
+                        pg_rows[current_test] = -1
                         current_test = None
 
             # Parse Oracle row counts
@@ -1418,10 +1424,13 @@ SET HEADING ON
                         'reason': 'execution_error'
                     })
                 elif pg_r == ora_r:
-                    compare_results.append({
+                    result_entry = {
                         'query_id': qid, 'test_id': tid, 'match': True,
                         'oracle_rows': ora_r, 'pg_rows': pg_r
-                    })
+                    }
+                    if pg_r == 0:
+                        result_entry['warning'] = 'both_zero_rows'
+                    compare_results.append(result_entry)
                 else:
                     compare_results.append({
                         'query_id': qid, 'test_id': tid, 'match': False,
