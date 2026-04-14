@@ -108,6 +108,9 @@ stateDiagram-v2
     converted --> tc_generated: Step 2 TC 생성
     tc_generated --> mybatis_render: MyBatis 엔진 렌더링
     mybatis_render --> validating: SQL 렌더링 성공
+    mybatis_render --> ognl_fail: OGNL ClassNotFoundException
+    ognl_fail --> stub_gen: 스텁 자동 생성 + 재빌드
+    stub_gen --> mybatis_render: 재렌더링 (최대 5회)
     mybatis_render --> static_fallback: 빈 SQL (동적 SQL 전체 스킵)
     static_fallback --> validating: static XML에서 #{param} 추출
 

@@ -90,11 +90,100 @@ if [ -f "$MERGED_TC" ]; then
     echo "--- TC params found: $MERGED_TC ---"
 fi
 
+# OGNL stub directory for auto-generated stubs
+STUB_DIR="$EXTRACTOR_DIR/src/main/java"
+STUB_CP=""
+
+# Function: run extractor with auto-stub retry for ClassNotFoundException
+run_extractor_with_stubs() {
+    local INPUT="$1"
+    local OUTPUT="$2"
+    local MAX_RETRY=5
+    local RETRY=0
+    local CP_OPT=""
+
+    while [ $RETRY -lt $MAX_RETRY ]; do
+        echo "  [Extraction attempt $((RETRY+1))/$MAX_RETRY]"
+        EXTRACT_LOG=$(java $CP_OPT -jar "$JAR_PATH" --input "$INPUT" --output "$OUTPUT" $PARAMS_OPT 2>&1)
+        echo "$EXTRACT_LOG" | tail -5
+
+        # Check for ClassNotFoundException in output
+        MISSING_CLASSES=$(echo "$EXTRACT_LOG" | grep -oP 'ClassNotFoundException:\s*\K[\w.]+' | sort -u)
+        if [ -z "$MISSING_CLASSES" ]; then
+            # Also check extracted JSON for OGNL errors
+            MISSING_CLASSES=$(grep -roh '"error".*ClassNotFoundException[^"]*' "$OUTPUT"/*.json 2>/dev/null | grep -oP '[\w.]+(?=\s)' | sort -u)
+        fi
+
+        if [ -z "$MISSING_CLASSES" ]; then
+            echo "  Extraction complete (no missing classes)"
+            break
+        fi
+
+        echo "  Missing classes found: $MISSING_CLASSES"
+        echo "  Auto-generating stubs..."
+
+        for CLASS in $MISSING_CLASSES; do
+            # Split into package and class name
+            PKG=$(echo "$CLASS" | rev | cut -d. -f2- | rev)
+            CLS=$(echo "$CLASS" | rev | cut -d. -f1 | rev)
+            PKG_DIR="$STUB_DIR/$(echo "$PKG" | tr '.' '/')"
+            STUB_FILE="$PKG_DIR/$CLS.java"
+
+            if [ -f "$STUB_FILE" ]; then
+                echo "    Stub already exists: $CLASS"
+                continue
+            fi
+
+            mkdir -p "$PKG_DIR"
+            echo "    Generating stub: $CLASS"
+            cat > "$STUB_FILE" << JAVAEOF
+package $PKG;
+/**
+ * Auto-generated stub for MyBatis OGNL extraction.
+ * All methods return permissive values (true/non-null) to include all dynamic SQL branches.
+ */
+public class $CLS {
+    public static boolean isNotEmpty(Object o) { return true; }
+    public static boolean isEmpty(Object o) { return false; }
+    public static boolean isNotBlank(Object o) { return true; }
+    public static boolean isBlank(Object o) { return false; }
+    public static boolean isNotNull(Object o) { return true; }
+    public static boolean isNull(Object o) { return false; }
+    public static boolean equals(Object a, Object b) { return true; }
+    public static String nvl(Object o, String def) { return def != null ? def : ""; }
+    public static int size(Object o) { return 1; }
+    public static boolean hasText(Object o) { return true; }
+    public static boolean contains(Object o, Object v) { return true; }
+    // Generic fallback for any other static method calls
+    public static Object invoke(Object... args) { return ""; }
+    public static boolean check(Object... args) { return true; }
+}
+JAVAEOF
+        done
+
+        # Rebuild extractor with stubs on classpath
+        echo "  Rebuilding extractor with stubs..."
+        cd "$EXTRACTOR_DIR"
+        if [ -f ./gradlew ]; then
+            ./gradlew build -q 2>&1
+        elif command -v gradle &>/dev/null; then
+            gradle build -q 2>&1
+        fi
+        cd "$PROJECT_DIR"
+
+        RETRY=$((RETRY + 1))
+    done
+
+    if [ $RETRY -eq $MAX_RETRY ]; then
+        echo "  WARNING: Max retries reached. Some OGNL classes still missing."
+    fi
+}
+
 echo ""
 echo "--- Extracting Oracle SQL (input XML, with TC params) ---"
 mkdir -p "$EXTRACTED_DIR"
 
-java -jar "$JAR_PATH" --input "$INPUT_DIR" --output "$EXTRACTED_DIR" $PARAMS_OPT
+run_extractor_with_stubs "$INPUT_DIR" "$EXTRACTED_DIR"
 
 # Step 4b: Extract PG SQL variants from converted output XML
 PG_EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted_pg"
@@ -102,7 +191,7 @@ echo ""
 echo "--- Extracting PG SQL variants (output XML, with TC params) ---"
 mkdir -p "$PG_EXTRACTED_DIR"
 
-java -jar "$JAR_PATH" --input "$OUTPUT_DIR" --output "$PG_EXTRACTED_DIR" $PARAMS_OPT
+run_extractor_with_stubs "$OUTPUT_DIR" "$PG_EXTRACTED_DIR"
 
 PG_EXTRACTED_COUNT=$(ls "$PG_EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
 echo "PG output files: $PG_EXTRACTED_COUNT"

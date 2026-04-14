@@ -61,6 +61,13 @@ python3 tools/validate-queries.py --full \
 동적 SQL(`<if test="param != null">`)이 전체를 감싸서 MyBatis가 빈 SQL을 반환하면,
 output XML에서 `#{param}` 패턴의 원본 SQL을 추출하여 더미 바인딩으로 검증한다.
 
+**OGNL ClassNotFoundException 자동 대응:**
+`run-extractor.sh`가 OGNL 정적 메서드(StringUtil.isNotEmpty 등) 실패를 자동 감지하고:
+1. 누락 클래스의 스텁 .java를 자동 생성 (모든 메서드 → permissive 반환)
+2. extractor를 재빌드
+3. 재추출 (최대 5회)
+수동 개입 불필요. NOT_TESTED_NO_RENDER가 줄지 않으면 에러 로그를 확인하라.
+
 ### 2. FAIL 쿼리 에러 분류
 
 validated.json + query-tracking.json에서 FAIL 쿼리를 읽고 분류:
