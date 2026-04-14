@@ -4,7 +4,7 @@ inclusion: always
 
 # 학습된 에지케이스
 
-> Learner 에이전트가 자동으로 항목을 추가합니다.
+> 파이프라인 실행 중 발견된 항목이 자동으로 추가됩니다.
 > 수동 편집 가능. PR로 팀 공유.
 
 ## 형식
@@ -21,7 +21,7 @@ inclusion: always
 
 ---
 
-(아래로 Learner가 항목 추가)
+(아래로 항목 추가)
 
 ### MEDIAN → PERCENTILE_CONT
 - **Oracle**: `MEDIAN(salary)`
@@ -58,7 +58,7 @@ inclusion: always
 - **PostgreSQL**: `CURRENT_TIMESTAMP - INTERVAL '30 days'`, `CURRENT_TIMESTAMP + INTERVAL '7 days'`
 - **주의**: 기계적 변환으로 SYSDATE→CURRENT_TIMESTAMP 변환 후 `-30` 부분이 남으면 `operator does not exist: timestamp with time zone - integer` 에러. 반드시 INTERVAL 변환 함께 수행
 - **발견일**: 2026-04-09
-- **출처**: Phase7 Aurora EXPLAIN 검증 (AnalyticsMapper, CustomerServiceMapper, PromotionMapper)
+- **출처**: Phase6 Aurora EXPLAIN 검증 (AnalyticsMapper, CustomerServiceMapper, PromotionMapper)
 - **해결 방법**: rule (oracle-to-pg-converter.py에 추가됨)
 
 ---
@@ -68,7 +68,7 @@ inclusion: always
 - **PostgreSQL**: `DATE_TRUNC('day', o.ORDERED_AT)::DATE`, `DATE_TRUNC('day', MAX(o.DATE))::DATE`
 - **주의**: 이전 변환기가 `TRUNC(\w+)` 단순 패턴만 매칭하여 `TRUNC(o.COL)`, `TRUNC(MAX(...))` 등 복잡 표현식 누락. 괄호 매칭 방식으로 수정됨. 숫자 TRUNC(n, precision)과 구별: 인자 1개=날짜, 2개=숫자
 - **발견일**: 2026-04-09
-- **출처**: Phase7 Aurora EXPLAIN 검증 (InventoryMapper)
+- **출처**: Phase6 Aurora EXPLAIN 검증 (InventoryMapper)
 - **해결 방법**: rule (oracle-to-pg-converter.py 수정됨)
 
 ---
@@ -78,7 +78,7 @@ inclusion: always
 - **PostgreSQL**: `DATE '2025-01-01' + (expr)::INTEGER` — DATE + integer는 가능하지만 DATE + numeric은 불가
 - **주의**: 나누기 결과가 numeric 타입이면 ::INTEGER 캐스트 필요
 - **발견일**: 2026-04-09
-- **출처**: Phase7 Aurora EXPLAIN 검증 (InventoryMapper)
+- **출처**: Phase6 Aurora EXPLAIN 검증 (InventoryMapper)
 - **해결 방법**: manual (컨텍스트 판단 필요)
 
 ---
@@ -88,7 +88,7 @@ inclusion: always
 - **PostgreSQL**: ORDER BY에서 CASE 내부에 SELECT alias 참조 불가. CASE 전체를 반복하거나 서브쿼리로 래핑
 - **주의**: ORDER BY에서 단순 alias 참조(`ORDER BY RESTOCK_PRIORITY`)는 되지만, `CASE alias WHEN ...` 형태는 alias를 컬럼으로 인식하지 못함
 - **발견일**: 2026-04-09
-- **출처**: Phase7 Aurora EXPLAIN 검증 (InventoryMapper::selectReorderRecommendations)
+- **출처**: Phase6 Aurora EXPLAIN 검증 (InventoryMapper::selectReorderRecommendations)
 - **해결 방법**: manual (CASE 전체 반복 또는 서브쿼리 래핑)
 
 ---

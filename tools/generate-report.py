@@ -139,24 +139,13 @@ def _derive_progress(ws):
         if (ws / 'results' / d35 / 'validated.json').exists():
             progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
 
-    # Phase 4: healing
-    if (ws / 'results' / '_healing' / 'tickets.json').exists():
+    # Phase 4: DBA review
+    if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
         progress['_pipeline']['phases']['phase_4'] = {'status': 'done'}
 
-    # Phase 5: learning (edge-cases updated)
-    for rules_dir in [ws.parent / '.claude' / 'rules', ws.parent / '.kiro' / 'steering']:
-        ec = rules_dir / 'edge-cases.md'
-        if ec.exists():
-            progress['_pipeline']['phases']['phase_5'] = {'status': 'done'}
-            break
-
-    # Phase 6: DBA review
-    if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
-        progress['_pipeline']['phases']['phase_6'] = {'status': 'done'}
-
-    # Phase 7: report — 이 함수가 실행 중이면 Phase 7이 진행 중이므로 항상 done
+    # Step 4: report — 이 함수가 실행 중이면 Step 4가 진행 중이므로 항상 done
     # (migration-report.html은 이 함수가 만드는 것이라 아직 없을 수 있음)
-    progress['_pipeline']['phases']['phase_7'] = {'status': 'done'}
+    progress['_pipeline']['phases']['phase_4'] = {'status': 'done'}
 
     return progress
 
@@ -174,7 +163,6 @@ def collect_data(base_dir):
         'validation_phase7': None,
         'comparison_phase7': None,
         'dba_review': None,
-        'healing': None,
         'query_matrix': None,
         'extracted': [],
         'activity_log': [],
@@ -283,15 +271,10 @@ def collect_data(base_dir):
         if data['comparison_phase7'] is None:
             data['comparison_phase7'] = load_json(val7_dir / 'compare_results.json')
 
-    # 4c. DBA Review (Phase 6)
+    # 4c. DBA Review (Step 4)
     dba_dir = ws / 'results' / '_dba_review'
     if dba_dir.exists():
         data['dba_review'] = load_json(dba_dir / 'review-result.json')
-
-    # 4d. Healing tickets (Phase 4)
-    healing_dir = ws / 'results' / '_healing'
-    if healing_dir.exists():
-        data['healing'] = load_json(healing_dir / 'tickets.json')
 
     # 4e. Query Matrix — try reports/ first, then derive from tracking
     qm_path = ws / 'reports' / 'query-matrix.json'
@@ -320,15 +303,15 @@ def collect_data(base_dir):
                 cmp_st = 'pass' if cmp and all(c.get('match') for c in cmp) else ('fail' if cmp else 'not_tested')
                 conv = q.get('conversion_method', '')
                 if exp_st == 'pass' and cmp_st == 'pass':
-                    overall = 'COMPLETE'
+                    overall = 'PASS_COMPLETE'
                 elif exp_st == 'pass':
-                    overall = 'EXPLAIN_PASS'
+                    overall = 'NOT_TESTED_NO_DB'
                 elif exp_st == 'fail':
-                    overall = 'EXPLAIN_FAIL'
+                    overall = 'FAIL_SYNTAX'
                 elif conv:
-                    overall = 'CONVERTED'
+                    overall = 'NOT_TESTED_NO_DB'
                 else:
-                    overall = 'PENDING'
+                    overall = 'NOT_TESTED_PENDING'
                 qm_queries.append({'query_id': qid, 'overall_status': overall})
         from collections import Counter
         qm_summary = dict(Counter(q['overall_status'] for q in qm_queries))
@@ -531,7 +514,6 @@ def build_embedded_data(data):
         'validation_phase7': data.get('validation_phase7'),
         'comparison_phase7': data.get('comparison_phase7'),
         'dba_review': data.get('dba_review'),
-        'healing': data.get('healing'),
         'query_matrix': data.get('query_matrix'),
         'files': {},
     }
@@ -779,7 +761,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="explorer">Explorer</button>
-  <button class="tab-btn" data-tab="tickets">Tickets</button>
   <button class="tab-btn" data-tab="log">Log</button>
 </div>
 
@@ -805,15 +786,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
     <div id="exp-panel-queries" style="width:25%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:4px"></div>
     <div id="exp-panel-detail" style="width:50%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:8px"></div>
   </div>
-</div>
-
-</div>
-
-<!-- ========== TICKETS TAB ========== -->
-<div class="tab-content" id="tab-tickets">
-  <div id="tickets-detail"></div>
-</div>
-
 </div>
 
 <!-- ========== LOG TAB ========== -->
@@ -929,31 +901,8 @@ function renderActionItems(){
   html+='<span class="file-arrow">&#9654;</span>';
   html+='<h2 style="display:inline;margin:0">Action Items</h2></div>';
   html+='<div class="file-body">';
-  // Build action items from healing tickets + validation
+  // Build action items from validation results
   let actions=[];
-  // From healing tickets
-  if(DATA.healing&&DATA.healing.tickets){
-    let cats={};
-    DATA.healing.tickets.forEach(t=>{
-      let c=t.category||'other';
-      if(!cats[c])cats[c]={count:0,severity:t.severity,sample_error:t.error,sample_file:t.file};
-      cats[c].count++;
-    });
-    let catActions={
-      'relation_missing':{who:'DBA',action:'PG 스키마에 누락 테이블 생성 (DDL 이관)'},
-      'column_missing':{who:'DBA',action:'누락 컬럼 확인 및 DDL 추가'},
-      'syntax_error':{who:'개발자/에이전트',action:'SQL 구문 수정 (Phase 4 셀프힐링 대상)'},
-      'type_mismatch':{who:'도구',action:'TC 바인드값 타입 개선 (generate-test-cases.py)'},
-      'function_missing':{who:'DBA',action:'PG 호환 함수 생성 (substrb, instr 등)'},
-      'operator_mismatch':{who:'개발자',action:'명시적 타입 캐스트 추가 (::TEXT, ::INTEGER)'},
-      'xml_invalid':{who:'개발자',action:'XML 파싱 에러 수정 (CDATA, 주석)'},
-      'other':{who:'개발자/DBA',action:'수동 분석 필요'},
-    };
-    for(let [cat,info] of Object.entries(cats).sort((a,b)=>b[1].count-a[1].count)){
-      let ca=catActions[cat]||{who:'팀',action:'확인 필요'};
-      actions.push({who:ca.who,category:cat,count:info.count,severity:info.severity,action:ca.action});
-    }
-  }
   // DBA review issues
   if(DATA.dba_review&&DATA.dba_review.check_results){
     for(let [k,v] of Object.entries(DATA.dba_review.check_results)){
@@ -985,19 +934,18 @@ function renderPhaseBars(){
   // Core phases to display (in order)
   const displayPhases=[
     'phase_0','phase_1','phase_2','phase_2.5',
-    'phase_3','phase_3.5','phase_4','phase_5','phase_6','phase_7'
+    'phase_3','phase_3.5','phase_4'
   ];
   const phaseLabels={
-    'phase_0':'Phase 0: Pre-flight','phase_1':'Phase 1: Parse+Convert',
-    'phase_2':'Phase 2: Convert (Rule+LLM)','phase_2.5':'Phase 2.5: Test Cases',
-    'phase_3':'Phase 3: Validate','phase_3.5':'Phase 3.5: MyBatis',
-    'phase_4':'Phase 4: Self-healing','phase_5':'Phase 5: Learning',
-    'phase_6':'Phase 6: DBA Review','phase_7':'Phase 7: Report'
+    'phase_0':'Step 0: Pre-flight','phase_1':'Step 1: Parse+Convert',
+    'phase_2':'Step 1: Convert (Rule+LLM)','phase_2.5':'Step 2: Test Cases',
+    'phase_3':'Step 3: Validate+Fix','phase_3.5':'Step 3: MyBatis Extract',
+    'phase_4':'Step 4: Report'
   };
   // Merge aliases into phases (sub-phases count toward parent)
   const aliases={'phase_1.5':'phase_1','phase_2_rule':'phase_2','phase_2_llm':'phase_2',
     'phase_3_compare':'phase_3','phase_3_explain':'phase_3','phase_3_5':'phase_3.5',
-    'phase_6_old':'phase_7','phase_7_old':'phase_3.5'};
+    'phase_5_old':'phase_4','phase_6_old':'phase_3.5','phase_5':'phase_4','phase_6':'phase_4'};
   for(let [alias,target] of Object.entries(aliases)){
     if(phases[alias]&&phases[alias].status==='done'&&!phases[target]){
       phases[target]=phases[alias];
@@ -1136,21 +1084,6 @@ function renderValidationSec(){
       for(let e of escList)html+=`<tr><td style="font-family:var(--mono)">${esc(e.file)}</td><td>${e.count}</td></tr>`;
       html+='</table>';
     }
-    // Show escalated query details from healing tickets
-    if(DATA.healing&&DATA.healing.tickets){
-      let escTickets=DATA.healing.tickets.filter(t=>t.status==='escalated');
-      if(escTickets.length){
-        html+='<h3 style="margin-top:12px">Escalated Query Details</h3>';
-        html+='<table><tr><th>Ticket</th><th>Query</th><th>File</th><th>Category</th><th>Error</th><th>Retries</th></tr>';
-        for(let t of escTickets){
-          html+=`<tr><td>${esc(t.ticket_id||'')}</td><td style="font-family:var(--mono)">${esc(t.query_id||'')}</td>`;
-          html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category||'')}</td>`;
-          html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,200))}</td>`;
-          html+=`<td>${t.retry_count||0}/${t.max_retries||5}</td></tr>`;
-        }
-        html+='</table>';
-      }
-    }
     html+='</div>';
   }
   // Query Matrix Summary
@@ -1161,44 +1094,11 @@ function renderValidationSec(){
     html+=`<p>Total: ${qm.total||0} queries</p>`;
     html+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">`;
     for(let [k,v] of Object.entries(s)){
-      let bg=k==='COMPLETE'?'rgba(34,197,94,.15)':k.includes('FAIL')?'rgba(239,68,68,.15)':'rgba(148,163,184,.1)';
-      let col=k==='COMPLETE'?'var(--success)':k.includes('FAIL')?'var(--fail)':'var(--dim)';
+      let bg=k.startsWith('PASS_')?'rgba(34,197,94,.15)':k.includes('FAIL')?'rgba(239,68,68,.15)':'rgba(148,163,184,.1)';
+      let col=k.startsWith('PASS_')?'var(--success)':k.includes('FAIL')?'var(--fail)':'var(--dim)';
       html+=`<span class="phase-badge" style="background:${bg};color:${col}">${k}: ${v}</span>`;
     }
     html+=`</div></div>`;
-  }
-  // Healing Tickets (Phase 4)
-  if(DATA.healing&&DATA.healing.tickets&&DATA.healing.tickets.length){
-    let h=DATA.healing;
-    let resolved=h.tickets.filter(t=>t.status==='resolved').length;
-    let escalated=h.tickets.filter(t=>t.status==='escalated').length;
-    let open=h.tickets.filter(t=>t.status==='open'||t.status==='in_progress').length;
-    html+=`<div class="sec"><h2>Phase 4: Healing Tickets</h2>`;
-    html+=`<p>Total: ${h.total_tickets} | Resolved: ${resolved} | Escalated: ${escalated} | Open: ${open}</p>`;
-    // By category
-    if(h.by_category){
-      html+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">`;
-      for(let [k,v] of Object.entries(h.by_category).sort((a,b)=>b[1]-a[1])){
-        html+=`<span class="phase-badge" style="background:rgba(148,163,184,.1);color:var(--dim)">${k}: ${v}</span>`;
-      }
-      html+=`</div>`;
-    }
-    // Escalated tickets detail
-    let escTickets=h.tickets.filter(t=>t.status==='escalated'||t.severity==='critical'||t.severity==='high');
-    if(escTickets.length){
-      html+=`<h3 style="margin-top:12px">Action Required (${escTickets.length}건)</h3>`;
-      html+=`<table><tr><th>ID</th><th>Severity</th><th>Category</th><th>File</th><th>Query</th><th>Error</th><th>Retries</th></tr>`;
-      for(let t of escTickets.slice(0,50)){
-        let sevCls=t.severity==='critical'?'style="color:var(--fail);font-weight:bold"':t.severity==='high'?'style="color:var(--fail)"':'';
-        html+=`<tr><td>${esc(t.ticket_id)}</td><td ${sevCls}>${esc(t.severity)}</td><td>${esc(t.category)}</td>`;
-        html+=`<td style="font-family:var(--mono);font-size:11px">${esc(t.file||'')}</td>`;
-        html+=`<td style="font-family:var(--mono);font-size:11px">${esc(t.query_id||'')}</td>`;
-        html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,200))}</td>`;
-        html+=`<td>${t.retry_count||0}/${t.max_retries||5}</td></tr>`;
-      }
-      html+=`</table>`;
-    }
-    html+=`</div>`;
   }
   // EXPLAIN failures by category
   if(DATA.validation&&DATA.validation.failure_categories){
@@ -1220,7 +1120,7 @@ function renderValidationSec(){
     let failCount=issues.length-passCount;
     let badge=failCount===0?'<span class="phase-badge badge-done">ALL CLEAR</span>':
       '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+failCount+' ISSUES</span>';
-    html+=`<div class="sec"><h2>Phase 6: DBA/Expert Review</h2><p>${badge}</p>`;
+    html+=`<div class="sec"><h2>Step 4: DBA/Expert Review</h2><p>${badge}</p>`;
     if(issues.length){
       html+='<table style="margin-top:10px"><tr><th>Check</th><th>Status</th><th>Detail</th></tr>';
       for(let issue of issues){
@@ -1552,7 +1452,6 @@ document.getElementById('refresh-toggle').addEventListener('click',function(){
 
 // ========== Init (try-catch per section so one failure doesn't block others) ==========
 try{renderOverview();}catch(e){console.error('renderOverview:',e);}
-try{renderTickets();}catch(e){console.error('renderTickets:',e);}
 try{renderFiles();}catch(e){console.error('renderFiles:',e);}
 try{renderTimeline();}catch(e){console.error('renderTimeline:',e);}
 
@@ -1701,132 +1600,27 @@ function expSelectQuery(fname, qid){
     html+=`</table>`;
   }
 
-  // Healing ticket
-  let ticket=null;
-  if(DATA.healing&&DATA.healing.tickets){
-    ticket=DATA.healing.tickets.find(t=>t.query_id===qid);
-  }
-  if(ticket){
-    let col=ticket.status==='resolved'?'var(--success)':ticket.status==='escalated'?'var(--fail)':'var(--dim)';
-    html+=`<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,.03);border-radius:4px;border-left:3px solid ${col}">`;
-    html+=`<strong>&#127915; ${esc(ticket.ticket_id||'')}</strong> <span style="color:${col}">[${esc(ticket.status||'')}]</span>`;
-    html+=` ${esc(ticket.category||'')}`;
-    if(ticket.retry_count)html+=` (${ticket.retry_count}회 시도)`;
-    if(ticket.skip_reason)html+=`<div style="color:var(--dim);font-size:11px">사유: ${esc(ticket.skip_reason)}</div>`;
-    if(ticket.error)html+=`<div style="color:var(--fail);font-size:11px;margin-top:4px">${esc(String(ticket.error).substring(0,300))}</div>`;
-    html+=`</div>`;
+  // Attempt History (from query-tracking.json attempts array)
+  let attempts=q.attempts||[];
+  if(attempts.length){
+    html+=`<div style="margin-top:8px"><strong>Attempt History (${attempts.length})</strong></div>`;
+    html+=`<table style="font-size:11px;margin-top:4px"><tr><th>#</th><th>Error Category</th><th>Fix Applied</th><th>Result</th><th>TC Used</th></tr>`;
+    for(let i=0;i<attempts.length;i++){
+      let a=attempts[i];
+      let resCol=(a.result||'')==='pass'?'var(--success)':(a.result||'')==='fail'?'var(--fail)':'var(--dim)';
+      html+=`<tr><td>${i+1}</td>`;
+      html+=`<td>${esc(a.error_category||'-')}</td>`;
+      html+=`<td style="font-size:10px">${esc(String(a.fix_applied||'-').substring(0,120))}</td>`;
+      html+=`<td style="color:${resCol};font-weight:bold">${esc(a.result||'-')}</td>`;
+      html+=`<td style="font-family:var(--mono)">${esc(a.tc_used||'-')}</td></tr>`;
+    }
+    html+=`</table>`;
   }
 
   document.getElementById('exp-panel-detail').innerHTML=html;
 }
 try{renderLog();}catch(e){console.error("renderLog:",e);}
 
-function renderTickets(){
-  let html='';
-  if(!DATA.healing||!DATA.healing.tickets||DATA.healing.tickets.length===0){
-    document.getElementById('tickets-detail').innerHTML='<div class="sec"><p style="color:var(--dim)">No healing tickets generated. Run Phase 4.</p></div>';
-    return;
-  }
-  let h=DATA.healing;
-  let tickets=h.tickets;
-  let resolved=tickets.filter(t=>t.status==='resolved');
-  let escalated=tickets.filter(t=>t.status==='escalated');
-  // open = 힐링 미실행 (에이전트가 아직 처리 안 함)
-  // skipped = DBA 대상 (relation/column_missing)
-  let dbaOnly=['relation_missing','column_missing'];
-  let open=tickets.filter(t=>t.status==='open'&&!dbaOnly.includes(t.category));
-  let skipped=tickets.filter(t=>dbaOnly.includes(t.category)||t.status==='skipped');
-
-  // Summary
-  html+=`<div class="sec"><h2>Healing Tickets Summary</h2>`;
-  let mybatisResolved=resolved.filter(t=>t.skip_reason==='resolved_by_mybatis_engine').length;
-  let healResolved=resolved.length-mybatisResolved;
-  html+=`<p>Total: <strong>${tickets.length}</strong> | <span style="color:var(--success)">Resolved: ${resolved.length}</span>`;
-  if(mybatisResolved)html+=` (MyBatis: ${mybatisResolved}, Healing: ${healResolved})`;
-  html+=` | <span style="color:var(--fail)">Escalated: ${escalated.length}</span>`;
-  if(open.length)html+=` | <span style="color:var(--warn)">힐링 미실행: ${open.length}</span>`;
-  html+=` | <span style="color:var(--dim)">DBA 대상: ${skipped.length}</span></p>`;
-
-  // Category breakdown
-  if(h.by_category){
-    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">`;
-    for(let [k,v] of Object.entries(h.by_category).sort((a,b)=>b[1]-a[1])){
-      html+=`<span class="phase-badge" style="background:rgba(148,163,184,.1);color:var(--dim)">${k}: ${v}</span>`;
-    }
-    html+=`</div>`;
-  }
-  html+=`</div>`;
-
-  // Resolved tickets
-  if(resolved.length){
-    html+=`<div class="sec"><h2 style="color:var(--success)">Resolved (${resolved.length})</h2>`;
-    html+=`<table><tr><th>ID</th><th>Query</th><th>File</th><th>Category</th><th>Retries</th><th>Error (before fix)</th></tr>`;
-    for(let t of resolved.slice(0,100)){
-      html+=`<tr><td>${esc(t.ticket_id)}</td><td style="font-family:var(--mono);font-size:11px">${esc(t.query_id||'')}</td>`;
-      html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category)}</td>`;
-      html+=`<td>${t.retry_count||0}</td><td style="font-size:11px;color:var(--dim)">${esc(String(t.error||'').substring(0,150))}</td></tr>`;
-    }
-    html+=`</table></div>`;
-  }
-
-  // Escalated tickets (with full detail)
-  if(escalated.length){
-    html+=`<div class="sec"><h2 style="color:var(--fail)">Escalated — Manual Action Required (${escalated.length})</h2>`;
-    html+=`<table><tr><th>ID</th><th>Query</th><th>File</th><th>Category</th><th>Severity</th><th>Retries</th><th>Error</th></tr>`;
-    for(let t of escalated){
-      let sevCls=t.severity==='critical'?'style="color:var(--fail);font-weight:bold"':'style="color:var(--fail)"';
-      html+=`<tr><td>${esc(t.ticket_id)}</td><td style="font-family:var(--mono)">${esc(t.query_id||'')}</td>`;
-      html+=`<td style="font-size:11px">${esc(t.file||'')}</td><td>${esc(t.category)}</td>`;
-      html+=`<td ${sevCls}>${esc(t.severity)}</td><td>${t.retry_count||0}/${t.max_retries||5}</td>`;
-      html+=`<td style="font-size:11px;color:var(--fail)">${esc(String(t.error||'').substring(0,250))}</td></tr>`;
-    }
-    html+=`</table></div>`;
-  }
-
-  // Open tickets (healing not attempted — agent should have tried)
-  if(open.length){
-    html+=`<div class="sec"><h2 style="color:var(--warn)">힐링 미실행 — 재시도 필요 (${open.length}건)</h2>`;
-    html+=`<p style="font-size:12px;color:var(--warn)">에이전트가 힐링 루프를 실행하지 않은 티켓. 규칙: 최소 3회 Reviewer→Converter(LLM)→재검증.</p>`;
-    let openGroups={};
-    for(let t of open){
-      let cat=t.category||'other';
-      if(!openGroups[cat])openGroups[cat]={count:0,samples:[]};
-      openGroups[cat].count++;
-      if(openGroups[cat].samples.length<3)openGroups[cat].samples.push(t);
-    }
-    html+=`<table><tr><th>카테고리</th><th>건수</th><th>필요 조치</th><th>예시 쿼리</th></tr>`;
-    let catActions={'syntax_error':'SQL 수정 + 바인드값 변경','type_mismatch':'바인드값 타입/길이 조정','operator_mismatch':'::TEXT 등 캐스트 추가','function_missing':'PG 호환 함수 생성','xml_invalid':'CDATA 래핑','other':'수동 분석'};
-    for(let [cat,info] of Object.entries(openGroups).sort((a,b)=>b[1].count-a[1].count)){
-      let action=catActions[cat]||'분석 필요';
-      let samples=info.samples.map(s=>esc(s.query_id||'')).join(', ');
-      html+=`<tr><td style="color:var(--warn)">${esc(cat)}</td><td>${info.count}</td><td style="font-size:11px">${esc(action)}</td><td style="font-family:var(--mono);font-size:11px">${samples}</td></tr>`;
-    }
-    html+=`</table></div>`;
-  }
-
-  // DBA-only tickets (relation/column missing)
-  if(skipped.length){
-    html+=`<div class="sec"><h2 style="color:var(--dim)">DBA 대상 — 스키마 이관 필요 (${skipped.length}건)</h2>`;
-    html+=`<p style="font-size:12px;color:var(--dim)">테이블/컬럼이 PG에 없어서 자동 힐링 불가. DBA가 스키마를 이관해야 함.</p>`;
-    // Group by skip_reason
-    let skipGroups={};
-    for(let t of skipped){
-      let reason=t.skip_reason||t.category||'unknown';
-      if(!skipGroups[reason])skipGroups[reason]={count:0,samples:[]};
-      skipGroups[reason].count++;
-      if(skipGroups[reason].samples.length<3)skipGroups[reason].samples.push(t);
-    }
-    html+=`<table><tr><th>사유</th><th>건수</th><th>예시 쿼리</th><th>예시 에러</th></tr>`;
-    for(let [reason,info] of Object.entries(skipGroups).sort((a,b)=>b[1].count-a[1].count)){
-      let samples=info.samples.map(s=>esc(s.query_id||'')).join(', ');
-      let sampleErr=info.samples[0]?esc(String(info.samples[0].error||'').substring(0,100)):'';
-      html+=`<tr><td>${esc(reason)}</td><td>${info.count}</td><td style="font-family:var(--mono);font-size:11px">${samples}</td><td style="font-size:11px;color:var(--dim)">${sampleErr}</td></tr>`;
-    }
-    html+=`</table></div>`;
-  }
-
-  document.getElementById('tickets-detail').innerHTML=html;
-}
 
 </script>
 </body>

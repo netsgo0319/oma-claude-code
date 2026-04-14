@@ -1,3 +1,7 @@
+---
+disable-model-invocation: true
+---
+
 Reset the OMA workspace to a clean state, preserving input files.
 
 ## Instructions

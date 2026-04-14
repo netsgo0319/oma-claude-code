@@ -15,26 +15,22 @@ cat << 'BANNER'
 
   ┌─ Architecture ─────────────────────────────────────┐
   │                                                    │
-  │               oracle-pg-leader                     │
-  │               (오케스트레이터)                       │
-  │          ┌───┬───┬───┬───┬───┐                     │
-  │          │   │   │   │   │   │                     │
-  │        Conv TGen Valid Revw Learner                │
+  │               Orchestrator                         │
+  │               (Claude Code)                        │
+  │             ┌───────┬───────┐                      │
+  │             │               │                      │
+  │          Converter    Validate+Fix                  │
   │                                                    │
   └────────────────────────────────────────────────────┘
 
   ┌─ Pipeline ─────────────────────────────────────────┐
   │                                                    │
   │  input/*.xml                                       │
-  │    ▸ Phase 0   사전점검 (XML·DB·CLI)               │
-  │    ▸ Phase 1   XML 파싱                            │
-  │    ▸ Phase 1.5 의존성 분석 + 복잡도 (L0~L4)        │
-  │    ▸ Phase 2   변환 (룰 + LLM, 레이어별 병렬)      │
-  │    ▸ Phase 2.5 테스트 케이스 생성                   │
-  │    ▸ Phase 3   검증 (EXPLAIN → 실행 → 비교)        │
-  │    ▸ Phase 4   셀프힐링 (실패시 최대 3회)           │
-  │    ▸ Phase 5   학습 (에지케이스 축적)               │
-  │    ▸ Phase 6   리포트 생성                         │
+  │    ▸ Step 0   Preflight (XML·DB·CLI)               │
+  │    ▸ Step 1   Parse + Convert (룰 + LLM + TC)      │
+  │    ▸ Step 2   Validate (EXPLAIN → 실행 → 비교)     │
+  │    ▸ Step 3   Fix Loop (실패시 수정 + 재검증)       │
+  │    ▸ Step 4   Report (HTML + Query Matrix)         │
   │  ⇒ output/*.xml                                    │
   │                                                    │
   └────────────────────────────────────────────────────┘

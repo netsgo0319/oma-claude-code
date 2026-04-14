@@ -15,8 +15,8 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 ```json
 {
   "timestamp": "2026-04-09T12:34:56Z",
-  "phase": "phase_0 | phase_1 | phase_2 | phase_2.5 | phase_3 | phase_4 | phase_5 | phase_6",
-  "agent": "leader | converter | test-generator | validator | reviewer | learner",
+  "phase": "step_0 | step_1 | step_2 | step_3 | step_4",
+  "agent": "converter | validate-and-fix",
   "file": "UserMapper.xml",
   "query_id": "selectUserById",
   "version": 1,
@@ -29,7 +29,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 
 ### 필드 설명
 - **timestamp**: ISO 8601 형식의 기록 시각
-- **phase**: 현재 Phase (phase_0 ~ phase_6)
+- **phase**: 현재 Step (step_0 ~ step_4)
 - **agent**: 기록 주체 에이전트
 - **file**: 대상 파일명
 - **query_id**: 대상 쿼리 ID
@@ -145,7 +145,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
     "fix_description": "UNION ALL을 UNION으로 변경하고, 방문 경로 배열(path)을 추가하여 순환 감지",
     "previous_sql": "WITH RECURSIVE ... UNION ALL ...",
     "fixed_sql": "WITH RECURSIVE ... UNION ... WHERE NOT (id = ANY(path))",
-    "fix_source": "reviewer 분석",
+    "fix_source": "validate-and-fix 분석",
     "root_cause": "CONNECT BY NOCYCLE → WITH RECURSIVE 변환 시 순환 탈출 조건 누락"
   }
 }
