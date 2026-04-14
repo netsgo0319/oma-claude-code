@@ -177,7 +177,7 @@ Agent({
 | FAIL_COMPARE_DIFF | Oracle↔PG 결과 불일치 |
 | FAIL_TC_TYPE_MISMATCH | 바인드값 타입 불일치 |
 | FAIL_TC_OPERATOR | 연산자 타입 불일치 |
-| NOT_TESTED_NO_RENDER | MyBatis 렌더링 실패 |
+| NOT_TESTED_NO_RENDER | MyBatis 렌더링 실패 (static fallback 시도 후에도 검증 불가) |
 | NOT_TESTED_NO_DB | DB 미접속 |
 | NOT_TESTED_PENDING | 변환 미완료 |
 

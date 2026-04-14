@@ -106,7 +106,10 @@ stateDiagram-v2
     unconverted --> pending: LLM도 실패
 
     converted --> tc_generated: Step 2 TC 생성
-    tc_generated --> validating: Step 3 검증 시작
+    tc_generated --> mybatis_render: MyBatis 엔진 렌더링
+    mybatis_render --> validating: SQL 렌더링 성공
+    mybatis_render --> static_fallback: 빈 SQL (동적 SQL 전체 스킵)
+    static_fallback --> validating: static XML에서 #{param} 추출
 
     validating --> PASS_COMPLETE: EXPLAIN+Execute+Compare 통과
     validating --> PASS_NO_CHANGE: 변환 불필요 + 통과
@@ -158,7 +161,7 @@ stateDiagram-v2
 ### 미테스트
 | 상태 | 조건 | 설명 |
 |------|------|------|
-| NOT_TESTED_NO_RENDER | converted + not_tested + mybatis=no | MyBatis 렌더링 실패 |
+| NOT_TESTED_NO_RENDER | converted + not_tested + mybatis=no | MyBatis 렌더링 실패 (static fallback 후에도 검증 불가) |
 | NOT_TESTED_NO_DB | converted + not_tested (또는 explain pass + compare not_tested) | DB 미접속 |
 | NOT_TESTED_PENDING | conv = pending | 변환 미완료 |
 

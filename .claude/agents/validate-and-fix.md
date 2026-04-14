@@ -57,6 +57,10 @@ python3 tools/validate-queries.py --full \
 **개별 단계(EXPLAIN만 → Execute만)를 따로 실행하지 마라. --full 하나로 끝.**
 **전체 파일을 한번에 넣지 마라. 할당된 파일만 --files에 넣어라.**
 
+**SQL 로딩 우선순위:** MyBatis 렌더링 SQL → 빈 SQL이면 static XML에서 자동 보충.
+동적 SQL(`<if test="param != null">`)이 전체를 감싸서 MyBatis가 빈 SQL을 반환하면,
+output XML에서 `#{param}` 패턴의 원본 SQL을 추출하여 더미 바인딩으로 검증한다.
+
 ### 2. FAIL 쿼리 에러 분류
 
 validated.json + query-tracking.json에서 FAIL 쿼리를 읽고 분류:
