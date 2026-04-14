@@ -796,7 +796,6 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
       <button class="log-filter-btn active" data-filter="all">All</button>
       <button class="log-filter-btn" data-filter="error">Error</button>
       <button class="log-filter-btn" data-filter="decision">Decision</button>
-      <button class="log-filter-btn" data-filter="learning">Learning</button>
       <button class="log-filter-btn" data-filter="warning">Warning</button>
       <input type="text" class="log-search" id="log-search" placeholder="Search log...">
     </div>
@@ -938,7 +937,7 @@ function renderPhaseBars(){
   ];
   const phaseLabels={
     'phase_0':'Step 0: Pre-flight','phase_1':'Step 1: Parse+Convert',
-    'phase_2':'Step 1: Convert (Rule+LLM)','phase_2.5':'Step 2: Test Cases',
+    'phase_2':'Step 1: LLM Convert','phase_2.5':'Step 2: TC Generate',
     'phase_3':'Step 3: Validate+Fix','phase_3.5':'Step 3: MyBatis Extract',
     'phase_4':'Step 4: Report'
   };
@@ -1604,15 +1603,15 @@ function expSelectQuery(fname, qid){
   let attempts=q.attempts||[];
   if(attempts.length){
     html+=`<div style="margin-top:8px"><strong>Attempt History (${attempts.length})</strong></div>`;
-    html+=`<table style="font-size:11px;margin-top:4px"><tr><th>#</th><th>Error Category</th><th>Fix Applied</th><th>Result</th><th>TC Used</th></tr>`;
+    html+=`<table style="font-size:11px;margin-top:4px"><tr><th>#</th><th>Error Category</th><th>Error Detail</th><th>Fix Applied</th><th>Result</th></tr>`;
     for(let i=0;i<attempts.length;i++){
       let a=attempts[i];
       let resCol=(a.result||'')==='pass'?'var(--success)':(a.result||'')==='fail'?'var(--fail)':'var(--dim)';
       html+=`<tr><td>${i+1}</td>`;
       html+=`<td>${esc(a.error_category||'-')}</td>`;
+      html+=`<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.error_detail||'')}">${esc(String(a.error_detail||'-').substring(0,80))}</td>`;
       html+=`<td style="font-size:10px">${esc(String(a.fix_applied||'-').substring(0,120))}</td>`;
-      html+=`<td style="color:${resCol};font-weight:bold">${esc(a.result||'-')}</td>`;
-      html+=`<td style="font-family:var(--mono)">${esc(a.tc_used||'-')}</td></tr>`;
+      html+=`<td style="color:${resCol};font-weight:bold">${esc(a.result||'-')}</td></tr>`;
     }
     html+=`</table>`;
   }

@@ -118,14 +118,11 @@ python3 tools/generate-report.py
 | `workspace/results/_validation/validated.json` | EXPLAIN 검증 결과 (pass/fail 목록) |
 | `workspace/logs/activity-log.jsonl` | 전체 감사 로그 |
 
-### HTML 리포트 포함 내용
+### HTML 리포트 구성
 
-- Step Progress 바
-- Query Validation Matrix (COMPLETE/EXPLAIN_ONLY/FAIL 카드)
-- **EXPLAIN Failure Categories** (SYNTAX_ERROR/MISSING_OBJECT 등 + 조치 가이드)
-- 파일별 드릴다운 (Oracle/PG SQL 병렬 비교)
-- **파일 필터** (All/Fail/Pass 토글)
-- 활동 타임라인 + 감사 로그
+- **Overview**: 6개 카드 (파일수, 전체쿼리, PASS, FAIL코드, FAIL DBA, 미테스트) + Step Progress 바
+- **Explorer**: 파일→쿼리 트리 네비게이션 + 쿼리별 상세 (Oracle/PG SQL 비교, 14-state 배지, TC 결과, Attempt History)
+- **Log**: 활동 타임라인 + 감사 로그 (에러/결정/경고 필터)
 
 ## 핵심 안전장치
 
