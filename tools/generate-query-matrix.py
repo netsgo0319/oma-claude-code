@@ -84,7 +84,16 @@ def main():
     rows = []
 
     # Load validation results — glob all _validation* directories (supports batch splits)
-    val_results = {}
+    # test_id format: "filename.queryId.variant" → extract bare queryId
+    def _extract_bare_qid(test_id):
+        """Extract bare query_id from test_id like 'file.queryId.variant'."""
+        parts = test_id.split('.')
+        if len(parts) >= 2:
+            return parts[-2]  # second-to-last part = queryId
+        return test_id
+
+    val_results = {}       # keyed by full test_id
+    val_by_qid = {}        # keyed by bare query_id (best result wins)
     for val_dir in sorted(results_dir.glob('_validation*')):
         vp = val_dir / 'validated.json'
         if not vp.exists():
@@ -93,15 +102,24 @@ def main():
         source = 'mybatis' if 'phase35' in val_dir.name else 'static'
         for p in vdata.get('passes', []):
             tid = p if isinstance(p, str) else p.get('test', '')
+            entry = {'status': 'pass', 'error': '', 'source': source}
             # pass가 기존 fail을 덮어씀 (더 좋은 결과 우선)
             if tid not in val_results or val_results[tid]['status'] == 'fail':
-                val_results[tid] = {'status': 'pass', 'error': '', 'source': source}
+                val_results[tid] = entry
+            bare = _extract_bare_qid(tid)
+            if bare not in val_by_qid or val_by_qid[bare]['status'] == 'fail':
+                val_by_qid[bare] = entry
         for f in vdata.get('failures', []):
             tid = f.get('test', f.get('test_id', ''))
+            entry = {'status': 'fail', 'error': f.get('error', '')[:300], 'source': source}
             if tid not in val_results:
-                val_results[tid] = {'status': 'fail', 'error': f.get('error', '')[:300], 'source': source}
+                val_results[tid] = entry
+            bare = _extract_bare_qid(tid)
+            if bare not in val_by_qid:
+                val_by_qid[bare] = entry
 
     # Load compare results — glob all _validation* directories
+    # Also index by bare query_id (compare_results uses query_id or test_id)
     compare_results = {}
     for val_dir in sorted(results_dir.glob('_validation*')):
         for cfile in ['compare_validated.json', 'compare_results.json']:
@@ -109,8 +127,10 @@ def main():
             if cp.exists():
                 cdata = json.load(open(cp))
                 for r in cdata.get('results', []):
-                    qid = r.get('query_id', '')
-                    compare_results.setdefault(qid, []).append(r)
+                    # query_id might be bare or full test_id
+                    raw_qid = r.get('query_id', r.get('test_id', ''))
+                    bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
+                    compare_results.setdefault(bare, []).append(r)
 
     # Load test-cases.json files (keyed by query_id)
     test_cases_by_qid = {}
@@ -177,14 +197,13 @@ def main():
                 explain_error = ''
                 explain_source = 'mybatis'
 
-            # Fallback: check from validation results
+            # Fallback: check from validation results (bare query_id lookup)
             if not explain_status:
-                for tid, vr in val_results.items():
-                    if qid in tid:
-                        explain_status = vr['status']
-                        explain_error = vr.get('error', '')
-                        explain_source = vr.get('source', 'static')
-                        break
+                vr = val_by_qid.get(qid)
+                if vr:
+                    explain_status = vr['status']
+                    explain_error = vr.get('error', '')
+                    explain_source = vr.get('source', 'static')
                 if not explain_status:
                     explain_status = 'not_tested'
 
