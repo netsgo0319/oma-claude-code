@@ -299,11 +299,28 @@ def _tables(sql):
 def _params(sql):
     return list(dict.fromkeys(re.findall(r'#\{(\w+)\}', sql)))
 
+def _foreach_collections(q):
+    """Extract <foreach collection="X"> names from parsed query branches."""
+    collections = set()
+    raw = q.get('sql_raw', '')
+    for b in q.get('sql_branches', []):
+        raw += ' ' + b.get('sql', '') + ' ' + b.get('condition', '')
+    # XML attribute: collection="paramName"
+    for m in re.findall(r'collection\s*=\s*["\'](\w+)["\']', raw):
+        collections.add(m)
+    # Also check raw XML text if available
+    xml_text = q.get('xml_text', '')
+    for m in re.findall(r'collection\s*=\s*["\'](\w+)["\']', xml_text):
+        collections.add(m)
+    return list(collections)
+
 def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None):
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
-    if not params: return []
+    # foreach collection 파라미터도 포함 (더미 리스트 필요)
+    foreach_cols = _foreach_collections(q)
+    if not params and not foreach_cols: return []
     tables = _tables(raw)
     qtype = q.get('type', 'select').lower()
     is_dml = qtype in ('insert', 'update', 'delete')
@@ -334,6 +351,10 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
             for p in params:
                 if p not in binds:
                     binds[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
+            # foreach collection에 더미 리스트 (고객이 안 줬으면)
+            for fc in foreach_cols:
+                if fc not in binds:
+                    binds[fc] = ['1', '2']
             _add(f'custom_{i+1}', binds, 'CUSTOM')
 
     # Priority 1: Sample data TCs (sample_row_1, _2, _3)
@@ -349,6 +370,10 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
 
     # Priority 2: Default TC (inferred)
     default = {p: infer_value(p, vo_fields, captures, col_stats, fk_values) for p in params}
+    # foreach collection에 더미 리스트 추가 (OGNL null.iterator() 방지)
+    for fc in foreach_cols:
+        if fc not in default:
+            default[fc] = ['1', '2']
     if not _dup(default): _add('default', default, 'INFERRED')
 
     # DML safety: no null_test / empty_string / boundary
