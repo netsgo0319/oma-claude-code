@@ -110,6 +110,20 @@ reporter가 **체크리스트 먼저 수행** → 통과 후 보고서 생성.
 Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 ```
 
+## 컴팩팅 후 상태 복구 (필수)
+
+**대화가 컴팩팅되면 이전 맥락이 사라진다. 반드시 파일에서 상태를 복구하라.**
+컴팩팅 감지 시 (또는 응답 시작 시 상태가 불확실하면):
+```bash
+cat workspace/progress.json 2>/dev/null | python3 -m json.tool | head -20
+```
+이 파일이 현재 진행 상태의 유일한 진실. 대화 기억에 의존하지 마라.
+
+**절대 잊지 말 것 (컴팩팅 후에도):**
+- EXPLAIN PASS ≠ 변환 성공. **Compare까지 해야 PASS.**
+- DBA 3종 외 모든 쿼리는 Compare 필수. 면제 없음.
+- validate-and-fix는 분석만 하면 안 됨. **반드시 수정 시도.**
+
 ## 로깅
 
 hook이 activity-log.jsonl에 자동 기록 (UTC timestamp). 보고서에서 로컬 시간 표시.

@@ -44,6 +44,18 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cp workspace/progress.json workspace/state-snapshot.json 2>/dev/null; echo \"[PreCompact] State snapshot saved\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
