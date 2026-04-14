@@ -13,6 +13,9 @@ MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 2. **Step을 건너뛰지 마라.** 0 → 1 → 2 → 3 → 4 순서 필수.
 3. **모든 쿼리는 무조건 TC 기반으로 검증한다.** 스킵 없음.
 4. **직접 도구를 실행하지 마라.** 서브에이전트에 위임하라. (Step 0만 예외)
+5. **DML은 PG: BEGIN/ROLLBACK + 5s timeout, Oracle: SELECT COUNT(*) WHERE.**
+6. **workspace/ 아래에 임시 .py/.sh 파일을 만들지 마라.**
+7. **0건==0건도 유효한 PASS.** Compare를 스킵하지 마라.
 
 ## 파이프라인
 
@@ -43,6 +46,9 @@ python3 tools/generate-sample-data.py
 
 `JAVA_SRC_DIR` 미설정이면 사용자에게 **반드시 물어보라**.
 미설치 도구는 설치 명령을 **안내**하라 (자동 설치 금지).
+
+**XML 복사 주의:** `*-sql-oracle.xml` 패턴으로 필터하지 마라. `*.xml` 전부 복사.
+Oracle 접속 시 오브젝트 스캔 (TABLE/FUNCTION/PACKAGE). PG 접속 시 pgcrypto 확인.
 
 **Step 0 완료 후 → Step 1로.**
 
@@ -81,6 +87,11 @@ Agent({
   prompt: "전체 쿼리 검증+수정: --full (EXPLAIN→Execute→Compare). FAIL은 최대 5회 수정. 스키마 에러는 즉시 스킵."
 })
 ```
+
+**수정 루프 정책:**
+- relation_missing, column_missing, function_missing → **즉시 스킵 (DBA)**
+- syntax_error, type_mismatch, operator_mismatch, residual_oracle → **최대 5회 루프**
+- 매 시도마다 다른 접근법 필수. output XML 수정 전 반드시 버저닝 (`.v{N}.bak`).
 
 100+ 쿼리면 파일 단위로 **여러 validate-and-fix 병렬** spawn:
 ```
@@ -152,6 +163,20 @@ Agent({
 ─────────────────────
 Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 ```
+
+## 로깅
+
+activity-log.jsonl에 hook이 자동 기록 (UTC timestamp).
+서브에이전트도 tracking_utils.log_activity()로 기록 필수.
+보고서에서 로컬 타임존으로 표시.
+
+## Resume (중단 후 재개)
+
+progress.json을 읽고 완료된 Step은 건너뛰고, 미완료 Step부터 재개.
+
+## 초기화
+
+`bash tools/reset-workspace.sh --force` — input 보존, 나머지 삭제.
 
 ## 변환 룰
 

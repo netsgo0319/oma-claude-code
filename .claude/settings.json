@@ -20,6 +20,28 @@
             "command": "bash -c 'input=$(cat); if echo \"$input\" | grep -qiE \"(psql|pg_dump|pg_restore|sqlplus|SELECT |INSERT |UPDATE |DELETE )\"; then mkdir -p workspace/logs; ts=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\"); echo \"{\\\"event\\\": \\\"db_query_executed\\\", \\\"timestamp\\\": \\\"$ts\\\"}\" >> workspace/logs/db-query-audit.log; echo \"DB query logged at $ts\"; fi'"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); tool=$(echo \"$input\" | jq -r \".tool_name // empty\"); ts=$(date +%s); mkdir -p workspace/logs; echo \"{\\\"ts\\\": $ts, \\\"type\\\": \\\"PostToolUse\\\", \\\"tool\\\": \\\"$tool\\\"}\" >> workspace/logs/activity-log.jsonl'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); ts=$(date +%s); mkdir -p workspace/logs; echo \"{\\\"ts\\\": $ts, \\\"type\\\": \\\"SubagentStop\\\"}\" >> workspace/logs/activity-log.jsonl'",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [

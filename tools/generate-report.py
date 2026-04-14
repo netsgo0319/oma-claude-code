@@ -160,9 +160,6 @@ def collect_data(base_dir):
         'validation': None,
         'execution': None,
         'comparison': None,
-        'validation_phase7': None,
-        'comparison_phase7': None,
-        'dba_review': None,
         'query_matrix': None,
         'extracted': [],
         'activity_log': [],
@@ -263,20 +260,7 @@ def collect_data(base_dir):
         if data['comparison'] is None:
             data['comparison'] = load_json(val_dir / 'compare_results.json')
 
-    # 4b. MyBatis extraction validation (separate directory, backward compat)
-    val7_dir = ws / 'results' / '_validation_phase35'
-    if val7_dir.exists():
-        data['validation_phase7'] = load_json(val7_dir / 'validated.json')
-        data['comparison_phase7'] = load_json(val7_dir / 'compare_validated.json')
-        if data['comparison_phase7'] is None:
-            data['comparison_phase7'] = load_json(val7_dir / 'compare_results.json')
-
-    # 4c. DBA Review (Step 4)
-    dba_dir = ws / 'results' / '_dba_review'
-    if dba_dir.exists():
-        data['dba_review'] = load_json(dba_dir / 'review-result.json')
-
-    # 4e. Query Matrix — try reports/ first, then derive from tracking
+    # 4b. Query Matrix — try reports/ first, then derive from tracking
     qm_path = ws / 'reports' / 'query-matrix.json'
     if qm_path.exists():
         data['query_matrix'] = load_json(qm_path)
@@ -445,18 +429,6 @@ def compute_summary(data):
     s['extracted_variants'] = sum(e['total_variants'] for e in data['extracted'])
     s['extracted_multi_branch'] = sum(e['multi_branch'] for e in data['extracted'])
 
-    # MyBatis extraction validation
-    if data.get('validation_phase7'):
-        v7 = data['validation_phase7']
-        s['phase7_explain_pass'] = v7.get('pass', 0)
-        s['phase7_explain_fail'] = v7.get('fail', 0)
-        s['phase7_explain_total'] = v7.get('total', 0)
-    if data.get('comparison_phase7'):
-        c7 = data['comparison_phase7']
-        s['phase7_compare_match'] = c7.get('pass', c7.get('matched', 0))
-        s['phase7_compare_fail'] = c7.get('fail', c7.get('mismatched', 0))
-        s['phase7_compare_total'] = c7.get('total', 0)
-
     # Migration readiness
     total_q = s['total_input_queries']
     if total_q > 0:
@@ -471,20 +443,16 @@ def compute_summary(data):
                     err = str(r.get('pg_error', '') or r.get('ora_error', '') or r.get('reason', ''))
                     if 'does not exist' in err or 'pkg_crypto' in err.lower():
                         escalated += 1
-        # Best available: MyBatis compare > static compare > MyBatis EXPLAIN > static EXPLAIN
-        if s.get('phase7_compare_total'):
-            s['truly_done'] = s.get('phase7_compare_match', 0)
-        elif s.get('compare_total'):
+        # Best available: compare > EXPLAIN
+        if s.get('compare_total'):
             s['truly_done'] = compare_match
-        elif s.get('phase7_explain_total'):
-            s['truly_done'] = s.get('phase7_explain_pass', 0)
         else:
             s['truly_done'] = s.get('validation_pass', 0)
         s['needs_manual'] = needs_manual
         s['escalated_queries'] = escalated
         # Readiness = pass / tested (not pass / total)
         # Queries not tested (no TC, dynamic SQL) are "unverified", not "failed"
-        tested = s.get('phase7_compare_total') or s.get('compare_total') or s.get('phase7_explain_total') or s.get('validation_total') or 0
+        tested = s.get('compare_total') or s.get('validation_total') or 0
         s['tested_queries'] = tested
         s['unverified_queries'] = total_q - tested
         s['readiness_pct'] = round(s['truly_done'] * 100 / tested) if tested > 0 else 0
@@ -511,9 +479,6 @@ def build_embedded_data(data):
         'validation': data.get('validation'),
         'execution': data.get('execution'),
         'comparison': data.get('comparison'),
-        'validation_phase7': data.get('validation_phase7'),
-        'comparison_phase7': data.get('comparison_phase7'),
-        'dba_review': data.get('dba_review'),
         'query_matrix': data.get('query_matrix'),
         'files': {},
     }
@@ -1366,8 +1331,9 @@ function renderTimeline(){
   if(log.length===0){document.getElementById('timeline-list').innerHTML='<div style="color:var(--dim)">No activity log found</div>';return;}
   let html='';
   for(let entry of log){
-    let ts=entry.timestamp||entry.ts||'';
-    if(ts&&typeof ts==='string'&&ts.includes('T'))ts=ts.split('T')[1].substring(0,8);
+    let ts=entry.ts||entry.timestamp||'';
+    if(typeof ts==='number') ts=new Date(ts*1000).toLocaleString();
+    else if(typeof ts==='string'&&ts.includes('T')) ts=ts.replace('T',' ').substring(0,19);
     let evt=entry.event||entry.action||entry.type||'';
     let msg=entry.message||entry.detail||entry.msg||'';
     if(typeof msg==='object')msg=JSON.stringify(msg).substring(0,150);
@@ -1391,8 +1357,9 @@ function renderLog(){
   let html='';
   for(let i=0;i<log.length;i++){
     let entry=log[i];
-    let ts=entry.timestamp||entry.ts||'';
-    if(ts&&typeof ts==='string'&&ts.includes('T'))ts=ts.split('T')[1].substring(0,8);
+    let ts=entry.ts||entry.timestamp||'';
+    if(typeof ts==='number') ts=new Date(ts*1000).toLocaleString();
+    else if(typeof ts==='string'&&ts.includes('T')) ts=ts.replace('T',' ').substring(0,19);
     let evt=entry.event||entry.action||entry.type||'';
     let msg=entry.message||entry.detail||entry.msg||'';
     if(typeof msg==='object')msg=JSON.stringify(msg).substring(0,200);
@@ -1400,7 +1367,6 @@ function renderLog(){
     let evtClass='';
     if(evtLower.includes('error')||evtLower.includes('fail'))evtClass='error';
     else if(evtLower.includes('decision'))evtClass='decision';
-    else if(evtLower.includes('warn'))evtClass='warning';
     else if(evtLower.includes('warn'))evtClass='warning';
     html+=`<div class="log-entry" data-type="${evtClass}" data-text="${esc((evt+' '+msg).toLowerCase())}">`;
     html+=`<span class="log-ts">${esc(String(ts))}</span>`;
@@ -1603,11 +1569,12 @@ function expSelectQuery(fname, qid){
   let attempts=q.attempts||[];
   if(attempts.length){
     html+=`<div style="margin-top:8px"><strong>Attempt History (${attempts.length})</strong></div>`;
-    html+=`<table style="font-size:11px;margin-top:4px"><tr><th>#</th><th>Error Category</th><th>Error Detail</th><th>Fix Applied</th><th>Result</th></tr>`;
+    html+=`<table style="font-size:11px;margin-top:4px"><tr><th>#</th><th>Time</th><th>Error Category</th><th>Error Detail</th><th>Fix Applied</th><th>Result</th></tr>`;
     for(let i=0;i<attempts.length;i++){
       let a=attempts[i];
       let resCol=(a.result||'')==='pass'?'var(--success)':(a.result||'')==='fail'?'var(--fail)':'var(--dim)';
-      html+=`<tr><td>${i+1}</td>`;
+      let ats=a.ts?new Date(a.ts*1000).toLocaleTimeString():(a.timestamp||'-');
+      html+=`<tr><td>${i+1}</td><td style="color:var(--dim)">${esc(String(ats))}</td>`;
       html+=`<td>${esc(a.error_category||'-')}</td>`;
       html+=`<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.error_detail||'')}">${esc(String(a.error_detail||'-').substring(0,80))}</td>`;
       html+=`<td style="font-size:10px">${esc(String(a.fix_applied||'-').substring(0,120))}</td>`;

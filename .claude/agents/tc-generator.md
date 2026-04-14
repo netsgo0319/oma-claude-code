@@ -38,6 +38,8 @@ python3 tools/generate-test-cases.py \
   --results-dir workspace/results/
 ```
 
+TC 우선순위: **고객(custom-binds.json)** > 샘플 데이터 > Java VO > V$SQL_BIND_CAPTURE > 컬럼 통계 > FK > 이름 추론
+
 ### 3. 결과 검증
 
 생성 후 반드시 확인:
