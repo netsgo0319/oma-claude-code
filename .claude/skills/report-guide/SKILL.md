@@ -11,7 +11,7 @@ description: 변환 완료 후 전체 결과를 취합하여 4-탭 드릴다운 
 - workspace/results/*/v*/conversion-report.json
 - workspace/results/_validation/validated.json
 - workspace/results/_validation/execute_validated.json
-- workspace/results/_extracted/*-extracted.json (Phase 3.5)
+- workspace/results/_extracted/*-extracted.json (Step 3 렌더링 결과)
 - workspace/logs/activity-log.jsonl
 
 ## 산출물: workspace/reports/migration-report.html
@@ -22,11 +22,11 @@ description: 변환 완료 후 전체 결과를 취합하여 4-탭 드릴다운 
 
 **Overview 탭:**
 - **Migration Readiness %** 카드 (전체 너비 — verified OK / needs attention / escalated)
-- Phase 진행 막대 (Phase별 소요시간, done/running/pending)
+- Step 진행 막대 (Step별 소요시간, done/running/pending)
 - 요약 카드 (파일수, 쿼리수, EXPLAIN, Execute, Compare Oracle vs PG, 패턴수)
 - Oracle 패턴 분포 차트
 - 복잡도 분포 차트 (L0~L4)
-- Phase 3.5 추출 결과 테이블
+- MyBatis 추출 결과 테이블
 
 **Query Detail 탭:**
 - 접기/펼치기 파일 목록 (파일별 compare match/mismatch 표시)

@@ -5,7 +5,7 @@ description: MyBatis SqlSessionFactory + BoundSql API를 사용하여 XML 매퍼
 
 ## 개요
 
-Kiro가 XML을 직접 해석하는 대신, MyBatis의 실제 엔진(SqlSessionFactory + BoundSql)을 사용하여
+에이전트가 XML을 직접 해석하는 대신, MyBatis의 실제 엔진(SqlSessionFactory + BoundSql)을 사용하여
 동적 SQL을 정확하게 평가한다. 이를 통해:
 - `<if>`, `<choose>`, `<foreach>` 등 동적 태그가 OGNL 엔진으로 정확히 평가됨
 - `<include>` 참조가 MyBatis가 정확히 resolve
@@ -103,13 +103,13 @@ java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar
 
 이 variants를 통해 동적 SQL의 각 분기에서 생성되는 **실제 SQL**을 정확히 파악할 수 있다.
 
-## Phase 1에서의 활용
+## Step 1에서의 활용
 
-Leader가 Phase 1에서 parse-xml 스킬 대신 (또는 병행하여) 이 도구를 실행:
+Step 1에서 parse-xml 스킬 대신 (또는 병행하여) 이 도구를 실행:
 
 1. `java -jar ... --input workspace/input --output workspace/results/_extracted`
 2. 추출된 JSON에서 sql_raw와 sql_variants를 parsed.json에 병합
-3. Kiro의 XML 해석 대신 MyBatis 엔진이 생성한 **실제 SQL**을 변환 대상으로 사용
+3. XML 직접 해석 대신 MyBatis 엔진이 생성한 **실제 SQL**을 변환 대상으로 사용
 
 ## 자동 처리되는 문제들
 
@@ -126,7 +126,7 @@ classpath에 없는 경우, **자동으로 `java.util.HashMap`으로 대체**한
 - 11/11 파일 독립 처리 → 0건 충돌
 
 ### Wrapper Script
-Phase 3.5 전체 파이프라인을 한 명령으로 실행:
+MyBatis 추출 파이프라인을 한 명령으로 실행:
 ```bash
 bash tools/run-extractor.sh              # 빌드 + 추출
 bash tools/run-extractor.sh --validate   # + EXPLAIN 검증

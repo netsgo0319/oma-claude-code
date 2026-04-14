@@ -14,7 +14,7 @@ allowed-tools:
 # Validate-and-Fix Agent
 
 FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 5회 자율 수행.
-Validator + Healer를 하나로 통합한 에이전트.
+Validator + Fixer를 하나로 통합한 에이전트.
 
 ## Setup: Load Knowledge
 
@@ -24,7 +24,7 @@ Validator + Healer를 하나로 통합한 에이전트.
 
 ## 입력
 
-Leader가 전달:
+메인 에이전트가 전달:
 - 대상 파일 목록 또는 쿼리 ID
 - workspace/results/ 경로
 - max_retries (기본 5)
@@ -136,7 +136,7 @@ for attempt in 1..5:
 
 ## 반환
 
-Leader에게 한 줄 요약:
+메인 에이전트에게 한 줄 요약:
 ```
 {file}: N resolved, M escalated, K skipped(DBA)
 ```

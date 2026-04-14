@@ -80,6 +80,8 @@ Agent({
 
 100+ 쿼리: 여러 validate-and-fix 에이전트에 파일 단위 병렬 분배.
 
+**에이전트 반환 후:** 모든 validate-and-fix 에이전트가 완료될 때까지 대기. 반환 결과(resolved/escalated/skipped 수)를 집계한 뒤 **Step 4로 진행**. FAIL이 남아있어도 Step 4는 반드시 실행한다 (FAIL_ESCALATED로 리포트에 포함).
+
 **0건==0건도 유효한 PASS.** Compare 스킵 금지.
 **DML: PG는 BEGIN/ROLLBACK, Oracle은 SELECT COUNT(*) WHERE.**
 

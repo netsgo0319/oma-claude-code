@@ -25,7 +25,7 @@ inclusion: always
 - User: ${PG_USER}
 - Password: (환경변수 PG_PASSWORD 참조)
 
-## PG Prerequisites (Phase 0에서 확인)
+## PG Prerequisites (Step 0에서 확인)
 
 - `CREATE EXTENSION IF NOT EXISTS pgcrypto;` — PKG_CRYPTO 변환 시 필수
 - 대상 스키마의 테이블/시퀀스 존재 여부 확인

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 3: Query Validation Tool
+Step 3: Query Validation Tool
 Validates converted PostgreSQL queries using test-cases.json bind values.
 
 Usage:
@@ -19,7 +19,7 @@ Usage:
     # Compare Oracle vs PostgreSQL results (the core migration validation)
     python3 tools/validate-queries.py --compare --output workspace/results/_validation/
 
-    # Use extracted SQL from mybatis-sql-extractor (Phase 3.5)
+    # Use extracted SQL from mybatis-sql-extractor
     python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation/
 
     # Full atomic validation (generate + EXPLAIN + Execute + Oracle Compare + parse)
@@ -1686,7 +1686,7 @@ SET HEADING ON
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Phase 3: Query Validation Tool')
+    parser = argparse.ArgumentParser(description='Step 3: Query Validation Tool')
     parser.add_argument('--generate', action='store_true', help='Generate SQL test scripts')
     parser.add_argument('--local', action='store_true', help='Execute EXPLAIN locally via psql')
     parser.add_argument('--execute', action='store_true', help='Execute queries locally via psql (actual execution)')

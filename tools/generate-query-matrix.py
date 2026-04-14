@@ -53,7 +53,7 @@ def classify_explain_error(error):
 OVERALL_LABELS = {
     # 성공
     'PASS_COMPLETE': '변환+비교 통과',
-    'PASS_FIXED': '재시도 후 비교 통과',
+    'PASS_HEALED': '수정 후 비교 통과',
     'PASS_NO_CHANGE': '변환 불필요 + 비교 통과',
     # 실패 — 재시도 후
     'FAIL_ESCALATED': '최대 재시도 후 미해결',
@@ -233,8 +233,8 @@ def main():
 
             # 성공
             if attempt_count > 0 and explain_status == 'pass' and compare_status == 'pass':
-                overall = 'PASS_FIXED'
-                overall_detail = f'재시도 {attempt_count}회 후 통과'
+                overall = 'PASS_HEALED'
+                overall_detail = f'수정 {attempt_count}회 후 비교 통과'
             elif conv_status == 'no_change' and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_NO_CHANGE'
                 overall_detail = 'Oracle 패턴 없어 변환 불필요, 비교 통과'
@@ -376,7 +376,7 @@ def main():
     print(f"\n  PASS: {pass_count} | FAIL: {fail_count} | NOT_TESTED: {not_tested}")
     print(f"\n  상세:")
     display_order = [
-        'PASS_COMPLETE', 'PASS_FIXED', 'PASS_NO_CHANGE',
+        'PASS_COMPLETE', 'PASS_HEALED', 'PASS_NO_CHANGE',
         'FAIL_SCHEMA_MISSING', 'FAIL_COLUMN_MISSING', 'FAIL_FUNCTION_MISSING',
         'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
         'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',

@@ -36,18 +36,18 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 - **version**: 변환 버전
 - **type**: 로그 타입 (아래 참조)
 - **summary**: 한 줄 요약
-- **duration_ms**: (선택) 작업 소요 시간 (밀리초). Phase/변환/검증 등의 실행 시간
+- **duration_ms**: (선택) 작업 소요 시간 (밀리초). Step/변환/검증 등의 실행 시간
 - **detail**: 타입별 상세 정보 객체
 
 ## 로그 타입
 
-### PHASE_START — Phase 시작
+### STEP_START — Step 시작
 ```json
 {
-  "type": "PHASE_START",
-  "summary": "Phase 2 시작: 50개 파일 변환",
+  "type": "STEP_START",
+  "summary": "Step 1 시작: 50개 파일 변환",
   "detail": {
-    "phase": "phase_2",
+    "step": "step_1",
     "total_files": 50,
     "batch_size": 5,
     "batch_count": 10
@@ -55,14 +55,14 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 }
 ```
 
-### PHASE_END — Phase 완료
+### STEP_END — Step 완료
 ```json
 {
-  "type": "PHASE_END",
-  "summary": "Phase 2 완료: 50파일 변환, 1200룰/300LLM",
+  "type": "STEP_END",
+  "summary": "Step 1 완료: 50파일 변환, 1200룰/300LLM",
   "duration_ms": 45000,
   "detail": {
-    "phase": "phase_2",
+    "step": "step_1",
     "duration_ms": 45000,
     "success_count": 50,
     "fail_count": 0
@@ -218,7 +218,7 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 ## 로깅 규칙
 
 ### 반드시 로그를 남겨야 하는 상황:
-1. 모든 Phase 시작/종료 (PHASE_START, PHASE_END)
+1. 모든 Step 시작/종료 (STEP_START, STEP_END)
 2. 모든 변환 판단 (rule vs llm 선택 — DECISION)
 3. 모든 변환 시도 (ATTEMPT)
 4. 모든 검증 결과 (SUCCESS 또는 ERROR)

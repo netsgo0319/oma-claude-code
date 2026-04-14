@@ -11,11 +11,11 @@ workspace/input/*.xml (Oracle MyBatis XML)
         |
   Step 0  Preflight — 환경 체크 + Oracle/PG 접속 + pgcrypto 확인
         |
-  Step 1  Parse + Convert — XML 파싱 → 40+ 룰 변환 + LLM 복합 변환 + TC 생성
+  Step 1  Parse + Convert — XML 파싱 → 40+ 룰 변환 + LLM 복합 변환
         |
-  Step 2  Validate — EXPLAIN → Execute → Compare (3단계 검증)
+  Step 2  TC Generate — 테스트 케이스 생성
         |
-  Step 3  Fix Loop — 실패 쿼리 원인 분석 → 수정 → 재검증 (최대 3회)
+  Step 3  Validate + Fix — EXPLAIN → Execute → Compare + 수정 루프 (최대 5회)
         |
   Step 4  Report — HTML 리포트 + Query Matrix CSV
         |
@@ -28,9 +28,9 @@ workspace/reports/migration-report.html
 | Step | 이름 | 핵심 동작 | 도구 |
 |------|------|----------|------|
 | 0 | **Preflight** | XML 존재, Python/psql/sqlplus/Java 체크. Oracle 오브젝트 스캔 (TABLE/FUNCTION/PACKAGE). PG pgcrypto extension 확인 | — |
-| 1 | **Parse + Convert** | XML split → parse → analyze → 40+ 룰 변환 + LLM 복합 변환 (Converter 서브에이전트). TC 생성 (V$SQL_BIND_CAPTURE, 컬럼 통계, FK) | `batch-process.sh`, `oracle-to-pg-converter.py`, `generate-test-cases.py` |
-| 2 | **Validate** | Stage 1: psql EXPLAIN. Stage 2: psql/sqlplus 실행 (DML 5s timeout). Stage 3: Oracle vs PG row count 비교 | `validate-queries.py` |
-| 3 | **Fix Loop** | 실패 쿼리 원인 분석 → SQL 수정 → 재검증. 최대 3회 루프 (validate-and-fix 서브에이전트) | validate-and-fix agent |
+| 1 | **Parse + Convert** | XML split → parse → analyze → 40+ 룰 변환 + LLM 복합 변환 (Converter 서브에이전트) | `batch-process.sh`, `oracle-to-pg-converter.py` |
+| 2 | **TC Generate** | 테스트 케이스 생성 (V$SQL_BIND_CAPTURE, 컬럼 통계, FK, Java VO) | `generate-test-cases.py` |
+| 3 | **Validate + Fix** | EXPLAIN → Execute → Compare (3단계 검증) + 실패 쿼리 수정 루프 최대 5회 (validate-and-fix 서브에이전트) | `validate-queries.py`, `run-extractor.sh`, validate-and-fix agent |
 | 4 | **Report** | Query Matrix CSV (쿼리 x 3항목) + HTML 리포트 (에러 분류, 필터, Step Progress) | `generate-query-matrix.py`, `generate-report.py` |
 
 ## 구성 (Claude Code)
@@ -156,12 +156,14 @@ Step 1: 발견 + 룰 변환 + LLM 변환
   ├── 룰 변환: NVL→COALESCE, DECODE→CASE, ROWNUM→LIMIT
   ├── LLM 변환 (unconverted가 있을 때만):
   │   (+) outer join → LEFT JOIN, CONNECT BY → WITH RECURSIVE
-  ├── TC 생성:
-  │   파라미터 추출: #{owkey}, #{ctkey}, #{pageStart}
-  │   4소스에서 바인드값 수집 → TC 생성 (최대 6종)
   └── 상태: converted (rule/llm)
 
-Step 2: 검증
+Step 2: TC 생성
+  ├── 파라미터 추출: #{owkey}, #{ctkey}, #{pageStart}
+  ├── 4소스에서 바인드값 수집 → TC 생성 (최대 6종)
+  └── 상태: tc_generated
+
+Step 3: 검증 + 수정 루프
   ├── EXPLAIN (PG 문법 검증)
   │   EXPLAIN SELECT ... FROM TORDER ... WHERE OWKEY='DS' AND CTKEY='HE' LIMIT 5;
   │   → PASS 또는 FAIL
@@ -170,17 +172,13 @@ Step 2: 검증
   │   Oracle: SELECT COUNT(*) FROM (원본 SQL) WHERE ROWNUM<=50; → 3
   ├── Compare (결과 비교)
   │   Oracle 3행 vs PG 3행 → MATCH
-  └── 상태: EXPLAIN pass + Compare pass → COMPLETE
-
-Step 3: 수정 루프 (FAIL인 경우에만)
-  ├── 원인 분석: "NVL→COALESCE 변환 시 중첩 괄호 중복"
-  ├── 수정 루프 (최대 3회):
+  ├── 수정 루프 (FAIL인 경우, 최대 5회):
   │   Attempt 1:
   │     원인 분석 → output XML 수정 (Edit)
   │     재검증: EXPLAIN → PASS
   │     → 통과 (attempt_count: 1)
-  │   (실패 시 Attempt 2~3 반복)
-  │   (3회 실패 → escalated → Step 4 리포트에 보고)
+  │   (실패 시 Attempt 2~5 반복)
+  │   (5회 실패 → escalated → Step 4 리포트에 보고)
   └── 결과: query-tracking.json attempts 배열 갱신
 
 Step 4: 리포트
@@ -193,6 +191,6 @@ Step 4: 리포트
 ```
 parsed → converted (rule/llm) → validating → COMPLETE
                                            → FAIL → fix attempt
-                                                    → resolved (attempt 1~3)
-                                                    → escalated (3회 실패)
+                                                    → resolved (attempt 1~5)
+                                                    → escalated (5회 실패)
 ```

@@ -22,7 +22,7 @@ MyBatis XML의 동적 SQL은 런타임에 OGNL 표현식으로 평가된다:
 - name="test", status=null, ids=[] → `SELECT * FROM users WHERE name = ?`
 - name="test", status="A", ids=[1,2] → `SELECT * FROM users WHERE name = ? AND status = ? AND id IN (?, ?)`
 
-Kiro(LLM)가 이걸 직접 해석하면 복잡한 경우 실수할 수 있다.
+에이전트(LLM)가 이걸 직접 해석하면 복잡한 경우 실수할 수 있다.
 MyBatis 엔진이 직접 평가하면 100% 정확하다.
 
 ## 빌드
@@ -43,8 +43,8 @@ java -jar build/libs/mybatis-sql-extractor-1.0.0.jar \
   --output ../../workspace/results/_extracted
 ```
 
-### Kiro 에이전트 내에서 실행
-Leader 프롬프트에서:
+### 에이전트 내에서 실행
+메인 에이전트에서:
 ```bash
 java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar \
   --input workspace/input \

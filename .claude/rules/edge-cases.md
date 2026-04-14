@@ -98,7 +98,7 @@ inclusion: always
 - **PostgreSQL**: pgcrypto 확장의 encrypt()/decrypt() 또는 커스텀 PL/pgSQL 함수
 - **주의**: 커스텀 패키지는 자동 변환 불가. 패키지 소스(PL/SQL) 분석 후 수동 마이그레이션 필요. 암호화 키 관리 정책도 확인 필수
 - **발견일**: 2026-04-11
-- **출처**: Kiro 검증 세션 (decryptMal, encryptOms 실패)
+- **출처**: 검증 세션 (decryptMal, encryptOms 실패)
 - **해결 방법**: manual
 
 ---

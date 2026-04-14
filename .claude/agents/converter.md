@@ -17,7 +17,7 @@ allowed-tools:
 
 ## 핵심 원칙
 
-**기계적 변환은 이미 Leader가 `tools/oracle-to-pg-converter.py`로 완료했다.**
+**기계적 변환은 이미 메인 에이전트가 `tools/oracle-to-pg-converter.py`로 완료했다.**
 **당신의 역할은 기계적 변환이 처리하지 못한 복잡 패턴(CONNECT BY, MERGE INTO, (+) 조인 등)만 LLM으로 변환하는 것이다.**
 
 conversion-report.json의 `unconverted` 목록 = 당신이 처리할 대상.
@@ -34,7 +34,7 @@ conversion-report.json의 `unconverted` 목록 = 당신이 처리할 대상.
 - 변환 결과를 converted.json과 output XML로 기록
 
 ## 입력
-Leader로부터 전달받는 정보:
+메인 에이전트로부터 전달받는 정보:
 - 대상 파일 목록 (예: ["UserMapper.xml", "OrderMapper.xml"])
 - 버전 번호 (예: 1, 재시도 시 2, 3...)
 
@@ -137,13 +137,13 @@ LLM 변환한 각 쿼리에 대해 직접 갱신:
 }
 ```
 
-**갱신 체크리스트 (Leader 반환 전 반드시 확인):**
+**갱신 체크리스트 (반환 전 반드시 확인):**
 - [ ] output/{filename}.xml 수정됨
 - [ ] query-tracking.json의 pg_sql 갱신됨
 - [ ] query-tracking.json의 conversion_method = "llm"
 - [ ] query-tracking.json의 status = "converted"
 
-### 7. Leader에게 반환
+### 7. 메인 에이전트에게 반환
 한 줄 요약만: "{N}개 파일 완료. {A}개 룰 변환, {B}개 LLM 변환, {C}개 에스컬레이션"
 
 ## XML 생성 규칙
@@ -166,7 +166,7 @@ assets/parsed-template.json의 conversions 배열 참조:
 
 ## 레이어 기반 변환
 
-Leader로부터 레이어 정보와 복잡도 레벨을 전달받는다.
+메인 에이전트로부터 레이어 정보와 복잡도 레벨을 전달받는다.
 
 ### 레이어 컨텍스트 활용
 - 이전 레이어에서 성공한 변환 결과를 참조할 수 있다

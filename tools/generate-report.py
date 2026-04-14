@@ -15,7 +15,7 @@ Data sources (auto-discovered):
     workspace/results/*/v*/parsed.json             parse results
     workspace/results/_validation/validated.json   EXPLAIN validation
     workspace/results/_validation/execute_validated.json  execution validation
-    workspace/results/_extracted/*-extracted.json   Phase 3.5 MyBatis extraction
+    workspace/results/_extracted/*-extracted.json   MyBatis extraction
     workspace/logs/activity-log.jsonl              activity log
     workspace/input/*.xml / workspace/output/*.xml file sizes
 """
@@ -129,17 +129,17 @@ def _derive_progress(ws):
     if val_dir.exists() and (val_dir / 'validated.json').exists():
         progress['_pipeline']['phases']['phase_3'] = {'status': 'done'}
 
-    # Phase 3.5: extracted
+    # MyBatis extraction results
     ext_dir = ws / 'results' / '_extracted'
     if ext_dir.exists() and list(ext_dir.glob('*-extracted.json')):
         progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
 
-    # Phase 3.5 validation (separate dir)
+    # MyBatis extraction validation (separate dir, backward compat)
     for d35 in ['_validation_phase35', '_validation_phase7']:
         if (ws / 'results' / d35 / 'validated.json').exists():
             progress['_pipeline']['phases']['phase_3.5'] = {'status': 'done'}
 
-    # Phase 4: DBA review
+    # DBA review (legacy data, backward compat)
     if (ws / 'results' / '_dba_review' / 'review-result.json').exists():
         progress['_pipeline']['phases']['phase_4'] = {'status': 'done'}
 
@@ -263,7 +263,7 @@ def collect_data(base_dir):
         if data['comparison'] is None:
             data['comparison'] = load_json(val_dir / 'compare_results.json')
 
-    # 4b. Phase 3.5 validation (separate directory)
+    # 4b. MyBatis extraction validation (separate directory, backward compat)
     val7_dir = ws / 'results' / '_validation_phase35'
     if val7_dir.exists():
         data['validation_phase7'] = load_json(val7_dir / 'validated.json')
@@ -317,7 +317,7 @@ def collect_data(base_dir):
         qm_summary = dict(Counter(q['overall_status'] for q in qm_queries))
         data['query_matrix'] = {'total': len(qm_queries), 'summary': qm_summary, 'queries': qm_queries}
 
-    # 5. Extracted (Phase 3.5)
+    # 5. MyBatis extracted queries
     ext_dir = ws / 'results' / '_extracted'
     if ext_dir.exists():
         for jf in sorted(ext_dir.glob('*-extracted.json')):
@@ -445,7 +445,7 @@ def compute_summary(data):
     s['extracted_variants'] = sum(e['total_variants'] for e in data['extracted'])
     s['extracted_multi_branch'] = sum(e['multi_branch'] for e in data['extracted'])
 
-    # Phase 3.5 validation
+    # MyBatis extraction validation
     if data.get('validation_phase7'):
         v7 = data['validation_phase7']
         s['phase7_explain_pass'] = v7.get('pass', 0)
@@ -471,7 +471,7 @@ def compute_summary(data):
                     err = str(r.get('pg_error', '') or r.get('ora_error', '') or r.get('reason', ''))
                     if 'does not exist' in err or 'pkg_crypto' in err.lower():
                         escalated += 1
-        # Best available: Phase 3.5 compare > Phase 3 compare > Phase 3.5 EXPLAIN > Phase 3 EXPLAIN
+        # Best available: MyBatis compare > static compare > MyBatis EXPLAIN > static EXPLAIN
         if s.get('phase7_compare_total'):
             s['truly_done'] = s.get('phase7_compare_match', 0)
         elif s.get('compare_total'):
@@ -1106,7 +1106,7 @@ function renderValidationSec(){
     if(Object.keys(cats).length>0){
       html+=`<div class="sec"><h2>EXPLAIN Failure Categories</h2>`;
       html+=`<table><tr><th>Category</th><th>Count</th><th>Action</th></tr>`;
-      let actions={'SYNTAX_ERROR':'Phase 4 셀프힐링 대상','MISSING_OBJECT':'DBA 스키마 이관 필요','TYPE_MISMATCH':'TC 바인드값 또는 타입 캐스트 수정','PERMISSION':'DB 권한 확인','OTHER':'수동 분석 필요'};
+      let actions={'SYNTAX_ERROR':'Step 3 검증+수정 대상','MISSING_OBJECT':'DBA 스키마 이관 필요','TYPE_MISMATCH':'TC 바인드값 또는 타입 캐스트 수정','PERMISSION':'DB 권한 확인','OTHER':'수동 분석 필요'};
       for(let [k,v] of Object.entries(cats).sort((a,b)=>b[1]-a[1])){
         html+=`<tr><td>${esc(k)}</td><td>${v}</td><td style="font-size:11px;color:var(--dim)">${esc(actions[k]||'')}</td></tr>`;
       }
@@ -1120,7 +1120,7 @@ function renderValidationSec(){
     let failCount=issues.length-passCount;
     let badge=failCount===0?'<span class="phase-badge badge-done">ALL CLEAR</span>':
       '<span class="phase-badge" style="background:rgba(239,68,68,.15);color:var(--fail)">'+failCount+' ISSUES</span>';
-    html+=`<div class="sec"><h2>Step 4: DBA/Expert Review</h2><p>${badge}</p>`;
+    html+=`<div class="sec"><h2>DBA/Expert Review</h2><p>${badge}</p>`;
     if(issues.length){
       html+='<table style="margin-top:10px"><tr><th>Check</th><th>Status</th><th>Detail</th></tr>';
       for(let issue of issues){
@@ -1136,7 +1136,7 @@ function renderValidationSec(){
 
 function renderExtractionSec(){
   if(!DATA.extracted||DATA.extracted.length===0){document.getElementById('extraction-sec').innerHTML='';return;}
-  let html='<div class="sec"><h2>Phase 3.5: MyBatis Extraction</h2>';
+  let html='<div class="sec"><h2>MyBatis Extraction</h2>';
   html+='<table><tr><th>File</th><th>Queries</th><th>Variants</th><th>Multi-Branch</th><th>DTO Replacements</th></tr>';
   for(let e of DATA.extracted){
     let dto=(e.dto_replacements||[]).slice(0,3).join(', ');
@@ -1664,7 +1664,7 @@ def main():
     if s.get('compare_total'):
         print(f"  Compare: {s['compare_match']}/{s['compare_total']} matched, {s['compare_fail']} mismatch, {s['compare_warn']} warn")
     if s.get('extracted_queries'):
-        print(f"  Phase 3.5: {s['extracted_queries']} queries, {s['extracted_variants']} variants")
+        print(f"  MyBatis: {s['extracted_queries']} queries, {s['extracted_variants']} variants")
 
     fsize = os.path.getsize(args.output)
     print(f"  File size: {fsize:,} bytes")
