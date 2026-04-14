@@ -44,6 +44,7 @@ workspace/ 아래에 임시 .py/.sh 파일을 생성하지 마라. 분석이 필
 | `tools/validate-queries.py` | Phase 3 검증 | 아래 Phase 3 참고 |
 | `tools/run-extractor.sh` | Phase 3 MyBatis 렌더링 (통합) | `bash tools/run-extractor.sh [--validate]` |
 | `tools/generate-healing-tickets.py` | **Phase 4 힐링 티켓 생성** | `python3 tools/generate-healing-tickets.py` |
+| `tools/pre-report-check.py` | **Phase 7 사전 점검** | `python3 tools/pre-report-check.py` |
 | `tools/generate-report.py` | Phase 7 HTML 리포트 | `python3 tools/generate-report.py` |
 | `tools/sync-tracking-to-xml.py` | tracking→XML 동기화 | `python3 tools/sync-tracking-to-xml.py` |
 | `tools/reset-workspace.sh` | 초기화 | `bash tools/reset-workspace.sh --force` |
@@ -304,19 +305,22 @@ Reviewer 서브에이전트에 위임하여 아래 항목을 검증:
 
 ### Phase 7: Report (마지막)
 
+**Step 1: Pre-Report 체크리스트 (필수 — FAIL 시 리포트 생성 차단)**
 ```bash
-# 쿼리 매트릭스 CSV 생성 (전체 쿼리 × 3항목)
-python3 tools/generate-query-matrix.py --output workspace/reports/query-matrix.csv --json
+python3 tools/pre-report-check.py
+```
+FAIL 항목이 있으면 해결 후 재실행. PASS 되어야 Step 2 진행.
+체크 항목: XML 완전성, 검증 3단계 실행 여부, 힐링 티켓 상태, 트래킹 정합성 등.
 
-# HTML 리포트 생성
+**Step 2: 리포트 생성**
+```bash
+python3 tools/generate-query-matrix.py --output workspace/reports/query-matrix.csv --json
 python3 tools/generate-report.py
 ```
 
 산출물:
 - `workspace/reports/query-matrix.csv` — 전체 쿼리별 변환/EXPLAIN/비교 현황
 - `workspace/reports/migration-report.html` — 통합 HTML 리포트
-
-**Phase 6 (DBA Review) 완료 후에만 실행.** 모든 검증 결과를 포함.
 
 ## progress.json
 
