@@ -267,13 +267,26 @@ def load_custom_binds(input_dir):
     for p in [Path(input_dir) / 'custom-binds.json', Path(input_dir) / 'custom_binds.json']:
         if p.exists():
             try:
-                data = json.loads(p.read_text(encoding='utf-8'))
+                raw = p.read_text(encoding='utf-8')
+                # NaN/Infinity 처리 (JSON 비표준이지만 고객 데이터에 포함될 수 있음)
+                raw = raw.replace(': NaN', ': ""').replace(':NaN', ':""')
+                raw = raw.replace(': Infinity', ': 999999').replace(': -Infinity', ': -999999')
+                data = json.loads(raw)
                 if isinstance(data, dict):
                     for qid, cases in data.items():
                         if isinstance(cases, dict):
-                            custom[qid] = [cases]  # single bind set
+                            # NaN/None 값을 빈 문자열로 변환 (MyBatis 렌더링에 필요)
+                            cases = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
+                                     for k, v in cases.items()}
+                            custom[qid] = [cases]
                         elif isinstance(cases, list):
-                            custom[qid] = cases
+                            cleaned = []
+                            for c in cases:
+                                if isinstance(c, dict):
+                                    c = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
+                                         for k, v in c.items()}
+                                cleaned.append(c)
+                            custom[qid] = cleaned
                 print(f"  Source-Custom: {len(custom)} queries from {p.name}")
             except Exception as e:
                 print(f"  WARNING: custom-binds.json parse error: {e}")
