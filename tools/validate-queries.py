@@ -463,7 +463,8 @@ SET HEADING ON
 
     def _supplement_static_queries(self, extracted_qids_by_file):
         """Add static XML queries for IDs not covered by MyBatis extraction.
-        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH."""
+        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH.
+        Resolves <include refid="..."/> by looking up <sql id="..."> fragments."""
         import xml.etree.ElementTree as ET
         added = 0
         for xml_file in sorted(self.output_dir.glob('**/*.xml')):
@@ -472,13 +473,24 @@ SET HEADING ON
                 root = tree.getroot()
             except ET.ParseError:
                 continue
+            # Build sql fragment map for <include refid="..."/> resolution
+            sql_fragments = {}
+            for sql_elem in root.findall('.//{http://mybatis.org/dtd/mybatis-3-mapper.dtd}sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+            # Also try without namespace
+            for sql_elem in root.findall('.//sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.findall(f'.//{tag}'):
                     qid = elem.get('id', 'unknown')
                     key = (xml_file.name, qid)
                     if key not in extracted_qids_by_file:
-                        # Extract raw SQL text from the element
-                        sql_text = self._extract_sql_text(elem)
+                        sql_text = self._extract_sql_text(elem, sql_fragments)
                         if sql_text and sql_text.strip():
                             self.queries.append({
                                 'file': xml_file.name,
@@ -491,24 +503,39 @@ SET HEADING ON
         return added
 
     @staticmethod
-    def _extract_sql_text(elem):
-        """Extract SQL text from an XML element, stripping MyBatis tags."""
+    def _extract_sql_text(elem, sql_fragments=None):
+        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags."""
+        if sql_fragments is None:
+            sql_fragments = {}
         parts = []
         if elem.text:
             parts.append(elem.text)
         for child in elem:
-            # Include text content of dynamic tags (<if>, <choose>, <where>, etc.)
-            if child.text:
-                parts.append(child.text)
+            if child.tag == 'include':
+                # Resolve <include refid="..."/>
+                refid = child.get('refid', '')
+                if refid and refid in sql_fragments:
+                    frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                    parts.append(frag_sql)
+            else:
+                # Include text content of dynamic tags (<if>, <choose>, <where>, etc.)
+                if child.text:
+                    parts.append(child.text)
+                # Recurse into nested elements
+                for sub in child.iter():
+                    if sub is not child:
+                        if sub.tag == 'include':
+                            refid = sub.get('refid', '')
+                            if refid and refid in sql_fragments:
+                                frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                                parts.append(frag_sql)
+                        else:
+                            if sub.text:
+                                parts.append(sub.text)
+                            if sub.tail:
+                                parts.append(sub.tail)
             if child.tail:
                 parts.append(child.tail)
-            # Recurse into nested elements
-            for sub in child.iter():
-                if sub is not child:
-                    if sub.text:
-                        parts.append(sub.text)
-                    if sub.tail:
-                        parts.append(sub.tail)
         return ' '.join(parts)
 
     def load_extracted(self, extracted_dir):
