@@ -1769,7 +1769,11 @@ function renderTickets(){
   let tickets=h.tickets;
   let resolved=tickets.filter(t=>t.status==='resolved');
   let escalated=tickets.filter(t=>t.status==='escalated');
-  let skipped=tickets.filter(t=>t.status!=='resolved'&&t.status!=='escalated');
+  // open = 힐링 미실행 (에이전트가 아직 처리 안 함)
+  // skipped = DBA 대상 (relation/column_missing)
+  let dbaOnly=['relation_missing','column_missing'];
+  let open=tickets.filter(t=>t.status==='open'&&!dbaOnly.includes(t.category));
+  let skipped=tickets.filter(t=>dbaOnly.includes(t.category)||t.status==='skipped');
 
   // Summary
   html+=`<div class="sec"><h2>Healing Tickets Summary</h2>`;
@@ -1777,7 +1781,9 @@ function renderTickets(){
   let healResolved=resolved.length-mybatisResolved;
   html+=`<p>Total: <strong>${tickets.length}</strong> | <span style="color:var(--success)">Resolved: ${resolved.length}</span>`;
   if(mybatisResolved)html+=` (MyBatis: ${mybatisResolved}, Healing: ${healResolved})`;
-  html+=` | <span style="color:var(--fail)">Escalated: ${escalated.length}</span> | <span style="color:var(--dim)">Skipped: ${skipped.length}</span></p>`;
+  html+=` | <span style="color:var(--fail)">Escalated: ${escalated.length}</span>`;
+  if(open.length)html+=` | <span style="color:var(--warn)">힐링 미실행: ${open.length}</span>`;
+  html+=` | <span style="color:var(--dim)">DBA 대상: ${skipped.length}</span></p>`;
 
   // Category breakdown
   if(h.by_category){
@@ -1815,10 +1821,31 @@ function renderTickets(){
     html+=`</table></div>`;
   }
 
-  // Skipped tickets (grouped by skip_reason)
+  // Open tickets (healing not attempted — agent should have tried)
+  if(open.length){
+    html+=`<div class="sec"><h2 style="color:var(--warn)">힐링 미실행 — 재시도 필요 (${open.length}건)</h2>`;
+    html+=`<p style="font-size:12px;color:var(--warn)">에이전트가 힐링 루프를 실행하지 않은 티켓. 규칙: 최소 3회 Reviewer→Converter(LLM)→재검증.</p>`;
+    let openGroups={};
+    for(let t of open){
+      let cat=t.category||'other';
+      if(!openGroups[cat])openGroups[cat]={count:0,samples:[]};
+      openGroups[cat].count++;
+      if(openGroups[cat].samples.length<3)openGroups[cat].samples.push(t);
+    }
+    html+=`<table><tr><th>카테고리</th><th>건수</th><th>필요 조치</th><th>예시 쿼리</th></tr>`;
+    let catActions={'syntax_error':'SQL 수정 + 바인드값 변경','type_mismatch':'바인드값 타입/길이 조정','operator_mismatch':'::TEXT 등 캐스트 추가','function_missing':'PG 호환 함수 생성','xml_invalid':'CDATA 래핑','other':'수동 분석'};
+    for(let [cat,info] of Object.entries(openGroups).sort((a,b)=>b[1].count-a[1].count)){
+      let action=catActions[cat]||'분석 필요';
+      let samples=info.samples.map(s=>esc(s.query_id||'')).join(', ');
+      html+=`<tr><td style="color:var(--warn)">${esc(cat)}</td><td>${info.count}</td><td style="font-size:11px">${esc(action)}</td><td style="font-family:var(--mono);font-size:11px">${samples}</td></tr>`;
+    }
+    html+=`</table></div>`;
+  }
+
+  // DBA-only tickets (relation/column missing)
   if(skipped.length){
-    html+=`<div class="sec"><h2 style="color:var(--dim)">Skipped / Non-Actionable (${skipped.length})</h2>`;
-    html+=`<p style="font-size:12px;color:var(--dim)">DBA 스키마 이관, TC 바인드 타입 불일치, 동적 SQL fragment 등 자동 힐링 불가 항목</p>`;
+    html+=`<div class="sec"><h2 style="color:var(--dim)">DBA 대상 — 스키마 이관 필요 (${skipped.length}건)</h2>`;
+    html+=`<p style="font-size:12px;color:var(--dim)">테이블/컬럼이 PG에 없어서 자동 힐링 불가. DBA가 스키마를 이관해야 함.</p>`;
     // Group by skip_reason
     let skipGroups={};
     for(let t of skipped){
