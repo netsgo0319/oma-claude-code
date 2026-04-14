@@ -87,6 +87,25 @@ else:
 - attempts > 0인데 최종 상태가 아직 fail인 쿼리 → 수정 루프가 중단된 것
 - conv_status == pending인 쿼리 → Step 1에서 변환 미완료
 
+### 2b. tracking 동기화 (validated.json → query-tracking.json)
+
+검증 결과가 query-tracking.json에 반영 안 되어 있을 수 있다.
+보고서 생성 전 반드시 동기화:
+
+```bash
+python3 tools/validate-queries.py --parse-results \
+  --output workspace/results/_validation/ \
+  --tracking-dir auto
+```
+
+`--tracking-dir auto`는 모든 `*/v*/query-tracking.json`을 찾아서 explain_status를 갱신.
+배치 실행 시 각 `_validation_batch*/`도 모두 파싱:
+```bash
+for d in workspace/results/_validation*/; do
+  python3 tools/validate-queries.py --parse-results --output "$d" --tracking-dir auto
+done
+```
+
 ### 3. 쿼리 매트릭스 생성
 
 ```bash
@@ -112,15 +131,27 @@ for k,v in sorted(d['summary'].items()):
 python3 tools/generate-report.py
 ```
 
-### 5. 산출물 확인
+### 5. 산출물 필수 검증 (3개 모두 존재해야 완료)
 
 ```bash
-ls -la workspace/reports/query-matrix.csv
-ls -la workspace/reports/query-matrix.json
-ls -la workspace/reports/migration-report.html
+for f in workspace/reports/query-matrix.csv workspace/reports/query-matrix.json workspace/reports/migration-report.html; do
+  [ -f "$f" ] && [ -s "$f" ] && echo "OK: $f" || echo "MISSING: $f"
+done
 ```
 
-모든 파일 존재 + 크기 > 0 확인.
+**query-matrix.json 필드 검증:**
+```bash
+python3 -c "
+import json
+d=json.load(open('workspace/reports/query-matrix.json'))
+q=d['queries'][0] if d.get('queries') else {}
+required=['query_id','original_file','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
+missing=[f for f in required if f not in q]
+print(f'MISSING: {missing}') if missing else print(f'OK: {len(d[\"queries\"])} queries, 필수 필드 전부 존재')
+"
+```
+
+**하나라도 누락이면 재생성. 빈 파일이나 불완전한 JSON은 산출물로 인정하지 않는다.**
 
 ### 6. 요약 통계
 

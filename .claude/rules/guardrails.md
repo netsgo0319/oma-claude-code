@@ -28,6 +28,16 @@ inclusion: always
 - **search_path 필수 확인.** 스키마가 public이 아니면 `SET search_path TO {schema}, public;`
 - pgcrypto extension 확인 (PKG_CRYPTO 변환에 필수)
 
+## 산출물 필수 규칙
+
+**모든 최종 단계(수정, 재검증, 보고서)는 아래 3개 산출물을 반드시 갱신해야 한다:**
+1. `workspace/reports/query-matrix.csv` — flat CSV
+2. `workspace/reports/query-matrix.json` — 상세 JSON (sql_before/after, attempts, test_cases, conversion_history)
+3. `workspace/reports/migration-report.html` — HTML 리포트
+
+수정 루프 완료 후, TC 보강 후, 어떤 재검증이든 끝나면 → **반드시 reporter에 위임하여 3개 파일 재생성.**
+query-matrix.json에 필수 필드(query_id, original_file, sql_before, sql_after, final_state, test_cases, attempts, conversion_history)가 없으면 불완전.
+
 ## 리더 전용 금지
 
 - 리더가 직접 validate-queries.py를 실행하는 것 → **validate-and-fix에 위임**
