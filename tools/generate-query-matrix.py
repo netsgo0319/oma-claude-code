@@ -319,6 +319,7 @@ def main():
                     ('result', att.get('status', att.get('result', 'unknown'))),
                 ]))
             json_test_cases = test_cases_by_qid.get(qid, [])
+            conv_history = q.get('conversion_history', []) or []
 
             rows.append({
                 'file': fname,
@@ -344,6 +345,7 @@ def main():
                 # JSON-only fields (excluded from CSV fieldnames)
                 '_sql_before': sql_before,
                 '_sql_after': sql_after,
+                '_conversion_history': conv_history,
                 '_attempts': json_attempts,
                 '_test_cases': json_test_cases,
             })
@@ -409,11 +411,12 @@ def main():
                 ('sql_after', r['_sql_after']),
                 ('final_state', r['overall_status']),
                 ('final_state_detail', r['overall_detail']),
+                ('conversion_method', r['conversion_method']),
+                ('conversion_history', r['_conversion_history']),
                 ('test_cases', r['_test_cases']),
                 ('attempts', r['_attempts']),
                 ('explain_status', r['explain_status']),
                 ('compare_status', r['compare_status']),
-                ('conversion_method', r['conversion_method']),
                 ('complexity', r['complexity']),
             ])
             json_queries.append(entry)

@@ -1502,6 +1502,21 @@ function expSelectQuery(fname, qid){
     html+=`</div>`;
   }
 
+  // Conversion History (LLM 변환 이력)
+  let convHistory=q.conversion_history||qmEntry.conversion_history||[];
+  if(convHistory.length){
+    html+=`<div style="margin:8px 0"><strong>변환 이력 (${convHistory.length})</strong></div>`;
+    html+=`<table style="font-size:11px"><tr><th>패턴</th><th>접근법</th><th>신뢰도</th><th>비고</th></tr>`;
+    for(let ch of convHistory){
+      let confCol=ch.confidence==='high'?'var(--success)':ch.confidence==='medium'?'var(--warn)':'var(--fail)';
+      html+=`<tr><td><code>${esc(ch.pattern||'-')}</code></td>`;
+      html+=`<td style="font-size:10px">${esc(String(ch.approach||'-').substring(0,120))}</td>`;
+      html+=`<td style="color:${confCol}">${esc(ch.confidence||'-')}</td>`;
+      html+=`<td style="font-size:10px;color:var(--dim)">${esc(String(ch.notes||'').substring(0,100))}</td></tr>`;
+    }
+    html+=`</table>`;
+  }
+
   // TC별 결과 (바인드값 + Oracle + PG + MATCH)
   let compResults=q.compare_results||[];
   let tcs=q.test_cases||[];
