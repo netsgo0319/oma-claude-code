@@ -654,6 +654,71 @@ SET HEADING ON
         sqlplus treats newlines as command terminators, causing SP2-0734 errors."""
         return re.sub(r'\s+', ' ', sql).strip()
 
+    @staticmethod
+    def _select_best_tcs(tc_cases, max_tcs=2):
+        """Select best test cases prioritizing CUSTOM > SAMPLE > INFERRED > null/fallback.
+        Returns up to max_tcs entries, each with 'params' (or 'binds'), 'name', 'source'."""
+        if not tc_cases:
+            return []
+
+        # Bucket by source priority
+        priority_map = {'CUSTOM': 0, 'SAMPLE_DATA': 1, 'SAMPLE': 1, 'INFERRED': 2}
+        buckets = {0: [], 1: [], 2: [], 9: []}  # 9 = null/unknown
+
+        for tc in tc_cases:
+            if not isinstance(tc, dict):
+                continue
+            source = str(tc.get('source', tc.get('name', ''))).upper()
+            params = tc.get('params', tc.get('binds', {}))
+
+            # Skip TCs with all-None params (null_test equivalent)
+            if isinstance(params, dict) and params:
+                non_null_count = sum(1 for v in params.values() if v is not None)
+                if non_null_count == 0:
+                    buckets[9].append(tc)
+                    continue
+
+            # Classify by source
+            matched = False
+            for key, pri in priority_map.items():
+                if key in source:
+                    buckets[pri].append(tc)
+                    matched = True
+                    break
+            if not matched:
+                # Check if it's a null_test by name
+                name = str(tc.get('name', '')).lower()
+                if 'null' in name:
+                    buckets[9].append(tc)
+                else:
+                    buckets[2].append(tc)  # treat unknown as INFERRED level
+
+        # Select from highest priority bucket first
+        result = []
+        for pri in [0, 1, 2, 9]:
+            for tc in buckets[pri]:
+                if len(result) >= max_tcs:
+                    break
+                result.append(tc)
+            if len(result) >= max_tcs:
+                break
+
+        return result
+
+    @staticmethod
+    def _strip_leading_comment(sql):
+        """Strip leading /* ... */ comment to avoid nested comment issues.
+        MyBatis extractor adds /* file - queryId - ... */ prefix, but if original SQL
+        also starts with /*, it creates nested /* ... /* ... */ which is invalid SQL."""
+        sql = sql.lstrip()
+        if sql.startswith('/*'):
+            # Find the matching */
+            end = sql.find('*/')
+            if end != -1:
+                # Strip the comment and any following whitespace
+                sql = sql[end+2:].lstrip()
+        return sql
+
     def generate_scripts(self, output_dir):
         """Generate SQL test scripts for remote execution.
         Generates: explain_test.sql (PG), execute_test.sql (PG), oracle_compare.sql (Oracle)"""
@@ -661,8 +726,18 @@ SET HEADING ON
         output_path.mkdir(parents=True, exist_ok=True)
 
         all_tests = []
-        explain_lines = ["\\set ON_ERROR_STOP off", ""]
-        execute_lines = ["\\set ON_ERROR_STOP off", ""]
+        # PostgreSQL scripts
+        pg_schema = os.environ.get('PG_SCHEMA', '')
+        explain_lines = ["\\set ON_ERROR_STOP off"]
+        if pg_schema:
+            explain_lines.append(f"SET search_path TO {pg_schema};")
+        explain_lines.append("")
+
+        execute_lines = ["\\set ON_ERROR_STOP off"]
+        if pg_schema:
+            execute_lines.append(f"SET search_path TO {pg_schema};")
+        execute_lines.append("")
+
         # Oracle compare script (sqlplus format)
         ora_schema = os.environ.get('ORACLE_SCHEMA', '')
         oracle_lines = [
@@ -676,7 +751,7 @@ SET HEADING ON
         for query in self.queries:
             qid = query['id']
             fname = query['file'].replace('.xml', '')
-            sql = query['sql_raw']
+            sql = self._strip_leading_comment(query['sql_raw'])  # Strip nested comments
             qtype = query['type']
             is_extracted = query.get('from_extracted', False)
             variant_name = query.get('variant', '')
@@ -684,78 +759,90 @@ SET HEADING ON
             # MAIN PATH: Extracted SQL from MyBatis engine (has ? placeholders)
             if is_extracted:
                 param_names = query.get('param_names_for_bind', [])
-                tc_binds = {}
-                # Try to find TC values for these parameter names
-                if param_names:
-                    tc_cases = self.test_cases.get(qid, [])
-                    if tc_cases and isinstance(tc_cases[0], dict):
-                        tc_binds = tc_cases[0].get('params', tc_cases[0].get('binds', {}))
 
-                # Replace ? with TC values positionally
-                parts = sql.split('?')
-                placeholder_count = len(parts) - 1
-                if param_names and len(param_names) != placeholder_count:
-                    print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
-                bound_parts = [parts[0]]
-                for i in range(1, len(parts)):
-                    pname = param_names[i-1] if i-1 < len(param_names) else ''
-                    val = tc_binds.get(pname)
-                    if val is None:
-                        bound_parts.append("'1'")  # fallback
-                    elif isinstance(val, (int, float)):
-                        bound_parts.append(str(val))
-                    elif isinstance(val, str):
-                        bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
-                    else:
-                        bound_parts.append("'1'")
-                    bound_parts.append(parts[i])
-                bound_sql = ''.join(bound_parts)
-                test_id = f"{fname}.{qid}.{variant_name}" if variant_name else f"{fname}.{qid}.default"
-                all_tests.append({
-                    'test_id': test_id,
-                    'file': query['file'],
-                    'query_id': qid,
-                    'type': qtype,
-                    'case': variant_name or 'extracted',
-                    'bound_sql': bound_sql,
-                    'from_extracted': True,
-                })
+                # Select best TC bind sets: prioritize CUSTOM > SAMPLE > INFERRED > null
+                tc_cases = self.test_cases.get(qid, [])
+                selected_tcs = self._select_best_tcs(tc_cases, max_tcs=2)
 
-                explain_lines.append(f"\\echo === {test_id} ===")
-                explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
-                explain_lines.append("")
+                # If no real TCs found, use empty dict (fallback to '1')
+                if not selected_tcs:
+                    selected_tcs = [{'name': 'fallback', 'params': {}, 'source': 'FALLBACK'}]
 
-                if qtype == 'select':
-                    safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
-                else:
-                    # DML: wrap in BEGIN/ROLLBACK with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                for tc_idx, tc_entry in enumerate(selected_tcs):
+                    tc_binds = tc_entry.get('params', tc_entry.get('binds', {}))
+                    tc_name = tc_entry.get('name', f'tc{tc_idx}')
+                    tc_source = tc_entry.get('source', 'UNKNOWN')
 
-                # Oracle compare
-                oracle_sql = self.oracle_queries.get(qid, '')
-                if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
-                    oracle_lines.append(f"PROMPT === {test_id} ===")
-                    if qtype == 'select':
-                        safe_ora = ora_bound.rstrip(';')
-                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
-                    else:
-                        dml_where = self._extract_dml_where(ora_bound)
-                        if dml_where:
-                            oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
+                    # Replace ? with TC values positionally
+                    parts = sql.split('?')
+                    placeholder_count = len(parts) - 1
+                    if param_names and len(param_names) != placeholder_count and tc_idx == 0:
+                        print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
+                    bound_parts = [parts[0]]
+                    for i in range(1, len(parts)):
+                        pname = param_names[i-1] if i-1 < len(param_names) else ''
+                        val = tc_binds.get(pname)
+                        if val is None:
+                            bound_parts.append("'1'")  # fallback
+                        elif isinstance(val, (int, float)):
+                            bound_parts.append(str(val))
+                        elif isinstance(val, str):
+                            bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
                         else:
-                            oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
-                    oracle_lines.append("")
+                            bound_parts.append("'1'")
+                        bound_parts.append(parts[i])
+                    bound_sql = ''.join(bound_parts)
+
+                    # Build test_id: include tc name for multiple TCs
+                    tc_suffix = f".{tc_name}" if len(selected_tcs) > 1 else ""
+                    test_id = f"{fname}.{qid}.{variant_name}{tc_suffix}" if variant_name else f"{fname}.{qid}.default{tc_suffix}"
+                    all_tests.append({
+                        'test_id': test_id,
+                        'file': query['file'],
+                        'query_id': qid,
+                        'type': qtype,
+                        'case': variant_name or 'extracted',
+                        'tc_name': tc_name,
+                        'tc_source': tc_source,
+                        'bound_sql': bound_sql,
+                        'from_extracted': True,
+                    })
+
+                    explain_lines.append(f"\\echo === {test_id} ===")
+                    explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
+                    explain_lines.append("")
+
+                    if qtype == 'select':
+                        safe_sql = bound_sql.rstrip(';')
+                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"SET statement_timeout = '30s';")
+                        execute_lines.append(f"{safe_sql};")
+                        execute_lines.append("")
+                    else:
+                        # DML: wrap in BEGIN/ROLLBACK with short timeout
+                        execute_lines.append(f"\\echo === {test_id} ===")
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"BEGIN;")
+                        execute_lines.append(f"{bound_sql.rstrip(';')};")
+                        execute_lines.append(f"ROLLBACK;")
+                        execute_lines.append("")
+
+                    # Oracle compare
+                    oracle_sql = self.oracle_queries.get(qid, '')
+                    if oracle_sql:
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
+                        oracle_lines.append(f"PROMPT === {test_id} ===")
+                        if qtype == 'select':
+                            safe_ora = ora_bound.rstrip(';')
+                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
+                        else:
+                            dml_where = self._extract_dml_where(ora_bound)
+                            if dml_where:
+                                oracle_lines.append(f"SELECT COUNT(*) AS affected_rows FROM ({dml_where});")
+                            else:
+                                oracle_lines.append(f"PROMPT SKIP_DML: {test_id} (no WHERE clause extractable)")
+                        oracle_lines.append("")
 
                 continue
 
@@ -1469,6 +1556,10 @@ SET HEADING ON
 
         for line in output.split('\n'):
             if line.startswith('=== ') and line.endswith(' ==='):
+                # When we see a new test header, the previous test had no ERROR → count as pass
+                if current_test:
+                    pass_count += 1
+                    passes.append(current_test)
                 current_test = line.strip('= ')
             elif 'ERROR' in line and current_test:
                 fail_count += 1
@@ -1478,6 +1569,10 @@ SET HEADING ON
                 pass_count += 1
                 passes.append(current_test)
                 current_test = None
+        # Last test in file: if no ERROR seen, it passed
+        if current_test:
+            pass_count += 1
+            passes.append(current_test)
 
         print(f"\nParsed Results: PASS={pass_count}, FAIL={fail_count}")
 

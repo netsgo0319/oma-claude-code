@@ -256,46 +256,143 @@ def collect_data(base_dir):
         if data['comparison'] is None:
             data['comparison'] = load_json(val_dir / 'compare_results.json')
 
-    # 4b. Query Matrix — try reports/ first, then derive from tracking
-    qm_path = ws / 'reports' / 'query-matrix.json'
-    if qm_path.exists():
-        data['query_matrix'] = load_json(qm_path)
-    else:
-        # Derive basic matrix from query-tracking + validation
-        qm_queries = []
+    # 4b. Query Matrix — always re-derive from live validation data
+    #     (stale query-matrix.json may have wrong status due to ID mismatches)
+    if True:
+        # Build file-scoped EXPLAIN pass/fail lookups from validated.json
+        # pass_query_ids format: "filename_without_xml.queryId.variant"
+        # We build: { (filename_without_xml, queryId) -> 'pass' }
         val_data = data.get('validation') or {}
-        pass_ids = set(val_data.get('pass_query_ids', []))
-        fail_map = {f.get('test', '').split('.')[-2] if '.' in f.get('test', '') else '': f.get('error', '')
-                    for f in val_data.get('failures', [])}
+        explain_lookup = {}  # (fname_base, qid) -> 'pass' | 'fail'
+        for pid in val_data.get('pass_query_ids', []):
+            # pid = "ams__adm-address-sql-oracle.selectAddr.null"
+            parts = pid.split('.')
+            if len(parts) >= 2:
+                fname_base = parts[0]  # "ams__adm-address-sql-oracle"
+                qid = parts[1]
+                explain_lookup[(fname_base, qid)] = 'pass'
+        for pid in val_data.get('passes', []):
+            if isinstance(pid, str):
+                parts = pid.split('.')
+                if len(parts) >= 2:
+                    fname_base = parts[0]
+                    qid = parts[1]
+                    explain_lookup[(fname_base, qid)] = 'pass'
+        for f in val_data.get('failures', []):
+            tid = f.get('test', '')
+            parts = tid.split('.')
+            if len(parts) >= 2:
+                fname_base = parts[0]
+                qid = parts[1]
+                err = f.get('error', '')
+                if 'does not exist' in err:
+                    explain_lookup[(fname_base, qid)] = 'fail_schema'
+                else:
+                    explain_lookup[(fname_base, qid)] = 'fail'
+
+        # Build file-scoped Compare lookup from compare_validated.json
+        # results[].test_id = "filename.queryId.variant.tc_name"
+        # results[].query_id = bare queryId (may collide across files)
+        comp_data = data.get('comparison') or {}
+        compare_lookup = {}  # (fname_base, qid) -> 'match' | 'mismatch'
+        for cr in comp_data.get('results', []):
+            tid = cr.get('test_id', '')
+            parts = tid.split('.')
+            if len(parts) >= 2:
+                fname_base = parts[0]
+                qid = parts[1]
+                key = (fname_base, qid)
+                is_match = cr.get('match', False)
+                if key not in compare_lookup:
+                    compare_lookup[key] = 'match' if is_match else 'mismatch'
+                elif not is_match:
+                    compare_lookup[key] = 'mismatch'  # any mismatch overrides
+
+        # Build extracted query set (MyBatis extracted SQL exists)
+        extracted_qids = set()       # queries that have extraction (may have empty SQL)
+        extracted_with_sql = set()   # queries with actual non-empty SQL
+        ext_dir = ws / 'results' / '_extracted'
+        if ext_dir.exists():
+            for jf in ext_dir.glob('*-extracted.json'):
+                ej = load_json(jf)
+                if ej:
+                    qs = ej if isinstance(ej, list) else ej.get('queries', [])
+                    for q in qs:
+                        eq = q.get('query_id', '')
+                        if eq:
+                            extracted_qids.add(eq)
+                            variants = q.get('sql_variants', [])
+                            if any(v.get('sql', '').strip() for v in variants):
+                                extracted_with_sql.add(eq)
+
+        qm_queries = []
         for fname, finfo in data.get('files', {}).items():
-            for q in finfo.get('queries', []):
+            fname_base = fname.replace('.xml', '') if fname.endswith('.xml') else fname
+            # Get queries from latest version's parsed.json or query-tracking
+            file_queries = []
+            xml_name = fname + '.xml' if not fname.endswith('.xml') else fname
+            tracking = data['tracking'].get(xml_name)
+            if tracking and 'queries' in tracking:
+                file_queries = tracking['queries']
+            else:
+                for vname, vdata in sorted(finfo.get('versions', {}).items(), reverse=True):
+                    parsed = vdata.get('parsed')
+                    if parsed and 'queries' in parsed:
+                        file_queries = [{'query_id': q.get('id', q.get('query_id', '')),
+                                         'conversion_method': q.get('method', ''),
+                                         'explain': q.get('explain')}
+                                        for q in parsed['queries']]
+                        break
+            for q in file_queries:
                 qid = q.get('query_id', q.get('id', ''))
-                exp = q.get('explain', {}) or {}
-                exp_st = exp.get('status', '')
+                key = (fname_base, qid)
+
+                # Determine EXPLAIN status
+                exp_st = explain_lookup.get(key, '')
                 if not exp_st:
-                    for pid in pass_ids:
-                        if qid in pid:
-                            exp_st = 'pass'
-                            break
-                    if not exp_st and qid in fail_map:
-                        exp_st = 'fail'
-                cmp = q.get('compare_results', [])
-                cmp_st = 'pass' if cmp and all(c.get('match') for c in cmp) else ('fail' if cmp else 'not_tested')
+                    # Fallback: check from query's own explain field
+                    exp = q.get('explain', {}) or {}
+                    exp_st = exp.get('status', '')
+
+                # Determine Compare status
+                cmp_st = compare_lookup.get(key, '')
+                if not cmp_st:
+                    cmp = q.get('compare_results', [])
+                    if cmp:
+                        cmp_st = 'match' if all(c.get('match') for c in cmp) else 'mismatch'
+
+                # Determine final status
                 conv = q.get('conversion_method', '')
-                if exp_st == 'pass' and cmp_st == 'pass':
+                if exp_st == 'pass' and cmp_st == 'match':
                     overall = 'PASS_COMPLETE'
-                elif exp_st == 'pass':
-                    overall = 'NOT_TESTED_NO_DB'
+                elif exp_st == 'pass' and cmp_st == 'mismatch':
+                    overall = 'FAIL_COMPARE_DIFF'
+                elif exp_st == 'pass' and not cmp_st:
+                    # EXPLAIN passed but no compare — still a valid pass for conversion
+                    overall = 'PASS_NO_CHANGE'
+                elif exp_st == 'fail_schema':
+                    overall = 'FAIL_SCHEMA_MISSING'
                 elif exp_st == 'fail':
                     overall = 'FAIL_SYNTAX'
-                elif conv:
-                    overall = 'NOT_TESTED_NO_DB'
+                elif qid not in extracted_qids:
+                    overall = 'NOT_TESTED_NO_RENDER'
+                elif qid not in extracted_with_sql:
+                    # Extracted but all SQL variants empty (dynamic SQL with null params)
+                    overall = 'NOT_TESTED_NO_RENDER'
                 else:
                     overall = 'NOT_TESTED_PENDING'
-                qm_queries.append({'query_id': qid, 'overall_status': overall})
+                qm_queries.append({'query_id': qid, 'file': fname, 'overall_status': overall,
+                                   'explain_status': exp_st or 'not_tested',
+                                   'compare_status': cmp_st or 'not_tested'})
         from collections import Counter
         qm_summary = dict(Counter(q['overall_status'] for q in qm_queries))
         data['query_matrix'] = {'total': len(qm_queries), 'summary': qm_summary, 'queries': qm_queries}
+
+        # Also save fresh query-matrix.json for external tools
+        qm_path = ws / 'reports' / 'query-matrix.json'
+        qm_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(qm_path, 'w', encoding='utf-8') as f:
+            json.dump(data['query_matrix'], f, ensure_ascii=False, indent=2)
 
     # 5. MyBatis extracted queries
     ext_dir = ws / 'results' / '_extracted'
@@ -479,12 +576,19 @@ def build_embedded_data(data):
         'files': {},
     }
 
-    # Build compare lookup by query_id
-    compare_by_query = {}
+    # Build compare lookup by (file_base, query_id) for file-scoped matching
+    compare_by_file_query = {}  # (fname_base, qid) -> [results]
+    compare_by_query = {}       # bare qid -> [results] (fallback)
     if data.get('comparison') and isinstance(data['comparison'], dict):
         for cr in data['comparison'].get('results', []):
             qid = cr.get('query_id', '')
             compare_by_query.setdefault(qid, []).append(cr)
+            # Also build file-scoped lookup from test_id
+            tid = cr.get('test_id', '')
+            parts = tid.split('.')
+            if len(parts) >= 2:
+                fname_base = parts[0]
+                compare_by_file_query.setdefault((fname_base, qid), []).append(cr)
 
     input_map = {f['name']: f for f in data['input_files']}
     output_map = {f['name']: f for f in data['output_files']}
@@ -539,15 +643,17 @@ def build_embedded_data(data):
                         })
                     break  # Only use the latest version
 
-        # Merge compare results into per-query data
+        # Merge compare results into per-query data (file-scoped first, bare qid fallback)
         for q in queries:
             qid = q.get('query_id', q.get('id', ''))
-            if qid in compare_by_query:
-                q['compare_results'] = compare_by_query[qid]
+            key = (base_name, qid)
+            crs = compare_by_file_query.get(key) or compare_by_query.get(qid)
+            if crs:
+                q['compare_results'] = crs
                 # Update status based on compare results
-                all_match = all(cr.get('match', False) for cr in compare_by_query[qid])
+                all_match = all(cr.get('match', False) for cr in crs)
                 any_error = any(cr.get('pg_error') or cr.get('ora_error') or cr.get('oracle_error')
-                                for cr in compare_by_query[qid])
+                                for cr in crs)
                 if any_error:
                     q['compare_status'] = 'error'
                 elif all_match:
