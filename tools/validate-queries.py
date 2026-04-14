@@ -1740,7 +1740,7 @@ def main():
             print(f"  Filtered: {before} -> {len(validator.queries)} queries")
 
     def load_queries_with_extracted_priority():
-        """Always try load_extracted() first. Fall back to load_queries() with WARNING."""
+        """Always try load_extracted() first. Supplement missing queries from static XML."""
         # Auto-detect extracted dir if not specified
         extracted_dir = args.extracted
         if not extracted_dir:
@@ -1754,13 +1754,44 @@ def main():
                     extracted_dir = str(c)
                     break
 
+        extracted_count = 0
         if extracted_dir:
             validator.load_extracted(extracted_dir)
+            extracted_count = len(validator.queries)
 
         if not validator.queries:
             print("WARNING: No MyBatis extracted SQL found. Using static extraction (limited). "
                   "Install Java 11+ for accurate validation.")
             validator.load_queries()
+        else:
+            # Supplement: extracted에서 빈 SQL로 skip된 쿼리를 static XML에서 보충
+            extracted_qids = {q['id'] for q in validator.queries}
+            static_queries = []
+            for xml_file in sorted(validator.output_dir.glob('**/*.xml')):
+                try:
+                    tree = ET.parse(xml_file)
+                    root = tree.getroot()
+                except Exception:
+                    continue
+                for tag in ['select', 'insert', 'update', 'delete']:
+                    for elem in root.findall(f'.//{tag}'):
+                        qid = elem.get('id', 'unknown')
+                        if qid not in extracted_qids:
+                            # Static fallback: extract SQL from XML element text
+                            sql_text = ''.join(elem.itertext()).strip()
+                            if sql_text:
+                                static_queries.append({
+                                    'file': xml_file.name,
+                                    'id': qid,
+                                    'type': tag,
+                                    'sql_raw': sql_text,
+                                    'params': [],
+                                    'from_extracted': False,
+                                })
+            if static_queries:
+                validator.queries.extend(static_queries)
+                print(f"  Supplemented {len(static_queries)} queries from static XML "
+                      f"(MyBatis rendered: {extracted_count}, static fallback: {len(static_queries)})")
 
         validator.load_test_cases()
 
