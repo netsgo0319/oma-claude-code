@@ -271,38 +271,66 @@ def collect_data(base_dir):
         data['query_matrix'] = load_json(qm_path)
     else:
         # Derive basic matrix from query-tracking + validation (fallback)
-        # Build bare-qid lookup from validated.json passes/failures
-        def _bare_qid(test_id):
+        # File-scoped tuple (filename_base, queryId) lookup — PR #1 반영
+        def _parse_test_id(test_id):
+            """Parse 'filename.queryId.variant' → (filename_base, queryId)"""
             parts = test_id.split('.')
-            return parts[-2] if len(parts) >= 2 else test_id
+            if len(parts) >= 3:
+                return (parts[0], parts[1])  # (filename_base, queryId)
+            elif len(parts) == 2:
+                return (parts[0], parts[1])
+            return ('', test_id)
 
         val_data = data.get('validation') or {}
-        pass_qids = set()
-        fail_qids = {}  # bare_qid → error
+        explain_lookup = {}  # (fname_base, qid) → 'pass' | 'fail'
         for p in val_data.get('passes', []):
             tid = p if isinstance(p, str) else p.get('test', '')
             if tid:
-                pass_qids.add(_bare_qid(tid))
+                key = _parse_test_id(tid)
+                explain_lookup[key] = 'pass'
         for f in val_data.get('failures', []):
             tid = f.get('test', f.get('test_id', ''))
             if tid:
-                bare = _bare_qid(tid)
-                if bare not in pass_qids:  # pass가 우선
-                    fail_qids[bare] = f.get('error', '')[:300]
+                key = _parse_test_id(tid)
+                if key not in explain_lookup:  # pass 우선
+                    explain_lookup[key] = 'fail'
+
+        compare_lookup = {}  # (fname_base, qid) → 'match' | 'mismatch'
+        comp_data = data.get('comparison') or {}
+        for r in comp_data.get('results', []):
+            raw_qid = r.get('query_id', r.get('test_id', ''))
+            key = _parse_test_id(raw_qid) if '.' in raw_qid else ('', raw_qid)
+            is_match = r.get('match', False)
+            if key not in compare_lookup:
+                compare_lookup[key] = 'match' if is_match else 'mismatch'
+            elif not is_match:
+                compare_lookup[key] = 'mismatch'
 
         qm_queries = []
         for fname, finfo in data.get('files', {}).items():
+            fname_base = fname.replace('.xml', '') if fname.endswith('.xml') else fname
             for q in finfo.get('queries', []):
                 qid = q.get('query_id', q.get('id', ''))
                 exp = q.get('explain', {}) or {}
                 exp_st = exp.get('status', '')
                 if not exp_st:
-                    if qid in pass_qids:
-                        exp_st = 'pass'
-                    elif qid in fail_qids:
-                        exp_st = 'fail'
+                    key = (fname_base, qid)
+                    exp_st = explain_lookup.get(key, '')
+                    # Fallback: bare qid (cross-file)
+                    if not exp_st:
+                        for k, v in explain_lookup.items():
+                            if k[1] == qid:
+                                exp_st = v
+                                break
                 cmp = q.get('compare_results', [])
                 cmp_st = 'pass' if cmp and all(c.get('match') for c in cmp) else ('fail' if cmp else 'not_tested')
+                if cmp_st == 'not_tested':
+                    key = (fname_base, qid)
+                    cmp_val = compare_lookup.get(key, '')
+                    if cmp_val == 'match':
+                        cmp_st = 'pass'
+                    elif cmp_val == 'mismatch':
+                        cmp_st = 'fail'
                 conv = q.get('conversion_method', '')
                 if exp_st == 'pass' and cmp_st == 'pass':
                     overall = 'PASS_COMPLETE'

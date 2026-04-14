@@ -461,6 +461,113 @@ SET HEADING ON
                     })
         print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('**/*.xml')))} files")
 
+    def _supplement_static_queries(self, extracted_qids_by_file):
+        """Add static XML queries for IDs not covered by MyBatis extraction.
+        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH.
+        Resolves <include refid="..."/> by looking up <sql id="..."> fragments."""
+        added = 0
+        for xml_file in sorted(self.output_dir.glob('**/*.xml')):
+            try:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+            except ET.ParseError:
+                continue
+            # Build sql fragment map for <include refid="..."/> resolution
+            sql_fragments = {}
+            for sql_elem in root.findall('.//{http://mybatis.org/dtd/mybatis-3-mapper.dtd}sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+            for sql_elem in root.findall('.//sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.findall(f'.//{tag}'):
+                    qid = elem.get('id', 'unknown')
+                    key = (xml_file.name, qid)
+                    if key not in extracted_qids_by_file:
+                        sql_text = self._extract_sql_text(elem, sql_fragments)
+                        if sql_text and sql_text.strip():
+                            self.queries.append({
+                                'file': xml_file.name,
+                                'id': qid,
+                                'type': tag,
+                                'sql_raw': sql_text,
+                                'params': [],
+                            })
+                            added += 1
+        return added
+
+    @staticmethod
+    def _extract_sql_text(elem, sql_fragments=None):
+        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags."""
+        if sql_fragments is None:
+            sql_fragments = {}
+        parts = []
+        if elem.text:
+            parts.append(elem.text)
+        for child in elem:
+            if child.tag == 'include':
+                refid = child.get('refid', '')
+                if refid and refid in sql_fragments:
+                    frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                    parts.append(frag_sql)
+            else:
+                if child.text:
+                    parts.append(child.text)
+                for sub in child.iter():
+                    if sub is not child:
+                        if sub.tag == 'include':
+                            refid = sub.get('refid', '')
+                            if refid and refid in sql_fragments:
+                                frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                                parts.append(frag_sql)
+                        else:
+                            if sub.text:
+                                parts.append(sub.text)
+                            if sub.tail:
+                                parts.append(sub.tail)
+            if child.tail:
+                parts.append(child.tail)
+        return ' '.join(parts)
+
+    @staticmethod
+    def _select_best_tcs(tc_cases, max_tcs=2):
+        """Select best test cases prioritizing CUSTOM > SAMPLE > INFERRED > null/fallback."""
+        if not tc_cases:
+            return []
+        priority_map = {'CUSTOM': 0, 'SAMPLE_DATA': 1, 'SAMPLE': 1, 'INFERRED': 2}
+        buckets = {0: [], 1: [], 2: [], 9: []}
+        for tc in tc_cases:
+            if not isinstance(tc, dict):
+                continue
+            source = str(tc.get('source', tc.get('name', ''))).upper()
+            params = tc.get('params', tc.get('binds', {}))
+            if isinstance(params, dict) and params:
+                if sum(1 for v in params.values() if v is not None) == 0:
+                    buckets[9].append(tc)
+                    continue
+            matched = False
+            for key, pri in priority_map.items():
+                if key in source:
+                    buckets[pri].append(tc)
+                    matched = True
+                    break
+            if not matched:
+                name = str(tc.get('name', '')).lower()
+                buckets[9 if 'null' in name else 2].append(tc)
+        result = []
+        for pri in [0, 1, 2, 9]:
+            for tc in buckets[pri]:
+                if len(result) >= max_tcs:
+                    break
+                result.append(tc)
+            if len(result) >= max_tcs:
+                break
+        return result
+
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
         This provides accurate SQL with dynamic branches resolved by the MyBatis engine."""
@@ -1765,33 +1872,12 @@ def main():
             validator.load_queries()
         else:
             # Supplement: extracted에서 빈 SQL로 skip된 쿼리를 static XML에서 보충
-            extracted_qids = {q['id'] for q in validator.queries}
-            static_queries = []
-            for xml_file in sorted(validator.output_dir.glob('**/*.xml')):
-                try:
-                    tree = ET.parse(xml_file)
-                    root = tree.getroot()
-                except Exception:
-                    continue
-                for tag in ['select', 'insert', 'update', 'delete']:
-                    for elem in root.findall(f'.//{tag}'):
-                        qid = elem.get('id', 'unknown')
-                        if qid not in extracted_qids:
-                            # Static fallback: extract SQL from XML element text
-                            sql_text = ''.join(elem.itertext()).strip()
-                            if sql_text:
-                                static_queries.append({
-                                    'file': xml_file.name,
-                                    'id': qid,
-                                    'type': tag,
-                                    'sql_raw': sql_text,
-                                    'params': [],
-                                    'from_extracted': False,
-                                })
-            if static_queries:
-                validator.queries.extend(static_queries)
-                print(f"  Supplemented {len(static_queries)} queries from static XML "
-                      f"(MyBatis rendered: {extracted_count}, static fallback: {len(static_queries)})")
+            # include refid 해석 포함 (PR #1 반영)
+            extracted_qids_by_file = {(q['file'], q['id']) for q in validator.queries}
+            added = validator._supplement_static_queries(extracted_qids_by_file)
+            if added:
+                print(f"  Supplemented {added} queries from static XML with include refid resolution "
+                      f"(MyBatis rendered: {extracted_count}, static fallback: {added})")
 
         validator.load_test_cases()
 
