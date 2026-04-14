@@ -72,8 +72,8 @@ class QueryValidator:
             except Exception:
                 pass
 
-        # Method 2: From input XML files (fallback)
-        if not self.oracle_queries and self.input_dir.exists():
+        # Method 2: From input XML files (supplement — tracking에 없는 쿼리 보충)
+        if self.input_dir.exists():
             for xml_file in sorted(self.input_dir.glob('**/*.xml')):
                 try:
                     tree = ET.parse(xml_file)
@@ -89,7 +89,7 @@ class QueryValidator:
                         raw_sql = ' '.join(parts)
                         raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
                         raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
-                        if qid and raw_sql:
+                        if qid and raw_sql and qid not in self.oracle_queries:
                             self.oracle_queries[qid] = raw_sql
 
         print(f"Loaded {len(self.oracle_queries)} Oracle (original) queries")
