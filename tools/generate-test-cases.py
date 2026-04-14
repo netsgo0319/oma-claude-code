@@ -286,7 +286,7 @@ def _tables(sql):
 def _params(sql):
     return list(dict.fromkeys(re.findall(r'#\{(\w+)\}', sql)))
 
-def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None):
+def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None):
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
@@ -309,8 +309,15 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
     def _dup(binds): return any(c['params'] == binds for c in cases)
 
     # Priority 0: Custom binds (고객 제공 — 최우선)
-    if custom_binds and qid in custom_binds:
-        for i, cb in enumerate(custom_binds[qid]):
+    # Try both filename::queryID and just queryID for backward compatibility
+    custom_key = f"{filename}::{qid}" if filename else qid
+    custom_cases = custom_binds.get(custom_key) if custom_binds else None
+    # Fallback to just queryID if filename::queryID not found
+    if not custom_cases and custom_binds and qid in custom_binds:
+        custom_cases = custom_binds.get(qid)
+
+    if custom_cases:
+        for i, cb in enumerate(custom_cases):
             binds = dict(cb) if isinstance(cb, dict) else {}
             # 고객이 안 준 나머지 파라미터는 추론으로 채움
             for p in params:
@@ -416,11 +423,12 @@ def main():
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
+        filename = parsed.get('source_file', '')
         file_tc = {}
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
             tcs = build_query_tcs(qid, q, sample_data, vo_map, pt_map,
-                                  captures, col_stats, fk_values, table_rows, custom_binds)
+                                  captures, col_stats, fk_values, table_rows, custom_binds, filename)
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1

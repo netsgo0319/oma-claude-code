@@ -461,6 +461,56 @@ SET HEADING ON
                     })
         print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('**/*.xml')))} files")
 
+    def _supplement_static_queries(self, extracted_qids_by_file):
+        """Add static XML queries for IDs not covered by MyBatis extraction.
+        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH."""
+        import xml.etree.ElementTree as ET
+        added = 0
+        for xml_file in sorted(self.output_dir.glob('**/*.xml')):
+            try:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+            except ET.ParseError:
+                continue
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.findall(f'.//{tag}'):
+                    qid = elem.get('id', 'unknown')
+                    key = (xml_file.name, qid)
+                    if key not in extracted_qids_by_file:
+                        # Extract raw SQL text from the element
+                        sql_text = self._extract_sql_text(elem)
+                        if sql_text and sql_text.strip():
+                            self.queries.append({
+                                'file': xml_file.name,
+                                'id': qid,
+                                'type': tag,
+                                'sql_raw': sql_text,
+                                'params': [],
+                            })
+                            added += 1
+        return added
+
+    @staticmethod
+    def _extract_sql_text(elem):
+        """Extract SQL text from an XML element, stripping MyBatis tags."""
+        parts = []
+        if elem.text:
+            parts.append(elem.text)
+        for child in elem:
+            # Include text content of dynamic tags (<if>, <choose>, <where>, etc.)
+            if child.text:
+                parts.append(child.text)
+            if child.tail:
+                parts.append(child.tail)
+            # Recurse into nested elements
+            for sub in child.iter():
+                if sub is not child:
+                    if sub.text:
+                        parts.append(sub.text)
+                    if sub.tail:
+                        parts.append(sub.tail)
+        return ' '.join(parts)
+
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
         This provides accurate SQL with dynamic branches resolved by the MyBatis engine."""
@@ -1813,7 +1863,8 @@ def main():
             print(f"  Filtered: {before} -> {len(validator.queries)} queries")
 
     def load_queries_with_extracted_priority():
-        """Always try load_extracted() first. Fall back to load_queries() with WARNING."""
+        """Always try load_extracted() first. Fall back to load_queries() with WARNING.
+        Supplement with static XML queries for any queries not covered by extraction."""
         # Auto-detect extracted dir if not specified
         extracted_dir = args.extracted
         if not extracted_dir:
@@ -1834,6 +1885,17 @@ def main():
             print("WARNING: No MyBatis extracted SQL found. Using static extraction (limited). "
                   "Install Java 11+ for accurate validation.")
             validator.load_queries()
+        else:
+            # Supplement: add static XML queries for any query IDs not covered by extraction
+            # (e.g., queries where MyBatis returned empty SQL due to dynamic conditions)
+            extracted_qids_by_file = set()
+            for q in validator.queries:
+                extracted_qids_by_file.add((q['file'], q['id']))
+            before_count = len(validator.queries)
+            validator._supplement_static_queries(extracted_qids_by_file)
+            added = len(validator.queries) - before_count
+            if added > 0:
+                print(f"Supplemented {added} static XML queries (MyBatis extraction was empty)")
 
         validator.load_test_cases()
 
