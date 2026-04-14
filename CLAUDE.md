@@ -119,8 +119,11 @@ Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, ..
 **모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
 reporter가 `_validation*/validated.json`을 모두 읽어서 통합 집계한다.
 
-**금지:** "결과가 분산되어 있어 전체 통합 검증하겠다"며 단일 에이전트로 재실행하는 것.
-배치 결과는 reporter가 glob으로 통합한다. 리더가 직접 재실행하지 마라.
+**금지 (위반 시 결과 손실):**
+- "결과가 분산되어 있어 전체 통합 검증하겠다" → **금지.** reporter가 glob으로 통합한다.
+- "전체 EXPLAIN 먼저 돌리고 그다음 Execute" → **금지.** --full 원자적 실행만.
+- 리더가 직접 validate-queries.py를 실행하는 것 → **금지.** validate-and-fix에 위임.
+- 배치 에이전트 결과를 무시하고 단일 재실행하는 것 → **금지.** 기존 결과 덮어씌워짐.
 
 ### Step 4: 보고서 → reporter에 위임
 

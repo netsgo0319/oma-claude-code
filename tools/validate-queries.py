@@ -600,8 +600,9 @@ SET HEADING ON
         total_cases = sum(len(v) for v in self.test_cases.values())
         print(f"Loaded {total_cases} test cases for {len(self.test_cases)} queries")
 
-    def bind_params(self, sql, params_dict):
-        """Replace #{param} with actual values from test case."""
+    def bind_params(self, sql, params_dict, default_unbound='NULL'):
+        """Replace #{param} with actual values from test case.
+        default_unbound: value for unbound params ('NULL' or "'1'" to match PG fallback)."""
         result = sql
         for key, value in params_dict.items():
             pattern = rf'#\{{{key}(?:,[^}}]*)?\}}'
@@ -622,8 +623,14 @@ SET HEADING ON
                 replacement = f"'{value}'"
             result = re.sub(pattern, replacement, result)
 
-        # Replace any remaining unbound params with NULL
-        result = re.sub(r'#\{[^}]+\}', 'NULL', result)
+        # Replace any remaining unbound params with default_unbound
+        # Framework pagination params (GRIDPAGING_*) must be empty string
+        def _unbound_replace(m):
+            pname = m.group(0)[2:-1].split(',')[0].lower()
+            if 'gridpaging' in pname:
+                return ''
+            return default_unbound
+        result = re.sub(r'#\{[^}]+\}', _unbound_replace, result)
         # Replace ${} dollar substitution with placeholder
         result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
 
@@ -753,7 +760,7 @@ SET HEADING ON
                 # Oracle compare
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds, default_unbound="'1'"))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
@@ -781,7 +788,13 @@ SET HEADING ON
 
             if not cases:
                 # No test cases - use default dummy binding
-                bound_sql = re.sub(r'#\{[^}]+\}', "'1'", sql)
+                # Framework pagination params (GRIDPAGING_*) must be empty string
+                def _dummy_bind(m):
+                    pname = m.group(0)[2:-1].split(',')[0].lower()
+                    if 'gridpaging' in pname:
+                        return ''
+                    return "'1'"
+                bound_sql = re.sub(r'#\{[^}]+\}', _dummy_bind, sql)
                 bound_sql = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", bound_sql)
 
                 test_id = f"{fname}.{qid}.default"
@@ -819,7 +832,7 @@ SET HEADING ON
                 # Oracle compare (use original SQL with same binds)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, {}))
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, {}, default_unbound="'1'"))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
@@ -888,7 +901,7 @@ SET HEADING ON
                     # Oracle compare
                     oracle_sql = self.oracle_queries.get(qid, '')
                     if oracle_sql:
-                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds))
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds, default_unbound="'1'"))
                         oracle_lines.append(f"PROMPT === {test_id} ===")
                         if qtype == 'select':
                             safe_ora = ora_bound.rstrip(';')
