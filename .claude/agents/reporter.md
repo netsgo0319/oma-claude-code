@@ -106,7 +106,36 @@ for d in workspace/results/_validation*/; do
 done
 ```
 
-### 2c. Compare 커버리지 검증 (BLOCK 조건)
+### 2c. 수정 루프 실행 검증 (BLOCK 조건)
+
+DBA 3종 외 FAIL 쿼리에 대해 수정 루프가 실행됐는지 확인:
+
+```bash
+python3 -c "
+import json, glob
+for tf in sorted(glob.glob('workspace/results/*/v*/query-tracking.json')):
+    d = json.load(open(tf))
+    queries = d.get('queries', [])
+    if isinstance(queries, dict): queries = list(queries.values())
+    for q in queries:
+        qid = q.get('query_id', '')
+        exp = q.get('explain', {}) or {}
+        attempts = q.get('attempts', [])
+        compare = q.get('compare_results', [])
+        # FAIL인데 attempts가 0인 쿼리 찾기 (DBA 제외)
+        exp_err = (exp.get('error', '') or '').lower()
+        is_dba = any(x in exp_err for x in ['relation', 'column', 'function']) and 'does not exist' in exp_err
+        is_fail = exp.get('status') == 'fail' or any(not c.get('match', True) for c in compare)
+        if is_fail and not is_dba and len(attempts) == 0:
+            print(f'NO_LOOP: {qid} (FAIL but 0 attempts)')
+" 2>/dev/null | head -20
+```
+
+**NO_LOOP 건이 있으면 BLOCK.** 메인 에이전트에게:
+- "FAIL인데 수정 루프를 안 돌린 쿼리 N건. validate-and-fix 재위임 필요."
+- Compare mismatch도 FAIL이다. EXPLAIN+Execute PASS여도 Compare 불일치면 수정 대상.
+
+### 2d. Compare 커버리지 검증 (BLOCK 조건)
 
 DBA 3종 외 모든 쿼리는 Compare까지 완료해야 보고서 생성 가능.
 
