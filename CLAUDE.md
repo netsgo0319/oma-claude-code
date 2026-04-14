@@ -50,6 +50,13 @@ python3 tools/generate-sample-data.py
 **XML 복사 주의:** `*-sql-oracle.xml` 패턴으로 필터하지 마라. `*.xml` 전부 복사.
 Oracle 접속 시 오브젝트 스캔 (TABLE/FUNCTION/PACKAGE). PG 접속 시 pgcrypto 확인.
 
+**PG search_path 필수 확인:**
+```bash
+echo "SHOW search_path;" | psql
+```
+스키마가 public이 아니면 `SET search_path TO {schema}, public;`을 안내하라.
+이걸 안 하면 모든 테이블이 "relation does not exist"로 잘못 보고된다.
+
 **Step 0 완료 후 → Step 1로.**
 
 ### Step 1: 파싱 + 변환 → converter에 위임
@@ -111,6 +118,9 @@ Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, ..
 
 **모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
 reporter가 `_validation*/validated.json`을 모두 읽어서 통합 집계한다.
+
+**금지:** "결과가 분산되어 있어 전체 통합 검증하겠다"며 단일 에이전트로 재실행하는 것.
+배치 결과는 reporter가 glob으로 통합한다. 리더가 직접 재실행하지 마라.
 
 ### Step 4: 보고서 → reporter에 위임
 
