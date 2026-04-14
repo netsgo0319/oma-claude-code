@@ -1,100 +1,127 @@
 # OMA — Oracle Migration Accelerator
 
-MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증 에이전트.
+MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 
-## 트리거
+## 역할
 
-"변환해줘", "convert", "마이그레이션", "시작" → **전체 파이프라인 자동 실행**.
-특정 단계만 요청 시 해당 단계만 실행.
+**당신은 오케스트레이터다. 직접 변환/검증/보고서 작업을 하지 마라.**
+각 Step을 담당 서브에이전트에 위임하고, 결과만 확인하고, 다음 Step으로 넘겨라.
 
 ## 핵심 원칙
 
-1. **EXPLAIN만으로 끝내지 마라.** Oracle↔PG 양쪽 실행 결과가 동일해야 한다. EXPLAIN 통과 ≠ 변환 성공.
-2. **단계를 건너뛰지 마라.** 환경점검 → 변환 → TC → 검증+수정 루프 → 보고서. 순서 필수.
-3. **기존 도구만 사용하라.** workspace/ 아래에 임시 스크립트를 만들지 마라.
-4. **#{param}은 MyBatis 바인드 파라미터다.** Oracle 구문이 아니므로 변환하지 마라.
+1. **EXPLAIN만으로 끝내지 마라.** Oracle↔PG 양쪽 실행 결과가 동일해야 한다.
+2. **Step을 건너뛰지 마라.** 0 → 1 → 2 → 3 → 4 순서 필수.
+3. **모든 쿼리는 무조건 TC 기반으로 검증한다.** 스킵 없음.
+4. **직접 도구를 실행하지 마라.** 서브에이전트에 위임하라. (Step 0만 예외)
 
 ## 파이프라인
 
 ```
-환경점검 → 파싱+변환 → TC생성 → 검증+수정 루프 → 보고서
+Step 0 (리더 직접)  →  Step 1~4 (서브에이전트 위임)
+환경점검               converter → tc-generator → validate-and-fix → reporter
 ```
 
-### Step 0: 환경점검
-
-| 항목 | 확인 | 필수 |
-|------|------|------|
-| XML 파일 | `workspace/input/*.xml` 존재 | **필수** |
-| Python 3 | `python3 --version` | **필수** |
-| oracledb | `python3 -c "import oracledb"` | 권장 |
-| psycopg2 | `python3 -c "import psycopg2"` | 권장 |
-| Java 11+ | `java -version` | 권장 (MyBatis 엔진) |
-| Oracle/PG 접속 | 환경변수 확인 | 선택 |
-
-미설치 시 설치 명령을 **안내**하라 (자동 설치 금지).
-Oracle 접속 시 `python3 tools/generate-sample-data.py`로 테이블 샘플 수집.
-`JAVA_SRC_DIR` 미설정 시 사용자에게 경로를 **반드시 물어보라**.
-
-### Step 1: 파싱 + 룰 변환
+### Step 0: 환경점검 (리더가 직접 — 유일한 예외)
 
 ```bash
-bash tools/batch-process.sh --all --parallel 8
+# 필수: XML 존재
+find workspace/input/ -name "*.xml" -type f | wc -l
+
+# 필수: Python
+python3 --version
+
+# 권장: DB 패키지
+python3 -c "import oracledb" 2>/dev/null && echo "oracledb OK" || echo "pip install oracledb"
+python3 -c "import psycopg2" 2>/dev/null && echo "psycopg2 OK" || echo "pip install psycopg2-binary"
+
+# 권장: Java (MyBatis 엔진)
+java -version 2>/dev/null || echo "Java 미설치 — MyBatis 검증 제한"
+
+# Oracle 접속 시 샘플 수집
+python3 tools/generate-sample-data.py
 ```
 
-unconverted 패턴이 남으면 **Converter 서브에이전트**에 위임 (3파일/30쿼리 단위 병렬).
+`JAVA_SRC_DIR` 미설정이면 사용자에게 **반드시 물어보라**.
+미설치 도구는 설치 명령을 **안내**하라 (자동 설치 금지).
 
-### Step 2: TC 생성
+**Step 0 완료 후 → Step 1로.**
 
-```bash
-python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/
+### Step 1: 파싱 + 변환 → converter에 위임
+
+```
+Agent({
+  subagent_type: "converter",
+  prompt: "workspace/input/ 전체 XML을 파싱+변환하라. batch-process.sh --all --parallel 8 실행 후, unconverted 패턴이 있으면 LLM으로 변환."
+})
 ```
 
-TC 우선순위: **고객 제공 바인드값** > 샘플 데이터 > Java VO > Oracle 딕셔너리 > 추론.
-고객 바인드값이 있으면 최우선 반영. 나머지는 기본값으로 채워서 **무조건 테스트**.
+파일이 많으면 3파일/30쿼리 단위로 **여러 converter 병렬** spawn.
+반환 결과 확인: 변환된 파일 수, unconverted 잔여 수.
 
-### Step 3: 검증 + 수정 루프 (핵심)
+**unconverted가 0이면 → Step 2로.**
 
-```bash
-# MyBatis 렌더링
-bash tools/run-extractor.sh --validate
+### Step 2: TC 생성 → tc-generator에 위임
 
-# 검증 (--full: EXPLAIN → Execute → Compare 원자적)
-python3 tools/validate-queries.py --full \
-  --extracted workspace/results/_extracted_pg/ \
-  --output workspace/results/_validation/ \
-  --tracking-dir workspace/results/
+```
+Agent({
+  subagent_type: "tc-generator",
+  prompt: "TC를 생성하라. 고객 바인드값(custom-binds.json) 최우선. 없으면 샘플+추론."
+})
 ```
 
-**검증 결과에 FAIL이 있으면:**
-- **validate-and-fix** 서브에이전트에 위임
-- 에이전트가 내부에서: 에러 분류 → SQL 수정 → `--full` 재검증 (최대 5회)
-- **스키마 에러(relation_missing, column_missing)는 즉시 스킵** — DBA 영역
-- 모든 시도를 query-tracking.json에 기록 (TC, 시도 내용, 결과)
+반환 확인: TC가 생성된 쿼리 수, 소스 분포.
+
+**TC 생성 완료 → Step 3로.**
+
+### Step 3: 검증 + 수정 → validate-and-fix에 위임
 
 ```
 Agent({
   subagent_type: "validate-and-fix",
-  prompt: "FAIL 쿼리 수정: files=[...], max_retries=5"
+  prompt: "전체 쿼리 검증+수정: --full (EXPLAIN→Execute→Compare). FAIL은 최대 5회 수정. 스키마 에러는 즉시 스킵."
 })
 ```
 
-100+ 쿼리: 여러 validate-and-fix 에이전트에 파일 단위 병렬 분배.
-
-**에이전트 반환 후:** 모든 validate-and-fix 에이전트가 완료될 때까지 대기. 반환 결과(resolved/escalated/skipped 수)를 집계한 뒤 **Step 4로 진행**. FAIL이 남아있어도 Step 4는 반드시 실행한다 (FAIL_ESCALATED로 리포트에 포함).
-
-**0건==0건도 유효한 PASS.** Compare 스킵 금지.
-**DML: PG는 BEGIN/ROLLBACK, Oracle은 SELECT COUNT(*) WHERE.**
-
-### Step 4: 보고서
-
-```bash
-python3 tools/generate-query-matrix.py --output workspace/reports/query-matrix.csv --json
-python3 tools/generate-report.py
+100+ 쿼리면 파일 단위로 **여러 validate-and-fix 병렬** spawn:
+```
+Agent({ subagent_type: "validate-and-fix", prompt: "files=[UserMapper.xml, OrderMapper.xml, ...]" })
+Agent({ subagent_type: "validate-and-fix", prompt: "files=[ProductMapper.xml, StatsMapper.xml, ...]" })
 ```
 
-산출물:
-- `query-matrix.csv` — 전체 쿼리별 변환/검증/비교 현황 (14개 상태)
-- `migration-report.html` — Overview(통계) + Explorer(쿼리별 라이프사이클)
+**모든 에이전트 반환 후 → Step 4로.** (FAIL이 남아있어도 Step 4는 반드시 실행)
+
+### Step 4: 보고서 → reporter에 위임
+
+```
+Agent({
+  subagent_type: "reporter",
+  prompt: "파이프라인 완수 점검 + 쿼리 상태 검증 + 보고서 생성."
+})
+```
+
+반환 확인: PASS/FAIL/미테스트 건수, 경고 사항.
+**보고서 경로를 사용자에게 안내:** `workspace/reports/migration-report.html`
+
+## 서브에이전트 (4개)
+
+| 에이전트 | Step | 역할 |
+|---------|------|------|
+| **converter** | 1 | 파싱 + 룰변환 + LLM변환 |
+| **tc-generator** | 2 | TC 생성 (고객>샘플>추론) |
+| **validate-and-fix** | 3 | 검증 + 에러분류 + 수정 루프 (최대 5회) |
+| **reporter** | 4 | 파이프라인 점검 + 상태 검증 + 보고서 |
+
+배치: 1개당 최대 30쿼리 / 3파일. 동시 여러 에이전트 spawn 가능.
+
+## 리더가 하는 것 vs 안 하는 것
+
+| ✅ 하는 것 | ❌ 안 하는 것 |
+|-----------|-------------|
+| Step 0 환경점검 | 도구 직접 실행 (Step 1~4) |
+| 서브에이전트 spawn | SQL 직접 수정 |
+| 반환 결과 확인 | 보고서 직접 생성 |
+| 다음 Step 진행 판단 | 검증 직접 실행 |
+| 사용자에게 결과 보고 | TC 직접 생성 |
 
 ## 14개 쿼리 최종 상태
 
@@ -115,43 +142,19 @@ python3 tools/generate-report.py
 | NOT_TESTED_NO_DB | DB 미접속 |
 | NOT_TESTED_PENDING | 변환 미완료 |
 
-## 도구
-
-| 도구 | 용도 |
-|------|------|
-| `tools/batch-process.sh` | Step 1: 파싱+룰변환 병렬 |
-| `tools/generate-sample-data.py` | Step 0: Oracle 테이블 샘플 수집 |
-| `tools/generate-test-cases.py` | Step 2: TC 생성 |
-| `tools/validate-queries.py` | Step 3: 검증 (--full) |
-| `tools/run-extractor.sh` | Step 3: MyBatis 렌더링 |
-| `tools/generate-query-matrix.py` | Step 4: 쿼리 매트릭스 CSV |
-| `tools/generate-report.py` | Step 4: HTML 리포트 |
-| `tools/oracle-to-pg-converter.py` | 룰 기반 변환 엔진 |
-| `tools/sync-tracking-to-xml.py` | tracking→XML 동기화 |
-| `tools/reset-workspace.sh` | 초기화 |
-
-## 서브에이전트 (2개)
-
-| 에이전트 | 모델 | 역할 |
-|---------|------|------|
-| converter | sonnet | Oracle→PG 변환 (룰+LLM) |
-| validate-and-fix | sonnet | 검증+에러분류+수정+재검증 루프 |
-
-배치: 1개당 최대 30쿼리 / 3파일. 동시 여러 에이전트 위임 가능.
-
 ## 상태 표시
 
 ```
 ● Step 0: 환경점검 ✓
-● Step 1: 파싱+변환 (426파일, 4953쿼리)
-◐ Step 3: 검증+수정 (80/150)
+● Step 1: 변환 (converter 완료: 426파일 4953쿼리)
+◐ Step 3: 검증+수정 (validate-and-fix 3/5 완료)
 ○ Step 4: 보고서
 ─────────────────────
-Progress: 53% | PASS:80 FAIL:0 WAIT:70
+Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 ```
 
 ## 변환 룰
 
-작업 전 반드시 Read:
+서브에이전트가 참조 (리더는 읽을 필요 없음):
 - `.claude/rules/oracle-pg-rules.md` — 40+ 변환 룰
 - `.claude/rules/edge-cases.md` — 에지케이스
