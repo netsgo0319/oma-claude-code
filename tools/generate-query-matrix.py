@@ -161,8 +161,18 @@ def main():
         for q in json.load(open(ef)).get('queries', []):
             pg_extracted.add(q.get('query_id', ''))
 
-    # Build matrix from query-tracking.json
+    # Build matrix from query-tracking.json — latest version per file only
+    # {file_dir: {version_num: path}} → pick highest version
+    tracking_by_dir = {}
     for tf in sorted(glob.glob(str(results_dir / '*/v*/query-tracking.json'))):
+        tf_path = Path(tf)
+        file_dir = tf_path.parent.parent.name  # e.g. "UserMapper.xml"
+        ver_dir = tf_path.parent.name  # e.g. "v1", "v2"
+        ver_num = int(ver_dir.replace('v', '')) if ver_dir.startswith('v') and ver_dir[1:].isdigit() else 0
+        if file_dir not in tracking_by_dir or ver_num > tracking_by_dir[file_dir][0]:
+            tracking_by_dir[file_dir] = (ver_num, tf)
+
+    for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
         try:
             tdata = json.load(open(tf))
         except Exception:
