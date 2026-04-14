@@ -120,9 +120,16 @@ Progress: 60% | PASS:3200 FAIL:300 WAIT:1453
 **대화가 컴팩팅되면 이전 맥락이 사라진다. 반드시 파일에서 상태를 복구하라.**
 컴팩팅 감지 시 (또는 응답 시작 시 상태가 불확실하면):
 ```bash
-cat workspace/progress.json 2>/dev/null | python3 -m json.tool | head -20
+cat workspace/state-snapshot.json 2>/dev/null | python3 -m json.tool
 ```
-이 파일이 현재 진행 상태의 유일한 진실. 대화 기억에 의존하지 마라.
+이 파일에 들어있는 것:
+- `summary`: 14-state별 건수 (PASS/FAIL/NOT_TESTED)
+- `top_fails`: FAIL 쿼리 상위 20건 (query_id + 상태)
+- `top_pending`: 미테스트 쿼리 상위 10건
+- `next_action`: 다음에 해야 할 일
+- `progress`: Step별 진행 상태
+
+**이 파일이 현재 진행 상태의 유일한 진실. 대화 기억에 의존하지 마라.**
 
 **절대 잊지 말 것 (컴팩팅 후에도):**
 - EXPLAIN PASS ≠ 변환 성공. **Compare까지 해야 PASS.**

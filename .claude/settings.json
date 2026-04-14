@@ -50,8 +50,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'cp workspace/progress.json workspace/state-snapshot.json 2>/dev/null; echo \"[PreCompact] State snapshot saved\"'",
-            "timeout": 5
+            "command": "bash -c 'python3 -c \"import json,glob,os;s={};p=\\\"workspace/progress.json\\\";s[\\\"progress\\\"]=json.load(open(p)) if os.path.exists(p) else {};qm=\\\"workspace/reports/query-matrix.json\\\";d=json.load(open(qm)) if os.path.exists(qm) else {};s[\\\"summary\\\"]=d.get(\\\"summary\\\",{});s[\\\"total\\\"]=d.get(\\\"total\\\",0);fails=[q[\\\"query_id\\\"]+\\\":\\\"+q.get(\\\"overall_status\\\",\\\"\\\") for q in d.get(\\\"queries\\\",[]) if q.get(\\\"overall_status\\\",\\\"\\\").startswith(\\\"FAIL_\\\")][:20];s[\\\"top_fails\\\"]=fails;pend=[q[\\\"query_id\\\"] for q in d.get(\\\"queries\\\",[]) if q.get(\\\"overall_status\\\",\\\"\\\").startswith(\\\"NOT_TESTED\\\")][:10];s[\\\"top_pending\\\"]=pend;s[\\\"next_action\\\"]=\\\"Compare 미실행 쿼리 재검증\\\" if any(q.get(\\\"compare_status\\\")==\\\"not_tested\\\" for q in d.get(\\\"queries\\\",[])) else \\\"보고서 생성\\\";json.dump(s,open(\\\"workspace/state-snapshot.json\\\",\\\"w\\\"),indent=2,ensure_ascii=False)\" 2>/dev/null; echo \"[PreCompact] State snapshot saved\"'",
+            "timeout": 10
           }
         ]
       }
