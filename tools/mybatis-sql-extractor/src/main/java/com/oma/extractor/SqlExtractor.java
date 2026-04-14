@@ -463,11 +463,13 @@ public class SqlExtractor {
     }
 
     @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked")
     private static Map<String, List<Map<String, Object>>> loadTestParams(String path) throws Exception {
         String json = Files.readString(Paths.get(path));
         Map<String, Object> data = GSON.fromJson(json, Map.class);
         Map<String, List<Map<String, Object>>> result = new HashMap<>();
 
+        // Format 1: nested {query_test_cases: [{query_id, test_cases: [{binds}]}]}
         List<Map<String, Object>> testCases = (List<Map<String, Object>>) data.get("query_test_cases");
         if (testCases != null) {
             for (Map<String, Object> tc : testCases) {
@@ -483,6 +485,31 @@ public class SqlExtractor {
                 }
             }
         }
+
+        // Format 2: flat {queryId: [{param1: val1, ...}, ...]} (from generate-test-cases.py)
+        if (result.isEmpty()) {
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String key = entry.getKey();
+                if (key.equals("query_test_cases")) continue;
+                Object val = entry.getValue();
+                if (val instanceof List) {
+                    List<?> items = (List<?>) val;
+                    List<Map<String, Object>> bindsList = new ArrayList<>();
+                    for (Object item : items) {
+                        if (item instanceof Map) {
+                            bindsList.add((Map<String, Object>) item);
+                        }
+                    }
+                    if (!bindsList.isEmpty()) {
+                        result.put(key, bindsList);
+                    }
+                }
+            }
+            if (!result.isEmpty()) {
+                System.out.println("  Loaded " + result.size() + " queries from flat TC format");
+            }
+        }
+
         return result;
     }
 

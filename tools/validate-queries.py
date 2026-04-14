@@ -230,17 +230,20 @@ SET HEADING ON
             pg_sql = query['sql_raw']
             qtype = query['type']
             oracle_sql = self.oracle_queries.get(qid, '')
+            is_extracted = query.get('from_extracted', False)
+            param_names = query.get('param_names_for_bind', [])
 
             if not oracle_sql:
                 print(f"  SKIP {qid}: no Oracle SQL found")
                 continue
 
-            cases = self.test_cases.get(qid, [])
-            if not cases:
-                # Single default test
-                cases = [{'name': 'default', 'params': {}}]
+            # Use _select_best_tcs for better TC selection
+            all_cases = self.test_cases.get(qid, [])
+            selected = self._select_best_tcs(all_cases, max_tcs=2)
+            if not selected:
+                selected = [{'name': 'default', 'params': {}}]
 
-            for i, case in enumerate(cases):
+            for i, case in enumerate(selected):
                 if isinstance(case, dict):
                     binds = case.get('binds', case.get('params', {}))
                     for skip_key in ['name', 'description', 'source', 'case_id', 'not_null_columns', 'expected']:
@@ -250,9 +253,12 @@ SET HEADING ON
                     binds = {}
                     case_name = f'tc{i}'
 
-                # Bind params into both SQLs
-                bound_oracle = self.bind_params(oracle_sql, binds)
-                bound_pg = self.bind_params(pg_sql, binds)
+                # Bind params: extracted SQL uses ? positional, static uses #{param}
+                if is_extracted and '?' in pg_sql:
+                    bound_pg = self._bind_positional(pg_sql, param_names, binds)
+                else:
+                    bound_pg = self.bind_params(pg_sql, binds)
+                bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
                 # Wrap DML in transaction
                 if qtype in ('insert', 'update', 'delete'):
@@ -742,6 +748,25 @@ SET HEADING ON
         result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
 
         return result
+
+    @staticmethod
+    def _bind_positional(sql, param_names, binds):
+        """Replace ? placeholders positionally using param_names + binds dict."""
+        parts = sql.split('?')
+        bound_parts = [parts[0]]
+        for i in range(1, len(parts)):
+            pname = param_names[i-1] if i-1 < len(param_names) else ''
+            val = binds.get(pname) if pname else None
+            if val is None:
+                bound_parts.append("'1'")
+            elif isinstance(val, (int, float)):
+                bound_parts.append(str(val))
+            elif isinstance(val, str):
+                bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
+            else:
+                bound_parts.append("'1'")
+            bound_parts.append(parts[i])
+        return ''.join(bound_parts)
 
     @staticmethod
     def _extract_dml_where(sql):
