@@ -128,7 +128,8 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 ### HTML 리포트 구성
 
 - **Overview**: 6개 카드 + Step Progress 바
-- **Explorer**: 파일→쿼리 트리 + Oracle/PG SQL 비교 + Attempt History + Conversion History
+- **Explorer**: 파일→쿼리 트리 + MyBatis XML diff + 렌더링 SQL diff + Attempt History
+- **DBA**: 누락 오브젝트(테이블/컬럼/함수) 그룹핑 + 액션 아이템 + Oracle 0건 쿼리
 - **Log**: 활동 타임라인 + 감사 로그
 
 ## 최종 JSON 구조
@@ -172,8 +173,11 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 {
   "query_id": "selectUser",
   "original_file": "UserMapper.xml",
-  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
-  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "type": "select",
+  "xml_before": "<select id=\"selectUser\">SELECT NVL(NAME,'N/A')...</select>",
+  "xml_after": "<select id=\"selectUser\">SELECT COALESCE(NAME,'N/A')...</select>",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID='USR001'",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID='USR001'",
   "final_state": "PASS_COMPLETE",
   "final_state_detail": "변환+비교 통과",
   "conversion_method": "rule",
@@ -185,7 +189,9 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
   ],
   "attempts": [],
   "explain_status": "pass",
+  "missing_object": null,
   "compare_status": "pass",
+  "compare_detail": [{"oracle_rows": 3, "pg_rows": 3, "match": true}],
   "complexity": "L1"
 }
 ```

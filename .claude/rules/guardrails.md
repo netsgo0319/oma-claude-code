@@ -112,15 +112,17 @@ inclusion: always
 | `xml_after` | **변환 후 MyBatis XML** (태그 포함) | Step 4 (output/*.xml에서 추출) | 변환 미완료 |
 | `sql_before` | **렌더링된 Oracle SQL** (MyBatis 실행 후 실제 SQL) | Step 1 (extracted) | 렌더링 실패 |
 | `sql_after` | **렌더링된 PG SQL** (MyBatis 실행 후 실제 SQL) | Step 3 (extracted) | 렌더링 실패 |
-| `final_state` | 14-state 중 하나 (PASS_COMPLETE 등) | Step 4 (계산) | — (필수) |
+| `final_state` | 15-state 중 하나 (PASS_COMPLETE 등) | Step 4 (계산) | — (필수) |
 | `final_state_detail` | 사람 읽는 상태 설명 | Step 4 (계산) | — |
 | `conversion_method` | `rule` / `llm` / `no_change` | Step 1 converter | 변환 미완료 |
 | `conversion_history` | **변환 레시피** — 어떤 패턴을 어떻게 바꿨는지 | Step 1 converter | 룰 자동변환 |
 | `test_cases` | 검증에 사용한 TC 목록 (파라미터 + 값) | Step 2 tc-generator | TC 미생성 |
 | `attempts` | **디버깅 이력** — 검증 실패 후 수정 시도 기록 | Step 3 validate-and-fix | 한번에 통과 |
 | `explain_status` | EXPLAIN 결과 (`pass`/`fail`/`not_tested`) | Step 3 | 검증 미실행 |
+| `missing_object` | 누락 오브젝트 `{type, name, action}` | Step 4 (에러 메시지 파싱) | DBA 아니면 null |
 | `compare_status` | Compare 결과 (`pass`/`fail`/`not_tested`) | Step 3 | Compare 미실행 |
-| `complexity` | 난이도 (`L0`~`L4`) | Step 1 query-analyzer | 분석 미실행 |
+| `compare_detail` | Compare 상세 `[{oracle_rows, pg_rows, match, reason, fail_type}]` | Step 3 | Compare 미실행 |
+| `complexity` | 난이도 (`L0`~`L4`) | Step 1 (fallback: 패턴 수 추정) | — (항상 채워짐) |
 
 ### conversion_history vs attempts (★ 혼동 주의)
 

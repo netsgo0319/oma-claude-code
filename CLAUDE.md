@@ -184,7 +184,7 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 
 이 파일에: steps 진행 상태, summary, top_fails, next_action.
 
-## 14개 쿼리 상태
+## 15개 쿼리 상태
 
 | 상태 | 설명 |
 |------|------|

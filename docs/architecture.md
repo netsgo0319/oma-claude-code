@@ -162,7 +162,7 @@ Step 4:
 
 ---
 
-## 4. Query Lifecycle (14-State)
+## 4. Query Lifecycle (15-State)
 
 ```mermaid
 stateDiagram-v2
@@ -198,7 +198,7 @@ stateDiagram-v2
     pending --> NOT_TESTED_PENDING
 ```
 
-### 14개 최종 상태
+### 15개 최종 상태
 
 | 상태 | 조건 | 분류 |
 |------|------|------|
@@ -262,7 +262,8 @@ stateDiagram-v2
 | 탭 | 내용 |
 |----|------|
 | **Overview** | 6카드 + Step Progress |
-| **Explorer** | 파일→쿼리 트리 + SQL diff + Attempt History + Conversion History |
+| **Explorer** | 파일→쿼리 트리 + MyBatis XML diff + 렌더링 SQL diff + Attempt History |
+| **DBA** | 누락 오브젝트(테이블/컬럼/함수) 그룹핑 + Oracle 0건 쿼리 |
 | **Log** | activity-log.jsonl 타임라인 |
 
 ### 산출물
@@ -294,7 +295,34 @@ stateDiagram-v2
   ],
   "attempts": [],
   "explain_status": "pass",
+  "missing_object": null,
   "compare_status": "pass",
+  "compare_detail": [{"oracle_rows": 3, "pg_rows": 3, "match": true}],
   "complexity": "L1"
+}
+```
+
+### DBA 실패 쿼리 예제
+
+```json
+{
+  "query_id": "selectAddr",
+  "final_state": "FAIL_SCHEMA_MISSING",
+  "explain_status": "fail",
+  "missing_object": {"type": "table", "name": "taddr", "action": "CREATE TABLE taddr"},
+  "compare_status": "not_tested"
+}
+```
+
+### 상위 레벨 DBA 집계
+
+```json
+{
+  "dba_objects": [
+    {"type": "table", "name": "taddr", "action": "CREATE TABLE taddr",
+     "affected_queries": [{"query_id": "selectAddr", "file": "AddrMapper.xml"}]}
+  ],
+  "dba_zero_rows": [{"query_id": "selectOld", "file": "OldMapper.xml"}],
+  "compare_fail_types": {"oracle_error": 55, "row_mismatch": 4, "pg_error": 4}
 }
 ```
