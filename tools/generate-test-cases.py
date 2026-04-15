@@ -426,8 +426,15 @@ def _params(sql):
 
 _TEST_PARAM_RE = re.compile(r'isNotEmpty\((\w+)\)|(\w+)\s*!=\s*null|(\w+)\s*!=\s*[\'"]|"[^"]*"\.equals\((\w+)\)|(\w+)\s*==\s*|(\w+)\.size')
 
-# 조건을 가질 수 있는 모든 MyBatis 동적 태그
-_DYNAMIC_TAGS = ['if', 'when', 'choose', 'foreach', 'where', 'set', 'trim', 'bind']
+# MyBatis 3.x 동적 태그
+_MYBATIS3_TAGS = ['if', 'when', 'choose', 'foreach', 'where', 'set', 'trim', 'bind']
+# iBatis 2.x 동적 태그 (property= 속성 사용)
+_IBATIS2_TAGS = ['isNotEmpty', 'isNotNull', 'isNull', 'isEmpty', 'isEqual', 'isNotEqual',
+                 'isGreaterThan', 'isGreaterEqual', 'isLessThan', 'isLessEqual',
+                 'isPropertyAvailable', 'isNotPropertyAvailable',
+                 'isParameterPresent', 'isNotParameterPresent',
+                 'iterate', 'dynamic']
+_DYNAMIC_TAGS = _MYBATIS3_TAGS + _IBATIS2_TAGS
 
 def _extract_xml_branch_params(xml_file, qid):
     """원본 XML에서 쿼리의 동적 태그(if/when/foreach 등) 조건 파라미터를 추출.
@@ -447,16 +454,25 @@ def _extract_xml_branch_params(xml_file, qid):
     for tag in ['select', 'insert', 'update', 'delete']:
         for elem in root.iter(ns + tag):
             if elem.get('id') == qid:
-                # test= 속성에서 조건 파라미터 추출 (if, when)
+                # test=/property= 속성에서 조건 파라미터 추출
                 for dtag in _DYNAMIC_TAGS:
                     for delem in elem.iter(ns + dtag):
+                        # MyBatis 3.x: test= 속성
                         test = delem.get('test', '')
                         if test:
                             for m in _TEST_PARAM_RE.finditer(test):
                                 param = m.group(1) or m.group(2) or m.group(3) or m.group(4) or m.group(5) or m.group(6)
                                 if param and param not in branch_params:
                                     branch_params.append(param)
-                        # foreach collection 속성
+                        # iBatis 2.x: property= 속성 (isNotEmpty, isNull, iterate 등)
+                        prop = delem.get('property', '')
+                        if prop and prop not in branch_params:
+                            branch_params.append(prop)
+                        # iBatis 2.x: compareProperty= 속성 (isEqual, isNotEqual 등)
+                        cprop = delem.get('compareProperty', '')
+                        if cprop and cprop not in branch_params:
+                            branch_params.append(cprop)
+                        # foreach/iterate collection 속성
                         coll = delem.get('collection', '')
                         if coll and coll not in branch_params:
                             branch_params.append(coll)
