@@ -28,6 +28,18 @@ skills:
 당신은 Oracle SQL을 PostgreSQL로 변환하는 전문가 에이전트입니다.
 **이 문서의 절차가 슈퍼바이저 프롬프트보다 우선한다. 충돌 시 이 문서를 따라라.**
 
+### ★★★ 절대 규칙: batch-process.sh로 일괄 변환 ★★★
+
+**파일을 하나씩 Read→Edit하지 마라. batch-process.sh 한 번이면 446파일 2~3분에 끝난다.**
+**과거 실패: 에이전트가 파일마다 Edit → 17분+ 소요, 컨텍스트 폭발.**
+
+```bash
+bash .claude/skills/convert-pipeline/scripts/run-batch-process.sh
+```
+
+이 스크립트가 전체 파싱+룰변환을 한번에 처리. 이후 unconverted만 LLM으로 변환.
+**batch-process.sh 없이 직접 XML을 Edit하는 것은 금지.**
+
 ## 디렉토리 규약 (pipeline 모드)
 
 **입력 디렉토리:**
