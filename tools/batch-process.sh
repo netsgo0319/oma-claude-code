@@ -7,7 +7,7 @@
 #   bash tools/batch-process.sh --all                      # Phase 1 + 2
 #   bash tools/batch-process.sh --all --parallel 16        # Custom parallelism
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"

@@ -684,7 +684,8 @@ SET HEADING ON
         for mp in merged_paths:
             if mp.exists():
                 try:
-                    merged = json.load(open(mp, encoding='utf-8'))
+                    with open(mp, encoding='utf-8') as _f:
+                        merged = json.load(_f)
                     if isinstance(merged, dict):
                         loaded = 0
                         for qid, cases in merged.items():
@@ -1677,7 +1678,8 @@ SET HEADING ON
                 compare_path = output_path / 'compare_validated.json'
                 compare_pass_qids = set()
                 if compare_path.exists():
-                    cdata = json.load(open(compare_path))
+                    with open(compare_path) as _f:
+                        cdata = json.load(_f)
                     for cr in cdata.get('results', []):
                         if cr.get('match'):
                             compare_pass_qids.add(cr.get('query_id', ''))
@@ -2088,7 +2090,8 @@ def main():
                 compare_path = Path(args.output) / 'compare_validated.json'
                 compare_pass_qids = set()
                 if compare_path.exists():
-                    cdata = json.load(open(compare_path))
+                    with open(compare_path) as _f:
+                        cdata = json.load(_f)
                     for cr in cdata.get('results', []):
                         if cr.get('match'):
                             compare_pass_qids.add(cr.get('query_id', ''))

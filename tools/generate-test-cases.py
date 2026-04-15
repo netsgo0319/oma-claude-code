@@ -360,7 +360,8 @@ def load_custom_binds(input_dir, custom_file=None):
         grouped = {}  # (source_file, sql_id) → {param: value}
         for jf in sorted(sdir.glob('*.json')):
             try:
-                rows = json.load(open(jf, encoding='utf-8'))
+                with open(jf, encoding='utf-8') as _f:
+                    rows = json.load(_f)
                 if not isinstance(rows, list):
                     continue
                 for row in rows:

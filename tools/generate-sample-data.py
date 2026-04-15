@@ -110,16 +110,16 @@ def query_sample_rows(table_name, schema):
             for row in raw_rows:
                 rows.append({col: (str(v) if v is not None else None) for col, v in zip(columns, row)})
             cur.close()
-            conn.close()
             return {'table': table_name, 'columns': columns, 'rows': rows, 'row_count': len(rows)}, None
         except Exception as e:
-            conn.close()
             err_str = str(e)
             if 'ORA-00942' in err_str:
                 return None, 'table or view does not exist (ORA-00942)'
             if 'ORA-01031' in err_str:
                 return None, 'insufficient privileges (ORA-01031)'
             return None, err_str
+        finally:
+            conn.close()
 
     # Priority 2: sqlplus (fallback — 텍스트 파싱)
     sql = (f"SET PAGESIZE 50000 FEEDBACK OFF LINESIZE 32767 TRIMSPOOL ON\n"

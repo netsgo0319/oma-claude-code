@@ -96,7 +96,8 @@ def load_all_tracking(results_dir):
     files_seen = set()
     for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
         try:
-            tdata = json.load(open(tf))
+            with open(tf) as _f:
+                tdata = json.load(_f)
         except Exception:
             continue
         files_seen.add(file_dir)
@@ -118,7 +119,8 @@ def load_validation_results(validation_dir, batches_dir=None):
 
     # Main validation dir
     for vp in _find_validated_files(val_dir):
-        vdata = json.load(open(vp))
+        with open(vp) as _f:
+            vdata = json.load(_f)
         for p in vdata.get('passes', []):
             tid = p if isinstance(p, str) else p.get('test', '')
             passes.add(_bare_qid(tid))
@@ -133,7 +135,8 @@ def load_validation_results(validation_dir, batches_dir=None):
         for bd in sorted(Path(batches_dir).iterdir()):
             if bd.is_dir():
                 for vp in _find_validated_files(bd):
-                    vdata = json.load(open(vp))
+                    with open(vp) as _f:
+                        vdata = json.load(_f)
                     for p in vdata.get('passes', []):
                         tid = p if isinstance(p, str) else p.get('test', '')
                         passes.add(_bare_qid(tid))
@@ -146,7 +149,8 @@ def load_validation_results(validation_dir, batches_dir=None):
     # Compare results
     compare = {}  # qid -> [results]
     for cp in _find_compare_files(val_dir, batches_dir):
-        cdata = json.load(open(cp))
+        with open(cp) as _f:
+            cdata = json.load(_f)
         for r in cdata.get('results', []):
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _bare_qid(raw_qid) if '.' in raw_qid else raw_qid
@@ -290,7 +294,11 @@ def generate_step0(args):
 
     sample_count = len(list(samples_dir.glob('*.json'))) if samples_dir.exists() else 0
     env_path = Path('pipeline/step-0-preflight/output/env-check.json')
-    env_checks = json.load(open(env_path)) if env_path.exists() else {}
+    if env_path.exists():
+        with open(env_path) as _f:
+            env_checks = json.load(_f)
+    else:
+        env_checks = {}
 
     return {
         'summary': {
@@ -344,7 +352,8 @@ def generate_step2(args):
     merged_tc_path = tc_dir / 'merged-tc.json'
     merged = {}
     if merged_tc_path.exists():
-        merged = json.load(open(merged_tc_path))
+        with open(merged_tc_path) as _f:
+            merged = json.load(_f)
 
     total_tcs = sum(len(v) for v in merged.values())
     queries_with_tc = sum(1 for v in merged.values() if v)
@@ -581,7 +590,8 @@ def generate_step4(args):
 
     if json_path.exists():
         try:
-            mdata = json.load(open(json_path))
+            with open(json_path) as _f:
+                mdata = json.load(_f)
             total = mdata.get('total', 0)
             sc = mdata.get('summary', {})
             pass_count = sum(v for k, v in sc.items() if k.startswith('PASS_'))
@@ -609,7 +619,8 @@ def generate_step4(args):
     field_completeness = {}
     if json_path.exists():
         try:
-            mdata = json.load(open(json_path))
+            with open(json_path) as _f:
+                mdata = json.load(_f)
             check_fields = ['query_id', 'original_file', 'type', 'xml_before', 'xml_after',
                             'sql_before', 'sql_after', 'final_state', 'conversion_method',
                             'explain_status', 'compare_status', 'complexity',
