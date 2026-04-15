@@ -5,6 +5,7 @@ allowed-tools:
   - Bash
   - Read
   - Edit
+disable-model-invocation: true
 ---
 
 # Convert Pipeline

@@ -4,6 +4,7 @@ description: Step 4 보고서 생성 파이프라인. reporter 에이전트가 �
 allowed-tools:
   - Bash
   - Read
+disable-model-invocation: true
 ---
 
 # Report Pipeline

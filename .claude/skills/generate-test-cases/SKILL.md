@@ -178,3 +178,7 @@ test-cases.json에 기록:
 - 대량 테이블의 샘플링은 SAMPLE 힌트 사용 (전체 스캔 방지)
 - 민감 데이터 주의: PII 컬럼은 마스킹하여 기록 (이름, 이메일 등)
 - 하나의 쿼리에 최소 3개, 최대 10개 테스트 케이스 생성
+
+## 참조 문서
+
+- [oracle-dictionary-queries](references/oracle-dictionary-queries.md)

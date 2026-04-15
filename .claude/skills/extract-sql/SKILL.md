@@ -140,3 +140,7 @@ bash tools/run-extractor.sh --skip-build # 빌드 생략 (재실행)
 - MyBatis 3.x만 지원 (iBatis 2.x는 별도 처리 필요)
 - 커스텀 TypeHandler가 있는 프로젝트는 mybatis-config.xml 제공 필요
 - DTO 클래스는 HashMap으로 자동 대체되므로 타입별 바인딩 정보가 일부 손실될 수 있음
+
+## 참조 문서
+
+- [usage-guide](references/usage-guide.md)

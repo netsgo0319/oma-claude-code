@@ -103,3 +103,7 @@ Oracle 전용 TypeHandler를 감지하여 경고:
 - 이 스킬은 XML 속성 레벨의 변환만 담당
 - 변환이 필요 없는 jdbcType (VARCHAR, INTEGER 등)은 건너뛰기
 - typeHandler 관련 WARNING은 migration-guide.md에 등록
+
+## 참조 문서
+
+- [jdbc-type-mapping](references/jdbc-type-mapping.md)

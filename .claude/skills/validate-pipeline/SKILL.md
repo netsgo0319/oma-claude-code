@@ -4,6 +4,7 @@ description: Step 3 검증 파이프라인. validate-and-fix 에이전트가 변
 allowed-tools:
   - Bash
   - Read
+disable-model-invocation: true
 ---
 
 # Validate Pipeline

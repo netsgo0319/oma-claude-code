@@ -4,6 +4,7 @@ description: Step 2 TC 생성 파이프라인. tc-generator 에이전트가 테�
 allowed-tools:
   - Bash
   - Read
+disable-model-invocation: true
 ---
 
 # TC Pipeline
