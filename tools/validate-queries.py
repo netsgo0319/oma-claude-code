@@ -799,6 +799,19 @@ SET HEADING ON
                 replacement = f"'{value}'"
             result = re.sub(pattern, replacement, result)
 
+        # iBatis 2.x: #param# 표기도 바인딩
+        for key, value in params_dict.items():
+            ib_pattern = r'(?<!\{)#' + re.escape(key) + r'#'
+            if value is None:
+                replacement = 'NULL'
+            elif isinstance(value, (int, float)):
+                replacement = str(value)
+            elif isinstance(value, str):
+                replacement = f"'{value.replace(chr(39), chr(39)+chr(39))}'"
+            else:
+                replacement = f"'{value}'"
+            result = re.sub(ib_pattern, replacement, result)
+
         # Replace any remaining unbound params with default_unbound
         # Framework pagination params (GRIDPAGING_*) must be empty string
         def _unbound_replace(m):
@@ -807,8 +820,11 @@ SET HEADING ON
                 return ''
             return default_unbound
         result = re.sub(r'#\{[^}]+\}', _unbound_replace, result)
-        # Replace ${} dollar substitution with placeholder
+        # iBatis: remaining #param# → default_unbound
+        result = re.sub(r'(?<!\{)#(\w+)#', lambda m: default_unbound, result)
+        # Replace ${} / $param$ dollar substitution with placeholder
         result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
+        result = re.sub(r'\$(\w+)\$', "placeholder_tbl", result)
 
         return result
 
