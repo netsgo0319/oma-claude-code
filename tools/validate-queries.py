@@ -686,7 +686,8 @@ SET HEADING ON
         for mp in merged_paths:
             if mp.exists():
                 try:
-                    merged = json.load(open(mp, encoding='utf-8'))
+                    with open(mp, encoding='utf-8') as _f:
+                        merged = json.load(_f)
                     if isinstance(merged, dict):
                         loaded = 0
                         for qid, cases in merged.items():

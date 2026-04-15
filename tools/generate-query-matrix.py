@@ -138,7 +138,8 @@ def main():
     val_by_file_qid = {}   # keyed by (filename_base, query_id)
     for vp in sorted(results_dir.glob('_validation*/**/validated.json')):
         val_dir = vp.parent
-        vdata = json.load(open(vp))
+        with open(vp) as _f:
+            vdata = json.load(_f)
         source = 'mybatis' if 'phase35' in val_dir.name else 'static'
         for p in vdata.get('passes', []):
             tid = p if isinstance(p, str) else p.get('test', '')
@@ -177,13 +178,15 @@ def main():
     # Also index by bare query_id (compare_results uses query_id or test_id)
     compare_results = {}
     for cp in sorted(results_dir.glob('_validation*/**/compare_validated.json')):
-        cdata = json.load(open(cp))
+        with open(cp) as _f:
+            cdata = json.load(_f)
         for r in cdata.get('results', []):
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
             compare_results.setdefault(bare, []).append(r)
     for cp in sorted(results_dir.glob('_validation*/**/compare_results.json')):
-        cdata = json.load(open(cp))
+        with open(cp) as _f:
+            cdata = json.load(_f)
         for r in cdata.get('results', []):
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
@@ -193,7 +196,8 @@ def main():
     test_cases_by_qid = {}
     for tc_file in glob.glob(str(results_dir / '*/v*/test-cases.json')):
         try:
-            tc_data = json.load(open(tc_file))
+            with open(tc_file) as _f:
+                tc_data = json.load(_f)
         except Exception:
             continue
         # Format 1: {query_test_cases: [{query_id, test_cases: [...]}]}
@@ -228,7 +232,9 @@ def main():
     extracted_queries = set()
     extracted_oracle_sql = {}  # {qid: full_sql}
     for ef in glob.glob(str(results_dir / '_extracted' / '*-extracted.json')):
-        for q in json.load(open(ef)).get('queries', []):
+        with open(ef) as _f:
+            _edata = json.load(_f)
+        for q in _edata.get('queries', []):
             qid = q.get('query_id', '')
             extracted_queries.add(qid)
             # Best SQL: longest variant (most complete, includes all branches)
@@ -240,7 +246,9 @@ def main():
     pg_extracted = set()
     extracted_pg_sql = {}  # {qid: full_sql}
     for ef in glob.glob(str(results_dir / '_extracted_pg' / '*-extracted.json')):
-        for q in json.load(open(ef)).get('queries', []):
+        with open(ef) as _f:
+            _edata = json.load(_f)
+        for q in _edata.get('queries', []):
             qid = q.get('query_id', '')
             pg_extracted.add(qid)
             variants = q.get('sql_variants', [])
@@ -261,7 +269,8 @@ def main():
 
     for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
         try:
-            tdata = json.load(open(tf))
+            with open(tf) as _f:
+                tdata = json.load(_f)
         except Exception:
             continue
 
@@ -614,7 +623,8 @@ def main():
         oracle_patterns_total = Counter()
         for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
             try:
-                tdata = json.load(open(tf))
+                with open(tf) as _f:
+                    tdata = json.load(_f)
             except Exception:
                 continue
             for q in (tdata.get('queries', []) if isinstance(tdata.get('queries'), list)
@@ -631,7 +641,8 @@ def main():
         for i in range(5):
             for hp in sorted(Path('.').glob(f'pipeline/step-{i}-*/handoff.json')):
                 try:
-                    hdata = json.load(open(hp))
+                    with open(hp) as _f:
+                        hdata = json.load(_f)
                     step_progress[f'step-{i}'] = {
                         'status': hdata.get('status', 'unknown'),
                         'step': hdata.get('step', ''),

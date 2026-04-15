@@ -58,9 +58,17 @@ if [ "$SKIP_BUILD" = false ]; then
     cd "$EXTRACTOR_DIR"
     if [ -f ./gradlew ]; then
         # gradlew 우선 사용 (Gradle 미설치 환경에서도 자동 다운로드)
-        ./gradlew build -q 2>&1
+        if ! ./gradlew build -q 2>&1; then
+            echo "ERROR: Gradle build failed"
+            cd "$PROJECT_DIR"
+            exit 1
+        fi
     elif command -v gradle &>/dev/null; then
-        gradle build -q 2>&1
+        if ! gradle build -q 2>&1; then
+            echo "ERROR: Gradle build failed"
+            cd "$PROJECT_DIR"
+            exit 1
+        fi
     else
         echo "ERROR: Gradle not found and gradlew missing."
         echo "Fix: cd $EXTRACTOR_DIR && gradle wrapper --gradle-version 8.7"
@@ -106,7 +114,7 @@ run_extractor_with_stubs() {
 
     while [ $RETRY -lt $MAX_RETRY ]; do
         echo "  [Extraction attempt $((RETRY+1))/$MAX_RETRY]"
-        EXTRACT_LOG=$(java $CP_OPT -jar "$JAR_PATH" --input "$INPUT" --output "$OUTPUT" $PARAMS_OPT 2>&1)
+        EXTRACT_LOG=$(java ${CP_OPT:+"$CP_OPT"} -jar "$JAR_PATH" --input "$INPUT" --output "$OUTPUT" ${PARAMS_OPT:+"$PARAMS_OPT"} 2>&1)
         echo "$EXTRACT_LOG" | tail -5
 
         # Check for ClassNotFoundException in output
@@ -167,9 +175,9 @@ JAVAEOF
         echo "  Rebuilding extractor with stubs..."
         cd "$EXTRACTOR_DIR"
         if [ -f ./gradlew ]; then
-            ./gradlew build -q 2>&1
+            ./gradlew build -q 2>&1 || echo "  WARNING: Rebuild failed, retrying extraction with existing JAR"
         elif command -v gradle &>/dev/null; then
-            gradle build -q 2>&1
+            gradle build -q 2>&1 || echo "  WARNING: Rebuild failed, retrying extraction with existing JAR"
         fi
         cd "$PROJECT_DIR"
 

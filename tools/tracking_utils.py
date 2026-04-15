@@ -287,7 +287,7 @@ class TrackingManager:
             q['status'] = 'success'
             # Compute total timing
             timing = q.get('timing', {})
-            total = sum(v for k, v in timing.items() if k.endswith('_ms') and isinstance(v, int))
+            total = sum(v for k, v in timing.items() if k.endswith('_ms') and isinstance(v, (int, float)))
             timing['total_ms'] = total
             self._save()
 

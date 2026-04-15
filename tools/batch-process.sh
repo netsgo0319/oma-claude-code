@@ -7,7 +7,7 @@
 #   bash tools/batch-process.sh --all                      # Phase 1 + 2
 #   bash tools/batch-process.sh --all --parallel 16        # Custom parallelism
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -137,15 +137,16 @@ if [ "$DO_PARSE" = true ]; then
 
     # Count total queries
     TOTAL_QUERIES=$(python3 -c "
-import json, glob
+import json, glob, sys
 total = 0
-for f in glob.glob('$RESULTS_DIR/*/v1/parsed.json'):
+for f in glob.glob(sys.argv[1] + '/*/v1/parsed.json'):
     try:
-        d = json.load(open(f))
+        with open(f) as fh:
+            d = json.load(fh)
         total += len(d.get('queries', []))
     except: pass
 print(total)
-" 2>/dev/null || echo "?")
+" "$RESULTS_DIR" 2>/dev/null || echo "?")
     echo "  Total queries: $TOTAL_QUERIES"
     echo ""
 fi

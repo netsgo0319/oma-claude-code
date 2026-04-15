@@ -96,7 +96,8 @@ def load_all_tracking(results_dir):
     files_seen = set()
     for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
         try:
-            tdata = json.load(open(tf))
+            with open(tf) as _f:
+                tdata = json.load(_f)
         except Exception:
             continue
         files_seen.add(file_dir)
@@ -347,9 +348,14 @@ def generate_step2(args):
 
     merged = {}
     if merged_tc_path.exists():
-        merged = json.load(open(merged_tc_path))
+        with open(merged_tc_path) as f:
+            raw = json.load(f)
+        if isinstance(raw, dict):
+            merged = raw
+        else:
+            print(f"WARNING: merged-tc.json is {type(raw).__name__}, expected dict")
 
-    total_tcs = sum(len(v) for v in merged.values())
+    total_tcs = sum(len(v) for v in merged.values() if isinstance(v, (list, dict)))
     queries_with_tc = sum(1 for v in merged.values() if v)
     queries_without_tc = 0
 
@@ -366,7 +372,10 @@ def generate_step2(args):
     if per_file_dir.exists():
         for tc_file in per_file_dir.rglob('test-cases.json'):
             try:
-                data = json.load(open(tc_file))
+                with open(tc_file) as _f:
+                    data = json.load(_f)
+                if not isinstance(data, dict):
+                    continue
                 for qid, cases in data.items():
                     for case in cases:
                         if isinstance(case, dict):
@@ -450,8 +459,12 @@ def generate_step3(args):
     explain_not_tested = len(queries) - explain_pass - explain_fail
 
     compare_qids = set(compare.keys())
-    compare_pass = sum(1 for qid, results in compare.items() if all(r.get('match', False) for r in results))
-    compare_fail = sum(1 for qid, results in compare.items() if any(not r.get('match', False) for r in results))
+    compare_pass = sum(1 for qid, results in compare.items()
+                       if isinstance(results, list) and results and
+                       all(isinstance(r, dict) and r.get('match', False) for r in results))
+    compare_fail = sum(1 for qid, results in compare.items()
+                       if isinstance(results, list) and
+                       any((isinstance(r, dict) and not r.get('match', False)) for r in results))
     compare_not_tested = len(queries) - len(compare_qids)
 
     total_attempts = sum(len(q.get('attempts', [])) for q in queries)
