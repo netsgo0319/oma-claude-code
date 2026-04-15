@@ -120,6 +120,37 @@ def _build_dba_objects(rows):
     return sorted(objects.values(), key=lambda x: -len(x['affected_queries']))
 
 
+def _build_zero_rows(rows):
+    """0건 쿼리를 3가지로 분류. DBA 탭용."""
+    both_zero = []     # Oracle=0, PG=0 (TC 바인드값 문제 또는 데이터 없음)
+    oracle_only_zero = []  # Oracle=0, PG>0 (Oracle 데이터 누락 또는 TC 문제)
+    pg_only_zero = []      # Oracle>0, PG=0 (변환 오류 가능성)
+
+    for r in rows:
+        for d in r.get('_compare_detail', []):
+            ora = d.get('oracle_rows')
+            pg = d.get('pg_rows')
+            if ora is None or pg is None:
+                continue
+            entry = {'query_id': r['query_id'], 'file': r['file'],
+                     'oracle_rows': ora, 'pg_rows': pg}
+            if ora == 0 and pg == 0:
+                if entry not in both_zero:
+                    both_zero.append(entry)
+            elif ora == 0 and pg > 0:
+                if entry not in oracle_only_zero:
+                    oracle_only_zero.append(entry)
+            elif ora > 0 and pg == 0:
+                if entry not in pg_only_zero:
+                    pg_only_zero.append(entry)
+
+    return {
+        'both_zero': both_zero,
+        'oracle_only_zero': oracle_only_zero,
+        'pg_only_zero': pg_only_zero,
+    }
+
+
 def _load_xml_bodies(xml_dir):
     """XML 파일에서 쿼리별 MyBatis XML body를 추출.
     Returns: {(filename, query_id): xml_string}"""
@@ -723,12 +754,7 @@ def main():
                     if not d.get('match', False)
                 ))),
                 ('dba_objects', _build_dba_objects(rows)),
-                ('dba_zero_rows', [
-                    {'query_id': r['query_id'], 'file': r['file']}
-                    for r in rows
-                    if any(d.get('oracle_rows') == 0 and d.get('pg_rows', 0) == 0
-                           for d in r.get('_compare_detail', []))
-                ]),
+                ('dba_zero_rows', _build_zero_rows(rows)),
                 ('file_stats', list(file_stats.values())),
                 ('step_progress', step_progress),
                 ('queries', json_queries),

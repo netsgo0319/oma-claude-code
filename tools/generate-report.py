@@ -1385,7 +1385,10 @@ function renderTimeline(){
 function renderDBA(){
   let qm=DATA.query_matrix||{};
   let dbaObjects=qm.dba_objects||[];
-  let zeroRows=qm.dba_zero_rows||[];
+  let zeroData=qm.dba_zero_rows||{};
+  let bothZero=zeroData.both_zero||[];
+  let oraZero=zeroData.oracle_only_zero||[];
+  let pgZero=zeroData.pg_only_zero||[];
   let html='';
 
   // 1. Missing Objects (테이블/컬럼/함수)
@@ -1419,18 +1422,30 @@ function renderDBA(){
     html+=`)</div>`;
   }
 
-  // 2. Oracle 0건 쿼리
-  html+='<h2 style="margin-top:24px">Oracle 0건 쿼리 (양쪽 모두 0건)</h2>';
-  if(zeroRows.length===0){
-    html+='<p style="color:var(--dim)">해당 없음</p>';
-  } else {
-    html+=`<p style="font-size:12px;color:var(--dim)">${zeroRows.length}건 — TC 바인드값 또는 데이터 확인 필요</p>`;
-    html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';
-    for(let q of zeroRows){
-      html+=`<span style="background:var(--card2);padding:2px 6px;border-radius:3px;font-size:10px;font-family:var(--mono)">${esc(q.query_id)}</span>`;
+  // 2. 0건 쿼리 (3가지 분류)
+  function renderZeroSection(title, color, desc, items){
+    html+=`<h2 style="margin-top:24px;color:${color}">${title}</h2>`;
+    if(!items||items.length===0){
+      html+='<p style="color:var(--dim)">해당 없음</p>';
+      return;
     }
-    html+='</div>';
+    html+=`<p style="font-size:12px;color:var(--dim)">${items.length}건 — ${desc}</p>`;
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px">';
+    html+='<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px">Query</th><th style="text-align:left;padding:4px">File</th><th style="text-align:right;padding:4px">Oracle</th><th style="text-align:right;padding:4px">PG</th></tr>';
+    for(let q of items){
+      html+=`<tr style="border-bottom:1px solid rgba(255,255,255,.03)">`;
+      html+=`<td style="padding:4px;font-family:var(--mono)">${esc(q.query_id)}</td>`;
+      html+=`<td style="padding:4px;font-size:10px;color:var(--dim)">${esc(q.file)}</td>`;
+      html+=`<td style="padding:4px;text-align:right">${q.oracle_rows}</td>`;
+      html+=`<td style="padding:4px;text-align:right">${q.pg_rows}</td>`;
+      html+=`</tr>`;
+    }
+    html+='</table>';
   }
+
+  renderZeroSection('양쪽 모두 0건','var(--warn)','TC 바인드값 또는 데이터 확인 필요',bothZero);
+  renderZeroSection('Oracle만 0건 (PG에는 데이터 있음)','var(--orange)','Oracle 데이터 누락 또는 TC 바인드 불일치',oraZero);
+  renderZeroSection('PG만 0건 (Oracle에는 데이터 있음)','var(--fail)','변환 오류 가능성 — SQL 검토 필요',pgZero);
 
   document.getElementById('dba-content').innerHTML=html;
 }
