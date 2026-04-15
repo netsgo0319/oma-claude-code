@@ -1767,18 +1767,18 @@ def render_html(data):
                   'oracle_sql', 'pg_sql', 'sql_raw', 'original_sql', 'converted_sql')
 
     def _slim_test_cases(tcs):
-        """Keep at most 2 TCs, each with only name and param count."""
+        """Keep at most 3 TCs with bind values for Explorer TC table."""
         if not tcs or not isinstance(tcs, list):
             return tcs
         slimmed = []
-        for tc in tcs[:2]:
-            slim = {'name': tc.get('name', '')}
-            params = tc.get('params')
+        for tc in tcs[:3]:
+            slim = {'name': tc.get('name', ''), 'source': tc.get('source', '')}
+            params = tc.get('params') or tc.get('binds')
             if params and isinstance(params, dict):
-                slim['param_count'] = len(params)
+                slim['params'] = params
             slimmed.append(slim)
-        if len(tcs) > 2:
-            slimmed.append({'name': f'... +{len(tcs) - 2} more'})
+        if len(tcs) > 3:
+            slimmed.append({'name': f'... +{len(tcs) - 3} more'})
         return slimmed
 
     # 1) Slim down query_matrix queries — Explorer uses files section for SQL
@@ -1795,7 +1795,7 @@ def render_html(data):
 
     # 2) Slim down per-file queries — keep SQL preview for Explorer detail view
     DROP_FIELDS = {'parameters', 'dynamic_elements', 'rules_applied', 'timing',
-                   'layer', 'confidence', 'execution', 'test_cases', 'history'}
+                   'layer', 'confidence', 'execution', 'history'}
     for fname, fdata in embedded.get('files', {}).items():
         for q in fdata.get('queries', []):
             for field in SQL_FIELDS:
@@ -1807,6 +1807,9 @@ def render_html(data):
             att = q.get('attempts', [])
             if att and isinstance(att, list) and len(att) > 3:
                 q['attempts'] = att[:3]
+            tcs = q.get('test_cases', [])
+            if tcs and isinstance(tcs, list):
+                q['test_cases'] = _slim_test_cases(tcs)
 
     # 3) Slim down extracted variants
     extracted = embedded.get('extracted')
