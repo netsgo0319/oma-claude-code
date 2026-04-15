@@ -101,7 +101,7 @@ class QueryValidator:
                 try:
                     tree = ET.parse(xml_file)
                     root = tree.getroot()
-                except (ET.ParseError, ValueError):
+                except (ET.ParseError, ValueError, FileNotFoundError, OSError):
                     continue
                 for tag in ['select', 'insert', 'update', 'delete']:
                     for elem in root.findall(f'.//{tag}'):

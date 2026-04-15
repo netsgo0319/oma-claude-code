@@ -27,6 +27,7 @@ from pathlib import Path
 from datetime import datetime
 from collections import Counter, OrderedDict
 
+import re
 
 def extract_missing_object(error):
     """에러 메시지에서 없는 오브젝트 이름 추출."""
@@ -388,10 +389,10 @@ def main():
             # 2차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
             if not cmp_results:
                 tracking_cmp = q.get('compare_results', [])
-                if tracking_cmp:
+                if tracking_cmp and isinstance(tracking_cmp, list):
                     cmp_results = tracking_cmp
             compare_detail = []  # 상세 결과 (JSON 출력용)
-            if cmp_results:
+            if cmp_results and isinstance(cmp_results, list):
                 tc_total = len(cmp_results)
                 tc_pass = sum(1 for c in cmp_results if c.get('match', False))
                 tc_fail = tc_total - tc_pass
