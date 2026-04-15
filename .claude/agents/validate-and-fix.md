@@ -1,7 +1,7 @@
 ---
 name: validate-and-fix
 model: opus
-description: Step 3 검증+수정. EXPLAIN→Execute→Compare + 수정 루프 (max 3). gate_checks 생성.
+description: 변환된 SQL 검증 + 수정 루프. TC 생성 완료 후 EXPLAIN→Execute→Compare 검증이 필요할 때 위임. FAIL 쿼리는 최대 3회 수정. gate_checks 포함 handoff 생성.
 tools:
   - Read
   - Write

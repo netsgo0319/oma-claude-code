@@ -1,7 +1,7 @@
 ---
 name: reporter
 model: sonnet
-description: Step 4 보고서. 파이프라인 점검 + gate 확인 + assemble + 매트릭스/리포트 생성.
+description: 최종 보고서 생성. 검증 완료 후 query-matrix.json + HTML 리포트(4탭)가 필요할 때 위임. gate 통과 확인 후 보고서 3개(csv, json, html) 생성.
 tools:
   - Read
   - Bash

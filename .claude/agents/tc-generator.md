@@ -1,7 +1,7 @@
 ---
 name: tc-generator
 model: sonnet
-description: Step 2 TC 생성. generate-test-cases.py 실행 + 결과 검증. pipeline/ 경로 사용.
+description: 쿼리별 테스트 케이스 생성. converter 완료 후 TC가 필요할 때 위임. Oracle 샘플 데이터 + V$SQL_BIND_CAPTURE로 바인드값 수집하여 merged-tc.json 생성.
 tools:
   - Read
   - Bash
