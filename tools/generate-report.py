@@ -1598,8 +1598,11 @@ function expRenderFiles(){
     let passC=filtered.filter(q=>(q.final_state||'').startsWith('PASS_')).length;
     let failC=filtered.filter(q=>(q.final_state||'').startsWith('FAIL_')).length;
     let sel=expSelectedFile===name?'background:rgba(99,102,241,.2);':'';
-    let bar=failC>0?`<span style="color:var(--fail)">${failC}F</span> `:'';
-    bar+=passC>0?`<span style="color:var(--success)">${passC}P</span>`:'';
+    let ntC=filtered.filter(q=>(q.final_state||'').startsWith('NOT_TESTED')).length;
+    let bar='';
+    if(passC>0)bar+=`<span style="color:var(--success)">${passC}P</span> `;
+    if(failC>0)bar+=`<span style="color:var(--fail)">${failC}F</span> `;
+    if(ntC>0)bar+=`<span style="color:var(--dim)">${ntC}NT</span>`;
     html+=`<div onclick="expSelectFile('${esc(name)}')" style="padding:6px 8px;cursor:pointer;border-radius:4px;margin-bottom:2px;font-size:12px;${sel}border-left:3px solid ${failC>0?'var(--fail)':passC>0?'var(--success)':'var(--dim)'}">`;
     html+=`<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name.replace('.xml',''))}</div>`;
     html+=`<div style="color:var(--dim)">${filtered.length}q ${bar}</div>`;
@@ -1621,11 +1624,12 @@ function expSelectFile(name){
   for(let q of queries){
     let qid=q.query_id||q.id||'';
     let fs=q.final_state||'';
-    let icon=fs.startsWith('PASS_')?'<span style="color:var(--success)">&#10003;</span>':fs.startsWith('FAIL_')?'<span style="color:var(--fail)">&#10007;</span>':'<span style="color:var(--dim)">&#9679;</span>';
-    let method=q.conversion_method||q.method||'';
+    let isDBA=['FAIL_SCHEMA_MISSING','FAIL_COLUMN_MISSING','FAIL_FUNCTION_MISSING'].includes(fs);
+    let icon=fs.startsWith('PASS_')?'<span style="color:var(--success)">&#10003;</span>':isDBA?'<span style="color:var(--warn)">&#9888;</span>':fs.startsWith('FAIL_')?'<span style="color:var(--fail)">&#10007;</span>':'<span style="color:var(--dim)">&#9679;</span>';
+    let stLabel={'PASS_COMPLETE':'PASS','PASS_HEALED':'HEALED','PASS_NO_CHANGE':'NO_CHG','FAIL_SCHEMA_MISSING':'DBA:TBL','FAIL_COLUMN_MISSING':'DBA:COL','FAIL_FUNCTION_MISSING':'DBA:FN','FAIL_SYNTAX':'SYNTAX','FAIL_COMPARE_DIFF':'CMP_DIFF','FAIL_TC_TYPE_MISMATCH':'TC_TYPE','FAIL_TC_OPERATOR':'TC_OP','FAIL_ESCALATED':'ESCALATED','NOT_TESTED_DML_SKIP':'DML','NOT_TESTED_NO_RENDER':'NO_RENDER','NOT_TESTED_NO_DB':'NO_DB','NOT_TESTED_PENDING':'PENDING'}[fs]||fs;
     let sel=expSelectedQuery===qid?'background:rgba(99,102,241,.2);':'';
     html+=`<div onclick="expSelectQuery('${esc(name)}','${esc(qid)}')" style="padding:5px 8px;cursor:pointer;border-radius:4px;margin-bottom:1px;font-size:12px;${sel}">`;
-    html+=`${icon} <strong>${esc(qid)}</strong> <span style="color:var(--dim)">${esc((q.type||'').toUpperCase())} ${esc(method)}</span>`;
+    html+=`${icon} <strong>${esc(qid)}</strong> <span style="font-size:10px;color:${isDBA?'var(--warn)':fs.startsWith('PASS_')?'var(--success)':fs.startsWith('FAIL_')?'var(--fail)':'var(--dim)'}">${stLabel}</span>`;
     html+=`</div>`;
   }
   document.getElementById('exp-panel-queries').innerHTML=html;
@@ -1669,13 +1673,12 @@ function expSelectQuery(fname, qid){
     html+=`</div>`;
   }
 
-  // EXPLAIN
+  // Error detail (from explain or final_state_detail — only show if FAIL)
   let explain=q.explain||{};
-  if(explain.status){
-    let col=explain.status==='pass'?'var(--success)':'var(--fail)';
-    html+=`<div style="padding:6px 8px;background:rgba(255,255,255,.03);border-radius:4px;margin-bottom:6px;border-left:3px solid ${col}">`;
-    html+=`<strong>EXPLAIN:</strong> <span style="color:${col}">${esc(explain.status)}</span>`;
-    if(explain.error)html+=`<div style="color:var(--fail);font-size:11px;margin-top:4px">${esc(String(explain.error))}</div>`;
+  let errMsg=(typeof explain==='object'?explain.error:'')||'';
+  if(finalStatus.startsWith('FAIL_')&&errMsg){
+    html+=`<div style="padding:6px 8px;background:rgba(239,68,68,.05);border-radius:4px;margin-bottom:6px;border-left:3px solid var(--fail)">`;
+    html+=`<strong style="font-size:11px">에러:</strong> <span style="color:var(--fail);font-size:11px">${esc(String(errMsg).substring(0,200))}</span>`;
     html+=`</div>`;
   }
 
