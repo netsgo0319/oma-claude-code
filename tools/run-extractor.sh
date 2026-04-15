@@ -17,9 +17,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 EXTRACTOR_DIR="$SCRIPT_DIR/mybatis-sql-extractor"
 JAR_PATH="$EXTRACTOR_DIR/build/libs/mybatis-sql-extractor-1.0.0.jar"
-INPUT_DIR="$PROJECT_DIR/workspace/input"
-OUTPUT_DIR="$PROJECT_DIR/workspace/output"
-EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted"
+# 심링크 해석 — Java Files.walk()가 심링크를 안 따라갈 수 있으므로 실제 경로 사용
+_resolve() { [ -L "$1" ] && readlink -f "$1" || echo "$1"; }
+INPUT_DIR="$(_resolve "$PROJECT_DIR/workspace/input")"
+OUTPUT_DIR="$(_resolve "$PROJECT_DIR/workspace/output")"
+EXTRACTED_DIR="$(_resolve "$PROJECT_DIR/workspace/results/_extracted")"
 # Phase 3.5는 Phase 3과 다른 디렉토리에 출력해야 함 (덮어쓰기 방지)
 VALIDATION_DIR="$PROJECT_DIR/workspace/results/_validation_phase35"
 

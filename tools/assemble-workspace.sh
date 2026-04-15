@@ -78,6 +78,20 @@ fi
 # ── Assemble mode (default) ──
 echo "=== Assembling workspace from pipeline ==="
 
+# 0. workspace/input 안전 확인 — 원본 Oracle XML을 가리켜야 함
+#    절대로 변환된 XML(step-1-convert/output/xml)을 가리키면 안 됨!
+if [ -L "$WS/input" ]; then
+  INPUT_TARGET=$(readlink -f "$WS/input")
+  if echo "$INPUT_TARGET" | grep -q "step-1-convert/output/xml"; then
+    echo "  ERROR: workspace/input이 변환된 XML을 가리킴! 원본으로 복구."
+    rm "$WS/input"
+    if [ -d "$PIPELINE/shared/input" ] && [ "$(ls -A $PIPELINE/shared/input/*.xml 2>/dev/null)" ]; then
+      ln -sfn "$PIPELINE/shared/input" "$WS/input"
+      echo "  FIXED: workspace/input → pipeline/shared/input"
+    fi
+  fi
+fi
+
 # 1. output/ — step-3 fixes가 있으면 병합, 없으면 step-1 링크
 STEP1_XML="$PIPELINE/step-1-convert/output/xml"
 STEP3_FIXES="$PIPELINE/step-3-validate-fix/output/xml-fixes"
