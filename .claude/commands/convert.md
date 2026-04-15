@@ -13,7 +13,7 @@ Execute the full OMA (Oracle Migration Accelerator) pipeline from Step 0 through
    - **Step 0 - Preflight**: 환경 체크 (XML, Python, psql, sqlplus, Java). Oracle 오브젝트 스캔. PG pgcrypto 확인.
    - **Step 1 - Parse + Convert**: XML 파싱 + 40+ 룰 기계적 변환 + LLM 복합 변환 (Converter 서브에이전트).
    - **Step 2 - TC Generate**: 테스트 케이스 생성. `python3 tools/generate-test-cases.py --samples-dir workspace/results/_samples/`.
-   - **Step 3 - Validate + Fix Loop**: MyBatis 렌더링 → EXPLAIN → Execute → Compare (3단계 검증). 실패 쿼리는 validate-and-fix 서브에이전트로 수정+재검증 루프 (최대 5회).
+   - **Step 3 - Validate + Fix Loop**: MyBatis 렌더링 → EXPLAIN → Execute → Compare (3단계 검증). 실패 쿼리는 validate-and-fix 서브에이전트로 수정+재검증 루프 (최대 3회).
    - **Step 4 - Report**: `python3 tools/generate-query-matrix.py --json` + `python3 tools/generate-report.py`.
 
 4. After each step completes, update `workspace/progress.json` with the step status, timestamp, and any error details.

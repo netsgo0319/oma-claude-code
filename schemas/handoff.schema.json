@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "OMA Pipeline Handoff",
+  "description": "Step 간 handoff 계약. 슈퍼바이저가 이 파일만 읽고 proceed/retry/abort를 판단한다.",
+
+  "definitions": {
+    "base": {
+      "type": "object",
+      "required": ["step", "step_number", "status", "started_at", "completed_at", "outputs", "summary", "next_step", "next_step_recommendation"],
+      "properties": {
+        "step":        { "type": "string", "pattern": "^step-[0-4]-" },
+        "step_number": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "status":      { "enum": ["success", "partial", "failed"] },
+        "started_at":  { "type": "integer", "description": "UTC Unix timestamp" },
+        "completed_at":{ "type": "integer", "description": "UTC Unix timestamp" },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "blockers":    { "type": "array", "items": { "type": "string" } },
+        "warnings":    { "type": "array", "items": { "type": "string" } },
+        "next_step":   { "type": ["string", "null"] },
+        "next_step_recommendation": { "enum": ["proceed", "retry", "abort", "complete"] },
+        "outputs":     { "type": "object" },
+        "summary":     { "type": "object" }
+      }
+    },
+
+    "env_checks": {
+      "type": "object",
+      "properties": {
+        "python3":    { "type": "boolean" },
+        "psql":       { "type": "boolean" },
+        "sqlplus":    { "type": "boolean" },
+        "java":       { "type": "boolean" },
+        "oracle_db":  { "type": "boolean" },
+        "pg_db":      { "type": "boolean" },
+        "pg_search_path": { "type": "string" },
+        "pgcrypto":   { "type": "boolean" }
+      }
+    },
+
+    "gate_checks": {
+      "type": "object",
+      "required": ["fix_loop_executed", "compare_coverage"],
+      "properties": {
+        "fix_loop_executed": {
+          "type": "object",
+          "required": ["status", "fail_no_loop_count"],
+          "properties": {
+            "status":              { "enum": ["pass", "fail"] },
+            "fail_no_loop_count":  { "type": "integer", "minimum": 0 },
+            "fail_no_loop_queries":{ "type": "array", "items": { "type": "string" } },
+            "detail":              { "type": "string" }
+          }
+        },
+        "compare_coverage": {
+          "type": "object",
+          "required": ["status", "compare_target", "compare_done"],
+          "properties": {
+            "status":                { "enum": ["pass", "fail"] },
+            "compare_target":        { "type": "integer", "minimum": 0 },
+            "compare_done":          { "type": "integer", "minimum": 0 },
+            "compare_missing_non_dba": { "type": "integer", "minimum": 0 },
+            "detail":                { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "state_counts": {
+      "type": "object",
+      "properties": {
+        "PASS_COMPLETE":          { "type": "integer" },
+        "PASS_HEALED":            { "type": "integer" },
+        "PASS_NO_CHANGE":         { "type": "integer" },
+        "FAIL_SCHEMA_MISSING":    { "type": "integer" },
+        "FAIL_COLUMN_MISSING":    { "type": "integer" },
+        "FAIL_FUNCTION_MISSING":  { "type": "integer" },
+        "FAIL_ESCALATED":         { "type": "integer" },
+        "FAIL_SYNTAX":            { "type": "integer" },
+        "FAIL_COMPARE_DIFF":      { "type": "integer" },
+        "FAIL_TC_TYPE_MISMATCH":  { "type": "integer" },
+        "FAIL_TC_OPERATOR":       { "type": "integer" },
+        "NOT_TESTED_NO_RENDER":   { "type": "integer" },
+        "NOT_TESTED_NO_DB":       { "type": "integer" },
+        "NOT_TESTED_PENDING":     { "type": "integer" }
+      }
+    }
+  },
+
+  "oneOf": [
+    {
+      "title": "Step 0 — Preflight",
+      "allOf": [{ "$ref": "#/definitions/base" }],
+      "properties": {
+        "step": { "const": "step-0-preflight" },
+        "summary": {
+          "type": "object",
+          "required": ["xml_file_count", "env_checks"],
+          "properties": {
+            "xml_file_count":          { "type": "integer" },
+            "xml_files":               { "type": "array", "items": { "type": "string" } },
+            "total_lines":             { "type": "integer" },
+            "env_checks":              { "$ref": "#/definitions/env_checks" },
+            "sample_tables_collected":  { "type": "integer" },
+            "java_src_dir":            { "type": ["string", "null"] },
+            "custom_binds_exists":     { "type": "boolean" }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "samples_dir": { "type": "string" },
+            "env_check":   { "type": "string" },
+            "input_dir":   { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "title": "Step 1 — Convert",
+      "allOf": [{ "$ref": "#/definitions/base" }],
+      "properties": {
+        "step": { "const": "step-1-convert" },
+        "summary": {
+          "type": "object",
+          "required": ["files_processed", "queries_total"],
+          "properties": {
+            "files_processed":          { "type": "integer" },
+            "files_total":              { "type": "integer" },
+            "queries_total":            { "type": "integer" },
+            "queries_rule_converted":   { "type": "integer" },
+            "queries_llm_converted":    { "type": "integer" },
+            "queries_no_change":        { "type": "integer" },
+            "queries_unconverted":      { "type": "integer" },
+            "complexity_distribution":  { "type": "object" }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "xml_dir":             { "type": "string" },
+            "results_dir":         { "type": "string" },
+            "extracted_oracle_dir": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "title": "Step 2 — TC Generate",
+      "allOf": [{ "$ref": "#/definitions/base" }],
+      "properties": {
+        "step": { "const": "step-2-tc-generate" },
+        "summary": {
+          "type": "object",
+          "required": ["queries_with_tc", "total_test_cases"],
+          "properties": {
+            "queries_with_tc":        { "type": "integer" },
+            "queries_without_tc":     { "type": "integer" },
+            "total_test_cases":       { "type": "integer" },
+            "tc_source_distribution": { "type": "object" }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "merged_tc":       { "type": "string" },
+            "per_file_tc_dir": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "title": "Step 3 — Validate + Fix",
+      "allOf": [{ "$ref": "#/definitions/base" }],
+      "properties": {
+        "step": { "const": "step-3-validate-fix" },
+        "summary": {
+          "type": "object",
+          "required": ["queries_total"],
+          "properties": {
+            "queries_total":      { "type": "integer" },
+            "explain_pass":       { "type": "integer" },
+            "explain_fail":       { "type": "integer" },
+            "explain_not_tested": { "type": "integer" },
+            "compare_pass":       { "type": "integer" },
+            "compare_fail":       { "type": "integer" },
+            "compare_not_tested": { "type": "integer" },
+            "fix_attempted":      { "type": "integer" },
+            "fix_resolved":       { "type": "integer" },
+            "fix_escalated":      { "type": "integer" },
+            "dba_skipped":        { "type": "integer" },
+            "state_counts":       { "$ref": "#/definitions/state_counts" }
+          }
+        },
+        "gate_checks": { "$ref": "#/definitions/gate_checks" },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "extracted_pg_dir":        { "type": "string" },
+            "validation_dir":          { "type": "string" },
+            "batch_dirs":              { "type": "array", "items": { "type": "string" } },
+            "fixed_xml_dir":           { "type": "string" },
+            "tracking_files_updated":  { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    {
+      "title": "Step 4 — Report",
+      "allOf": [{ "$ref": "#/definitions/base" }],
+      "properties": {
+        "step": { "const": "step-4-report" },
+        "summary": {
+          "type": "object",
+          "required": ["total_queries", "pass_count"],
+          "properties": {
+            "total_queries":    { "type": "integer" },
+            "pass_count":       { "type": "integer" },
+            "fail_code_count":  { "type": "integer" },
+            "fail_dba_count":   { "type": "integer" },
+            "not_tested_count": { "type": "integer" },
+            "pass_rate_percent":{ "type": "number" }
+          }
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "all_files_exist_and_nonempty": { "type": "boolean" },
+            "json_required_fields_present": { "type": "boolean" },
+            "required_fields":              { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "query_matrix_csv":      { "type": "string" },
+            "query_matrix_json":     { "type": "string" },
+            "migration_report_html": { "type": "string" }
+          }
+        }
+      }
+    }
+  ]
+}

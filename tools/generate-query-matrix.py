@@ -289,8 +289,8 @@ def main():
                 overall = 'FAIL_FUNCTION_MISSING'
                 overall_detail = f'PG 함수 없음: {explain_error[:150]}'
 
-            # 실패 — 재시도 후 (explain 또는 compare 어느 쪽이든 5회 이상 실패)
-            elif attempt_count >= 5 and (explain_status == 'fail' or compare_status == 'fail'):
+            # 실패 — 재시도 후 (explain 또는 compare 어느 쪽이든 3회 이상 실패)
+            elif attempt_count >= 3 and (explain_status == 'fail' or compare_status == 'fail'):
                 overall = 'FAIL_ESCALATED'
                 detail = explain_error[:150] if explain_status == 'fail' else compare_fail_reason[:150]
                 overall_detail = f'{attempt_count}회 시도 후 실패: {detail}'

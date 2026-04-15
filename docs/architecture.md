@@ -9,93 +9,158 @@
 ```mermaid
 flowchart TB
     U["사용자: 변환해줘"]
-    U --> L
+    U --> SV
 
-    subgraph Leader["Leader Agent (Orchestrator)"]
-        L[Step 0만 직접 수행\n나머지는 서브에이전트에 위임]
+    subgraph Supervisor["Supervisor (handoff.json 판단)"]
+        SV[Step handoff.json 읽기\nproceed/retry/abort 판단]
     end
 
-    L --> S1[converter]
-    L --> S2[tc-generator]
-    L --> S3[validate-and-fix]
-    L --> S4[reporter]
+    SV --> S1[converter]
+    SV --> S2[tc-generator]
+    SV --> S3[validate-and-fix]
+    SV --> S4[reporter]
 
-    subgraph Tools["Python Tools"]
+    subgraph Tools["Python Tools (공유)"]
         T1[batch-process.sh]
         T2[oracle-to-pg-converter.py]
         T3[generate-test-cases.py]
         T4[validate-queries.py]
         T5[generate-query-matrix.py]
         T6[generate-report.py]
+        T7[generate-handoff.py]
+        T8[assemble-workspace.sh]
     end
 
     S1 --> T1 & T2
     S2 --> T3
     S3 --> T4
-    S4 --> T5 & T6
+    S4 --> T5 & T6 & T8
 
     subgraph Rules["Rules (항상 로드)"]
-        R1[oracle-pg-rules.md — 40+ 변환 룰]
-        R2[edge-cases.md — 에지케이스]
+        R1[guardrails.md — 안전 + handoff 계약]
+        R2[oracle-pg-rules.md — 40+ 변환 룰]
+        R3[edge-cases.md — 에지케이스]
     end
 
     S1 & S3 --> Rules
 
-    subgraph Workspace["Workspace"]
-        W1[input/ — 원본 XML]
-        W2[output/ — 변환된 XML]
-        W3[results/ — 검증 결과 + query-tracking]
-        W4[reports/ — HTML 리포트 + CSV/JSON]
-        W5[logs/ — activity-log.jsonl]
+    subgraph Pipeline["pipeline/ (Step별 디렉토리)"]
+        P0[step-0-preflight/]
+        P1[step-1-convert/]
+        P2[step-2-tc-generate/]
+        P3[step-3-validate-fix/]
+        P4[step-4-report/]
     end
 
-    Tools --> Workspace
+    Tools --> Pipeline
 ```
 
 ### 설계 원칙
 
 | 원칙 | 설명 |
 |------|------|
-| **리더 = 오케스트레이터** | 리더는 직접 도구를 실행하지 않는다. 서브에이전트에 위임하고 결과만 확인 |
-| **모든 쿼리 = TC 기반 검증** | 하나도 스킵하지 않는다. 0건==0건도 유효한 PASS |
-| **EXPLAIN ≠ 완료** | EXPLAIN 통과만으로 끝내지 않는다. Execute + Compare까지 필수 |
-| **스키마 에러 즉시 분리** | relation/column/function_missing은 루프 돌리지 않고 DBA에 보고 |
-| **UTC timestamp** | 로그는 UTC unix timestamp. 보고서에서 로컬 시간으로 표시 |
+| **슈퍼바이저 = handoff 판단** | handoff.json만 읽고 proceed/retry/abort. 직접 도구 실행 안 함 |
+| **Step별 디렉토리 분리** | 각 Step은 자기 output/ + handoff.json만 쓴다. 교차 쓰기는 Step 3→1 tracking만 |
+| **EXPLAIN ≠ 완료** | Execute + Compare까지 필수. Compare mismatch도 FAIL |
+| **모든 쿼리 TC 기반 검증** | 0건==0건도 PASS. 스킵 없음 |
+| **DBA 에러 즉시 분리** | relation/column/function_missing → 수정 루프 진입 안 함 |
+| **UTC timestamp** | 로그는 UTC Unix int. 보고서 JS에서 로컬 시간 표시 |
 
 ---
 
-## 2. Pipeline
+## 2. Pipeline + handoff.json 계약
 
 ```mermaid
 flowchart LR
-    S0[Step 0\n환경점검]
-    S1[Step 1\n파싱+변환]
-    S2[Step 2\nTC 생성]
-    S3[Step 3\n검증+수정 루프]
-    S4[Step 4\n보고서]
+    S0[Step 0\nPreflight]
+    S1[Step 1\nConvert]
+    S2[Step 2\nTC Generate]
+    S3[Step 3\nValidate+Fix]
+    S4[Step 4\nReport]
 
-    S0 -->|리더 직접| S1
-    S1 -->|converter| S2
-    S2 -->|tc-generator| S3
-    S3 -->|validate-and-fix| S4
-    S4 -->|reporter| Done([완료])
+    S0 -->|handoff.json| S1
+    S1 -->|handoff.json| S2
+    S2 -->|handoff.json| S3
+    S3 -->|handoff.json\n+ gate_checks| S4
+    S4 -->|handoff.json| Done([완료])
 
-    S3 -->|FAIL 있으면\n최대 5회 루프| S3
+    S3 -->|gate FAIL\n→ 재위임| S3
 ```
 
-| Step | 실행 주체 | 도구 | 산출물 |
-|------|----------|------|--------|
-| **0** | 리더 직접 | shell, generate-sample-data.py | 환경 확인, _samples/*.json |
-| **1** | **converter** | batch-process.sh, oracle-to-pg-converter.py | output/*.xml, query-tracking.json |
-| **2** | **tc-generator** | generate-test-cases.py | test-cases.json, merged-tc.json |
-| **3** | **validate-and-fix** | validate-queries.py, run-extractor.sh | validated.json, compare_validated.json |
-| **4** | **reporter** | generate-query-matrix.py, generate-report.py | query-matrix.csv/json, migration-report.html |
+| Step | 실행 주체 | 도구 | 산출물 | handoff 핵심 |
+|------|----------|------|--------|-------------|
+| **0** | 슈퍼바이저 | generate-sample-data.py | samples/, env-check.json | xml_file_count, env_checks |
+| **1** | **converter** | batch-process.sh, converter.py | output/xml/, query-tracking.json | queries_total, complexity_dist |
+| **2** | **tc-generator** | generate-test-cases.py | merged-tc.json | queries_with_tc, tc_source_dist |
+| **3** | **validate-and-fix** | validate-queries.py | validated.json, compare.json | **gate_checks** (fix_loop + compare) |
+| **4** | **reporter** | generate-query-matrix.py, generate-report.py | csv, json, html | validation (fields complete) |
+
+### Step 3 → 4 GATE (★)
+
+슈퍼바이저가 Step 3 handoff.json의 `gate_checks`를 읽고 판단:
+- `fix_loop_executed.status == "fail"` → 재위임 ("수정 루프 0회 쿼리 있음")
+- `compare_coverage.status == "fail"` → 재위임 ("Compare 미실행 N건")
+- `fix_attempted == 0` AND 비-DBA FAIL → 재위임 ("수정 0건 불허")
 
 ---
 
-## 3. Query Lifecycle
+## 3. 데이터 흐름
 
-하나의 쿼리가 파이프라인을 통과하는 전체 과정:
+### 단계별 입출력 매핑
+
+```
+Step 0:
+  READ:  pipeline/shared/input/*.xml
+  WRITE: pipeline/step-0-preflight/output/samples/{TABLE}.json
+         pipeline/step-0-preflight/handoff.json
+
+Step 1:
+  READ:  pipeline/shared/input/*.xml
+         pipeline/step-0-preflight/output/samples/
+  WRITE: pipeline/step-1-convert/output/xml/{file}.xml
+         pipeline/step-1-convert/output/results/{file}/v1/query-tracking.json
+         pipeline/step-1-convert/handoff.json
+
+Step 2:
+  READ:  pipeline/step-1-convert/output/results/*/v1/parsed.json
+         pipeline/step-0-preflight/output/samples/
+  WRITE: pipeline/step-2-tc-generate/output/merged-tc.json
+         pipeline/step-2-tc-generate/handoff.json
+
+Step 3:
+  READ:  pipeline/step-1-convert/output/xml/{file}.xml
+         pipeline/step-2-tc-generate/output/merged-tc.json
+         pipeline/shared/input/*.xml (Compare용)
+  WRITE: pipeline/step-3-validate-fix/output/validation/
+         pipeline/step-3-validate-fix/output/extracted_pg/
+         pipeline/step-1-convert/output/results/{file}/v1/query-tracking.json  ← cross-write
+         pipeline/step-3-validate-fix/handoff.json (gate_checks)
+
+Step 4:
+  READ:  ALL query-tracking.json + validated.json + compare.json + extracted
+  WRITE: pipeline/step-4-report/output/query-matrix.{csv,json}
+         pipeline/step-4-report/output/migration-report.html
+         pipeline/step-4-report/handoff.json
+```
+
+### query-matrix.json 필드 → 소스 매핑
+
+| 필드 | 소스 Step | 파일 |
+|------|----------|------|
+| query_id, original_file | Step 1 | query-tracking.json |
+| sql_before | Step 1 | extracted_oracle/ → query-tracking.json (fallback) |
+| sql_after | Step 3 | extracted_pg/ → query-tracking.json (fallback) |
+| conversion_method, conversion_history | Step 1 | query-tracking.json |
+| test_cases | Step 2 | per-file/test-cases.json |
+| attempts | Step 3 | query-tracking.json (Step 3이 갱신) |
+| explain_status | Step 3 | validated.json → query-tracking.json |
+| compare_status | Step 3 | compare_validated.json |
+| final_state | Step 4 | generate-query-matrix.py가 계산 |
+| complexity | Step 1 | complexity-scores.json |
+
+---
+
+## 4. Query Lifecycle (14-State)
 
 ```mermaid
 stateDiagram-v2
@@ -106,273 +171,125 @@ stateDiagram-v2
     unconverted --> pending: LLM도 실패
 
     converted --> tc_generated: Step 2 TC 생성
-    tc_generated --> mybatis_render: MyBatis 엔진 렌더링
+    tc_generated --> mybatis_render: MyBatis 렌더링
     mybatis_render --> validating: SQL 렌더링 성공
     mybatis_render --> ognl_fail: OGNL ClassNotFoundException
-    ognl_fail --> stub_gen: 스텁 자동 생성 + 재빌드
-    stub_gen --> mybatis_render: 재렌더링 (최대 5회)
-    mybatis_render --> static_fallback: 빈 SQL (동적 SQL 전체 스킵)
-    static_fallback --> validating: static XML에서 #{param} 추출
+    ognl_fail --> stub_gen: 스텁 자동 생성
+    stub_gen --> mybatis_render: 재렌더링 (최대 3회)
+    mybatis_render --> static_fallback: 빈 SQL
+    static_fallback --> validating: static XML에서 추출
 
     validating --> PASS_COMPLETE: EXPLAIN+Execute+Compare 통과
-    validating --> PASS_NO_CHANGE: 변환 불필요 + 통과
+    validating --> PASS_NO_CHANGE: 변환 불필요
     validating --> FAIL: 에러 발생
 
     FAIL --> classify: 에러 분류
-
     classify --> FAIL_SCHEMA_MISSING: relation 없음 (DBA)
     classify --> FAIL_COLUMN_MISSING: column 없음 (DBA)
     classify --> FAIL_FUNCTION_MISSING: function 없음 (DBA)
-    classify --> fix_loop: 코드 에러 (수정 가능)
+    classify --> fix_loop: 코드 에러
 
-    fix_loop --> validating: 수정 후 재검증 (attempt N)
+    fix_loop --> validating: 수정 후 재검증
     fix_loop --> PASS_HEALED: 수정 후 통과
-    fix_loop --> FAIL_ESCALATED: 5회 실패
+    fix_loop --> FAIL_ESCALATED: 3회 실패
 
     pending --> NOT_TESTED_PENDING
 ```
 
----
+### 14개 최종 상태
 
-## 4. 14개 최종 상태
-
-모든 쿼리는 파이프라인 종료 시 아래 14개 상태 중 **정확히 하나**로 분류된다.
-
-### 성공 (PASS)
-| 상태 | 조건 | 설명 |
+| 상태 | 조건 | 분류 |
 |------|------|------|
-| PASS_COMPLETE | conv + explain pass + compare pass | 한번에 통과 |
-| PASS_HEALED | attempt > 0 + explain pass + compare pass | 수정 후 통과 |
-| PASS_NO_CHANGE | no_change + explain pass + compare pass | Oracle 구문 없어 변환 불필요 |
-
-### 실패 — DBA (스킵, 루프 안 돌림)
-| 상태 | 조건 | 설명 |
-|------|------|------|
-| FAIL_SCHEMA_MISSING | error: relation does not exist | PG 테이블 없음 |
-| FAIL_COLUMN_MISSING | error: column does not exist | PG 컬럼 없음 |
-| FAIL_FUNCTION_MISSING | error: function does not exist | PG 함수 없음 |
-
-### 실패 — 코드 (수정 루프 대상)
-| 상태 | 조건 | 설명 |
-|------|------|------|
-| FAIL_ESCALATED | attempt ≥ 5 + (explain fail OR compare fail) | 5회 시도 후 미해결 |
-| FAIL_SYNTAX | explain fail + SYNTAX_ERROR/AMBIGUOUS/OTHER | SQL 문법 에러 |
-| FAIL_COMPARE_DIFF | compare fail + attempt < 5 | Oracle↔PG 결과 불일치 |
-| FAIL_TC_TYPE_MISMATCH | TYPE_MISMATCH 또는 VALUE_TOO_LONG | 바인드값 타입 불일치 |
-| FAIL_TC_OPERATOR | TYPE_OPERATOR | 연산자 타입 불일치 |
-
-### 미테스트
-| 상태 | 조건 | 설명 |
-|------|------|------|
-| NOT_TESTED_NO_RENDER | converted + not_tested + mybatis=no | MyBatis 렌더링 실패 (static fallback 후에도 검증 불가) |
-| NOT_TESTED_NO_DB | converted + not_tested (또는 explain pass + compare not_tested) | DB 미접속 |
-| NOT_TESTED_PENDING | conv = pending | 변환 미완료 |
-
-### 분류 우선순위
-
-```
-1. PASS (attempt>0 → HEALED, no_change → NO_CHANGE, 나머지 → COMPLETE)
-2. DBA (MISSING_TABLE > MISSING_COLUMN > MISSING_FUNCTION)
-3. ESCALATED (attempt ≥ 5)
-4. COMPARE_DIFF (compare=fail)
-5. SYNTAX (explain=fail + SYNTAX/AMBIGUOUS/OTHER)
-6. TC 문제 (TYPE_MISMATCH > TYPE_OPERATOR > VALUE_TOO_LONG)
-7. NOT_TESTED (NO_RENDER > NO_DB > PENDING)
-```
-
-**DBA 상태는 ESCALATED보다 항상 우선.** 5회 시도해도 테이블이 없으면 FAIL_SCHEMA_MISSING이지 FAIL_ESCALATED가 아니다.
+| PASS_COMPLETE | conv + explain pass + compare pass | 성공 |
+| PASS_HEALED | attempt > 0 + explain pass + compare pass | 성공 |
+| PASS_NO_CHANGE | no_change + explain pass + compare pass | 성공 |
+| FAIL_SCHEMA_MISSING | relation does not exist | DBA |
+| FAIL_COLUMN_MISSING | column does not exist | DBA |
+| FAIL_FUNCTION_MISSING | function does not exist | DBA |
+| FAIL_ESCALATED | attempt ≥ 3 + fail | 코드 |
+| FAIL_SYNTAX | explain fail + SYNTAX_ERROR | 코드 |
+| FAIL_COMPARE_DIFF | compare fail | 코드 |
+| FAIL_TC_TYPE_MISMATCH | TYPE_MISMATCH | TC |
+| FAIL_TC_OPERATOR | TYPE_OPERATOR | TC |
+| NOT_TESTED_NO_RENDER | mybatis=no | 미테스트 |
+| NOT_TESTED_NO_DB | explain/compare not_tested | 미테스트 |
+| NOT_TESTED_PENDING | conv=pending | 미테스트 |
 
 ---
 
-## 5. 수정 루프 (Step 3)
+## 5. 디렉토리 구조
 
-```mermaid
-flowchart TD
-    Start([쿼리 FAIL]) --> Classify{에러 분류}
-
-    Classify -->|relation/column/function| Skip[즉시 스킵\nDBA 마킹]
-    Classify -->|syntax/type/operator/residual| Loop{attempt < 5?}
-
-    Loop -->|YES| Backup[output XML 버저닝\n.v N .bak]
-    Backup --> Fix[SQL 수정\n이전과 다른 접근법]
-    Fix --> Revalidate[--full 재검증\nEXPLAIN→Execute→Compare]
-    Revalidate --> Check{통과?}
-    Check -->|YES| Healed[PASS_HEALED]
-    Check -->|NO| Log[attempt 기록\nts + error + fix]
-    Log --> Loop
-
-    Loop -->|NO, 5회 도달| Escalated[FAIL_ESCALATED]
 ```
+/tmp/oma-claude-code/
+  CLAUDE.md                            # 슈퍼바이저 전용 (handoff 판단만)
+  .claude/
+    agents/                            # 4개 에이전트
+      converter.md                     # Step 1
+      tc-generator.md                  # Step 2
+      validate-and-fix.md              # Step 3 + gate_checks
+      reporter.md                      # Step 4 + assemble
+    rules/                             # 공유 규칙 (항상 로드)
+    skills/                            # 스킬 (20+)
+    commands/                          # CLI 명령
+    settings.json                      # hooks + permissions
 
-### attempt 기록 구조
+  tools/                               # 공유 Python/Bash 도구
+    generate-handoff.py                # ★ handoff.json 생성 유틸
+    assemble-workspace.sh              # ★ pipeline → workspace 심링크 조립
 
-```json
-{
-  "attempts": [
-    {
-      "attempt": 1,
-      "ts": 1713100860,
-      "error_category": "SYNTAX_ERROR",
-      "error_detail": "syntax error at or near \"NVL\"",
-      "fix_applied": "NVL→COALESCE 변환 누락 수정",
-      "result": "fail"
-    },
-    {
-      "attempt": 2,
-      "ts": 1713100920,
-      "error_category": null,
-      "error_detail": null,
-      "fix_applied": "CASE 문법 수정",
-      "result": "pass"
-    }
-  ]
-}
+  schemas/
+    handoff.schema.json                # ★ handoff 스키마
+
+  pipeline/                            # ★ Step별 디렉토리
+    supervisor-state.json              # 슈퍼바이저 상태 (compaction 복구)
+    shared/input/                      # → workspace/input 심링크
+    step-0-preflight/output/ + handoff.json
+    step-1-convert/output/ + handoff.json
+    step-2-tc-generate/output/ + handoff.json
+    step-3-validate-fix/output/ + handoff.json
+    step-4-report/output/ + handoff.json
+
+  workspace/                           # 하위 호환 (심링크 뷰)
 ```
 
 ---
 
-## 6. 로깅
-
-### 자동 로깅 (hook)
-
-`.claude/settings.json`의 hook이 모든 도구 호출과 서브에이전트 완료를 자동 기록:
-
-```
-PostToolUse (Bash|Edit|Write) → activity-log.jsonl
-SubagentStop                  → activity-log.jsonl
-```
-
-### 도구 내부 로깅
-
-각 도구가 `tracking_utils.log_activity()`로 Step 시작/종료를 기록:
-
-```python
-log_activity('STEP_END', agent='converter', step='step_1', detail='...')
-```
-
-### 타임스탬프
-
-- 저장: **UTC Unix timestamp** (int) — `{"ts": 1713100860}`
-- 표시: 보고서 JS에서 `new Date(ts * 1000).toLocaleString()` → 사용자 로컬 시간
-
----
-
-## 7. 보고서
-
-### 구성
+## 6. 보고서
 
 | 탭 | 내용 |
 |----|------|
-| **Overview** | 6카드 (파일, 쿼리, PASS, FAIL코드, FAIL DBA, 미테스트) + Step Progress 바 |
-| **Explorer** | 파일→쿼리 트리 + 쿼리 상세 (Oracle/PG SQL 비교, 14-state 배지, TC 결과, Attempt History) |
-| **Log** | activity-log.jsonl 타임라인 (Error/Decision/Warning 필터) |
+| **Overview** | 6카드 + Step Progress |
+| **Explorer** | 파일→쿼리 트리 + SQL diff + Attempt History + Conversion History |
+| **Log** | activity-log.jsonl 타임라인 |
 
 ### 산출물
 
-| 파일 | 형식 | 내용 |
-|------|------|------|
-| `migration-report.html` | HTML | 브라우저에서 열기. 서버 불필요 |
-| `query-matrix.csv` | CSV | 쿼리별 flat 컬럼 (변환/검증/비교) |
-| `query-matrix.json` | JSON | 쿼리별 상세 (sql_before/after, attempts, test_cases, final_state) |
+| 파일 | 위치 |
+|------|------|
+| migration-report.html | `pipeline/step-4-report/output/` |
+| query-matrix.csv | `pipeline/step-4-report/output/` |
+| query-matrix.json | `pipeline/step-4-report/output/` |
 
-### JSON 산출물 필드 (쿼리당)
+### query-matrix.json 쿼리 예제
 
-```
-query_id → original_file → sql_before → sql_after → final_state → final_state_detail
-→ test_cases[{name, params, source}]
-→ attempts[{attempt, ts, error_category, error_detail, fix_applied, result}]
-→ explain_status → compare_status → conversion_method → complexity
-```
-
----
-
-## 8. 에이전트 아키텍처
-
-```
-Leader (오케스트레이터)
-  ├── Step 0: 환경점검 (직접 수행)
-  ├── Step 1: converter × N (병렬, 3파일/30쿼리 단위)
-  ├── Step 2: tc-generator × 1
-  ├── Step 3: validate-and-fix × N (병렬, 파일 단위)
-  └── Step 4: reporter × 1
-```
-
-| 에이전트 | 모델 | 역할 | 병렬 |
-|---------|------|------|------|
-| converter | Sonnet | 파싱 + 룰변환 + LLM변환 | ✅ 3파일 단위 |
-| tc-generator | Sonnet | TC 생성 (고객>샘플>VO>딕셔너리>추론) | - |
-| validate-and-fix | Sonnet | 검증 + 에러분류 + 수정 루프 (최대 5회) | ✅ 파일 단위 |
-| reporter | Sonnet | 파이프라인 점검 + 상태 검증 + 보고서 | - |
-
-### 리더가 하는 것 / 안 하는 것
-
-| ✅ 하는 것 | ❌ 안 하는 것 |
-|-----------|-------------|
-| Step 0 환경점검 | 도구 직접 실행 |
-| 서브에이전트 spawn | SQL 직접 수정 |
-| 반환 결과 확인 | 보고서 직접 생성 |
-| 다음 Step 진행 판단 | TC 직접 생성 |
-| 사용자에게 결과 보고 | 검증 직접 수행 |
-
----
-
-## 9. TC 생성 (Step 2)
-
-### 소스 우선순위
-
-```
-0. 고객 바인드값 (custom-binds.json) ← 최우선
-1. 샘플 데이터 (_samples/*.json) ← Oracle 테이블 실데이터
-2. Java VO (--java-src) ← 필드 타입 기반
-3. V$SQL_BIND_CAPTURE ← 운영 캡처값
-4. ALL_TAB_COL_STATISTICS ← MIN/MAX 경계값
-5. ALL_CONSTRAINTS (FK) ← 참조 테이블 샘플
-6. 이름/타입 추론 ← fallback
-```
-
-### TC 종류 (쿼리당 최대 6종)
-
-| TC | 소스 | DML 제외 |
-|----|------|---------|
-| custom_1 | 고객 제공 | - |
-| sample_row_1~3 | 샘플 데이터 | - |
-| default | 추론 | - |
-| null_test | NULL 시맨틱 | ✅ |
-| empty_string | 빈 문자열 | ✅ |
-| boundary | 컬럼 통계 MAX | ✅ |
-
----
-
-## 10. 디렉토리 구조
-
-```
-workspace/
-  input/                          # 원본 Oracle MyBatis XML (불변)
-    *.xml
-    custom-binds.json             # 고객 제공 바인드값 (선택)
-  output/                         # 변환된 PostgreSQL XML
-    *.xml
-    *.xml.v1.bak, .v2.bak         # 수정 전 버전 백업
-  results/
-    {file}/v1/
-      parsed.json                 # 파싱 결과
-      query-tracking.json         # 쿼리별 상태 + attempts
-      test-cases.json             # TC
-      converted.json              # 변환 결과
-    _samples/{TABLE}.json         # Oracle 테이블 샘플 (10행)
-    _test-cases/merged-tc.json    # MyBatis extractor용 TC
-    _validation/
-      validated.json              # EXPLAIN 결과
-      compare_validated.json      # Compare 결과
-      explain_test.sql            # 생성된 EXPLAIN 스크립트
-      execute_test.sql            # 생성된 Execute 스크립트
-      oracle_compare.sql          # 생성된 Oracle 비교 스크립트
-    _extracted_pg/                # MyBatis 렌더링된 PG SQL
-  reports/
-    migration-report.html         # HTML 리포트
-    query-matrix.csv              # 쿼리 매트릭스 (flat)
-    query-matrix.json             # 쿼리 매트릭스 (상세, attempts 포함)
-  logs/
-    activity-log.jsonl            # 전체 활동 로그 (hook + 도구)
-  progress.json                   # 파이프라인 상태
+```json
+{
+  "query_id": "selectUser",
+  "original_file": "UserMapper.xml",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "final_state": "PASS_COMPLETE",
+  "final_state_detail": "변환+비교 통과",
+  "conversion_method": "rule",
+  "conversion_history": [
+    {"pattern": "NVL", "approach": "COALESCE 치환", "confidence": "high"}
+  ],
+  "test_cases": [
+    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"}
+  ],
+  "attempts": [],
+  "explain_status": "pass",
+  "compare_status": "pass",
+  "complexity": "L1"
+}
 ```

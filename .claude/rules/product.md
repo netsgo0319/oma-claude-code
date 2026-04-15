@@ -12,7 +12,7 @@ MyBatis/iBatis XML 기반 Oracle SQL을 PostgreSQL로 자동 변환하고
 Step 0: 사전 점검 (XML 존재, sqlplus/psql 설치, DB 접속 테스트)
 Step 1: 파싱 + 룰 변환 (XML 파싱, 룰 기반 40+ 변환, LLM 복합 변환)
 Step 2: TC 생성 (테스트 케이스 생성)
-Step 3: 검증 + 수정 루프 (EXPLAIN → 실행 → Oracle/PG 비교 → 실패 시 수정+재검증, 최대 5회)
+Step 3: 검증 + 수정 루프 (EXPLAIN → 실행 → Oracle/PG 비교 → 실패 시 수정+재검증, 최대 3회)
 Step 4: 리포트 (Query Matrix + HTML 리포트)
 
 ## 서브에이전트

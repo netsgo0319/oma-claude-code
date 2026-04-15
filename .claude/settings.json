@@ -19,7 +19,8 @@
             "type": "command",
             "command": "bash -c 'input=$(cat); if echo \"$input\" | grep -qiE \"(psql|pg_dump|pg_restore|sqlplus|SELECT |INSERT |UPDATE |DELETE )\"; then mkdir -p workspace/logs; ts=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\"); echo \"{\\\"event\\\": \\\"db_query_executed\\\", \\\"timestamp\\\": \\\"$ts\\\"}\" >> workspace/logs/db-query-audit.log; echo \"DB query logged at $ts\"; fi'"
           }
-        ]
+        ],
+        "description": "DB 쿼리 실행 감지 → db-query-audit.log"
       },
       {
         "matcher": "Bash|Edit|Write",
@@ -50,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'python3 -c \"import json,glob,os;s={};p=\\\"workspace/progress.json\\\";s[\\\"progress\\\"]=json.load(open(p)) if os.path.exists(p) else {};qm=\\\"workspace/reports/query-matrix.json\\\";d=json.load(open(qm)) if os.path.exists(qm) else {};s[\\\"summary\\\"]=d.get(\\\"summary\\\",{});s[\\\"total\\\"]=d.get(\\\"total\\\",0);fails=[q[\\\"query_id\\\"]+\\\":\\\"+q.get(\\\"overall_status\\\",\\\"\\\") for q in d.get(\\\"queries\\\",[]) if q.get(\\\"overall_status\\\",\\\"\\\").startswith(\\\"FAIL_\\\")][:20];s[\\\"top_fails\\\"]=fails;pend=[q[\\\"query_id\\\"] for q in d.get(\\\"queries\\\",[]) if q.get(\\\"overall_status\\\",\\\"\\\").startswith(\\\"NOT_TESTED\\\")][:10];s[\\\"top_pending\\\"]=pend;s[\\\"next_action\\\"]=\\\"Compare 미실행 쿼리 재검증\\\" if any(q.get(\\\"compare_status\\\")==\\\"not_tested\\\" for q in d.get(\\\"queries\\\",[])) else \\\"보고서 생성\\\";json.dump(s,open(\\\"workspace/state-snapshot.json\\\",\\\"w\\\"),indent=2,ensure_ascii=False)\" 2>/dev/null; echo \"[PreCompact] State snapshot saved\"'",
+            "command": "bash -c 'python3 -c \"import json,glob,os;s={};hf=\\\"pipeline/step-3-validate-fix/handoff.json\\\";s[\\\"handoff_step3\\\"]=json.load(open(hf)) if os.path.exists(hf) else {};qm=\\\"pipeline/step-4-report/output/query-matrix.json\\\";d=json.load(open(qm)) if os.path.exists(qm) else {};s[\\\"summary\\\"]=d.get(\\\"summary\\\",{});s[\\\"total\\\"]=d.get(\\\"total\\\",0);fails=[q[\\\"query_id\\\"]+\\\":\\\"+q.get(\\\"final_state\\\",\\\"\\\") for q in d.get(\\\"queries\\\",[]) if q.get(\\\"final_state\\\",\\\"\\\").startswith(\\\"FAIL_\\\")][:20];s[\\\"top_fails\\\"]=fails;pend=[q[\\\"query_id\\\"] for q in d.get(\\\"queries\\\",[]) if q.get(\\\"final_state\\\",\\\"\\\").startswith(\\\"NOT_TESTED\\\")][:10];s[\\\"top_pending\\\"]=pend;steps={};[steps.update({f\\\"step-{i}\\\":json.load(open(h)).get(\\\"status\\\",\\\"?\\\")}) for i in range(5) for h in glob.glob(f\\\"pipeline/step-{i}-*/handoff.json\\\")];s[\\\"steps\\\"]=steps;s[\\\"next_action\\\"]=\\\"gate_checks 확인\\\" if not s.get(\\\"handoff_step3\\\") else \\\"보고서 생성\\\" if s[\\\"handoff_step3\\\"].get(\\\"gate_checks\\\",{}).get(\\\"fix_loop_executed\\\",{}).get(\\\"status\\\")==\\\"pass\\\" else \\\"재위임\\\";json.dump(s,open(\\\"pipeline/supervisor-state.json\\\",\\\"w\\\"),indent=2,ensure_ascii=False)\" 2>/dev/null; echo \"[PreCompact] Supervisor state saved to pipeline/supervisor-state.json\"'",
             "timeout": 10
           }
         ]
@@ -62,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'echo \"=== [PostCompact] 상태 복구 ===\"; cat workspace/state-snapshot.json 2>/dev/null | python3 -c \"import json,sys;d=json.load(sys.stdin);print(f\\\"Total: {d.get(\\\\\\\"total\\\\\\\",0)}\\\");[print(f\\\"  {k}: {v}\\\") for k,v in d.get(\\\"summary\\\",{}).items() if v];print(f\\\"Next: {d.get(\\\\\\\"next_action\\\\\\\",\\\\\\\"unknown\\\\\\\")}\\\")\" 2>/dev/null || echo \"No state snapshot found\"'",
+            "command": "bash -c 'echo \"=== [PostCompact] 상태 복구 ===\"; if [ -f pipeline/supervisor-state.json ]; then python3 -c \"import json,sys;d=json.load(open(\\\"pipeline/supervisor-state.json\\\"));print(f\\\"Total: {d.get(\\\\\\\"total\\\\\\\",0)}\\\");[print(f\\\"  {k}: {v}\\\") for k,v in d.get(\\\"summary\\\",{}).items() if v];print(f\\\"Steps: {d.get(\\\\\\\"steps\\\\\\\",{})}\\\");print(f\\\"Next: {d.get(\\\\\\\"next_action\\\\\\\",\\\\\\\"unknown\\\\\\\")}\\\")\" 2>/dev/null; elif [ -f workspace/state-snapshot.json ]; then cat workspace/state-snapshot.json | python3 -c \"import json,sys;d=json.load(sys.stdin);print(f\\\"Total: {d.get(\\\\\\\"total\\\\\\\",0)}\\\");print(f\\\"Next: {d.get(\\\\\\\"next_action\\\\\\\",\\\\\\\"unknown\\\\\\\")}\\\")\" 2>/dev/null; else echo \\\"No state found\\\"; fi'",
             "timeout": 5
           }
         ]
@@ -74,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'PROGRESS=workspace/progress.json; if [ -f \"$PROGRESS\" ]; then echo \"=== OMA Pipeline Summary ===\"; python3 -c \"import json,sys; d=json.load(open(sys.argv[1])); p=d.get(\\\"_pipeline\\\",{}); steps=p.get(\\\"phases\\\",p.get(\\\"steps\\\",{})); total=len(steps); done=sum(1 for v in steps.values() if v.get(\\\"status\\\")==\\\"done\\\"); s=p.get(\\\"summary\\\",{}); print(f\\\"Completed: {done}/{total} steps\\\"); [print(f\\\"  {k}: {v.get(\\\"status\\\",\\\"unknown\\\")}\\\") for k,v in sorted(steps.items())]; print(f\\\"PASS:{s.get(\\\"success\\\",0)} FAIL:{s.get(\\\"fail\\\",0)} WAIT:{s.get(\\\"pending\\\",0)}\\\")\" \"$PROGRESS\" 2>/dev/null || echo \"Progress file exists but could not be parsed.\"; else echo \"No progress.json found. Pipeline has not been started.\"; fi'"
+            "command": "bash -c 'echo \"=== OMA Pipeline Summary ===\"; for i in 0 1 2 3 4; do h=$(ls pipeline/step-${i}-*/handoff.json 2>/dev/null | head -1); if [ -n \"$h\" ]; then st=$(python3 -c \"import json;print(json.load(open(\\\"$h\\\"))[\\\"status\\\"])\" 2>/dev/null); echo \"  Step $i: $st\"; else echo \"  Step $i: not started\"; fi; done; qm=pipeline/step-4-report/output/query-matrix.json; if [ -f \"$qm\" ]; then python3 -c \"import json;d=json.load(open(\\\"$qm\\\"));s=d.get(\\\"summary\\\",{});p=sum(v for k,v in s.items() if k.startswith(\\\"PASS_\\\"));f=sum(v for k,v in s.items() if k.startswith(\\\"FAIL_\\\"));n=sum(v for k,v in s.items() if k.startswith(\\\"NOT_\\\"));print(f\\\"PASS:{p} FAIL:{f} NOT_TESTED:{n}\\\")\" 2>/dev/null; fi'"
           }
         ]
       }
@@ -98,6 +99,12 @@
       "Bash(rm -r workspace/*)",
       "Bash(rm -rf workspace/*)",
       "Bash(cp -r workspace/*)",
+      "Bash(rm pipeline/*)",
+      "Bash(rm -r pipeline/*)",
+      "Bash(rm -rf pipeline/*)",
+      "Bash(cp pipeline/*)",
+      "Bash(cp -r pipeline/*)",
+      "Bash(ln -sfn *)",
       "Read",
       "Write",
       "Edit",

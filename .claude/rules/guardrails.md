@@ -85,12 +85,48 @@ inclusion: always
 ## 산출물 필수 규칙
 
 **모든 최종 단계(수정, 재검증, 보고서)는 아래 3개 산출물을 반드시 갱신해야 한다:**
-1. `workspace/reports/query-matrix.csv` — flat CSV
-2. `workspace/reports/query-matrix.json` — 상세 JSON (sql_before/after, attempts, test_cases, conversion_history)
-3. `workspace/reports/migration-report.html` — HTML 리포트
+1. `pipeline/step-4-report/output/query-matrix.csv` — flat CSV
+2. `pipeline/step-4-report/output/query-matrix.json` — 상세 JSON
+3. `pipeline/step-4-report/output/migration-report.html` — HTML 리포트
 
 수정 루프 완료 후, TC 보강 후, 어떤 재검증이든 끝나면 → **반드시 reporter에 위임하여 3개 파일 재생성.**
 query-matrix.json에 필수 필드(query_id, original_file, sql_before, sql_after, final_state, test_cases, attempts, conversion_history)가 없으면 불완전.
+
+## handoff.json 계약
+
+**각 Step 완료 시 handoff.json을 반드시 생성한다.** 슈퍼바이저는 이 파일만 읽고 판단한다.
+
+```bash
+python3 tools/generate-handoff.py --step {N} --results-dir {path} [options]
+```
+
+**Step 3 handoff.json 예제 (gate_checks 포함):**
+```json
+{
+  "step": "step-3-validate-fix",
+  "step_number": 3,
+  "status": "success",
+  "started_at": 1713101520,
+  "completed_at": 1713103200,
+  "summary": {
+    "queries_total": 426,
+    "explain_pass": 380,
+    "compare_pass": 350,
+    "fix_attempted": 25,
+    "state_counts": {"PASS_COMPLETE": 300, "PASS_HEALED": 15, "FAIL_SYNTAX": 8}
+  },
+  "gate_checks": {
+    "fix_loop_executed": {"status": "pass", "fail_no_loop_count": 0},
+    "compare_coverage": {"status": "pass", "compare_target": 414, "compare_done": 370, "compare_missing_non_dba": 0}
+  },
+  "outputs": {
+    "validation_dir": "pipeline/step-3-validate-fix/output/validation/",
+    "tracking_files_updated": ["pipeline/step-1-convert/output/results/UserMapper.xml/v1/query-tracking.json"]
+  },
+  "next_step": "step-4-report",
+  "next_step_recommendation": "proceed"
+}
+```
 
 ## 대량 unconverted 패턴 처리
 

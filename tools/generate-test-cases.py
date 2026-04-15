@@ -422,9 +422,11 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
 # ── Main ────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description='Phase 2.5: TC Generator (sample-data-first)')
+    ap = argparse.ArgumentParser(description='Step 2: TC Generator (sample-data-first)')
     ap.add_argument('--results-dir', default='workspace/results')
     ap.add_argument('--samples-dir', default=None, help='Sample data dir (default: <results>/_samples)')
+    ap.add_argument('--output-dir', default=None, help='Output dir for per-file TCs and merged-tc.json (default: write alongside parsed.json + <results>/_test-cases/)')
+    ap.add_argument('--custom-binds', default=None, help='Custom binds JSON path (default: workspace/input/custom-binds.json)')
     ap.add_argument('--java-src', default=None, help='Java source dir for VO parsing')
     ap.add_argument('--skip-oracle', action='store_true')
     ap.add_argument('--dml-row-limit', type=int, default=10000)
@@ -434,10 +436,25 @@ def main():
     DML_ROW_LIMIT = args.dml_row_limit
     results_dir = Path(args.results_dir)
     samples_dir = args.samples_dir or str(results_dir / '_samples')
+    output_dir = Path(args.output_dir) if args.output_dir else None
     print("=== Step 2: Test Case Generator ===\n")
 
-    # Collect sources
-    custom_binds = load_custom_binds('workspace/input')
+    # Collect sources — custom-binds 경로 지원
+    custom_binds_dir = args.custom_binds
+    if custom_binds_dir and Path(custom_binds_dir).is_file():
+        # 파일 직접 지정
+        custom_binds = load_custom_binds(str(Path(custom_binds_dir).parent), Path(custom_binds_dir).name)
+    elif custom_binds_dir and Path(custom_binds_dir).is_dir():
+        custom_binds = load_custom_binds(custom_binds_dir)
+    else:
+        # 기본: workspace/input/ 또는 pipeline/shared/
+        for cdir in ['workspace/input', 'pipeline/shared']:
+            if Path(cdir).exists():
+                custom_binds = load_custom_binds(cdir)
+                if custom_binds:
+                    break
+        else:
+            custom_binds = {}
     java_src = args.java_src or os.environ.get('JAVA_SRC_DIR', '')
     vo_map = parse_java_vo(java_src) if java_src else {}
     sample_data = load_sample_data(samples_dir)
@@ -469,7 +486,15 @@ def main():
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
         if file_tc:
-            (parsed_path.parent / 'test-cases.json').write_text(
+            # output-dir 지정 시 per-file TC를 별도 디렉토리에 저장
+            if output_dir:
+                filename_base = parsed.get('source_file', parsed_path.parent.parent.name)
+                out_tc_dir = output_dir / filename_base / 'v1'
+                out_tc_dir.mkdir(parents=True, exist_ok=True)
+                tc_out_path = out_tc_dir / 'test-cases.json'
+            else:
+                tc_out_path = parsed_path.parent / 'test-cases.json'
+            tc_out_path.write_text(
                 json.dumps(file_tc, indent=2, ensure_ascii=False), encoding='utf-8')
             total_files += 1
 
@@ -479,8 +504,17 @@ def main():
     _SKIP_TC_NAMES = {'null_test', 'empty_string'}
     merged_tc = {}
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
-        tc_path = parsed_path.parent / 'test-cases.json'
-        if not tc_path.exists(): continue
+        # output-dir 지정 시 per-file TC 경로도 확인
+        tc_paths = [parsed_path.parent / 'test-cases.json']
+        if output_dir:
+            filename_base = parsed_path.parent.parent.name
+            tc_paths.insert(0, output_dir / filename_base / 'v1' / 'test-cases.json')
+        tc_path = None
+        for tp in tc_paths:
+            if tp.exists():
+                tc_path = tp
+                break
+        if not tc_path: continue
         try: ftcs = json.loads(tc_path.read_text(encoding='utf-8'))
         except Exception: continue
         for qid, cases in ftcs.items():
@@ -489,7 +523,12 @@ def main():
                   if c.get('params') and c.get('name', '') not in _SKIP_TC_NAMES
                   and not all(v is None for v in c['params'].values())]
             if pl: merged_tc[qid] = pl
-    merged_path = results_dir / '_test-cases' / 'merged-tc.json'
+
+    # merged-tc.json 출력 위치: --output-dir 지정 시 output_dir/merged-tc.json, 아니면 기존 경로
+    if output_dir:
+        merged_path = output_dir / 'merged-tc.json'
+    else:
+        merged_path = results_dir / '_test-cases' / 'merged-tc.json'
     merged_path.parent.mkdir(parents=True, exist_ok=True)
     merged_path.write_text(json.dumps(merged_tc, indent=2, ensure_ascii=False), encoding='utf-8')
     print(f"  Merged TC: {merged_path} ({len(merged_tc)} queries)")
