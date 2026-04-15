@@ -16,6 +16,7 @@ skills:
   - db-oracle
   - db-postgresql
   - rule-convert
+  - llm-convert
   - param-type-convert
   - extract-sql
 ---

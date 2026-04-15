@@ -18,6 +18,8 @@ skills:
   - query-analyzer
   - param-type-convert
   - extract-sql
+  - complex-query-decomposer
+  - cross-file-analyzer
 ---
 
 # Oracle→PostgreSQL SQL Converter
