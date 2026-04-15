@@ -95,7 +95,8 @@ inclusion: always
     {"pattern": "NVL", "approach": "COALESCE 치환", "confidence": "high"}
   ],
   "test_cases": [
-    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"}
+    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"},
+    {"name": "tc_llm_1", "params": {"id": "USR042", "status": "ACTIVE"}, "source": "LLM"}
   ],
   "attempts": [],
   "explain_status": "pass",

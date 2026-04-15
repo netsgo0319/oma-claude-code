@@ -17,7 +17,8 @@ Step 2 TC 생성의 전체 파이프라인.
 ```bash
 bash ${CLAUDE_SKILL_DIR}/scripts/run-tc-generate.sh
 ```
-고객 바인드(custom-binds.json) > 샘플 데이터 > Java VO > V$SQL_BIND_CAPTURE > 추론.
+TC 소스: 고객 바인드 > Oracle 샘플 > **LLM (Bedrock Sonnet)** > 분기 변형 > 이름 추론.
+실데이터 없는 쿼리에 LLM이 SQL 문맥 기반으로 의미있는 TC 자동 생성 (source: "LLM").
 
 ### 2. TC 병합
 ```bash

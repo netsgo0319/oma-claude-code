@@ -23,6 +23,8 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
 
 **XML `*.xml` 전부 수집. 파일명 필터 금지. 파싱에서 MyBatis/iBatis 판별.**
 
+**LLM TC 환경변수 확인:** `LLM_TC_ENABLED=1`, `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK` 설정 필요.
+
 ### Step 1~4: 서브에이전트 위임
 
 각 에이전트의 `.claude/agents/*.md`와 skills에 절차가 정의되어 있다.

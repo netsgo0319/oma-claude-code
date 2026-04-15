@@ -84,7 +84,14 @@ python3 tools/generate-test-cases.py \
   --output-dir pipeline/step-2-tc-generate/output/per-file/
 ```
 
-TC 우선순위: **고객(custom-binds.json)** > 샘플 데이터 > Java VO > V$SQL_BIND_CAPTURE > 컬럼 통계 > FK > 이름 추론
+TC 소스 우선순위:
+1. **고객 바인드** (custom-binds.json, bind-variable-samples/) — 확실한 실값
+2. **Oracle 샘플** (_samples/*.json) — 테이블 실데이터
+3. **LLM TC** (Bedrock Sonnet) — 실데이터 없는 쿼리에 SQL 문맥 기반 생성 (source: "LLM")
+4. **분기 변형** (BRANCH_VARIANT) — <if>/<choose> on/off 조합
+5. **이름 추론** (infer_value) — 파라미터명 기반 fallback
+
+**LLM TC 환경변수:** `LLM_TC_ENABLED=1` (기본), `LLM_TC_MODEL=global.anthropic.claude-sonnet-4-6`
 
 ### 3b. 동적 SQL 분기별 TC 변형 보강
 
