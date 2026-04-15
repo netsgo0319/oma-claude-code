@@ -26,14 +26,27 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from collections import Counter, OrderedDict
+import re
+
+
+# Oracle functions/tables that indicate unconverted Oracle syntax, not genuinely missing PG objects
+ORACLE_BUILTIN_FUNCTIONS = {'nvl', 'nvl2', 'decode', 'to_number', 'to_char', 'to_date',
+                            'sysdate', 'systimestamp', 'listagg', 'ratio_to_report',
+                            'regexp_instr', 'regexp_substr', 'rownum',
+                            'wm_concat', 'trunc', 'add_months', 'months_between'}
+ORACLE_BUILTIN_TABLES = {'dual'}
 
 
 def extract_missing_object(error):
-    """에러 메시지에서 없는 오브젝트 이름 추출."""
+    """에러 메시지에서 없는 오브젝트 이름 추출.
+    Oracle 내장 함수/테이블이 missing으로 나오면 변환 누락이므로 None 반환 (FAIL_SYNTAX로 분류)."""
     err = str(error)
     # relation "schema.table" does not exist
     m = re.search(r'relation\s+"?([^"]+)"?\s+does not exist', err, re.I)
     if m:
+        obj_name = m.group(1).lower().split('.')[-1]  # strip schema prefix
+        if obj_name in ORACLE_BUILTIN_TABLES:
+            return None  # Oracle 'dual' etc. → 변환 누락, DBA 항목 아님
         return {'type': 'table', 'name': m.group(1), 'action': f'CREATE TABLE {m.group(1)}'}
     # column "col" does not exist / of relation "table"
     m = re.search(r'column\s+"?([^"]+)"?\s+(?:of relation\s+"?([^"]+)"?\s+)?does not exist', err, re.I)
@@ -47,6 +60,9 @@ def extract_missing_object(error):
     if not m:
         m = re.search(r'function\s+"?([^"]+)"?\s+does not exist', err, re.I)
     if m:
+        func_name = m.group(1).strip().lower()
+        if func_name in ORACLE_BUILTIN_FUNCTIONS:
+            return None  # Oracle 내장 함수 → 변환 누락, DBA 항목 아님
         return {'type': 'function', 'name': m.group(1).strip(), 'action': f'CREATE FUNCTION {m.group(1).strip()}'}
     return None
 
@@ -379,14 +395,15 @@ def main():
 
             # --- EXPLAIN ---
             explain = q.get('explain', {}) or {}
-            explain_status = explain.get('status', '')
-            explain_error = explain.get('error', '') or ''
-            explain_source = explain.get('validation_source', 'static')
+            if isinstance(explain, str):
+                explain_status = explain if explain in ('pass', 'fail', 'not_tested') else ''
+                explain_error = ''
+                explain_source = 'static'
+            else:
+                explain_status = explain.get('status', '')
+                explain_error = explain.get('error', '') or ''
+                explain_source = explain.get('validation_source', 'static')
 
-            # Also check Phase 3.5
-            explain_p35 = q.get('explain_phase35', {}) or {}
-            if explain_p35.get('status') == 'pass' and explain_status != 'pass':
-                explain_status = 'pass'
                 explain_error = ''
                 explain_source = 'mybatis'
 
@@ -412,6 +429,13 @@ def main():
                     explain_status = 'not_tested'
 
             explain_category = classify_explain_error(explain_error) if explain_status == 'fail' else ''
+
+            # Oracle 내장 함수/테이블이 missing으로 잡히면 변환 누락이므로 SYNTAX_ERROR로 재분류
+            if explain_category in ('MISSING_TABLE', 'MISSING_FUNCTION') and explain_error:
+                _test_obj = extract_missing_object(explain_error)
+                if _test_obj is None:
+                    # extract_missing_object가 None을 반환 = Oracle 내장 함수/테이블
+                    explain_category = 'SYNTAX_ERROR'
 
             # --- Compare ---
             # 1차: compare_validated.json에서 (외부 결과)
@@ -551,13 +575,20 @@ def main():
             # Normalize attempts into the spec format
             json_attempts = []
             for idx, att in enumerate(raw_attempts, 1):
-                err = att.get('error', '') or ''
+                # Support both old format (error/fix/summary) and new format (error_category/error_detail/fix_applied)
+                err = att.get('error_detail', '') or att.get('error', '') or ''
+                err_cat = att.get('error_category', '')
+                if not err_cat and err:
+                    err_cat = classify_explain_error(err)
+                fix = att.get('fix_applied', '') or att.get('fix', '') or att.get('summary', '') or ''
+                result = att.get('result', '') or att.get('status', 'unknown')
                 json_attempts.append(OrderedDict([
                     ('attempt', idx),
-                    ('error_category', classify_explain_error(err) if err else None),
-                    ('error_detail', err if err else None),
-                    ('fix_applied', att.get('fix', att.get('summary', '')) or ''),
-                    ('result', att.get('status', att.get('result', 'unknown'))),
+                    ('ts', att.get('ts', '')),
+                    ('error_category', err_cat or None),
+                    ('error_detail', err or None),
+                    ('fix_applied', fix),
+                    ('result', result),
                 ]))
             json_test_cases = test_cases_by_qid.get(qid, [])
             # conversion_history: 직접 필드 > rules_applied fallback

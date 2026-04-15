@@ -196,10 +196,17 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
 
     # Explain — explain 중첩 객체 + validated.json fallback
     explain = q.get('explain', {}) or {}
-    explain_status = explain.get('status', '')
-    explain_error = explain.get('error', '') or ''
+    if isinstance(explain, str):
+        explain_status = explain  # some agents write just "pass"/"fail"
+        explain_error = ''
+        explain = {}
+    else:
+        explain_status = explain.get('status', '')
+        explain_error = explain.get('error', '') or ''
     # explain_phase35 (MyBatis 렌더링 검증)도 확인
     explain_p35 = q.get('explain_phase35', {}) or {}
+    if isinstance(explain_p35, str):
+        explain_p35 = {'status': explain_p35}
     if explain_p35.get('status') == 'pass' and explain_status != 'pass':
         explain_status = 'pass'
         explain_error = ''
@@ -434,7 +441,10 @@ def generate_step3(args):
         # Gate check: FAIL without fix loop (non-DBA)
         attempts = q.get('attempts', []) or q.get('history', [])
         explain = q.get('explain', {}) or {}
-        explain_err = explain.get('error', '') or ''
+        if isinstance(explain, str):
+            explain_err = ''
+        else:
+            explain_err = explain.get('error', '') or ''
         is_dba = is_dba_error(explain_err)
         # validated.json의 에러도 확인 (tracking에 explain이 없을 수 있음)
         if not is_dba and qid in failures:
@@ -444,8 +454,11 @@ def generate_step3(args):
             no_loop_queries.append(qid)
 
     # Counts
-    explain_pass = sum(1 for q in queries if (q.get('explain', {}) or {}).get('status') == 'pass' or q.get('query_id', '') in passes)
-    explain_fail = sum(1 for q in queries if (q.get('explain', {}) or {}).get('status') == 'fail' or q.get('query_id', '') in failures)
+    def _explain_status(q):
+        e = q.get('explain', {}) or {}
+        return e if isinstance(e, str) else (e.get('status', '') if isinstance(e, dict) else '')
+    explain_pass = sum(1 for q in queries if _explain_status(q) == 'pass' or q.get('query_id', '') in passes)
+    explain_fail = sum(1 for q in queries if _explain_status(q) == 'fail' or q.get('query_id', '') in failures)
     explain_not_tested = len(queries) - explain_pass - explain_fail
 
     compare_qids = set(compare.keys())
@@ -475,7 +488,7 @@ def generate_step3(args):
         state = classify_state(q, passes, failures, compare)
         if state not in DBA_STATES and qid not in compare_qids and qtype not in _DML_TYPES:
             # Only count if explain passed (can't compare if explain failed)
-            if (q.get('explain', {}) or {}).get('status') == 'pass' or qid in passes:
+            if _explain_status(q) == 'pass' or qid in passes:
                 compare_missing_non_dba += 1
 
     # Tracking files updated (those with attempts)
