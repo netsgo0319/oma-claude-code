@@ -28,6 +28,29 @@ from datetime import datetime
 from collections import Counter, OrderedDict
 
 
+def extract_missing_object(error):
+    """에러 메시지에서 없는 오브젝트 이름 추출."""
+    err = str(error)
+    # relation "schema.table" does not exist
+    m = re.search(r'relation\s+"?([^"]+)"?\s+does not exist', err, re.I)
+    if m:
+        return {'type': 'table', 'name': m.group(1), 'action': f'CREATE TABLE {m.group(1)}'}
+    # column "col" does not exist / of relation "table"
+    m = re.search(r'column\s+"?([^"]+)"?\s+(?:of relation\s+"?([^"]+)"?\s+)?does not exist', err, re.I)
+    if m:
+        col = m.group(1)
+        table = m.group(2) or ''
+        return {'type': 'column', 'name': f'{table}.{col}' if table else col,
+                'action': f'ALTER TABLE {table} ADD COLUMN {col}' if table else f'ADD COLUMN {col}'}
+    # function X does not exist
+    m = re.search(r'function\s+"?([^"(]+)"?\s*\(', err, re.I)
+    if not m:
+        m = re.search(r'function\s+"?([^"]+)"?\s+does not exist', err, re.I)
+    if m:
+        return {'type': 'function', 'name': m.group(1).strip(), 'action': f'CREATE FUNCTION {m.group(1).strip()}'}
+    return None
+
+
 def classify_explain_error(error):
     """EXPLAIN 에러를 사람이 읽을 수 있는 카테고리로 분류."""
     err = str(error).lower()
@@ -72,6 +95,29 @@ OVERALL_LABELS = {
     'NOT_TESTED_NO_DB': 'DB 미접속/비교 미실행',
     'NOT_TESTED_PENDING': '변환 미완료',
 }
+
+
+def _build_dba_objects(rows):
+    """DBA 필요 오브젝트를 이름별로 그룹핑. 보고서 DBA 탭용."""
+    objects = {}  # name → {type, action, affected_queries: []}
+    for r in rows:
+        mo = r.get('_missing_object')
+        if not mo:
+            continue
+        name = mo['name']
+        if name not in objects:
+            objects[name] = {
+                'type': mo['type'],
+                'name': name,
+                'action': mo['action'],
+                'affected_queries': [],
+            }
+        objects[name]['affected_queries'].append({
+            'query_id': r['query_id'],
+            'file': r['file'],
+        })
+    # 영향 쿼리 수 내림차순 정렬
+    return sorted(objects.values(), key=lambda x: -len(x['affected_queries']))
 
 
 def _load_xml_bodies(xml_dir):
@@ -485,7 +531,8 @@ def main():
                 'explain_status': explain_status,
                 'explain_source': explain_source,
                 'explain_error_category': explain_category,
-                'explain_error_detail': explain_error,  # 전문 보존 (CSV에서는 자동 escape)
+                'explain_error_detail': explain_error,
+                '_missing_object': extract_missing_object(explain_error) if explain_category in ('MISSING_TABLE', 'MISSING_COLUMN', 'MISSING_FUNCTION') else None,
                 'compare_status': compare_status,
                 'compare_tc_total': tc_total,
                 'compare_tc_pass': tc_pass,
@@ -576,6 +623,7 @@ def main():
                 ('test_cases', r['_test_cases']),
                 ('attempts', r['_attempts']),
                 ('explain_status', r['explain_status']),
+                ('missing_object', r.get('_missing_object')),
                 ('compare_status', r['compare_status']),
                 ('compare_detail', r.get('_compare_detail', [])),
                 ('complexity', r['complexity']),
@@ -653,6 +701,13 @@ def main():
                     for r in rows for d in r.get('_compare_detail', [])
                     if not d.get('match', False)
                 ))),
+                ('dba_objects', _build_dba_objects(rows)),
+                ('dba_zero_rows', [
+                    {'query_id': r['query_id'], 'file': r['file']}
+                    for r in rows
+                    if any(d.get('oracle_rows') == 0 and d.get('pg_rows', 0) == 0
+                           for d in r.get('_compare_detail', []))
+                ]),
                 ('file_stats', list(file_stats.values())),
                 ('step_progress', step_progress),
                 ('queries', json_queries),

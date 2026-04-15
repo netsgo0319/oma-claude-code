@@ -751,6 +751,7 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="explorer">Explorer</button>
+  <button class="tab-btn" data-tab="dba">DBA</button>
   <button class="tab-btn" data-tab="log">Log</button>
 </div>
 
@@ -776,6 +777,11 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
     <div id="exp-panel-queries" style="width:25%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:4px"></div>
     <div id="exp-panel-detail" style="width:50%;overflow-y:auto;background:rgba(255,255,255,.02);border-radius:6px;padding:8px"></div>
   </div>
+</div>
+
+<!-- ========== DBA TAB ========== -->
+<div class="tab-content" id="tab-dba">
+  <div class="sec" id="dba-content"></div>
 </div>
 
 <!-- ========== LOG TAB ========== -->
@@ -1375,6 +1381,60 @@ function renderTimeline(){
   document.getElementById('timeline-list').innerHTML=html;
 }
 
+// ========== Render DBA Tab ==========
+function renderDBA(){
+  let qm=DATA.query_matrix||{};
+  let dbaObjects=qm.dba_objects||[];
+  let zeroRows=qm.dba_zero_rows||[];
+  let html='';
+
+  // 1. Missing Objects (테이블/컬럼/함수)
+  html+='<h2>Missing Objects — DBA 조치 필요</h2>';
+  if(dbaObjects.length===0){
+    html+='<p style="color:var(--dim)">누락 오브젝트 없음</p>';
+  } else {
+    html+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    html+='<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px">Type</th><th style="text-align:left;padding:6px">Name</th><th style="text-align:left;padding:6px">Action</th><th style="text-align:left;padding:6px">Affected Queries</th></tr>';
+    for(let obj of dbaObjects){
+      let typeColor=obj.type==='table'?'var(--fail)':obj.type==='column'?'var(--warn)':'var(--purple)';
+      let qList=obj.affected_queries.map(q=>`<span style="font-family:var(--mono);font-size:10px">${esc(q.query_id)}</span>`).join(', ');
+      html+=`<tr style="border-bottom:1px solid rgba(255,255,255,.05)">`;
+      html+=`<td style="padding:6px"><span style="color:${typeColor};font-weight:700">${obj.type.toUpperCase()}</span></td>`;
+      html+=`<td style="padding:6px;font-family:var(--mono)">${esc(obj.name)}</td>`;
+      html+=`<td style="padding:6px;font-family:var(--mono);font-size:11px;color:var(--accent2)">${esc(obj.action)}</td>`;
+      html+=`<td style="padding:6px">${obj.affected_queries.length}건 — ${qList}</td>`;
+      html+=`</tr>`;
+    }
+    html+='</table>';
+
+    // Summary by type
+    let tables=dbaObjects.filter(o=>o.type==='table');
+    let columns=dbaObjects.filter(o=>o.type==='column');
+    let functions=dbaObjects.filter(o=>o.type==='function');
+    html+=`<div style="margin-top:12px;font-size:12px;color:var(--dim)">`;
+    html+=`Total: ${dbaObjects.length} objects (`;
+    if(tables.length) html+=`${tables.length} tables, `;
+    if(columns.length) html+=`${columns.length} columns, `;
+    if(functions.length) html+=`${functions.length} functions`;
+    html+=`)</div>`;
+  }
+
+  // 2. Oracle 0건 쿼리
+  html+='<h2 style="margin-top:24px">Oracle 0건 쿼리 (양쪽 모두 0건)</h2>';
+  if(zeroRows.length===0){
+    html+='<p style="color:var(--dim)">해당 없음</p>';
+  } else {
+    html+=`<p style="font-size:12px;color:var(--dim)">${zeroRows.length}건 — TC 바인드값 또는 데이터 확인 필요</p>`;
+    html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';
+    for(let q of zeroRows){
+      html+=`<span style="background:var(--card2);padding:2px 6px;border-radius:3px;font-size:10px;font-family:var(--mono)">${esc(q.query_id)}</span>`;
+    }
+    html+='</div>';
+  }
+
+  document.getElementById('dba-content').innerHTML=html;
+}
+
 // ========== Render Log Tab ==========
 function renderLog(){
   let log=DATA.activity_log||[];
@@ -1625,6 +1685,7 @@ function expSelectQuery(fname, qid){
 
   document.getElementById('exp-panel-detail').innerHTML=html;
 }
+try{renderDBA();}catch(e){console.error("renderDBA:",e);}
 try{renderLog();}catch(e){console.error("renderLog:",e);}
 
 
