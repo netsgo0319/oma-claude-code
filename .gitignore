@@ -20,3 +20,5 @@ tools/mybatis-sql-extractor/build/
 tools/mybatis-sql-extractor/.gradle/
 __pycache__/
 *.pyc
+workspace/output/
+workspace/reports/
