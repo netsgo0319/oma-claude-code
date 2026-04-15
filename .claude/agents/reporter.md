@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Grep
 skills:
+  - report-pipeline
   - report-guide
   - audit-log
 ---

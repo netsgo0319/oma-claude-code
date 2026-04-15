@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Grep
 skills:
+  - tc-pipeline
   - generate-test-cases
   - db-oracle
   - db-postgresql

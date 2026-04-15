@@ -10,6 +10,7 @@ allowed-tools:
   - Glob
   - Grep
 skills:
+  - convert-pipeline
   - rule-convert
   - rule-convert-tool
   - llm-convert
