@@ -161,16 +161,18 @@ def load_validation_results(validation_dir, batches_dir=None):
 
 def _find_validated_files(d):
     if d and d.exists():
-        for f in sorted(d.glob('**/validated.json')):
-            yield f
+        # validated.json 또는 validated_*.json (에이전트가 다른 이름으로 저장할 수 있음)
+        for f in sorted(d.glob('**/validated*.json')):
+            if 'compare' not in f.name:  # compare_validated 제외
+                yield f
 
 
 def _find_compare_files(val_dir, batches_dir):
     for d in [val_dir, Path(batches_dir) if batches_dir else None]:
         if d and d.exists():
-            for f in sorted(d.glob('**/compare_validated.json')):
+            for f in sorted(d.glob('**/compare_validated*.json')):
                 yield f
-            for f in sorted(d.glob('**/compare_results.json')):
+            for f in sorted(d.glob('**/compare_results*.json')):
                 yield f
 
 
@@ -417,10 +419,11 @@ def generate_step3(args):
     # results-dir에도 _validation*이 있으면 validation_dir로 사용
     if not validation_dir:
         for candidate in [
+            'pipeline/step-3-validate-fix/output',
             'pipeline/step-3-validate-fix/output/validation',
             str(results_dir / '_validation'),
         ]:
-            if Path(candidate).exists() and list(Path(candidate).glob('**/validated.json')):
+            if Path(candidate).exists() and list(Path(candidate).glob('**/validated*.json')):
                 validation_dir = candidate
                 break
 

@@ -63,6 +63,57 @@ def _schema():
 
 _SQL_HDR = "SET PAGESIZE 0 FEEDBACK OFF LINESIZE 1000 TRIMSPOOL ON\n"
 
+# ── PG column type cache (타입 안전 바인딩용) ──────
+_PG_COL_TYPES = None  # lazy init
+
+def get_pg_column_types():
+    """PG information_schema에서 컬럼 타입 조회. {COLUMN_NAME_UPPER: data_type}."""
+    global _PG_COL_TYPES
+    if _PG_COL_TYPES is not None:
+        return _PG_COL_TYPES
+    _PG_COL_TYPES = {}
+    pg_host = os.environ.get('PG_HOST', '')
+    pg_db = os.environ.get('PG_DATABASE', '')
+    pg_user = os.environ.get('PG_USER', '')
+    pg_schema = os.environ.get('PG_SCHEMA', pg_user)
+    if not (pg_host and pg_db):
+        return _PG_COL_TYPES
+    try:
+        import subprocess, shutil
+        if not shutil.which('psql'):
+            return _PG_COL_TYPES
+        sql = f"""SELECT column_name || '|' || data_type
+FROM information_schema.columns
+WHERE table_schema = '{pg_schema}'
+ORDER BY column_name;"""
+        env = dict(os.environ, PGPASSWORD=os.environ.get('PG_PASSWORD', ''))
+        r = subprocess.run(
+            ['psql', '-h', pg_host, '-p', os.environ.get('PG_PORT', '5432'),
+             '-U', pg_user, '-d', pg_db, '-t', '-A', '-c', sql],
+            capture_output=True, text=True, timeout=30, env=env)
+        for line in r.stdout.strip().split('\n'):
+            parts = line.strip().split('|')
+            if len(parts) == 2 and parts[0]:
+                col_name = parts[0].strip().upper()
+                dtype = parts[1].strip().lower()
+                _PG_COL_TYPES[col_name] = dtype
+        if _PG_COL_TYPES:
+            print(f"  PG column types loaded: {len(_PG_COL_TYPES)} columns")
+    except Exception as e:
+        print(f"  WARNING: PG column type lookup failed: {e}")
+    return _PG_COL_TYPES
+
+# PG type → default value mapping
+_PG_TYPE_DEFAULTS = {
+    'integer': 1, 'bigint': 1, 'smallint': 1, 'numeric': 1, 'real': 1.0,
+    'double precision': 1.0, 'decimal': 1,
+    'character varying': 'TEST', 'character': 'T', 'text': 'TEST',
+    'boolean': True,
+    'date': '20260115', 'timestamp without time zone': '20260115103000',
+    'timestamp with time zone': '20260115103000',
+    'bytea': '', 'uuid': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+}
+
 # ── Source 1: Java VO analysis ──────────────────
 
 _JAVA_FIELD_RE = re.compile(r'private\s+(\w+(?:<.*?>)?)\s+(\w+)\s*;')
@@ -246,6 +297,14 @@ def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=
             if k in col_stats:
                 try: return int(float(col_stats[k].get('low', '')))
                 except (ValueError, TypeError): pass
+    # PG 컬럼 타입 기반 추론 (타입 안전 바인딩)
+    pg_types = get_pg_column_types()
+    if pg_types:
+        pg_type = pg_types.get(pu, '')
+        if pg_type:
+            for type_prefix, default_val in _PG_TYPE_DEFAULTS.items():
+                if pg_type.startswith(type_prefix):
+                    return default_val
     if any(k in pn for k in ('qty','cnt','amt','price','prc','rate','seq','no','num',
                               'idx','id','size','len','weight','page','limit','offset')): return 1
     if any(k in pn for k in ('date','day','dt','time','tm')): return '20260115'

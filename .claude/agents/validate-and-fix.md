@@ -63,6 +63,17 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 
 **반드시 `--files`로 할당된 파일만 검증. 전체 돌리기 금지.**
 
+### ★ output 경로 표준화 (필수)
+
+`--output` 인자를 반드시 아래 형식으로 지정하라:
+```bash
+python3 tools/validate-queries.py --full \
+  --output pipeline/step-3-validate-fix/output/validation/batch{N}
+```
+**`batch{N}` 이름을 슈퍼바이저가 할당한 배치 번호와 일치시켜라.**
+수정 루프 재검증 시에도 같은 디렉토리에 덮어쓴다 (validated.json이 최신 결과로 갱신).
+**임의 디렉토리명(validation_batchXX_v2, vf_agent1_... 등)을 만들지 마라.**
+
 ### 2. FAIL 분류 + 수정 루프
 
 **fix-loop 스킬을 따라라:**

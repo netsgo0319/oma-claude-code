@@ -180,6 +180,8 @@ def main():
     parser = argparse.ArgumentParser(description='Query Validation Matrix')
     parser.add_argument('--output', default='workspace/reports/query-matrix.csv')
     parser.add_argument('--results-dir', default='workspace/results')
+    parser.add_argument('--validation-dir', default=None,
+                        help='Step 3 validation output dir (default: auto-detect)')
     parser.add_argument('--input-dir', default=None, help='Original Oracle XML dir (for xml_before)')
     parser.add_argument('--output-dir', default=None, help='Converted PG XML dir (for xml_after)')
     parser.add_argument('--json', action='store_true', help='Also output JSON')
@@ -194,7 +196,27 @@ def main():
     xml_before_bodies = _load_xml_bodies(input_xml_dir)
     xml_after_bodies = _load_xml_bodies(output_xml_dir)
 
-    # Load validation results — glob all _validation* directories (supports batch splits)
+    # Resolve validation directory — pipeline 모드: step-3 output 자동 탐색
+    validation_dirs = []
+    if args.validation_dir:
+        validation_dirs.append(Path(args.validation_dir))
+    else:
+        # Auto-detect: pipeline mode + workspace mode
+        candidates = [
+            Path('pipeline/step-3-validate-fix/output'),
+            results_dir / '_validation',
+            results_dir / '_validation_phase35',
+        ]
+        for c in candidates:
+            if c.exists():
+                validation_dirs.append(c)
+        # Also check results_dir itself (workspace mode: _validation* inside results/)
+        if results_dir.exists():
+            for d in results_dir.iterdir():
+                if d.is_dir() and d.name.startswith('_validation'):
+                    validation_dirs.append(d)
+
+    # Load validation results — 재귀 탐색 all validated*.json (supports batch splits)
     # test_id format: "filename.queryId.variant" → extract bare queryId
     def _extract_bare_qid(test_id):
         """Extract bare query_id from test_id.
@@ -214,7 +236,15 @@ def main():
     val_by_qid = {}        # keyed by bare query_id (best result wins)
     # Also build file-scoped lookup for precise matching
     val_by_file_qid = {}   # keyed by (filename_base, query_id)
-    for vp in sorted(results_dir.glob('_validation*/**/validated.json')):
+    _validated_files = set()
+    for vdir in validation_dirs:
+        for vp in sorted(vdir.glob('**/validated*.json')):
+            _validated_files.add(vp)
+    # Also check legacy path
+    for vp in sorted(results_dir.glob('_validation*/**/validated*.json')):
+        _validated_files.add(vp)
+    print(f"  Found {len(_validated_files)} validated result files")
+    for vp in sorted(_validated_files):
         val_dir = vp.parent
         with open(vp) as _f:
             vdata = json.load(_f)
@@ -252,23 +282,32 @@ def main():
                 if fq_key not in val_by_file_qid:
                     val_by_file_qid[fq_key] = entry
 
-    # Load compare results — glob all _validation* directories
+    # Load compare results — 재귀 탐색 all compare_validated*.json
     # Also index by bare query_id (compare_results uses query_id or test_id)
     compare_results = {}
-    for cp in sorted(results_dir.glob('_validation*/**/compare_validated.json')):
+    _compare_files = set()
+    for vdir in validation_dirs:
+        for cp in sorted(vdir.glob('**/compare_validated*.json')):
+            _compare_files.add(cp)
+        for cp in sorted(vdir.glob('**/compare_results*.json')):
+            _compare_files.add(cp)
+    for cp in sorted(results_dir.glob('_validation*/**/compare_validated*.json')):
+        _compare_files.add(cp)
+    for cp in sorted(results_dir.glob('_validation*/**/compare_results*.json')):
+        _compare_files.add(cp)
+    print(f"  Found {len(_compare_files)} compare result files")
+    for cp in sorted(_compare_files):
         with open(cp) as _f:
             cdata = json.load(_f)
         for r in cdata.get('results', []):
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
             compare_results.setdefault(bare, []).append(r)
-    for cp in sorted(results_dir.glob('_validation*/**/compare_results.json')):
-        with open(cp) as _f:
-            cdata = json.load(_f)
-        for r in cdata.get('results', []):
-            raw_qid = r.get('query_id', r.get('test_id', ''))
-            bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
-            compare_results.setdefault(bare, []).append(r)
+            # file-scoped compare lookup
+            parts = raw_qid.split('.')
+            if len(parts) >= 2:
+                fq_key = (parts[0], parts[1])
+                compare_results.setdefault(fq_key, []).append(r)
 
     # Load test-cases.json files (keyed by query_id)
     test_cases_by_qid = {}
@@ -323,16 +362,22 @@ def main():
 
     pg_extracted = set()
     extracted_pg_sql = {}  # {qid: full_sql}
-    for ef in glob.glob(str(results_dir / '_extracted_pg' / '*-extracted.json')):
-        with open(ef) as _f:
-            _tmpdata = json.load(_f)
-        for q in _tmpdata.get('queries', []):
-            qid = q.get('query_id', '')
-            pg_extracted.add(qid)
-            variants = q.get('sql_variants', [])
-            best_sql = max((v.get('sql', '') for v in variants), key=len, default='')
-            if best_sql and (qid not in extracted_pg_sql or len(best_sql) > len(extracted_pg_sql[qid])):
-                extracted_pg_sql[qid] = best_sql
+    # pipeline step-3 extracted_pg 탐색
+    _pg_extracted_dirs = [results_dir / '_extracted_pg']
+    for vdir in validation_dirs:
+        _pg_extracted_dirs.append(vdir / 'extracted_pg')
+    _pg_extracted_dirs.append(Path('pipeline/step-3-validate-fix/output/extracted_pg'))
+    for _pedir in _pg_extracted_dirs:
+        for ef in glob.glob(str(_pedir / '*-extracted.json')):
+            with open(ef) as _f:
+                _tmpdata = json.load(_f)
+            for q in _tmpdata.get('queries', []):
+                qid = q.get('query_id', '')
+                pg_extracted.add(qid)
+                variants = q.get('sql_variants', [])
+                best_sql = max((v.get('sql', '') for v in variants), key=len, default='')
+                if best_sql and (qid not in extracted_pg_sql or len(best_sql) > len(extracted_pg_sql[qid])):
+                    extracted_pg_sql[qid] = best_sql
 
     # Build matrix from query-tracking.json — latest version per file only
     # {file_dir: {version_num: path}} → pick highest version
@@ -421,9 +466,13 @@ def main():
             explain_category = classify_explain_error(explain_error) if explain_status == 'fail' else ''
 
             # --- Compare ---
-            # 1차: compare_validated.json에서 (외부 결과)
-            cmp_results = compare_results.get(qid, [])
-            # 2차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
+            # 1차: file-scoped compare (정확한 매칭)
+            fname_no_ext = fname.replace('.xml', '')
+            cmp_results = compare_results.get((fname_no_ext, qid), [])
+            # 2차: bare qid compare (fallback)
+            if not cmp_results:
+                cmp_results = compare_results.get(qid, [])
+            # 3차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
             if not cmp_results:
                 tracking_cmp = q.get('compare_results', [])
                 if tracking_cmp and isinstance(tracking_cmp, list):
