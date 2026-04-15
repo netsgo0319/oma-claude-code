@@ -118,14 +118,23 @@ def main():
     # Load validation results — glob all _validation* directories (supports batch splits)
     # test_id format: "filename.queryId.variant" → extract bare queryId
     def _extract_bare_qid(test_id):
-        """Extract bare query_id from test_id like 'file.queryId.variant'."""
+        """Extract bare query_id from test_id.
+        Formats:
+          'file.queryId.variant' → queryId (parts[-2])
+          'file.queryId'         → queryId (parts[-1], not parts[-2]!)
+          'queryId'              → queryId
+        """
         parts = test_id.split('.')
-        if len(parts) >= 2:
-            return parts[-2]  # second-to-last part = queryId
+        if len(parts) >= 3:
+            return parts[-2]  # file.queryId.variant → queryId
+        elif len(parts) == 2:
+            return parts[-1]  # file.queryId → queryId (NOT parts[-2] which is filename!)
         return test_id
 
     val_results = {}       # keyed by full test_id
     val_by_qid = {}        # keyed by bare query_id (best result wins)
+    # Also build file-scoped lookup for precise matching
+    val_by_file_qid = {}   # keyed by (filename_base, query_id)
     for vp in sorted(results_dir.glob('_validation*/**/validated.json')):
         val_dir = vp.parent
         vdata = json.load(open(vp))
@@ -139,6 +148,14 @@ def main():
             bare = _extract_bare_qid(tid)
             if bare not in val_by_qid or val_by_qid[bare]['status'] == 'fail':
                 val_by_qid[bare] = entry
+            # file-scoped lookup (file.queryId 형태)
+            parts = tid.split('.')
+            if len(parts) >= 2:
+                file_key = parts[0]
+                qid_key = parts[1] if len(parts) >= 3 else parts[-1]
+                fq_key = (file_key, qid_key)
+                if fq_key not in val_by_file_qid or val_by_file_qid[fq_key]['status'] == 'fail':
+                    val_by_file_qid[fq_key] = entry
         for f in vdata.get('failures', []):
             tid = f.get('test', f.get('test_id', ''))
             entry = {'status': 'fail', 'error': f.get('error', '')[:300], 'source': source}
@@ -147,6 +164,13 @@ def main():
             bare = _extract_bare_qid(tid)
             if bare not in val_by_qid:
                 val_by_qid[bare] = entry
+            parts = tid.split('.')
+            if len(parts) >= 2:
+                file_key = parts[0]
+                qid_key = parts[1] if len(parts) >= 3 else parts[-1]
+                fq_key = (file_key, qid_key)
+                if fq_key not in val_by_file_qid:
+                    val_by_file_qid[fq_key] = entry
 
     # Load compare results — glob all _validation* directories
     # Also index by bare query_id (compare_results uses query_id or test_id)
@@ -269,10 +293,20 @@ def main():
                 explain_error = ''
                 explain_source = 'mybatis'
 
-            # Fallback: check from validation results (bare query_id lookup)
-            # query-tracking.json에 결과가 없거나 빈 값이면 validated.json에서 보충
+            # Fallback: validated.json에서 보충 (3단계: file-scoped → bare qid → cross-file)
             if not explain_status or explain_status == 'not_tested':
-                vr = val_by_qid.get(qid)
+                # 1) file-scoped: (filename_base, qid) 정확 매칭
+                fname_base = fname.replace('.xml', '') if fname.endswith('.xml') else fname
+                vr = val_by_file_qid.get((fname_base, qid))
+                # 2) bare qid 매칭
+                if not vr:
+                    vr = val_by_qid.get(qid)
+                # 3) cross-file: 다른 파일에서 같은 qid로 등록된 결과
+                if not vr:
+                    for fq_key, fq_val in val_by_file_qid.items():
+                        if fq_key[1] == qid:
+                            vr = fq_val
+                            break
                 if vr:
                     explain_status = vr['status']
                     explain_error = vr.get('error', '')
