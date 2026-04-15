@@ -9,6 +9,15 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+skills:
+  - rule-convert
+  - rule-convert-tool
+  - llm-convert
+  - parse-xml
+  - xml-splitter
+  - query-analyzer
+  - param-type-convert
+  - extract-sql
 ---
 
 # Oracle→PostgreSQL SQL Converter

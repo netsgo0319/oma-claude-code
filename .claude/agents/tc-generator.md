@@ -7,6 +7,10 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+skills:
+  - generate-test-cases
+  - db-oracle
+  - db-postgresql
 ---
 
 # TC Generator Agent

@@ -9,6 +9,15 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+skills:
+  - explain-test
+  - execute-test
+  - compare-test
+  - db-oracle
+  - db-postgresql
+  - rule-convert
+  - param-type-convert
+  - extract-sql
 ---
 
 # Validate-and-Fix Agent
