@@ -181,14 +181,24 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
     """14-state 분류 (generate-query-matrix.py와 동일 로직)."""
     qid = q.get('query_id', '')
     method = q.get('conversion_method', '')
-    conv_status = 'converted' if q.get('pg_sql') else 'pending'
+    # conv_status: pg_sql 존재 OR status 필드로 판별 (둘 다 확인)
+    tracking_status = q.get('status', '')
     if method == 'no_change':
         conv_status = 'no_change'
+    elif q.get('pg_sql') or tracking_status in ('converted', 'success', 'validated'):
+        conv_status = 'converted'
+    else:
+        conv_status = 'pending'
 
-    # Explain
+    # Explain — explain 중첩 객체 + validated.json fallback
     explain = q.get('explain', {}) or {}
     explain_status = explain.get('status', '')
     explain_error = explain.get('error', '') or ''
+    # explain_phase35 (MyBatis 렌더링 검증)도 확인
+    explain_p35 = q.get('explain_phase35', {}) or {}
+    if explain_p35.get('status') == 'pass' and explain_status != 'pass':
+        explain_status = 'pass'
+        explain_error = ''
     if not explain_status or explain_status == 'not_tested':
         if qid in explain_passes:
             explain_status = 'pass'
@@ -200,13 +210,19 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
 
     # Compare
     cmp_results = compare_results.get(qid, [])
+    # query-tracking 내장 compare_results도 확인
+    if not cmp_results:
+        tracking_cmp = q.get('compare_results', [])
+        if tracking_cmp:
+            cmp_results = tracking_cmp
     if cmp_results:
         tc_fail = sum(1 for c in cmp_results if not c.get('match', False))
         compare_status = 'pass' if tc_fail == 0 else 'fail'
     else:
         compare_status = 'not_tested'
 
-    attempts = q.get('attempts', [])
+    # attempts OR history (스키마는 history, 실제로는 attempts도 사용)
+    attempts = q.get('attempts', []) or q.get('history', [])
     attempt_count = len(attempts)
     mybatis = bool(q.get('_has_extracted'))
 
@@ -358,6 +374,33 @@ def generate_step3(args):
     validation_dir = args.validation_dir
     batches_dir = args.batches_dir
 
+    # 배치 디렉토리 자동 탐색 — --batches-dir 미지정이면 validation-dir 형제에서 찾기
+    if not batches_dir:
+        # pipeline/step-3-validate-fix/output/batches/ 또는 workspace/results/ 내 _validation_batch-*
+        for candidate in [
+            'pipeline/step-3-validate-fix/output/batches',
+            'workspace/results',  # _validation_batch-* 형태
+        ]:
+            if Path(candidate).exists():
+                # batches/ 하위에 batch-* 디렉토리가 있는지
+                if list(Path(candidate).glob('batch-*')):
+                    batches_dir = candidate
+                    break
+                # _validation_batch-* 형태
+                if list(Path(candidate).glob('_validation_batch*')):
+                    batches_dir = candidate
+                    break
+
+    # results-dir에도 _validation*이 있으면 validation_dir로 사용
+    if not validation_dir:
+        for candidate in [
+            'pipeline/step-3-validate-fix/output/validation',
+            str(results_dir / '_validation'),
+        ]:
+            if Path(candidate).exists() and list(Path(candidate).glob('**/validated.json')):
+                validation_dir = candidate
+                break
+
     queries, files_seen = load_all_tracking(results_dir)
     passes, failures, compare = load_validation_results(validation_dir, batches_dir)
 
@@ -370,10 +413,13 @@ def generate_step3(args):
         state_counts[state] += 1
 
         # Gate check: FAIL without fix loop (non-DBA)
-        attempts = q.get('attempts', [])
+        attempts = q.get('attempts', []) or q.get('history', [])
         explain = q.get('explain', {}) or {}
         explain_err = explain.get('error', '') or ''
         is_dba = is_dba_error(explain_err)
+        # validated.json의 에러도 확인 (tracking에 explain이 없을 수 있음)
+        if not is_dba and qid in failures:
+            is_dba = is_dba_error(failures[qid])
         is_fail = state.startswith('FAIL_') and state not in DBA_STATES
         if is_fail and len(attempts) == 0 and not is_dba:
             no_loop_queries.append(qid)
