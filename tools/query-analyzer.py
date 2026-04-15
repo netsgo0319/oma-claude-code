@@ -66,16 +66,26 @@ PATTERN_MIN_LEVEL = {
 }
 
 
-def classify_level(score, min_level=0):
-    """점수 + 최소 레벨 → 최종 레벨 분류.
-    min_level: 개별 패턴이 강제하는 최소 레벨 (CONNECT_BY가 있으면 최소 L3).
-    점수 기반 레벨과 min_level 중 높은 쪽을 채택."""
+def classify_level(score, min_level=0, has_dynamic=False):
+    """점수 + 최소 레벨 + 동적 SQL 유무 → 최종 레벨 분류.
+
+    핵심 경계:
+      - L0~L1: Oracle 패턴만 (룰 변환으로 충분). 동적 SQL 없음.
+      - L2+:   동적 SQL 있음 (if/choose/foreach 등). 분기별 검증 필요.
+      - L3+:   LLM 필요 패턴 (CONNECT_BY, MERGE_INTO 등). 구조 변환 필수.
+
+    min_level: 개별 패턴이 강제하는 최소 레벨 (CONNECT_BY → 최소 L3).
+    has_dynamic: 동적 SQL 태그 존재 여부 (있으면 최소 L2).
+    """
     score_level = (
         0 if score == 0 else
         1 if score <= 3 else
         2 if score <= 6 else
         3 if score <= 12 else 4
     )
+    # 동적 SQL이 있으면 최소 L2 (분기별 검증 필요)
+    if has_dynamic and min_level < 2:
+        min_level = max(min_level, 2)
     level_num = max(score_level, min_level)
     names = {0: 'Static', 1: 'Simple Rule', 2: 'Dynamic Simple', 3: 'Dynamic Complex', 4: 'Oracle Complex'}
     return f'L{level_num}', names[level_num]
@@ -142,7 +152,15 @@ def analyze(parsed_path):
             if pat_min > min_level:
                 min_level = pat_min
 
-        # 동적 SQL 점수
+        # 동적 SQL 점수 + 동적 SQL 존재 여부 판별
+        # if/choose/foreach/iterate 등 실질적 동적 태그가 있으면 has_dynamic=True
+        _REAL_DYNAMIC_TAGS = {'if', 'choose', 'foreach', 'iterate', 'dynamic',
+                              'isNotNull', 'isNotEmpty', 'isNull', 'isEmpty',
+                              'isEqual', 'isNotEqual', 'isGreaterThan', 'isGreaterEqual',
+                              'isLessThan', 'isLessEqual', 'isPropertyAvailable',
+                              'isNotPropertyAvailable', 'isParameterPresent',
+                              'isNotParameterPresent'}
+        has_dynamic = False
         for dyn in q.get('dynamic_elements', []):
             tag = dyn.get('tag', '')
             s = DYNAMIC_SCORES.get(tag, 0)
@@ -150,6 +168,8 @@ def analyze(parsed_path):
                 key = f'dynamic_{tag}'
                 breakdown[key] = breakdown.get(key, 0) + s
                 score += s
+            if tag in _REAL_DYNAMIC_TAGS:
+                has_dynamic = True
 
         # Include 참조 점수
         for inc in q.get('includes', []):
@@ -166,7 +186,7 @@ def analyze(parsed_path):
             breakdown['dollar_substitution'] = 1
             score += 1
 
-        level, level_name = classify_level(score, min_level)
+        level, level_name = classify_level(score, min_level, has_dynamic)
         scores.append({
             'query_id': q['query_id'],
             'score': score,

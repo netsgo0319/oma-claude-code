@@ -800,8 +800,16 @@ SET HEADING ON
         output_path.mkdir(parents=True, exist_ok=True)
 
         all_tests = []
+        # PG search_path 설정 — $user가 스키마명과 다를 수 있으므로 명시적 설정 필수
+        pg_schema = os.environ.get('PG_SCHEMA', '')
+        search_path_line = f"SET search_path TO {pg_schema}, public;" if pg_schema else ""
         explain_lines = ["\\set ON_ERROR_STOP off", ""]
         execute_lines = ["\\set ON_ERROR_STOP off", ""]
+        if search_path_line:
+            explain_lines.append(search_path_line)
+            explain_lines.append("")
+            execute_lines.append(search_path_line)
+            execute_lines.append("")
         # Oracle compare script (sqlplus format)
         ora_schema = os.environ.get('ORACLE_SCHEMA', '')
         oracle_lines = [
