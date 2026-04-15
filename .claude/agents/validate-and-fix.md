@@ -39,15 +39,11 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 
 ## 수행 절차
 
-### 1. 초기 검증
+### ★★★ 절대 규칙: validate-queries.py --full만 사용 ★★★
 
-**반드시 `--files`로 할당된 파일만 검증. 전체 돌리기 금지.**
+**검증은 반드시 아래 명령 하나로만 한다. 다른 방법 전부 금지.**
 
 ```bash
-# MyBatis 렌더링
-bash tools/run-extractor.sh --validate
-
-# 검증 (--full 원자적 실행, 배치별 output 분리)
 python3 tools/validate-queries.py --full \
   --files {할당된 파일1},{할당된 파일2} \
   --extracted pipeline/step-3-validate-fix/output/extracted_pg/ \
@@ -55,8 +51,31 @@ python3 tools/validate-queries.py --full \
   --tracking-dir pipeline/step-1-convert/output/results/
 ```
 
-`--full`은 EXPLAIN → Execute → Compare → 결과 파싱을 **원자적으로** 수행.
-개별 단계를 따로 실행하지 마라.
+**금지 목록 (이전에 에이전트가 이것들을 해서 4.3% 커버리지가 나왔다):**
+- ❌ psql -c "EXPLAIN ..." 직접 실행
+- ❌ SQL 파일을 직접 작성해서 psql에 넘기기
+- ❌ --full 없이 --generate, --local, --execute 따로 실행
+- ❌ Python으로 SQL을 조립해서 subprocess.run(['psql', ...])
+- ❌ "먼저 EXPLAIN만 돌리고 나중에 Compare" 분리 실행
+
+**`--full` 하나가 EXPLAIN + Execute + Compare + 결과파싱을 전부 한다.**
+**이 명령 외의 어떤 방법으로도 검증하지 마라.**
+
+### 1. 초기 검증
+
+**반드시 `--files`로 할당된 파일만 검증. 전체 돌리기 금지.**
+
+```bash
+# 1) MyBatis 렌더링 (run-extractor.sh)
+bash tools/run-extractor.sh --validate
+
+# 2) 검증 (--full 원자적 실행)
+python3 tools/validate-queries.py --full \
+  --files {할당된 파일1},{할당된 파일2} \
+  --extracted pipeline/step-3-validate-fix/output/extracted_pg/ \
+  --output pipeline/step-3-validate-fix/output/validation/ \
+  --tracking-dir pipeline/step-1-convert/output/results/
+```
 
 ### 1b. 검증 결과 즉시 확인 (★ 빈 결과 = 실행 실패)
 
