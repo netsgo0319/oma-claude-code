@@ -1,6 +1,6 @@
 ---
 name: converter
-model: opus
+model: opus[1m]
 description: Oracle MyBatis XML을 PostgreSQL로 변환. 사용자가 '변환해줘', 'convert', 'Oracle→PG' 등을 요청하면 위임. batch-process.sh로 룰 변환 후 unconverted는 LLM 변환.
 tools:
   - Read
