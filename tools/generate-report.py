@@ -147,7 +147,8 @@ def _derive_progress(ws):
 
 
 def collect_data(base_dir):
-    """Collect all available data from the workspace."""
+    """query-matrix.json을 단일 소스로 보고서 데이터를 구성한다.
+    query-matrix.json이 없으면 에러. 반드시 generate-query-matrix.py --json을 먼저 실행."""
     data = {
         'generated_at': datetime.now().isoformat(),
         'progress': None,
@@ -166,229 +167,181 @@ def collect_data(base_dir):
 
     ws = Path(base_dir) / 'workspace'
 
-    # 1. Progress
-    data['progress'] = load_json(ws / 'progress.json')
-    # If progress.json doesn't exist or has incomplete phases, supplement from result files
-    if data['progress'] is None:
-        data['progress'] = _derive_progress(ws)
-    else:
-        # Merge derived phases into existing progress (fill gaps)
-        derived = _derive_progress(ws)
-        existing_phases = data['progress'].setdefault('_pipeline', {}).setdefault('phases', {})
-        for pid, pdata in derived.get('_pipeline', {}).get('phases', {}).items():
-            if pid not in existing_phases:
-                existing_phases[pid] = pdata
-        # Fix current_phase_name if missing
-        if not data['progress'].get('_pipeline', {}).get('current_phase_name'):
-            data['progress']['_pipeline']['current_phase_name'] = derived.get('_pipeline', {}).get('current_phase_name', '')
-        # Supplement file data (oraclePatterns, queries_total) if missing
-        derived_files = derived.get('files', {})
-        existing_files = data['progress'].setdefault('files', {})
-        for fname, fdata in derived_files.items():
-            if fname not in existing_files:
-                existing_files[fname] = fdata
-            else:
-                # Fill missing fields
-                for k, v in fdata.items():
-                    if k not in existing_files[fname] or not existing_files[fname][k]:
-                        existing_files[fname][k] = v
+    # ★ 핵심: query-matrix.json이 유일한 데이터 소스
+    qm_path = ws / 'reports' / 'query-matrix.json'
+    # pipeline 모드 fallback
+    if not qm_path.exists():
+        qm_path = Path('pipeline/step-4-report/output/query-matrix.json')
+    if not qm_path.exists():
+        print("ERROR: query-matrix.json not found. Run generate-query-matrix.py --json first.")
+        # Fallback: 기존 로직으로 derive (하위 호환)
+        return _collect_data_legacy(base_dir)
 
-    # 2. Input/Output XML files
-    for xml_file in sorted((ws / 'input').glob('*.xml')) if (ws / 'input').exists() else []:
-        data['input_files'].append({
-            'name': xml_file.name,
-            'size_bytes': xml_file.stat().st_size,
-            'lines': sum(1 for _ in open(xml_file, encoding='utf-8', errors='ignore')),
-            'queries': count_xml_queries(xml_file),
-        })
+    qm_data = load_json(qm_path)
+    if not qm_data or 'queries' not in qm_data:
+        print("ERROR: query-matrix.json is empty or malformed.")
+        return _collect_data_legacy(base_dir)
 
-    for xml_file in sorted((ws / 'output').glob('*.xml')) if (ws / 'output').exists() else []:
-        data['output_files'].append({
-            'name': xml_file.name,
-            'size_bytes': xml_file.stat().st_size,
-            'lines': sum(1 for _ in open(xml_file, encoding='utf-8', errors='ignore')),
-            'queries': count_xml_queries(xml_file),
-        })
+    data['query_matrix'] = qm_data
 
-    # 3. Per-file results + query-tracking.json
+    # 1. Step progress — query-matrix.json의 step_progress 또는 handoff에서
+    step_progress = qm_data.get('step_progress', {})
+    progress = {'_pipeline': {'phases': {}}, 'files': {}}
+    for step_key, sp in step_progress.items():
+        progress['_pipeline']['phases'][step_key] = {'status': sp.get('status', 'unknown')}
+    data['progress'] = progress
+
+    # 2. File stats — query-matrix.json의 file_stats에서
+    file_stats = {fs['file']: fs for fs in qm_data.get('file_stats', [])}
+
+    # Input/Output XML 기본 정보 — 파일 시스템에서 보충 (크기/줄수)
+    for xml_dir_key, data_key in [('input', 'input_files'), ('output', 'output_files')]:
+        xml_dir = ws / xml_dir_key
+        if xml_dir.exists():
+            for xml_file in sorted(xml_dir.glob('*.xml')):
+                try:
+                    data[data_key].append({
+                        'name': xml_file.name,
+                        'size_bytes': xml_file.stat().st_size,
+                        'lines': sum(1 for _ in open(xml_file, encoding='utf-8', errors='ignore')),
+                        'queries': count_xml_queries(xml_file),
+                    })
+                except Exception:
+                    pass
+
+    # 3. Per-file tracking — query-matrix.json의 queries를 파일별로 그룹화
+    files_data = {}
+    for q in qm_data.get('queries', []):
+        fname = q.get('original_file', '')
+        if not fname:
+            continue
+        fname_base = fname.replace('.xml', '') if fname.endswith('.xml') else fname
+
+        if fname_base not in files_data:
+            files_data[fname_base] = {
+                'name': fname_base,
+                'versions': {'v1': {'query-tracking': {'file': fname, 'queries': []}}},
+            }
+        # 쿼리 데이터를 tracking 형식으로 변환
+        qdata = {
+            'query_id': q.get('query_id', ''),
+            'type': '',
+            'oracle_sql': q.get('sql_before', ''),
+            'pg_sql': q.get('sql_after', ''),
+            'conversion_method': q.get('conversion_method', ''),
+            'complexity': q.get('complexity', ''),
+            'status': 'success' if q.get('final_state', '').startswith('PASS_') else 'failed',
+            'explain': {'status': q.get('explain_status', '')},
+            'compare_results': [{'match': q.get('compare_status') == 'pass'}] if q.get('compare_status') != 'not_tested' else [],
+            'attempts': q.get('attempts', []),
+            'conversion_history': q.get('conversion_history', []),
+            'oracle_patterns': [],
+        }
+        files_data[fname_base]['versions']['v1']['query-tracking']['queries'].append(qdata)
+
+        # tracking map에도 추가
+        if fname not in data['tracking']:
+            data['tracking'][fname] = {'file': fname, 'queries': []}
+        data['tracking'][fname]['queries'].append(qdata)
+
+    data['files'] = files_data
+
+    # 4. Validation summary — query-matrix.json에서 derive
+    total_q = qm_data.get('total', 0)
+    summary_counts = qm_data.get('summary', {})
+    pass_count = sum(v for k, v in summary_counts.items() if k.startswith('PASS_'))
+    fail_count = sum(v for k, v in summary_counts.items() if k.startswith('FAIL_'))
+    data['validation'] = {
+        'total': total_q,
+        'pass': pass_count,
+        'fail': fail_count,
+        'passes': [q['query_id'] for q in qm_data['queries'] if q.get('explain_status') == 'pass'],
+        'failures': [{'test': q['query_id'], 'error': q.get('final_state_detail', '')}
+                     for q in qm_data['queries'] if q.get('explain_status') == 'fail'],
+    }
+
+    # 5. Comparison — query-matrix.json에서 derive
+    compare_results = []
+    for q in qm_data.get('queries', []):
+        if q.get('compare_status') != 'not_tested':
+            compare_results.append({
+                'query_id': q['query_id'],
+                'match': q.get('compare_status') == 'pass',
+            })
+    data['comparison'] = {'results': compare_results} if compare_results else None
+
+    # 6. Activity log — 유일하게 query-matrix.json 외부에서 읽는 데이터
+    data['activity_log'] = load_jsonl(ws / 'logs' / 'activity-log.jsonl')
+
+    # 7. Summary — query-matrix.json에서 derive
+    qm_summary = qm_data.get('summary', {})
+    data['summary'] = {
+        'total_input_files': len(data['input_files']),
+        'total_output_files': len(data['output_files']),
+        'total_input_lines': sum(f.get('lines', 0) for f in data['input_files']),
+        'total_output_lines': sum(f.get('lines', 0) for f in data['output_files']),
+        'total_input_queries': sum(f.get('queries', 0) for f in data['input_files']),
+        'total_output_queries': sum(f.get('queries', 0) for f in data['output_files']),
+        'oracle_patterns': qm_data.get('oracle_patterns', {}),
+        'complexity_dist': qm_data.get('complexity_distribution', {}),
+        'conversion_methods': qm_data.get('conversion_methods', {}),
+        'validation_pass': sum(v for k, v in qm_summary.items() if k.startswith('PASS_')),
+        'validation_fail': sum(v for k, v in qm_summary.items() if k.startswith('FAIL_')),
+        'validation_total': qm_data.get('total', 0),
+        'compare_match': sum(1 for q in qm_data['queries'] if q.get('compare_status') == 'pass'),
+        'compare_fail': sum(1 for q in qm_data['queries'] if q.get('compare_status') == 'fail'),
+        'compare_total': sum(1 for q in qm_data['queries'] if q.get('compare_status') != 'not_tested'),
+    }
+
+    return data
+
+
+def _collect_data_legacy(base_dir):
+    """query-matrix.json이 없을 때 기존 방식으로 데이터 수집 (하위 호환)."""
+    data = {
+        'generated_at': datetime.now().isoformat(),
+        'progress': None, 'files': {}, 'tracking': {}, 'validation': None,
+        'execution': None, 'comparison': None, 'query_matrix': None,
+        'extracted': [], 'activity_log': [], 'input_files': [], 'output_files': [], 'summary': {},
+    }
+    ws = Path(base_dir) / 'workspace'
+
+    data['progress'] = load_json(ws / 'progress.json') or _derive_progress(ws)
+
+    for xml_dir_key, data_key in [('input', 'input_files'), ('output', 'output_files')]:
+        xml_dir = ws / xml_dir_key
+        if xml_dir.exists():
+            for xml_file in sorted(xml_dir.glob('*.xml')):
+                try:
+                    data[data_key].append({
+                        'name': xml_file.name,
+                        'size_bytes': xml_file.stat().st_size,
+                        'lines': sum(1 for _ in open(xml_file, encoding='utf-8', errors='ignore')),
+                        'queries': count_xml_queries(xml_file),
+                    })
+                except Exception:
+                    pass
+
     results_dir = ws / 'results'
     if results_dir.exists():
         for d in sorted(results_dir.iterdir()):
             if d.is_dir() and not d.name.startswith('_'):
                 fname = d.name
                 file_data = {'name': fname, 'versions': {}}
-
                 for vdir in sorted(d.glob('v*')):
-                    vname = vdir.name
                     vdata = {}
-                    for json_name in ['parsed.json', 'conversion-report.json',
-                                      'complexity-scores.json', 'dependency-graph.json',
-                                      'conversion-order.json', 'test-cases.json']:
-                        jp = vdir / json_name
-                        if jp.exists():
-                            vdata[json_name.replace('.json', '')] = load_json(jp)
-
-                    # query-tracking.json
                     tracking_path = vdir / 'query-tracking.json'
                     if tracking_path.exists():
                         tracking = load_json(tracking_path)
                         if tracking:
                             vdata['query-tracking'] = tracking
-                            # Merge into top-level tracking map
                             xml_name = fname + '.xml' if not fname.endswith('.xml') else fname
-                            if xml_name not in data['tracking']:
-                                data['tracking'][xml_name] = tracking
-                            else:
-                                # Prefer latest version
-                                data['tracking'][xml_name] = tracking
-
-                    file_data['versions'][vname] = vdata
-
+                            data['tracking'][xml_name] = tracking
+                    file_data['versions'][vdir.name] = vdata
                 data['files'][fname] = file_data
 
-    # 4. Validation — merge all _validation* directories (supports batch splits)
-    merged_validation = {'passes': [], 'failures': [], 'total': 0, 'pass': 0, 'fail': 0}
-    merged_comparison = {'results': []}
-    # _validation/, _validation_batch1/, _validation/ams/ 등 모든 하위 구조 지원
-    for vj_path in sorted((ws / 'results').glob('_validation*/**/validated.json')):
-        val_dir = vj_path.parent
-        vj = load_json(vj_path)
-        if vj:
-            merged_validation['passes'].extend(vj.get('passes', []))
-            merged_validation['failures'].extend(vj.get('failures', []))
-            merged_validation['total'] += vj.get('total', 0)
-            merged_validation['pass'] += vj.get('pass', 0)
-            merged_validation['fail'] += vj.get('fail', 0)
-    for cfile_path in sorted((ws / 'results').glob('_validation*/**/compare_validated.json')):
-        cj = load_json(cfile_path)
-        if cj:
-            merged_comparison['results'].extend(cj.get('results', []))
-    for cfile_path in sorted((ws / 'results').glob('_validation*/**/compare_results.json')):
-        cj = load_json(cfile_path)
-        if cj:
-            merged_comparison['results'].extend(cj.get('results', []))
-    data['validation'] = merged_validation if merged_validation['total'] > 0 else None
-    data['execution'] = None  # deprecated — merged into validation
-    data['comparison'] = merged_comparison if merged_comparison['results'] else None
-
-    # 4b. Query Matrix — always re-derive from live data to avoid stale files
-    # reporter가 generate-query-matrix.py를 먼저 실행해야 하지만,
-    # 직접 실행 시에도 stale 데이터를 쓰지 않도록 항상 재계산
-    qm_path = ws / 'reports' / 'query-matrix.json'
-    qm_data = load_json(qm_path) if qm_path.exists() else None
-    # stale 체크: query-matrix.json이 validated.json보다 오래됐으면 재계산
-    if qm_data:
-        import os as _os
-        qm_mtime = _os.path.getmtime(qm_path) if qm_path.exists() else 0
-        val_mtime = max(
-            (_os.path.getmtime(str(vp))
-             for vp in (ws / 'results').glob('_validation*/**/validated.json')),
-            default=0
-        )
-        if val_mtime > qm_mtime:
-            print(f"  WARNING: query-matrix.json is stale (older than validated.json). Re-deriving.")
-            qm_data = None
-    if qm_data:
-        data['query_matrix'] = qm_data
-    else:
-        # Derive basic matrix from query-tracking + validation (fallback)
-        # File-scoped tuple (filename_base, queryId) lookup — PR #1 반영
-        def _parse_test_id(test_id):
-            """Parse 'filename.queryId.variant' → (filename_base, queryId)"""
-            parts = test_id.split('.')
-            if len(parts) >= 3:
-                return (parts[0], parts[1])  # (filename_base, queryId)
-            elif len(parts) == 2:
-                return (parts[0], parts[1])
-            return ('', test_id)
-
-        val_data = data.get('validation') or {}
-        explain_lookup = {}  # (fname_base, qid) → 'pass' | 'fail'
-        for p in val_data.get('passes', []):
-            tid = p if isinstance(p, str) else p.get('test', '')
-            if tid:
-                key = _parse_test_id(tid)
-                explain_lookup[key] = 'pass'
-        for f in val_data.get('failures', []):
-            tid = f.get('test', f.get('test_id', ''))
-            if tid:
-                key = _parse_test_id(tid)
-                if key not in explain_lookup:  # pass 우선
-                    explain_lookup[key] = 'fail'
-
-        compare_lookup = {}  # (fname_base, qid) → 'match' | 'mismatch'
-        comp_data = data.get('comparison') or {}
-        for r in comp_data.get('results', []):
-            raw_qid = r.get('query_id', r.get('test_id', ''))
-            key = _parse_test_id(raw_qid) if '.' in raw_qid else ('', raw_qid)
-            is_match = r.get('match', False)
-            if key not in compare_lookup:
-                compare_lookup[key] = 'match' if is_match else 'mismatch'
-            elif not is_match:
-                compare_lookup[key] = 'mismatch'
-
-        qm_queries = []
-        for fname, finfo in data.get('files', {}).items():
-            fname_base = fname.replace('.xml', '') if fname.endswith('.xml') else fname
-            for q in finfo.get('queries', []):
-                qid = q.get('query_id', q.get('id', ''))
-                exp = q.get('explain', {}) or {}
-                exp_st = exp.get('status', '')
-                if not exp_st:
-                    key = (fname_base, qid)
-                    exp_st = explain_lookup.get(key, '')
-                    # Fallback: bare qid (cross-file)
-                    if not exp_st:
-                        for k, v in explain_lookup.items():
-                            if k[1] == qid:
-                                exp_st = v
-                                break
-                cmp = q.get('compare_results', [])
-                cmp_st = 'pass' if cmp and all(c.get('match') for c in cmp) else ('fail' if cmp else 'not_tested')
-                if cmp_st == 'not_tested':
-                    key = (fname_base, qid)
-                    cmp_val = compare_lookup.get(key, '')
-                    if cmp_val == 'match':
-                        cmp_st = 'pass'
-                    elif cmp_val == 'mismatch':
-                        cmp_st = 'fail'
-                conv = q.get('conversion_method', '')
-                if exp_st == 'pass' and cmp_st == 'pass':
-                    overall = 'PASS_COMPLETE'
-                elif exp_st == 'pass':
-                    overall = 'NOT_TESTED_NO_DB'
-                elif exp_st == 'fail':
-                    overall = 'FAIL_SYNTAX'
-                elif conv:
-                    overall = 'NOT_TESTED_NO_DB'
-                else:
-                    overall = 'NOT_TESTED_PENDING'
-                qm_queries.append({'query_id': qid, 'overall_status': overall})
-        from collections import Counter
-        qm_summary = dict(Counter(q['overall_status'] for q in qm_queries))
-        data['query_matrix'] = {'total': len(qm_queries), 'summary': qm_summary, 'queries': qm_queries}
-
-    # 5. MyBatis extracted queries
-    ext_dir = ws / 'results' / '_extracted'
-    if ext_dir.exists():
-        for jf in sorted(ext_dir.glob('*-extracted.json')):
-            ej = load_json(jf)
-            if ej and 'queries' in ej:
-                data['extracted'].append({
-                    'file': jf.name,
-                    'source': ej.get('source_file', ''),
-                    'total_queries': ej.get('metadata', {}).get('total_queries', 0),
-                    'total_variants': ej.get('metadata', {}).get('total_variants', 0),
-                    'multi_branch': ej.get('metadata', {}).get('multi_branch_queries', 0),
-                    'dto_replacements': ej.get('dto_replacements', []),
-                })
-
-    # 6. Activity log
     data['activity_log'] = load_jsonl(ws / 'logs' / 'activity-log.jsonl')
-
-    # 7. Compute summary
     data['summary'] = compute_summary(data)
-
     return data
 
 

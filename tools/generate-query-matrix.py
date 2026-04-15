@@ -457,12 +457,75 @@ def main():
                 ('complexity', r['complexity']),
             ])
             json_queries.append(entry)
+        # 보고서용 메타데이터 — generate-report.py가 이 JSON만으로 보고서를 생성
+        file_stats = {}
+        for r in rows:
+            fname = r['file']
+            if fname not in file_stats:
+                file_stats[fname] = {
+                    'file': fname,
+                    'queries_total': 0,
+                    'pass_count': 0,
+                    'fail_count': 0,
+                    'not_tested_count': 0,
+                    'oracle_patterns': {},
+                    'complexity_dist': {},
+                    'conversion_methods': {},
+                }
+            fs = file_stats[fname]
+            fs['queries_total'] += 1
+            if r['overall_status'].startswith('PASS_'):
+                fs['pass_count'] += 1
+            elif r['overall_status'].startswith('FAIL_'):
+                fs['fail_count'] += 1
+            else:
+                fs['not_tested_count'] += 1
+            m = r['conversion_method'] or 'unknown'
+            fs['conversion_methods'][m] = fs['conversion_methods'].get(m, 0) + 1
+            c = r['complexity'] or 'unknown'
+            fs['complexity_dist'][c] = fs['complexity_dist'].get(c, 0) + 1
+
+        # Oracle 패턴 분포 (query-tracking.json에서)
+        oracle_patterns_total = Counter()
+        for file_dir, (ver_num, tf) in sorted(tracking_by_dir.items()):
+            try:
+                tdata = json.load(open(tf))
+            except Exception:
+                continue
+            for q in (tdata.get('queries', []) if isinstance(tdata.get('queries'), list)
+                      else list(tdata.get('queries', {}).values())):
+                for pat in q.get('oracle_patterns', []):
+                    oracle_patterns_total[pat] += 1
+                    fname = tdata.get('file', '')
+                    if fname in file_stats:
+                        file_stats[fname]['oracle_patterns'][pat] = \
+                            file_stats[fname]['oracle_patterns'].get(pat, 0) + 1
+
+        # Step 진행 상태 (handoff.json에서)
+        step_progress = {}
+        for i in range(5):
+            for hp in sorted(Path('.').glob(f'pipeline/step-{i}-*/handoff.json')):
+                try:
+                    hdata = json.load(open(hp))
+                    step_progress[f'step-{i}'] = {
+                        'status': hdata.get('status', 'unknown'),
+                        'step': hdata.get('step', ''),
+                        'duration_ms': hdata.get('duration_ms', 0),
+                    }
+                except Exception:
+                    pass
+
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(OrderedDict([
                 ('generated_at', datetime.now().isoformat()),
                 ('total', len(rows)),
                 ('summary', dict(overall_counts)),
                 ('explain_error_categories', dict(explain_cats)),
+                ('oracle_patterns', dict(oracle_patterns_total)),
+                ('complexity_distribution', dict(Counter(r['complexity'] for r in rows if r['complexity']))),
+                ('conversion_methods', dict(Counter(r['conversion_method'] for r in rows if r['conversion_method']))),
+                ('file_stats', list(file_stats.values())),
+                ('step_progress', step_progress),
                 ('queries', json_queries),
             ]), f, indent=2, ensure_ascii=False)
         print(f"JSON: {json_path}")

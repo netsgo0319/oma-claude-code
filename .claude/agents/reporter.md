@@ -66,7 +66,10 @@ BLOCKED: fix_loop {N}건 미실행 + compare {M}건 미실행. validate-and-fix 
 bash tools/assemble-workspace.sh
 ```
 
-### 4. 쿼리 매트릭스 생성
+### 4. 쿼리 매트릭스 생성 (★ 반드시 먼저)
+
+**query-matrix.json이 모든 보고서의 유일한 데이터 소스.**
+빈 필드가 있으면 원본 데이터를 찾아서라도 채워야 한다.
 
 ```bash
 python3 tools/generate-query-matrix.py \
@@ -75,18 +78,26 @@ python3 tools/generate-query-matrix.py \
   --json
 ```
 
-14-state 분포 확인:
+**JSON 필수 필드 검증:**
 ```bash
 python3 -c "
 import json
 d=json.load(open('pipeline/step-4-report/output/query-matrix.json'))
 print(f'Total: {d[\"total\"]}')
-for k,v in sorted(d['summary'].items()):
-    if v: print(f'  {k}: {v}')
+# 필수 상위 필드
+for f in ['summary','oracle_patterns','file_stats','step_progress','queries']:
+    print(f'  {f}: {\"OK\" if d.get(f) else \"MISSING\"}')
+# 쿼리별 필수 필드
+q=d['queries'][0] if d.get('queries') else {}
+required=['query_id','original_file','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
+missing=[f for f in required if f not in q]
+print(f'  query fields: {\"MISSING \"+str(missing) if missing else \"OK\"}')
 "
 ```
 
-### 5. HTML 리포트 생성
+### 5. HTML 리포트 생성 (query-matrix.json 기반)
+
+**generate-report.py는 query-matrix.json만 읽는다.** 다른 파일에서 독립적으로 데이터를 모으지 않는다.
 
 ```bash
 python3 tools/generate-report.py \
