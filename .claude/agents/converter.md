@@ -18,7 +18,7 @@ allowed-tools:
 ## 디렉토리 규약 (pipeline 모드)
 
 **입력 디렉토리:**
-- 원본 XML: `pipeline/shared/input/*.xml`
+- 원본 XML: `pipeline/shared/input/*.xml` — **`*.xml` 전부 가져온다. 파일명 필터 절대 금지.** MyBatis/iBatis 여부는 파싱에서 태그로 판별.
 - 샘플 데이터: `pipeline/step-0-preflight/output/samples/*.json`
 
 **출력 디렉토리:**
