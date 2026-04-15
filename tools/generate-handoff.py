@@ -216,7 +216,12 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
         if tracking_cmp:
             cmp_results = tracking_cmp
     if cmp_results:
-        tc_fail = sum(1 for c in cmp_results if not c.get('match', False))
+        if isinstance(cmp_results, list):
+            tc_fail = sum(1 for c in cmp_results if isinstance(c, dict) and not c.get('match', False))
+        elif isinstance(cmp_results, dict):
+            tc_fail = 0 if cmp_results.get('match', False) else 1
+        else:
+            tc_fail = 0
         compare_status = 'pass' if tc_fail == 0 else 'fail'
     else:
         compare_status = 'not_tested'
@@ -444,14 +449,21 @@ def generate_step3(args):
     dba_skipped = sum(state_counts.get(s, 0) for s in DBA_STATES)
 
     # Gate: compare coverage
+    # Also include tracking-embedded compare_results in compare_qids
+    for q in queries:
+        qid = q.get('query_id', '')
+        if qid not in compare_qids and q.get('compare_results'):
+            compare_qids.add(qid)
     compare_target = len(queries) - dba_skipped
     compare_done = len(compare_qids)
-    # Non-DBA queries without compare
+    # Non-DBA queries without compare (DML is exempt — EXPLAIN-only is acceptable)
+    DML_TYPES = {'insert', 'update', 'delete'}
     compare_missing_non_dba = 0
     for q in queries:
         qid = q.get('query_id', '')
+        qtype = (q.get('type', 'select') or 'select').lower()
         state = classify_state(q, passes, failures, compare)
-        if state not in DBA_STATES and qid not in compare_qids:
+        if state not in DBA_STATES and qid not in compare_qids and qtype not in DML_TYPES:
             # Only count if explain passed (can't compare if explain failed)
             if (q.get('explain', {}) or {}).get('status') == 'pass' or qid in passes:
                 compare_missing_non_dba += 1
