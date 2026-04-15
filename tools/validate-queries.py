@@ -261,7 +261,9 @@ SET HEADING ON
                 continue
 
             # Use _select_best_tcs for better TC selection
-            all_cases = self.test_cases.get(qid, [])
+            # filename::qid 키 우선, bare qid fallback
+            file_key = f"{query.get('file', '')}::{qid}"
+            all_cases = self.test_cases.get(file_key, self.test_cases.get(qid, []))
             selected = self._select_best_tcs(all_cases, max_tcs=2)
             if not selected:
                 selected = [{'name': 'default', 'params': {}}]

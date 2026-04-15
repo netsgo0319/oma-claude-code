@@ -274,9 +274,12 @@ def _clean_val(v):
 
 
 def _stem(filename):
-    """파일명 stem: prefix(._tmp_ 등) 제거 + .xml 제거. fuzzy 매칭용."""
+    """파일명 stem: prefix(._tmp_ 등) 제거 + .xml 제거. fuzzy 매칭용.
+    daiso-xxx__ 프로젝트 prefix도 제거 (e.g. daiso-ams__foo → foo)."""
     name = Path(filename).stem if '.' in filename else filename
     name = re.sub(r'^[._]+tmp[_.]?', '', name, flags=re.I)
+    # 프로젝트 prefix 제거: daiso-xxx__ 또는 daiso-xxx-sub__
+    name = re.sub(r'^daiso-[\w-]+?__', '', name)
     return name
 
 
@@ -358,6 +361,7 @@ def load_custom_binds(input_dir, custom_file=None):
             continue
         loaded = 0
         grouped = {}  # (source_file, sql_id) → {param: value}
+        if_tests = {}  # (source_file, sql_id) → {param: if_test_condition}
         for jf in sorted(sdir.glob('*.json')):
             try:
                 with open(jf, encoding='utf-8') as _f:
@@ -369,21 +373,44 @@ def load_custom_binds(input_dir, custom_file=None):
                     sid = row.get('sql_id', '')
                     pname = row.get('parameter_name', '')
                     pval = row.get('sample_value')
+                    ift = row.get('if_test', '')
                     if sf and sid and pname:
                         gkey = (sf, sid)
                         if gkey not in grouped:
                             grouped[gkey] = {}
+                        if gkey not in if_tests:
+                            if_tests[gkey] = {}
                         cv = _clean_val(pval)
                         if cv:
                             grouped[gkey][pname] = cv
+                        if ift:
+                            if_tests[gkey][pname] = ift
                         loaded += 1
             except Exception:
                 continue
         for (sf, sid), params in grouped.items():
             if params:
                 _add(f"{sf}::{sid}", params)
+            # 분기 조합 TC: if_test 있는 파라미터를 on/off하여 변형 생성
+            conds = if_tests.get((sf, sid), {})
+            conditional_params = [p for p in conds if p in params]
+            if conditional_params and params:
+                # TC variant: 모든 조건 파라미터 활성 (값 있음)
+                all_on = dict(params)
+                _add(f"{sf}::{sid}", all_on)
+                # TC variant: 조건 파라미터를 하나씩 비활성 (빈값)
+                for cp in conditional_params[:3]:  # 최대 3개 분기
+                    variant = dict(params)
+                    variant[cp] = ''
+                    _add(f"{sf}::{sid}", variant)
+                # TC variant: 모든 조건 파라미터 비활성
+                if len(conditional_params) > 1:
+                    all_off = dict(params)
+                    for cp in conditional_params:
+                        all_off[cp] = ''
+                    _add(f"{sf}::{sid}", all_off)
         if loaded:
-            print(f"  Source-BindSamples: {loaded} rows, {len(grouped)} queries from {sdir.name}/")
+            print(f"  Source-BindSamples: {loaded} rows, {len(grouped)} queries, {sum(len(v) for v in if_tests.values())} branch conditions from {sdir.name}/")
 
     print(f"  Custom total: {len(custom)} keys ({sum(len(v) for v in custom.values())} TC sets)")
     return custom
@@ -394,6 +421,52 @@ def _tables(sql):
 
 def _params(sql):
     return list(dict.fromkeys(re.findall(r'#\{(\w+)\}', sql)))
+
+# ── XML 기반 분기 파라미터 추출 ───────────────────
+
+_TEST_PARAM_RE = re.compile(r'isNotEmpty\((\w+)\)|(\w+)\s*!=\s*null|(\w+)\s*!=\s*[\'"]|"[^"]*"\.equals\((\w+)\)|(\w+)\s*==\s*|(\w+)\.size')
+
+# 조건을 가질 수 있는 모든 MyBatis 동적 태그
+_DYNAMIC_TAGS = ['if', 'when', 'choose', 'foreach', 'where', 'set', 'trim', 'bind']
+
+def _extract_xml_branch_params(xml_file, qid):
+    """원본 XML에서 쿼리의 동적 태그(if/when/foreach 등) 조건 파라미터를 추출.
+    Returns: list of param names that control branches."""
+    try:
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+    except Exception:
+        return []
+
+    branch_params = []
+    ns = ''
+    if root.tag.startswith('{'):
+        ns = root.tag.split('}')[0] + '}'
+
+    for tag in ['select', 'insert', 'update', 'delete']:
+        for elem in root.iter(ns + tag):
+            if elem.get('id') == qid:
+                # test= 속성에서 조건 파라미터 추출 (if, when)
+                for dtag in _DYNAMIC_TAGS:
+                    for delem in elem.iter(ns + dtag):
+                        test = delem.get('test', '')
+                        if test:
+                            for m in _TEST_PARAM_RE.finditer(test):
+                                param = m.group(1) or m.group(2) or m.group(3) or m.group(4) or m.group(5) or m.group(6)
+                                if param and param not in branch_params:
+                                    branch_params.append(param)
+                        # foreach collection 속성
+                        coll = delem.get('collection', '')
+                        if coll and coll not in branch_params:
+                            branch_params.append(coll)
+                # 동적 태그 내부의 #{param}도 추출
+                full_xml = ET.tostring(elem, encoding='unicode')
+                for p in re.findall(r'#\{(\w+)\}', full_xml):
+                    if p not in branch_params:
+                        branch_params.append(p)
+                return branch_params
+    return branch_params
 
 def _foreach_collections(q):
     """Extract <foreach collection="X"> names from parsed query branches."""
@@ -410,13 +483,22 @@ def _foreach_collections(q):
         collections.add(m)
     return list(collections)
 
-def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None):
+def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None, xml_file=None):
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
+    # 원본 XML에서 <if> 내부 파라미터도 추출 (parsed.json에 빠진 동적 파라미터)
+    branch_params = []
+    if xml_file:
+        branch_params = _extract_xml_branch_params(xml_file, qid)
+        for bp in branch_params:
+            if bp not in params:
+                params.append(bp)
     # foreach collection 파라미터도 포함 (더미 리스트 필요)
     foreach_cols = _foreach_collections(q)
-    if not params and not foreach_cols: return []
+    if not params and not foreach_cols:
+        # 파라미터 없는 쿼리도 빈 TC 생성 (EXPLAIN/Execute 검증용)
+        return [{'name': 'no_params', 'params': {}, 'source': 'NO_PARAMS'}]
     tables = _tables(raw)
     qtype = q.get('type', 'select').lower()
     is_dml = qtype in ('insert', 'update', 'delete')
@@ -530,6 +612,21 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
                     break
         if changed and not _dup(fk): _add('fk_sample', fk, 'FK_SAMPLE')
 
+    # Branch variant TCs: XML <if test> 파라미터 on/off 조합
+    if branch_params and not is_dml:
+        # 모든 분기 비활성 (빈값)
+        all_off = dict(default)
+        for bp in branch_params:
+            all_off[bp] = ''
+        if not _dup(all_off):
+            _add('branch_all_off', all_off, 'BRANCH_VARIANT')
+        # 분기 파라미터를 하나씩 활성 (나머지 빈값)
+        for i, bp in enumerate(branch_params[:5]):  # 최대 5개
+            variant = dict(all_off)
+            variant[bp] = infer_value(bp, vo_fields, captures, col_stats, fk_values)
+            if not _dup(variant):
+                _add(f'branch_{bp}_on', variant, 'BRANCH_VARIANT')
+
     return cases
 
 # ── Main ────────────────────────────────────────
@@ -591,10 +688,17 @@ def main():
         except Exception: continue
         file_tc = {}
         filename = parsed.get('source_file', parsed_path.parent.name)
+        # 원본 XML 경로 (분기 파라미터 추출용)
+        xml_file = None
+        for xdir in [Path('pipeline/shared/input'), Path('workspace/input')]:
+            xf = xdir / filename
+            if xf.exists():
+                xml_file = str(xf)
+                break
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
             tcs = build_query_tcs(qid, q, sample_data, vo_map, pt_map,
-                                  captures, col_stats, fk_values, table_rows, custom_binds, filename)
+                                  captures, col_stats, fk_values, table_rows, custom_binds, filename, xml_file)
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
@@ -612,9 +716,9 @@ def main():
             total_files += 1
 
     # Merged TC for MyBatis extractor
-    # null_test, empty_string TC는 제외 — MyBatis 동적 SQL이 불완전하게 렌더링됨
-    # custom, sample_row, default, boundary, bind_capture, fk_sample만 포함
-    _SKIP_TC_NAMES = {'null_test', 'empty_string'}
+    # null_test는 MyBatis 렌더링 실패 가능 → 제외
+    # empty_string은 분기 비활성 테스트에 유용 → 포함
+    _SKIP_TC_NAMES = {'null_test'}
     merged_tc = {}
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         # output-dir 지정 시 per-file TC 경로도 확인
@@ -633,9 +737,15 @@ def main():
         for qid, cases in ftcs.items():
             # 실값이 있는 TC만 (null_test/empty_string 제외)
             pl = [c['params'] for c in cases
-                  if c.get('params') and c.get('name', '') not in _SKIP_TC_NAMES
+                  if c.get('params') is not None and c.get('name', '') not in _SKIP_TC_NAMES
                   and not all(v is None for v in c['params'].values())]
-            if pl: merged_tc[qid] = pl
+            # 파라미터 없는 쿼리도 빈 TC 포함 (검증용)
+            if not pl and any(c.get('source') == 'NO_PARAMS' for c in cases):
+                pl = [{}]
+            # 키: filename::qid (프로젝트 간 동명 쿼리 충돌 방지)
+            if pl:
+                merged_key = f"{filename_base}::{qid}"
+                merged_tc[merged_key] = pl
 
     # merged-tc.json 출력 위치: --output-dir 지정 시 output_dir/merged-tc.json, 아니면 기존 경로
     if output_dir:
