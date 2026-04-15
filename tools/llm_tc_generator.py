@@ -71,30 +71,47 @@ Dynamic tags: {json.dumps(dynamic_tags[:5])}
     if sample_hint:
         sample_text = f"\nAvailable sample data (reference only):\n{json.dumps(sample_hint, ensure_ascii=False)[:1000]}\n"
 
-    prompt = f"""You are a database test case generator. For each Oracle SQL query below, generate {LLM_TC_MAX_TCS} test cases with realistic parameter values.
+    prompt = f"""You are a database test case generator for Oracle→PostgreSQL migration validation.
+For each SQL query, generate exactly {LLM_TC_MAX_TCS} test cases with realistic bind parameter values.
 
-Rules:
-- Each test case must have ALL parameters filled with plausible values
-- For date parameters (yyyymmdd, dt, date): use '20260115' format
-- For Y/N flags (yn, delyn, useyn): use 'Y' or 'N'
-- For numeric IDs (seq, num, idx): use small integers (1-100)
-- For codes (cd, code, type, status): use short uppercase strings ('A', 'ACTIVE', 'Y')
-- For text search (keyword, search, nm): use realistic Korean or English text
-- For pagination (page, pageSize, limit, offset): use (1, 10) or (2, 20)
-- If dynamic tags show <if test="X != null">, provide one TC with X=value and one with X=null
-- For <foreach collection="list">, provide list=['1','2']
-- DML queries (insert/update/delete): focus on WHERE clause parameters
-{sample_text}
-{queries_text}
+## Output format (strict JSON, no markdown)
 
-Respond with ONLY valid JSON (no markdown, no explanation):
 {{
-  "query_id_1": [
-    {{"name": "tc_llm_1", "params": {{"param1": "value1", "param2": "value2"}}}},
-    {{"name": "tc_llm_2", "params": {{"param1": "other_value", "param2": null}}}}
-  ],
-  "query_id_2": [...]
-}}"""
+  "query_id": [
+    {{"name": "tc_llm_1", "params": {{"paramName": "value"}}}},
+    {{"name": "tc_llm_2", "params": {{"paramName": "different_value"}}}}
+  ]
+}}
+
+## Parameter value rules
+
+| Parameter pattern | Value format | Example |
+|---|---|---|
+| *date*, *dt*, *ymd*, *yyyymmdd* | 8자리 문자열 | "20260115" |
+| *yn*, *delyn*, *useyn*, *flag* | Y or N | "Y" |
+| *seq*, *num*, *idx*, *key*, *no* | 정수 문자열 | "1", "42" |
+| *cd*, *code*, *type*, *status*, *gubun* | 짧은 코드 | "01", "A", "ACTIVE" |
+| *nm*, *name*, *keyword*, *search* | 한국어 또는 영어 텍스트 | "테스트", "홍길동" |
+| *page*, *pageSize*, *limit*, *offset* | 페이지네이션 수 | "1", "10" |
+| *owkey*, *ctkey*, *wh*, *center* | 사업장/센터 코드 | "DS", "HE", "WH01" |
+| *id*, *userId*, *loginId* | 사용자 ID | "admin", "USR001" |
+| GRIDPAGING_* | 반드시 빈 문자열 | "" |
+| *list*, *List*, collection용 | 문자열 배열 | ["1", "2"] |
+
+## Dynamic tag rules
+- <if test="X != null">: TC 1은 X에 값, TC 2는 X="" (분기 on/off)
+- <choose><when>: 각 분기 조건에 맞는 값
+- <foreach collection="items">: items=["1","2"]
+
+## Important
+- ALL parameters must be filled (no missing keys)
+- Values must be strings (even numbers: "1" not 1), except lists
+- DML (insert/update/delete): focus on WHERE clause params
+- Generate diverse values across TCs (don't repeat same values)
+{sample_text}
+## Queries
+
+{queries_text}"""
 
     return prompt
 
