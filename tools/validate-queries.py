@@ -664,13 +664,44 @@ SET HEADING ON
         print(f"Loaded {len(self.queries)} unique SQL variants from extracted JSON")
 
     def load_test_cases(self):
-        """Load test cases from workspace/results/*/v*/test-cases.json."""
-        # Search all version directories, not just v1
+        """Load test cases from per-file test-cases.json AND merged-tc.json."""
+        # 1. Per-file test-cases.json (results/*/v*/test-cases.json)
         found_files = list(self.results_dir.glob('*/v*/test-cases.json'))
         if not found_files:
-            # Also try direct children (flat structure)
             found_files = list(self.results_dir.glob('*/test-cases.json'))
-        if not found_files:
+
+        # 2. merged-tc.json (pipeline 모드 또는 workspace 모드)
+        merged_paths = [
+            self.results_dir / '_test-cases' / 'merged-tc.json',
+            Path('pipeline/step-2-tc-generate/output/merged-tc.json'),
+        ]
+        for mp in merged_paths:
+            if mp.exists():
+                try:
+                    merged = json.load(open(mp, encoding='utf-8'))
+                    if isinstance(merged, dict):
+                        loaded = 0
+                        for qid, cases in merged.items():
+                            if isinstance(cases, list) and qid not in self.test_cases:
+                                # merged-tc는 [{params}, {params}] 형태 — TC 객체로 변환
+                                tc_list = []
+                                for i, c in enumerate(cases):
+                                    if isinstance(c, dict):
+                                        tc_list.append({
+                                            'name': f'merged_{i}',
+                                            'params': c if 'params' not in c else c['params'],
+                                            'source': c.get('source', 'MERGED'),
+                                        })
+                                if tc_list:
+                                    self.test_cases[qid] = tc_list
+                                    loaded += 1
+                        if loaded:
+                            print(f"  Loaded {loaded} queries from {mp}")
+                except Exception as e:
+                    print(f"  WARN: Failed to load {mp}: {e}")
+                break
+
+        if not found_files and not self.test_cases:
             print(f"  No test-cases.json found under {self.results_dir}")
             return
 

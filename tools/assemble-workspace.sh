@@ -118,6 +118,27 @@ for d in "$PIPELINE/step-1-convert/output/results/"*/; do
 done
 echo "  results/{file}/: $(ls -d "$PIPELINE/step-1-convert/output/results/"*/ 2>/dev/null | wc -l) dirs linked"
 
+# 2b. step-2 per-file test-cases.json → step-1 results 안에 심링크
+#     validate-queries.py가 results/*/v*/test-cases.json에서 TC를 찾으므로
+TC_PER_FILE="$PIPELINE/step-2-tc-generate/output/per-file"
+if [ -d "$TC_PER_FILE" ]; then
+  tc_linked=0
+  for tc_dir in "$TC_PER_FILE/"*/; do
+    [ -d "$tc_dir" ] || continue
+    fname=$(basename "$tc_dir")
+    # step-1 results에 해당 파일 디렉토리가 있으면 그 안에 심링크
+    for vdir in "$WS/results/$fname/"v*/; do
+      [ -d "$vdir" ] || continue
+      tc_file="$tc_dir/v1/test-cases.json"
+      if [ -f "$tc_file" ] && [ ! -f "$vdir/test-cases.json" ]; then
+        ln -sfn "$tc_file" "$vdir/test-cases.json"
+        tc_linked=$((tc_linked + 1))
+      fi
+    done
+  done
+  echo "  test-cases.json: ${tc_linked} files linked from step-2"
+fi
+
 # 3. _samples → step-0
 if [ -d "$PIPELINE/step-0-preflight/output/samples" ]; then
   ln -sfn "$PIPELINE/step-0-preflight/output/samples" "$WS/results/_samples"

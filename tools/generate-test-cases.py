@@ -364,7 +364,11 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
             if not sb: break
             full = dict(sb)
             for p in params:
-                if p not in full: full[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
+                if p not in full:
+                    full[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
+                elif full[p] is None:
+                    # sample_value가 None → 추론값으로 대체 (null이면 MyBatis 렌더링 실패)
+                    full[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
             if _dup(full): break
             _add(f'sample_row_{idx+1}', full, 'SAMPLE_DATA')
 
