@@ -727,6 +727,17 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
             if not _dup(variant):
                 _add(f'branch_{bp}_on', variant, 'BRANCH_VARIANT')
 
+    # ★ 후처리: 모든 TC에 foreach collection 리스트 보장 (null.iterator() 방지)
+    if foreach_cols:
+        for tc in cases:
+            for fc in foreach_cols:
+                val = tc['params'].get(fc)
+                if val is None or val == '' or val == 'NULL':
+                    tc['params'][fc] = ['1', '2']
+                elif isinstance(val, str) and not isinstance(val, list):
+                    # 문자열을 리스트로 변환 (e.g., "1,2,3" → ["1","2","3"])
+                    tc['params'][fc] = [v.strip() for v in val.split(',')]
+
     return cases
 
 # ── Main ────────────────────────────────────────
