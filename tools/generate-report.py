@@ -900,7 +900,52 @@ function renderOverview(){
     `<div class="card"><div class="lbl" style="color:var(--warn)">FAIL (DBA)</div><div class="val wn">${failDba}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.includes('SCHEMA')||k.includes('COLUMN')||k.includes('FUNCTION')).map(([k,v])=>k.replace('FAIL_','')+':'+v).join(' ')}</div></div>`+
     `<div class="card"><div class="lbl" style="color:var(--dim)">미테스트</div><div class="val">${notTested}</div><div class="det">${Object.entries(qmS).filter(([k])=>k.startsWith('NOT_TESTED')).map(([k,v])=>k.replace('NOT_TESTED_','')+':'+v).join(' ')}</div></div>`;
 
-  // Overview는 카드만. 상세는 Explorer에서.
+  // 15-state breakdown table
+  let stateDescriptions = {
+    'PASS_COMPLETE': '변환+비교 통과',
+    'PASS_HEALED': '수정 후 비교 통과',
+    'PASS_NO_CHANGE': '변환 불필요 + 비교 통과',
+    'FAIL_SCHEMA_MISSING': 'PG 테이블 없음 (DBA)',
+    'FAIL_COLUMN_MISSING': 'PG 컬럼 없음 (DBA)',
+    'FAIL_FUNCTION_MISSING': 'PG 함수 없음 (DBA)',
+    'FAIL_ESCALATED': '3회 수정 후 미해결',
+    'FAIL_SYNTAX': 'SQL 문법 에러',
+    'FAIL_COMPARE_DIFF': 'Oracle↔PG 결과 불일치',
+    'FAIL_TC_TYPE_MISMATCH': '바인드값 타입 불일치',
+    'FAIL_TC_OPERATOR': '연산자 타입 불일치',
+    'NOT_TESTED_DML_SKIP': 'DML이라 Compare 스킵 (EXPLAIN만 통과)',
+    'NOT_TESTED_NO_RENDER': 'MyBatis 렌더링 실패',
+    'NOT_TESTED_NO_DB': 'DB 미접속',
+    'NOT_TESTED_PENDING': '변환 미완료'
+  };
+  let stateGroups = {
+    'PASS': ['PASS_COMPLETE','PASS_HEALED','PASS_NO_CHANGE'],
+    'FAIL (코드)': ['FAIL_SYNTAX','FAIL_COMPARE_DIFF','FAIL_TC_TYPE_MISMATCH','FAIL_TC_OPERATOR','FAIL_ESCALATED'],
+    'FAIL (DBA)': ['FAIL_SCHEMA_MISSING','FAIL_COLUMN_MISSING','FAIL_FUNCTION_MISSING'],
+    'NOT_TESTED': ['NOT_TESTED_DML_SKIP','NOT_TESTED_NO_RENDER','NOT_TESTED_NO_DB','NOT_TESTED_PENDING']
+  };
+  let stateTableHtml='<div style="margin-top:16px"><h3 style="margin-bottom:8px">15-State 상세 분류</h3>';
+  stateTableHtml+='<table style="font-size:12px;width:100%"><tr><th>그룹</th><th>상태</th><th style="text-align:right">건수</th><th>설명</th></tr>';
+  let stateSum=0;
+  for(let [group, states] of Object.entries(stateGroups)){
+    let groupTotal=0;
+    let groupColor=group.startsWith('PASS')?'var(--success)':group.includes('DBA')?'var(--warn)':group.startsWith('FAIL')?'var(--fail)':'var(--dim)';
+    for(let st of states){
+      let cnt=qmS[st]||0;
+      groupTotal+=cnt;
+      stateSum+=cnt;
+      if(cnt>0){
+        stateTableHtml+=`<tr><td style="color:${groupColor};font-weight:bold">${esc(group)}</td>`;
+        stateTableHtml+=`<td><code>${esc(st)}</code></td>`;
+        stateTableHtml+=`<td style="text-align:right;font-weight:bold">${cnt}</td>`;
+        stateTableHtml+=`<td style="color:var(--dim)">${esc(stateDescriptions[st]||'')}</td></tr>`;
+      }
+    }
+  }
+  let matchMsg=stateSum===totalQ?'<span style="color:var(--success)">일치</span>':'<span style="color:var(--fail)">불일치!</span>';
+  stateTableHtml+=`<tr style="border-top:2px solid rgba(255,255,255,.1)"><td colspan="2" style="font-weight:bold">합계</td><td style="text-align:right;font-weight:bold">${stateSum} / ${totalQ}</td><td>${matchMsg}</td></tr>`;
+  stateTableHtml+='</table></div>';
+  document.getElementById('summary-cards').insertAdjacentHTML('afterend',stateTableHtml);
 }
 
 function renderActionItems(){
@@ -1539,17 +1584,19 @@ function expRenderFiles(){
     // Filter queries
     let filtered=queries.filter(q=>{
       let qid=(q.query_id||q.id||'').toLowerCase();
-      let st=(q.explain||{}).status||'';
+      let fs=q.final_state||'';
       if(search && !name.toLowerCase().includes(search) && !qid.includes(search)
          && !(q.oracle_sql||'').toLowerCase().includes(search)) return false;
-      if(statusF && st!==statusF) return false;
+      if(statusF==='pass' && !fs.startsWith('PASS_')) return false;
+      if(statusF==='fail' && !fs.startsWith('FAIL_')) return false;
+      if(statusF==='not_tested' && !fs.startsWith('NOT_TESTED')) return false;
       if(typeF && (q.type||'')!==typeF) return false;
       return true;
     });
     if(filtered.length===0) continue;
     shown+=filtered.length;
-    let failC=filtered.filter(q=>(q.explain||{}).status==='fail').length;
-    let passC=filtered.filter(q=>(q.explain||{}).status==='pass').length;
+    let passC=filtered.filter(q=>(q.final_state||'').startsWith('PASS_')).length;
+    let failC=filtered.filter(q=>(q.final_state||'').startsWith('FAIL_')).length;
     let sel=expSelectedFile===name?'background:rgba(99,102,241,.2);':'';
     let bar=failC>0?`<span style="color:var(--fail)">${failC}F</span> `:'';
     bar+=passC>0?`<span style="color:var(--success)">${passC}P</span>`:'';
@@ -1573,8 +1620,8 @@ function expSelectFile(name){
   let html='';
   for(let q of queries){
     let qid=q.query_id||q.id||'';
-    let st=(q.explain||{}).status||'';
-    let icon=st==='pass'?'<span style="color:var(--success)">&#10003;</span>':st==='fail'?'<span style="color:var(--fail)">&#10007;</span>':'<span style="color:var(--dim)">&#9679;</span>';
+    let fs=q.final_state||'';
+    let icon=fs.startsWith('PASS_')?'<span style="color:var(--success)">&#10003;</span>':fs.startsWith('FAIL_')?'<span style="color:var(--fail)">&#10007;</span>':'<span style="color:var(--dim)">&#9679;</span>';
     let method=q.conversion_method||q.method||'';
     let sel=expSelectedQuery===qid?'background:rgba(99,102,241,.2);':'';
     html+=`<div onclick="expSelectQuery('${esc(name)}','${esc(qid)}')" style="padding:5px 8px;cursor:pointer;border-radius:4px;margin-bottom:1px;font-size:12px;${sel}">`;
@@ -1601,8 +1648,8 @@ function expSelectQuery(fname, qid){
   // Find this query's overall_status from query_matrix
   let qmQueries=(DATA.query_matrix||{}).queries||[];
   let qmEntry=qmQueries.find(x=>x.query_id===qid)||{};
-  let finalStatus=qmEntry.overall_status||'NOT_TESTED_PENDING';
-  let finalDetail=qmEntry.overall_detail||'';
+  let finalStatus=qmEntry.final_state||q.final_state||'NOT_TESTED_PENDING';
+  let finalDetail=qmEntry.final_state_detail||q.final_state_detail||'';
   let stColor=finalStatus.startsWith('PASS_')?'var(--success)':finalStatus.startsWith('FAIL_')?'var(--fail)':'var(--dim)';
 
   // Header with status badge
@@ -1648,8 +1695,8 @@ function expSelectQuery(fname, qid){
   }
 
   // TC별 결과 (바인드값 + Oracle + PG + MATCH)
-  let compResults=q.compare_results||[];
-  let tcs=q.test_cases||[];
+  let compResults=q.compare_results||qmEntry.compare_detail||[];
+  let tcs=q.test_cases||qmEntry.test_cases||[];
   let allTCs=[...compResults,...tcs]; // merge both sources
   if(compResults.length||tcs.length){
     html+=`<div style="margin:8px 0"><strong>TC 결과:</strong></div>`;
@@ -1712,7 +1759,80 @@ try{renderLog();}catch(e){console.error("renderLog:",e);}
 def render_html(data):
     """Render the full HTML report by embedding data into the template."""
     embedded = build_embedded_data(data)
-    # Serialize to compact JSON
+    # Slim down embedded data for HTML — full data is in query-matrix.json
+    # Target: < 10 MB HTML.  Full SQL/XML lives in query-matrix.json file.
+    TRUNCATE_LIMIT = 200
+    TRUNCATE_SUFFIX = '\n-- ... (truncated, see query-matrix.json)'
+    SQL_FIELDS = ('xml_before', 'xml_after', 'sql_before', 'sql_after',
+                  'oracle_sql', 'pg_sql', 'sql_raw', 'original_sql', 'converted_sql')
+
+    def _slim_test_cases(tcs):
+        """Keep at most 2 TCs, each with only name and param count."""
+        if not tcs or not isinstance(tcs, list):
+            return tcs
+        slimmed = []
+        for tc in tcs[:2]:
+            slim = {'name': tc.get('name', '')}
+            params = tc.get('params')
+            if params and isinstance(params, dict):
+                slim['param_count'] = len(params)
+            slimmed.append(slim)
+        if len(tcs) > 2:
+            slimmed.append({'name': f'... +{len(tcs) - 2} more'})
+        return slimmed
+
+    # 1) Slim down query_matrix queries — remove sql/xml (available in files section)
+    qm = embedded.get('query_matrix')
+    if qm and 'queries' in qm:
+        for q in qm['queries']:
+            for field in SQL_FIELDS:
+                q.pop(field, None)
+            q['test_cases'] = _slim_test_cases(q.get('test_cases'))
+            # Slim conversion_history to keep only pattern+approach
+            ch = q.get('conversion_history')
+            if ch and isinstance(ch, list):
+                q['conversion_history'] = [{'pattern': c.get('pattern', ''), 'approach': c.get('approach', '')} for c in ch[:5]]
+
+    # 2) Slim down per-file queries — remove SQL fields (available in query_matrix),
+    #    keep only status/metadata for the Explorer tab file-level view
+    KEEP_FILE_FIELDS = {'query_id', 'type', 'status', 'final_state', 'final_state_detail',
+                        'complexity', 'conversion_method', 'explain', 'compare_status',
+                        'oracle_patterns', 'attempts'}
+    for fname, fdata in embedded.get('files', {}).items():
+        slim_queries = []
+        for q in fdata.get('queries', []):
+            slim_q = {k: v for k, v in q.items() if k in KEEP_FILE_FIELDS}
+            # Slim final_state_detail to 120 chars
+            fsd = slim_q.get('final_state_detail', '')
+            if fsd and len(fsd) > 120:
+                slim_q['final_state_detail'] = fsd[:120] + '...'
+            slim_queries.append(slim_q)
+        fdata['queries'] = slim_queries
+
+    # 3) Slim down extracted variants
+    extracted = embedded.get('extracted')
+    if extracted and isinstance(extracted, dict):
+        eq = extracted.get('queries')
+        if isinstance(eq, dict):
+            for variants in eq.values():
+                if isinstance(variants, list):
+                    for v in variants:
+                        for field in ('sql', 'rendered_sql', 'original_sql'):
+                            val = v.get(field, '')
+                            if val and len(val) > TRUNCATE_LIMIT:
+                                v[field] = val[:TRUNCATE_LIMIT] + TRUNCATE_SUFFIX
+
+    # 4) Slim down validation/execution detail errors
+    for section_key in ('validation', 'execution'):
+        section = embedded.get(section_key)
+        if section and isinstance(section, dict):
+            results = section.get('results', [])
+            if isinstance(results, list):
+                for r in results:
+                    for field in ('sql', 'query', 'error'):
+                        val = r.get(field, '')
+                        if isinstance(val, str) and len(val) > TRUNCATE_LIMIT:
+                            r[field] = val[:TRUNCATE_LIMIT] + TRUNCATE_SUFFIX
     json_blob = json.dumps(embedded, ensure_ascii=False, separators=(',', ':'))
     return HTML_TEMPLATE.replace('__DATA_PLACEHOLDER__', json_blob)
 

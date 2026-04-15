@@ -236,6 +236,7 @@ public class SqlExtractor {
             typeAliasRegistry.registerAlias("UrMstDescTypeHandler", com.oma.typehandler.UrMstDescTypeHandler.class);
             typeAliasRegistry.registerAlias("TmsCodeDescTypeHandler", com.oma.typehandler.TmsCodeDescTypeHandler.class);
             typeAliasRegistry.registerAlias("IcomCodeDescTypeHandler", com.oma.typehandler.IcomCodeDescTypeHandler.class);
+            typeAliasRegistry.registerAlias("CodeDescTypeHandler", com.oma.typehandler.CodeDescTypeHandler.class);
         } catch (Exception e) {
             // Ignore if stub classes don't exist
         }
