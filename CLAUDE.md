@@ -104,7 +104,16 @@ Agent({ subagent_type: "tc-generator", prompt: "
 Agent({ subagent_type: "validate-and-fix", prompt: "
   할당 파일: {파일목록}
   .claude/agents/validate-and-fix.md의 절차를 그대로 따라라.
-  특히 '★★★ 절대 규칙' 섹션의 validate-queries.py --full 명령을 정확히 사용하라.
+
+  ★ 반드시 2단계로 실행:
+  1단계: MyBatis Extractor (run-extractor.sh) — 동적 SQL 렌더링 필수
+  2단계: validate-queries.py --full — EXPLAIN+Execute+Compare 원자적 검증
+
+  Extractor 없이 validate-queries.py만 실행하면 정적 파싱 fallback으로
+  동적 SQL(if/choose/foreach/GRIDPAGING)이 렌더링 안 되어 Compare 커버리지가 급락한다.
+  과거 실패: Extractor 스킵 → 206건 Compare 불가 → 30% 커버리지.
+
+  특히 '★★★ 절대 규칙 1, 2' 섹션을 정확히 따라라.
   CLI 플래그를 추정하거나 변형하지 마라.
   도구가 에러나면 자체 우회하지 말고 에러를 보고하라.
   완료 시 handoff.json 생성 (gate_checks 포함)." })

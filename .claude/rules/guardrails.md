@@ -36,6 +36,7 @@ inclusion: always
 - `#{sysdate}` → 그대로 유지. bare `SYSDATE`만 CURRENT_TIMESTAMP로 변환
 
 ### 검증 원칙
+- **★ MyBatis Extractor(`run-extractor.sh`) 필수 선행.** 동적 SQL은 정적 파싱으로 렌더링 불가. Extractor 없이 검증하면 `<if>`, `<choose>`, `<foreach>`, GRIDPAGING 등이 처리 안 되어 Compare 커버리지가 30% 이하로 급락한다. **과거 실패: Extractor 스킵 → 206건 Compare 불가.**
 - **검증은 `validate-queries.py --full` 하나로만.** 자체 SQL 조립, psql 직접 실행, 분리 실행 전부 금지.
 - **EXPLAIN 통과 ≠ 변환 성공.** Execute + Compare까지 필수
 - **0건==0건도 유효한 PASS.** Compare를 스킵하지 마라

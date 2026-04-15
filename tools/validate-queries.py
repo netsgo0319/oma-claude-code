@@ -605,7 +605,15 @@ SET HEADING ON
             print(f"ERROR: Extracted directory not found: {extracted_dir}")
             return
 
-        for json_file in sorted(extracted_path.glob('*-extracted.json')):
+        json_files = sorted(extracted_path.glob('*-extracted.json'))
+        if not json_files:
+            print(f"WARNING: No extracted JSON files in {extracted_dir}")
+            print(f"  → MyBatis Extractor (run-extractor.sh)를 먼저 실행하세요.")
+            print(f"  → Extractor 없이 진행하면 동적 SQL이 정적 파싱으로 fallback되어")
+            print(f"    Compare 커버리지가 크게 떨어집니다.")
+            return
+
+        for json_file in json_files:
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
@@ -902,7 +910,11 @@ SET HEADING ON
                     pname = param_names[i-1] if i-1 < len(param_names) else ''
                     val = tc_binds.get(pname)
                     if val is None:
-                        bound_parts.append("'1'")  # fallback
+                        # GRIDPAGING params should be empty (pagination wrapper)
+                        if 'gridpaging' in pname.lower():
+                            bound_parts.append('')  # pagination wrapper = empty
+                        else:
+                            bound_parts.append("'1'")  # fallback
                     elif isinstance(val, (int, float)):
                         bound_parts.append(str(val))
                     elif isinstance(val, str):
@@ -1478,15 +1490,16 @@ SET HEADING ON
             # Count test cases — if > 500, split into batches
             test_count = sql_content.count('\\echo ===')
             if test_count <= 500:
-                # Small file: run as-is
+                # Small file: run as-is (stderr merged into stdout for proper interleaving)
                 try:
                     result = subprocess.run(
                         ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
                          '-f', str(sql_file)],
-                        capture_output=True, text=True, env=env, timeout=timeout
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, env=env, timeout=timeout
                     )
                     with open(result_file, 'w', encoding='utf-8') as f:
-                        f.write(result.stdout + result.stderr)
+                        f.write(result.stdout)
                     return True
                 except Exception as e:
                     print(f"  ERROR running psql: {e}")
@@ -1523,9 +1536,10 @@ SET HEADING ON
                     result = subprocess.run(
                         ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
                          '-f', str(batch_file)],
-                        capture_output=True, text=True, env=env, timeout=timeout
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, env=env, timeout=timeout
                     )
-                    all_output.append(result.stdout + result.stderr)
+                    all_output.append(result.stdout)
                     batch_file.unlink(missing_ok=True)
                 except Exception as e:
                     print(f"  ERROR batch {bi}: {e}")

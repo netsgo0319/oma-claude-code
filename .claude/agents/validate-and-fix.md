@@ -41,7 +41,43 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 
 ## 수행 절차
 
-### ★★★ 절대 규칙: validate-queries.py --full만 사용 ★★★
+### ★★★ 절대 규칙 1: MyBatis Extractor를 반드시 먼저 실행 ★★★
+
+**검증 전에 반드시 MyBatis BoundSql 엔진으로 SQL을 추출해야 한다.**
+정적 XML 파싱은 동적 SQL(`<if>`, `<choose>`, `<foreach>`, GRIDPAGING)을 처리하지 못한다.
+MyBatis Extractor 없이 검증하면 Compare 커버리지가 30% 이하로 떨어진다.
+
+**과거 실패 사례: Extractor를 스킵하고 validate-queries.py만 실행 → 206건 Compare 불가 → 정적 렌더링 한계로 오분류.**
+
+```bash
+# ★ 검증 전 필수 — MyBatis BoundSql 엔진으로 동적 SQL 렌더링
+# workspace/output/ 에 변환된 XML이 있어야 함 (pipeline에서 복사)
+cp pipeline/step-1-convert/output/xml/*.xml workspace/output/ 2>/dev/null
+cp pipeline/step-3-validate-fix/output/xml-fixes/*.xml workspace/output/ 2>/dev/null
+
+# merged-tc.json 준비 (TC 파라미터를 MyBatis에 주입)
+mkdir -p workspace/results/_test-cases
+python3 -c "
+import json, glob
+merged = {}
+for f in sorted(glob.glob('pipeline/step-2-tc-generate/output/per-file/*/v1/test-cases.json')):
+    data = json.load(open(f))
+    for qid, cases in data.items():
+        if isinstance(cases, list) and cases:
+            merged[qid] = [tc.get('params', tc) for tc in cases if isinstance(tc, dict)]
+json.dump(merged, open('workspace/results/_test-cases/merged-tc.json', 'w'), ensure_ascii=False, indent=2)
+"
+
+# MyBatis Extractor 실행 (동적 SQL → 실제 SQL 렌더링)
+bash tools/run-extractor.sh --skip-build --validate
+
+# 추출 결과를 pipeline 경로로 복사
+cp workspace/results/_extracted_pg/*.json pipeline/step-3-validate-fix/output/extracted_pg/ 2>/dev/null
+```
+
+**이 단계를 건너뛰면 안 된다. Extractor 실행 후에만 validate-queries.py를 실행하라.**
+
+### ★★★ 절대 규칙 2: validate-queries.py --full만 사용 ★★★
 
 **검증은 반드시 아래 명령 하나로만 한다. 다른 방법 전부 금지.**
 
@@ -59,6 +95,7 @@ python3 tools/validate-queries.py --full \
 - ❌ --full 없이 --generate, --local, --execute 따로 실행
 - ❌ Python으로 SQL을 조립해서 subprocess.run(['psql', ...])
 - ❌ "먼저 EXPLAIN만 돌리고 나중에 Compare" 분리 실행
+- ❌ **run-extractor.sh 없이 validate-queries.py 직접 실행** (정적 파싱 fallback)
 
 **`--full` 하나가 EXPLAIN + Execute + Compare + 결과파싱을 전부 한다.**
 **이 명령 외의 어떤 방법으로도 검증하지 마라.**
@@ -68,9 +105,7 @@ python3 tools/validate-queries.py --full \
 **반드시 `--files`로 할당된 파일만 검증. 전체 돌리기 금지.**
 
 ```bash
-# 1) MyBatis 렌더링 (run-extractor.sh)
-bash tools/run-extractor.sh --validate
-
+# 1) ★ MyBatis Extractor (위 절대 규칙 1 참조 — 이미 실행했으면 스킵)
 # 2) 검증 (--full 원자적 실행)
 python3 tools/validate-queries.py --full \
   --files {할당된 파일1},{할당된 파일2} \
