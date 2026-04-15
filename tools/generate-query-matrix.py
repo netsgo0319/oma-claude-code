@@ -308,19 +308,19 @@ def main():
                 overall = 'FAIL_SYNTAX'
                 overall_detail = f'{explain_category}: {explain_error[:150]}'
 
-            # 미테스트
+            # 미테스트 — 상세 사유 필수
             elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested' and mybatis == 'no':
                 overall = 'NOT_TESTED_NO_RENDER'
-                overall_detail = 'MyBatis 렌더링 실패 (동적 SQL 평가 불가)'
+                overall_detail = f'MyBatis 렌더링 실패: file={fname}, mybatis=no (OGNL/foreach 에러 가능)'
             elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested':
                 overall = 'NOT_TESTED_NO_DB'
-                overall_detail = 'DB 미접속 또는 --full 미실행'
+                overall_detail = f'EXPLAIN 미실행: file={fname}, conv={conv_status}, mybatis={mybatis} (psql 출력 누락 또는 --full 미실행)'
             elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'not_tested':
                 overall = 'NOT_TESTED_NO_DB'
-                overall_detail = 'EXPLAIN 통과했지만 Oracle↔PG 비교 미실행'
+                overall_detail = f'Compare 미실행: file={fname}, explain=pass, Oracle 접속 불가 또는 oracle_compare.sql에 미포함'
             elif conv_status == 'pending':
                 overall = 'NOT_TESTED_PENDING'
-                overall_detail = '변환 미완료'
+                overall_detail = f'변환 미완료: file={fname}, method={method}'
             else:
                 overall = 'NOT_TESTED_PENDING'
                 overall_detail = f'상태 미분류: conv={conv_status} explain={explain_status} compare={compare_status}'

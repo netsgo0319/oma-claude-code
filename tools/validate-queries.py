@@ -1402,46 +1402,77 @@ SET HEADING ON
         pg_pass = os.environ.get('PG_PASSWORD', os.environ.get('PGPASSWORD', ''))
 
         def run_psql(sql_file, result_file, timeout=300):
-            """Run psql against a .sql file, write output to result_file."""
-            # Try psycopg2 first (no psql binary needed)
-            try:
-                import psycopg2
-                conn = psycopg2.connect(host=pg_host, port=pg_port, dbname=pg_db,
-                                        user=pg_user, password=pg_pass)
-                conn.autocommit = True
-                cur = conn.cursor()
-                with open(sql_file, 'r', encoding='utf-8') as f:
-                    sql_content = f.read()
-                # psycopg2 can't handle psql meta-commands (\echo, \set) — fall through
-                if '\\echo' in sql_content or '\\set' in sql_content:
-                    raise RuntimeError("psql meta-commands detected, use psql binary")
-                cur.execute(sql_content)
-                rows = cur.fetchall() if cur.description else []
-                conn.close()
-                output = '\n'.join(str(r) for r in rows)
-                with open(result_file, 'w', encoding='utf-8') as f:
-                    f.write(output)
-                return True
-            except Exception:
-                pass
-            # Fallback: psql binary
+            """Run psql against a .sql file, write output to result_file.
+            Large files are split by test markers (=== test_id ===) to prevent output truncation."""
             if not shutil.which('psql'):
-                print(f"  ERROR: psql not found and psycopg2 fallback failed")
+                print(f"  ERROR: psql not found")
                 return False
             env = os.environ.copy()
             env['PGPASSWORD'] = pg_pass
-            try:
-                result = subprocess.run(
-                    ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
-                     '-f', str(sql_file)],
-                    capture_output=True, text=True, env=env, timeout=timeout
-                )
-                with open(result_file, 'w', encoding='utf-8') as f:
-                    f.write(result.stdout + result.stderr)
-                return True
-            except Exception as e:
-                print(f"  ERROR running psql: {e}")
-                return False
+
+            with open(sql_file, 'r', encoding='utf-8') as f:
+                sql_content = f.read()
+
+            # Count test cases — if > 500, split into batches
+            test_count = sql_content.count('\\echo ===')
+            if test_count <= 500:
+                # Small file: run as-is
+                try:
+                    result = subprocess.run(
+                        ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                         '-f', str(sql_file)],
+                        capture_output=True, text=True, env=env, timeout=timeout
+                    )
+                    with open(result_file, 'w', encoding='utf-8') as f:
+                        f.write(result.stdout + result.stderr)
+                    return True
+                except Exception as e:
+                    print(f"  ERROR running psql: {e}")
+                    return False
+
+            # Large file: split by \\echo === markers and run in batches
+            print(f"  Large SQL ({test_count} tests): splitting into batches of 200...")
+            lines = sql_content.split('\n')
+            batches = []
+            current_batch = []
+            batch_test_count = 0
+            header_lines = []
+
+            for line in lines:
+                if line.startswith('\\echo ==='):
+                    batch_test_count += 1
+                    if batch_test_count > 200 and current_batch:
+                        batches.append(header_lines + current_batch)
+                        current_batch = []
+                        batch_test_count = 1
+                if line.startswith('\\set ') and not batches:
+                    header_lines.append(line)
+                current_batch.append(line)
+            if current_batch:
+                batches.append(header_lines + current_batch)
+
+            print(f"  Split into {len(batches)} batches")
+            all_output = []
+            for bi, batch in enumerate(batches):
+                batch_file = output_path / f'{Path(sql_file).stem}_batch{bi}.sql'
+                with open(batch_file, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(batch))
+                try:
+                    result = subprocess.run(
+                        ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                         '-f', str(batch_file)],
+                        capture_output=True, text=True, env=env, timeout=timeout
+                    )
+                    all_output.append(result.stdout + result.stderr)
+                    batch_file.unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"  ERROR batch {bi}: {e}")
+                    all_output.append(f"ERROR: batch {bi} failed: {e}")
+
+            with open(result_file, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(all_output))
+            print(f"  All {len(batches)} batches complete")
+            return True
 
         def run_oracle(sql_file, result_file, timeout=300):
             """Run Oracle SQL file, write output to result_file."""

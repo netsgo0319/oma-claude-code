@@ -36,6 +36,15 @@ inclusion: always
 - 2d: DBA 3종 외 Compare 미실행 쿼리 → BLOCK
 - BLOCK이면 보고서 생성 금지. validate-and-fix 재위임 후 다시 reporter 호출.
 
+## query-tracking.json 기록 필수
+
+**서브에이전트가 작업 완료 시 query-tracking.json에 반드시 기록해야 할 것:**
+- converter: `conversion_history` (패턴, 접근법, 신뢰도)
+- validate-and-fix: `attempts` (ts, error_category, error_detail, fix_applied, result)
+- test_cases는 generate-test-cases.py가 test-cases.json에 기록
+
+**비어있으면 보고서 JSON에 빈 배열로 나온다.** reporter가 검증 시 경고.
+
 ## 산출물 필수 규칙
 
 **모든 최종 단계(수정, 재검증, 보고서)는 아래 3개 산출물을 반드시 갱신해야 한다:**
