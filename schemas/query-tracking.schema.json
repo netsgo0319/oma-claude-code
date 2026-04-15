@@ -126,17 +126,18 @@
             }
           },
 
-          "history": {
+          "attempts": {
             "type": "array",
+            "description": "수정 시도 이력. validate-and-fix 에이전트가 기록.",
             "items": {
               "type": "object",
               "properties": {
-                "version": { "type": "integer" },
-                "status": { "type": "string" },
-                "error": { "type": "string" },
-                "fix": { "type": "string" },
-                "agent": { "type": "string" },
-                "timestamp": { "type": "string", "format": "date-time" }
+                "attempt": { "type": "integer" },
+                "ts": { "type": "integer", "description": "UTC Unix timestamp" },
+                "error_category": { "type": ["string", "null"] },
+                "error_detail": { "type": ["string", "null"] },
+                "fix_applied": { "type": "string" },
+                "result": { "type": "string", "enum": ["pass", "fail", "unknown"] }
               }
             }
           }
