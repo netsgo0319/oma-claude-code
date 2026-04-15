@@ -48,13 +48,33 @@ python3 tools/generate-handoff.py --step 0 --input-dir pipeline/shared/input
 
 ### Step 1: converter 위임
 
+**파일 수에 따라 분배:**
+- **30파일 이하**: converter 1개로 전체 처리
+- **31~100파일**: 2~3개 병렬 (15~30파일씩)
+- **100파일 이상**: 10~15파일 단위로 N개 병렬
+
+```python
+# 슈퍼바이저 분배 로직
+import glob
+files = sorted(glob.glob('pipeline/shared/input/*.xml'))
+batch_size = 15
+batches = [files[i:i+batch_size] for i in range(0, len(files), batch_size)]
+
+for i, batch in enumerate(batches):
+    file_list = ','.join(f.split('/')[-1] for f in batch)
+    # Agent({ subagent_type: "converter", prompt: f"
+    #   할당 파일: {file_list}
+    #   .claude/agents/converter.md 절차대로 수행.
+    #   batch-process.sh는 첫 번째 에이전트만 실행 (--all --parallel 8).
+    #   나머지 에이전트는 unconverted LLM 변환만.
+    #   완료 시 handoff.json은 마지막 에이전트가 생성." })
 ```
-Agent({ subagent_type: "converter", prompt: "
-  입력: pipeline/shared/input/
-  출력: pipeline/step-1-convert/output/
-  전체 XML 파싱+변환. batch-process.sh 후 unconverted는 LLM 변환.
-  완료 시 handoff.json 생성." })
-```
+
+**충돌 방지:**
+- `batch-process.sh --all`은 **첫 번째 에이전트만** 실행 (전체 파일 룰 변환)
+- 나머지 에이전트는 이미 룰 변환된 output에서 **unconverted만 LLM 변환**
+- 각 에이전트는 **할당된 파일의 query-tracking.json만** 갱신 (파일 단위 분리)
+- handoff.json은 **모든 에이전트 완료 후** 슈퍼바이저가 `generate-handoff.py --step 1` 실행
 
 ### Step 2: tc-generator 위임
 
