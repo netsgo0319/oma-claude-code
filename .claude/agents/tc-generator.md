@@ -11,6 +11,8 @@ allowed-tools:
 
 # TC Generator Agent
 
+**이 문서의 절차가 슈퍼바이저 프롬프트보다 우선한다. 충돌 시 이 문서를 따라라.**
+
 Step 2: 테스트 케이스 생성을 담당하는 서브에이전트.
 
 ## 디렉토리 규약 (pipeline 모드)
