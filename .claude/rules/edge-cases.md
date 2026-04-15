@@ -177,3 +177,23 @@ inclusion: always
 - **발견일**: 2026-04-12
 - **출처**: Phase4 셀프힐링 (13건)
 - **해결 방법**: manual (MyBatis XML 구조 변경)
+
+---
+
+### UPDATE SET alias.col (PG alias 불가)
+- **Oracle**: `UPDATE TABLE_A A SET A.COL1 = ...` — alias 사용 가능
+- **PostgreSQL**: `UPDATE TABLE_A A SET COL1 = ...` — SET 절에 alias 불가
+- **주의**: 단순 alias 제거로 해결. 서브쿼리에서 alias 참조는 유지
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 (153건 FAIL_SYNTAX 중 다수)
+- **해결 방법**: rule — **converter.py 자동 변환 구현됨**
+
+---
+
+### UPDATE SET (cols) = (SELECT ...) → UPDATE ... FROM
+- **Oracle**: `UPDATE T SET (C1, C2) = (SELECT B.C1, B.C2 FROM B WHERE B.KEY = T.KEY)`
+- **PostgreSQL**: `UPDATE T SET C1 = B.C1, C2 = B.C2 FROM B WHERE B.KEY = T.KEY`
+- **주의**: 서브쿼리가 복잡한 경우 FROM 절로 풀어야 함. 동적 MyBatis 태그가 SET 안에 있으면 수동 변환
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 (21파일 77건)
+- **해결 방법**: llm (구조 변경 필요)

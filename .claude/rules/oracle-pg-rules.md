@@ -111,6 +111,8 @@ inclusion: always
 | ROWID | ctid | 직접 대응 비권장, 로직 재설계 검토 |
 | MINUS | EXCEPT | |
 | DELETE table WHERE ... | DELETE FROM table WHERE ... | Oracle은 FROM 생략 가능, PG는 필수 |
+| UPDATE T A SET A.COL=... | UPDATE T A SET COL=... | PG SET 절에 alias 불가. **converter.py 자동 변환 구현됨** |
+| UPDATE T SET (C1,C2)=(SELECT...) | UPDATE T SET C1=B.C1, C2=B.C2 FROM B WHERE... | Oracle tuple SET → PG UPDATE...FROM. LLM 변환 |
 | table PARTITION(name) | 파티션 문법 다름 | 케이스별 검토 |
 | CONNECT BY 단순 레벨 (LEVEL ≤ N) | generate_series(1, N) | 재귀 불필요 케이스. **converter.py 자동 변환 구현됨** |
 | GREATEST(a, b, c) | GREATEST(COALESCE(a,0), COALESCE(b,0), COALESCE(c,0)) | **converter.py 자동 COALESCE 래핑 구현됨** |
