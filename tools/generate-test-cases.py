@@ -261,35 +261,130 @@ DML_TIMEOUT = 5
 
 # ── Source 0: Custom binds (고객 제공) ────────────
 
-def load_custom_binds(input_dir):
-    """Load workspace/input/custom-binds.json. Returns {query_id: [{name, params}]}."""
+def _clean_val(v):
+    """값 정규화: None/NaN→'', [vals]→첫번째, 'quoted'→strip."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ''
+    if isinstance(v, list):
+        return _clean_val(v[0]) if v else ''
+    s = str(v)
+    if s.startswith("'") and s.endswith("'") and len(s) > 1:
+        s = s[1:-1]
+    return s
+
+
+def _stem(filename):
+    """파일명 stem: prefix(._tmp_ 등) 제거 + .xml 제거. fuzzy 매칭용."""
+    name = Path(filename).stem if '.' in filename else filename
+    name = re.sub(r'^[._]+tmp[_.]?', '', name, flags=re.I)
+    return name
+
+
+def load_custom_binds(input_dir, custom_file=None):
+    """3가지 포맷의 바인드 데이터를 통합 로드.
+
+    Returns: {key: [{param: value, ...}]}
+    key = "filename.xml::queryId" (파일 스코프) 또는 "queryId" (bare, fallback)
+
+    지원 포맷:
+    a) 2레벨: {filename.xml: {queryId: {param: [vals]}}}
+    b) 1레벨: {queryId: {param: "val"}}
+    c) flat 리스트: [{source_file, sql_id, parameter_name, sample_value}]
+    """
     custom = {}
-    for p in [Path(input_dir) / 'custom-binds.json', Path(input_dir) / 'custom_binds.json']:
-        if p.exists():
-            try:
-                raw = p.read_text(encoding='utf-8')
-                # NaN/Infinity 처리 (JSON 비표준이지만 고객 데이터에 포함될 수 있음)
-                raw = raw.replace(': NaN', ': ""').replace(':NaN', ':""')
-                raw = raw.replace(': Infinity', ': 999999').replace(': -Infinity', ': -999999')
-                data = json.loads(raw)
-                if isinstance(data, dict):
-                    for qid, cases in data.items():
-                        if isinstance(cases, dict):
-                            # NaN/None 값을 빈 문자열로 변환 (MyBatis 렌더링에 필요)
-                            cases = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
-                                     for k, v in cases.items()}
-                            custom[qid] = [cases]
-                        elif isinstance(cases, list):
-                            cleaned = []
+
+    def _add(key, params_dict):
+        cleaned = {k: _clean_val(v) for k, v in params_dict.items()}
+        # 전부 빈값이면 스킵
+        if any(v != '' for v in cleaned.values()):
+            custom.setdefault(key, []).append(cleaned)
+
+    # 1. custom-binds.json (format a + b)
+    search_paths = [Path(input_dir) / 'custom-binds.json', Path(input_dir) / 'custom_binds.json']
+    if custom_file:
+        search_paths.insert(0, Path(custom_file))
+    for p in search_paths:
+        if not p.exists():
+            continue
+        try:
+            raw = p.read_text(encoding='utf-8')
+            raw = raw.replace(': NaN', ': ""').replace(':NaN', ':""')
+            raw = raw.replace(': Infinity', ': 999999').replace(': -Infinity', ': -999999')
+            data = json.loads(raw)
+            if not isinstance(data, dict):
+                continue
+
+            for key, val in data.items():
+                if not isinstance(val, dict):
+                    if isinstance(val, list):
+                        for c in val:
+                            if isinstance(c, dict):
+                                _add(key, c)
+                    continue
+
+                # val이 dict → 2레벨인지 1레벨인지 판별
+                first_inner = next(iter(val.values()), None)
+                if isinstance(first_inner, dict):
+                    # Format a: 2레벨 {filename: {queryId: {param: [val]}}}
+                    fname = key
+                    for qid, params in val.items():
+                        if isinstance(params, dict):
+                            _add(f"{fname}::{qid}", params)
+                elif isinstance(first_inner, list) and first_inner and isinstance(first_inner[0], dict):
+                    # {filename: {queryId: [{params}]}}
+                    fname = key
+                    for qid, cases in val.items():
+                        if isinstance(cases, list):
                             for c in cases:
                                 if isinstance(c, dict):
-                                    c = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
-                                         for k, v in c.items()}
-                                cleaned.append(c)
-                            custom[qid] = cleaned
-                print(f"  Source-Custom: {len(custom)} queries from {p.name}")
-            except Exception as e:
-                print(f"  WARNING: custom-binds.json parse error: {e}")
+                                    _add(f"{fname}::{qid}", c)
+                else:
+                    # Format b: 1레벨 {queryId: {param: "val"}}
+                    _add(key, val)
+
+            print(f"  Source-Custom: {len(custom)} keys from {p.name}")
+        except Exception as e:
+            print(f"  WARNING: {p.name} parse error: {e}")
+        break
+
+    # 2. bind-variable-samples/ (format c: flat 리스트)
+    samples_dirs = [
+        Path(input_dir) / 'daiso-bind-variable-samples',
+        Path(input_dir) / 'bind-variable-samples',
+        Path(input_dir).parent / 'daiso-bind-variable-samples',
+    ]
+    for sdir in samples_dirs:
+        if not sdir.exists():
+            continue
+        loaded = 0
+        grouped = {}  # (source_file, sql_id) → {param: value}
+        for jf in sorted(sdir.glob('*.json')):
+            try:
+                rows = json.load(open(jf, encoding='utf-8'))
+                if not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    sf = row.get('source_file', '')
+                    sid = row.get('sql_id', '')
+                    pname = row.get('parameter_name', '')
+                    pval = row.get('sample_value')
+                    if sf and sid and pname:
+                        gkey = (sf, sid)
+                        if gkey not in grouped:
+                            grouped[gkey] = {}
+                        cv = _clean_val(pval)
+                        if cv:
+                            grouped[gkey][pname] = cv
+                        loaded += 1
+            except Exception:
+                continue
+        for (sf, sid), params in grouped.items():
+            if params:
+                _add(f"{sf}::{sid}", params)
+        if loaded:
+            print(f"  Source-BindSamples: {loaded} rows, {len(grouped)} queries from {sdir.name}/")
+
+    print(f"  Custom total: {len(custom)} keys ({sum(len(v) for v in custom.values())} TC sets)")
     return custom
 
 def _tables(sql):
@@ -339,11 +434,24 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
     def _dup(binds): return any(c['params'] == binds for c in cases)
 
     # Priority 0: Custom binds (고객 제공 — 최우선)
-    # filename::queryID 형식 우선, fallback으로 bare queryID
-    custom_key = f"{filename}::{qid}" if filename else qid
-    custom_cases = custom_binds.get(custom_key) if custom_binds else None
-    if not custom_cases and custom_binds and qid in custom_binds:
-        custom_cases = custom_binds.get(qid)
+    # 매칭 순서: 정확키 → stem 매칭 → bare qid (fallback)
+    custom_cases = None
+    if custom_binds:
+        # 1) 정확: filename::qid
+        custom_key = f"{filename}::{qid}" if filename else qid
+        custom_cases = custom_binds.get(custom_key)
+        # 2) stem 매칭: prefix/suffix 차이 무시
+        if not custom_cases and filename:
+            fn_stem = _stem(filename)
+            for ck, cv in custom_binds.items():
+                if '::' in ck:
+                    ck_file, ck_qid = ck.split('::', 1)
+                    if ck_qid == qid and _stem(ck_file) == fn_stem:
+                        custom_cases = cv
+                        break
+        # 3) bare qid (파일 스코프 없는 1레벨 키)
+        if not custom_cases:
+            custom_cases = custom_binds.get(qid)
     if custom_cases:
         for i, cb in enumerate(custom_cases):
             binds = dict(cb) if isinstance(cb, dict) else {}
