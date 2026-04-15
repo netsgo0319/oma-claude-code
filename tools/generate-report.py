@@ -1781,33 +1781,32 @@ def render_html(data):
             slimmed.append({'name': f'... +{len(tcs) - 2} more'})
         return slimmed
 
-    # 1) Slim down query_matrix queries — remove sql/xml (available in files section)
+    # 1) Slim down query_matrix queries — Explorer uses files section for SQL
+    #    Keep only metadata + final_state in query_matrix (used by Overview/DBA tabs)
     qm = embedded.get('query_matrix')
     if qm and 'queries' in qm:
         for q in qm['queries']:
             for field in SQL_FIELDS:
                 q.pop(field, None)
             q['test_cases'] = _slim_test_cases(q.get('test_cases'))
-            # Slim conversion_history to keep only pattern+approach
             ch = q.get('conversion_history')
             if ch and isinstance(ch, list):
                 q['conversion_history'] = [{'pattern': c.get('pattern', ''), 'approach': c.get('approach', '')} for c in ch[:5]]
 
-    # 2) Slim down per-file queries — remove SQL fields (available in query_matrix),
-    #    keep only status/metadata for the Explorer tab file-level view
-    KEEP_FILE_FIELDS = {'query_id', 'type', 'status', 'final_state', 'final_state_detail',
-                        'complexity', 'conversion_method', 'explain', 'compare_status',
-                        'oracle_patterns', 'attempts'}
+    # 2) Slim down per-file queries — keep SQL preview for Explorer detail view
+    DROP_FIELDS = {'parameters', 'dynamic_elements', 'rules_applied', 'timing',
+                   'layer', 'confidence', 'execution', 'test_cases', 'history'}
     for fname, fdata in embedded.get('files', {}).items():
-        slim_queries = []
         for q in fdata.get('queries', []):
-            slim_q = {k: v for k, v in q.items() if k in KEEP_FILE_FIELDS}
-            # Slim final_state_detail to 120 chars
-            fsd = slim_q.get('final_state_detail', '')
-            if fsd and len(fsd) > 120:
-                slim_q['final_state_detail'] = fsd[:120] + '...'
-            slim_queries.append(slim_q)
-        fdata['queries'] = slim_queries
+            for field in SQL_FIELDS:
+                val = q.get(field, '')
+                if val and len(str(val)) > 300:
+                    q[field] = str(val)[:300] + TRUNCATE_SUFFIX
+            for field in DROP_FIELDS:
+                q.pop(field, None)
+            att = q.get('attempts', [])
+            if att and isinstance(att, list) and len(att) > 3:
+                q['attempts'] = att[:3]
 
     # 3) Slim down extracted variants
     extracted = embedded.get('extracted')

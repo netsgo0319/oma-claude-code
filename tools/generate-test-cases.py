@@ -512,7 +512,12 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
                 params.append(bp)
     # foreach collection 파라미터도 포함 (더미 리스트 필요)
     foreach_cols = _foreach_collections(q)
-    if not params and not foreach_cols:
+    # custom_binds에 해당 쿼리가 있으면 params가 비어있어도 진행 (include refid 안의 파라미터)
+    has_custom = False
+    if custom_binds:
+        custom_key = f"{filename}::{qid}" if filename else qid
+        has_custom = bool(custom_binds.get(custom_key) or custom_binds.get(qid))
+    if not params and not foreach_cols and not has_custom:
         # 파라미터 없는 쿼리도 빈 TC 생성 (EXPLAIN/Execute 검증용)
         return [{'name': 'no_params', 'params': {}, 'source': 'NO_PARAMS'}]
     tables = _tables(raw)
