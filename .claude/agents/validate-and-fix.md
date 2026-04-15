@@ -192,7 +192,23 @@ for each 렌더링 실패 쿼리:
 - conversion_history(Step 1 converter가 기록)와 **다른 것.** 그것은 "변환 레시피."
 - attempts는 **이 에이전트만** 기록한다.
 
-모든 시도를 `query-tracking.json`의 `attempts[]`에 기록:
+모든 시도를 `query-tracking.json`의 `attempts[]`에 기록.
+**tracking_utils.py의 add_attempt() 헬퍼를 사용하라:**
+
+```bash
+python3 -c "
+import sys; sys.path.insert(0, 'tools')
+from tracking_utils import TrackingManager
+tm = TrackingManager('pipeline/step-1-convert/output/results/{file}/v1')
+tm.add_attempt('{query_id}',
+    error_category='SYNTAX_ERROR',
+    error_detail='syntax error near NVL',
+    fix_applied='NVL→COALESCE 누락 수정',
+    result='fail')  # or 'pass'
+"
+```
+
+또는 직접 JSON 갱신도 가능:
 ```json
 {
   "attempt": 1,

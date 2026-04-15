@@ -249,6 +249,38 @@ class TrackingManager:
                 existing['warnings'] = warnings
             self._save()
 
+    # ===== Step 3: 수정 시도 기록 (attempts) =====
+
+    def add_attempt(self, query_id, error_category=None, error_detail=None,
+                    fix_applied='', result='fail'):
+        """수정 시도를 attempts 배열에 추가. validate-and-fix 에이전트가 호출.
+        Usage:
+            tm = TrackingManager('pipeline/step-1-convert/output/results/UserMapper.xml/v1')
+            tm.add_attempt('selectUser', error_category='SYNTAX_ERROR',
+                           error_detail='syntax error near NVL',
+                           fix_applied='NVL→COALESCE 변환 누락', result='pass')
+        """
+        q = self._find_query(query_id)
+        if q:
+            if 'attempts' not in q:
+                q['attempts'] = []
+            attempt_num = len(q['attempts']) + 1
+            q['attempts'].append({
+                'attempt': attempt_num,
+                'ts': now_iso(),
+                'error_category': error_category,
+                'error_detail': error_detail,
+                'fix_applied': fix_applied,
+                'result': result,
+            })
+            if result == 'pass':
+                q['status'] = 'success'
+            elif attempt_num >= 3:
+                q['status'] = 'escalated'
+            self._save()
+            return attempt_num
+        return 0
+
     def mark_success(self, query_id):
         q = self._find_query(query_id)
         if q:
