@@ -97,6 +97,12 @@ else:
 - `fix_loop_executed.status == "fail"` → **재위임**: "FAIL인데 수정 루프 0회. 반드시 수정."
 - `compare_coverage.status == "fail"` → **재위임**: "Compare 미실행. --full 재실행."
 - `fix_attempted == 0` AND 비-DBA FAIL 존재 → **재위임**: "수정 0건 불허."
+- **NOT_TESTED 50% 이상** → **재위임**: "검증 자체가 안 됨. psql 출력 캡처 확인 후 재실행."
+  ```
+  state_counts에서 NOT_TESTED_* 합계가 전체의 50% 이상이면 BLOCK.
+  원인: .env 미로드, search_path 미설정, psql stdout 캡처 누락.
+  "추가 검증이 필요하면..." 같은 소극적 보고는 허용하지 않는다.
+  ```
 - 모두 pass → Step 4 진행
 
 ### Step 4: reporter 위임

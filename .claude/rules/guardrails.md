@@ -50,7 +50,9 @@ inclusion: always
 **reporter 체크리스트를 통과해야만 보고서를 생성할 수 있다:**
 - 2c: FAIL인데 수정 루프 0회인 쿼리 → BLOCK
 - 2d: DBA 3종 외 Compare 미실행 쿼리 → BLOCK
+- 2e: **NOT_TESTED가 전체의 50% 이상** → BLOCK (psql 출력 캡처 실패)
 - BLOCK이면 보고서 생성 금지. validate-and-fix 재위임 후 다시 reporter 호출.
+- **"추가 검증이 필요하면..." 같은 소극적 보고는 허용하지 않는다. 직접 재실행하라.**
 
 ## 최종 JSON 산출물 포맷 (query-matrix.json)
 

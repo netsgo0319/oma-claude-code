@@ -58,6 +58,34 @@ python3 tools/validate-queries.py --full \
 `--full`은 EXPLAIN → Execute → Compare → 결과 파싱을 **원자적으로** 수행.
 개별 단계를 따로 실행하지 마라.
 
+### 1b. 검증 결과 즉시 확인 (★ 빈 결과 = 실행 실패)
+
+**검증 실행 후 반드시 결과 파일을 확인하라. 빈 파일이면 psql 실행 자체가 실패한 것이다.**
+
+```bash
+python3 -c "
+import json, sys
+vp = 'pipeline/step-3-validate-fix/output/validation/validated.json'
+d = json.load(open(vp))
+total = d.get('total', 0)
+passes = len(d.get('passes', []))
+fails = len(d.get('failures', []))
+tested = passes + fails
+print(f'Total: {total}, Tested: {tested} ({tested*100//max(total,1)}%), Pass: {passes}, Fail: {fails}')
+if tested == 0:
+    print('CRITICAL: 검증 결과 0건! psql 실행 실패. 원인 파악 후 재실행.')
+    sys.exit(1)
+if tested < total * 0.5:
+    print(f'WARNING: 미테스트 {total-tested}건 ({(total-tested)*100//total}%). 출력 캡처 누락. 재실행 필요.')
+"
+```
+
+**NOT_TESTED 50% 이상이면 검증이 안 된 것이다. "괜찮다"고 넘기지 마라.**
+- 결과 0건 → psql 접속 실패 / .env 미로드 / SQL 파일 미생성
+- tested < 50% → psql stdout 캡처 누락 (대량 실행 시 truncation)
+- **원인을 분석하고 재실행하라.** 대량이면 더 작은 배치로 나눠서 (200개씩)
+- "추가 검증이 필요하면..." 이런 소극적 보고 금지. **직접 재실행하라.**
+
 **★ 모든 쿼리는 MyBatis 렌더링을 반드시 거쳐야 한다.**
 렌더링 실패 = 테스트 스킵이 아니라 **반드시 고쳐야 할 버그.**
 static fallback(정적 XML 파싱)은 최후 수단이며, 렌더링 성공률 100%를 목표로 한다.

@@ -496,6 +496,16 @@ def generate_step3(args):
                           if state_counts.get('NOT_TESTED_NO_RENDER', 0) > 0
                           else 'All queries rendered successfully',
             },
+            'test_coverage': {
+                'status': 'fail' if (sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) > len(queries) * 0.5) else 'pass',
+                'not_tested_count': sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')),
+                'not_tested_pct': round(sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) / max(len(queries), 1) * 100, 1),
+                'detail': f'NOT_TESTED {sum(v for k,v in state_counts.items() if k.startswith("NOT_TESTED"))}건 '
+                          f'({round(sum(v for k,v in state_counts.items() if k.startswith("NOT_TESTED"))/max(len(queries),1)*100,1)}%) — '
+                          f'50% 초과 시 psql 출력 캡처 실패 의심. 재실행 필요.'
+                          if sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) > len(queries) * 0.5
+                          else f'NOT_TESTED {sum(v for k,v in state_counts.items() if k.startswith("NOT_TESTED"))}건 — 정상 범위',
+            },
         },
         'outputs': {
             'extracted_pg_dir': 'pipeline/step-3-validate-fix/output/extracted_pg/',
@@ -522,6 +532,10 @@ def generate_step3(args):
         blockers.append(f'Fix loop not executed for {len(no_loop_queries)} non-DBA FAIL queries')
     if compare_missing_non_dba > 0:
         blockers.append(f'Compare not executed for {compare_missing_non_dba} non-DBA queries')
+    # NOT_TESTED 50% 이상이면 검증 자체가 실패한 것
+    not_tested_total = sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED'))
+    if len(queries) > 0 and not_tested_total > len(queries) * 0.5:
+        blockers.append(f'NOT_TESTED {not_tested_total}/{len(queries)} ({round(not_tested_total/len(queries)*100,1)}%) — psql 출력 캡처 실패 의심. 재실행 필요.')
     handoff['_blockers'] = blockers
 
     # Recommendation
