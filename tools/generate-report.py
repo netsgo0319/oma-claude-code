@@ -231,10 +231,13 @@ def collect_data(base_dir):
             'conversion_method': q.get('conversion_method', ''),
             'complexity': q.get('complexity', ''),
             'status': 'success' if q.get('final_state', '').startswith('PASS_') else 'failed',
+            'final_state': q.get('final_state', ''),
+            'final_state_detail': q.get('final_state_detail', ''),
             'explain': {'status': q.get('explain_status', '')},
             'compare_results': [{'match': q.get('compare_status') == 'pass'}] if q.get('compare_status') != 'not_tested' else [],
             'attempts': q.get('attempts', []),
             'conversion_history': q.get('conversion_history', []),
+            'test_cases': q.get('test_cases', []),
             'oracle_patterns': [],
         }
         files_data[fname_base]['versions']['v1']['query-tracking']['queries'].append(qdata)
@@ -804,17 +807,29 @@ function fmtMs(ms){if(ms==null)return '-';if(ms<1000)return ms+'ms';return(ms/10
 function statusClass(s){return 'st-'+(s||'pending').replace(/\s/g,'_')}
 function statusIcon(s){
   if(!s)return '';
+  s=String(s);
+  // 14-state (final_state from query-matrix.json)
+  if(s.startsWith('PASS_'))return '<span style="color:var(--success)" title="'+s+'">&#10003;</span>';
+  if(s==='FAIL_SCHEMA_MISSING'||s==='FAIL_COLUMN_MISSING'||s==='FAIL_FUNCTION_MISSING')return '<span style="color:var(--warn)" title="'+s+' (DBA)">&#9888;</span>';
+  if(s.startsWith('FAIL_'))return '<span style="color:var(--fail)" title="'+s+'">&#10007;</span>';
+  if(s.startsWith('NOT_TESTED'))return '<span style="color:var(--dim)" title="'+s+'">&#9679;</span>';
+  // Legacy internal status fallback
   if(['success','pass','validated','complete'].includes(s))return '<span style="color:var(--success)" title="통과">&#10003;</span>';
-  if(s==='validating')return '<span style="color:var(--accent2)" title="EXPLAIN 통과, 비교 대기">&#10003;</span>';
   if(s==='converted')return '<span style="color:var(--accent2)" title="변환 완료">&#8594;</span>';
   if(['failed','fail','escalated'].includes(s))return '<span style="color:var(--fail)" title="실패">&#10007;</span>';
   if(s.startsWith('retry'))return '<span style="color:var(--warn)" title="재시도 중">&#8635;</span>';
-  if(s==='needs_llm_review')return '<span style="color:var(--orange)" title="LLM 검토 필요">&#9888;</span>';
   return '<span style="color:var(--dim)" title="대기">&#9679;</span>';
 }
-// Status label translation for display
 function statusLabel(s){
-  const labels={'validating':'EXPLAIN통과','converted':'변환완료','success':'완료','failed':'실패','escalated':'에스컬레이션','parsed':'파싱완료','pending':'대기'};
+  const labels={
+    'PASS_COMPLETE':'PASS','PASS_HEALED':'HEALED','PASS_NO_CHANGE':'NO CHANGE',
+    'FAIL_SCHEMA_MISSING':'DBA:스키마','FAIL_COLUMN_MISSING':'DBA:컬럼','FAIL_FUNCTION_MISSING':'DBA:함수',
+    'FAIL_ESCALATED':'ESCALATED','FAIL_SYNTAX':'SYNTAX','FAIL_COMPARE_DIFF':'COMPARE DIFF',
+    'FAIL_TC_TYPE_MISMATCH':'TYPE MISMATCH','FAIL_TC_OPERATOR':'OPERATOR',
+    'NOT_TESTED_NO_RENDER':'NO RENDER','NOT_TESTED_NO_DB':'NO DB','NOT_TESTED_PENDING':'PENDING',
+    // legacy
+    'success':'완료','failed':'실패','escalated':'에스컬레이션','converted':'변환완료','pending':'대기'
+  };
   return labels[s]||s;
 }
 function highlightSQL(sql){
@@ -1161,7 +1176,8 @@ function renderFiles(){
     // Query list
     for(let q of queries){
       let qid=q.query_id||q.id||'';
-      let qStatus=q.status||'pending';
+      // 14-state (final_state from query-matrix) > internal status fallback
+      let qStatus=q.final_state||q.overall_status||q.status||'pending';
       let comp=q.complexity||'-';
       let method=q.conversion_method||q.method||'rule';
       let oraclePatterns=q.oracle_patterns||[];
@@ -1174,12 +1190,15 @@ function renderFiles(){
       let timing=q.timing||{};
       let history=q.history||[];
 
-      // Status badge color
+      // Status badge color — 14-state 기반
       let stColor='var(--dim)';
-      if(['success','converted','pass'].includes(qStatus))stColor='var(--success)';
+      if(qStatus.startsWith('PASS_'))stColor='var(--success)';
+      else if(qStatus==='FAIL_SCHEMA_MISSING'||qStatus==='FAIL_COLUMN_MISSING'||qStatus==='FAIL_FUNCTION_MISSING')stColor='var(--warn)';
+      else if(qStatus.startsWith('FAIL_'))stColor='var(--fail)';
+      else if(qStatus.startsWith('NOT_TESTED'))stColor='var(--dim)';
+      // legacy fallback
+      else if(['success','converted','pass'].includes(qStatus))stColor='var(--success)';
       else if(['failed','fail','escalated'].includes(qStatus))stColor='var(--fail)';
-      else if(qStatus.startsWith('retry'))stColor='var(--warn)';
-      else if(qStatus==='needs_llm_review')stColor='var(--orange)';
 
       let methodColor=method==='llm'?'var(--purple)':method==='no_change'?'var(--dim)':'var(--success)';
       if(method==='no_change')method='no change';
