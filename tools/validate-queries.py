@@ -261,7 +261,9 @@ SET HEADING ON
                 continue
 
             # Use _select_best_tcs for better TC selection
-            all_cases = self.test_cases.get(qid, [])
+            # filename::qid 키 우선, bare qid fallback
+            file_key = f"{query.get('file', '')}::{qid}"
+            all_cases = self.test_cases.get(file_key, self.test_cases.get(qid, []))
             selected = self._select_best_tcs(all_cases, max_tcs=2)
             if not selected:
                 selected = [{'name': 'default', 'params': {}}]
@@ -909,7 +911,8 @@ SET HEADING ON
                 param_names = query.get('param_names_for_bind', [])
                 tc_binds = {}
                 # Always try to find TC values — even without param_names
-                tc_cases = self.test_cases.get(qid, [])
+                tc_file_key = f"{query.get('file', '')}::{qid}"
+                tc_cases = self.test_cases.get(tc_file_key, self.test_cases.get(qid, []))
                 best_tcs = self._select_best_tcs(tc_cases, max_tcs=1)
                 if best_tcs:
                     tc_binds = best_tcs[0].get('params', best_tcs[0].get('binds', {}))
@@ -993,8 +996,9 @@ SET HEADING ON
 
             print(f"  WARN: {qid} using static extraction (limited accuracy)")
 
-            # Get test cases for this query
-            cases = self.test_cases.get(qid, [])
+            # Get test cases for this query (filename::qid 우선)
+            static_file_key = f"{query.get('file', '')}::{qid}"
+            cases = self.test_cases.get(static_file_key, self.test_cases.get(qid, []))
 
             if not cases:
                 # No test cases - use default dummy binding

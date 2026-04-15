@@ -86,6 +86,25 @@ python3 tools/generate-test-cases.py \
 
 TC 우선순위: **고객(custom-binds.json)** > 샘플 데이터 > Java VO > V$SQL_BIND_CAPTURE > 컬럼 통계 > FK > 이름 추론
 
+### 3b. 동적 SQL 분기별 TC 변형 보강
+
+generate-test-cases.py가 생성한 TC는 기본 세트(sample, default, null, empty)만.
+**동적 SQL의 각 분기를 타는 값 변형을 추가로 만들어라:**
+
+- `<if test="name != null">` → name에 값이 있는 TC(분기 진입) + name=null TC(분기 스킵)
+- `<choose><when test="type == 'A'">` → type='A', type='B', type 없음 각각
+- `<foreach collection="list">` → list=['1','2'] (2건), list=['1'] (1건)
+
+**방법**: 기존 TC를 복사하여 조건 파라미터만 변경. parsed.json의 `dynamic_elements`에서 조건 추출.
+**목표**: 쿼리당 최소 2개 TC — 주요 분기를 타는 것 + 타지 않는 것.
+
+생성 후 test-cases.json에 추가:
+```python
+# 예시: name 파라미터가 있는 TC와 없는 TC
+tc[qid].append({"name": "branch_with_name", "params": {"name": "test", ...}, "source": "BRANCH"})
+tc[qid].append({"name": "branch_without_name", "params": {"name": None, ...}, "source": "BRANCH"})
+```
+
 ### 4. merged-tc.json 생성/확인
 
 `merged-tc.json`이 자동 생성되지 않았으면 수동 병합:

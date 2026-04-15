@@ -419,7 +419,9 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
     params = _params(raw)
     # foreach collection 파라미터도 포함 (더미 리스트 필요)
     foreach_cols = _foreach_collections(q)
-    if not params and not foreach_cols: return []
+    if not params and not foreach_cols:
+        # 파라미터 없는 쿼리도 빈 TC 생성 (EXPLAIN/Execute 검증용)
+        return [{'name': 'no_params', 'params': {}, 'source': 'NO_PARAMS'}]
     tables = _tables(raw)
     qtype = q.get('type', 'select').lower()
     is_dml = qtype in ('insert', 'update', 'delete')
@@ -633,12 +635,23 @@ def main():
         if not tc_path: continue
         try: ftcs = json.loads(tc_path.read_text(encoding='utf-8'))
         except Exception: continue
+        # filename_base 추출 (parsed_path 기준)
+        filename_base = parsed_path.parent.parent.name
+        if not filename_base.endswith('.xml'):
+            filename_base = filename_base + '.xml'
         for qid, cases in ftcs.items():
             # 실값이 있는 TC만 (null_test/empty_string 제외)
             pl = [c['params'] for c in cases
-                  if c.get('params') and c.get('name', '') not in _SKIP_TC_NAMES
+                  if c.get('params') is not None and c.get('name', '') not in _SKIP_TC_NAMES
                   and not all(v is None for v in c['params'].values())]
-            if pl: merged_tc[qid] = pl
+            # 파라미터 없는 쿼리도 빈 TC 포함 (검증용)
+            if not pl and any(c.get('source') == 'NO_PARAMS' for c in cases):
+                pl = [{}]
+            if pl:
+                # 키: filename::qid (프로젝트 간 동명 쿼리 충돌 방지) + bare qid (fallback 호환)
+                merged_tc[f"{filename_base}::{qid}"] = pl
+                if qid not in merged_tc:  # bare qid는 첫 등장만 (충돌 방지)
+                    merged_tc[qid] = pl
 
     # merged-tc.json 출력 위치: --output-dir 지정 시 output_dir/merged-tc.json, 아니면 기존 경로
     if output_dir:
