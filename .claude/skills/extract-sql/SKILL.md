@@ -1,6 +1,6 @@
 ---
 name: extract-sql
-description: MyBatis SqlSessionFactory + BoundSql API를 사용하여 XML 매퍼 파일에서 실제 SQL을 추출한다. 동적 SQL(if/choose/foreach 등)을 MyBatis 엔진이 정확하게 평가하여 실제 생성되는 SQL을 얻는다.
+description: MyBatis BoundSql 엔진으로 동적 SQL 추출. validate-and-fix 에이전트가 검증 전에 <if>, <choose>, <foreach> 등 동적 태그를 평가하여 실행 가능한 SQL을 얻을 때 사용합니다. run-extractor.sh를 통해 실행합니다.
 ---
 
 ## 개요

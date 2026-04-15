@@ -1,6 +1,6 @@
 ---
 name: orchestrate-pipeline
-description: 전체 파이프라인 오케스트레이션 — Step 0→1→2→3→4 진행 판단. 슈퍼바이저(CLAUDE.md)가 사용.
+description: 전체 Oracle→PostgreSQL 마이그레이션 파이프라인 오케스트레이션. 사용자가 '변환해줘', 'migration 시작', 'XML 변환' 등을 요청하거나, Step 0→1→2→3→4 순서를 따라 서브에이전트를 위임하고 handoff.json으로 진행을 판단할 때 사용합니다.
 allowed-tools: Bash Read
 ---
 

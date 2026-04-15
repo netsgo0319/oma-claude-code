@@ -1,6 +1,6 @@
 ---
 name: parse-xml
-description: MyBatis 또는 iBatis XML 파일을 파싱하여 SQL 쿼리를 추출한다. mapper namespace, 쿼리 ID, SQL 타입(select/insert/update/delete), 동적 SQL 요소(if/choose/foreach 등), 파라미터 매핑을 식별한다.
+description: MyBatis/iBatis XML 파싱. converter 에이전트가 XML 파일에서 쿼리 ID, SQL, 동적 태그, 파라미터를 추출할 때 사용합니다.
 ---
 
 ## 참조 자료

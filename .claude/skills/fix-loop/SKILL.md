@@ -1,6 +1,6 @@
 ---
 name: fix-loop
-description: FAIL 쿼리 수정 루프 — 에러 분석 → XML 수정 → 재검증 (최대 3회). validate-and-fix 에이전트가 사용.
+description: FAIL 쿼리 수정 루프. validate-and-fix 에이전트가 검증 실패(EXPLAIN 에러, Compare 불일치) 쿼리를 수정할 때 사용합니다. 에러 분석 → XML Edit → 재검증 최대 3회. DBA 3종(relation/column/function missing)은 스킵합니다.
 allowed-tools:
   - Bash
   - Read

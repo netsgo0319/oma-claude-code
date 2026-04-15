@@ -1,6 +1,6 @@
 ---
 name: llm-convert
-description: 룰셋으로 처리할 수 없는 복잡한 Oracle SQL을 LLM을 활용하여 PostgreSQL로 변환한다. CONNECT BY 계층쿼리, MERGE INTO, PIVOT/UNPIVOT, PL/SQL 호출, 복합 분석함수 등을 처리한다.
+description: LLM 기반 복합 SQL 변환. converter 에이전트가 룰로 처리 불가능한 CONNECT BY→WITH RECURSIVE, MERGE INTO→ON CONFLICT, PIVOT/UNPIVOT 등을 변환할 때 사용합니다.
 ---
 
 ## 입력

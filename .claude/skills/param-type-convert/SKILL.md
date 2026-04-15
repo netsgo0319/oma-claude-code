@@ -1,6 +1,6 @@
 ---
 name: param-type-convert
-description: MyBatis XML의 파라미터 매핑 속성(jdbcType, javaType, typeHandler)을 Oracle에서 PostgreSQL에 맞게 변환한다. SQL 본문이 아닌 XML 속성 레벨의 변환을 담당한다.
+description: MyBatis 파라미터 타입 변환. converter 에이전트가 jdbcType=BLOB→BINARY, CLOB→VARCHAR, CURSOR→OTHER 등 XML 속성을 변환할 때 사용합니다.
 ---
 
 ## 개요

@@ -1,6 +1,6 @@
 ---
 name: execute-test
-description: 변환된 PostgreSQL 쿼리를 실제 실행하여 런타임 오류를 검증한다. EXPLAIN 통과한 쿼리만 대상으로 한다. 트랜잭션 내 실행 후 ROLLBACK.
+description: PostgreSQL 실제 실행 검증. validate-and-fix 에이전트가 EXPLAIN 통과한 SQL을 실제 실행하여 런타임 에러를 확인할 때 사용합니다. BEGIN/ROLLBACK 내에서 안전하게 실행합니다.
 ---
 
 ## 입력

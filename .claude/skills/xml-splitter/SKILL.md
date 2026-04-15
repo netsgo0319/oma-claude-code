@@ -1,6 +1,6 @@
 ---
 name: xml-splitter
-description: 대형 MyBatis/iBatis XML 파일을 쿼리 단위로 분할한다. LLM 컨텍스트 한계를 우회하여 수만 줄 XML도 처리할 수 있게 한다.
+description: 대형 XML 분할. converter 에이전트가 1000줄 이상 XML을 청크 단위로 나눠 컨텍스트 한계를 우회할 때 사용합니다.
 ---
 
 ## 개요

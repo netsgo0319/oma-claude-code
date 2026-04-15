@@ -1,6 +1,6 @@
 ---
 name: db-postgresql
-description: PostgreSQL에 쿼리를 실행한다. psql CLI를 사용하여 EXPLAIN, SELECT, DML을 수행한다. 환경변수로 접속 정보를 참조한다.
+description: PostgreSQL 쿼리 실행. psql CLI로 EXPLAIN, SELECT, DML을 실행할 때 사용합니다. 환경변수(PG_HOST 등)로 접속합니다.
 ---
 
 ## 접속 정보

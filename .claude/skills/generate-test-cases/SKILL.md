@@ -1,6 +1,6 @@
 ---
 name: generate-test-cases
-description: 쿼리별 바인드 변수를 분석하고 Oracle 딕셔너리에서 메타데이터, 실행 이력, 캡처된 바인드 값을 수집하여 의미 있는 테스트 케이스 조합을 생성한다. 동적 SQL의 모든 분기를 커버하는 다중 테스트 케이스를 생성한다.
+description: 테스트 케이스 생성. tc-generator 에이전트가 쿼리별 바인드 변수를 분석하고 Oracle 딕셔너리에서 샘플 데이터, V$SQL_BIND_CAPTURE, 컬럼 통계를 수집하여 TC를 만들 때 사용합니다.
 ---
 
 ## 입력

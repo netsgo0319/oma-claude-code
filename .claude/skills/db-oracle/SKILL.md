@@ -1,6 +1,6 @@
 ---
 name: db-oracle
-description: Oracle DB에 쿼리를 실행한다. sqlplus CLI를 사용하여 SELECT, DML, 메타데이터 조회를 수행한다. 환경변수로 접속 정보를 참조한다.
+description: Oracle DB 쿼리 실행. sqlplus CLI로 SELECT, DML, 메타데이터를 조회할 때 사용합니다. 환경변수(ORACLE_HOST 등)로 접속합니다.
 ---
 
 ## 접속 정보

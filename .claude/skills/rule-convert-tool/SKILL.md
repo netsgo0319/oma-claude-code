@@ -1,6 +1,6 @@
 ---
 name: rule-convert-tool
-description: tools/oracle-to-pg-converter.py를 사용하여 XML 파일의 Oracle SQL을 기계적으로 PostgreSQL로 변환한다. CDATA 블록과 멀티라인 함수를 정확히 처리한다. LLM 변환 전에 반드시 먼저 실행한다.
+description: oracle-to-pg-converter.py 도구 실행. converter 에이전트가 XML 파일의 Oracle SQL을 일괄 변환할 때 사용합니다. CDATA, 멀티라인 함수를 정확히 처리. LLM 변환 전에 반드시 먼저 실행합니다.
 ---
 
 ## 개요

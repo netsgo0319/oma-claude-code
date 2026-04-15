@@ -1,6 +1,6 @@
 ---
 name: cross-file-analyzer
-description: 여러 XML 매퍼 파일 간의 크로스 파일 의존성을 분석한다. association select, collection select 등으로 다른 파일의 쿼리를 참조하는 관계를 추적하여 전체 프로젝트 수준의 통합 의존성 그래프를 생성한다.
+description: 크로스 파일 의존성 분석. converter 에이전트가 association select, include refid 등 파일 간 참조를 추적하여 변환 순서를 결정할 때 참조합니다.
 ---
 
 ## 개요

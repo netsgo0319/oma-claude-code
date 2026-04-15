@@ -1,6 +1,6 @@
 ---
 name: explain-test
-description: 변환된 PostgreSQL 쿼리에 EXPLAIN을 실행하여 문법 오류를 검증한다. 실제 실행 없이 쿼리 플랜 생성 가능 여부만 확인한다.
+description: PostgreSQL EXPLAIN 검증. validate-and-fix 에이전트가 변환된 SQL의 문법 오류를 확인할 때 사용합니다. 실제 실행 없이 쿼리 플랜 생성 가능 여부만 확인합니다.
 ---
 
 ## 입력

@@ -1,6 +1,6 @@
 ---
 name: complex-query-decomposer
-description: L3~L4 복잡도 쿼리를 변환 가능한 서브 태스크 DAG로 분해한다. ROWNUM 페이징 구조 변환, 인라인 CONNECT BY의 CTE 추출, 동적 SQL 분기별 변환 등 구조적 변환이 필요한 경우 변환 계획을 생성한다.
+description: L3~L4 복잡 쿼리 분해. converter 에이전트가 CONNECT BY+ROWNUM+NVL 같은 다중 패턴 쿼리를 Inside-Out 전략으로 단계적 변환할 때 참조합니다.
 ---
 
 ## 개요

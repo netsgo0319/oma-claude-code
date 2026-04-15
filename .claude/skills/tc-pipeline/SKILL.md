@@ -1,6 +1,6 @@
 ---
 name: tc-pipeline
-description: Step 2 TC 생성 파이프라인 — generate-test-cases → merge → handoff. tc-generator 에이전트가 사용.
+description: Step 2 TC 생성 파이프라인. tc-generator 에이전트가 테스트 케이스를 생성할 때 사용합니다. generate-test-cases.py 실행 → merged-tc.json 병합 → handoff 생성.
 allowed-tools:
   - Bash
   - Read

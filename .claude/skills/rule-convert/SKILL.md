@@ -1,6 +1,6 @@
 ---
 name: rule-convert
-description: Oracle SQL을 PostgreSQL로 기계적으로 변환하는 룰셋을 적용한다. parsed.json에서 "rule" 태그된 쿼리에 대해 패턴 매칭 기반 치환을 수행한다. .claude/rules/oracle-pg-rules.md의 룰셋을 참조한다.
+description: Oracle SQL을 PostgreSQL로 룰 기반 변환. converter 에이전트가 NVL→COALESCE, DECODE→CASE, SYSDATE→CURRENT_TIMESTAMP 등 40+ 패턴을 기계적으로 치환할 때 사용합니다. oracle-pg-rules.md 룰셋을 참조합니다.
 ---
 
 ## 입력

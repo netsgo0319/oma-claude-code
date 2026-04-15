@@ -1,6 +1,6 @@
 ---
 name: validate-pipeline
-description: Step 3 검증 파이프라인 — workspace 준비 → MyBatis 렌더링 → --full 검증 → 결과 확인 → handoff 생성. validate-and-fix 에이전트가 사용.
+description: Step 3 검증 파이프라인. validate-and-fix 에이전트가 변환된 SQL을 검증할 때 사용합니다. workspace 준비 → MyBatis 렌더링(run-extractor.sh) → validate-queries.py --full → 결과 확인 → handoff 생성. 반드시 이 순서를 따르며, extractor를 빼먹으면 206건 Compare 실패합니다.
 allowed-tools:
   - Bash
   - Read

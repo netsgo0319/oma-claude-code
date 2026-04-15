@@ -1,6 +1,6 @@
 ---
 name: compare-test
-description: 동일 파라미터로 Oracle과 PostgreSQL에 쿼리를 실행하여 결과를 비교한다. execute-test 통과한 SELECT 쿼리만 대상으로 한다.
+description: Oracle↔PostgreSQL 결과 비교. validate-and-fix 에이전트가 동일 파라미터로 양쪽에 쿼리를 실행하고 행수를 비교할 때 사용합니다. 불일치면 FAIL_COMPARE_DIFF로 수정 루프 대상입니다.
 ---
 
 ## 입력

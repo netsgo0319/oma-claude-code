@@ -1,6 +1,6 @@
 ---
 name: convert-pipeline
-description: Step 1 변환 파이프라인 — batch-process → LLM 변환 → tracking 갱신 → handoff. converter 에이전트가 사용.
+description: Step 1 변환 파이프라인. converter 에이전트가 Oracle XML을 PostgreSQL로 변환할 때 사용합니다. batch-process.sh로 전체 룰 변환 후 unconverted만 LLM 변환. 파일을 하나씩 Edit하지 않고 반드시 이 파이프라인을 따릅니다.
 allowed-tools:
   - Bash
   - Read

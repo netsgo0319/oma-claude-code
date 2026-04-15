@@ -1,6 +1,6 @@
 ---
 name: query-analyzer
-description: 쿼리 간 의존성 그래프를 구축하고 복잡도를 점수화하여 리프 우선 변환 순서를 결정한다. parsed.json을 분석하여 dependency-graph.json, complexity-scores.json, conversion-order.json을 생성한다.
+description: 쿼리 복잡도 분석. converter 에이전트가 의존성 그래프와 L0~L4 복잡도를 계산하여 변환 순서를 결정할 때 사용합니다.
 ---
 
 ## 개요

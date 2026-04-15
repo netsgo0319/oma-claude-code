@@ -1,6 +1,6 @@
 ---
 name: audit-log
-description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 기록한다. 판단 근거, 시도 과정, 에러 상세, 해결 방법을 포함하여 전체 마이그레이션 이력을 추적한다.
+description: 활동 로그 기록. 모든 에이전트가 판단 근거, 시도, 에러, 해결 방법을 activity-log.jsonl에 기록할 때 사용합니다.
 ---
 
 ## 로그 파일

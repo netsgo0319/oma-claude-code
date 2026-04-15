@@ -1,6 +1,6 @@
 ---
 name: report-pipeline
-description: Step 4 보고서 파이프라인 — gate 확인 → assemble → matrix → report → handoff. reporter 에이전트가 사용.
+description: Step 4 보고서 생성 파이프라인. reporter 에이전트가 최종 보고서를 만들 때 사용합니다. gate 확인 → workspace 조립 → query-matrix.json(유일한 데이터 소스) → HTML 리포트(4탭) → handoff 생성.
 allowed-tools:
   - Bash
   - Read
