@@ -797,16 +797,36 @@ SET HEADING ON
                 replacement = f"'{value}'"
             result = re.sub(pattern, replacement, result)
 
-        # Replace any remaining unbound params with default_unbound
+        # Replace any remaining unbound params with type-aware defaults
         # Framework pagination params (GRIDPAGING_*) must be empty string
         def _unbound_replace(m):
-            pname = m.group(0)[2:-1].split(',')[0].lower()
-            if 'gridpaging' in pname:
+            full = m.group(0)[2:-1]  # strip #{ and }
+            pname = full.split(',')[0].strip().lower()
+            if 'gridpaging' in pname or 'colname' in pname or 'search_condition' in pname:
                 return ''
+            # Type-aware defaults: numeric-looking params get numeric values
+            if any(kw in pname for kw in ('cnt', 'count', 'num', 'seq', 'qty', 'amt', 'idx', 'size', 'page', 'limit', 'offset')):
+                return '1'
+            if any(kw in pname for kw in ('date', 'dt', 'ymd', 'yyyymmdd')):
+                return "'20260115'"
+            if any(kw in pname for kw in ('yn', 'flag', 'delyn', 'useyn')):
+                return "'Y'"
             return default_unbound
         result = re.sub(r'#\{[^}]+\}', _unbound_replace, result)
-        # Replace ${} dollar substitution with placeholder
-        result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
+        # Replace ${} dollar substitution — use valid SQL identifiers instead of placeholder_tbl
+        def _dollar_replace(m):
+            varname = m.group(0)[2:-1].strip().lower()
+            # Table name substitution → use a known schema table
+            if any(kw in varname for kw in ('table', 'tbl', 'tblnm')):
+                return 'DUAL'  # safe no-op table
+            # Column/field name substitution
+            if any(kw in varname for kw in ('col', 'column', 'field', 'order')):
+                return '1'
+            # Schema prefix
+            if any(kw in varname for kw in ('schema', 'owner')):
+                return 'wmson'
+            return "'1'"
+        result = re.sub(r'\$\{[^}]+\}', _dollar_replace, result)
 
         return result
 

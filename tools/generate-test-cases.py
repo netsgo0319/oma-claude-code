@@ -348,11 +348,15 @@ def load_custom_binds(input_dir, custom_file=None):
         break
 
     # 2. bind-variable-samples/ (format c: flat 리스트)
+    # --bind-samples-dir 인자 또는 기본 경로 탐색
     samples_dirs = [
         Path(input_dir) / 'daiso-bind-variable-samples',
         Path(input_dir) / 'bind-variable-samples',
         Path(input_dir).parent / 'daiso-bind-variable-samples',
     ]
+    # --bind-samples-dir 인자가 있으면 최우선
+    if hasattr(args, 'bind_samples_dir') and args.bind_samples_dir:
+        samples_dirs.insert(0, Path(args.bind_samples_dir))
     for sdir in samples_dirs:
         if not sdir.exists():
             continue
@@ -369,6 +373,7 @@ def load_custom_binds(input_dir, custom_file=None):
                     sid = row.get('sql_id', '')
                     pname = row.get('parameter_name', '')
                     pval = row.get('sample_value')
+                    if_test = row.get('if_test', '')
                     if sf and sid and pname:
                         gkey = (sf, sid)
                         if gkey not in grouped:
@@ -376,12 +381,29 @@ def load_custom_binds(input_dir, custom_file=None):
                         cv = _clean_val(pval)
                         if cv:
                             grouped[gkey][pname] = cv
+                        # if_test가 있으면 해당 분기를 활성화하기 위한
+                        # 파라미터도 TC에 반영 (isNotEmpty/isNotNull 조건)
+                        if if_test and pname and cv:
+                            # isNotEmpty(X) / X != null 패턴 → X에 값이 있어야 분기 활성화
+                            cond_params = re.findall(r'isNotEmpty\((\w+)\)|isNotNull\((\w+)\)|(\w+)\s*!=\s*null', if_test)
+                            for groups in cond_params:
+                                cp = next((g for g in groups if g), None)
+                                if cp and cp not in grouped[gkey]:
+                                    grouped[gkey][cp] = cv  # 조건 파라미터에도 같은 값
                         loaded += 1
             except Exception:
                 continue
+        # 바인드 샘플 키 매칭 강화:
+        # source_file(예: "adm-address-sql-oracle.xml")과
+        # pipeline input filename(예: "daiso-ams__adm-address-sql-oracle.xml")의
+        # 프로젝트 prefix 차이를 흡수
         for (sf, sid), params in grouped.items():
             if params:
                 _add(f"{sf}::{sid}", params)
+                # prefix 없는 bare filename으로도 등록 (프로젝트 prefix 매칭용)
+                sf_bare = sf.split('__')[-1] if '__' in sf else sf
+                if sf_bare != sf:
+                    _add(f"{sf_bare}::{sid}", params)
         if loaded:
             print(f"  Source-BindSamples: {loaded} rows, {len(grouped)} queries from {sdir.name}/")
 
