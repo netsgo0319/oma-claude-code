@@ -30,23 +30,19 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
 
 ### ★★★ 병렬 위임 (필수 — 1개 에이전트에 전부 주지 마라)
 
-**Step 3(validate-and-fix)는 반드시 여러 에이전트에 파일을 나눠서 병렬 위임하라.**
+**모든 Step에서 파일이 많으면 반드시 여러 에이전트에 나눠서 병렬 위임하라.**
 446파일을 1개 에이전트에 주면 수시간 걸린다. 5개로 나누면 30분.
 
-```python
-import glob
-files = sorted(glob.glob('pipeline/shared/input/*.xml'))
-batch_size = max(15, len(files) // 5)  # 최소 5개 에이전트
-batches = [files[i:i+batch_size] for i in range(0, len(files), batch_size)]
+**파일 목록을 확인하고, 아래 기준대로 나눠서 Agent()를 여러 개 동시에 spawn하라:**
 
-# 병렬 spawn — 동시에!
-for i, batch in enumerate(batches):
-    file_list = ','.join(f.split('/')[-1] for f in batch)
-    Agent({ subagent_type: "validate-and-fix",
-            prompt: f"할당 파일: {file_list}\n에이전트 정의를 따라라." })
-```
+| Step | 기준 | 에이전트 수 |
+|------|------|-----------|
+| Step 1 (converter) | 30이하→1개, 31~100→2~3개, 100+→15파일씩 | batch-process.sh는 첫 에이전트만 |
+| Step 2 (tc-generator) | 50이하→1개, 50+→2~3개 | Oracle 메타는 1회 공유 |
+| Step 3 (validate-and-fix) | 20이하→1개, 21~100→2~5개, 100+→15파일씩 | **가장 오래 걸림, 반드시 분할** |
+| Step 4 (reporter) | 항상 1개 | — |
 
-**Step 1(converter)도 100파일 이상이면 병렬 분할.** 단, batch-process.sh는 첫 에이전트만 실행.
+**각 에이전트에 할당 파일 목록을 명시하고, 동시에 spawn하라. 순차 실행 금지.**
 
 ### ★ GATE (Step 3→4)
 
