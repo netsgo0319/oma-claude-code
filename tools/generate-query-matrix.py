@@ -317,7 +317,13 @@ def main():
             explain_category = classify_explain_error(explain_error) if explain_status == 'fail' else ''
 
             # --- Compare ---
+            # 1차: compare_validated.json에서 (외부 결과)
             cmp_results = compare_results.get(qid, [])
+            # 2차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
+            if not cmp_results:
+                tracking_cmp = q.get('compare_results', [])
+                if tracking_cmp:
+                    cmp_results = tracking_cmp
             if cmp_results:
                 tc_total = len(cmp_results)
                 tc_pass = sum(1 for c in cmp_results if c.get('match', False))

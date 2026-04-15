@@ -138,8 +138,8 @@ if [ -d "$PIPELINE/step-3-validate-fix/output/validation" ]; then
   echo "  _validation/: linked"
 fi
 
-# 6. batch dirs → _validation_batch-{N}
-for bd in "$PIPELINE/step-3-validate-fix/output/batches/batch-"*/; do
+# 6. batch dirs → _validation_batch* (batch-N, batch_N, batch_00 등 모든 형태)
+for bd in "$PIPELINE/step-3-validate-fix/output/batches/"*/; do
   [ -d "$bd" ] || continue
   bname=$(basename "$bd")
   ln -sfn "$bd" "$WS/results/_validation_$bname"
