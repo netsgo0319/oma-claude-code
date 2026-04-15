@@ -46,7 +46,7 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
 
 **Subagents vs Agent Teams:**
 - 각 Step의 병렬 실행은 **Subagents**로 (결과만 리턴, 서로 대화 불필요)
-- Agent Teams(tmux 모드)는 서로 협력이 필요한 경우에만 (현재 불필요)
+- Agent Teams(tmux 모드)는 서로 협력이 필요한 경우에만
 
 ### ★ GATE (Step 3→4)
 
