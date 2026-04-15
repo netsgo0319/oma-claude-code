@@ -13,8 +13,8 @@ MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 ## 파이프라인 요약
 
 ```
-Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
-환경점검          converter → tc-generator → validate-and-fix → reporter
+Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  /learn (수동)
+환경점검          converter → tc-generator → validator → reporter   학습
 ```
 
 각 Step 완료 시 `pipeline/step-{N}-*/handoff.json` 생성 → 슈퍼바이저가 읽고 판단.
@@ -111,9 +111,14 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 bash tools/reset-workspace.sh --force
 ```
 
+## 학습 (선택)
+
+파이프라인 완료 후 `/learn`으로 결과 분석. 반복 패턴 추출 → 에지케이스→룰 승격 제안.
+
 ## 참조
 
 - `.claude/rules/guardrails.md` — 금지 행동 + 안전 규칙
 - `.claude/rules/oracle-pg-rules.md` — 40+ 변환 룰
 - `.claude/rules/edge-cases.md` — 에지케이스
 - `.claude/skills/orchestrate-pipeline/` — 전체 파이프라인 오케스트레이션
+- `.claude/skills/learn-from-results/` — 결과 학습 + 룰 승격

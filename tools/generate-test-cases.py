@@ -63,6 +63,57 @@ def _schema():
 
 _SQL_HDR = "SET PAGESIZE 0 FEEDBACK OFF LINESIZE 1000 TRIMSPOOL ON\n"
 
+# ── PG column type cache (타입 안전 바인딩용) ──────
+_PG_COL_TYPES = None  # lazy init
+
+def get_pg_column_types():
+    """PG information_schema에서 컬럼 타입 조회. {COLUMN_NAME_UPPER: data_type}."""
+    global _PG_COL_TYPES
+    if _PG_COL_TYPES is not None:
+        return _PG_COL_TYPES
+    _PG_COL_TYPES = {}
+    pg_host = os.environ.get('PG_HOST', '')
+    pg_db = os.environ.get('PG_DATABASE', '')
+    pg_user = os.environ.get('PG_USER', '')
+    pg_schema = os.environ.get('PG_SCHEMA', pg_user)
+    if not (pg_host and pg_db):
+        return _PG_COL_TYPES
+    try:
+        import subprocess, shutil
+        if not shutil.which('psql'):
+            return _PG_COL_TYPES
+        sql = f"""SELECT column_name || '|' || data_type
+FROM information_schema.columns
+WHERE table_schema = '{pg_schema}'
+ORDER BY column_name;"""
+        env = dict(os.environ, PGPASSWORD=os.environ.get('PG_PASSWORD', ''))
+        r = subprocess.run(
+            ['psql', '-h', pg_host, '-p', os.environ.get('PG_PORT', '5432'),
+             '-U', pg_user, '-d', pg_db, '-t', '-A', '-c', sql],
+            capture_output=True, text=True, timeout=30, env=env)
+        for line in r.stdout.strip().split('\n'):
+            parts = line.strip().split('|')
+            if len(parts) == 2 and parts[0]:
+                col_name = parts[0].strip().upper()
+                dtype = parts[1].strip().lower()
+                _PG_COL_TYPES[col_name] = dtype
+        if _PG_COL_TYPES:
+            print(f"  PG column types loaded: {len(_PG_COL_TYPES)} columns")
+    except Exception as e:
+        print(f"  WARNING: PG column type lookup failed: {e}")
+    return _PG_COL_TYPES
+
+# PG type → default value mapping
+_PG_TYPE_DEFAULTS = {
+    'integer': 1, 'bigint': 1, 'smallint': 1, 'numeric': 1, 'real': 1.0,
+    'double precision': 1.0, 'decimal': 1,
+    'character varying': 'TEST', 'character': 'T', 'text': 'TEST',
+    'boolean': True,
+    'date': '20260115', 'timestamp without time zone': '20260115103000',
+    'timestamp with time zone': '20260115103000',
+    'bytea': '', 'uuid': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+}
+
 # ── Source 1: Java VO analysis ──────────────────
 
 _JAVA_FIELD_RE = re.compile(r'private\s+(\w+(?:<.*?>)?)\s+(\w+)\s*;')
@@ -215,11 +266,26 @@ def get_table_row_counts():
 
 # ── Name/type inference (fallback) ──────────────
 
+# 범용 기본값 (Oracle/MyBatis 프레임워크 공통)
 _SPECIAL = {
     'sysdate': '20260115103000', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
     'updateurkey': 'SYSTEM', 'delyn': 'N', 'useyn': 'Y',
-    'owkey': 'DS', 'ctkey': 'HE', 'interfaceid': 'IF001', 'ifid': '1',
 }
+
+# 프로젝트별 기본값 — project-defaults.json에서 로드 (없으면 무시)
+def _load_project_defaults():
+    for p in ['pipeline/shared/project-defaults.json', 'workspace/input/project-defaults.json']:
+        if Path(p).exists():
+            try:
+                data = json.loads(Path(p).read_text(encoding='utf-8'))
+                if isinstance(data, dict):
+                    _SPECIAL.update({k.lower(): v for k, v in data.items()})
+                    print(f"  Project defaults: {len(data)} values from {p}")
+            except Exception:
+                pass
+            break
+
+_load_project_defaults()
 
 # Framework-injected pagination parameters — empty string at test time
 _FRAMEWORK_PARAMS = {
@@ -246,6 +312,14 @@ def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=
             if k in col_stats:
                 try: return int(float(col_stats[k].get('low', '')))
                 except (ValueError, TypeError): pass
+    # PG 컬럼 타입 기반 추론 (타입 안전 바인딩)
+    pg_types = get_pg_column_types()
+    if pg_types:
+        pg_type = pg_types.get(pu, '')
+        if pg_type:
+            for type_prefix, default_val in _PG_TYPE_DEFAULTS.items():
+                if pg_type.startswith(type_prefix):
+                    return default_val
     if any(k in pn for k in ('qty','cnt','amt','price','prc','rate','seq','no','num',
                               'idx','id','size','len','weight','page','limit','offset')): return 1
     if any(k in pn for k in ('date','day','dt','time','tm')): return '20260115'
@@ -273,13 +347,16 @@ def _clean_val(v):
     return s
 
 
+# 프로젝트 prefix 패턴 (환경변수로 오버라이드 가능)
+_FILE_PREFIX_PATTERN = os.environ.get('OMA_FILE_PREFIX_REGEX', r'^[\w]+-[\w-]+?__')
+
 def _stem(filename):
     """파일명 stem: prefix(._tmp_ 등) 제거 + .xml 제거. fuzzy 매칭용.
-    daiso-xxx__ 프로젝트 prefix도 제거 (e.g. daiso-ams__foo → foo)."""
+    프로젝트별 prefix(예: project-module__filename)도 제거."""
     name = Path(filename).stem if '.' in filename else filename
     name = re.sub(r'^[._]+tmp[_.]?', '', name, flags=re.I)
-    # 프로젝트 prefix 제거: daiso-xxx__ 또는 daiso-xxx-sub__
-    name = re.sub(r'^daiso-[\w-]+?__', '', name)
+    # 프로젝트 prefix 제거 (OMA_FILE_PREFIX_REGEX로 커스텀 가능)
+    name = re.sub(_FILE_PREFIX_PATTERN, '', name)
     return name
 
 
@@ -351,11 +428,13 @@ def load_custom_binds(input_dir, custom_file=None):
         break
 
     # 2. bind-variable-samples/ (format c: flat 리스트)
-    samples_dirs = [
-        Path(input_dir) / 'daiso-bind-variable-samples',
-        Path(input_dir) / 'bind-variable-samples',
-        Path(input_dir).parent / 'daiso-bind-variable-samples',
-    ]
+    # *-bind-variable-samples 패턴으로 자동 탐색 (프로젝트명 무관)
+    samples_dirs = [Path(input_dir) / 'bind-variable-samples']
+    for d in [Path(input_dir), Path(input_dir).parent]:
+        if d.exists():
+            for sd in sorted(d.iterdir()):
+                if sd.is_dir() and 'bind-variable-samples' in sd.name and sd not in samples_dirs:
+                    samples_dirs.append(sd)
     for sdir in samples_dirs:
         if not sdir.exists():
             continue
@@ -512,7 +591,12 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
                 params.append(bp)
     # foreach collection 파라미터도 포함 (더미 리스트 필요)
     foreach_cols = _foreach_collections(q)
-    if not params and not foreach_cols:
+    # custom_binds에 해당 쿼리가 있으면 params가 비어있어도 진행 (include refid 안의 파라미터)
+    has_custom = False
+    if custom_binds:
+        custom_key = f"{filename}::{qid}" if filename else qid
+        has_custom = bool(custom_binds.get(custom_key) or custom_binds.get(qid))
+    if not params and not foreach_cols and not has_custom:
         # 파라미터 없는 쿼리도 빈 TC 생성 (EXPLAIN/Execute 검증용)
         return [{'name': 'no_params', 'params': {}, 'source': 'NO_PARAMS'}]
     tables = _tables(raw)
@@ -697,10 +781,8 @@ def main():
         table_rows = get_table_row_counts()
         print()
 
-    # Generate TCs per file (기존 룰 기반 + LLM 보강)
+    # Generate TCs per file
     total_files, total_cases, source_counts = 0, 0, {}
-    llm_candidates = []  # LLM TC 생성 대상 수집
-
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
@@ -720,25 +802,6 @@ def main():
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
-
-            # LLM 후보: 샘플/고객 바인드 없는 쿼리 (추론만 있는 쿼리)
-            has_real_data = any(c.get('source') in ('CUSTOM', 'SAMPLE_DATA', 'BIND_CAPTURE')
-                               for c in tcs) if tcs else False
-            if not has_real_data:
-                sql_raw = q.get('sql_raw', '')
-                params = _params(sql_raw)
-                dynamic_tags = [d.get('tag', '') for d in q.get('dynamic_elements', [])]
-                if params:  # 파라미터가 있는 쿼리만
-                    llm_candidates.append({
-                        'query_id': qid,
-                        'sql': sql_raw[:500],
-                        'params': params,
-                        'type': q.get('type', 'select'),
-                        'dynamic_tags': dynamic_tags[:5],
-                        '_file': filename,
-                        '_file_tc': file_tc,
-                    })
-
         if file_tc:
             # output-dir 지정 시 per-file TC를 별도 디렉토리에 저장
             if output_dir:
@@ -751,60 +814,6 @@ def main():
             tc_out_path.write_text(
                 json.dumps(file_tc, indent=2, ensure_ascii=False), encoding='utf-8')
             total_files += 1
-
-    # LLM TC 보강 — 샘플/고객 바인드 없는 쿼리에 LLM으로 TC 생성
-    try:
-        from llm_tc_generator import generate_tcs_batch, LLM_TC_ENABLED
-        if LLM_TC_ENABLED and llm_candidates:
-            print(f"\n  LLM TC 보강: {len(llm_candidates)} queries without real data TC")
-            # _file_tc 참조 제거 (JSON 직렬화 불가)
-            clean_candidates = [{k: v for k, v in c.items() if not k.startswith('_')} for c in llm_candidates]
-            llm_results = generate_tcs_batch(clean_candidates, sample_hint=sample_data)
-
-            # LLM TC를 기존 file_tc에 병합 + 파일 재저장
-            files_updated = set()
-            for cand in llm_candidates:
-                qid = cand['query_id']
-                fname = cand['_file']
-                file_tc_ref = cand['_file_tc']
-                if qid in llm_results:
-                    llm_tcs = llm_results[qid]
-                    if qid in file_tc_ref:
-                        file_tc_ref[qid].extend(llm_tcs)
-                    else:
-                        file_tc_ref[qid] = llm_tcs
-                    total_cases += len(llm_tcs)
-                    source_counts['LLM'] = source_counts.get('LLM', 0) + len(llm_tcs)
-                    files_updated.add(fname)
-
-            # 변경된 파일만 재저장
-            for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
-                try:
-                    parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
-                except Exception:
-                    continue
-                fname = parsed.get('source_file', parsed_path.parent.name)
-                if fname not in files_updated:
-                    continue
-                if output_dir:
-                    tc_out_path = output_dir / fname / 'v1' / 'test-cases.json'
-                else:
-                    tc_out_path = parsed_path.parent / 'test-cases.json'
-                if tc_out_path.exists():
-                    existing = json.loads(tc_out_path.read_text(encoding='utf-8'))
-                    # LLM TC 병합
-                    for qid, tcs in llm_results.items():
-                        if qid in existing:
-                            existing[qid].extend(tcs)
-                        else:
-                            existing[qid] = tcs
-                    tc_out_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding='utf-8')
-        elif not LLM_TC_ENABLED:
-            print(f"\n  LLM TC disabled (set LLM_TC_ENABLED=1 to enable)")
-    except ImportError:
-        print(f"\n  LLM TC skipped (llm_tc_generator.py not found)")
-    except Exception as e:
-        print(f"\n  LLM TC error: {e}")
 
     # Merged TC for MyBatis extractor
     # null_test는 MyBatis 렌더링 실패 가능 → 제외

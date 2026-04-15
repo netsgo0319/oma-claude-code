@@ -1,6 +1,6 @@
 ---
 name: validate-and-fix
-model: opus[1m]
+model: sonnet
 description: 변환된 SQL 검증 + 수정 루프. TC 생성 완료 후 EXPLAIN→Execute→Compare 검증이 필요할 때 위임. FAIL 쿼리는 최대 3회 수정. gate_checks 포함 handoff 생성.
 tools:
   - Read
@@ -61,7 +61,23 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 4단계: generate-handoff.sh   → gate_checks 생성
 ```
 
+**★ 1단계 주의:** `run-extractor.sh`가 빌드+추출+stub 자동 생성을 전부 처리한다.
+- TypeHandler/OGNL 에러가 나면 **스크립트가 자동으로 stub 생성 후 재빌드** (최대 5회)
+- **에이전트가 직접 gradle build, java -jar, stub 파일 생성을 하지 마라**
+- "클래스가 없다" 에러를 보고 수동 대응하지 마라 — `run-extractor.sh`에 맡겨라
+
 **반드시 `--files`로 할당된 파일만 검증. 전체 돌리기 금지.**
+
+### ★ output 경로 표준화 (필수)
+
+`--output` 인자를 반드시 아래 형식으로 지정하라:
+```bash
+python3 tools/validate-queries.py --full \
+  --output pipeline/step-3-validate-fix/output/validation/batch{N}
+```
+**`batch{N}` 이름을 슈퍼바이저가 할당한 배치 번호와 일치시켜라.**
+수정 루프 재검증 시에도 같은 디렉토리에 덮어쓴다 (validated.json이 최신 결과로 갱신).
+**임의 디렉토리명(validation_batchXX_v2, vf_agent1_... 등)을 만들지 마라.**
 
 ### 2. FAIL 분류 + 수정 루프
 

@@ -51,7 +51,9 @@ tools/                               공유 Python/Bash 도구
   generate-test-cases.py             TC 생성
   generate-report.py                 HTML 리포트
   generate-query-matrix.py           Query Matrix CSV/JSON
-  tracking_utils.py                  공용 트래킹 (flock 안전)
+  tracking_utils.py                  공용 트래킹 (flock 안전, final_state 분류)
+  llm_tc_generator.py                LLM TC 생성 (Bedrock Sonnet, structured output)
+  learn-from-results.py              결과 학습 + 패턴 추출 + 룰 승격 제안
   batch-process.sh                   Step 1 병렬 처리
   run-extractor.sh                   MyBatis 추출 래퍼
 
@@ -77,8 +79,8 @@ workspace/                           하위 호환 (심링크 뷰)
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
 | **converter** | **Opus[1M]** | Oracle→PG 변환. batch-process.sh 룰 변환 + LLM 복합 변환. 11개 스킬 preload |
-| **tc-generator** | Sonnet | TC 생성. 고객바인드 > Oracle샘플 > **LLM(Bedrock Sonnet)** > 분기변형 > 추론 |
-| **validate-and-fix** | **Opus[1M]** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
+| **tc-generator** | Sonnet | TC 생성. 고객바인드 > **LLM(Bedrock Sonnet)** > 분기변형 > 추론 |
+| **validate-and-fix** | **Sonnet** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
 | **reporter** | Sonnet | 보고서. query-matrix.json → HTML 4탭 (Overview/Explorer/DBA/Log) |
 
 ## 환경변수
@@ -205,4 +207,7 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 | GATE check | Step 3→4: fix_loop + compare_coverage 둘 다 pass 필수 |
 | MyBatis #{param} 보존 | 바인드 파라미터는 Oracle 패턴이 아님. 변환 금지 |
 | Cross-step write | Step 3→1 query-tracking만. fcntl.flock 원자적 |
+| EXPLAIN 사전 필터 | EXPLAIN 실패 쿼리는 Execute/Compare 스킵 (DB 시간 절약) |
+| Compare 배치 실행 | 쿼리별 subprocess 대신 단일 세션으로 배치 (Oracle 1회 + PG 1회) |
+| File-scoped tracking | query-tracking 갱신 시 (file, qid) 스코프로 충돌 방지 |
 | Compaction 복구 | pipeline/supervisor-state.json으로 상태 복원 |

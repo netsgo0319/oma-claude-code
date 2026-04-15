@@ -20,6 +20,23 @@ from pathlib import Path
 # Default log path
 _LOG_PATH = 'workspace/logs/activity-log.jsonl'
 
+# ── 허용 값 enum (에이전트 임의값 방지) ──
+VALID_FINAL_STATES = frozenset({
+    'PASS_COMPLETE', 'PASS_HEALED', 'PASS_NO_CHANGE',
+    'FAIL_SCHEMA_MISSING', 'FAIL_COLUMN_MISSING', 'FAIL_FUNCTION_MISSING',
+    'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
+    'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',
+    'NOT_TESTED_DML_SKIP', 'NOT_TESTED_NO_RENDER', 'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
+})
+VALID_CONVERSION_METHODS = frozenset({'rule', 'llm', 'no_change', 'hybrid'})
+VALID_ERROR_CATEGORIES = frozenset({
+    'SYNTAX_ERROR', 'MISSING_OBJECT', 'TYPE_MISMATCH', 'OPERATOR_MISMATCH',
+    'RESIDUAL_ORACLE', 'COMPARE_DIFF', 'PERMISSION', 'TIMEOUT', 'OTHER',
+})
+VALID_ATTEMPT_RESULTS = frozenset({'pass', 'fail'})
+VALID_EXPLAIN_STATUS = frozenset({'pass', 'fail', 'not_tested'})
+VALID_COMPARE_STATUS = frozenset({'pass', 'fail', 'not_tested'})
+
 
 def log_activity(action, agent='tool', phase=None, step=None, file=None, query_id=None,
                  detail=None, duration_ms=None, log_path=None):
@@ -159,6 +176,9 @@ class TrackingManager:
 
     def update_conversion(self, query_id, pg_sql, method, rules_applied=None,
                           confidence='high', duration_ms=None):
+        if method not in VALID_CONVERSION_METHODS:
+            print(f"  WARN: conversion_method '{method}' not in {sorted(VALID_CONVERSION_METHODS)}. Defaulting to 'rule'.")
+            method = 'rule'
         q = self._find_query(query_id)
         if q:
             q['pg_sql'] = pg_sql
@@ -197,10 +217,14 @@ class TrackingManager:
                 # Phase 3.5 결과는 별도 필드에 저장 (Phase 3 결과 보존)
                 q['explain_phase35'] = result
                 # Phase 3에서 fail이었는데 3.5에서 pass이면 status 복구
-                if status == 'pass' and q.get('explain', {}).get('status') == 'fail':
+                prev_explain = q.get('explain', {})
+                if not isinstance(prev_explain, dict):
+                    prev_explain = {}
+                if status == 'pass' and prev_explain.get('status') == 'fail':
                     q['status'] = 'validating'
             else:
                 q['explain'] = result
+                q['explain_status'] = status
                 if status == 'pass' and (q['status'] in ('converted', 'validating')):
                     q['status'] = 'validating'
                 elif status == 'fail':
@@ -260,6 +284,12 @@ class TrackingManager:
                            error_detail='syntax error near NVL',
                            fix_applied='NVL→COALESCE 변환 누락', result='pass')
         """
+        if error_category and error_category not in VALID_ERROR_CATEGORIES:
+            print(f"  WARN: error_category '{error_category}' not standard. Mapping to 'OTHER'.")
+            error_category = 'OTHER'
+        if result not in VALID_ATTEMPT_RESULTS:
+            print(f"  WARN: attempt result '{result}' not in {sorted(VALID_ATTEMPT_RESULTS)}. Defaulting to 'fail'.")
+            result = 'fail'
         q = self._find_query(query_id)
         if q:
             if 'attempts' not in q:
@@ -275,8 +305,10 @@ class TrackingManager:
             })
             if result == 'pass':
                 q['status'] = 'success'
+                q['final_state'] = 'PASS_HEALED'
             elif attempt_num >= 3:
                 q['status'] = 'escalated'
+                q['final_state'] = 'FAIL_ESCALATED'
             self._save()
             return attempt_num
         return 0
@@ -285,6 +317,7 @@ class TrackingManager:
         q = self._find_query(query_id)
         if q:
             q['status'] = 'success'
+            q['final_state'] = 'PASS_COMPLETE'
             # Compute total timing
             timing = q.get('timing', {})
             total = sum(v for k, v in timing.items() if k.endswith('_ms') and isinstance(v, (int, float)))
@@ -312,6 +345,7 @@ class TrackingManager:
         q = self._find_query(query_id)
         if q:
             q['status'] = 'escalated'
+            q['final_state'] = 'FAIL_ESCALATED'
             self._save()
 
     # ===== Progress.json 갱신 =====

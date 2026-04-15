@@ -161,16 +161,18 @@ def load_validation_results(validation_dir, batches_dir=None):
 
 def _find_validated_files(d):
     if d and d.exists():
-        for f in sorted(d.glob('**/validated.json')):
-            yield f
+        # validated.json 또는 validated_*.json (에이전트가 다른 이름으로 저장할 수 있음)
+        for f in sorted(d.glob('**/validated*.json')):
+            if 'compare' not in f.name:  # compare_validated 제외
+                yield f
 
 
 def _find_compare_files(val_dir, batches_dir):
     for d in [val_dir, Path(batches_dir) if batches_dir else None]:
         if d and d.exists():
-            for f in sorted(d.glob('**/compare_validated.json')):
+            for f in sorted(d.glob('**/compare_validated*.json')):
                 yield f
-            for f in sorted(d.glob('**/compare_results.json')):
+            for f in sorted(d.glob('**/compare_results*.json')):
                 yield f
 
 
@@ -196,10 +198,14 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
 
     # Explain — explain 중첩 객체 + validated.json fallback
     explain = q.get('explain', {}) or {}
+    if not isinstance(explain, dict):
+        explain = {}
     explain_status = explain.get('status', '')
     explain_error = explain.get('error', '') or ''
     # explain_phase35 (MyBatis 렌더링 검증)도 확인
     explain_p35 = q.get('explain_phase35', {}) or {}
+    if not isinstance(explain_p35, dict):
+        explain_p35 = {}
     if explain_p35.get('status') == 'pass' and explain_status != 'pass':
         explain_status = 'pass'
         explain_error = ''
@@ -413,10 +419,11 @@ def generate_step3(args):
     # results-dir에도 _validation*이 있으면 validation_dir로 사용
     if not validation_dir:
         for candidate in [
+            'pipeline/step-3-validate-fix/output',
             'pipeline/step-3-validate-fix/output/validation',
             str(results_dir / '_validation'),
         ]:
-            if Path(candidate).exists() and list(Path(candidate).glob('**/validated.json')):
+            if Path(candidate).exists() and list(Path(candidate).glob('**/validated*.json')):
                 validation_dir = candidate
                 break
 
@@ -434,6 +441,8 @@ def generate_step3(args):
         # Gate check: FAIL without fix loop (non-DBA)
         attempts = q.get('attempts', []) or q.get('history', [])
         explain = q.get('explain', {}) or {}
+        if not isinstance(explain, dict):
+            explain = {}
         explain_err = explain.get('error', '') or ''
         is_dba = is_dba_error(explain_err)
         # validated.json의 에러도 확인 (tracking에 explain이 없을 수 있음)
@@ -443,9 +452,12 @@ def generate_step3(args):
         if is_fail and len(attempts) == 0 and not is_dba:
             no_loop_queries.append(qid)
 
-    # Counts
-    explain_pass = sum(1 for q in queries if (q.get('explain', {}) or {}).get('status') == 'pass' or q.get('query_id', '') in passes)
-    explain_fail = sum(1 for q in queries if (q.get('explain', {}) or {}).get('status') == 'fail' or q.get('query_id', '') in failures)
+    # Counts — explain이 str일 수 있으므로 안전하게 처리
+    def _explain_status(q):
+        e = q.get('explain', {}) or {}
+        return e.get('status', '') if isinstance(e, dict) else str(e)
+    explain_pass = sum(1 for q in queries if _explain_status(q) == 'pass' or q.get('query_id', '') in passes)
+    explain_fail = sum(1 for q in queries if _explain_status(q) == 'fail' or q.get('query_id', '') in failures)
     explain_not_tested = len(queries) - explain_pass - explain_fail
 
     compare_qids = set(compare.keys())
@@ -475,7 +487,7 @@ def generate_step3(args):
         state = classify_state(q, passes, failures, compare)
         if state not in DBA_STATES and qid not in compare_qids and qtype not in _DML_TYPES:
             # Only count if explain passed (can't compare if explain failed)
-            if (q.get('explain', {}) or {}).get('status') == 'pass' or qid in passes:
+            if _explain_status(q) == 'pass' or qid in passes:
                 compare_missing_non_dba += 1
 
     # Tracking files updated (those with attempts)

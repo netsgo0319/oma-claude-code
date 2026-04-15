@@ -116,12 +116,23 @@ run_extractor_with_stubs() {
         EXTRACT_LOG=$(java ${CP_OPT:+"$CP_OPT"} -jar "$JAR_PATH" --input "$INPUT" --output "$OUTPUT" ${PARAMS_OPT:+"$PARAMS_OPT"} 2>&1)
         echo "$EXTRACT_LOG" | tail -5
 
-        # Check for ClassNotFoundException in output
+        # Check for ClassNotFoundException / OGNL errors in output
+        # Pattern 1: java.lang.ClassNotFoundException: com.pkg.ClassName
         MISSING_CLASSES=$(echo "$EXTRACT_LOG" | grep -oP 'ClassNotFoundException:\s*\K[\w.]+' | sort -u)
+        # Pattern 2: OGNL @com.pkg.ClassName@method — class not on classpath
+        OGNL_MISSING=$(echo "$EXTRACT_LOG" | grep -oP '@([\w.]+)@\w+' | sed 's/@//g;s/@.*$//' | sort -u)
+        if [ -n "$OGNL_MISSING" ]; then
+            MISSING_CLASSES="$MISSING_CLASSES $OGNL_MISSING"
+        fi
+        # Pattern 3: extracted JSON error messages
         if [ -z "$MISSING_CLASSES" ]; then
-            # Also check extracted JSON for OGNL errors
             MISSING_CLASSES=$(grep -roh '"error".*ClassNotFoundException[^"]*' "$OUTPUT"/*.json 2>/dev/null | grep -oP '[\w.]+(?=\s)' | sort -u)
         fi
+        if [ -z "$MISSING_CLASSES" ]; then
+            MISSING_CLASSES=$(grep -roh '@[\w.]*@' "$OUTPUT"/*.json 2>/dev/null | tr -d '@' | sort -u)
+        fi
+        # Deduplicate and filter out known packages
+        MISSING_CLASSES=$(echo "$MISSING_CLASSES" | tr ' ' '\n' | grep '\.' | grep -v '^java\.' | grep -v '^org\.apache\.' | sort -u | tr '\n' ' ')
 
         if [ -z "$MISSING_CLASSES" ]; then
             echo "  Extraction complete (no missing classes)"

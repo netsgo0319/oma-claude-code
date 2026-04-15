@@ -1362,8 +1362,8 @@ class OracleToPgConverter:
             if stripped.upper().startswith('AS ') or (stripped and stripped[0].isalpha() and stripped.split()[0].upper() not in
                 ('WHERE', 'ON', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'CROSS', 'FULL', 'JOIN', 'GROUP', 'ORDER', 'HAVING', 'LIMIT', 'UNION', 'EXCEPT', 'INTERSECT', 'FETCH')):
                 return m.group(0)  # already has alias
-            OracleToPostgresConverter._subquery_alias_counter += 1
-            alias = f"sub_{OracleToPostgresConverter._subquery_alias_counter}"
+            OracleToPgConverter._subquery_alias_counter += 1
+            alias = f"sub_{OracleToPgConverter._subquery_alias_counter}"
             self._count_rule('SUBQUERY_ALIAS_ADDED')
             return f"{prefix}{subq} {alias}{after}"
 

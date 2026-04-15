@@ -26,6 +26,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/run-extractor.sh
 ```
 동적 SQL(`<if>`, `<choose>`, `<foreach>`) → 실행 가능 SQL 추출.
 **이 단계 없이 2단계만 실행하면 정적 fallback → Compare 실패.**
+TypeHandler/OGNL 에러는 스크립트가 자동 처리 (stub 생성+재빌드). **직접 개입하지 마라.**
 
 ### 2단계: 검증 (--full 원자적)
 ```bash
@@ -36,6 +37,7 @@ python3 tools/validate-queries.py --full \
   --tracking-dir pipeline/step-1-convert/output/results/
 ```
 EXPLAIN + Execute + Compare를 한번에. 다른 방법 금지.
+**성능 최적화**: EXPLAIN 실패 쿼리는 Execute/Compare에서 자동 제외. Compare는 배치 실행(DB 세션 1회).
 
 ### 3단계: 결과 확인
 ```bash

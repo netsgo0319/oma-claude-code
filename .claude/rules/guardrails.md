@@ -25,11 +25,23 @@ inclusion: always
 - **workspace/ 아래에 임시 .py/.sh 파일을 만들지 마라.** 기존 도구만 사용
 - output XML 수정 전 반드시 버저닝: `cp file file.v{N}.bak`
 
+### 파이프라인 경로 규칙 (★ 반복 장애 방지)
+- **output 디렉토리명을 임의로 만들지 마라.** 에이전트별, 재시도별로 `_v2`, `_retry`, `agent1_...` 같은 디렉토리를 생성하면 **결과 수집기(generate-handoff, generate-query-matrix)가 찾지 못해 미검증(NOT_TESTED)이 급증한다.**
+- Step 3 검증 output: `pipeline/step-3-validate-fix/output/validation/batch{N}` (N은 슈퍼바이저가 할당한 배치 번호)
+- 수정 루프 재검증 시 **같은 디렉토리에 덮어쓴다** (validated.json이 최신 결과로 갱신)
+- 결과 파일 이름: `validated.json`, `compare_validated.json` — 접미사/변형 금지
+
 ### MyBatis 렌더링 (★ 핵심)
 - **모든 쿼리는 MyBatis 엔진 렌더링을 거쳐 진짜 SQL을 추출해야 한다.**
 - 렌더링 실패 = 테스트 스킵이 아니라 **TC 보강으로 해결해야 할 버그**
 - NOT_TESTED_NO_RENDER를 "괜찮다"고 넘기지 마라. TC에 파라미터 실값을 넣고 재추출하라.
 - static fallback(정적 XML 파싱)은 최후 수단. 렌더링 성공률 100%를 목표로 한다.
+
+### MyBatis Extractor 빌드/실행 (★ 직접 개입 금지)
+- **extractor 빌드/실행은 반드시 `run-extractor.sh`를 통해서만.** `gradle build`, `java -jar` 직접 실행 금지.
+- **TypeHandler/OGNL stub 클래스는 이미 repo에 존재한다** (`tools/mybatis-sql-extractor/src/main/java/com/oma/typehandler/` 등). 에이전트가 직접 stub 클래스를 생성하지 마라.
+- ClassNotFoundException 발생 시 `run-extractor.sh`의 자동 stub 생성+재빌드 로직이 처리한다 (최대 5회 재시도).
+- "typehandler가 없다", "패키지가 없다" 에러를 보고 **직접 Java 파일을 만들거나 빌드를 수정하지 마라.** `run-extractor.sh`가 알아서 한다.
 
 ### MyBatis 파라미터
 - **`#{param}`은 MyBatis 바인드 파라미터.** Oracle 구문이 아님. 변환 금지
@@ -43,6 +55,12 @@ inclusion: always
 - **Compare mismatch(Oracle≠PG)도 FAIL이다.** EXPLAIN+Execute PASS여도 Compare 불일치면 수정 루프 대상
 - 스키마 에러(relation/column/function_missing)만 수정 루프 면제. 나머지 전부 수정 시도
 - **NOT_TESTED 50% 이상이면 검증이 안 된 것.** 원인 파악 후 재실행 (소극적 보고 금지)
+
+### FAIL 원인 분석 (★ 추측 금지)
+- **FAIL 원인을 추측하지 마라. 데이터를 확인하라.** `mybatis_extracted` 필드가 `both`/`oracle_only`/`pg_only`이면 MyBatis 렌더링 된 쿼리다. "정적 추출 한계"라고 쓰면 안 된다.
+- FAIL_SYNTAX가 MyBatis 렌더링 쿼리에서 나왔으면 → **실제 변환 버그 또는 잔존 Oracle 구문**
+- FAIL_SYNTAX가 정적 추출(`mybatis_extracted=no`)에서 나왔으면 → **추출 한계 (동적 태그 미평가)**
+- query-matrix.json의 `fail_by_extraction` 통계를 참조하라. 에이전트가 직접 비율을 계산하지 마라.
 
 ### PG 환경
 - **search_path 필수 확인.** 스키마가 public이 아니면 `SET search_path TO {schema}, public;`
@@ -113,7 +131,7 @@ inclusion: always
 | `xml_after` | **변환 후 MyBatis XML** (태그 포함) | Step 4 (output/*.xml에서 추출) | 변환 미완료 |
 | `sql_before` | **렌더링된 Oracle SQL** (MyBatis 실행 후 실제 SQL) | Step 1 (extracted) | 렌더링 실패 |
 | `sql_after` | **렌더링된 PG SQL** (MyBatis 실행 후 실제 SQL) | Step 3 (extracted) | 렌더링 실패 |
-| `final_state` | 15-state 중 하나 (PASS_COMPLETE 등) | Step 4 (계산) | — (필수) |
+| `final_state` | 15-state 중 하나 (PASS_COMPLETE 등) | Step 3 (tracking) → Step 4 (보충) | — (필수) |
 | `final_state_detail` | 사람 읽는 상태 설명 | Step 4 (계산) | — |
 | `conversion_method` | `rule` / `llm` / `no_change` | Step 1 converter | 변환 미완료 |
 | `conversion_history` | **변환 레시피** — 어떤 패턴을 어떻게 바꿨는지 | Step 1 converter | 룰 자동변환 |

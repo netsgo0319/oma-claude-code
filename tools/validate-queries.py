@@ -248,6 +248,9 @@ SET HEADING ON
         warn_count = 0
         warnings = []
 
+        # ── Phase 1: Collect all test cases ──
+        test_specs = []  # [(test_id, qid, qtype, case_name, exec_oracle, exec_pg)]
+
         for query in self.queries:
             qid = query['id']
             pg_sql = query['sql_raw']
@@ -260,8 +263,6 @@ SET HEADING ON
                 print(f"  SKIP {qid}: no Oracle SQL found")
                 continue
 
-            # Use _select_best_tcs for better TC selection
-            # filename::qid 키 우선, bare qid fallback
             file_key = f"{query.get('file', '')}::{qid}"
             all_cases = self.test_cases.get(file_key, self.test_cases.get(qid, []))
             selected = self._select_best_tcs(all_cases, max_tcs=2)
@@ -278,110 +279,118 @@ SET HEADING ON
                     binds = {}
                     case_name = f'tc{i}'
 
-                # Bind params: extracted SQL uses ? positional, static uses #{param}
                 if is_extracted and '?' in pg_sql:
                     bound_pg = self._bind_positional(pg_sql, param_names, binds)
                 else:
                     bound_pg = self.bind_params(pg_sql, binds)
                 bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
-                # Wrap DML in transaction
                 if qtype in ('insert', 'update', 'delete'):
                     exec_oracle = f"{bound_oracle.rstrip(';')};\nROLLBACK;"
                     exec_pg = f"BEGIN; {bound_pg.rstrip(';')}; ROLLBACK;"
                 else:
-                    # SELECT: add LIMIT for safety on PG side
                     safe_pg = bound_pg.rstrip(';')
                     if 'LIMIT' not in safe_pg.upper():
                         safe_pg += ' LIMIT 100'
                     exec_pg = safe_pg + ';'
-                    # Oracle: add ROWNUM limit
                     safe_ora = bound_oracle.rstrip(';')
                     if 'ROWNUM' not in safe_ora.upper() and 'FETCH FIRST' not in safe_ora.upper():
                         exec_oracle = f"SELECT * FROM ({safe_ora}) WHERE ROWNUM <= 100;"
                     else:
                         exec_oracle = safe_ora + ';'
 
-                # Execute both
-                ora_output = self._run_oracle_sql(exec_oracle)
-                pg_output = self._run_pg_sql(exec_pg)
-
-                # Parse results
-                ora_rows = self._parse_row_count(ora_output, 'oracle')
-                pg_rows = self._parse_row_count(pg_output, 'pg')
-                ora_error = bool(re.search(r'(^ORA-\d|^ERROR)', ora_output, re.MULTILINE))
-                pg_error = bool(re.search(r'^ERROR:', pg_output, re.MULTILINE))
-
-                # Determine status
                 test_id = f"{query['file'].replace('.xml','')}.{qid}.{case_name}"
-                result = {
-                    'test_id': test_id,
-                    'query_id': qid,
-                    'type': qtype,
-                    'case': case_name,
-                    'oracle_rows': ora_rows,
-                    'pg_rows': pg_rows,
-                    'oracle_error': ora_output.strip()[:1000] if ora_error else None,
-                    'pg_error': pg_output.strip()[:1000] if pg_error else None,
-                    'match': False,
-                    'status': 'fail',
-                }
+                test_specs.append((test_id, qid, qtype, case_name, exec_oracle, exec_pg))
 
-                if ora_error and pg_error:
-                    result['status'] = 'fail'
-                    result['reason'] = 'both_error'
-                    fail_count += 1
-                elif ora_error:
-                    result['status'] = 'warn'
-                    result['reason'] = 'oracle_error_only'
-                    warn_count += 1
-                elif pg_error:
-                    result['status'] = 'fail'
-                    result['reason'] = 'pg_error'
-                    fail_count += 1
-                elif ora_rows is not None and pg_rows is not None:
-                    if ora_rows == pg_rows:
-                        result['match'] = True
-                        result['status'] = 'pass'
-                        pass_count += 1
-                    else:
-                        result['status'] = 'fail'
-                        result['reason'] = f'row_count_mismatch: oracle={ora_rows}, pg={pg_rows}'
-                        fail_count += 1
-                elif ora_rows is None and pg_rows is None:
-                    # Both returned no parseable rows (possibly DDL or empty)
+        if not test_specs:
+            print("  No test cases to compare")
+
+        # ── Phase 2: Batch execute (single session per DB) ──
+        if test_specs:
+            oracle_batch = [(tid, sql_o) for tid, _, _, _, sql_o, _ in test_specs]
+            pg_batch = [(tid, sql_p) for tid, _, _, _, _, sql_p in test_specs]
+            print(f"  Batch executing: {len(test_specs)} tests (1 Oracle + 1 PG session)...")
+            ora_outputs = self._batch_execute_with_markers(oracle_batch, 'oracle')
+            pg_outputs = self._batch_execute_with_markers(pg_batch, 'pg')
+            print(f"  Batch done: {len(ora_outputs)} Oracle + {len(pg_outputs)} PG results")
+        else:
+            ora_outputs, pg_outputs = {}, {}
+
+        # ── Phase 3: Compare results ──
+        for test_id, qid, qtype, case_name, _, _ in test_specs:
+            ora_output = ora_outputs.get(test_id, '')
+            pg_output = pg_outputs.get(test_id, '')
+
+            ora_rows = self._parse_row_count(ora_output, 'oracle')
+            pg_rows = self._parse_row_count(pg_output, 'pg')
+            ora_error = bool(re.search(r'(^ORA-\d|^ERROR)', ora_output, re.MULTILINE))
+            pg_error = bool(re.search(r'^ERROR:', pg_output, re.MULTILINE))
+
+            result = {
+                'test_id': test_id,
+                'query_id': qid,
+                'type': qtype,
+                'case': case_name,
+                'oracle_rows': ora_rows,
+                'pg_rows': pg_rows,
+                'oracle_error': ora_output.strip()[:1000] if ora_error else None,
+                'pg_error': pg_output.strip()[:1000] if pg_error else None,
+                'match': False,
+                'status': 'fail',
+            }
+
+            if ora_error and pg_error:
+                result['status'] = 'fail'
+                result['reason'] = 'both_error'
+                fail_count += 1
+            elif ora_error:
+                result['status'] = 'warn'
+                result['reason'] = 'oracle_error_only'
+                warn_count += 1
+            elif pg_error:
+                result['status'] = 'fail'
+                result['reason'] = 'pg_error'
+                fail_count += 1
+            elif ora_rows is not None and pg_rows is not None:
+                if ora_rows == pg_rows:
                     result['match'] = True
                     result['status'] = 'pass'
                     pass_count += 1
                 else:
-                    result['status'] = 'warn'
-                    result['reason'] = 'row_count_unparseable'
-                    warn_count += 1
+                    result['status'] = 'fail'
+                    result['reason'] = f'row_count_mismatch: oracle={ora_rows}, pg={pg_rows}'
+                    fail_count += 1
+            elif ora_rows is None and pg_rows is None:
+                result['match'] = True
+                result['status'] = 'pass'
+                pass_count += 1
+            else:
+                result['status'] = 'warn'
+                result['reason'] = 'row_count_unparseable'
+                warn_count += 1
 
-                results.append(result)
+            results.append(result)
 
-                status_icon = {'pass': 'MATCH', 'fail': 'DIFF', 'warn': 'WARN'}[result['status']]
-                print(f"  {status_icon} {test_id}: oracle={ora_rows} pg={pg_rows}")
+            status_icon = {'pass': 'MATCH', 'fail': 'DIFF', 'warn': 'WARN'}[result['status']]
+            print(f"  {status_icon} {test_id}: oracle={ora_rows} pg={pg_rows}")
 
-                # Integrity Guard warnings
-                if result['status'] == 'pass' and ora_rows == 0 and pg_rows == 0:
-                    if qtype in ('insert', 'update', 'delete'):
-                        # DML: 0 affected rows on both sides is normal (data may not exist)
-                        warnings.append({
-                            'code': 'WARN_ZERO_BOTH_DML',
-                            'severity': 'low',
-                            'query_id': qid,
-                            'test_case': case_name,
-                            'message': f'Both Oracle and PG affected 0 rows (DML - data may not exist)',
-                        })
-                    else:
-                        warnings.append({
-                            'code': 'WARN_ZERO_BOTH',
-                            'severity': 'high',
-                            'query_id': qid,
-                            'test_case': case_name,
-                            'message': 'Both Oracle and PG returned 0 rows',
-                        })
+            if result['status'] == 'pass' and ora_rows == 0 and pg_rows == 0:
+                if qtype in ('insert', 'update', 'delete'):
+                    warnings.append({
+                        'code': 'WARN_ZERO_BOTH_DML',
+                        'severity': 'low',
+                        'query_id': qid,
+                        'test_case': case_name,
+                        'message': f'Both Oracle and PG affected 0 rows (DML - data may not exist)',
+                    })
+                else:
+                    warnings.append({
+                        'code': 'WARN_ZERO_BOTH',
+                        'severity': 'high',
+                        'query_id': qid,
+                        'test_case': case_name,
+                        'message': 'Both Oracle and PG returned 0 rows',
+                    })
 
         # Aggregated per-query guards
         query_results_agg = {}  # {qid: [match_booleans]}
@@ -904,6 +913,191 @@ SET HEADING ON
         """Flatten multi-line SQL to single line for sqlplus compatibility.
         sqlplus treats newlines as command terminators, causing SP2-0734 errors."""
         return re.sub(r'\s+', ' ', sql).strip()
+
+    # ── Performance helpers ──
+
+    def _batch_execute_with_markers(self, queries_with_ids, db_type='pg', timeout=600):
+        """Execute multiple queries in a single DB session via temp script.
+        Returns {test_id: output_string} parsed by === test_id === markers.
+
+        Eliminates per-query subprocess overhead (400 subprocess → 1)."""
+        import tempfile
+
+        if not queries_with_ids:
+            return {}
+
+        if db_type == 'pg':
+            pg_schema = os.environ.get('PG_SCHEMA', '')
+            lines = ["\\set ON_ERROR_STOP off"]
+            if pg_schema:
+                lines.append(f"SET search_path TO {pg_schema}, public;")
+            for test_id, sql in queries_with_ids:
+                lines.append(f"\\echo === {test_id} ===")
+                lines.append(sql)
+                lines.append("")
+
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False, encoding='utf-8') as f:
+                f.write('\n'.join(lines))
+                tmp_path = f.name
+
+            try:
+                env = os.environ.copy()
+                env['PGPASSWORD'] = os.environ.get('PG_PASSWORD', os.environ.get('PGPASSWORD', ''))
+                result = subprocess.run(
+                    ['psql', '-h', os.environ.get('PG_HOST', os.environ.get('PGHOST', '')),
+                     '-p', os.environ.get('PG_PORT', os.environ.get('PGPORT', '5432')),
+                     '-U', os.environ.get('PG_USER', os.environ.get('PGUSER', '')),
+                     '-d', os.environ.get('PG_DATABASE', os.environ.get('PGDATABASE', '')),
+                     '-f', tmp_path],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, env=env, timeout=timeout
+                )
+                output = result.stdout
+            except Exception as e:
+                print(f"  ERROR batch PG: {e}")
+                output = ''
+            finally:
+                os.unlink(tmp_path)
+
+        elif db_type == 'oracle':
+            lines = ["SET PAGESIZE 0", "SET FEEDBACK ON", "SET HEADING ON",
+                     "SET LINESIZE 32767", "SET TRIMSPOOL ON"]
+            ora_schema = os.environ.get('ORACLE_SCHEMA', '')
+            if ora_schema:
+                lines.append(f"ALTER SESSION SET CURRENT_SCHEMA = {ora_schema};")
+            for test_id, sql in queries_with_ids:
+                lines.append(f"PROMPT === {test_id} ===")
+                flat = self._flatten_sql(sql)
+                lines.append(flat)
+                lines.append("")
+            lines.append("EXIT;")
+
+            script_content = '\n'.join(lines)
+
+            # Try oracledb Python first
+            output = ''
+            try:
+                import oracledb
+                dsn = f"{os.environ.get('ORACLE_HOST','')}:{os.environ.get('ORACLE_PORT','1521')}/{os.environ.get('ORACLE_SID','')}"
+                conn = oracledb.connect(
+                    user=os.environ.get('ORACLE_USER', ''),
+                    password=os.environ.get('ORACLE_PASSWORD', ''), dsn=dsn)
+                cur = conn.cursor()
+                out_lines = []
+                for test_id, sql in queries_with_ids:
+                    out_lines.append(f"=== {test_id} ===")
+                    stmt = self._flatten_sql(sql).rstrip(';')
+                    if stmt.upper().startswith(('SET ', 'ALTER ', 'PROMPT', 'EXIT')):
+                        continue
+                    try:
+                        cur.execute(stmt)
+                        if cur.description:
+                            rows = cur.fetchall()
+                            for row in rows:
+                                out_lines.append(' '.join(str(c) for c in row))
+                            out_lines.append(f"{len(rows)} rows selected.")
+                        else:
+                            out_lines.append("0 rows affected.")
+                    except Exception as e:
+                        out_lines.append(f"ORA-ERROR: {e}")
+                conn.close()
+                output = '\n'.join(out_lines)
+            except ImportError:
+                # Fallback: sqlplus subprocess
+                import shutil
+                if shutil.which('sqlplus'):
+                    try:
+                        conn_str = self._oracle_conn_str()
+                        result = subprocess.run(
+                            ['sqlplus', '-S', conn_str],
+                            input=script_content, capture_output=True, text=True, timeout=timeout)
+                        output = result.stdout + result.stderr
+                    except Exception as e:
+                        print(f"  ERROR batch Oracle: {e}")
+                        output = ''
+            except Exception:
+                # oracledb failed, try sqlplus
+                import shutil
+                if shutil.which('sqlplus'):
+                    try:
+                        conn_str = self._oracle_conn_str()
+                        result = subprocess.run(
+                            ['sqlplus', '-S', conn_str],
+                            input=script_content, capture_output=True, text=True, timeout=timeout)
+                        output = result.stdout + result.stderr
+                    except Exception as e:
+                        print(f"  ERROR batch Oracle fallback: {e}")
+                        output = ''
+        else:
+            return {}
+
+        # Parse output by === test_id === markers
+        results = {}
+        current_test = None
+        current_output = []
+        for line in output.split('\n'):
+            stripped = line.strip()
+            if stripped.startswith('=== ') and stripped.endswith(' ==='):
+                if current_test is not None:
+                    results[current_test] = '\n'.join(current_output)
+                current_test = stripped.strip('= ').strip()
+                current_output = []
+            elif current_test is not None:
+                current_output.append(line)
+        if current_test is not None:
+            results[current_test] = '\n'.join(current_output)
+
+        return results
+
+    @staticmethod
+    def _parse_explain_failures(explain_file):
+        """Parse explain_results.txt and return set of failed test_ids.
+        Used to filter Execute/Compare scripts — no point running queries that fail EXPLAIN."""
+        failed = set()
+        explain_path = Path(explain_file)
+        if not explain_path.exists():
+            return failed
+        current_test = None
+        for line in explain_path.read_text(encoding='utf-8').split('\n'):
+            line = line.rstrip()
+            if line.startswith('=== ') and line.endswith(' ==='):
+                current_test = line.strip('= ').strip()
+            elif 'ERROR' in line and current_test:
+                failed.add(current_test)
+                current_test = None
+            elif current_test and ('QUERY PLAN' in line or 'Seq Scan' in line or 'Index Scan' in line):
+                current_test = None
+        return failed
+
+    @staticmethod
+    def _filter_sql_script(script_path, failed_tests, marker_prefix='\\echo ==='):
+        """Remove blocks for failed tests from SQL script.
+        Each block: marker line → SQL lines → blank line. Blocks for failed tests are stripped."""
+        sp = Path(script_path)
+        if not sp.exists():
+            return 0
+        lines = sp.read_text(encoding='utf-8').split('\n')
+        filtered = []
+        skip = False
+        removed = 0
+
+        for line in lines:
+            is_marker = line.startswith(marker_prefix)
+            if is_marker:
+                test_id = line.split('=== ')[1].split(' ===')[0].strip() if '=== ' in line else ''
+                skip = test_id in failed_tests
+                if skip:
+                    removed += 1
+                    continue
+
+            if not skip:
+                filtered.append(line)
+            elif line.strip() == '':
+                # End of skipped block (blank line separator)
+                skip = False
+
+        sp.write_text('\n'.join(filtered), encoding='utf-8')
+        return removed
 
     def generate_scripts(self, output_dir):
         """Generate SQL test scripts for remote execution.
@@ -1673,6 +1867,15 @@ SET HEADING ON
         else:
             print("[full] Step 2/5: SKIP EXPLAIN (PG_HOST/PG_DATABASE not set or no script)")
 
+        # Step 2.5: Filter EXPLAIN failures from Execute/Compare scripts
+        # Queries that fail EXPLAIN will also fail Execute — skip them to save DB time
+        explain_failed = self._parse_explain_failures(explain_out)
+        if explain_failed:
+            print(f"[full] Step 2.5: Filtering {len(explain_failed)} EXPLAIN failures from Execute/Compare...")
+            removed_exec = self._filter_sql_script(execute_sql, explain_failed, '\\echo ===')
+            removed_ora = self._filter_sql_script(oracle_sql, explain_failed, 'PROMPT ===')
+            print(f"  Removed: {removed_exec} from execute_test.sql, {removed_ora} from oracle_compare.sql")
+
         # Step 3: Execute
         execute_sql = output_path / 'execute_test.sql'
         execute_out = output_path / 'execute_results.txt'
@@ -1696,42 +1899,109 @@ SET HEADING ON
         print("[full] Step 5/5: Parsing results...")
         result = self.parse_results(output_dir)
 
-        # Update query tracking
+        # Update query tracking (file-scoped + final_state classification)
         if tracking_dir and result:
             try:
                 from tracking_utils import TrackingManager
                 tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
-                explain_results = {}
-                for p in result.get('passes', []):
-                    parts = (p if isinstance(p, str) else '').split('.')
-                    if len(parts) >= 2:
-                        qid = parts[1]
-                        if qid not in explain_results:
-                            explain_results[qid] = {'status': 'pass'}
-                for f_item in result.get('failures', []):
-                    parts = f_item.get('test', '').split('.')
-                    if len(parts) >= 2:
-                        explain_results[parts[1]] = {'status': 'fail', 'error': f_item.get('error', '')}
 
+                # Collect EXPLAIN pass/fail per (file, qid)
+                explain_by_file = {}  # file_no_ext -> {qid -> {status, error}}
+                for p in result.get('passes', []):
+                    tid = p if isinstance(p, str) else ''
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        fname = parts[0]
+                        qid = parts[1]
+                        explain_by_file.setdefault(fname, {})
+                        if qid not in explain_by_file[fname]:
+                            explain_by_file[fname][qid] = {'status': 'pass'}
+                for f_item in result.get('failures', []):
+                    tid = f_item.get('test', '') if isinstance(f_item, dict) else str(f_item)
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        fname = parts[0]
+                        qid = parts[1]
+                        err = f_item.get('error', '') if isinstance(f_item, dict) else ''
+                        explain_by_file.setdefault(fname, {})
+                        explain_by_file[fname][qid] = {'status': 'fail', 'error': err}
+
+                # Collect compare pass/fail per (file, qid)
                 compare_path = output_path / 'compare_validated.json'
-                compare_pass_qids = set()
+                compare_by_file = {}  # file_no_ext -> {qid -> match_bool}
                 if compare_path.exists():
                     with open(compare_path) as _f:
                         cdata = json.load(_f)
                     for cr in cdata.get('results', []):
-                        if cr.get('match'):
-                            compare_pass_qids.add(cr.get('query_id', ''))
+                        tid = cr.get('test_id', cr.get('query_id', ''))
+                        parts = tid.split('.')
+                        fname = parts[0] if len(parts) >= 2 else ''
+                        qid = parts[1] if len(parts) >= 2 else cr.get('query_id', '')
+                        compare_by_file.setdefault(fname, {})
+                        compare_by_file[fname][qid] = bool(cr.get('match'))
 
+                # DBA error keywords for final_state classification
+                dba_kw = ['does not exist', 'relation', 'missing_table', 'missing_column',
+                          'missing_function', 'schema_missing', 'column_missing', 'function_missing']
+
+                updated_count = 0
                 for tdir in tracking_dirs:
                     tm = TrackingManager(tdir)
-                    for qid, res in explain_results.items():
-                        tm.update_explain(qid, res['status'], error=res.get('error'))
-                        if res['status'] == 'pass' and qid in compare_pass_qids:
-                            tm.mark_success(qid)
+                    data = tm._load()
+                    fname_full = data.get('file', '')
+                    fname = fname_full.replace('.xml', '')
+
+                    file_explain = explain_by_file.get(fname, {})
+                    file_compare = compare_by_file.get(fname, {})
+
+                    for q in data.get('queries', []):
+                        qid = q.get('query_id', '')
+                        exp = file_explain.get(qid)
+                        cmp = file_compare.get(qid)
+
+                        if exp:
+                            tm.update_explain(qid, exp['status'], error=exp.get('error'))
+
+                            # Determine final_state
+                            if exp['status'] == 'pass':
+                                if cmp is True:
+                                    q['final_state'] = 'PASS_COMPLETE'
+                                elif cmp is False:
+                                    q['final_state'] = 'FAIL_COMPARE_DIFF'
+                                else:
+                                    qtype = q.get('type', 'select')
+                                    if qtype in ('insert', 'update', 'delete'):
+                                        q['final_state'] = 'NOT_TESTED_DML_SKIP'
+                                    else:
+                                        q['final_state'] = 'PASS_COMPLETE'
+                            else:
+                                # EXPLAIN fail — classify error
+                                err_text = (exp.get('error', '')).lower()
+                                if any(kw in err_text for kw in dba_kw):
+                                    if 'column' in err_text:
+                                        q['final_state'] = 'FAIL_COLUMN_MISSING'
+                                    elif 'function' in err_text:
+                                        q['final_state'] = 'FAIL_FUNCTION_MISSING'
+                                    else:
+                                        q['final_state'] = 'FAIL_SCHEMA_MISSING'
+                                elif 'type' in err_text and 'mismatch' in err_text:
+                                    q['final_state'] = 'FAIL_TC_TYPE_MISMATCH'
+                                elif 'operator' in err_text:
+                                    q['final_state'] = 'FAIL_TC_OPERATOR'
+                                else:
+                                    q['final_state'] = 'FAIL_SYNTAX'
+
+                            q['explain_status'] = exp['status']
+                            if cmp is not None:
+                                q['compare_status'] = 'pass' if cmp else 'fail'
+                            updated_count += 1
+
                     tm._save()
-                print(f"  Query tracking updated: {len(explain_results)} queries")
+                print(f"  Query tracking updated: {updated_count} queries (final_state set)")
             except Exception as e:
+                import traceback
                 print(f"  Warning: Could not update tracking: {e}")
+                traceback.print_exc()
 
         total = result.get('total', 0) if result else 0
         p = result.get('pass', 0) if result else 0
