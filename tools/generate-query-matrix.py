@@ -139,17 +139,33 @@ def main():
             tc_data = json.load(open(tc_file))
         except Exception:
             continue
+        # Format 1: {query_test_cases: [{query_id, test_cases: [...]}]}
         for qtc in tc_data.get('query_test_cases', []):
             qid = qtc.get('query_id', '')
             if qid:
                 cases = []
                 for tc in qtc.get('test_cases', []):
                     cases.append({
-                        'name': tc.get('case_id', tc.get('description', '')),
-                        'params': tc.get('binds', {}),
+                        'name': tc.get('name', tc.get('case_id', tc.get('description', ''))),
+                        'params': tc.get('params', tc.get('binds', {})),
                         'source': tc.get('source', ''),
                     })
                 test_cases_by_qid[qid] = cases
+        # Format 2: {query_id: [{name, params, source}, ...]} (tc-generator flat output)
+        for key, val in tc_data.items():
+            if key == 'query_test_cases':
+                continue
+            if isinstance(val, list) and val:
+                cases = []
+                for tc in val:
+                    if isinstance(tc, dict):
+                        cases.append({
+                            'name': tc.get('name', tc.get('case_id', '')),
+                            'params': tc.get('params', tc.get('binds', {})),
+                            'source': tc.get('source', ''),
+                        })
+                if cases and key not in test_cases_by_qid:
+                    test_cases_by_qid[key] = cases
 
     # Load extracted SQL — full SQL from MyBatis engine (not truncated)
     extracted_queries = set()
@@ -356,7 +372,16 @@ def main():
                     ('result', att.get('status', att.get('result', 'unknown'))),
                 ]))
             json_test_cases = test_cases_by_qid.get(qid, [])
+            # conversion_history: 직접 필드 > rules_applied fallback
             conv_history = q.get('conversion_history', []) or []
+            if not conv_history:
+                rules = q.get('rules_applied', []) or []
+                for rule in rules:
+                    conv_history.append({
+                        'pattern': rule.split('->')[0].strip() if '->' in rule else rule,
+                        'approach': rule.split('->')[1].strip() if '->' in rule else rule,
+                        'confidence': 'high' if method == 'rule' else 'medium',
+                    })
 
             rows.append({
                 'file': fname,
