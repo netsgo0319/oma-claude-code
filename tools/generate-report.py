@@ -236,7 +236,7 @@ def collect_data(base_dir):
             'final_state': q.get('final_state', ''),
             'final_state_detail': q.get('final_state_detail', ''),
             'explain': {'status': q.get('explain_status', '')},
-            'compare_results': [{'match': q.get('compare_status') == 'pass'}] if q.get('compare_status') != 'not_tested' else [],
+            'compare_results': q.get('compare_detail', [{'match': q.get('compare_status') == 'pass'}] if q.get('compare_status') != 'not_tested' else []),
             'attempts': q.get('attempts', []),
             'conversion_history': q.get('conversion_history', []),
             'test_cases': q.get('test_cases', []),

@@ -325,16 +325,32 @@ def main():
                 tracking_cmp = q.get('compare_results', [])
                 if tracking_cmp:
                     cmp_results = tracking_cmp
+            compare_detail = []  # 상세 결과 (JSON 출력용)
             if cmp_results:
                 tc_total = len(cmp_results)
                 tc_pass = sum(1 for c in cmp_results if c.get('match', False))
                 tc_fail = tc_total - tc_pass
                 fail_reasons = []
                 for c in cmp_results:
+                    detail_entry = {
+                        'oracle_rows': c.get('oracle_rows'),
+                        'pg_rows': c.get('pg_rows'),
+                        'match': c.get('match', False),
+                    }
                     if not c.get('match', False):
                         reason = c.get('reason', c.get('pg_error', c.get('ora_error', c.get('oracle_error', ''))))
+                        detail_entry['reason'] = str(reason)[:200] if reason else ''
+                        # Oracle 실행 에러인지 판별
+                        ora_err = c.get('oracle_error', c.get('ora_error', ''))
+                        if ora_err or c.get('oracle_rows') is None:
+                            detail_entry['fail_type'] = 'oracle_error'
+                        elif c.get('pg_rows') is None:
+                            detail_entry['fail_type'] = 'pg_error'
+                        else:
+                            detail_entry['fail_type'] = 'row_mismatch'
                         if reason:
                             fail_reasons.append(str(reason)[:100])
+                    compare_detail.append(detail_entry)
                 compare_status = 'pass' if tc_fail == 0 else 'fail'
                 compare_fail_reason = '; '.join(fail_reasons[:3])
             else:
@@ -485,6 +501,7 @@ def main():
                 '_sql_after': sql_after,
                 '_xml_before': xml_before_bodies.get((fname.replace('.xml', ''), qid), ''),
                 '_xml_after': xml_after_bodies.get((fname.replace('.xml', ''), qid), ''),
+                '_compare_detail': compare_detail,
                 '_conversion_history': conv_history,
                 '_attempts': json_attempts,
                 '_test_cases': json_test_cases,
@@ -560,6 +577,7 @@ def main():
                 ('attempts', r['_attempts']),
                 ('explain_status', r['explain_status']),
                 ('compare_status', r['compare_status']),
+                ('compare_detail', r.get('_compare_detail', [])),
                 ('complexity', r['complexity']),
             ])
             json_queries.append(entry)
@@ -630,6 +648,11 @@ def main():
                 ('oracle_patterns', dict(oracle_patterns_total)),
                 ('complexity_distribution', dict(Counter(r['complexity'] for r in rows if r['complexity']))),
                 ('conversion_methods', dict(Counter(r['conversion_method'] for r in rows if r['conversion_method']))),
+                ('compare_fail_types', dict(Counter(
+                    d.get('fail_type', 'unknown')
+                    for r in rows for d in r.get('_compare_detail', [])
+                    if not d.get('match', False)
+                ))),
                 ('file_stats', list(file_stats.values())),
                 ('step_progress', step_progress),
                 ('queries', json_queries),
