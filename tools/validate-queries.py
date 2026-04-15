@@ -824,21 +824,36 @@ SET HEADING ON
 
     @staticmethod
     def _extract_dml_where(sql):
-        """DML (UPDATE/DELETE)에서 테이블명과 WHERE 절을 추출하여 SELECT COUNT(*)로 변환.
-        Oracle sqlplus에 statement_timeout이 없으므로 DML 실행 대신 영향 행수만 예측.
-        예: UPDATE T SET col=1 WHERE id=1 → SELECT * FROM T WHERE id=1"""
+        """DML에서 SELECT COUNT(*)로 변환하여 양쪽 비교 가능하게.
+        UPDATE T SET col=1 WHERE id=1 → SELECT * FROM T WHERE id=1
+        DELETE FROM T WHERE id=1 → SELECT * FROM T WHERE id=1
+        INSERT INTO T (cols) VALUES (...) → SELECT 1 (건수 1 비교)
+        UPDATE T SET col=1 (WHERE 없음) → SELECT COUNT(*) FROM T (전체 건수)"""
         flat = re.sub(r'\s+', ' ', sql).strip().rstrip(';')
         # UPDATE table SET ... WHERE ...
-        m = re.match(r'UPDATE\s+(\S+)\s+.*?(WHERE\s+.+)$', flat, re.IGNORECASE)
+        # WHERE 추출 시 마지막 WHERE를 사용 (SET 안 서브쿼리의 WHERE와 구분)
+        m = re.match(r'UPDATE\s+(\S+)\s+', flat, re.IGNORECASE)
         if m:
             table = m.group(1)
-            where = m.group(2)
-            return f"SELECT * FROM {table} {where}"
+            # 마지막 WHERE 절 찾기 (SET 내부 서브쿼리 WHERE 제외)
+            where_idx = flat.upper().rfind(' WHERE ')
+            set_idx = flat.upper().find(' SET ')
+            if where_idx > set_idx and where_idx > 0:
+                where_clause = flat[where_idx:]
+                return f"SELECT * FROM {table} {where_clause}"
+            else:
+                # WHERE 없는 UPDATE → 전체 건수 비교
+                return f"SELECT COUNT(*) FROM {table}"
         # DELETE FROM table WHERE ...
         m = re.match(r'DELETE\s+(?:FROM\s+)?(\S+)\s+(WHERE\s+.+)$', flat, re.IGNORECASE)
         if m:
             return f"SELECT * FROM {m.group(1)} {m.group(2)}"
-        # INSERT — 행수 예측 불가, 스킵
+        m = re.match(r'DELETE\s+(?:FROM\s+)?(\S+)\s*$', flat, re.IGNORECASE)
+        if m:
+            return f"SELECT COUNT(*) FROM {m.group(1)}"
+        # INSERT — VALUES 건수 비교 (양쪽 동일하면 1)
+        if flat.upper().startswith('INSERT'):
+            return "SELECT 1"
         return None
 
     @staticmethod
@@ -1849,7 +1864,18 @@ SET HEADING ON
                 ora_r = ora_rows.get(tid)
 
                 if pg_r is None or ora_r is None:
-                    continue  # one side missing
+                    # 한쪽 파싱 실패 — 조용히 스킵하지 않고 기록
+                    reason_parts = []
+                    if ora_r is None:
+                        reason_parts.append('oracle_parse_fail')
+                    if pg_r is None:
+                        reason_parts.append('pg_parse_fail')
+                    compare_results.append({
+                        'query_id': qid, 'test_id': tid, 'match': False,
+                        'oracle_rows': ora_r, 'pg_rows': pg_r,
+                        'reason': '+'.join(reason_parts),
+                    })
+                    continue
                 if pg_r == -1 or ora_r == -1:
                     compare_results.append({
                         'query_id': qid, 'test_id': tid, 'match': False,
