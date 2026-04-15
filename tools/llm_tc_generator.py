@@ -116,17 +116,44 @@ For each SQL query, generate exactly {LLM_TC_MAX_TCS} test cases with realistic 
     return prompt
 
 
-def _call_bedrock(prompt, max_retries=2):
-    """Bedrock Claude API 호출. structured output."""
+def _call_bedrock(prompt, query_ids, max_retries=2):
+    """Bedrock Claude API 호출. tool_use로 structured output 강제."""
     client = _get_bedrock_client()
+
+    # tool_use 기반 structured output — JSON 스키마 강제
+    tc_properties = {}
+    for qid in query_ids:
+        tc_properties[qid] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "TC 이름 (tc_llm_1 등)"},
+                    "params": {"type": "object", "description": "파라미터명: 값 딕셔너리"},
+                },
+                "required": ["name", "params"],
+            },
+        }
+
+    tool_def = {
+        "name": "generate_test_cases",
+        "description": "쿼리별 테스트 케이스를 생성하여 반환",
+        "input_schema": {
+            "type": "object",
+            "properties": tc_properties,
+            "required": query_ids,
+        },
+    }
 
     body = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 4096,
-        "temperature": 0.3,  # 약간의 다양성
+        "temperature": 0.3,
         "messages": [
             {"role": "user", "content": prompt}
         ],
+        "tools": [tool_def],
+        "tool_choice": {"type": "tool", "name": "generate_test_cases"},
     })
 
     for attempt in range(max_retries + 1):
@@ -138,30 +165,37 @@ def _call_bedrock(prompt, max_retries=2):
                 body=body,
             )
             result = json.loads(response['body'].read())
-            text = result.get('content', [{}])[0].get('text', '')
 
-            # JSON 추출 (마크다운 코드블록 안에 있을 수 있음)
-            text = text.strip()
-            if text.startswith('```'):
-                text = re.sub(r'^```\w*\n?', '', text)
-                text = re.sub(r'\n?```$', '', text)
-                text = text.strip()
+            # tool_use 응답에서 input 추출
+            for block in result.get('content', []):
+                if block.get('type') == 'tool_use' and block.get('name') == 'generate_test_cases':
+                    return block.get('input', {})
 
-            return json.loads(text)
+            # fallback: text 응답 (tool_use 미지원 시)
+            for block in result.get('content', []):
+                if block.get('type') == 'text':
+                    text = block.get('text', '').strip()
+                    if text.startswith('```'):
+                        text = re.sub(r'^```\w*\n?', '', text)
+                        text = re.sub(r'\n?```$', '', text)
+                    return json.loads(text)
 
-        except client.exceptions.ThrottlingException:
-            if attempt < max_retries:
-                time.sleep(2 ** attempt)
-                continue
-            print(f"  WARN: Bedrock throttled after {max_retries + 1} attempts")
             return {}
+
         except json.JSONDecodeError as e:
-            print(f"  WARN: LLM response not valid JSON: {e}")
+            print(f"  WARN: response not valid JSON: {e}")
             if attempt < max_retries:
                 continue
             return {}
         except Exception as e:
-            print(f"  WARN: Bedrock call failed: {e}")
+            err_str = str(e)
+            if 'Throttling' in err_str or 'throttl' in err_str.lower():
+                if attempt < max_retries:
+                    time.sleep(2 ** attempt)
+                    continue
+                print(f"  WARN: Bedrock throttled after {max_retries + 1} attempts")
+            else:
+                print(f"  WARN: Bedrock call failed: {e}")
             return {}
 
 
@@ -189,7 +223,8 @@ def generate_tcs_batch(queries, sample_hint=None):
 
     for bi, batch in enumerate(batches):
         prompt = _build_prompt(batch, sample_hint)
-        raw = _call_bedrock(prompt)
+        query_ids = [q['query_id'] for q in batch]
+        raw = _call_bedrock(prompt, query_ids)
 
         if not raw:
             continue
