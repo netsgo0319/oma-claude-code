@@ -67,11 +67,16 @@ Agent({ subagent_type: "tc-generator", prompt: "
 
 ### Step 3: validate-and-fix 위임
 
+**★ 슈퍼바이저는 CLI 명령어를 직접 작성하지 마라. 에이전트 정의(.claude/agents/validate-and-fix.md)에 정확한 명령어가 있다.**
+**과거 실패 사례: 슈퍼바이저가 --tc-file, --output-dir 등 존재하지 않는 플래그를 넣어서 29개 배치 중 대부분 실패 (커버리지 4.3%).**
+
 ```
 Agent({ subagent_type: "validate-and-fix", prompt: "
-  입력: pipeline/step-1-convert/output/, pipeline/step-2-tc-generate/output/merged-tc.json
-  출력: pipeline/step-3-validate-fix/output/
-  --full 모드. FAIL은 최대 3회 수정. 수정 0건은 허용하지 않는다.
+  할당 파일: {파일목록}
+  .claude/agents/validate-and-fix.md의 절차를 그대로 따라라.
+  특히 '★★★ 절대 규칙' 섹션의 validate-queries.py --full 명령을 정확히 사용하라.
+  CLI 플래그를 추정하거나 변형하지 마라.
+  도구가 에러나면 자체 우회하지 말고 에러를 보고하라.
   완료 시 handoff.json 생성 (gate_checks 포함)." })
 ```
 
