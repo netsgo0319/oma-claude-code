@@ -45,3 +45,14 @@ bash ${CLAUDE_SKILL_DIR}/scripts/generate-handoff.sh
 | `tools/oracle-to-pg-converter.py` | 개별 파일 룰변환 |
 | `tools/xml-splitter.py` | 1000줄+ XML 분할 |
 | `tools/generate-handoff.py --step 1` | handoff 생성 |
+
+## 체크리스트
+
+```
+Step 1 변환:
+- [ ] 1. batch-process.sh --all --parallel 8 실행 (파일 하나씩 Edit 금지!)
+- [ ] 2. conversion-report.json에서 unconverted 수 확인
+- [ ] 3. unconverted > 0이면 llm-convert로 변환
+- [ ] 4. query-tracking.json 갱신 (pg_sql, conversion_method, conversion_history)
+- [ ] 5. handoff.json 생성
+```

@@ -28,6 +28,26 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
 각 에이전트의 `.claude/agents/*.md`와 skills에 절차가 정의되어 있다.
 **슈퍼바이저는 CLI 명령어를 직접 작성하지 마라. 에이전트 정의를 따르게 하라.**
 
+### ★★★ 병렬 위임 (필수 — 1개 에이전트에 전부 주지 마라)
+
+**Step 3(validate-and-fix)는 반드시 여러 에이전트에 파일을 나눠서 병렬 위임하라.**
+446파일을 1개 에이전트에 주면 수시간 걸린다. 5개로 나누면 30분.
+
+```python
+import glob
+files = sorted(glob.glob('pipeline/shared/input/*.xml'))
+batch_size = max(15, len(files) // 5)  # 최소 5개 에이전트
+batches = [files[i:i+batch_size] for i in range(0, len(files), batch_size)]
+
+# 병렬 spawn — 동시에!
+for i, batch in enumerate(batches):
+    file_list = ','.join(f.split('/')[-1] for f in batch)
+    Agent({ subagent_type: "validate-and-fix",
+            prompt: f"할당 파일: {file_list}\n에이전트 정의를 따라라." })
+```
+
+**Step 1(converter)도 100파일 이상이면 병렬 분할.** 단, batch-process.sh는 첫 에이전트만 실행.
+
 ### ★ GATE (Step 3→4)
 
 - `fix_loop_executed.status == "fail"` → 재위임: "수정 루프 0회. 반드시 수정."

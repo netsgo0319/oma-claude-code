@@ -142,3 +142,14 @@ python3 tools/validate-queries.py --compare --output workspace/results/_validati
 - Oracle과 PostgreSQL 양쪽 모두 ROLLBACK 필수 (데이터 변경 방지)
 - 대량 결과 시 상위 100행만 비교 (성능)
 - 비교 불가 시 (Oracle 접속 실패 등) → status: "skipped", reason 기록
+
+## 체크리스트
+
+```
+Compare 검증:
+- [ ] 1. EXPLAIN + Execute 통과 쿼리만 대상
+- [ ] 2. 동일 TC 바인드값으로 Oracle/PG 양쪽 실행
+- [ ] 3. 행수 비교 (oracle_rows vs pg_rows)
+- [ ] 4. 불일치 시 reason 기록 (oracle_error/pg_error/row_mismatch)
+- [ ] 5. 0건==0건도 PASS (스킵 금지)
+```

@@ -38,3 +38,14 @@ print(f'TC: {len(tc)} queries, {sum(len(v) for v in tc.values())} total cases')
 ```bash
 bash ${CLAUDE_SKILL_DIR}/scripts/generate-handoff.sh
 ```
+
+## 체크리스트
+
+```
+Step 2 TC 생성:
+- [ ] 1. Step 1 handoff.json 확인 (status=success)
+- [ ] 2. 샘플 데이터 존재 확인
+- [ ] 3. generate-test-cases.py 실행
+- [ ] 4. merged-tc.json 생성/검증 (쿼리 수 확인)
+- [ ] 5. handoff.json 생성
+```

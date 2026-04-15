@@ -40,3 +40,16 @@ bash ${CLAUDE_SKILL_DIR}/scripts/assemble-and-generate.sh
 3. `generate-report.py` — HTML 리포트 (4탭: Overview, Explorer, DBA, Log)
 4. 산출물 3개 존재+비어있지 않음 검증
 5. `generate-handoff.py --step 4` — handoff 생성
+
+## 체크리스트
+
+```
+Step 4 보고서:
+- [ ] 1. Step 3 gate_checks 확인 (BLOCKED이면 중단)
+- [ ] 2. assemble-workspace.sh 실행
+- [ ] 3. generate-query-matrix.py --json 실행
+- [ ] 4. 필드 완성도 검증 (50% 이상 비어있는 필드 없음)
+- [ ] 5. generate-report.py 실행
+- [ ] 6. 산출물 3개(csv, json, html) 존재 + 비어있지 않음
+- [ ] 7. handoff.json 생성
+```

@@ -77,3 +77,15 @@ Agent({ subagent_type: "reporter", prompt: "
 ```bash
 cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 ```
+
+## 체크리스트
+
+```
+파이프라인 오케스트레이션:
+- [ ] Step 0: 환경점검 (XML 수, Python, psql, sqlplus, Java)
+- [ ] Step 1: converter 위임 → handoff.json 확인
+- [ ] Step 2: tc-generator 위임 → handoff.json 확인
+- [ ] Step 3: validate-and-fix 위임 → gate_checks 확인 (★)
+- [ ] GATE: fix_loop=pass AND compare=pass AND NOT_TESTED<50%
+- [ ] Step 4: reporter 위임 → 산출물 3개 확인
+```
