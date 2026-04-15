@@ -1,50 +1,51 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Test Cases",
-  "description": "TC 생성 도구의 출력. Oracle 딕셔너리 기반 테스트 케이스.",
+  "description": "TC 생성 도구의 출력. 바인드 파라미터 세트.",
   "type": "object",
-  "required": ["version", "source_file", "query_test_cases"],
+  "required": ["version", "file", "query_test_cases"],
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
-    "source_file": { "type": "string" },
+    "file": { "type": "string", "description": "소스 XML 파일명 (= query-tracking의 file)" },
     "query_test_cases": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["query_id", "parameters", "test_cases"],
+        "required": ["query_id", "test_cases"],
         "properties": {
           "query_id": { "type": "string" },
           "parameters": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name", "type"],
+              "required": ["name"],
               "properties": {
                 "name": { "type": "string" },
                 "type": { "type": "string" }
               }
             }
           },
-          "oracle_metadata": { "type": "object" },
-          "expected_rows_hint": { "type": ["integer", "null"] },
           "test_cases": {
             "type": "array",
-            "minItems": 3,
-            "maxItems": 10,
             "items": {
               "type": "object",
-              "required": ["case_id", "description", "source", "binds"],
+              "required": ["name", "source", "params"],
               "properties": {
-                "case_id": { "type": "string" },
-                "description": { "type": "string" },
-                "source": { "type": "string", "enum": ["V$SQL_BIND_CAPTURE", "ALL_TAB_COL_STATISTICS", "dynamic_sql_branch", "oracle_null_semantics", "FK_RELATIONSHIP", "SAMPLE_DATA"] },
-                "binds": { "type": "object" },
-                "not_null_columns": { "type": "array", "items": { "type": "string" } }
+                "name": { "type": "string", "description": "TC 이름 (custom_1, sample_row_1, default 등)" },
+                "source": { "type": "string", "enum": ["CUSTOM", "SAMPLE_DATA", "INFERRED", "BIND_CAPTURE", "FK_SAMPLE", "BOUNDARY", "NULL_SEMANTICS", "EMPTY_STRING"] },
+                "params": { "type": "object", "description": "바인드 파라미터 {name: value}" }
               }
             }
           }
         }
       }
     }
+  },
+
+  "_field_mapping": {
+    "description": "이전 스키마와의 호환 매핑",
+    "name (현재)": "← case_id (이전)",
+    "params (현재)": "← binds (이전)",
+    "file (현재)": "← source_file (이전)"
   }
 }

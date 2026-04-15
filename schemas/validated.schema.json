@@ -3,10 +3,10 @@
   "title": "Validation Results",
   "description": "validator 에이전트의 출력. 3단계 검증 + Result Integrity Guard 결과.",
   "type": "object",
-  "required": ["version", "source_file", "results", "summary"],
+  "required": ["version", "file", "results", "summary"],
   "properties": {
     "version": { "type": "integer", "minimum": 1 },
-    "source_file": { "type": "string" },
+    "file": { "type": "string", "description": "소스 XML 파일명 (= query-tracking의 file)" },
     "results": {
       "type": "array",
       "items": {

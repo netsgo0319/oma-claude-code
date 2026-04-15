@@ -1,36 +1,51 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Query Tracking",
-  "description": "쿼리 단위 변환/검증/비교 추적. Phase별로 점진적으로 채워진다.",
+  "description": "쿼리 단위 변환/검증/비교 추적. Step별로 점진적으로 채워진다.",
   "type": "object",
-  "required": ["version", "file", "created_at", "queries"],
+  "required": ["version", "file", "ts", "queries"],
   "properties": {
     "version": { "type": "integer", "const": 1 },
-    "file": { "type": "string", "description": "소스 XML 파일명" },
+    "file": { "type": "string", "description": "소스 XML 파일명 (= query-matrix.json의 original_file)" },
     "file_version": { "type": "integer", "description": "변환 버전 (v1, v2, ...)" },
-    "created_at": { "type": "string", "format": "date-time" },
-    "updated_at": { "type": "string", "format": "date-time" },
+    "ts": { "type": "integer", "description": "UTC Unix timestamp (생성 시각)" },
+    "updated_ts": { "type": "integer", "description": "UTC Unix timestamp (마지막 갱신)" },
     "queries": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["query_id", "type", "status"],
         "properties": {
-          "query_id": { "type": "string" },
+          "query_id": { "type": "string", "description": "쿼리 ID (유일 식별자)" },
           "type": { "type": "string", "enum": ["select", "insert", "update", "delete", "procedure"] },
           "status": {
             "type": "string",
-            "enum": ["pending", "parsed", "analyzed", "converting", "converted", "testing", "validating", "validated", "failed", "retry_1", "retry_2", "retry_3", "escalated", "success"]
+            "description": "내부 처리 상태 (→ query-matrix.json의 final_state로 변환됨)",
+            "enum": ["pending", "parsed", "analyzed", "converting", "converted", "validating", "failed", "escalated", "success"]
           },
           "complexity": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4"] },
           "layer": { "type": "integer" },
 
-          "oracle_sql": { "type": "string", "description": "변환 전 원본 Oracle SQL" },
-          "pg_sql": { "type": "string", "description": "변환 후 PostgreSQL SQL" },
+          "oracle_sql": { "type": "string", "description": "변환 전 Oracle SQL (→ query-matrix의 sql_before)" },
+          "pg_sql": { "type": "string", "description": "변환 후 PG SQL (→ query-matrix의 sql_after)" },
           "oracle_patterns": { "type": "array", "items": { "type": "string" } },
-          "conversion_method": { "type": "string", "enum": ["rule", "llm", "manual", "none"] },
+          "conversion_method": { "type": "string", "enum": ["rule", "llm", "manual", "no_change"] },
           "rules_applied": { "type": "array", "items": { "type": "string" } },
-          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+
+          "conversion_history": {
+            "type": "array",
+            "description": "변환 이력. converter 에이전트가 기록.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ts": { "type": "integer", "description": "UTC Unix timestamp" },
+                "pattern": { "type": "string" },
+                "approach": { "type": "string" },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                "notes": { "type": "string" }
+              }
+            }
+          },
 
           "dynamic_elements": {
             "type": "array",
@@ -57,12 +72,13 @@
 
           "explain": {
             "type": "object",
+            "description": "EXPLAIN 결과 (→ query-matrix의 explain_status로 flat 변환)",
             "properties": {
               "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
-              "plan_summary": { "type": "string" },
               "error": { "type": ["string", "null"] },
-              "executed_at": { "type": "string", "format": "date-time" },
-              "duration_ms": { "type": "integer" }
+              "ts": { "type": "integer", "description": "UTC Unix timestamp" },
+              "duration_ms": { "type": "integer" },
+              "validation_source": { "type": "string", "enum": ["static", "mybatis"] }
             }
           },
 
@@ -71,10 +87,24 @@
             "properties": {
               "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
               "row_count": { "type": "integer" },
-              "columns": { "type": "array", "items": { "type": "string" } },
               "duration_ms": { "type": "integer" },
               "error": { "type": ["string", "null"] },
-              "executed_at": { "type": "string", "format": "date-time" }
+              "ts": { "type": "integer" }
+            }
+          },
+
+          "compare_results": {
+            "type": "array",
+            "description": "Compare 결과 (→ query-matrix의 compare_status로 flat 변환)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "test_id": { "type": "string" },
+                "oracle_rows": { "type": ["integer", "null"] },
+                "pg_rows": { "type": ["integer", "null"] },
+                "match": { "type": "boolean" },
+                "reason": { "type": "string" }
+              }
             }
           },
 
@@ -83,14 +113,13 @@
             "items": {
               "type": "object",
               "properties": {
-                "case_id": { "type": "string" },
-                "binds": { "type": "object" },
+                "name": { "type": "string", "description": "TC 이름 (= query-matrix의 test_cases[].name)" },
+                "params": { "type": "object", "description": "바인드 파라미터 (= query-matrix의 test_cases[].params)" },
+                "source": { "type": "string", "description": "TC 소스 (CUSTOM/SAMPLE_DATA/INFERRED 등)" },
                 "oracle_result": {
                   "type": "object",
                   "properties": {
                     "rows": { "type": "integer" },
-                    "columns": { "type": "array", "items": { "type": "string" } },
-                    "sample": { "type": "array" },
                     "duration_ms": { "type": "integer" }
                   }
                 },
@@ -98,31 +127,11 @@
                   "type": "object",
                   "properties": {
                     "rows": { "type": "integer" },
-                    "columns": { "type": "array", "items": { "type": "string" } },
-                    "sample": { "type": "array" },
                     "duration_ms": { "type": "integer" }
                   }
                 },
-                "match": { "type": "boolean" },
-                "warnings": { "type": "array", "items": { "type": "string" } }
+                "match": { "type": "boolean" }
               }
-            }
-          },
-
-          "timing": {
-            "type": "object",
-            "properties": {
-              "parse_started": { "type": "string", "format": "date-time" },
-              "parse_ms": { "type": "integer" },
-              "convert_started": { "type": "string", "format": "date-time" },
-              "convert_ms": { "type": "integer" },
-              "explain_started": { "type": "string", "format": "date-time" },
-              "explain_ms": { "type": "integer" },
-              "execute_started": { "type": "string", "format": "date-time" },
-              "execute_ms": { "type": "integer" },
-              "compare_started": { "type": "string", "format": "date-time" },
-              "compare_ms": { "type": "integer" },
-              "total_ms": { "type": "integer" }
             }
           },
 
@@ -144,5 +153,17 @@
         }
       }
     }
+  },
+
+  "_field_mapping": {
+    "description": "query-tracking.json ↔ query-matrix.json 필드 매핑 참조",
+    "file → original_file": "tracking의 file = matrix의 original_file",
+    "oracle_sql → sql_before": "tracking의 oracle_sql = matrix의 sql_before",
+    "pg_sql → sql_after": "tracking의 pg_sql = matrix의 sql_after",
+    "status → final_state": "tracking의 status(내부) → matrix의 final_state(14-state, 계산됨)",
+    "explain.status → explain_status": "tracking의 중첩 → matrix의 flat",
+    "compare_results[].match → compare_status": "tracking의 boolean 배열 → matrix의 pass/fail string",
+    "test_cases[].name/params": "tracking과 matrix에서 동일 필드명 사용",
+    "attempts[].ts": "UTC Unix int 통일"
   }
 }
