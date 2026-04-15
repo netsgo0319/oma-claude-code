@@ -37,6 +37,29 @@ from pathlib import Path
 from datetime import datetime
 
 
+def _load_dotenv():
+    """프로젝트 루트 또는 workspace/의 .env 파일을 자동 로드.
+    서브에이전트가 source .env 없이 실행해도 환경변수가 설정되도록."""
+    for env_path in ['.env', 'workspace/.env', '../.env']:
+        p = Path(env_path)
+        if p.exists():
+            with open(p) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    # export KEY=VALUE 또는 KEY=VALUE
+                    line = line.removeprefix('export').strip()
+                    key, _, val = line.partition('=')
+                    key = key.strip()
+                    val = val.strip().strip('"').strip("'")
+                    if key and key not in os.environ:  # 기존 환경변수 우선
+                        os.environ[key] = val
+
+
+_load_dotenv()
+
+
 class QueryValidator:
     def __init__(self, output_dir='workspace/output', results_dir='workspace/results',
                  input_dir='workspace/input'):
