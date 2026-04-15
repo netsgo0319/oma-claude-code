@@ -759,7 +759,7 @@ def main():
             print(f"\n  LLM TC 보강: {len(llm_candidates)} queries without real data TC")
             # _file_tc 참조 제거 (JSON 직렬화 불가)
             clean_candidates = [{k: v for k, v in c.items() if not k.startswith('_')} for c in llm_candidates]
-            llm_results = generate_tcs_batch(clean_candidates, sample_hint=None)
+            llm_results = generate_tcs_batch(clean_candidates, sample_hint=sample_data)
 
             # LLM TC를 기존 file_tc에 병합 + 파일 재저장
             files_updated = set()

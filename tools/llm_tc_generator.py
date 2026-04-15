@@ -53,12 +53,19 @@ def _build_prompt(queries_batch, sample_hint=None):
     """배치 프롬프트 생성. structured output 유도."""
 
     queries_text = ""
+    # SQL에서 테이블명 추출 → 해당 테이블 샘플만 첨부
+    tables_needed = set()
     for q in queries_batch:
         qid = q.get('query_id', '')
-        sql = q.get('sql', '')[:500]  # 토큰 절약
+        sql = q.get('sql', '')[:500]
         params = q.get('params', [])
         qtype = q.get('type', 'select')
         dynamic_tags = q.get('dynamic_tags', [])
+
+        # 테이블명 추출
+        for t in re.findall(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(\w+)', sql, re.I):
+            if t.upper() not in ('DUAL', 'SELECT', 'WHERE', 'SET', 'VALUES'):
+                tables_needed.add(t.upper())
 
         queries_text += f"""
 --- Query: {qid} (type: {qtype}) ---
@@ -67,9 +74,25 @@ Parameters: {json.dumps(params)}
 Dynamic tags: {json.dumps(dynamic_tags[:5])}
 """
 
+    # 관련 테이블 샘플만 첨부 (토큰 효율)
     sample_text = ""
     if sample_hint:
-        sample_text = f"\nAvailable sample data (reference only):\n{json.dumps(sample_hint, ensure_ascii=False)[:1000]}\n"
+        relevant = {}
+        for tbl, rows in sample_hint.items():
+            if tbl.upper() in tables_needed or any(tbl.upper() in t for t in tables_needed):
+                # 컬럼명 + 샘플 2행만 (토큰 절약)
+                if isinstance(rows, list) and rows:
+                    relevant[tbl] = {
+                        'columns': list(rows[0].keys()) if rows else [],
+                        'sample_rows': rows[:2],
+                    }
+                elif isinstance(rows, dict) and 'columns' in rows:
+                    relevant[tbl] = {
+                        'columns': rows['columns'],
+                        'sample_rows': rows.get('rows', [])[:2],
+                    }
+        if relevant:
+            sample_text = f"\n## Table schemas and sample data\n{json.dumps(relevant, ensure_ascii=False, indent=1)}\n"
 
     prompt = f"""Generate {LLM_TC_MAX_TCS} test cases per query for Oracle→PostgreSQL migration validation.
 
