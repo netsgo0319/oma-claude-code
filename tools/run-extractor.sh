@@ -51,6 +51,22 @@ fi
 JAVA_VER=$(java -version 2>&1 | head -1)
 echo "Java: $JAVA_VER"
 
+# Step 1.5: Pre-scan XMLs → generate stubs BEFORE build
+# Prevents ClassNotFoundException / OGNL errors at extraction time
+if [ "$SKIP_BUILD" = false ] && command -v python3 &>/dev/null; then
+    echo ""
+    echo "--- Pre-scanning XMLs for missing class stubs ---"
+    python3 "$SCRIPT_DIR/pre-scan-stubs.py" \
+        --input "$INPUT_DIR" \
+        --stub-dir "$STUB_DIR"
+    # Also scan output dir (converted XMLs may reference different classes)
+    if [ -d "$OUTPUT_DIR" ]; then
+        python3 "$SCRIPT_DIR/pre-scan-stubs.py" \
+            --input "$OUTPUT_DIR" \
+            --stub-dir "$STUB_DIR"
+    fi
+fi
+
 # Step 2: Build (unless --skip-build)
 if [ "$SKIP_BUILD" = false ]; then
     echo ""
