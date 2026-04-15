@@ -7,6 +7,9 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+skills:
+  - report-guide
+  - audit-log
 ---
 
 # Reporter Agent
