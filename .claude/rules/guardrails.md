@@ -11,6 +11,16 @@ inclusion: always
 - DROP, TRUNCATE, ALTER, CREATE, GRANT, REVOKE 실행 금지
 - statement_timeout 30초 설정 필수
 
+### XML 입력 파일 — 2단계 원칙
+- **1단계: `*.xml` 전부 가져온다. 파일명 패턴 필터 절대 금지.**
+  - `*Mapper.xml`만, `*-oracle-*.xml`만, `*-sql-*.xml`만 등 **이름 기반 필터링을 걸지 마라**
+  - `-ibatis-`, `-mybatis-`, 접미사 없는 것, 어떤 이름이든 input/에 있는 `*.xml`은 전부 수집
+  - `find ... -name "*.xml"` — 이것이 유일하게 허용되는 glob. 추가 조건 금지
+- **2단계: 파싱 시 MyBatis/iBatis XML인지 검증한다.**
+  - `<mapper>`, `<sqlMap>`, `<select>`, `<insert>`, `<update>`, `<delete>` 태그 존재 여부로 판별
+  - MyBatis/iBatis가 아닌 XML(Spring config, POM 등)은 **파싱 단계에서 자동 스킵** — 사전 필터 금지
+  - 파일명으로 미리 걸러내면 정작 변환해야 할 파일을 놓친다. **반드시 내용 기반 판별.**
+
 ### 파일 안전
 - **workspace/ 아래에 임시 .py/.sh 파일을 만들지 마라.** 기존 도구만 사용
 - output XML 수정 전 반드시 버저닝: `cp file file.v{N}.bak`

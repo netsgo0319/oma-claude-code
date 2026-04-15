@@ -30,6 +30,11 @@ for each step 0..4:
 
 ### Step 0: 환경점검 (슈퍼바이저가 직접 — 유일한 예외)
 
+**XML 파일명으로 필터를 걸지 마라. `*.xml` 전부 가져온 뒤 파싱에서 MyBatis/iBatis인지 판별.**
+- `*Mapper.xml`만, `*-sql-*.xml`만 등 **파일명 패턴 필터링 절대 금지**
+- input 디렉토리의 `*.xml`은 **예외 없이 전부** 파이프라인에 넣어라
+- MyBatis/iBatis 여부는 **파싱 단계에서 태그(`<mapper>`, `<sqlMap>`)로 판별**. 사전 필터 금지
+
 ```bash
 find pipeline/shared/input/ -name "*.xml" -type f | wc -l
 python3 --version
