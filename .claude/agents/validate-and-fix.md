@@ -46,8 +46,26 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 **검증은 반드시 아래 2단계를 순서대로 실행. 1단계를 빼먹으면 동적 SQL 206건이 Compare 실패한다.**
 
 ```bash
+# ★ 0단계: workspace 준비 (pipeline → workspace 복사)
+cp pipeline/step-1-convert/output/xml/*.xml workspace/output/ 2>/dev/null
+cp pipeline/step-3-validate-fix/output/xml-fixes/*.xml workspace/output/ 2>/dev/null
+mkdir -p workspace/results/_test-cases
+python3 -c "
+import json, glob
+merged = {}
+for f in sorted(glob.glob('pipeline/step-2-tc-generate/output/per-file/*/v1/test-cases.json')):
+    data = json.load(open(f))
+    for qid, cases in data.items():
+        if isinstance(cases, list) and cases:
+            merged[qid] = [tc.get('params', tc) for tc in cases if isinstance(tc, dict)]
+json.dump(merged, open('workspace/results/_test-cases/merged-tc.json', 'w'), ensure_ascii=False, indent=2)
+"
+
 # ★ 1단계: MyBatis 렌더링 (동적 SQL → 실행 가능 SQL 추출) — 빼먹지 마라!
-bash tools/run-extractor.sh --validate
+bash tools/run-extractor.sh --skip-build --validate
+
+# 추출 결과를 pipeline 경로로 복사
+cp workspace/results/_extracted_pg/*.json pipeline/step-3-validate-fix/output/extracted_pg/ 2>/dev/null
 
 # ★ 2단계: 검증 (EXPLAIN + Execute + Compare 원자적)
 python3 tools/validate-queries.py --full \
