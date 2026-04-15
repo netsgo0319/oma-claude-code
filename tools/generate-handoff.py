@@ -216,8 +216,13 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
         if tracking_cmp:
             cmp_results = tracking_cmp
     if cmp_results:
-        tc_fail = sum(1 for c in cmp_results if not c.get('match', False))
-        compare_status = 'pass' if tc_fail == 0 else 'fail'
+        tc_fail = sum(1 for c in cmp_results if isinstance(c, dict) and not c.get('match', False))
+        tc_pass = sum(1 for c in cmp_results if isinstance(c, dict) and c.get('match', False))
+        # If cmp_results contains strings (e.g. 'pass'/'fail'), handle that too
+        if tc_pass == 0 and tc_fail == 0:
+            tc_fail = sum(1 for c in cmp_results if (isinstance(c, str) and c != 'pass'))
+            tc_pass = sum(1 for c in cmp_results if (isinstance(c, str) and c == 'pass'))
+        compare_status = 'pass' if tc_fail == 0 and tc_pass > 0 else ('fail' if tc_fail > 0 else 'not_tested')
     else:
         compare_status = 'not_tested'
 
@@ -335,7 +340,11 @@ def generate_step1(args):
 
 def generate_step2(args):
     tc_dir = Path(args.tc_dir or 'pipeline/step-2-tc-generate/output')
+    # Check both locations for merged-tc.json
     merged_tc_path = tc_dir / 'merged-tc.json'
+    if not merged_tc_path.exists():
+        merged_tc_path = tc_dir / 'per-file' / 'merged-tc.json'
+
     merged = {}
     if merged_tc_path.exists():
         merged = json.load(open(merged_tc_path))
@@ -351,13 +360,20 @@ def generate_step2(args):
         total_queries = len(all_q)
         queries_without_tc = total_queries - queries_with_tc
 
-    # Source distribution (approximate from TC names)
+    # Source distribution from per-file test-cases.json (has metadata)
     source_dist = Counter()
-    for qid, tcs in merged.items():
-        for tc in tcs:
-            if isinstance(tc, dict):
-                src = tc.get('source', 'INFERRED')
-                source_dist[src] += 1
+    per_file_dir = tc_dir / 'per-file'
+    if per_file_dir.exists():
+        for tc_file in per_file_dir.rglob('test-cases.json'):
+            try:
+                data = json.load(open(tc_file))
+                for qid, cases in data.items():
+                    for case in cases:
+                        if isinstance(case, dict):
+                            src = case.get('source', 'INFERRED')
+                            source_dist[src] += 1
+            except Exception:
+                pass
 
     return {
         'summary': {
@@ -446,12 +462,13 @@ def generate_step3(args):
     # Gate: compare coverage
     compare_target = len(queries) - dba_skipped
     compare_done = len(compare_qids)
-    # Non-DBA queries without compare
+    # Non-DBA queries without compare — exclude DML (can't compare) and execution_error (compare attempted)
     compare_missing_non_dba = 0
+    dml_skip_count = state_counts.get('NOT_TESTED_DML_SKIP', 0)
     for q in queries:
         qid = q.get('query_id', '')
         state = classify_state(q, passes, failures, compare)
-        if state not in DBA_STATES and qid not in compare_qids:
+        if state not in DBA_STATES and state != 'NOT_TESTED_DML_SKIP' and qid not in compare_qids:
             # Only count if explain passed (can't compare if explain failed)
             if (q.get('explain', {}) or {}).get('status') == 'pass' or qid in passes:
                 compare_missing_non_dba += 1
