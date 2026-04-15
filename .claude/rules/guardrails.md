@@ -54,7 +54,26 @@ inclusion: always
 
 ## 최종 JSON 산출물 포맷 (query-matrix.json)
 
-**모든 쿼리에 아래 필드가 채워져야 한다. 빈 배열/빈 문자열은 데이터 누락을 의미한다:**
+**query-matrix.json이 보고서의 유일한 데이터 소스.** 모든 필드를 반드시 채워라.
+
+### 상위 레벨 필드
+
+```json
+{
+  "generated_at": "2026-04-15T10:30:00",
+  "total": 426,
+  "summary": {"PASS_COMPLETE": 300, "FAIL_SYNTAX": 8, ...},
+  "explain_error_categories": {"SYNTAX_ERROR": 8, "MISSING_TABLE": 5, ...},
+  "oracle_patterns": {"NVL": 150, "DECODE": 80, "CONNECT_BY": 3, ...},
+  "complexity_distribution": {"L0": 50, "L1": 200, "L2": 100, "L3": 60, "L4": 16},
+  "conversion_methods": {"rule": 380, "llm": 30, "no_change": 10},
+  "file_stats": [{"file": "UserMapper.xml", "queries_total": 50, "pass_count": 45, ...}],
+  "step_progress": {"step-0": {"status": "success"}, ...},
+  "queries": [...]
+}
+```
+
+### 쿼리별 필드 정의
 
 ```json
 {
@@ -83,18 +102,47 @@ inclusion: always
 }
 ```
 
-**데이터 소스 우선순위:**
-- `sql_before/after`: _extracted_pg/ 전체 SQL > query-tracking.json (잘릴 수 있음)
+| 필드 | 정의 | 생산 Step | 빈값 의미 |
+|------|------|----------|----------|
+| `query_id` | MyBatis XML의 `<select id="...">` | Step 1 | — (필수) |
+| `original_file` | 원본 XML 파일명 | Step 1 | — (필수) |
+| `sql_before` | **변환 전** Oracle SQL 전문 | Step 1 (extracted_oracle → tracking fallback) | 파싱 실패 |
+| `sql_after` | **변환 후** PG SQL 전문 | Step 1+3 (extracted_pg → tracking fallback) | 변환 미완료 |
+| `final_state` | 14-state 중 하나 (PASS_COMPLETE 등) | Step 4 (계산) | — (필수) |
+| `final_state_detail` | 사람 읽는 상태 설명 | Step 4 (계산) | — |
+| `conversion_method` | `rule` / `llm` / `no_change` | Step 1 converter | 변환 미완료 |
+| `conversion_history` | **변환 레시피** — 어떤 패턴을 어떻게 바꿨는지 | Step 1 converter | 룰 변환은 자동이라 비어있을 수 있음 |
+| `test_cases` | 검증에 사용한 TC 목록 (파라미터 + 값) | Step 2 tc-generator | TC 생성 안 됨 |
+| `attempts` | **디버깅 이력** — 검증 실패 후 수정 시도 기록 | Step 3 validate-and-fix | 한번에 통과 (수정 불필요) |
+| `explain_status` | EXPLAIN 결과 (`pass`/`fail`/`not_tested`) | Step 3 | 검증 미실행 |
+| `compare_status` | Compare 결과 (`pass`/`fail`/`not_tested`) | Step 3 | Compare 미실행 |
+| `complexity` | 난이도 (`L0`~`L4`) | Step 1 query-analyzer | 분석 미실행 |
+
+### conversion_history vs attempts (★ 혼동 주의)
+
+| | `conversion_history` | `attempts` |
+|---|---|---|
+| **누가 기록** | Step 1 **converter** | Step 3 **validate-and-fix** |
+| **언제** | SQL 변환할 때 | 검증 실패 후 수정할 때 |
+| **내용** | "NVL→COALESCE 치환" (변환 레시피) | "syntax error 발생 → 수정 → 재검증" (디버깅) |
+| **빈 배열이면** | 룰 변환만 적용 (자동, 기록 안 남을 수 있음) | 한번에 통과 (수정 불필요 = 좋은 것) |
+| **필드** | pattern, approach, confidence | attempt, ts, error_category, error_detail, fix_applied, result |
+
+**conversion_history는 "무엇을 바꿨는지", attempts는 "왜 실패하고 어떻게 고쳤는지".**
+
+### 데이터 소스 우선순위
+
+- `sql_before/after`: MyBatis extracted SQL (전문) > query-tracking.json (잘릴 수 있음)
 - `test_cases`: test-cases.json에서 로드
 - `attempts`: query-tracking.json의 attempts 배열
-- `conversion_history`: query-tracking.json의 conversion_history
+- `conversion_history`: query-tracking.json의 conversion_history 배열
 
 ## query-tracking.json 기록 필수
 
 **서브에이전트가 작업 완료 시 query-tracking.json에 반드시 기록해야 할 것:**
-- converter: `conversion_history` (패턴, 접근법, 신뢰도)
-- validate-and-fix: `attempts` (ts, error_category, error_detail, fix_applied, result)
-- test_cases는 generate-test-cases.py가 test-cases.json에 기록
+- **converter**: `conversion_history[]` (pattern, approach, confidence) + `conversion_method` + `pg_sql`
+- **validate-and-fix**: `attempts[]` (attempt, ts, error_category, error_detail, fix_applied, result) + `explain` + `compare_results`
+- **tc-generator**: test-cases.json에 별도 기록 (name, params, source)
 
 **비어있으면 보고서 JSON에 빈 배열로 나온다.** reporter가 검증 시 경고.
 

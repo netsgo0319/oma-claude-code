@@ -137,7 +137,11 @@ for each 렌더링 실패 쿼리:
 
 **이 절차는 수정 루프 3회와 별개.** 렌더링 문제는 SQL 수정이 아니라 TC 보강으로 해결.
 
-### 4. 시도 기록 (필수)
+### 4. 시도 기록 (필수) — attempts[] (conversion_history와 다름!)
+
+**attempts = 디버깅 이력.** "검증 실패 → 원인 분석 → 수정 → 재검증" 기록.
+- conversion_history(Step 1 converter가 기록)와 **다른 것.** 그것은 "변환 레시피."
+- attempts는 **이 에이전트만** 기록한다.
 
 모든 시도를 `query-tracking.json`의 `attempts[]`에 기록:
 ```json

@@ -123,6 +123,10 @@ LLM 변환한 각 쿼리에 대해 직접 갱신:
 }
 ```
 
+**conversion_history = 변환 레시피.** "어떤 Oracle 패턴을 어떻게 PG로 바꿨는지."
+- 이것을 Step 3 validate-and-fix가 참고하여 에러 원인을 빠르게 진단한다.
+- **attempts와 다른 것.** attempts는 Step 3에서 검증 실패 후 수정 시도 기록.
+
 **갱신 체크리스트:**
 - [ ] output XML 수정됨
 - [ ] query-tracking.json의 pg_sql, conversion_method, status, conversion_history 갱신됨
