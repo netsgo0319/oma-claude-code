@@ -11,9 +11,9 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-INPUT_DIR="$PROJECT_DIR/workspace/input"
-OUTPUT_DIR="$PROJECT_DIR/workspace/output"
-RESULTS_DIR="$PROJECT_DIR/workspace/results"
+INPUT_DIR="${INPUT_DIR:-$PROJECT_DIR/workspace/input}"
+OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_DIR/workspace/output}"
+RESULTS_DIR="${RESULTS_DIR:-$PROJECT_DIR/workspace/results}"
 
 DO_PARSE=false
 DO_CONVERT=false

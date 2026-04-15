@@ -1,0 +1,144 @@
+---
+inclusion: always
+---
+
+# OMA 가드레일 (모든 에이전트 필수 적용)
+
+## 절대 금지 행동
+
+### SQL 안전
+- **DML은 PG: BEGIN/ROLLBACK + 5s timeout, Oracle: SELECT COUNT(*) WHERE**
+- DROP, TRUNCATE, ALTER, CREATE, GRANT, REVOKE 실행 금지
+- statement_timeout 30초 설정 필수
+
+### 파일 안전
+- **workspace/ 아래에 임시 .py/.sh 파일을 만들지 마라.** 기존 도구만 사용
+- output XML 수정 전 반드시 버저닝: `cp file file.v{N}.bak`
+
+### MyBatis 파라미터
+- **`#{param}`은 MyBatis 바인드 파라미터.** Oracle 구문이 아님. 변환 금지
+- `#{sysdate}` → 그대로 유지. bare `SYSDATE`만 CURRENT_TIMESTAMP로 변환
+
+### 검증 원칙
+- **EXPLAIN 통과 ≠ 변환 성공.** Execute + Compare까지 필수
+- **0건==0건도 유효한 PASS.** Compare를 스킵하지 마라
+- **Compare mismatch(Oracle≠PG)도 FAIL이다.** EXPLAIN+Execute PASS여도 Compare 불일치면 수정 루프 대상
+- 스키마 에러(relation/column/function_missing)만 수정 루프 면제. 나머지 전부 수정 시도
+
+### PG 환경
+- **search_path 필수 확인.** 스키마가 public이 아니면 `SET search_path TO {schema}, public;`
+- pgcrypto extension 확인 (PKG_CRYPTO 변환에 필수)
+
+## 보고서 생성 게이트
+
+**reporter 체크리스트를 통과해야만 보고서를 생성할 수 있다:**
+- 2c: FAIL인데 수정 루프 0회인 쿼리 → BLOCK
+- 2d: DBA 3종 외 Compare 미실행 쿼리 → BLOCK
+- BLOCK이면 보고서 생성 금지. validate-and-fix 재위임 후 다시 reporter 호출.
+
+## 최종 JSON 산출물 포맷 (query-matrix.json)
+
+**모든 쿼리에 아래 필드가 채워져야 한다. 빈 배열/빈 문자열은 데이터 누락을 의미한다:**
+
+```json
+{
+  "query_id": "selectUser",
+  "original_file": "UserMapper.xml",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "final_state": "PASS_COMPLETE",
+  "final_state_detail": "변환+비교 통과",
+  "conversion_method": "rule",
+  "conversion_history": [
+    {"pattern": "NVL", "approach": "COALESCE 치환", "confidence": "high"}
+  ],
+  "test_cases": [
+    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"}
+  ],
+  "attempts": [
+    {"attempt": 1, "ts": 1713100860, "error_category": "SYNTAX_ERROR",
+     "error_detail": "syntax error at or near NVL", "fix_applied": "NVL→COALESCE", "result": "fail"},
+    {"attempt": 2, "ts": 1713100920, "error_category": null,
+     "error_detail": null, "fix_applied": "재검증", "result": "pass"}
+  ],
+  "explain_status": "pass",
+  "compare_status": "pass",
+  "complexity": "L1"
+}
+```
+
+**데이터 소스 우선순위:**
+- `sql_before/after`: _extracted_pg/ 전체 SQL > query-tracking.json (잘릴 수 있음)
+- `test_cases`: test-cases.json에서 로드
+- `attempts`: query-tracking.json의 attempts 배열
+- `conversion_history`: query-tracking.json의 conversion_history
+
+## query-tracking.json 기록 필수
+
+**서브에이전트가 작업 완료 시 query-tracking.json에 반드시 기록해야 할 것:**
+- converter: `conversion_history` (패턴, 접근법, 신뢰도)
+- validate-and-fix: `attempts` (ts, error_category, error_detail, fix_applied, result)
+- test_cases는 generate-test-cases.py가 test-cases.json에 기록
+
+**비어있으면 보고서 JSON에 빈 배열로 나온다.** reporter가 검증 시 경고.
+
+## 산출물 필수 규칙
+
+**모든 최종 단계(수정, 재검증, 보고서)는 아래 3개 산출물을 반드시 갱신해야 한다:**
+1. `pipeline/step-4-report/output/query-matrix.csv` — flat CSV
+2. `pipeline/step-4-report/output/query-matrix.json` — 상세 JSON
+3. `pipeline/step-4-report/output/migration-report.html` — HTML 리포트
+
+수정 루프 완료 후, TC 보강 후, 어떤 재검증이든 끝나면 → **반드시 reporter에 위임하여 3개 파일 재생성.**
+query-matrix.json에 필수 필드(query_id, original_file, sql_before, sql_after, final_state, test_cases, attempts, conversion_history)가 없으면 불완전.
+
+## handoff.json 계약
+
+**각 Step 완료 시 handoff.json을 반드시 생성한다.** 슈퍼바이저는 이 파일만 읽고 판단한다.
+
+```bash
+python3 tools/generate-handoff.py --step {N} --results-dir {path} [options]
+```
+
+**Step 3 handoff.json 예제 (gate_checks 포함):**
+```json
+{
+  "step": "step-3-validate-fix",
+  "step_number": 3,
+  "status": "success",
+  "started_at": 1713101520,
+  "completed_at": 1713103200,
+  "summary": {
+    "queries_total": 426,
+    "explain_pass": 380,
+    "compare_pass": 350,
+    "fix_attempted": 25,
+    "state_counts": {"PASS_COMPLETE": 300, "PASS_HEALED": 15, "FAIL_SYNTAX": 8}
+  },
+  "gate_checks": {
+    "fix_loop_executed": {"status": "pass", "fail_no_loop_count": 0},
+    "compare_coverage": {"status": "pass", "compare_target": 414, "compare_done": 370, "compare_missing_non_dba": 0}
+  },
+  "outputs": {
+    "validation_dir": "pipeline/step-3-validate-fix/output/validation/",
+    "tracking_files_updated": ["pipeline/step-1-convert/output/results/UserMapper.xml/v1/query-tracking.json"]
+  },
+  "next_step": "step-4-report",
+  "next_step_recommendation": "proceed"
+}
+```
+
+## 대량 unconverted 패턴 처리
+
+(+) outer join, MERGE INTO 등 대량 unconverted 패턴이 있을 때:
+- **새 변환 스크립트를 만들지 마라.** `oracle-to-pg-converter.py`에 룰을 추가하라.
+- LLM 개별 변환이 비효율적이면 → **converter 에이전트가 output XML을 직접 Edit**하라.
+- 한 파일 안의 동일 패턴은 한번에 일괄 Edit. 쿼리별로 따로 하지 마라.
+
+## 리더 전용 금지
+
+- 리더가 직접 validate-queries.py를 실행하는 것 → **validate-and-fix에 위임**
+- 리더가 직접 generate-report.py를 실행하는 것 → **reporter에 위임**
+- "결과가 분산되어 있어 전체 통합 검증하겠다" → **reporter가 glob으로 통합**
+- "전체 EXPLAIN 먼저 돌리고 그다음 Execute" → **--full 원자적 실행만**
+- 배치 에이전트 결과를 무시하고 단일 재실행 → **기존 결과 덮어씌워짐**

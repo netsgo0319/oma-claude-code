@@ -369,12 +369,22 @@ public class SqlExtractor {
                     allParams.put(prop, "test");
                 }
             }
-            // Also add common dynamic SQL test properties
+            // Common dynamic SQL test properties
             allParams.putIfAbsent("name", "test");
             allParams.putIfAbsent("status", "ACTIVE");
             allParams.putIfAbsent("id", 1);
             allParams.putIfAbsent("list", Arrays.asList(1, 2, 3));
             allParams.putIfAbsent("idList", Arrays.asList(1, 2, 3));
+            // Common foreach collection names (MyBatis + iBatis)
+            // 이름 추론이 불가하면 더미 리스트로 모두 커버
+            for (String collName : new String[]{
+                "list", "idList", "ids", "items", "orders", "codes",
+                "array", "collection", "paramList", "valueList",
+                "seqList", "codeList", "dataList", "keyList",
+                "deleteList", "insertList", "updateList"
+            }) {
+                allParams.putIfAbsent(collName, Arrays.asList("1", "2"));
+            }
 
             BoundSql boundSql = ms.getBoundSql(allParams);
             Map<String, Object> variant = new LinkedHashMap<>();
@@ -462,12 +472,46 @@ public class SqlExtractor {
         return "test";
     }
 
+    /**
+     * Extract <foreach collection="X"> attribute values from XML source for a given statement.
+     */
+    private static List<String> extractForeachCollections(String statementId, String xmlSource) {
+        List<String> collections = new ArrayList<>();
+        if (xmlSource == null) return collections;
+        // Simple regex: find collection="..." within the statement's XML block
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("collection\\s*=\\s*[\"']([\\w.]+)[\"']")
+            .matcher(xmlSource);
+        while (m.find()) {
+            String col = m.group(1);
+            if (!col.isEmpty()) collections.add(col);
+        }
+        return collections;
+    }
+
+    /**
+     * Extract <iterate property="X"> attribute values (iBatis compatibility).
+     */
+    private static List<String> extractIterateProperties(String statementId, String xmlSource) {
+        List<String> properties = new ArrayList<>();
+        if (xmlSource == null) return properties;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("<iterate[^>]+property\\s*=\\s*[\"']([\\w.]+)[\"']")
+            .matcher(xmlSource);
+        while (m.find()) {
+            String prop = m.group(1);
+            if (!prop.isEmpty()) properties.add(prop);
+        }
+        return properties;
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, List<Map<String, Object>>> loadTestParams(String path) throws Exception {
         String json = Files.readString(Paths.get(path));
         Map<String, Object> data = GSON.fromJson(json, Map.class);
         Map<String, List<Map<String, Object>>> result = new HashMap<>();
 
+        // Format 1: nested {query_test_cases: [{query_id, test_cases: [{binds}]}]}
         List<Map<String, Object>> testCases = (List<Map<String, Object>>) data.get("query_test_cases");
         if (testCases != null) {
             for (Map<String, Object> tc : testCases) {
@@ -483,6 +527,31 @@ public class SqlExtractor {
                 }
             }
         }
+
+        // Format 2: flat {queryId: [{param1: val1, ...}, ...]} (from generate-test-cases.py)
+        if (result.isEmpty()) {
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String key = entry.getKey();
+                if (key.equals("query_test_cases")) continue;
+                Object val = entry.getValue();
+                if (val instanceof List) {
+                    List<?> items = (List<?>) val;
+                    List<Map<String, Object>> bindsList = new ArrayList<>();
+                    for (Object item : items) {
+                        if (item instanceof Map) {
+                            bindsList.add((Map<String, Object>) item);
+                        }
+                    }
+                    if (!bindsList.isEmpty()) {
+                        result.put(key, bindsList);
+                    }
+                }
+            }
+            if (!result.isEmpty()) {
+                System.out.println("  Loaded " + result.size() + " queries from flat TC format");
+            }
+        }
+
         return result;
     }
 

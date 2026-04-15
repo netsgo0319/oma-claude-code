@@ -5,7 +5,7 @@ inclusion: always
 # Oracle → PostgreSQL 변환 룰셋
 
 > Converter 에이전트가 rule-convert 스킬 실행 시 참조.
-> Learner 에이전트가 반복 패턴 발견 시 여기에 룰 추가.
+> 반복 패턴 발견 시 여기에 룰 추가.
 
 ## 함수 변환
 

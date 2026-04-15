@@ -1,4 +1,4 @@
-Run Phase 3 validation using `--full` atomic mode (EXPLAIN + Execute + Compare in one pass).
+Run Step 3 validation using `--full` atomic mode (EXPLAIN + Execute + Compare in one pass).
 
 ## Instructions
 
@@ -24,9 +24,9 @@ Run Phase 3 validation using `--full` atomic mode (EXPLAIN + Execute + Compare i
    - **Error breakdown**: Group failures by error type and stage
    - **Details**: For each failure, show query ID, Oracle SQL, PG SQL, and error message
 
-5. Update `workspace/progress.json` with Phase 3 status.
+5. Update `workspace/progress.json` with Step 3 status.
 
-6. If failures exist, suggest running Phase 4 (Self-healing) via the full pipeline.
+6. If failures exist, note that the validate-and-fix subagent will handle self-healing in Step 3.
 
 ## Arguments
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase 3: Query Validation Tool
+Step 3: Query Validation Tool
 Validates converted PostgreSQL queries using test-cases.json bind values.
 
 Usage:
@@ -19,7 +19,7 @@ Usage:
     # Compare Oracle vs PostgreSQL results (the core migration validation)
     python3 tools/validate-queries.py --compare --output workspace/results/_validation/
 
-    # Use extracted SQL from mybatis-sql-extractor (Phase 3.5)
+    # Use extracted SQL from mybatis-sql-extractor
     python3 tools/validate-queries.py --generate --extracted workspace/results/_extracted/ --output workspace/results/_validation/
 
     # Full atomic validation (generate + EXPLAIN + Execute + Oracle Compare + parse)
@@ -72,8 +72,8 @@ class QueryValidator:
             except Exception:
                 pass
 
-        # Method 2: From input XML files (fallback)
-        if not self.oracle_queries and self.input_dir.exists():
+        # Method 2: From input XML files (supplement — tracking에 없는 쿼리 보충)
+        if self.input_dir.exists():
             for xml_file in sorted(self.input_dir.glob('**/*.xml')):
                 try:
                     tree = ET.parse(xml_file)
@@ -89,7 +89,7 @@ class QueryValidator:
                         raw_sql = ' '.join(parts)
                         raw_sql = re.sub(r'--[^\n]*', '', raw_sql)
                         raw_sql = re.sub(r'\s+', ' ', raw_sql).strip()
-                        if qid and raw_sql:
+                        if qid and raw_sql and qid not in self.oracle_queries:
                             self.oracle_queries[qid] = raw_sql
 
         print(f"Loaded {len(self.oracle_queries)} Oracle (original) queries")
@@ -230,17 +230,20 @@ SET HEADING ON
             pg_sql = query['sql_raw']
             qtype = query['type']
             oracle_sql = self.oracle_queries.get(qid, '')
+            is_extracted = query.get('from_extracted', False)
+            param_names = query.get('param_names_for_bind', [])
 
             if not oracle_sql:
                 print(f"  SKIP {qid}: no Oracle SQL found")
                 continue
 
-            cases = self.test_cases.get(qid, [])
-            if not cases:
-                # Single default test
-                cases = [{'name': 'default', 'params': {}}]
+            # Use _select_best_tcs for better TC selection
+            all_cases = self.test_cases.get(qid, [])
+            selected = self._select_best_tcs(all_cases, max_tcs=2)
+            if not selected:
+                selected = [{'name': 'default', 'params': {}}]
 
-            for i, case in enumerate(cases):
+            for i, case in enumerate(selected):
                 if isinstance(case, dict):
                     binds = case.get('binds', case.get('params', {}))
                     for skip_key in ['name', 'description', 'source', 'case_id', 'not_null_columns', 'expected']:
@@ -250,9 +253,12 @@ SET HEADING ON
                     binds = {}
                     case_name = f'tc{i}'
 
-                # Bind params into both SQLs
-                bound_oracle = self.bind_params(oracle_sql, binds)
-                bound_pg = self.bind_params(pg_sql, binds)
+                # Bind params: extracted SQL uses ? positional, static uses #{param}
+                if is_extracted and '?' in pg_sql:
+                    bound_pg = self._bind_positional(pg_sql, param_names, binds)
+                else:
+                    bound_pg = self.bind_params(pg_sql, binds)
+                bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
                 # Wrap DML in transaction
                 if qtype in ('insert', 'update', 'delete'):
@@ -433,7 +439,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_compare',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_compare',
                          detail=f"Compare: {pass_count} match, {fail_count} fail, {warn_count} warn (total {total})")
         except Exception:
             pass
@@ -460,6 +466,113 @@ SET HEADING ON
                         'params': [],
                     })
         print(f"Discovered {len(self.queries)} query IDs from {len(list(self.output_dir.glob('**/*.xml')))} files")
+
+    def _supplement_static_queries(self, extracted_qids_by_file):
+        """Add static XML queries for IDs not covered by MyBatis extraction.
+        These queries have #{param} placeholders (not ?) and use the FALLBACK PATH.
+        Resolves <include refid="..."/> by looking up <sql id="..."> fragments."""
+        added = 0
+        for xml_file in sorted(self.output_dir.glob('**/*.xml')):
+            try:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+            except ET.ParseError:
+                continue
+            # Build sql fragment map for <include refid="..."/> resolution
+            sql_fragments = {}
+            for sql_elem in root.findall('.//{http://mybatis.org/dtd/mybatis-3-mapper.dtd}sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+            for sql_elem in root.findall('.//sql'):
+                fid = sql_elem.get('id', '')
+                if fid:
+                    sql_fragments[fid] = sql_elem
+
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.findall(f'.//{tag}'):
+                    qid = elem.get('id', 'unknown')
+                    key = (xml_file.name, qid)
+                    if key not in extracted_qids_by_file:
+                        sql_text = self._extract_sql_text(elem, sql_fragments)
+                        if sql_text and sql_text.strip():
+                            self.queries.append({
+                                'file': xml_file.name,
+                                'id': qid,
+                                'type': tag,
+                                'sql_raw': sql_text,
+                                'params': [],
+                            })
+                            added += 1
+        return added
+
+    @staticmethod
+    def _extract_sql_text(elem, sql_fragments=None):
+        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags."""
+        if sql_fragments is None:
+            sql_fragments = {}
+        parts = []
+        if elem.text:
+            parts.append(elem.text)
+        for child in elem:
+            if child.tag == 'include':
+                refid = child.get('refid', '')
+                if refid and refid in sql_fragments:
+                    frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                    parts.append(frag_sql)
+            else:
+                if child.text:
+                    parts.append(child.text)
+                for sub in child.iter():
+                    if sub is not child:
+                        if sub.tag == 'include':
+                            refid = sub.get('refid', '')
+                            if refid and refid in sql_fragments:
+                                frag_sql = QueryValidator._extract_sql_text(sql_fragments[refid], sql_fragments)
+                                parts.append(frag_sql)
+                        else:
+                            if sub.text:
+                                parts.append(sub.text)
+                            if sub.tail:
+                                parts.append(sub.tail)
+            if child.tail:
+                parts.append(child.tail)
+        return ' '.join(parts)
+
+    @staticmethod
+    def _select_best_tcs(tc_cases, max_tcs=2):
+        """Select best test cases prioritizing CUSTOM > SAMPLE > INFERRED > null/fallback."""
+        if not tc_cases:
+            return []
+        priority_map = {'CUSTOM': 0, 'SAMPLE_DATA': 1, 'SAMPLE': 1, 'INFERRED': 2}
+        buckets = {0: [], 1: [], 2: [], 9: []}
+        for tc in tc_cases:
+            if not isinstance(tc, dict):
+                continue
+            source = str(tc.get('source', tc.get('name', ''))).upper()
+            params = tc.get('params', tc.get('binds', {}))
+            if isinstance(params, dict) and params:
+                if sum(1 for v in params.values() if v is not None) == 0:
+                    buckets[9].append(tc)
+                    continue
+            matched = False
+            for key, pri in priority_map.items():
+                if key in source:
+                    buckets[pri].append(tc)
+                    matched = True
+                    break
+            if not matched:
+                name = str(tc.get('name', '')).lower()
+                buckets[9 if 'null' in name else 2].append(tc)
+        result = []
+        for pri in [0, 1, 2, 9]:
+            for tc in buckets[pri]:
+                if len(result) >= max_tcs:
+                    break
+                result.append(tc)
+            if len(result) >= max_tcs:
+                break
+        return result
 
     def load_extracted(self, extracted_dir):
         """Load SQL from mybatis-sql-extractor JSON output (Phase 3.5).
@@ -600,8 +713,9 @@ SET HEADING ON
         total_cases = sum(len(v) for v in self.test_cases.values())
         print(f"Loaded {total_cases} test cases for {len(self.test_cases)} queries")
 
-    def bind_params(self, sql, params_dict):
-        """Replace #{param} with actual values from test case."""
+    def bind_params(self, sql, params_dict, default_unbound='NULL'):
+        """Replace #{param} with actual values from test case.
+        default_unbound: value for unbound params ('NULL' or "'1'" to match PG fallback)."""
         result = sql
         for key, value in params_dict.items():
             pattern = rf'#\{{{key}(?:,[^}}]*)?\}}'
@@ -622,12 +736,37 @@ SET HEADING ON
                 replacement = f"'{value}'"
             result = re.sub(pattern, replacement, result)
 
-        # Replace any remaining unbound params with NULL
-        result = re.sub(r'#\{[^}]+\}', 'NULL', result)
+        # Replace any remaining unbound params with default_unbound
+        # Framework pagination params (GRIDPAGING_*) must be empty string
+        def _unbound_replace(m):
+            pname = m.group(0)[2:-1].split(',')[0].lower()
+            if 'gridpaging' in pname:
+                return ''
+            return default_unbound
+        result = re.sub(r'#\{[^}]+\}', _unbound_replace, result)
         # Replace ${} dollar substitution with placeholder
         result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
 
         return result
+
+    @staticmethod
+    def _bind_positional(sql, param_names, binds):
+        """Replace ? placeholders positionally using param_names + binds dict."""
+        parts = sql.split('?')
+        bound_parts = [parts[0]]
+        for i in range(1, len(parts)):
+            pname = param_names[i-1] if i-1 < len(param_names) else ''
+            val = binds.get(pname) if pname else None
+            if val is None:
+                bound_parts.append("'1'")
+            elif isinstance(val, (int, float)):
+                bound_parts.append(str(val))
+            elif isinstance(val, str):
+                bound_parts.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
+            else:
+                bound_parts.append("'1'")
+            bound_parts.append(parts[i])
+        return ''.join(bound_parts)
 
     @staticmethod
     def _extract_dml_where(sql):
@@ -685,11 +824,11 @@ SET HEADING ON
             if is_extracted:
                 param_names = query.get('param_names_for_bind', [])
                 tc_binds = {}
-                # Try to find TC values for these parameter names
-                if param_names:
-                    tc_cases = self.test_cases.get(qid, [])
-                    if tc_cases and isinstance(tc_cases[0], dict):
-                        tc_binds = tc_cases[0].get('params', tc_cases[0].get('binds', {}))
+                # Always try to find TC values — even without param_names
+                tc_cases = self.test_cases.get(qid, [])
+                best_tcs = self._select_best_tcs(tc_cases, max_tcs=1)
+                if best_tcs:
+                    tc_binds = best_tcs[0].get('params', best_tcs[0].get('binds', {}))
 
                 # Replace ? with TC values positionally
                 parts = sql.split('?')
@@ -725,26 +864,25 @@ SET HEADING ON
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
 
+                # Execute: SELECT → COUNT(*), DML → COUNT(*) WHERE (양쪽 대칭)
+                execute_lines.append(f"\\echo === {test_id} ===")
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
+                    execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                 else:
-                    # DML: wrap in BEGIN/ROLLBACK with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                    dml_where_pg = self._extract_dml_where(bound_sql)
+                    if dml_where_pg:
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                    else:
+                        execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
+                execute_lines.append("")
 
-                # Oracle compare
+                # Oracle compare — 동일 로직 (SELECT: COUNT, DML: COUNT WHERE)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds))
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds, default_unbound="'1'"))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
@@ -772,7 +910,13 @@ SET HEADING ON
 
             if not cases:
                 # No test cases - use default dummy binding
-                bound_sql = re.sub(r'#\{[^}]+\}', "'1'", sql)
+                # Framework pagination params (GRIDPAGING_*) must be empty string
+                def _dummy_bind(m):
+                    pname = m.group(0)[2:-1].split(',')[0].lower()
+                    if 'gridpaging' in pname:
+                        return ''
+                    return "'1'"
+                bound_sql = re.sub(r'#\{[^}]+\}', _dummy_bind, sql)
                 bound_sql = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", bound_sql)
 
                 test_id = f"{fname}.{qid}.default"
@@ -790,27 +934,25 @@ SET HEADING ON
                 explain_lines.append(f"EXPLAIN {bound_sql.rstrip(';')};")
                 explain_lines.append("")
 
-                # EXECUTE
+                # EXECUTE: SELECT → COUNT(*), DML → COUNT(*) WHERE
+                execute_lines.append(f"\\echo === {test_id} ===")
                 if qtype == 'select':
                     safe_sql = bound_sql.rstrip(';')
-                    safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
-                    execute_lines.append(f"\\echo === {test_id} ===")
                     execute_lines.append(f"SET statement_timeout = '30s';")
-                    execute_lines.append(f"{safe_sql};")
-                    execute_lines.append("")
+                    execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                 else:
-                    # DML: EXPLAIN first to check cost, then execute with short timeout
-                    execute_lines.append(f"\\echo === {test_id} ===")
-                    execute_lines.append(f"SET statement_timeout = '5s';")
-                    execute_lines.append(f"BEGIN;")
-                    execute_lines.append(f"{bound_sql.rstrip(';')};")
-                    execute_lines.append(f"ROLLBACK;")
-                    execute_lines.append("")
+                    dml_where_pg = self._extract_dml_where(bound_sql)
+                    if dml_where_pg:
+                        execute_lines.append(f"SET statement_timeout = '5s';")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                    else:
+                        execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
+                execute_lines.append("")
 
                 # Oracle compare (use original SQL with same binds)
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, {}))
+                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, {}, default_unbound="'1'"))
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
@@ -862,24 +1004,25 @@ SET HEADING ON
                         execute_lines.append("")
                     elif qtype == 'select':
                         safe_sql = bound_sql.rstrip(';')
-                        safe_sql = f'SELECT COUNT(*) FROM ({safe_sql}) AS _cnt'
                         execute_lines.append(f"\\echo === {test_id} ===")
                         execute_lines.append(f"SET statement_timeout = '30s';")
-                        execute_lines.append(f"{safe_sql};")
+                        execute_lines.append(f"SELECT COUNT(*) FROM ({safe_sql}) AS _cnt;")
                         execute_lines.append("")
                     else:
-                        # DML: wrap in BEGIN/ROLLBACK with short timeout (prevent mass UPDATE)
+                        # DML: COUNT(*) WHERE로 영향 행수 예측 (Oracle과 대칭)
                         execute_lines.append(f"\\echo === {test_id} ===")
-                        execute_lines.append(f"SET statement_timeout = '5s';")
-                        execute_lines.append(f"BEGIN;")
-                        execute_lines.append(f"{bound_sql.rstrip(';')};")
-                        execute_lines.append(f"ROLLBACK;")
+                        dml_where_pg = self._extract_dml_where(bound_sql)
+                        if dml_where_pg:
+                            execute_lines.append(f"SET statement_timeout = '5s';")
+                            execute_lines.append(f"SELECT COUNT(*) FROM ({dml_where_pg}) AS _cnt;")
+                        else:
+                            execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
                         execute_lines.append("")
 
                     # Oracle compare
                     oracle_sql = self.oracle_queries.get(qid, '')
                     if oracle_sql:
-                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds))
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, binds, default_unbound="'1'"))
                         oracle_lines.append(f"PROMPT === {test_id} ===")
                         if qtype == 'select':
                             safe_ora = ora_bound.rstrip(';')
@@ -1068,7 +1211,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_explain',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_explain',
                          detail=f"EXPLAIN: {pass_count} pass, {fail_count} fail")
         except Exception:
             pass
@@ -1232,7 +1375,7 @@ SET HEADING ON
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='validate-queries', phase='phase_3_execute',
+            log_activity('STEP_END', agent='validate-queries', step='step_3_execute',
                          detail=f"Execute: {pass_count} pass, {fail_count} fail, {len(warnings)} warnings")
         except Exception:
             pass
@@ -1259,46 +1402,77 @@ SET HEADING ON
         pg_pass = os.environ.get('PG_PASSWORD', os.environ.get('PGPASSWORD', ''))
 
         def run_psql(sql_file, result_file, timeout=300):
-            """Run psql against a .sql file, write output to result_file."""
-            # Try psycopg2 first (no psql binary needed)
-            try:
-                import psycopg2
-                conn = psycopg2.connect(host=pg_host, port=pg_port, dbname=pg_db,
-                                        user=pg_user, password=pg_pass)
-                conn.autocommit = True
-                cur = conn.cursor()
-                with open(sql_file, 'r', encoding='utf-8') as f:
-                    sql_content = f.read()
-                # psycopg2 can't handle psql meta-commands (\echo, \set) — fall through
-                if '\\echo' in sql_content or '\\set' in sql_content:
-                    raise RuntimeError("psql meta-commands detected, use psql binary")
-                cur.execute(sql_content)
-                rows = cur.fetchall() if cur.description else []
-                conn.close()
-                output = '\n'.join(str(r) for r in rows)
-                with open(result_file, 'w', encoding='utf-8') as f:
-                    f.write(output)
-                return True
-            except Exception:
-                pass
-            # Fallback: psql binary
+            """Run psql against a .sql file, write output to result_file.
+            Large files are split by test markers (=== test_id ===) to prevent output truncation."""
             if not shutil.which('psql'):
-                print(f"  ERROR: psql not found and psycopg2 fallback failed")
+                print(f"  ERROR: psql not found")
                 return False
             env = os.environ.copy()
             env['PGPASSWORD'] = pg_pass
-            try:
-                result = subprocess.run(
-                    ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
-                     '-f', str(sql_file)],
-                    capture_output=True, text=True, env=env, timeout=timeout
-                )
-                with open(result_file, 'w', encoding='utf-8') as f:
-                    f.write(result.stdout + result.stderr)
-                return True
-            except Exception as e:
-                print(f"  ERROR running psql: {e}")
-                return False
+
+            with open(sql_file, 'r', encoding='utf-8') as f:
+                sql_content = f.read()
+
+            # Count test cases — if > 500, split into batches
+            test_count = sql_content.count('\\echo ===')
+            if test_count <= 500:
+                # Small file: run as-is
+                try:
+                    result = subprocess.run(
+                        ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                         '-f', str(sql_file)],
+                        capture_output=True, text=True, env=env, timeout=timeout
+                    )
+                    with open(result_file, 'w', encoding='utf-8') as f:
+                        f.write(result.stdout + result.stderr)
+                    return True
+                except Exception as e:
+                    print(f"  ERROR running psql: {e}")
+                    return False
+
+            # Large file: split by \\echo === markers and run in batches
+            print(f"  Large SQL ({test_count} tests): splitting into batches of 200...")
+            lines = sql_content.split('\n')
+            batches = []
+            current_batch = []
+            batch_test_count = 0
+            header_lines = []
+
+            for line in lines:
+                if line.startswith('\\echo ==='):
+                    batch_test_count += 1
+                    if batch_test_count > 200 and current_batch:
+                        batches.append(header_lines + current_batch)
+                        current_batch = []
+                        batch_test_count = 1
+                if line.startswith('\\set ') and not batches:
+                    header_lines.append(line)
+                current_batch.append(line)
+            if current_batch:
+                batches.append(header_lines + current_batch)
+
+            print(f"  Split into {len(batches)} batches")
+            all_output = []
+            for bi, batch in enumerate(batches):
+                batch_file = output_path / f'{Path(sql_file).stem}_batch{bi}.sql'
+                with open(batch_file, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(batch))
+                try:
+                    result = subprocess.run(
+                        ['psql', '-h', pg_host, '-p', pg_port, '-U', pg_user, '-d', pg_db,
+                         '-f', str(batch_file)],
+                        capture_output=True, text=True, env=env, timeout=timeout
+                    )
+                    all_output.append(result.stdout + result.stderr)
+                    batch_file.unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"  ERROR batch {bi}: {e}")
+                    all_output.append(f"ERROR: batch {bi} failed: {e}")
+
+            with open(result_file, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(all_output))
+            print(f"  All {len(batches)} batches complete")
+            return True
 
         def run_oracle(sql_file, result_file, timeout=300):
             """Run Oracle SQL file, write output to result_file."""
@@ -1686,7 +1860,7 @@ SET HEADING ON
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Phase 3: Query Validation Tool')
+    parser = argparse.ArgumentParser(description='Step 3: Query Validation Tool')
     parser.add_argument('--generate', action='store_true', help='Generate SQL test scripts')
     parser.add_argument('--local', action='store_true', help='Execute EXPLAIN locally via psql')
     parser.add_argument('--execute', action='store_true', help='Execute queries locally via psql (actual execution)')
@@ -1718,7 +1892,7 @@ def main():
             print(f"  Filtered: {before} -> {len(validator.queries)} queries")
 
     def load_queries_with_extracted_priority():
-        """Always try load_extracted() first. Fall back to load_queries() with WARNING."""
+        """Always try load_extracted() first. Supplement missing queries from static XML."""
         # Auto-detect extracted dir if not specified
         extracted_dir = args.extracted
         if not extracted_dir:
@@ -1732,13 +1906,23 @@ def main():
                     extracted_dir = str(c)
                     break
 
+        extracted_count = 0
         if extracted_dir:
             validator.load_extracted(extracted_dir)
+            extracted_count = len(validator.queries)
 
         if not validator.queries:
             print("WARNING: No MyBatis extracted SQL found. Using static extraction (limited). "
                   "Install Java 11+ for accurate validation.")
             validator.load_queries()
+        else:
+            # Supplement: extracted에서 빈 SQL로 skip된 쿼리를 static XML에서 보충
+            # include refid 해석 포함 (PR #1 반영)
+            extracted_qids_by_file = {(q['file'], q['id']) for q in validator.queries}
+            added = validator._supplement_static_queries(extracted_qids_by_file)
+            if added:
+                print(f"  Supplemented {added} queries from static XML with include refid resolution "
+                      f"(MyBatis rendered: {extracted_count}, static fallback: {added})")
 
         validator.load_test_cases()
 

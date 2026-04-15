@@ -1,102 +1,85 @@
 # OMA — Oracle Migration Accelerator
 
-MyBatis/iBatis XML 기반 Oracle SQL을 PostgreSQL로 자동 변환, 검증, 학습하는 AI 에이전트 시스템.
+MyBatis/iBatis XML 기반 Oracle SQL을 PostgreSQL로 자동 변환, 검증하는 AI 에이전트 시스템.
 
-Kiro(`oma_kiro`)와 Claude Code(`oma-claude-code`) 두 플랫폼에서 동일한 파이프라인을 실행할 수 있습니다.
+Claude Code 기반으로 슈퍼바이저 + 4개 서브에이전트가 5단계 파이프라인을 실행합니다.
+각 Step은 독립 디렉토리에서 실행되며, `handoff.json` 계약으로 연결됩니다.
 
 ## 전체 파이프라인
 
 ```
-workspace/input/*.xml (Oracle MyBatis XML)
+pipeline/shared/input/*.xml (Oracle MyBatis XML)
         |
-  Phase 0  Pre-flight — 환경 체크 + Oracle/PG 접속 + pgcrypto 확인
+  Step 0  Preflight — 환경 체크 + 샘플 수집
+        | handoff.json
+  Step 1  Convert — XML 파싱 → 40+ 룰 변환 + LLM 변환
+        | handoff.json
+  Step 2  TC Generate — 테스트 케이스 생성
+        | handoff.json
+  Step 3  Validate + Fix — EXPLAIN → Execute → Compare + 수정 루프 (최대 3회)
+        | handoff.json (gate_checks)  ← ★ GATE
+  Step 4  Report — HTML 리포트 + Query Matrix CSV/JSON
         |
-  Phase 1  Parse + Rule Convert — XML 파싱 → 40+ 룰 기계적 변환 (병렬)
-        |
-  Phase 2  LLM Convert — unconverted 패턴을 Converter 서브에이전트가 LLM 변환
-        |
-  Phase 2.5  Test Case — Oracle 딕셔너리 4소스에서 바인드값 수집 → TC 생성
-        |
-  Phase 3  Validation — Stage 1: EXPLAIN → Stage 2: Execute → Stage 3: Compare
-        |
-  Phase 3.5  MyBatis Engine — Java로 동적 SQL 실제 렌더링 후 재검증
-        |
-  Phase 4  Self-healing — 티켓 기반 최대 5회 (Reviewer→Converter→Validator 루프)
-        |
-  Phase 5  Learning — 패턴 학습 → rules/edge-cases 갱신 → 자동 PR
-        |
-  Phase 6  DBA Review — XML 무결성, 파라미터, 잔여 Oracle 패턴 최종 검증
-        |
-  Phase 7  Report — HTML 리포트 + Query Matrix CSV
-        |
-workspace/output/*.xml (PostgreSQL MyBatis XML)
-workspace/reports/migration-report.html
+pipeline/step-4-report/output/migration-report.html
 ```
 
-### Phase별 상세
+### Step별 상세
 
-| Phase | 이름 | 핵심 동작 | 도구 |
-|-------|------|----------|------|
-| 0 | **Pre-flight** | XML 존재, Python/psql/sqlplus/Java 체크. Oracle 오브젝트 스캔 (TABLE/FUNCTION/PACKAGE). PG pgcrypto extension 확인 | — |
-| 1 | **Parse + Rule Convert** | XML split → parse → analyze → 40+ 룰 기계적 변환. 8병렬 | `batch-process.sh`, `oracle-to-pg-converter.py` |
-| 2 | **LLM Convert** | CONNECT BY→WITH RECURSIVE, MERGE→ON CONFLICT, (+)→JOIN 등 구조 변환. 3파일/30쿼리 배치 병렬 | Converter 서브에이전트 |
-| 2.5 | **Test Cases** | V$SQL_BIND_CAPTURE (실제 캡처값) + ALL_TAB_COL_STATISTICS (경계값) + FK 샘플링 + 타입 추론. DML은 null/empty/boundary TC 제외 | `generate-test-cases.py` |
-| 3 | **Validation** | Stage 1: psql EXPLAIN. Stage 2: psql/sqlplus 실행 (DML 5s timeout). Stage 3: Oracle vs PG row count 비교 | `validate-queries.py` |
-| 3.5 | **MyBatis Engine** | Java SqlSessionFactory로 동적 SQL 렌더링 → 실제 SQL 추출 → 재검증 | `run-extractor.sh`, gradlew |
-| 4 | **Self-healing** | `generate-healing-tickets.py`로 에러 분류 → 카테고리별 5회 딥다이브 (Reviewer→Converter→Validator) | `generate-healing-tickets.py` |
-| 5 | **Learning** | 반복 실패→성공 패턴 → rules 추가, 새 패턴 → edge-cases 등록, Git PR 자동 생성 | Learner 서브에이전트 |
-| 6 | **DBA Review** | XML well-formedness, 태그 구조, 동적 SQL 보존, include 참조, 파라미터 바인딩, 잔여 Oracle 패턴 | Reviewer 서브에이전트 |
-| 7 | **Report** | Query Matrix CSV (쿼리×3항목) + HTML 리포트 (힐링 티켓, 에러 분류, 필터, Phase Progress) | `generate-query-matrix.py`, `generate-report.py` |
-
-### Phase 완료 조건
-
-- Phase 3 FAIL이 있으면 **반드시 Phase 4 실행** (Phase 3→6 점프 금지)
-- Phase 4 완료: 모든 actionable 티켓이 resolved 또는 escalated
-- DBA-only 티켓 (relation_missing 등)은 Phase 6에서 보고
+| Step | 이름 | 에이전트 | 도구 | handoff 핵심 |
+|------|------|---------|------|-------------|
+| 0 | Preflight | 슈퍼바이저 직접 | generate-sample-data.py | env_checks, xml_file_count |
+| 1 | Convert | **converter** | batch-process.sh, oracle-to-pg-converter.py | queries_total, complexity |
+| 2 | TC Generate | **tc-generator** | generate-test-cases.py | queries_with_tc |
+| 3 | Validate+Fix | **validate-and-fix** | validate-queries.py, run-extractor.sh | **gate_checks** |
+| 4 | Report | **reporter** | generate-query-matrix.py, generate-report.py | validation |
 
 ## 구성 (Claude Code)
 
 ```
 .claude/
-  agents/         5개 에이전트 (converter, validator, reviewer, learner, test-generator)
-  skills/         19개 스킬 (SKILL.md + references)
-  rules/          5개 룰 (oracle-pg-rules, edge-cases, db-config, product, tech)
-  commands/       5개 명령 (convert, validate, report, status, reset)
+  agents/         4개 에이전트 (converter, tc-generator, validate-and-fix, reporter)
+  skills/         스킬 (20+)
+  rules/          규칙 (guardrails, oracle-pg-rules, edge-cases, db-config)
+  commands/       CLI 명령 (convert, validate, report, status, reset)
   settings.json   hooks + permissions
 
-tools/
-  oracle-to-pg-converter.py    40+ 룰 기계적 변환 (1,800줄)
-  validate-queries.py          3단계 검증 + 배치 스크립트 생성 (1,500줄)
-  generate-test-cases.py       4소스 TC 생성 (370줄)
-  generate-healing-tickets.py  Phase 4 티켓 생성 (160줄)
-  generate-report.py           HTML 리포트 (1,600줄)
-  generate-query-matrix.py     Query Matrix CSV/JSON (250줄)
-  parse-xml.py                 MyBatis XML 파서 (400줄)
-  query-analyzer.py            복잡도 L0~L4 분류 (280줄)
-  xml-splitter.py              대형 XML 분할 (140줄)
-  tracking_utils.py            공용 트래킹 (flock 안전) (400줄)
-  sync-tracking-to-xml.py      tracking→output XML 동기화 (100줄)
-  batch-process.sh             Phase 1 병렬 처리 (260줄)
-  run-extractor.sh             Phase 3.5 래퍼 (gradlew 포함) (140줄)
-  reset-workspace.sh           초기화 (80줄)
+tools/                               공유 Python/Bash 도구
+  generate-handoff.py                handoff.json 생성 유틸
+  assemble-workspace.sh              pipeline → workspace 심링크 조립
+  oracle-to-pg-converter.py          40+ 룰 기계적 변환
+  validate-queries.py                3단계 검증 + Compare
+  generate-test-cases.py             TC 생성
+  generate-report.py                 HTML 리포트
+  generate-query-matrix.py           Query Matrix CSV/JSON
+  tracking_utils.py                  공용 트래킹 (flock 안전)
+  batch-process.sh                   Step 1 병렬 처리
+  run-extractor.sh                   MyBatis 추출 래퍼
 
-workspace/
-  input/          변환 대상 XML (불변)
-  output/         변환 완료 XML
-  results/        버전별 중간 결과 + _validation/ + _healing/ + _extracted/
-  reports/        migration-report.html + query-matrix.csv
-  logs/           activity-log.jsonl
+schemas/
+  handoff.schema.json                handoff 계약 스키마
+  query-tracking.schema.json         쿼리 추적 스키마
+  (기타 11개 스키마)
+
+pipeline/                            Step별 디렉토리
+  shared/input/                      원본 XML
+  step-0-preflight/output/ + handoff.json
+  step-1-convert/output/ + handoff.json
+  step-2-tc-generate/output/ + handoff.json
+  step-3-validate-fix/output/ + handoff.json
+  step-4-report/output/ + handoff.json
+  supervisor-state.json              슈퍼바이저 상태
+
+workspace/                           하위 호환 (심링크 뷰)
 ```
 
 ## 에이전트
 
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
-| **converter** | Sonnet | Oracle→PG 변환. 룰 컨버터 v1만 실행, v2+는 output Edit만. #{sysdate} 변환 안 함 |
-| **validator** | Sonnet | 3단계 검증 (EXPLAIN→실행→비교). DML 5s timeout. 병렬 시 파일 단위 분배 |
-| **reviewer** | Opus | 실패 원인 분석 + SQL 수정안. #{param}은 Oracle 패턴 아님 |
-| **learner** | Sonnet | 에지케이스 학습 → rules/edge-cases 갱신 → Git PR |
-| **test-generator** | Opus | Oracle 딕셔너리 4소스 TC 생성. DML에 null/empty TC 제외 |
+| **converter** | Sonnet | Oracle→PG 변환. 룰 컨버터 + LLM 복합 변환 |
+| **tc-generator** | Sonnet | 테스트 케이스 생성 (고객 > 샘플 > VO > 추론) |
+| **validate-and-fix** | Sonnet | 3단계 검증 + 수정 루프 (최대 3회) + gate_checks |
+| **reporter** | Sonnet | workspace 조립 + Query Matrix + HTML 리포트 |
 
 ## 환경변수
 
@@ -104,17 +87,14 @@ workspace/
 # Oracle
 export ORACLE_HOST=oracle.example.com
 export ORACLE_PORT=1521
-export ORACLE_SID=ORCL              # PDB Service Name
-export ORACLE_CONN_TYPE=service         # 'service' (기본) 또는 'sid'
+export ORACLE_SID=ORCL
 export ORACLE_USER=migration_user
 export ORACLE_PASSWORD=****
-export ORACLE_SCHEMA=APP_SCHEMA              # 딕셔너리 대상 스키마
 
 # PostgreSQL
 export PG_HOST=pg.example.com
 export PG_PORT=5432
 export PG_DATABASE=target_db
-export PG_SCHEMA=public
 export PG_USER=migration_user
 export PG_PASSWORD=****
 ```
@@ -122,168 +102,101 @@ export PG_PASSWORD=****
 ## 실행
 
 ```bash
-# Claude Code
+# 1. 입력 XML 복사
 cp /path/to/mybatis/*.xml workspace/input/
-claude                    # Claude Code 실행
-> 변환해줘               # Phase 0~7 자동 수행
+ln -sfn $(pwd)/workspace/input pipeline/shared/input
+
+# 2. Claude Code 실행
+claude    # → "변환해줘" → Step 0~4 자동 수행
 
 # 또는 개별 도구
-python3 tools/oracle-to-pg-converter.py workspace/input/Mapper.xml workspace/output/Mapper.xml
-python3 tools/validate-queries.py --full --output workspace/results/_validation/ --tracking-dir workspace/results/
-python3 tools/generate-report.py
+python3 tools/oracle-to-pg-converter.py pipeline/shared/input/Mapper.xml pipeline/step-1-convert/output/xml/Mapper.xml
+python3 tools/validate-queries.py --full --output pipeline/step-3-validate-fix/output/validation/
+python3 tools/generate-report.py --output pipeline/step-4-report/output/migration-report.html
 ```
 
 ## 산출물
 
 | 경로 | 내용 |
 |------|------|
-| `workspace/output/*.xml` | 변환된 PostgreSQL MyBatis XML |
-| `workspace/reports/migration-report.html` | **통합 HTML 리포트** (브라우저에서 열기) |
-| `workspace/reports/query-matrix.csv` | 전체 쿼리 × 3항목 (변환/EXPLAIN/비교) |
-| `workspace/results/_healing/tickets.json` | Phase 4 힐링 티켓 (에러 분류, retry 이력) |
-| `workspace/results/_validation/validated.json` | EXPLAIN 검증 결과 (pass/fail 목록) |
-| `workspace/logs/activity-log.jsonl` | 전체 감사 로그 |
+| `pipeline/step-1-convert/output/xml/*.xml` | 변환된 PostgreSQL MyBatis XML |
+| `pipeline/step-4-report/output/migration-report.html` | **통합 HTML 리포트** |
+| `pipeline/step-4-report/output/query-matrix.csv` | 전체 쿼리 매트릭스 (flat) |
+| `pipeline/step-4-report/output/query-matrix.json` | 쿼리 매트릭스 (상세 JSON) |
+| `pipeline/step-{N}-*/handoff.json` | Step별 handoff 계약 |
 
-### HTML 리포트 포함 내용
+### HTML 리포트 구성
 
-- Phase Progress 바 (● 완료 / ◐ 진행 / ○ 대기)
-- Query Validation Matrix (COMPLETE/EXPLAIN_ONLY/FAIL 카드)
-- **Healing Tickets** (카테고리별 분류 + Action Required 테이블)
-- **EXPLAIN Failure Categories** (SYNTAX_ERROR/MISSING_OBJECT 등 + 조치 가이드)
-- DBA/Expert Review 결과
-- 파일별 드릴다운 (Oracle/PG SQL 병렬 비교)
-- **파일 필터** (All/Fail/Pass 토글)
-- 활동 타임라인 + 감사 로그
+- **Overview**: 6개 카드 + Step Progress 바
+- **Explorer**: 파일→쿼리 트리 + Oracle/PG SQL 비교 + Attempt History + Conversion History
+- **Log**: 활동 타임라인 + 감사 로그
+
+## 최종 JSON 구조
+
+### handoff.json (Step 3 예제)
+
+```json
+{
+  "step": "step-3-validate-fix",
+  "step_number": 3,
+  "status": "success",
+  "started_at": 1713101520,
+  "completed_at": 1713103200,
+  "summary": {
+    "queries_total": 426,
+    "explain_pass": 380,
+    "compare_pass": 350,
+    "fix_attempted": 25,
+    "state_counts": {
+      "PASS_COMPLETE": 300,
+      "PASS_HEALED": 15,
+      "FAIL_SYNTAX": 8,
+      "FAIL_SCHEMA_MISSING": 5
+    }
+  },
+  "gate_checks": {
+    "fix_loop_executed": {"status": "pass", "fail_no_loop_count": 0},
+    "compare_coverage": {"status": "pass", "compare_target": 414, "compare_done": 370}
+  },
+  "outputs": {
+    "validation_dir": "pipeline/step-3-validate-fix/output/validation/"
+  },
+  "next_step": "step-4-report",
+  "next_step_recommendation": "proceed"
+}
+```
+
+### query-matrix.json (쿼리 예제)
+
+```json
+{
+  "query_id": "selectUser",
+  "original_file": "UserMapper.xml",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "final_state": "PASS_COMPLETE",
+  "final_state_detail": "변환+비교 통과",
+  "conversion_method": "rule",
+  "conversion_history": [
+    {"pattern": "NVL", "approach": "COALESCE 치환", "confidence": "high"}
+  ],
+  "test_cases": [
+    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"}
+  ],
+  "attempts": [],
+  "explain_status": "pass",
+  "compare_status": "pass",
+  "complexity": "L1"
+}
+```
 
 ## 핵심 안전장치
 
 | 장치 | 내용 |
 |------|------|
-| DML empty_string TC 제외 | Oracle '' = NULL → 풀스캔 UPDATE 방지 |
-| DML null_test TC 제외 | 동적 SQL 조건 누락 → 대량 DML 방지 |
-| DML statement_timeout 5s | 대형 테이블 DML 강제 종료 |
-| DML 대형 테이블 execute_skip | 10,000행+ 테이블 DML은 EXPLAIN만 |
-| CDATA 자동 래핑 | 변환 시 < 연산자 생성 → XML 깨짐 방지 |
-| NVL overlap skip | 중첩 NVL 이중 변환 방지 (19개 변환기) |
-| oracle_compare.sql flatten | sqlplus 멀티라인 SP2 에러 방지 |
-| TrackingManager flock | 병렬 Validator 동시 쓰기 안전 |
 | DDL 차단 hook | DROP/TRUNCATE/ALTER TABLE 실행 차단 |
-| rm workspace/* 만 허용 | 프로젝트 파일 삭제 방지 |
-
-## 쿼리 라이프사이클 (발견 → 변환 → TC → 검증 → 힐링 → 완료)
-
-하나의 쿼리가 파이프라인을 통과하는 전체 과정입니다.
-
-```
-예시: selectOrderList (daiso-oms_oms-order-sql-oracle.xml)
-
-Phase 1: 발견 + 룰 변환
-  ├── XML 파싱 → query_id: selectOrderList, type: select
-  ├── Oracle 패턴 감지: NVL(3), DECODE(1), ROWNUM(1)
-  ├── 복잡도: L2 (Dynamic Simple)
-  ├── 룰 변환: NVL→COALESCE, DECODE→CASE, ROWNUM→LIMIT
-  └── 상태: converted (rule)
-      결과: results/{file}/v1/query-tracking.json → pg_sql 기록
-
-Phase 2: LLM 변환 (unconverted가 있을 때만)
-  ├── residual 패턴이 남아있으면 Converter 서브에이전트 위임
-  ├── (+) outer join → LEFT JOIN, CONNECT BY → WITH RECURSIVE
-  └── 상태: converted (llm)
-      결과: output/{file}.xml 갱신 + query-tracking 갱신
-
-Phase 2.5: TC 시나리오 생성
-  ├── 파라미터 추출: #{owkey}, #{ctkey}, #{pageStart}
-  ├── 4소스에서 바인드값 수집:
-  │   V$SQL_BIND_CAPTURE: owkey='DS' (실제 캡처)
-  │   FK 샘플링: ctkey='HE' (참조 테이블)
-  │   컬럼 통계: pageStart=1 (MIN값)
-  │   이름 추론: fallback
-  ├── TC 생성 (SELECT는 최대 6종):
-  │   default:      {owkey:'DS', ctkey:'HE', pageStart:1}
-  │   null_test:    {owkey:null, ctkey:null, pageStart:null}
-  │   empty_string: {owkey:'', ctkey:'', pageStart:1}
-  │   bind_capture: {owkey:'AB', ctkey:'HQ', pageStart:5}
-  │   boundary:     {owkey:'ZZ', ctkey:'ZZ', pageStart:99999}
-  │   fk_sample:    {owkey:'DS', ctkey:'SE', pageStart:1}
-  └── 결과: results/{file}/v1/test-cases.json + _test-cases/merged-tc.json
-
-Phase 3: 검증 (MyBatis 엔진 우선)
-  ├── Step 1: MyBatis 엔진에 TC params 주입
-  │   java -jar extractor.jar --params merged-tc.json
-  │   → getBoundSql({owkey:'DS', ctkey:'HE'})
-  │   → <if test="owkey != null"> 분기 평가 → 완전한 SQL 출력
-  │   → 6개 TC × 다른 분기 = 다수의 SQL variant
-  │
-  ├── Step 2: EXPLAIN (PG 문법 검증)
-  │   EXPLAIN SELECT ... FROM TORDER ... WHERE OWKEY='DS' AND CTKEY='HE' LIMIT 5;
-  │   → PASS ✓ (또는 FAIL: syntax error at near "...")
-  │
-  ├── Step 3: Execute (양쪽 실행)
-  │   PG: psql → SELECT ... LIMIT 5; → (3 rows)
-  │   Oracle: SELECT COUNT(*) FROM (원본 SQL) WHERE ROWNUM<=50; → 3
-  │
-  ├── Step 4: Compare (결과 비교)
-  │   Oracle 3행 vs PG 3행 → MATCH ✓
-  │
-  └── 상태: EXPLAIN pass + Compare pass → COMPLETE
-      결과: validated.json + query-tracking.json explain 갱신
-
-Phase 4: 힐링 (FAIL인 경우에만)
-  ├── 티켓 생성: HT-0042, category: syntax_error, severity: high
-  │   error: "syntax error at or near COALESCE"
-  │
-  ├── Phase 3.5 교차 참조:
-  │   → MyBatis 엔진에서 PASS → 자동 resolved (resolved_by_mybatis_engine)
-  │   → MyBatis에서도 FAIL → 힐링 루프 진입
-  │
-  ├── 힐링 루프 (최대 5회):
-  │   Retry 1:
-  │     Reviewer: "NVL→COALESCE 변환 시 중첩 괄호 중복" 진단
-  │     Converter: output XML 수정 (Edit)
-  │     재검증: MyBatis 재추출 → EXPLAIN → PASS ✓
-  │     → 티켓 resolved (retry_count: 1)
-  │
-  │   (실패 시 Retry 2~5 반복)
-  │   (5회 실패 → 티켓 escalated → Phase 6에서 DBA에게 보고)
-  │
-  └── 결과: _healing/tickets.json 갱신 (status, history, retry_count)
-
-Phase 5: 학습
-  ├── "NVL 중첩 괄호" 패턴 → edge-cases.md 등록
-  ├── 3회 이상 반복 패턴 → oracle-pg-rules.md 룰 승격
-  └── Git PR 자동 생성
-
-Phase 6: DBA Review
-  ├── output XML 무결성 검증 (well-formed, 태그, 파라미터)
-  ├── 에스컬레이션 건 보고
-  └── review-result.json 저장
-
-Phase 7: 리포트
-  ├── query-matrix.csv: selectOrderList → COMPLETE (변환✓ EXPLAIN✓ Compare✓)
-  ├── migration-report.html:
-  │   Overview: Action Items, Phase Progress, Query Matrix 카드
-  │   Files탭: 파일→쿼리 드릴다운 (Oracle/PG SQL 비교)
-  │   Tickets탭: Resolved/Escalated/Skipped 상세
-  └── 보고서에서 이 쿼리의 전체 이력 추적 가능
-```
-
-### 상태 전이
-
-```
-parsed → converted (rule/llm) → validating → COMPLETE
-                                           → FAIL → healing_ticket
-                                                    → resolved (retry 1~5)
-                                                    → resolved_by_mybatis_engine
-                                                    → escalated (5회 실패)
-                                                    → skipped (DBA schema 등)
-```
-
-## Kiro↔Claude Code 디렉토리 매핑
-
-| Kiro | Claude Code | 자동 로드 |
-|------|-------------|----------|
-| `.kiro/steering/*.md` | `.claude/rules/*.md` | 세션 시작 시 자동 |
-| `.kiro/skills/*/SKILL.md` | `.claude/skills/*/SKILL.md` | 필요 시 자동 |
-| `.kiro/agents/*.json` | `.claude/agents/*.md` | Agent tool로 호출 |
-| `.kiro/prompts/*.md` | agents에 통합 | — |
-| `tools/` | `tools/` (동일) | — |
+| DML safety | PG: BEGIN/ROLLBACK + 5s timeout, Oracle: SELECT COUNT(*) WHERE |
+| GATE check | Step 3→4: fix_loop + compare_coverage 둘 다 pass 필수 |
+| MyBatis #{param} 보존 | 바인드 파라미터는 Oracle 패턴이 아님. 변환 금지 |
+| Cross-step write | Step 3→1 query-tracking만. fcntl.flock 원자적 |
+| Compaction 복구 | pipeline/supervisor-state.json으로 상태 복원 |

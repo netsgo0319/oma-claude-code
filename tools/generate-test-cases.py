@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Phase 2.5: Test Case Generator (sample-data-first)
+Step 2: Test Case Generator (sample-data-first)
 
 TC value sources (priority order):
-  1. Java VO analysis (--java-src) — parse VO/DTO field names + types
-  2. Sample data (_samples/*.json) — real rows from Oracle tables  [PRIMARY]
+  0. Custom binds (workspace/input/custom-binds.json) — 고객 제공 [HIGHEST]
+  1. Sample data (_samples/*.json) — real rows from Oracle tables  [PRIMARY]
+  2. Java VO analysis (--java-src) — parse VO/DTO field names + types
   3. V$SQL_BIND_CAPTURE — captured bind values from production
   4. ALL_TAB_COL_STATISTICS — MIN/MAX boundary values
   5. ALL_CONSTRAINTS (FK) — sampled values from referenced tables
@@ -68,8 +69,8 @@ _JAVA_FIELD_RE = re.compile(r'private\s+(\w+(?:<.*?>)?)\s+(\w+)\s*;')
 JAVA_TYPE_DEFAULTS = {
     'String': 'TEST', 'int': 1, 'Integer': 1, 'long': 1, 'Long': 1,
     'double': 1.0, 'Double': 1.0, 'float': 1.0, 'Float': 1.0, 'BigDecimal': 1,
-    'boolean': True, 'Boolean': True, 'Date': '2026-01-15', 'LocalDate': '2026-01-15',
-    'LocalDateTime': '2026-01-15 10:30:00', 'Timestamp': '2026-01-15 10:30:00',
+    'boolean': True, 'Boolean': True, 'Date': '20260115', 'LocalDate': '20260115',
+    'LocalDateTime': '20260115103000', 'Timestamp': '20260115103000',
 }
 
 def parse_java_vo(java_src_dir):
@@ -215,13 +216,21 @@ def get_table_row_counts():
 # ── Name/type inference (fallback) ──────────────
 
 _SPECIAL = {
-    'sysdate': '2026-01-15 10:30:00', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
+    'sysdate': '20260115103000', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
     'updateurkey': 'SYSTEM', 'delyn': 'N', 'useyn': 'Y',
     'owkey': 'DS', 'ctkey': 'HE', 'interfaceid': 'IF001', 'ifid': '1',
 }
 
+# Framework-injected pagination parameters — empty string at test time
+_FRAMEWORK_PARAMS = {
+    'gridpaging_rownumtype_top', 'gridpaging_rownumtype_bottom',
+    'gridpaging_prefix', 'gridpaging_suffix',
+    'gridpaging_rownum_top', 'gridpaging_rownum_bottom',
+}
+
 def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=None):
     pn, pu = param.lower(), param.upper()
+    if pn in _FRAMEWORK_PARAMS: return ''
     if pn in _SPECIAL: return _SPECIAL[pn]
     if vo_fields and param in vo_fields:
         base = re.sub(r'<.*?>', '', vo_fields[param])
@@ -250,6 +259,39 @@ def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=
 DML_ROW_LIMIT = 10000
 DML_TIMEOUT = 5
 
+# ── Source 0: Custom binds (고객 제공) ────────────
+
+def load_custom_binds(input_dir):
+    """Load workspace/input/custom-binds.json. Returns {query_id: [{name, params}]}."""
+    custom = {}
+    for p in [Path(input_dir) / 'custom-binds.json', Path(input_dir) / 'custom_binds.json']:
+        if p.exists():
+            try:
+                raw = p.read_text(encoding='utf-8')
+                # NaN/Infinity 처리 (JSON 비표준이지만 고객 데이터에 포함될 수 있음)
+                raw = raw.replace(': NaN', ': ""').replace(':NaN', ':""')
+                raw = raw.replace(': Infinity', ': 999999').replace(': -Infinity', ': -999999')
+                data = json.loads(raw)
+                if isinstance(data, dict):
+                    for qid, cases in data.items():
+                        if isinstance(cases, dict):
+                            # NaN/None 값을 빈 문자열로 변환 (MyBatis 렌더링에 필요)
+                            cases = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
+                                     for k, v in cases.items()}
+                            custom[qid] = [cases]
+                        elif isinstance(cases, list):
+                            cleaned = []
+                            for c in cases:
+                                if isinstance(c, dict):
+                                    c = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
+                                         for k, v in c.items()}
+                                cleaned.append(c)
+                            custom[qid] = cleaned
+                print(f"  Source-Custom: {len(custom)} queries from {p.name}")
+            except Exception as e:
+                print(f"  WARNING: custom-binds.json parse error: {e}")
+    return custom
+
 def _tables(sql):
     skip = {'DUAL','SELECT','WHERE','SET','VALUES','AND','OR','NOT','NULL'}
     return [t.upper() for t in re.findall(r'\b(?:FROM|JOIN|INTO|UPDATE)\s+(\w+)', sql, re.I) if t.upper() not in skip]
@@ -257,11 +299,28 @@ def _tables(sql):
 def _params(sql):
     return list(dict.fromkeys(re.findall(r'#\{(\w+)\}', sql)))
 
-def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows):
+def _foreach_collections(q):
+    """Extract <foreach collection="X"> names from parsed query branches."""
+    collections = set()
+    raw = q.get('sql_raw', '')
+    for b in q.get('sql_branches', []):
+        raw += ' ' + b.get('sql', '') + ' ' + b.get('condition', '')
+    # XML attribute: collection="paramName"
+    for m in re.findall(r'collection\s*=\s*["\'](\w+)["\']', raw):
+        collections.add(m)
+    # Also check raw XML text if available
+    xml_text = q.get('xml_text', '')
+    for m in re.findall(r'collection\s*=\s*["\'](\w+)["\']', xml_text):
+        collections.add(m)
+    return list(collections)
+
+def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None):
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
-    if not params: return []
+    # foreach collection 파라미터도 포함 (더미 리스트 필요)
+    foreach_cols = _foreach_collections(q)
+    if not params and not foreach_cols: return []
     tables = _tables(raw)
     qtype = q.get('type', 'select').lower()
     is_dml = qtype in ('insert', 'update', 'delete')
@@ -279,6 +338,25 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
 
     def _dup(binds): return any(c['params'] == binds for c in cases)
 
+    # Priority 0: Custom binds (고객 제공 — 최우선)
+    # filename::queryID 형식 우선, fallback으로 bare queryID
+    custom_key = f"{filename}::{qid}" if filename else qid
+    custom_cases = custom_binds.get(custom_key) if custom_binds else None
+    if not custom_cases and custom_binds and qid in custom_binds:
+        custom_cases = custom_binds.get(qid)
+    if custom_cases:
+        for i, cb in enumerate(custom_cases):
+            binds = dict(cb) if isinstance(cb, dict) else {}
+            # 고객이 안 준 나머지 파라미터는 추론으로 채움
+            for p in params:
+                if p not in binds:
+                    binds[p] = infer_value(p, vo_fields, captures, col_stats, fk_values)
+            # foreach collection에 더미 리스트 (고객이 안 줬으면)
+            for fc in foreach_cols:
+                if fc not in binds:
+                    binds[fc] = ['1', '2']
+            _add(f'custom_{i+1}', binds, 'CUSTOM')
+
     # Priority 1: Sample data TCs (sample_row_1, _2, _3)
     if sample_data:
         for idx in range(3):
@@ -292,6 +370,10 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
 
     # Priority 2: Default TC (inferred)
     default = {p: infer_value(p, vo_fields, captures, col_stats, fk_values) for p in params}
+    # foreach collection에 더미 리스트 추가 (OGNL null.iterator() 방지)
+    for fc in foreach_cols:
+        if fc not in default:
+            default[fc] = ['1', '2']
     if not _dup(default): _add('default', default, 'INFERRED')
 
     # DML safety: no null_test / empty_string / boundary
@@ -340,9 +422,11 @@ def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk
 # ── Main ────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description='Phase 2.5: TC Generator (sample-data-first)')
+    ap = argparse.ArgumentParser(description='Step 2: TC Generator (sample-data-first)')
     ap.add_argument('--results-dir', default='workspace/results')
     ap.add_argument('--samples-dir', default=None, help='Sample data dir (default: <results>/_samples)')
+    ap.add_argument('--output-dir', default=None, help='Output dir for per-file TCs and merged-tc.json (default: write alongside parsed.json + <results>/_test-cases/)')
+    ap.add_argument('--custom-binds', default=None, help='Custom binds JSON path (default: workspace/input/custom-binds.json)')
     ap.add_argument('--java-src', default=None, help='Java source dir for VO parsing')
     ap.add_argument('--skip-oracle', action='store_true')
     ap.add_argument('--dml-row-limit', type=int, default=10000)
@@ -352,9 +436,25 @@ def main():
     DML_ROW_LIMIT = args.dml_row_limit
     results_dir = Path(args.results_dir)
     samples_dir = args.samples_dir or str(results_dir / '_samples')
-    print("=== Phase 2.5: Test Case Generator (sample-data-first) ===\n")
+    output_dir = Path(args.output_dir) if args.output_dir else None
+    print("=== Step 2: Test Case Generator ===\n")
 
-    # Collect sources
+    # Collect sources — custom-binds 경로 지원
+    custom_binds_dir = args.custom_binds
+    if custom_binds_dir and Path(custom_binds_dir).is_file():
+        # 파일 직접 지정
+        custom_binds = load_custom_binds(str(Path(custom_binds_dir).parent), Path(custom_binds_dir).name)
+    elif custom_binds_dir and Path(custom_binds_dir).is_dir():
+        custom_binds = load_custom_binds(custom_binds_dir)
+    else:
+        # 기본: workspace/input/ 또는 pipeline/shared/
+        for cdir in ['workspace/input', 'pipeline/shared']:
+            if Path(cdir).exists():
+                custom_binds = load_custom_binds(cdir)
+                if custom_binds:
+                    break
+        else:
+            custom_binds = {}
     java_src = args.java_src or os.environ.get('JAVA_SRC_DIR', '')
     vo_map = parse_java_vo(java_src) if java_src else {}
     sample_data = load_sample_data(samples_dir)
@@ -377,29 +477,58 @@ def main():
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
         file_tc = {}
+        filename = parsed.get('source_file', parsed_path.parent.name)
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
             tcs = build_query_tcs(qid, q, sample_data, vo_map, pt_map,
-                                  captures, col_stats, fk_values, table_rows)
+                                  captures, col_stats, fk_values, table_rows, custom_binds, filename)
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
         if file_tc:
-            (parsed_path.parent / 'test-cases.json').write_text(
+            # output-dir 지정 시 per-file TC를 별도 디렉토리에 저장
+            if output_dir:
+                filename_base = parsed.get('source_file', parsed_path.parent.parent.name)
+                out_tc_dir = output_dir / filename_base / 'v1'
+                out_tc_dir.mkdir(parents=True, exist_ok=True)
+                tc_out_path = out_tc_dir / 'test-cases.json'
+            else:
+                tc_out_path = parsed_path.parent / 'test-cases.json'
+            tc_out_path.write_text(
                 json.dumps(file_tc, indent=2, ensure_ascii=False), encoding='utf-8')
             total_files += 1
 
     # Merged TC for MyBatis extractor
+    # null_test, empty_string TC는 제외 — MyBatis 동적 SQL이 불완전하게 렌더링됨
+    # custom, sample_row, default, boundary, bind_capture, fk_sample만 포함
+    _SKIP_TC_NAMES = {'null_test', 'empty_string'}
     merged_tc = {}
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
-        tc_path = parsed_path.parent / 'test-cases.json'
-        if not tc_path.exists(): continue
+        # output-dir 지정 시 per-file TC 경로도 확인
+        tc_paths = [parsed_path.parent / 'test-cases.json']
+        if output_dir:
+            filename_base = parsed_path.parent.parent.name
+            tc_paths.insert(0, output_dir / filename_base / 'v1' / 'test-cases.json')
+        tc_path = None
+        for tp in tc_paths:
+            if tp.exists():
+                tc_path = tp
+                break
+        if not tc_path: continue
         try: ftcs = json.loads(tc_path.read_text(encoding='utf-8'))
         except Exception: continue
         for qid, cases in ftcs.items():
-            pl = [c['params'] for c in cases if c.get('params')]
+            # 실값이 있는 TC만 (null_test/empty_string 제외)
+            pl = [c['params'] for c in cases
+                  if c.get('params') and c.get('name', '') not in _SKIP_TC_NAMES
+                  and not all(v is None for v in c['params'].values())]
             if pl: merged_tc[qid] = pl
-    merged_path = results_dir / '_test-cases' / 'merged-tc.json'
+
+    # merged-tc.json 출력 위치: --output-dir 지정 시 output_dir/merged-tc.json, 아니면 기존 경로
+    if output_dir:
+        merged_path = output_dir / 'merged-tc.json'
+    else:
+        merged_path = results_dir / '_test-cases' / 'merged-tc.json'
     merged_path.parent.mkdir(parents=True, exist_ok=True)
     merged_path.write_text(json.dumps(merged_tc, indent=2, ensure_ascii=False), encoding='utf-8')
     print(f"  Merged TC: {merged_path} ({len(merged_tc)} queries)")
@@ -412,7 +541,7 @@ def main():
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from tracking_utils import log_activity
-        log_activity('PHASE_END', agent='generate-test-cases', phase='phase_2.5',
+        log_activity('STEP_END', agent='generate-test-cases', step='step_2',
                      detail=f"TC: {total_files} files, {total_cases} cases "
                             f"(sample:{source_counts.get('SAMPLE_DATA',0)}, "
                             f"capture:{source_counts.get('BIND_CAPTURE',0)}, "

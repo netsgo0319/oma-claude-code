@@ -64,7 +64,7 @@ workspace/results/{filename}/v1/chunks/
 
 ## Leader가 이 스킬을 사용하는 방법
 
-Phase 1에서:
+Step 1에서:
 1. 먼저 XML 파일 크기 확인 (wc -l)
 2. 1000줄 이상이면 xml-splitter로 분할
 3. 분할된 chunk를 개별적으로 parse-xml 처리

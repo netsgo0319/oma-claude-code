@@ -120,7 +120,7 @@ trailing space 감지:
 | WARN_CASE_SENSITIVITY | high | 대소문자 비교 동작 차이 |
 
 ### severity별 후속 처리
-- `critical` → Reviewer 자동 에스컬레이션 (compare pass여도)
+- `critical` → 자동 에스컬레이션 (compare pass여도)
 - `high` → migration-guide.md 수동 검토 항목
 - `medium` → conversion-report.md 경고 기록
 

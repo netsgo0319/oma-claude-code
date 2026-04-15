@@ -111,7 +111,7 @@ class OracleToPgConverter:
         # Activity log
         try:
             from tracking_utils import log_activity
-            log_activity('PHASE_END', agent='oracle-to-pg-converter', phase='phase_2',
+            log_activity('STEP_END', agent='oracle-to-pg-converter', step='step_1',
                          file=os.path.basename(input_path),
                          detail=f"Converted: {report.get('total_replacements',0)} replacements, "
                                 f"{len(report.get('unconverted',[]))} unconverted, "

@@ -1,6 +1,7 @@
 #!/bin/bash
-# OMA Kiro Workspace Reset
+# OMA Workspace + Pipeline Reset
 # workspace/input/ 의 XML 원본은 보존하고, 나머지 중간 산출물을 모두 삭제합니다.
+# pipeline/ 디렉토리도 초기화합니다 (구조는 유지, 데이터만 삭제).
 #
 # Usage:
 #   bash tools/reset-workspace.sh          # 확인 후 삭제
@@ -9,9 +10,10 @@
 set -e
 
 WORKSPACE="workspace"
+PIPELINE="pipeline"
 
 echo "==============================="
-echo "  OMA Kiro Workspace Reset"
+echo "  OMA Workspace + Pipeline Reset"
 echo "==============================="
 echo ""
 
@@ -27,6 +29,10 @@ echo "[삭제 대상]"
 [ -d "$WORKSPACE/reports" ] && echo "  workspace/reports/    — $(find "$WORKSPACE/reports" -type f 2>/dev/null | wc -l)개 파일"
 [ -d "$WORKSPACE/logs" ] && echo "  workspace/logs/       — $(find "$WORKSPACE/logs" -type f 2>/dev/null | wc -l)개 파일"
 [ -f "$WORKSPACE/progress.json" ] && echo "  workspace/progress.json"
+if [ -d "$PIPELINE" ]; then
+  PIPELINE_FILES=$(find "$PIPELINE" -type f ! -name ".gitkeep" 2>/dev/null | wc -l)
+  echo "  pipeline/             — ${PIPELINE_FILES}개 파일 (handoff.json + output 데이터)"
+fi
 echo ""
 
 # 확인
@@ -70,6 +76,41 @@ fi
 if [ -f "$WORKSPACE/progress.json" ]; then
   rm -f "$WORKSPACE/progress.json"
   echo "  [OK] workspace/progress.json 삭제"
+fi
+
+# state-snapshot.json
+if [ -f "$WORKSPACE/state-snapshot.json" ]; then
+  rm -f "$WORKSPACE/state-snapshot.json"
+  echo "  [OK] workspace/state-snapshot.json 삭제"
+fi
+
+# pipeline/ 디렉토리 (구조 유지, 데이터만 삭제)
+if [ -d "$PIPELINE" ]; then
+  echo ""
+  echo "pipeline/ 초기화 중..."
+
+  # handoff.json 삭제
+  find "$PIPELINE" -name "handoff.json" -delete 2>/dev/null
+  echo "  [OK] handoff.json 전부 삭제"
+
+  # supervisor-state.json 삭제
+  rm -f "$PIPELINE/supervisor-state.json"
+  echo "  [OK] supervisor-state.json 삭제"
+
+  # 각 step의 output 내용 삭제 (.gitkeep 유지)
+  for step_dir in "$PIPELINE"/step-*/output; do
+    if [ -d "$step_dir" ]; then
+      find "$step_dir" -type f ! -name ".gitkeep" -delete 2>/dev/null
+      find "$step_dir" -type d -empty -not -path "$step_dir" -delete 2>/dev/null
+      echo "  [OK] $(basename $(dirname $step_dir))/output/ 비움"
+    fi
+  done
+
+  # workspace/ 심링크 정리
+  if command -v bash &>/dev/null && [ -f "tools/assemble-workspace.sh" ]; then
+    bash tools/assemble-workspace.sh --clean 2>/dev/null || true
+    echo "  [OK] workspace/ 심링크 정리"
+  fi
 fi
 
 echo ""
