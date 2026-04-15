@@ -1,9 +1,7 @@
 ---
 name: orchestrate-pipeline
 description: 전체 파이프라인 오케스트레이션 — Step 0→1→2→3→4 진행 판단. 슈퍼바이저(CLAUDE.md)가 사용.
-allowed-tools:
-  - Bash
-  - Read
+allowed-tools: Bash Read
 ---
 
 # Orchestrate Pipeline
