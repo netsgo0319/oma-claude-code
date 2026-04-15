@@ -35,23 +35,23 @@ gradle shadowJar  # fat jar 생성
 ### 기본 사용 (mybatis-config.xml 없이)
 ```bash
 java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar \
-  --input workspace/input \
-  --output workspace/results/_extracted
+  --input pipeline/shared/input \
+  --output pipeline/step-3-validate-fix/output/extracted_pg
 ```
 
 ### mybatis-config.xml 포함
 ```bash
 java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar \
-  --input workspace/input \
-  --output workspace/results/_extracted \
+  --input pipeline/shared/input \
+  --output pipeline/step-3-validate-fix/output/extracted_pg \
   --config /path/to/mybatis-config.xml
 ```
 
 ### test-cases.json 활용 (다양한 파라미터 조합으로 SQL 추출)
 ```bash
 java -jar tools/mybatis-sql-extractor/build/libs/mybatis-sql-extractor-1.0.0.jar \
-  --input workspace/input \
-  --output workspace/results/_extracted \
+  --input pipeline/shared/input \
+  --output pipeline/step-3-validate-fix/output/extracted_pg \
   --params workspace/results/{filename}/v{n}/test-cases.json
 ```
 

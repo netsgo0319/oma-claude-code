@@ -5,16 +5,11 @@ description: HTML 리포트 가이드. reporter 에이전트가 4탭(Overview/Ex
 
 ## 입력
 
-- workspace/progress.json
-- workspace/results/*/v*/query-tracking.json (쿼리별 추적 — before/after SQL, EXPLAIN, TC, timing)
-- workspace/results/*/v*/parsed.json
-- workspace/results/*/v*/conversion-report.json
-- workspace/results/_validation/validated.json
-- workspace/results/_validation/execute_validated.json
-- workspace/results/_extracted/*-extracted.json (Step 3 렌더링 결과)
-- workspace/logs/activity-log.jsonl
+**query-matrix.json이 유일한 데이터 소스.** generate-query-matrix.py가 모든 데이터를 종합하여 생성.
+- `pipeline/step-4-report/output/query-matrix.json` (쿼리별 15개 필드 + 상위 메타데이터)
+- `workspace/logs/activity-log.jsonl` (Log 탭용)
 
-## 산출물: workspace/reports/migration-report.html
+## 산출물: pipeline/step-4-report/output/migration-report.html
 
 단일 self-contained HTML 파일. 브라우저에서 바로 열기 가능 (서버 불필요).
 
@@ -66,11 +61,7 @@ python3 tools/generate-report.py
 
 ## 처리 절차
 
-1. workspace/progress.json 로드 → 전체 상태 파악
-2. 모든 query-tracking.json 수집 → 쿼리별 상태 통합
-3. parsed.json 폴백 (query-tracking.json 없는 파일용)
-4. validated.json, execute_validated.json 로드 → 검증 결과
-5. activity-log.jsonl 로드 → 타임라인
-6. input/*.xml, output/*.xml 크기 비교
-7. JSON으로 직렬화 → HTML 내 `const DATA = {...}` 임베드
-8. JS가 클라이언트에서 렌더링
+1. query-matrix.json 로드 (유일한 데이터 소스)
+2. activity-log.jsonl 로드 → Log 탭 타임라인
+3. JSON으로 직렬화 → HTML 내 `const DATA = {...}` 임베드
+4. JS가 클라이언트에서 4탭(Overview/Explorer/DBA/Log) 렌더링

@@ -29,7 +29,7 @@ description: 활동 로그 기록. 모든 에이전트가 판단 근거, 시도,
 
 ### 필드 설명
 - **timestamp**: ISO 8601 형식의 기록 시각
-- **phase**: 현재 Step (step_0 ~ step_4)
+- **step**: 현재 Step (step-0-preflight ~ step-4-report)
 - **agent**: 기록 주체 에이전트
 - **file**: 대상 파일명
 - **query_id**: 대상 쿼리 ID
