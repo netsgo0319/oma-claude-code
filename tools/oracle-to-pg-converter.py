@@ -307,6 +307,14 @@ class OracleToPgConverter:
         # 20. date_column - numeric -> date_column - numeric::INTEGER
         sql = self._convert_date_column_arithmetic(sql)
 
+        # 21. Subquery alias: FROM (subquery) → FROM (subquery) AS sub_N
+        # Oracle allows subqueries without alias, PG requires it
+        sql = self._convert_subquery_alias(sql)
+
+        # 22. TO_CHAR single arg: TO_CHAR(expr) → (expr)::TEXT
+        # PG TO_CHAR requires format arg; single-arg = cast to text
+        sql = self._convert_to_char_single(sql)
+
         if sql != original:
             self.stats['total_replacements'] += 1
 
@@ -1313,6 +1321,67 @@ class OracleToPgConverter:
         if new_sql != sql:
             self._count_rule('DATE_COL-N->INTEGER_CAST')
         return new_sql
+
+    # ========== Subquery alias & TO_CHAR single arg ==========
+
+    _subquery_alias_counter = 0
+
+    def _convert_subquery_alias(self, sql):
+        """Add alias to subqueries in FROM clause that lack one.
+        Oracle: FROM (SELECT ...) WHERE ...
+        PG:     FROM (SELECT ...) AS sub_1 WHERE ...
+        PG requires subqueries in FROM to have an alias."""
+        # Match FROM ( ... ) followed by non-alias token (WHERE, JOIN, ,, ), etc.)
+        def _add_alias(m):
+            prefix = m.group(1)   # FROM or JOIN + whitespace
+            subq = m.group(2)     # (...) the subquery including parens
+            after = m.group(3)    # first token after closing paren
+            # Check if already has alias (AS keyword or bare identifier)
+            stripped = after.strip()
+            if stripped.upper().startswith('AS ') or (stripped and stripped[0].isalpha() and stripped.split()[0].upper() not in
+                ('WHERE', 'ON', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'CROSS', 'FULL', 'JOIN', 'GROUP', 'ORDER', 'HAVING', 'LIMIT', 'UNION', 'EXCEPT', 'INTERSECT', 'FETCH')):
+                return m.group(0)  # already has alias
+            OracleToPostgresConverter._subquery_alias_counter += 1
+            alias = f"sub_{OracleToPostgresConverter._subquery_alias_counter}"
+            self._count_rule('SUBQUERY_ALIAS_ADDED')
+            return f"{prefix}{subq} {alias}{after}"
+
+        # Simplified: find FROM/JOIN followed by opening paren, match to closing paren
+        pattern = re.compile(
+            r'(\b(?:FROM|JOIN)\s+)(\([^()]*(?:\([^()]*(?:\([^()]*\)[^()]*)*\)[^()]*)*\))(\s+\S)',
+            re.IGNORECASE | re.DOTALL
+        )
+        return pattern.sub(_add_alias, sql)
+
+    def _convert_to_char_single(self, sql):
+        """TO_CHAR(expr) single arg → (expr)::TEXT.
+        Oracle TO_CHAR works without format, PG requires it.
+        Only converts single-arg calls (no comma in args)."""
+        pattern = re.compile(r'\bTO_CHAR\s*\(', re.IGNORECASE | re.DOTALL)
+        result = []
+        last_end = 0
+
+        for match in pattern.finditer(sql):
+            start = match.start()
+            if start < last_end:
+                continue
+            paren_start = match.end() - 1
+            paren_end = self._find_matching_paren(sql, paren_start)
+            if paren_end == -1:
+                continue
+
+            args_str = sql[paren_start + 1:paren_end].strip()
+            # Only convert if single argument (no comma at top level)
+            args = self._split_args(args_str)
+            if len(args) == 1:
+                expr = args[0].strip()
+                result.append(sql[last_end:start])
+                result.append(f'({expr})::TEXT')
+                last_end = paren_end + 1
+                self._count_rule('TO_CHAR_SINGLE->TEXT_CAST')
+
+        result.append(sql[last_end:])
+        return ''.join(result) if len(result) > 1 else sql
 
     # ========== ROWNUM Pagination & FETCH FIRST ==========
 

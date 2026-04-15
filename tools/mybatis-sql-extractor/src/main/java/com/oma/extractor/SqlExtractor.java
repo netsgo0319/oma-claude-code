@@ -389,11 +389,19 @@ public class SqlExtractor {
             allParams.putIfAbsent("idList", Arrays.asList(1, 2, 3));
             // Common foreach collection names (MyBatis + iBatis)
             // 이름 추론이 불가하면 더미 리스트로 모두 커버
+            // WMS/OMS/AMS 프로젝트에서 발견된 실제 컬렉션명 포함
             for (String collName : new String[]{
                 "list", "idList", "ids", "items", "orders", "codes",
                 "array", "collection", "paramList", "valueList",
                 "seqList", "codeList", "dataList", "keyList",
-                "deleteList", "insertList", "updateList"
+                "deleteList", "insertList", "updateList",
+                // 프로젝트 실제 사용 컬렉션명
+                "icKeyList", "owKeyList", "ctKeyList", "stKeyList",
+                "hdKeyList", "dtKeyList", "itemList", "locList",
+                "obKeyList", "ibKeyList", "waveList", "batchList",
+                "fileList", "excelList", "roleList", "menuList",
+                "centerList", "ownerList", "storeList", "userList",
+                "param", "params", "vo", "map", "dto"
             }) {
                 allParams.putIfAbsent(collName, Arrays.asList("1", "2"));
             }
