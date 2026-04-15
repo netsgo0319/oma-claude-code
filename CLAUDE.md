@@ -44,6 +44,10 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)
 
 **각 에이전트에 할당 파일 목록을 명시하고, 동시에 spawn하라. 순차 실행 금지.**
 
+**Subagents vs Agent Teams:**
+- 각 Step의 병렬 실행은 **Subagents**로 (결과만 리턴, 서로 대화 불필요)
+- Agent Teams(tmux 모드)는 서로 협력이 필요한 경우에만 (현재 불필요)
+
 ### ★ GATE (Step 3→4)
 
 - `fix_loop_executed.status == "fail"` → 재위임: "수정 루프 0회. 반드시 수정."
