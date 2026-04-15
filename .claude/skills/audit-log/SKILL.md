@@ -14,9 +14,9 @@ description: 모든 에이전트 활동을 workspace/logs/activity-log.jsonl에 
 
 ```json
 {
-  "timestamp": "2026-04-09T12:34:56Z",
-  "phase": "step_0 | step_1 | step_2 | step_3 | step_4",
-  "agent": "converter | validate-and-fix",
+  "ts": 1713100860,
+  "step": "step-0-preflight | step-1-convert | step-2-tc-generate | step-3-validate-fix | step-4-report",
+  "agent": "converter | tc-generator | validate-and-fix | reporter",
   "file": "UserMapper.xml",
   "query_id": "selectUserById",
   "version": 1,
