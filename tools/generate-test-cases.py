@@ -697,8 +697,10 @@ def main():
         table_rows = get_table_row_counts()
         print()
 
-    # Generate TCs per file
+    # Generate TCs per file (기존 룰 기반 + LLM 보강)
     total_files, total_cases, source_counts = 0, 0, {}
+    llm_candidates = []  # LLM TC 생성 대상 수집
+
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
@@ -718,6 +720,25 @@ def main():
             if tcs:
                 file_tc[qid] = tcs; total_cases += len(tcs)
                 for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
+
+            # LLM 후보: 샘플/고객 바인드 없는 쿼리 (추론만 있는 쿼리)
+            has_real_data = any(c.get('source') in ('CUSTOM', 'SAMPLE_DATA', 'BIND_CAPTURE')
+                               for c in tcs) if tcs else False
+            if not has_real_data:
+                sql_raw = q.get('sql_raw', '')
+                params = _params(sql_raw)
+                dynamic_tags = [d.get('tag', '') for d in q.get('dynamic_elements', [])]
+                if params:  # 파라미터가 있는 쿼리만
+                    llm_candidates.append({
+                        'query_id': qid,
+                        'sql': sql_raw[:500],
+                        'params': params,
+                        'type': q.get('type', 'select'),
+                        'dynamic_tags': dynamic_tags[:5],
+                        '_file': filename,
+                        '_file_tc': file_tc,
+                    })
+
         if file_tc:
             # output-dir 지정 시 per-file TC를 별도 디렉토리에 저장
             if output_dir:
@@ -730,6 +751,60 @@ def main():
             tc_out_path.write_text(
                 json.dumps(file_tc, indent=2, ensure_ascii=False), encoding='utf-8')
             total_files += 1
+
+    # LLM TC 보강 — 샘플/고객 바인드 없는 쿼리에 LLM으로 TC 생성
+    try:
+        from llm_tc_generator import generate_tcs_batch, LLM_TC_ENABLED
+        if LLM_TC_ENABLED and llm_candidates:
+            print(f"\n  LLM TC 보강: {len(llm_candidates)} queries without real data TC")
+            # _file_tc 참조 제거 (JSON 직렬화 불가)
+            clean_candidates = [{k: v for k, v in c.items() if not k.startswith('_')} for c in llm_candidates]
+            llm_results = generate_tcs_batch(clean_candidates, sample_hint=None)
+
+            # LLM TC를 기존 file_tc에 병합 + 파일 재저장
+            files_updated = set()
+            for cand in llm_candidates:
+                qid = cand['query_id']
+                fname = cand['_file']
+                file_tc_ref = cand['_file_tc']
+                if qid in llm_results:
+                    llm_tcs = llm_results[qid]
+                    if qid in file_tc_ref:
+                        file_tc_ref[qid].extend(llm_tcs)
+                    else:
+                        file_tc_ref[qid] = llm_tcs
+                    total_cases += len(llm_tcs)
+                    source_counts['LLM'] = source_counts.get('LLM', 0) + len(llm_tcs)
+                    files_updated.add(fname)
+
+            # 변경된 파일만 재저장
+            for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
+                try:
+                    parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
+                except Exception:
+                    continue
+                fname = parsed.get('source_file', parsed_path.parent.name)
+                if fname not in files_updated:
+                    continue
+                if output_dir:
+                    tc_out_path = output_dir / fname / 'v1' / 'test-cases.json'
+                else:
+                    tc_out_path = parsed_path.parent / 'test-cases.json'
+                if tc_out_path.exists():
+                    existing = json.loads(tc_out_path.read_text(encoding='utf-8'))
+                    # LLM TC 병합
+                    for qid, tcs in llm_results.items():
+                        if qid in existing:
+                            existing[qid].extend(tcs)
+                        else:
+                            existing[qid] = tcs
+                    tc_out_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding='utf-8')
+        elif not LLM_TC_ENABLED:
+            print(f"\n  LLM TC disabled (set LLM_TC_ENABLED=1 to enable)")
+    except ImportError:
+        print(f"\n  LLM TC skipped (llm_tc_generator.py not found)")
+    except Exception as e:
+        print(f"\n  LLM TC error: {e}")
 
     # Merged TC for MyBatis extractor
     # null_test는 MyBatis 렌더링 실패 가능 → 제외
