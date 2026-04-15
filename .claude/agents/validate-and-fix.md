@@ -2,7 +2,7 @@
 name: validate-and-fix
 model: opus
 description: Step 3 검증+수정. EXPLAIN→Execute→Compare + 수정 루프 (max 3). gate_checks 생성.
-allowed-tools:
+tools:
   - Read
   - Write
   - Edit

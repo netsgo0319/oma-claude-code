@@ -2,7 +2,7 @@
 name: tc-generator
 model: sonnet
 description: Step 2 TC 생성. generate-test-cases.py 실행 + 결과 검증. pipeline/ 경로 사용.
-allowed-tools:
+tools:
   - Read
   - Bash
   - Glob

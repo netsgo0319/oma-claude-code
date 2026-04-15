@@ -2,7 +2,7 @@
 name: reporter
 model: sonnet
 description: Step 4 보고서. 파이프라인 점검 + gate 확인 + assemble + 매트릭스/리포트 생성.
-allowed-tools:
+tools:
   - Read
   - Bash
   - Glob

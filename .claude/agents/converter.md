@@ -2,7 +2,7 @@
 name: converter
 model: opus
 description: Step 1 변환. 파싱+룰변환+LLM변환. pipeline/step-1-convert/output/에 결과 생성.
-allowed-tools:
+tools:
   - Read
   - Write
   - Edit
