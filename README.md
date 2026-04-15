@@ -76,10 +76,10 @@ workspace/                           하위 호환 (심링크 뷰)
 
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
-| **converter** | **Opus** | Oracle→PG 변환. 룰 컨버터 + LLM 복합 변환 |
-| **tc-generator** | Sonnet | 테스트 케이스 생성 (고객 > 샘플 > VO > 추론) |
-| **validate-and-fix** | **Opus** | 3단계 검증 + 수정 루프 (최대 3회) + gate_checks |
-| **reporter** | Sonnet | workspace 조립 + Query Matrix + HTML 리포트 |
+| **converter** | **Opus[1M]** | Oracle→PG 변환. batch-process.sh 룰 변환 + LLM 복합 변환. 11개 스킬 preload |
+| **tc-generator** | Sonnet | TC 생성. XML 분기 파라미터 추출 + BRANCH_VARIANT + filename::qid 키 |
+| **validate-and-fix** | **Opus[1M]** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
+| **reporter** | Sonnet | 보고서. query-matrix.json → HTML 4탭 (Overview/Explorer/DBA/Log) |
 
 ## 환경변수
 
@@ -129,7 +129,7 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 
 - **Overview**: 6개 카드 + Step Progress 바
 - **Explorer**: 파일→쿼리 트리 + MyBatis XML diff + 렌더링 SQL diff + Attempt History
-- **DBA**: 누락 오브젝트(테이블/컬럼/함수) 그룹핑 + 액션 아이템 + Oracle 0건 쿼리
+- **DBA**: 누락 오브젝트 그룹핑 + 0건 3분류 (양쪽0/Oracle만0/PG만0)
 - **Log**: 활동 타임라인 + 감사 로그
 
 ## 최종 JSON 구조
