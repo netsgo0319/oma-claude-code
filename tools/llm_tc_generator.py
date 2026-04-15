@@ -71,47 +71,25 @@ Dynamic tags: {json.dumps(dynamic_tags[:5])}
     if sample_hint:
         sample_text = f"\nAvailable sample data (reference only):\n{json.dumps(sample_hint, ensure_ascii=False)[:1000]}\n"
 
-    prompt = f"""You are a database test case generator for Oracle→PostgreSQL migration validation.
-For each SQL query, generate exactly {LLM_TC_MAX_TCS} test cases with realistic bind parameter values.
+    prompt = f"""Generate {LLM_TC_MAX_TCS} test cases per query for Oracle→PostgreSQL migration validation.
 
-## Output format (strict JSON, no markdown)
+    Analyze the SQL context (table names, column names, WHERE/JOIN conditions, data types) to infer realistic values.
+    Each TC should test a different scenario — vary values meaningfully across TCs.
 
-{{
-  "query_id": [
-    {{"name": "tc_llm_1", "params": {{"paramName": "value"}}}},
-    {{"name": "tc_llm_2", "params": {{"paramName": "different_value"}}}}
-  ]
-}}
+    Guidelines:
+    - All parameter keys must be present in every TC
+    - Values must be strings (even numbers: "1" not 1), except list parameters (string arrays like ["1","2"])
+    - GRIDPAGING_* parameters = always empty string ""
+    - If dynamic tags show <if test="X != null">, include one TC where X="" (branch off)
+    - LIKE search parameters should include % wildcards (e.g. "%keyword%")
+    - Date parameters: use YYYYMMDD format strings
+    - Numeric range parameters (qty, amt, price): vary across small/medium/large values
+    - List/array parameters: provide 2-3 element arrays
+    - For DML queries, focus on realistic WHERE clause values
+    {sample_text}
+    ## Queries
 
-## Parameter value rules
-
-| Parameter pattern | Value format | Example |
-|---|---|---|
-| *date*, *dt*, *ymd*, *yyyymmdd* | 8자리 문자열 | "20260115" |
-| *yn*, *delyn*, *useyn*, *flag* | Y or N | "Y" |
-| *seq*, *num*, *idx*, *key*, *no* | 정수 문자열 | "1", "42" |
-| *cd*, *code*, *type*, *status*, *gubun* | 짧은 코드 | "01", "A", "ACTIVE" |
-| *nm*, *name*, *keyword*, *search* | 한국어 또는 영어 텍스트 | "테스트", "홍길동" |
-| *page*, *pageSize*, *limit*, *offset* | 페이지네이션 수 | "1", "10" |
-| *owkey*, *ctkey*, *wh*, *center* | 사업장/센터 코드 | "DS", "HE", "WH01" |
-| *id*, *userId*, *loginId* | 사용자 ID | "admin", "USR001" |
-| GRIDPAGING_* | 반드시 빈 문자열 | "" |
-| *list*, *List*, collection용 | 문자열 배열 | ["1", "2"] |
-
-## Dynamic tag rules
-- <if test="X != null">: TC 1은 X에 값, TC 2는 X="" (분기 on/off)
-- <choose><when>: 각 분기 조건에 맞는 값
-- <foreach collection="items">: items=["1","2"]
-
-## Important
-- ALL parameters must be filled (no missing keys)
-- Values must be strings (even numbers: "1" not 1), except lists
-- DML (insert/update/delete): focus on WHERE clause params
-- Generate diverse values across TCs (don't repeat same values)
-{sample_text}
-## Queries
-
-{queries_text}"""
+    {queries_text}"""
 
     return prompt
 
