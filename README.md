@@ -76,9 +76,9 @@ workspace/                           하위 호환 (심링크 뷰)
 
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
-| **converter** | Sonnet | Oracle→PG 변환. 룰 컨버터 + LLM 복합 변환 |
+| **converter** | **Opus** | Oracle→PG 변환. 룰 컨버터 + LLM 복합 변환 |
 | **tc-generator** | Sonnet | 테스트 케이스 생성 (고객 > 샘플 > VO > 추론) |
-| **validate-and-fix** | Sonnet | 3단계 검증 + 수정 루프 (최대 3회) + gate_checks |
+| **validate-and-fix** | **Opus** | 3단계 검증 + 수정 루프 (최대 3회) + gate_checks |
 | **reporter** | Sonnet | workspace 조립 + Query Matrix + HTML 리포트 |
 
 ## 환경변수

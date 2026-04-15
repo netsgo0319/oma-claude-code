@@ -148,6 +148,8 @@ Step 4:
 | 필드 | 소스 Step | 파일 |
 |------|----------|------|
 | query_id, original_file | Step 1 | query-tracking.json |
+| xml_before | Step 4 | input/*.xml에서 ET.tostring 추출 |
+| xml_after | Step 4 | output/*.xml에서 ET.tostring 추출 |
 | sql_before | Step 1 | extracted_oracle/ → query-tracking.json (fallback) |
 | sql_after | Step 3 | extracted_pg/ → query-tracking.json (fallback) |
 | conversion_method, conversion_history | Step 1 | query-tracking.json |
@@ -276,8 +278,10 @@ stateDiagram-v2
 {
   "query_id": "selectUser",
   "original_file": "UserMapper.xml",
-  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
-  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "xml_before": "<select id=\"selectUser\">SELECT NVL(NAME,'N/A') FROM TB_USER<where><if test=\"id!=null\">AND ID=#{id}</if></where></select>",
+  "xml_after": "<select id=\"selectUser\">SELECT COALESCE(NAME,'N/A') FROM TB_USER<where><if test=\"id!=null\">AND ID=#{id}</if></where></select>",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID='USR001'",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID='USR001'",
   "final_state": "PASS_COMPLETE",
   "final_state_detail": "변환+비교 통과",
   "conversion_method": "rule",

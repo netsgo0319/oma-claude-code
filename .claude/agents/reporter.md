@@ -89,7 +89,7 @@ for f in ['summary','oracle_patterns','file_stats','step_progress','queries']:
     print(f'  {f}: {\"OK\" if d.get(f) else \"MISSING\"}')
 # 쿼리별 필수 필드
 q=d['queries'][0] if d.get('queries') else {}
-required=['query_id','original_file','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
+required=['query_id','original_file','xml_before','xml_after','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
 missing=[f for f in required if f not in q]
 print(f'  query fields: {\"MISSING \"+str(missing) if missing else \"OK\"}')
 "
@@ -120,7 +120,7 @@ python3 -c "
 import json
 d=json.load(open('pipeline/step-4-report/output/query-matrix.json'))
 q=d['queries'][0] if d.get('queries') else {}
-required=['query_id','original_file','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
+required=['query_id','original_file','xml_before','xml_after','sql_before','sql_after','final_state','test_cases','attempts','conversion_history']
 missing=[f for f in required if f not in q]
 print(f'MISSING: {missing}') if missing else print(f'OK: {len(d[\"queries\"])} queries, 필수 필드 전부 존재')
 "
