@@ -78,11 +78,21 @@ for i, batch in enumerate(batches):
 
 ### Step 2: tc-generator 위임
 
+**파일 수에 따라 분배:**
+- **50파일 이하**: tc-generator 1개
+- **50파일 이상**: 2~3개 병렬 (파일별 TC 생성은 독립적)
+  - Oracle 메타데이터(샘플, V$SQL_BIND_CAPTURE 등)는 첫 에이전트가 수집 → `_samples/`에 저장
+  - 나머지 에이전트는 이미 수집된 샘플 참조
+  - 각 에이전트는 할당 파일의 test-cases.json만 생성
+  - merged-tc.json은 **모든 에이전트 완료 후** 슈퍼바이저가 병합 또는 마지막 에이전트가 생성
+
 ```
 Agent({ subagent_type: "tc-generator", prompt: "
+  할당 파일: {파일목록}
   입력: pipeline/step-1-convert/output/results/, pipeline/step-0-preflight/output/samples/
   출력: pipeline/step-2-tc-generate/output/
-  TC 생성. 완료 시 handoff.json 생성." })
+  .claude/agents/tc-generator.md 절차대로 수행.
+  완료 시 handoff.json 생성." })
 ```
 
 ### Step 3: validate-and-fix 위임
@@ -100,7 +110,12 @@ Agent({ subagent_type: "validate-and-fix", prompt: "
   완료 시 handoff.json 생성 (gate_checks 포함)." })
 ```
 
-대규모(100+): 10~15파일 단위 병렬. 파일 중복 할당 금지. 배치별 output 디렉토리 분리.
+**파일 수에 따라 분배:**
+- **20파일 이하**: validate-and-fix 1개
+- **21~100파일**: 2~5개 병렬 (10~20파일씩)
+- **100파일 이상**: 10~15파일 단위로 N개 병렬
+- 파일 중복 할당 금지. 배치별 `batches/batch-{N}/` output 디렉토리 분리.
+- handoff.json은 **모든 에이전트 완료 후** 슈퍼바이저가 `generate-handoff.py --step 3` 실행.
 
 **★ GATE (Step 3→4, 가장 중요):**
 
