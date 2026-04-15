@@ -111,7 +111,7 @@
       "Glob",
       "Grep",
       "Bash(gh *)",
-      "Bash(git push *)",
+      "Bash(git push origin *)",
       "Bash(git checkout *)"
     ],
     "deny": [
