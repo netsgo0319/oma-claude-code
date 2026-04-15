@@ -56,3 +56,8 @@ gate_checks 포함. 슈퍼바이저가 이것만 읽고 판단.
 - --full 없이 --generate, --local 따로 실행
 - run-extractor.sh 없이 validate-queries.py 직접 실행
 - Python으로 subprocess.run(['psql', ...])
+
+## 참조 문서
+
+- [검증 스키마](../../schemas/validated.schema.json)
+- [handoff 스키마](../../schemas/handoff.schema.json)

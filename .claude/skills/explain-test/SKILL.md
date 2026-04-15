@@ -64,3 +64,8 @@ EXPLAIN 검증:
 - [ ] 4. 에러 분류 (SYNTAX_ERROR/MISSING_TABLE/MISSING_COLUMN/MISSING_FUNCTION)
 - [ ] 5. DBA 3종은 즉시 스킵 마킹
 ```
+
+## 참조 문서
+
+- [검증 스키마](../../schemas/validated.schema.json)
+- [에러 분류 기준](../../rules/guardrails.md)

@@ -53,3 +53,8 @@ Step 4 보고서:
 - [ ] 6. 산출물 3개(csv, json, html) 존재 + 비어있지 않음
 - [ ] 7. handoff.json 생성
 ```
+
+## 참조 문서
+
+- [query-matrix.json 필드](../../rules/guardrails.md)
+- [handoff 스키마](../../schemas/handoff.schema.json)

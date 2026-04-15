@@ -153,3 +153,8 @@ Compare 검증:
 - [ ] 4. 불일치 시 reason 기록 (oracle_error/pg_error/row_mismatch)
 - [ ] 5. 0건==0건도 PASS (스킵 금지)
 ```
+
+## 참조 문서
+
+- [Oracle↔PG 비교 룰](../../rules/guardrails.md)
+- [compare_validated.json 스키마](../../schemas/validated.schema.json)

@@ -50,3 +50,8 @@ PGPASSWORD=${PG_PASSWORD} psql -h ${PG_HOST} -p ${PG_PORT} -U ${PG_USER} -d ${PG
 - statement_timeout 30초 필수 설정 (무한 재귀 방지)
 - 접속 비밀번호는 환경변수(PGPASSWORD)만 사용
 - 쿼리 실행 전 반드시 SQL 내용을 검토하여 파괴적 구문이 없는지 확인
+
+## 참조 문서
+
+- [PG 접속 설정](../../rules/db-config.md)
+- [PG 안전 규칙](../../rules/guardrails.md)

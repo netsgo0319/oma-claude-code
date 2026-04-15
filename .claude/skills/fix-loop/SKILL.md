@@ -73,3 +73,8 @@ tm.add_attempt('{query_id}', error_category='...', error_detail='...', fix_appli
 - **매 시도마다 다른 접근.** 같은 수정 반복 금지.
 - **conversion_history 먼저 읽어라.** converter가 뭘 바꿨는지 알아야 진단이 빠르다.
 - **분석만 하고 멈추지 마라.** output XML을 Edit하고 재검증하라.
+
+## 참조 문서
+
+- [에러 분류 기준](../../rules/guardrails.md)
+- [query-tracking 스키마](../../schemas/query-tracking.schema.json)

@@ -242,3 +242,7 @@ workspace/logs/ 디렉토리에 activity-log.jsonl 파일로 기록.
 echo '{"timestamp":"...","type":"...","summary":"...","detail":{...}}' >> workspace/logs/activity-log.jsonl
 ```
 또는 write 도구로 파일 끝에 append.
+
+## 참조 문서
+
+- [활동 로그 형식](workspace/logs/activity-log.jsonl)

@@ -99,3 +99,8 @@ query-analyzer 스킬은 단일 파일 내 의존성만 분석한다.
 
 ## Leader에게 반환
 "크로스 파일 분석 완료: {N}파일, 크로스 참조 {M}건, 파일 레이어 {L}단계, 순환 {C}건"
+
+## 참조 문서
+
+- [의존성 그래프 스키마](../../schemas/dependency-graph.schema.json)
+- [크로스파일 그래프 스키마](../../schemas/cross-file-graph.schema.json)

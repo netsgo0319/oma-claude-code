@@ -43,3 +43,8 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 - 순수 HTML/CSS/JS (외부 의존 없음), Dark 테마
 - SQL syntax highlighting, 15-state 색상 배지
 - Explorer: MyBatis XML diff (변환 전/후) + 렌더링 SQL diff
+
+## 참조 문서
+
+- [query-matrix.json 필드 정의](../../rules/guardrails.md)
+- [handoff 스키마](../../schemas/handoff.schema.json)

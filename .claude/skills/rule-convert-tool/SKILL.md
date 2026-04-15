@@ -78,3 +78,8 @@ done
 4. unconverted가 없으면 -> 변환 완료
 
 **절대로 Python 정규식 스크립트를 직접 작성하지 않는다. 이 도구를 사용한다.**
+
+## 참조 문서
+
+- [변환 룰셋](../../rules/oracle-pg-rules.md)
+- [에지케이스](../../rules/edge-cases.md)

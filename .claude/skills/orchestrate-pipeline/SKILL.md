@@ -89,3 +89,8 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 - [ ] GATE: fix_loop=pass AND compare=pass AND NOT_TESTED<50%
 - [ ] Step 4: reporter 위임 → 산출물 3개 확인
 ```
+
+## 참조 문서
+
+- [handoff 스키마](../../schemas/handoff.schema.json)
+- [가드레일](../../rules/guardrails.md)

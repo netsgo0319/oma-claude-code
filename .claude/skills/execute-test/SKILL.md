@@ -76,3 +76,8 @@ Execute 검증:
 - [ ] 5. statement_timeout 30초
 - [ ] 6. ROLLBACK
 ```
+
+## 참조 문서
+
+- [검증 스키마](../../schemas/validated.schema.json)
+- [안전 규칙](../../rules/guardrails.md)

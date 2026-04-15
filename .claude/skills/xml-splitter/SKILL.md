@@ -69,3 +69,7 @@ Step 1에서:
 2. 1000줄 이상이면 xml-splitter로 분할
 3. 분할된 chunk를 개별적으로 parse-xml 처리
 4. 1000줄 미만이면 기존 방식대로 직접 처리
+
+## 참조 문서
+
+- [파싱 출력 템플릿](../parse-xml/assets/parsed-template.json)

@@ -107,3 +107,4 @@ Oracle 전용 TypeHandler를 감지하여 경고:
 ## 참조 문서
 
 - [jdbc-type-mapping](references/jdbc-type-mapping.md)
+- [변환 룰셋](../../rules/oracle-pg-rules.md)

@@ -49,3 +49,7 @@ Step 2 TC 생성:
 - [ ] 4. merged-tc.json 생성/검증 (쿼리 수 확인)
 - [ ] 5. handoff.json 생성
 ```
+
+## 참조 문서
+
+- [TC 스키마](../../schemas/test-cases.schema.json)

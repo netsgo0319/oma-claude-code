@@ -219,3 +219,9 @@ Layer 3+: 깊은 의존성
 
 ## Leader에게 반환
 "의존성 분석 완료: {N}개 쿼리, {L}개 레이어. L0:{a}개, L1:{b}개, L2:{c}개, L3:{d}개, L4:{e}개"
+
+## 참조 문서
+
+- [복잡도 스키마](../../schemas/complexity-scores.schema.json)
+- [의존성 스키마](../../schemas/dependency-graph.schema.json)
+- [변환 순서 스키마](../../schemas/conversion-order.schema.json)

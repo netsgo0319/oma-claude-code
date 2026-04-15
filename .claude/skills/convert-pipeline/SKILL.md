@@ -56,3 +56,8 @@ Step 1 변환:
 - [ ] 4. query-tracking.json 갱신 (pg_sql, conversion_method, conversion_history)
 - [ ] 5. handoff.json 생성
 ```
+
+## 참조 문서
+
+- [변환 룰셋](../../rules/oracle-pg-rules.md)
+- [query-tracking 스키마](../../schemas/query-tracking.schema.json)

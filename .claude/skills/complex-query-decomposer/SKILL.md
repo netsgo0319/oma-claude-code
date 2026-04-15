@@ -182,3 +182,9 @@ L0~L2 쿼리는 이 스킬을 사용하지 않는다.
    - RESTRUCTURE_PAGINATION → llm-convert (rownum-pagination-patterns 참조)
    - ASSEMBLE → 최종 조립
 4. 각 step 완료 시 중간 결과를 activity-log.jsonl에 기록
+
+## 참조 문서
+
+- [CONNECT BY 패턴](../llm-convert/references/connect-by-patterns.md)
+- [MERGE INTO 패턴](../llm-convert/references/merge-into-patterns.md)
+- [ROWNUM 페이징 패턴](../llm-convert/references/rownum-pagination-patterns.md)
