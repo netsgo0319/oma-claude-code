@@ -25,6 +25,12 @@ inclusion: always
 - **workspace/ 아래에 임시 .py/.sh 파일을 만들지 마라.** 기존 도구만 사용
 - output XML 수정 전 반드시 버저닝: `cp file file.v{N}.bak`
 
+### MyBatis 렌더링 (★ 핵심)
+- **모든 쿼리는 MyBatis 엔진 렌더링을 거쳐 진짜 SQL을 추출해야 한다.**
+- 렌더링 실패 = 테스트 스킵이 아니라 **TC 보강으로 해결해야 할 버그**
+- NOT_TESTED_NO_RENDER를 "괜찮다"고 넘기지 마라. TC에 파라미터 실값을 넣고 재추출하라.
+- static fallback(정적 XML 파싱)은 최후 수단. 렌더링 성공률 100%를 목표로 한다.
+
 ### MyBatis 파라미터
 - **`#{param}`은 MyBatis 바인드 파라미터.** Oracle 구문이 아님. 변환 금지
 - `#{sysdate}` → 그대로 유지. bare `SYSDATE`만 CURRENT_TIMESTAMP로 변환

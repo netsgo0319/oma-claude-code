@@ -443,6 +443,13 @@ def generate_step3(args):
                 'detail': f'Compare missing (non-DBA, explain pass): {compare_missing_non_dba}'
                           if compare_missing_non_dba > 0 else 'All non-DBA queries have Compare results',
             },
+            'render_coverage': {
+                'status': 'warn' if state_counts.get('NOT_TESTED_NO_RENDER', 0) > 0 else 'pass',
+                'no_render_count': state_counts.get('NOT_TESTED_NO_RENDER', 0),
+                'detail': f'MyBatis 렌더링 실패 {state_counts.get("NOT_TESTED_NO_RENDER", 0)}건 — TC 보강 필요'
+                          if state_counts.get('NOT_TESTED_NO_RENDER', 0) > 0
+                          else 'All queries rendered successfully',
+            },
         },
         'outputs': {
             'extracted_pg_dir': 'pipeline/step-3-validate-fix/output/extracted_pg/',

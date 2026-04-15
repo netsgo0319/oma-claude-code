@@ -58,12 +58,18 @@ python3 tools/validate-queries.py --full \
 `--full`은 EXPLAIN → Execute → Compare → 결과 파싱을 **원자적으로** 수행.
 개별 단계를 따로 실행하지 마라.
 
-**SQL 로딩 우선순위:** MyBatis 렌더링 SQL → static XML 자동 보충.
+**★ 모든 쿼리는 MyBatis 렌더링을 반드시 거쳐야 한다.**
+렌더링 실패 = 테스트 스킵이 아니라 **반드시 고쳐야 할 버그.**
+static fallback(정적 XML 파싱)은 최후 수단이며, 렌더링 성공률 100%를 목표로 한다.
 
-**렌더링 실패 자동 대응:**
-1. **OGNL ClassNotFoundException:** `run-extractor.sh`가 스텁 자동 생성 + 재빌드
+**렌더링 실패 시 반드시 수정하라:**
+1. **OGNL ClassNotFoundException:** `run-extractor.sh`가 스텁 자동 생성 + 재빌드 + 재추출 (최대 5회)
 2. **foreach collection null:** TC에 더미 리스트 추가 → 재추출 → 재검증
-3. **iBatis iterate/isNotEmpty:** 동일 — property 이름으로 TC에 리스트 추가
+3. **iBatis iterate/isNotEmpty:** property 이름으로 TC에 리스트 추가 → 재추출
+4. **<if test="param != null">이 전체를 감싸서 빈 SQL:** TC에 해당 param 실값 추가 → 재추출
+5. **위 전부 시도 후에도 실패:** static fallback 사용하되, 반드시 handoff에 렌더링 실패 건수 보고
+
+**렌더링 실패를 "괜찮다"고 스킵하지 마라. TC를 보강하고 재추출하라.**
 
 ### 2. FAIL 정의 + 에러 분류
 
@@ -110,10 +116,26 @@ for attempt in 1..3:
   6) 3회 모두 실패 → FAIL_ESCALATED
 ```
 
-### 3b. NOT_TESTED_NO_RENDER 재시도
+### 3b. 렌더링 실패 쿼리 해결 (필수 — 스킵 금지)
 
-MyBatis가 빈 SQL 반환 → TC 보강 → 재렌더링 → 재검증.
-이것은 수정 루프 3회와 별개.
+**NOT_TESTED_NO_RENDER는 허용 가능한 최종 상태가 아니다.** 반드시 해결하라.
+
+```
+for each 렌더링 실패 쿼리:
+  1) extracted JSON 에러 로그에서 원인 파악:
+     - 'xxx' is null → TC에 xxx 파라미터 값 추가
+     - ClassNotFoundException → run-extractor.sh가 자동 스텁 (이미 대응)
+     - 빈 SQL (동적 SQL 전체 스킵) → TC에 <if> 조건을 만족하는 실값 추가
+  2) merged-tc.json 갱신:
+     tc[queryId] = [{"param1": "value1", "listParam": ["1","2"]}]
+  3) MyBatis 재렌더링:
+     bash tools/run-extractor.sh --skip-build --validate
+  4) 재검증:
+     python3 tools/validate-queries.py --full --files {file} ...
+  5) 여전히 실패 → static fallback 사용하되 handoff에 건수 보고
+```
+
+**이 절차는 수정 루프 3회와 별개.** 렌더링 문제는 SQL 수정이 아니라 TC 보강으로 해결.
 
 ### 4. 시도 기록 (필수)
 
