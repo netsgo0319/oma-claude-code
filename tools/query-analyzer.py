@@ -54,18 +54,31 @@ DYNAMIC_SCORES = {
 }
 
 
-def classify_level(score):
-    """점수 → 레벨 분류."""
-    if score == 0:
-        return 'L0', 'Static'
-    elif score <= 3:
-        return 'L1', 'Simple Rule'
-    elif score <= 6:
-        return 'L2', 'Dynamic Simple'
-    elif score <= 12:
-        return 'L3', 'Dynamic Complex'
-    else:
-        return 'L4', 'Oracle Complex'
+# 패턴별 최소 레벨 (이 패턴이 있으면 이 레벨 이하로 내려가지 않음)
+# LLM 구조 변환이 필요한 패턴은 점수와 무관하게 최소 L3
+PATTERN_MIN_LEVEL = {
+    'CONNECT_BY': 3, 'START_WITH': 3, 'MERGE_INTO': 3,
+    'MODEL_CLAUSE': 4,
+    'PIVOT': 2, 'UNPIVOT': 2,
+    'XMLTYPE': 2, 'DBMS_CRYPTO': 2,
+    'KEEP_DENSE_RANK': 2, 'TABLE_FUNC': 2,
+    'WM_CONCAT': 2, 'LISTAGG': 2,
+}
+
+
+def classify_level(score, min_level=0):
+    """점수 + 최소 레벨 → 최종 레벨 분류.
+    min_level: 개별 패턴이 강제하는 최소 레벨 (CONNECT_BY가 있으면 최소 L3).
+    점수 기반 레벨과 min_level 중 높은 쪽을 채택."""
+    score_level = (
+        0 if score == 0 else
+        1 if score <= 3 else
+        2 if score <= 6 else
+        3 if score <= 12 else 4
+    )
+    level_num = max(score_level, min_level)
+    names = {0: 'Static', 1: 'Simple Rule', 2: 'Dynamic Simple', 3: 'Dynamic Complex', 4: 'Oracle Complex'}
+    return f'L{level_num}', names[level_num]
 
 
 def analyze(parsed_path):
@@ -116,13 +129,18 @@ def analyze(parsed_path):
         score = 0
         breakdown = {}
 
-        # Oracle 패턴 점수
+        # Oracle 패턴 점수 + 최소 레벨 계산
+        min_level = 0
         for pat in q.get('oracle_patterns', []):
             s = ORACLE_SCORES.get(pat, 1)
             if s > 0:
                 key = f'oracle_{pat.lower()}'
                 breakdown[key] = breakdown.get(key, 0) + s
                 score += s
+            # 이 패턴이 강제하는 최소 레벨 확인
+            pat_min = PATTERN_MIN_LEVEL.get(pat, 0)
+            if pat_min > min_level:
+                min_level = pat_min
 
         # 동적 SQL 점수
         for dyn in q.get('dynamic_elements', []):
@@ -148,7 +166,7 @@ def analyze(parsed_path):
             breakdown['dollar_substitution'] = 1
             score += 1
 
-        level, level_name = classify_level(score)
+        level, level_name = classify_level(score, min_level)
         scores.append({
             'query_id': q['query_id'],
             'score': score,
