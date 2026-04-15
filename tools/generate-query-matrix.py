@@ -67,6 +67,7 @@ OVERALL_LABELS = {
     'FAIL_TC_TYPE_MISMATCH': '바인드값 타입/길이 불일치',
     'FAIL_TC_OPERATOR': '연산자 타입 불일치',
     # 미테스트
+    'NOT_TESTED_DML_SKIP': 'DML이라 Compare 스킵 (EXPLAIN만 통과)',
     'NOT_TESTED_NO_RENDER': 'MyBatis 렌더링 실패',
     'NOT_TESTED_NO_DB': 'DB 미접속/비교 미실행',
     'NOT_TESTED_PENDING': '변환 미완료',
@@ -411,6 +412,9 @@ def main():
                 overall_detail = f'{explain_category}: {explain_error[:150]}'
 
             # 미테스트 — 상세 사유 필수
+            elif conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'not_tested' and qtype in ('insert', 'update', 'delete'):
+                overall = 'NOT_TESTED_DML_SKIP'
+                overall_detail = f'DML({qtype})이라 Compare 스킵: file={fname}, EXPLAIN pass'
             elif conv_status in ('converted', 'no_change') and explain_status == 'not_tested' and mybatis == 'no':
                 overall = 'NOT_TESTED_NO_RENDER'
                 overall_detail = f'MyBatis 렌더링 실패: file={fname}, mybatis=no (OGNL/foreach 에러 가능)'
@@ -519,7 +523,7 @@ def main():
         'FAIL_SCHEMA_MISSING', 'FAIL_COLUMN_MISSING', 'FAIL_FUNCTION_MISSING',
         'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
         'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',
-        'NOT_TESTED_NO_RENDER', 'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
+        'NOT_TESTED_DML_SKIP', 'NOT_TESTED_NO_RENDER', 'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
     ]
     for label in display_order:
         cnt = overall_counts.get(label, 0)
@@ -543,6 +547,7 @@ def main():
             entry = OrderedDict([
                 ('query_id', r['query_id']),
                 ('original_file', r['file']),
+                ('type', r['type']),
                 ('xml_before', r['_xml_before']),
                 ('xml_after', r['_xml_after']),
                 ('sql_before', r['_sql_before']),

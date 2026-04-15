@@ -254,6 +254,10 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
     if explain_status == 'fail':
         return 'FAIL_SYNTAX'
 
+    # DML이면서 Compare 스킵
+    qtype = q.get('type', '')
+    if conv_status in ('converted', 'no_change') and explain_status == 'pass' and compare_status == 'not_tested' and qtype in ('insert', 'update', 'delete'):
+        return 'NOT_TESTED_DML_SKIP'
     if conv_status in ('converted', 'no_change') and explain_status == 'not_tested' and not mybatis:
         return 'NOT_TESTED_NO_RENDER'
     if conv_status in ('converted', 'no_change') and explain_status == 'not_tested':

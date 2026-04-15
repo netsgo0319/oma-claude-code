@@ -199,6 +199,7 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 | FAIL_COMPARE_DIFF | Oracle↔PG 결과 불일치 |
 | FAIL_TC_TYPE_MISMATCH | 바인드값 타입 불일치 |
 | FAIL_TC_OPERATOR | 연산자 타입 불일치 |
+| NOT_TESTED_DML_SKIP | DML이라 Compare 스킵 (EXPLAIN만 통과) |
 | NOT_TESTED_NO_RENDER | MyBatis 렌더링 실패 **(TC 보강으로 반드시 해결)** |
 | NOT_TESTED_NO_DB | DB 미접속 |
 | NOT_TESTED_PENDING | 변환 미완료 |

@@ -213,6 +213,7 @@ stateDiagram-v2
 | FAIL_COMPARE_DIFF | compare fail | 코드 |
 | FAIL_TC_TYPE_MISMATCH | TYPE_MISMATCH | TC |
 | FAIL_TC_OPERATOR | TYPE_OPERATOR | TC |
+| NOT_TESTED_DML_SKIP | DML + explain pass + compare not_tested | 미테스트 |
 | NOT_TESTED_NO_RENDER | mybatis=no | 미테스트 |
 | NOT_TESTED_NO_DB | explain/compare not_tested | 미테스트 |
 | NOT_TESTED_PENDING | conv=pending | 미테스트 |

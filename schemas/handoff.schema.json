@@ -79,6 +79,7 @@
         "FAIL_COMPARE_DIFF":      { "type": "integer" },
         "FAIL_TC_TYPE_MISMATCH":  { "type": "integer" },
         "FAIL_TC_OPERATOR":       { "type": "integer" },
+        "NOT_TESTED_DML_SKIP":    { "type": "integer" },
         "NOT_TESTED_NO_RENDER":   { "type": "integer" },
         "NOT_TESTED_NO_DB":       { "type": "integer" },
         "NOT_TESTED_PENDING":     { "type": "integer" }
