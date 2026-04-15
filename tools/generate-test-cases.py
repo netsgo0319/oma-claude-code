@@ -274,9 +274,12 @@ def _clean_val(v):
 
 
 def _stem(filename):
-    """파일명 stem: prefix(._tmp_ 등) 제거 + .xml 제거. fuzzy 매칭용."""
+    """파일명 stem: prefix 제거 + .xml 제거. fuzzy 매칭용.
+    daiso-xxx__ 프로젝트 prefix도 제거 (e.g. daiso-ams__foo → foo)."""
     name = Path(filename).stem if '.' in filename else filename
     name = re.sub(r'^[._]+tmp[_.]?', '', name, flags=re.I)
+    # 프로젝트 prefix 제거: daiso-xxx__ 또는 daiso-xxx-sub__
+    name = re.sub(r'^daiso-[\w-]+?__', '', name)
     return name
 
 
