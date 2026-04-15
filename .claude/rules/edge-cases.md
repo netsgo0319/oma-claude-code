@@ -177,3 +177,43 @@ inclusion: always
 - **발견일**: 2026-04-12
 - **출처**: Phase4 셀프힐링 (13건)
 - **해결 방법**: manual (MyBatis XML 구조 변경)
+
+---
+
+### TO_CHAR 단일 인자 (2차 발견 — 대량)
+- **Oracle**: `TO_CHAR(expr)` — 숫자/날짜를 문자열로 변환 (NLS_FORMAT 사용)
+- **PostgreSQL**: `(expr)::TEXT` — PG의 TO_CHAR는 포맷 인자 필수
+- **주의**: daiso 프로젝트에서 대량 발견. **converter.py 자동 변환 구현됨 (v2)**
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 회고 — FAIL_SYNTAX 175건 중 상당수
+- **해결 방법**: rule — **converter.py에 `_convert_to_char_single` 추가됨**
+
+---
+
+### 서브쿼리 alias 누락 (FROM 절)
+- **Oracle**: `SELECT * FROM (SELECT ... ) WHERE ...` — alias 없이 동작
+- **PostgreSQL**: `SELECT * FROM (SELECT ... ) AS sub_1 WHERE ...` — alias 필수
+- **주의**: 인라인 뷰, ROWNUM 페이징 래핑 등에서 빈번. **converter.py 자동 변환 구현됨 (v2)**
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 회고 — syntax error at or near "WHERE" 다수
+- **해결 방법**: rule — **converter.py에 `_convert_subquery_alias` 추가됨**
+
+---
+
+### varchar = integer 암묵적 캐스팅
+- **Oracle**: `WHERE CHAR_COL = 1` — 암묵적으로 숫자→문자열 변환
+- **PostgreSQL**: `operator does not exist: character varying = integer` 에러
+- **주의**: TC 바인드값 타입과 PG 컬럼 타입 불일치가 주 원인. validate-queries.py에서 타입 인식 파라미터 바인딩 개선됨
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 회고 — FAIL_TC_OPERATOR 132건, FAIL_TC_TYPE_MISMATCH 229건
+- **해결 방법**: tool 개선 — **validate-queries.py `bind_params()` 타입 추론 강화**
+
+---
+
+### MyBatis ${} 동적 테이블명/컬럼명
+- **Oracle/PG 공통**: `${tableName}`, `${colName}` — 런타임에 테이블/컬럼명 주입
+- **문제**: 검증 시 `placeholder_tbl`로 치환되어 syntax error 발생 (25건)
+- **주의**: validate-queries.py에서 ${} 변수를 유효한 SQL 식별자로 치환하도록 개선됨
+- **발견일**: 2026-04-15
+- **출처**: Step 3 검증 회고 — syntax error at or near "placeholder_tbl"
+- **해결 방법**: tool 개선 — **validate-queries.py `_dollar_replace()` 컨텍스트 인식 치환**

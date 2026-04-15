@@ -812,19 +812,37 @@ SET HEADING ON
                 replacement = f"'{value}'"
             result = re.sub(ib_pattern, replacement, result)
 
-        # Replace any remaining unbound params with default_unbound
-        # Framework pagination params (GRIDPAGING_*) must be empty string
+        # Replace any remaining unbound params with type-aware defaults
         def _unbound_replace(m):
-            pname = m.group(0)[2:-1].split(',')[0].lower()
-            if 'gridpaging' in pname:
+            full = m.group(0)[2:-1]  # strip #{ and }
+            pname = full.split(',')[0].strip().lower()
+            if 'gridpaging' in pname or 'colname' in pname or 'search_condition' in pname:
                 return ''
+            # Type-aware: 숫자형 파라미터명 → 숫자값
+            if any(kw in pname for kw in ('cnt', 'count', 'num', 'seq', 'qty', 'amt', 'idx', 'size', 'page', 'limit', 'offset')):
+                return '1'
+            # 날짜형
+            if any(kw in pname for kw in ('date', 'dt', 'ymd', 'yyyymmdd')):
+                return "'20260115'"
+            # Y/N 플래그
+            if any(kw in pname for kw in ('yn', 'flag', 'delyn', 'useyn')):
+                return "'Y'"
             return default_unbound
         result = re.sub(r'#\{[^}]+\}', _unbound_replace, result)
-        # iBatis: remaining #param# → default_unbound
-        result = re.sub(r'(?<!\{)#(\w+)#', lambda m: default_unbound, result)
-        # Replace ${} / $param$ dollar substitution with placeholder
-        result = re.sub(r'\$\{[^}]+\}', "placeholder_tbl", result)
-        result = re.sub(r'\$(\w+)\$', "placeholder_tbl", result)
+        # iBatis: remaining #param# → type-aware default
+        result = re.sub(r'(?<!\{)#(\w+)#', lambda m: _unbound_replace(m), result)
+        # Replace ${} — 컨텍스트 인식 치환 (placeholder_tbl 대신 유효한 SQL)
+        def _dollar_replace(m):
+            varname = m.group(0)[2:-1].strip().lower()
+            if any(kw in varname for kw in ('table', 'tbl', 'tblnm')):
+                return 'DUAL'
+            if any(kw in varname for kw in ('col', 'column', 'field', 'order')):
+                return '1'
+            if any(kw in varname for kw in ('schema', 'owner')):
+                return 'public'
+            return "'1'"
+        result = re.sub(r'\$\{[^}]+\}', _dollar_replace, result)
+        result = re.sub(r'\$(\w+)\$', _dollar_replace, result)
 
         return result
 
