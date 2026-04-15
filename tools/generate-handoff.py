@@ -592,6 +592,23 @@ def generate_step4(args):
         except Exception:
             pass
 
+    # 필드 완성도 체크
+    field_completeness = {}
+    if json_path.exists():
+        try:
+            mdata = json.load(open(json_path))
+            check_fields = ['query_id', 'original_file', 'type', 'xml_before', 'xml_after',
+                            'sql_before', 'sql_after', 'final_state', 'conversion_method',
+                            'explain_status', 'compare_status', 'complexity',
+                            'conversion_history', 'test_cases', 'attempts']
+            total_q = len(mdata.get('queries', []))
+            for field in check_fields:
+                empty = sum(1 for q in mdata.get('queries', [])
+                            if not q.get(field) and q.get(field) != 0)
+                field_completeness[field] = round((total_q - empty) / max(total_q, 1) * 100, 1)
+        except Exception:
+            pass
+
     return {
         'summary': summary,
         'outputs': {
@@ -603,6 +620,7 @@ def generate_step4(args):
             'all_files_exist_and_nonempty': files_ok,
             'json_required_fields_present': fields_present,
             'required_fields': required_fields,
+            'field_completeness': field_completeness,
         },
     }
 

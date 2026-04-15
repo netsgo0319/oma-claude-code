@@ -636,6 +636,34 @@ def main():
             ]), f, indent=2, ensure_ascii=False)
         print(f"JSON: {json_path}")
 
+        # ★ 필드 완성도 검증 — 빈 필드 비율 체크
+        required_fields = ['query_id', 'original_file', 'type', 'xml_before', 'xml_after',
+                           'sql_before', 'sql_after', 'final_state', 'conversion_method',
+                           'explain_status', 'compare_status', 'complexity']
+        array_fields = ['conversion_history', 'test_cases', 'attempts']
+        total_q = len(json_queries)
+        if total_q > 0:
+            print(f"\n  === 필드 완성도 검증 ({total_q} queries) ===")
+            empty_counts = {}
+            for field in required_fields + array_fields:
+                empty = 0
+                for q in json_queries:
+                    val = q.get(field)
+                    if val is None or val == '' or val == []:
+                        empty += 1
+                if empty > 0:
+                    pct = round(empty / total_q * 100, 1)
+                    empty_counts[field] = (empty, pct)
+                    marker = 'WARN' if pct > 50 else 'INFO'
+                    print(f"    [{marker}] {field}: {empty}/{total_q} 비어있음 ({pct}%)")
+            if not empty_counts:
+                print(f"    [OK] 모든 필드 100% 채워짐")
+            else:
+                warn_fields = [f for f, (c, p) in empty_counts.items() if p > 50]
+                if warn_fields:
+                    print(f"    [WARN] 50% 이상 비어있는 필드: {', '.join(warn_fields)}")
+                    print(f"    → 데이터 소스 확인 필요. 해당 Step이 제대로 실행됐는지 점검.")
+
     # Activity log
     try:
         sys.path.insert(0, str(Path(__file__).parent))
