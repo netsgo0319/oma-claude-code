@@ -139,6 +139,7 @@ def main():
             tc_data = json.load(open(tc_file))
         except Exception:
             continue
+        # Format 1: {query_test_cases: [{query_id, test_cases: [...]}]}
         for qtc in tc_data.get('query_test_cases', []):
             qid = qtc.get('query_id', '')
             if qid:
@@ -150,6 +151,21 @@ def main():
                         'source': tc.get('source', ''),
                     })
                 test_cases_by_qid[qid] = cases
+        # Format 2: {query_id: [{name, params, source, ...}, ...]}  (step-2 tc-generator output)
+        for key, val in tc_data.items():
+            if key == 'query_test_cases':
+                continue
+            if isinstance(val, list) and val:
+                cases = []
+                for tc in val:
+                    if isinstance(tc, dict):
+                        cases.append({
+                            'name': tc.get('name', tc.get('case_id', tc.get('description', ''))),
+                            'params': tc.get('params', tc.get('binds', {})),
+                            'source': tc.get('source', ''),
+                        })
+                if cases and key not in test_cases_by_qid:
+                    test_cases_by_qid[key] = cases
 
     # Load extracted SQL — full SQL from MyBatis engine (not truncated)
     extracted_queries = set()
@@ -343,7 +359,14 @@ def main():
             # SQL: extracted (전체) > query-tracking (잘릴 수 있음)
             sql_before = extracted_oracle_sql.get(qid, '') or q.get('oracle_sql', '') or ''
             sql_after = extracted_pg_sql.get(qid, '') or q.get('pg_sql', '') or ''
+            # attempts: query-tracking uses 'attempts' (from validate-and-fix) or 'history' (from converter)
             raw_attempts = q.get('attempts', []) or []
+            # Fallback: 'history' from converter (version/status/error/fix/agent/timestamp)
+            if not raw_attempts:
+                raw_history = q.get('history', []) or []
+                for h in raw_history:
+                    if h.get('error') or h.get('fix'):
+                        raw_attempts.append(h)
             # Normalize attempts into the spec format
             json_attempts = []
             for idx, att in enumerate(raw_attempts, 1):
@@ -356,7 +379,26 @@ def main():
                     ('result', att.get('status', att.get('result', 'unknown'))),
                 ]))
             json_test_cases = test_cases_by_qid.get(qid, [])
+            # conversion_history: try 'conversion_history' first, fallback to 'rules_applied' + 'history'
             conv_history = q.get('conversion_history', []) or []
+            if not conv_history:
+                rules = q.get('rules_applied', []) or []
+                method_val = q.get('conversion_method', '')
+                history_entries = q.get('history', []) or []
+                for rule in rules:
+                    conv_history.append({
+                        'pattern': rule.split('->')[0].strip() if '->' in rule else rule,
+                        'approach': rule.split('->')[1].strip() if '->' in rule else rule,
+                        'confidence': 'high' if method_val == 'rule' else 'medium',
+                    })
+                if not conv_history and history_entries:
+                    for h in history_entries:
+                        agent = h.get('agent', '')
+                        conv_history.append({
+                            'pattern': agent,
+                            'approach': f"{agent} conversion v{h.get('version', '?')}",
+                            'confidence': 'high' if agent == 'rule' else 'medium',
+                        })
 
             rows.append({
                 'file': fname,
