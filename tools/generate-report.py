@@ -228,6 +228,8 @@ def collect_data(base_dir):
             'type': '',
             'oracle_sql': q.get('sql_before', ''),
             'pg_sql': q.get('sql_after', ''),
+            'xml_before': q.get('xml_before', ''),
+            'xml_after': q.get('xml_after', ''),
             'conversion_method': q.get('conversion_method', ''),
             'complexity': q.get('complexity', ''),
             'status': 'success' if q.get('final_state', '').startswith('PASS_') else 'failed',
@@ -1181,8 +1183,10 @@ function renderFiles(){
       let comp=q.complexity||'-';
       let method=q.conversion_method||q.method||'rule';
       let oraclePatterns=q.oracle_patterns||[];
-      let oracleSQL=q.oracle_sql||q.sql_raw||'';
-      let pgSQL=q.pg_sql||'';
+      let oracleSQL=q.oracle_sql||q.sql_before||q.sql_raw||'';
+      let pgSQL=q.pg_sql||q.sql_after||'';
+      let xmlBefore=q.xml_before||'';
+      let xmlAfter=q.xml_after||'';
       let rules=q.rules_applied||[];
       let explain=q.explain||null;
       let execution=q.execution||null;
@@ -1216,11 +1220,19 @@ function renderFiles(){
       // Query body (hidden by default)
       html+=`<div class="q-body">`;
 
-      // SQL blocks side-by-side
+      // MyBatis XML blocks (변환 전후 XML 태그 포함)
+      if(xmlBefore||xmlAfter){
+        html+=`<div class="sql-container">`;
+        html+=`<div class="sql-block"><div class="sql-block-hdr">Oracle MyBatis XML</div><pre>${esc(xmlBefore)}</pre></div>`;
+        html+=`<div class="sql-block"><div class="sql-block-hdr">PostgreSQL MyBatis XML</div><pre>${esc(xmlAfter)}</pre></div>`;
+        html+=`</div>`;
+      }
+
+      // Rendered SQL blocks (MyBatis 렌더링 후 실제 실행 SQL)
       if(oracleSQL||pgSQL){
         html+=`<div class="sql-container">`;
-        html+=`<div class="sql-block"><div class="sql-block-hdr">Oracle SQL</div><pre>${highlightSQL(oracleSQL)}</pre></div>`;
-        html+=`<div class="sql-block"><div class="sql-block-hdr">PostgreSQL SQL</div><pre>${highlightSQL(pgSQL)}</pre></div>`;
+        html+=`<div class="sql-block"><div class="sql-block-hdr">Oracle SQL (렌더링)</div><pre>${highlightSQL(oracleSQL)}</pre></div>`;
+        html+=`<div class="sql-block"><div class="sql-block-hdr">PostgreSQL SQL (렌더링)</div><pre>${highlightSQL(pgSQL)}</pre></div>`;
         html+=`</div>`;
       }
 

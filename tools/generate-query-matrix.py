@@ -73,15 +73,47 @@ OVERALL_LABELS = {
 }
 
 
+def _load_xml_bodies(xml_dir):
+    """XML 파일에서 쿼리별 MyBatis XML body를 추출.
+    Returns: {(filename, query_id): xml_string}"""
+    import xml.etree.ElementTree as ET
+    bodies = {}
+    xml_dir = Path(xml_dir)
+    if not xml_dir.exists():
+        return bodies
+    for xf in sorted(xml_dir.glob('*.xml')):
+        try:
+            tree = ET.parse(xf)
+            root = tree.getroot()
+            for tag in ['select', 'insert', 'update', 'delete']:
+                for elem in root.findall(f'.//{tag}'):
+                    qid = elem.get('id', '')
+                    if qid:
+                        # ET.tostring으로 태그 포함 XML body 추출
+                        xml_bytes = ET.tostring(elem, encoding='unicode', method='xml')
+                        bodies[(xf.stem, qid)] = xml_bytes
+        except Exception:
+            pass
+    return bodies
+
+
 def main():
     parser = argparse.ArgumentParser(description='Query Validation Matrix')
     parser.add_argument('--output', default='workspace/reports/query-matrix.csv')
     parser.add_argument('--results-dir', default='workspace/results')
+    parser.add_argument('--input-dir', default=None, help='Original Oracle XML dir (for xml_before)')
+    parser.add_argument('--output-dir', default=None, help='Converted PG XML dir (for xml_after)')
     parser.add_argument('--json', action='store_true', help='Also output JSON')
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
     rows = []
+
+    # MyBatis XML body 로드 (변환 전/후)
+    input_xml_dir = args.input_dir or 'workspace/input'
+    output_xml_dir = args.output_dir or 'workspace/output'
+    xml_before_bodies = _load_xml_bodies(input_xml_dir)
+    xml_after_bodies = _load_xml_bodies(output_xml_dir)
 
     # Load validation results — glob all _validation* directories (supports batch splits)
     # test_id format: "filename.queryId.variant" → extract bare queryId
@@ -407,6 +439,8 @@ def main():
                 # JSON-only fields (excluded from CSV fieldnames)
                 '_sql_before': sql_before,
                 '_sql_after': sql_after,
+                '_xml_before': xml_before_bodies.get((fname.replace('.xml', ''), qid), ''),
+                '_xml_after': xml_after_bodies.get((fname.replace('.xml', ''), qid), ''),
                 '_conversion_history': conv_history,
                 '_attempts': json_attempts,
                 '_test_cases': json_test_cases,
@@ -469,6 +503,8 @@ def main():
             entry = OrderedDict([
                 ('query_id', r['query_id']),
                 ('original_file', r['file']),
+                ('xml_before', r['_xml_before']),
+                ('xml_after', r['_xml_after']),
                 ('sql_before', r['_sql_before']),
                 ('sql_after', r['_sql_after']),
                 ('final_state', r['overall_status']),
