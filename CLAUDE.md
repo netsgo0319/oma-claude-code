@@ -8,15 +8,7 @@ MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 직접 변환/검증/보고서 작업을 하지 마라. 서브에이전트에 위임하고 handoff.json으로 결과를 확인하라.
 **가드레일은 `.claude/rules/guardrails.md`에 정의되어 있다. 모든 에이전트가 따른다.**
 
-**오케스트레이션 스킬:** `.claude/skills/orchestrate-pipeline/SKILL.md`를 참조하라.
-Step 진행 확인, gate 체크 스크립트가 `scripts/` 안에 있다:
-```bash
-# Step 진행 확인
-bash .claude/skills/orchestrate-pipeline/scripts/check-step.sh {N}
-
-# Step 3→4 Gate 확인
-bash .claude/skills/orchestrate-pipeline/scripts/check-gate.sh
-```
+**오케스트레이션 스킬 `orchestrate-pipeline`이 자동으로 사용 가능하다.** Step 진행 확인, gate 체크가 필요하면 이 스킬을 호출하라.
 
 ## 파이프라인
 
