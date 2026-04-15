@@ -101,7 +101,7 @@ class QueryValidator:
                 try:
                     tree = ET.parse(xml_file)
                     root = tree.getroot()
-                except (ET.ParseError, ValueError):
+                except (ET.ParseError, ValueError, FileNotFoundError, OSError):
                     continue
                 for tag in ['select', 'insert', 'update', 'delete']:
                     for elem in root.findall(f'.//{tag}'):
@@ -478,7 +478,7 @@ SET HEADING ON
             try:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
-            except (ET.ParseError, ValueError):
+            except (ET.ParseError, ValueError, FileNotFoundError, OSError):
                 continue
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.findall(f'.//{tag}'):
@@ -501,7 +501,7 @@ SET HEADING ON
             try:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
-            except (ET.ParseError, ValueError):
+            except (ET.ParseError, ValueError, FileNotFoundError, OSError):
                 continue
             # Build sql fragment map for <include refid="..."/> resolution
             sql_fragments = {}

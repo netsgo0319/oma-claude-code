@@ -289,6 +289,9 @@ class OracleToPgConverter:
         # 14. DELETE without FROM (Oracle allows, PG requires FROM)
         sql = self._convert_delete_from(sql)
 
+        # 14b. UPDATE SET alias.col -> SET col (PG doesn't allow alias in SET)
+        sql = self._convert_update_set_alias(sql)
+
         # 15. CONNECT BY LEVEL <= N -> generate_series(1, N)
         sql = self._convert_connect_by_level(sql)
 
@@ -1148,6 +1151,24 @@ class OracleToPgConverter:
         )
         if new_sql != sql:
             self._count_rule('DELETE->DELETE_FROM')
+        return new_sql
+
+    def _convert_update_set_alias(self, sql):
+        """UPDATE TABLE A SET A.COL = ... -> UPDATE TABLE A SET COL = ...
+        PG에서 SET 절에 테이블 alias 사용 불가."""
+        if not re.search(r'\bUPDATE\b', sql, re.IGNORECASE):
+            return sql
+        m = re.search(r'\bUPDATE\s+\w+\s+(\w)\s+SET\b', sql, re.IGNORECASE)
+        if not m:
+            return sql
+        alias = m.group(1)
+        new_sql = re.sub(
+            r'\bSET\b(.*?)(?=\bWHERE\b|\bFROM\b|$)',
+            lambda match: match.group(0).replace(f'{alias}.', ''),
+            sql, count=1, flags=re.IGNORECASE | re.DOTALL
+        )
+        if new_sql != sql:
+            self._count_rule('UPDATE_SET_alias->no_alias')
         return new_sql
 
     def _convert_connect_by_level(self, sql):
