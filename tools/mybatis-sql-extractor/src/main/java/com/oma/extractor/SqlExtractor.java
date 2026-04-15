@@ -228,6 +228,14 @@ public class SqlExtractor {
         config.setMapUnderscoreToCamelCase(false);
         config.setUseGeneratedKeys(false);
 
+        // Register stub TypeHandlers for common custom type aliases
+        TypeAliasRegistry typeAliasRegistry = config.getTypeAliasRegistry();
+        typeAliasRegistry.registerAlias("WmsCodeDescTypeHandler", com.oma.typehandler.WmsCodeDescTypeHandler.class);
+        typeAliasRegistry.registerAlias("GmtDateTimeTypeHandler", com.oma.typehandler.GmtDateTimeTypeHandler.class);
+        typeAliasRegistry.registerAlias("UrMstDescTypeHandler", com.oma.typehandler.UrMstDescTypeHandler.class);
+        typeAliasRegistry.registerAlias("TmsCodeDescTypeHandler", com.oma.typehandler.TmsCodeDescTypeHandler.class);
+        typeAliasRegistry.registerAlias("IcomCodeDescTypeHandler", com.oma.typehandler.IcomCodeDescTypeHandler.class);
+
         return config;
     }
 

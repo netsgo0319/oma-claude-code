@@ -1668,7 +1668,7 @@ def main():
     if s.get('execution_total'):
         print(f"  Execution: {s['execution_pass']}/{s['execution_total']} passed")
     if s.get('compare_total'):
-        print(f"  Compare: {s['compare_match']}/{s['compare_total']} matched, {s['compare_fail']} mismatch, {s['compare_warn']} warn")
+        print(f"  Compare: {s['compare_match']}/{s['compare_total']} matched, {s['compare_fail']} mismatch, {s.get('compare_warn', 0)} warn")
     if s.get('extracted_queries'):
         print(f"  MyBatis: {s['extracted_queries']} queries, {s['extracted_variants']} variants")
 

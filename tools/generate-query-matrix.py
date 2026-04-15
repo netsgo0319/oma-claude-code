@@ -323,7 +323,8 @@ def main():
             # 2차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
             if not cmp_results:
                 tracking_cmp = q.get('compare_results', [])
-                if tracking_cmp:
+                # Type check: ensure it's a list, not a string or other type
+                if tracking_cmp and isinstance(tracking_cmp, list):
                     cmp_results = tracking_cmp
             compare_detail = []  # 상세 결과 (JSON 출력용)
             if cmp_results:

@@ -272,7 +272,33 @@ def load_custom_binds(input_dir):
                 raw = raw.replace(': NaN', ': ""').replace(':NaN', ':""')
                 raw = raw.replace(': Infinity', ': 999999').replace(': -Infinity', ': -999999')
                 data = json.loads(raw)
-                if isinstance(data, dict):
+
+                # Handle flat list format (parameter records)
+                if isinstance(data, list):
+                    # Group by sql_id
+                    from collections import defaultdict
+                    grouped = defaultdict(lambda: defaultdict(dict))
+                    for rec in data:
+                        sql_id = rec.get('sql_id')
+                        param_name = rec.get('parameter_name')
+                        sample_value = rec.get('sample_value')
+                        # Group by sql_id, then collect params
+                        if sql_id and param_name:
+                            # Use source_file+sql_id as key for uniqueness
+                            key = sql_id
+                            grouped[key]['params'][param_name] = ('' if sample_value is None else sample_value)
+
+                    # Convert to expected format
+                    for qid, info in grouped.items():
+                        params = info['params']
+                        # Clean NaN/None values
+                        params = {k: ('' if v is None or (isinstance(v, float) and v != v) else v)
+                                 for k, v in params.items()}
+                        custom[qid] = [params]
+                    print(f"  Source-Custom: {len(custom)} queries from {p.name}")
+
+                # Handle dict format (original)
+                elif isinstance(data, dict):
                     for qid, cases in data.items():
                         if isinstance(cases, dict):
                             # NaN/None 값을 빈 문자열로 변환 (MyBatis 렌더링에 필요)
@@ -287,7 +313,7 @@ def load_custom_binds(input_dir):
                                          for k, v in c.items()}
                                 cleaned.append(c)
                             custom[qid] = cleaned
-                print(f"  Source-Custom: {len(custom)} queries from {p.name}")
+                    print(f"  Source-Custom: {len(custom)} queries from {p.name}")
             except Exception as e:
                 print(f"  WARNING: custom-binds.json parse error: {e}")
     return custom
@@ -447,7 +473,7 @@ def main():
     custom_binds_dir = args.custom_binds
     if custom_binds_dir and Path(custom_binds_dir).is_file():
         # 파일 직접 지정
-        custom_binds = load_custom_binds(str(Path(custom_binds_dir).parent), Path(custom_binds_dir).name)
+        custom_binds = load_custom_binds(str(Path(custom_binds_dir).parent))
     elif custom_binds_dir and Path(custom_binds_dir).is_dir():
         custom_binds = load_custom_binds(custom_binds_dir)
     else:
