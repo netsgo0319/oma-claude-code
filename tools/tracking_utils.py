@@ -201,6 +201,7 @@ class TrackingManager:
                     q['status'] = 'validating'
             else:
                 q['explain'] = result
+                q['explain_status'] = status
                 if status == 'pass' and (q['status'] in ('converted', 'validating')):
                     q['status'] = 'validating'
                 elif status == 'fail':
@@ -285,6 +286,7 @@ class TrackingManager:
         q = self._find_query(query_id)
         if q:
             q['status'] = 'success'
+            q['final_state'] = 'PASS_COMPLETE'
             # Compute total timing
             timing = q.get('timing', {})
             total = sum(v for k, v in timing.items() if k.endswith('_ms') and isinstance(v, (int, float)))
@@ -312,6 +314,7 @@ class TrackingManager:
         q = self._find_query(query_id)
         if q:
             q['status'] = 'escalated'
+            q['final_state'] = 'FAIL_ESCALATED'
             self._save()
 
     # ===== Progress.json 갱신 =====

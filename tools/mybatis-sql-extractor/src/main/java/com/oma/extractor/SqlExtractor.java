@@ -232,10 +232,17 @@ public class SqlExtractor {
         try {
             org.apache.ibatis.type.TypeAliasRegistry typeAliasRegistry = config.getTypeAliasRegistry();
             typeAliasRegistry.registerAlias("WmsCodeDescTypeHandler", com.oma.typehandler.WmsCodeDescTypeHandler.class);
+            typeAliasRegistry.registerAlias("CodeDescTypeHandler", com.oma.typehandler.WmsCodeDescTypeHandler.class);
             typeAliasRegistry.registerAlias("GmtDateTimeTypeHandler", com.oma.typehandler.GmtDateTimeTypeHandler.class);
             typeAliasRegistry.registerAlias("UrMstDescTypeHandler", com.oma.typehandler.UrMstDescTypeHandler.class);
             typeAliasRegistry.registerAlias("TmsCodeDescTypeHandler", com.oma.typehandler.TmsCodeDescTypeHandler.class);
             typeAliasRegistry.registerAlias("IcomCodeDescTypeHandler", com.oma.typehandler.IcomCodeDescTypeHandler.class);
+            // Register type handlers by their short names for typeHandler="X" in resultMap
+            config.getTypeHandlerRegistry().register(com.oma.typehandler.WmsCodeDescTypeHandler.class);
+            config.getTypeHandlerRegistry().register(com.oma.typehandler.GmtDateTimeTypeHandler.class);
+            config.getTypeHandlerRegistry().register(com.oma.typehandler.UrMstDescTypeHandler.class);
+            config.getTypeHandlerRegistry().register(com.oma.typehandler.TmsCodeDescTypeHandler.class);
+            config.getTypeHandlerRegistry().register(com.oma.typehandler.IcomCodeDescTypeHandler.class);
         } catch (Exception e) {
             // Ignore if stub classes don't exist
         }

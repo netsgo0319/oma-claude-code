@@ -26,6 +26,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from collections import Counter, OrderedDict
+import re
 
 
 def extract_missing_object(error):
@@ -378,7 +379,13 @@ def main():
                 conv_status = 'no_change'
 
             # --- EXPLAIN ---
-            explain = q.get('explain', {}) or {}
+            raw_explain = q.get('explain', {})
+            # Handle legacy string format (e.g., 'pass', 'fail')
+            if isinstance(raw_explain, str):
+                explain = {'status': raw_explain}
+            else:
+                explain = raw_explain or {}
+            
             explain_status = explain.get('status', '')
             explain_error = explain.get('error', '') or ''
             explain_source = explain.get('validation_source', 'static')
@@ -468,8 +475,20 @@ def main():
 
             # --- 최종 상태 (14개 flat, 하나의 쿼리 = 하나의 상태) ---
 
+            # ★ query-tracking.json의 final_state가 이미 확정 상태이면 우선 사용
+            tracking_final = q.get('final_state', '')
+            valid_final_states = {
+                'PASS_COMPLETE', 'PASS_HEALED', 'PASS_NO_CHANGE',
+                'FAIL_SCHEMA_MISSING', 'FAIL_COLUMN_MISSING', 'FAIL_FUNCTION_MISSING',
+                'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
+                'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',
+                'NOT_TESTED_DML_SKIP', 'NOT_TESTED_NO_RENDER',
+            }
+            if tracking_final in valid_final_states:
+                overall = tracking_final
+                overall_detail = q.get('final_state_detail', '') or f'query-tracking.json 확정: {tracking_final}'
             # 성공
-            if attempt_count > 0 and explain_status == 'pass' and compare_status == 'pass':
+            elif attempt_count > 0 and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_HEALED'
                 overall_detail = f'수정 {attempt_count}회 후 비교 통과'
             elif conv_status == 'no_change' and explain_status == 'pass' and compare_status == 'pass':

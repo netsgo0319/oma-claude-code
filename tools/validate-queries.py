@@ -1701,37 +1701,108 @@ SET HEADING ON
             try:
                 from tracking_utils import TrackingManager
                 tracking_dirs = self._resolve_tracking_dirs(tracking_dir)
-                explain_results = {}
-                for p in result.get('passes', []):
-                    parts = (p if isinstance(p, str) else '').split('.')
-                    if len(parts) >= 2:
-                        qid = parts[1]
-                        if qid not in explain_results:
-                            explain_results[qid] = {'status': 'pass'}
-                for f_item in result.get('failures', []):
-                    parts = f_item.get('test', '').split('.')
-                    if len(parts) >= 2:
-                        explain_results[parts[1]] = {'status': 'fail', 'error': f_item.get('error', '')}
 
+                # Collect EXPLAIN pass/fail per (file, qid)
+                # passes format: "file.qid.variant" strings
+                explain_by_file = {}  # file_no_ext -> {qid -> {status, error}}
+                for p in result.get('passes', []):
+                    tid = p if isinstance(p, str) else ''
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        fname = parts[0]
+                        qid = parts[1]
+                        explain_by_file.setdefault(fname, {})
+                        if qid not in explain_by_file[fname]:
+                            explain_by_file[fname][qid] = {'status': 'pass'}
+                for f_item in result.get('failures', []):
+                    tid = f_item.get('test', '') if isinstance(f_item, dict) else str(f_item)
+                    parts = tid.split('.')
+                    if len(parts) >= 2:
+                        fname = parts[0]
+                        qid = parts[1]
+                        err = f_item.get('error', '') if isinstance(f_item, dict) else ''
+                        cat = f_item.get('category', '') if isinstance(f_item, dict) else ''
+                        explain_by_file.setdefault(fname, {})
+                        explain_by_file[fname][qid] = {'status': 'fail', 'error': err, 'category': cat}
+
+                # Collect compare pass/fail per (file, qid)
                 compare_path = output_path / 'compare_validated.json'
-                compare_pass_qids = set()
+                compare_by_file = {}  # file_no_ext -> {qid -> match_bool}
                 if compare_path.exists():
                     with open(compare_path) as _f:
                         cdata = json.load(_f)
                     for cr in cdata.get('results', []):
-                        if cr.get('match'):
-                            compare_pass_qids.add(cr.get('query_id', ''))
+                        qid_full = cr.get('query_id', '')
+                        parts = qid_full.split('.')
+                        fname = parts[0] if len(parts) >= 2 else ''
+                        qid = parts[1] if len(parts) >= 2 else qid_full
+                        compare_by_file.setdefault(fname, {})
+                        compare_by_file[fname][qid] = bool(cr.get('match'))
 
+                # DBA error keywords for final_state classification
+                dba_kw = ['does not exist', 'relation', 'missing_table', 'missing_column',
+                          'missing_function', 'schema_missing', 'column_missing', 'function_missing']
+
+                updated_count = 0
                 for tdir in tracking_dirs:
                     tm = TrackingManager(tdir)
-                    for qid, res in explain_results.items():
-                        tm.update_explain(qid, res['status'], error=res.get('error'))
-                        if res['status'] == 'pass' and qid in compare_pass_qids:
-                            tm.mark_success(qid)
+                    data = tm._load()
+                    fname_full = data.get('file', '')
+                    fname = fname_full.replace('.xml', '')
+
+                    file_explain = explain_by_file.get(fname, {})
+                    file_compare = compare_by_file.get(fname, {})
+
+                    for q in data.get('queries', []):
+                        qid = q.get('query_id', '')
+                        exp = file_explain.get(qid)
+                        cmp = file_compare.get(qid)
+
+                        if exp:
+                            # Update explain
+                            tm.update_explain(qid, exp['status'], error=exp.get('error'))
+
+                            # Determine final_state
+                            if exp['status'] == 'pass':
+                                if cmp is True:
+                                    q['final_state'] = 'PASS_COMPLETE'
+                                elif cmp is False:
+                                    q['final_state'] = 'FAIL_COMPARE_DIFF'
+                                else:
+                                    # EXPLAIN pass, no compare data
+                                    qtype = q.get('type', 'select')
+                                    if qtype in ('insert', 'update', 'delete'):
+                                        q['final_state'] = 'NOT_TESTED_DML_SKIP'
+                                    else:
+                                        q['final_state'] = 'PASS_COMPLETE'
+                            else:
+                                # EXPLAIN fail — classify error
+                                err_text = (exp.get('error', '') + ' ' + exp.get('category', '')).lower()
+                                if any(kw in err_text for kw in dba_kw):
+                                    if 'column' in err_text:
+                                        q['final_state'] = 'FAIL_COLUMN_MISSING'
+                                    elif 'function' in err_text:
+                                        q['final_state'] = 'FAIL_FUNCTION_MISSING'
+                                    else:
+                                        q['final_state'] = 'FAIL_SCHEMA_MISSING'
+                                elif 'type' in err_text and 'mismatch' in err_text:
+                                    q['final_state'] = 'FAIL_TC_TYPE_MISMATCH'
+                                elif 'operator' in err_text:
+                                    q['final_state'] = 'FAIL_TC_OPERATOR'
+                                else:
+                                    q['final_state'] = 'FAIL_SYNTAX'
+
+                            q['explain_status'] = exp['status']
+                            if cmp is not None:
+                                q['compare_status'] = 'pass' if cmp else 'fail'
+                            updated_count += 1
+
                     tm._save()
-                print(f"  Query tracking updated: {len(explain_results)} queries")
+                print(f"  Query tracking updated: {updated_count} queries (final_state set)")
             except Exception as e:
+                import traceback
                 print(f"  Warning: Could not update tracking: {e}")
+                traceback.print_exc()
 
         total = result.get('total', 0) if result else 0
         p = result.get('pass', 0) if result else 0

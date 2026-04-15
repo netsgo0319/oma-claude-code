@@ -196,10 +196,14 @@ def classify_state(q, explain_passes, explain_failures, compare_results):
 
     # Explain — explain 중첩 객체 + validated.json fallback
     explain = q.get('explain', {}) or {}
+    if not isinstance(explain, dict):
+        explain = {}
     explain_status = explain.get('status', '')
     explain_error = explain.get('error', '') or ''
     # explain_phase35 (MyBatis 렌더링 검증)도 확인
     explain_p35 = q.get('explain_phase35', {}) or {}
+    if not isinstance(explain_p35, dict):
+        explain_p35 = {}
     if explain_p35.get('status') == 'pass' and explain_status != 'pass':
         explain_status = 'pass'
         explain_error = ''
