@@ -164,6 +164,19 @@ else:
 - 면제 사유: FAIL_SCHEMA_MISSING, FAIL_COLUMN_MISSING, FAIL_FUNCTION_MISSING
 - Compare 실행됐지만 양쪽 에러(oracle=None pg=None)인 경우: TC 품질 문제로 별도 보고 (BLOCK은 아님)
 
+### ★ GATE: 2c + 2d 모두 통과해야 보고서 생성 진행
+
+**2c(수정 루프 검증) 또는 2d(Compare 커버리지)에서 BLOCK이면 여기서 중단.**
+보고서를 생성하지 않고, 메인 에이전트에게 BLOCK 사유를 반환하라.
+메인 에이전트가 validate-and-fix를 재위임한 후 다시 reporter를 호출한다.
+
+**BLOCK 사유와 함께 반환:**
+```
+BLOCKED: 수정 루프 미실행 N건 + Compare 미실행 M건. 보고서 생성 불가.
+```
+
+**2c + 2d 모두 OK일 때만 아래 진행:**
+
 ### 3. 쿼리 매트릭스 생성
 
 ```bash

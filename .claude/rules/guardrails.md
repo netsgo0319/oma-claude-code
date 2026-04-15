@@ -29,6 +29,13 @@ inclusion: always
 - **search_path 필수 확인.** 스키마가 public이 아니면 `SET search_path TO {schema}, public;`
 - pgcrypto extension 확인 (PKG_CRYPTO 변환에 필수)
 
+## 보고서 생성 게이트
+
+**reporter 체크리스트를 통과해야만 보고서를 생성할 수 있다:**
+- 2c: FAIL인데 수정 루프 0회인 쿼리 → BLOCK
+- 2d: DBA 3종 외 Compare 미실행 쿼리 → BLOCK
+- BLOCK이면 보고서 생성 금지. validate-and-fix 재위임 후 다시 reporter 호출.
+
 ## 산출물 필수 규칙
 
 **모든 최종 단계(수정, 재검증, 보고서)는 아래 3개 산출물을 반드시 갱신해야 한다:**
