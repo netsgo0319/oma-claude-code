@@ -41,17 +41,30 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 
 ## 수행 절차
 
-### ★★★ 절대 규칙: validate-queries.py --full만 사용 ★★★
+### ★★★ 절대 규칙: 2단계 필수 실행 ★★★
 
-**검증은 반드시 아래 명령 하나로만 한다. 다른 방법 전부 금지.**
+**검증은 반드시 아래 2단계를 순서대로 실행. 1단계를 빼먹으면 동적 SQL 206건이 Compare 실패한다.**
 
 ```bash
+# ★ 1단계: MyBatis 렌더링 (동적 SQL → 실행 가능 SQL 추출) — 빼먹지 마라!
+bash tools/run-extractor.sh --validate
+
+# ★ 2단계: 검증 (EXPLAIN + Execute + Compare 원자적)
 python3 tools/validate-queries.py --full \
   --files {할당된 파일1},{할당된 파일2} \
   --extracted pipeline/step-3-validate-fix/output/extracted_pg/ \
   --output pipeline/step-3-validate-fix/output/validation/ \
   --tracking-dir pipeline/step-1-convert/output/results/
 ```
+
+**1단계(run-extractor.sh)가 하는 일:**
+- MyBatis XML의 `<if>`, `<choose>`, `<foreach>` 등 동적 태그를 Java BoundSql 엔진으로 평가
+- merged-tc.json의 바인드 값을 주입하여 실제 실행 가능한 SQL 생성
+- OGNL ClassNotFoundException → 스텁 자동 생성 + 재빌드 (최대 5회)
+- 출력: `_extracted_pg/{file}-extracted.json` → 2단계가 `--extracted`로 읽음
+
+**1단계 없이 2단계만 실행하면:** 정적 XML 파싱 fallback → 동적 SQL 렌더링 안 됨 → Compare 실패
+**과거 실패 사례: 206건 FAIL_COMPARE_DIFF가 전부 extractor 미실행 때문이었다.**
 
 **금지 목록 (이전에 에이전트가 이것들을 해서 4.3% 커버리지가 나왔다):**
 - ❌ psql -c "EXPLAIN ..." 직접 실행
