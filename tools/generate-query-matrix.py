@@ -151,15 +151,29 @@ def main():
                     })
                 test_cases_by_qid[qid] = cases
 
-    # Load extracted flags
+    # Load extracted SQL — full SQL from MyBatis engine (not truncated)
     extracted_queries = set()
+    extracted_oracle_sql = {}  # {qid: full_sql}
     for ef in glob.glob(str(results_dir / '_extracted' / '*-extracted.json')):
         for q in json.load(open(ef)).get('queries', []):
-            extracted_queries.add(q.get('query_id', ''))
+            qid = q.get('query_id', '')
+            extracted_queries.add(qid)
+            # Best SQL: longest variant (most complete, includes all branches)
+            variants = q.get('sql_variants', [])
+            best_sql = max((v.get('sql', '') for v in variants), key=len, default='')
+            if best_sql and (qid not in extracted_oracle_sql or len(best_sql) > len(extracted_oracle_sql[qid])):
+                extracted_oracle_sql[qid] = best_sql
+
     pg_extracted = set()
+    extracted_pg_sql = {}  # {qid: full_sql}
     for ef in glob.glob(str(results_dir / '_extracted_pg' / '*-extracted.json')):
         for q in json.load(open(ef)).get('queries', []):
-            pg_extracted.add(q.get('query_id', ''))
+            qid = q.get('query_id', '')
+            pg_extracted.add(qid)
+            variants = q.get('sql_variants', [])
+            best_sql = max((v.get('sql', '') for v in variants), key=len, default='')
+            if best_sql and (qid not in extracted_pg_sql or len(best_sql) > len(extracted_pg_sql[qid])):
+                extracted_pg_sql[qid] = best_sql
 
     # Build matrix from query-tracking.json — latest version per file only
     # {file_dir: {version_num: path}} → pick highest version
@@ -326,8 +340,9 @@ def main():
                 overall_detail = f'상태 미분류: conv={conv_status} explain={explain_status} compare={compare_status}'
 
             # --- Extra fields for JSON export (not in CSV) ---
-            sql_before = q.get('oracle_sql', '') or ''
-            sql_after = q.get('pg_sql', '') or ''
+            # SQL: extracted (전체) > query-tracking (잘릴 수 있음)
+            sql_before = extracted_oracle_sql.get(qid, '') or q.get('oracle_sql', '') or ''
+            sql_after = extracted_pg_sql.get(qid, '') or q.get('pg_sql', '') or ''
             raw_attempts = q.get('attempts', []) or []
             # Normalize attempts into the spec format
             json_attempts = []

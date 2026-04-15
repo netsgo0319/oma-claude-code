@@ -36,6 +36,43 @@ inclusion: always
 - 2d: DBA 3종 외 Compare 미실행 쿼리 → BLOCK
 - BLOCK이면 보고서 생성 금지. validate-and-fix 재위임 후 다시 reporter 호출.
 
+## 최종 JSON 산출물 포맷 (query-matrix.json)
+
+**모든 쿼리에 아래 필드가 채워져야 한다. 빈 배열/빈 문자열은 데이터 누락을 의미한다:**
+
+```json
+{
+  "query_id": "selectUser",
+  "original_file": "UserMapper.xml",
+  "sql_before": "SELECT NVL(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "sql_after": "SELECT COALESCE(NAME,'N/A') FROM TB_USER WHERE ID=#{id}",
+  "final_state": "PASS_COMPLETE",
+  "final_state_detail": "변환+비교 통과",
+  "conversion_method": "rule",
+  "conversion_history": [
+    {"pattern": "NVL", "approach": "COALESCE 치환", "confidence": "high"}
+  ],
+  "test_cases": [
+    {"name": "sample_row_1", "params": {"id": "USR001"}, "source": "SAMPLE_DATA"}
+  ],
+  "attempts": [
+    {"attempt": 1, "ts": 1713100860, "error_category": "SYNTAX_ERROR",
+     "error_detail": "syntax error at or near NVL", "fix_applied": "NVL→COALESCE", "result": "fail"},
+    {"attempt": 2, "ts": 1713100920, "error_category": null,
+     "error_detail": null, "fix_applied": "재검증", "result": "pass"}
+  ],
+  "explain_status": "pass",
+  "compare_status": "pass",
+  "complexity": "L1"
+}
+```
+
+**데이터 소스 우선순위:**
+- `sql_before/after`: _extracted_pg/ 전체 SQL > query-tracking.json (잘릴 수 있음)
+- `test_cases`: test-cases.json에서 로드
+- `attempts`: query-tracking.json의 attempts 배열
+- `conversion_history`: query-tracking.json의 conversion_history
+
 ## query-tracking.json 기록 필수
 
 **서브에이전트가 작업 완료 시 query-tracking.json에 반드시 기록해야 할 것:**
