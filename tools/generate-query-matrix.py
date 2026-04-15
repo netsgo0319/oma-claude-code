@@ -320,6 +320,16 @@ def main():
             qid = q.get('query_id', '')
             qtype = q.get('type', '')
             complexity = q.get('complexity', '')
+            # complexity 빈값 fallback: oracle_patterns 수로 추정
+            if not complexity:
+                pat_count = len(q.get('oracle_patterns', []))
+                dyn_count = len(q.get('dynamic_elements', []))
+                if pat_count == 0 and dyn_count == 0:
+                    complexity = 'L0'
+                elif dyn_count > 0:
+                    complexity = 'L2'
+                else:
+                    complexity = 'L1'
             method = q.get('conversion_method', '')
 
             # --- Conversion ---
