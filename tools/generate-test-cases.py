@@ -264,69 +264,10 @@ def get_table_row_counts():
         if parts[1].isdigit(): counts[parts[0]] = int(parts[1])
     print(f"  Source-RowCounts: {len(counts)} tables"); return counts
 
-# ── Name/type inference (fallback) ──────────────
-
-# 범용 기본값 (Oracle/MyBatis 프레임워크 공통)
-_SPECIAL = {
-    'sysdate': '20260115103000', 'surkey': 'SYSTEM', 'inserturkey': 'SYSTEM',
-    'updateurkey': 'SYSTEM', 'delyn': 'N', 'useyn': 'Y',
-}
-
-# 프로젝트별 기본값 — project-defaults.json에서 로드 (없으면 무시)
-def _load_project_defaults():
-    for p in ['pipeline/shared/project-defaults.json', 'workspace/input/project-defaults.json']:
-        if Path(p).exists():
-            try:
-                data = json.loads(Path(p).read_text(encoding='utf-8'))
-                if isinstance(data, dict):
-                    _SPECIAL.update({k.lower(): v for k, v in data.items()})
-                    print(f"  Project defaults: {len(data)} values from {p}")
-            except Exception:
-                pass
-            break
-
-_load_project_defaults()
-
-# Framework-injected pagination parameters — empty string at test time
-_FRAMEWORK_PARAMS = {
-    'gridpaging_rownumtype_top', 'gridpaging_rownumtype_bottom',
-    'gridpaging_prefix', 'gridpaging_suffix',
-    'gridpaging_rownum_top', 'gridpaging_rownum_bottom',
-}
-
-def infer_value(param, vo_fields=None, captures=None, col_stats=None, fk_values=None):
-    pn, pu = param.lower(), param.upper()
-    if pn in _FRAMEWORK_PARAMS: return ''
-    if pn in _SPECIAL: return _SPECIAL[pn]
-    if vo_fields and param in vo_fields:
-        base = re.sub(r'<.*?>', '', vo_fields[param])
-        if base in JAVA_TYPE_DEFAULTS: return JAVA_TYPE_DEFAULTS[base]
-    if captures:
-        for k in [pn, pu, param]:
-            if k in captures and captures[k]: return captures[k][0]
-    if fk_values:
-        for k in [pu, pn, param]:
-            if k in fk_values and fk_values[k]: return fk_values[k][0]
-    if col_stats:
-        for k in [pu, pn]:
-            if k in col_stats:
-                try: return int(float(col_stats[k].get('low', '')))
-                except (ValueError, TypeError): pass
-    # PG 컬럼 타입 기반 추론 (타입 안전 바인딩)
-    pg_types = get_pg_column_types()
-    if pg_types:
-        pg_type = pg_types.get(pu, '')
-        if pg_type:
-            for type_prefix, default_val in _PG_TYPE_DEFAULTS.items():
-                if pg_type.startswith(type_prefix):
-                    return default_val
-    if any(k in pn for k in ('qty','cnt','amt','price','prc','rate','seq','no','num',
-                              'idx','id','size','len','weight','page','limit','offset')): return 1
-    if any(k in pn for k in ('date','day','dt','time','tm')): return '20260115'
-    if pn.endswith('yn') or pn == 'yn': return 'Y'
-    if any(k in pn for k in ('key','cd','code','type','div','gb','flag','stat')): return 'A1'
-    if any(k in pn for k in ('nm','name','desc','msg','text','remark','note')): return 'TEST'
-    return 'T'
+# ── infer_value() 제거됨 — LLM이 SQL 문맥 기반으로 TC 값 생성 ──
+# 이전: 파라미터명 패턴 매칭 (qty→1, date→'20260115')
+# 현재: LLM (Bedrock Sonnet)이 테이블명, 컬럼명, WHERE 조건을 보고 추론
+# GRIDPAGING/foreach 등도 LLM 프롬프트에서 가이드
 
 # ── TC assembly per query ───────────────────────
 
@@ -578,7 +519,12 @@ def _foreach_collections(q):
         collections.add(m)
     return list(collections)
 
-def build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None, xml_file=None):
+# build_query_tcs() 제거됨 — main()에서 직접 커스텀/LLM 분기 처리
+# 이전: infer_value + sample_data + Oracle meta → 룰 기반 TC
+# 현재: 커스텀 바인드 → 그대로, 나머지 → LLM (Bedrock Sonnet)
+
+def _legacy_build_query_tcs(qid, q, sample_data, vo_map, pt_map, captures, col_stats, fk_values, table_rows, custom_binds=None, filename=None, xml_file=None):
+    """Deprecated: 호환성 유지용. 새 코드는 main()의 LLM 분기를 사용."""
     raw = q.get('sql_raw', '')
     for b in q.get('sql_branches', []): raw += ' ' + b.get('sql', '')
     params = _params(raw)
@@ -776,45 +722,83 @@ def main():
                     break
         else:
             custom_binds = {}
-    java_src = args.java_src or os.environ.get('JAVA_SRC_DIR', '')
-    vo_map = parse_java_vo(java_src) if java_src else {}
-    sample_data = load_sample_data(samples_dir)
-    pt_map = parse_parameter_types(results_dir)
+    sample_data = load_sample_data(samples_dir)  # LLM 프롬프트에 샘플 힌트로 전달
 
-    if args.skip_oracle or not _ora_ok():
-        captures, col_stats, fk_values, table_rows = {}, {}, {}, {}
-        print("  Oracle not connected — using samples + inference only\n")
-    else:
-        print("  Collecting Oracle metadata...")
-        captures = get_bind_captures()
-        col_stats = get_column_stats()
-        fk_values = get_fk_samples()
-        table_rows = get_table_row_counts()
-        print()
+    # ── TC 생성: 커스텀 바인드 → LLM (infer_value 제거됨) ──
 
-    # Generate TCs per file
     total_files, total_cases, source_counts = 0, 0, {}
+    llm_candidates = []  # LLM에 보낼 쿼리 목록
+
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
         file_tc = {}
         filename = parsed.get('source_file', parsed_path.parent.name)
-        # 원본 XML 경로 (분기 파라미터 추출용)
-        xml_file = None
-        for xdir in [Path('pipeline/shared/input'), Path('workspace/input')]:
-            xf = xdir / filename
-            if xf.exists():
-                xml_file = str(xf)
-                break
+
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
-            tcs = build_query_tcs(qid, q, sample_data, vo_map, pt_map,
-                                  captures, col_stats, fk_values, table_rows, custom_binds, filename, xml_file)
-            if tcs:
-                file_tc[qid] = tcs; total_cases += len(tcs)
-                for c in tcs: source_counts[c['source']] = source_counts.get(c['source'], 0) + 1
+            sql_raw = q.get('sql_raw', '')
+            params = _params(sql_raw)
+            dynamic_tags = [d.get('tag', '') for d in q.get('dynamic_elements', [])]
+
+            # 1) 커스텀 바인드 있으면 그대로 사용
+            custom_key = f"{filename}::{qid}" if filename else qid
+            custom_cases = custom_binds.get(custom_key) if custom_binds else None
+            if not custom_cases and custom_binds:
+                fn_stem = _stem(filename) if filename else ''
+                for ck, cv in custom_binds.items():
+                    if '::' in ck:
+                        ck_file, ck_qid = ck.split('::', 1)
+                        if ck_qid == qid and _stem(ck_file) == fn_stem:
+                            custom_cases = cv
+                            break
+                if not custom_cases:
+                    custom_cases = custom_binds.get(qid)
+
+            if custom_cases:
+                tcs = []
+                for i, cb in enumerate(custom_cases):
+                    binds = dict(cb) if isinstance(cb, dict) else {}
+                    tcs.append({'name': f'custom_{i+1}', 'params': binds, 'source': 'CUSTOM'})
+                file_tc[qid] = tcs
+                total_cases += len(tcs)
+                source_counts['CUSTOM'] = source_counts.get('CUSTOM', 0) + len(tcs)
+
+                # 커스텀에 빈 파라미터가 있으면 LLM 후보에도 추가 (LLM이 채움)
+                all_params_filled = all(
+                    all(p in cb for p in params) for cb in custom_cases if isinstance(cb, dict)
+                ) if params else True
+                if not all_params_filled:
+                    llm_candidates.append({
+                        'query_id': qid, 'sql': sql_raw[:500], 'params': params,
+                        'type': q.get('type', 'select'), 'dynamic_tags': dynamic_tags[:5],
+                        '_file': filename, '_file_tc': file_tc,
+                    })
+
+            # 2) 파라미터 없으면 빈 TC
+            elif not params:
+                # custom_binds에 해당 쿼리가 있으면 params가 비어보여도 진행
+                has_custom = bool(custom_binds.get(custom_key) or custom_binds.get(qid)) if custom_binds else False
+                if not has_custom:
+                    file_tc[qid] = [{'name': 'no_params', 'params': {}, 'source': 'NO_PARAMS'}]
+                    total_cases += 1
+                    source_counts['NO_PARAMS'] = source_counts.get('NO_PARAMS', 0) + 1
+                else:
+                    llm_candidates.append({
+                        'query_id': qid, 'sql': sql_raw[:500], 'params': params,
+                        'type': q.get('type', 'select'), 'dynamic_tags': dynamic_tags[:5],
+                        '_file': filename, '_file_tc': file_tc,
+                    })
+
+            # 3) 나머지: LLM 후보
+            else:
+                llm_candidates.append({
+                    'query_id': qid, 'sql': sql_raw[:500], 'params': params,
+                    'type': q.get('type', 'select'), 'dynamic_tags': dynamic_tags[:5],
+                    '_file': filename, '_file_tc': file_tc,
+                })
+
         if file_tc:
-            # output-dir 지정 시 per-file TC를 별도 디렉토리에 저장
             if output_dir:
                 filename_base = parsed.get('source_file', parsed_path.parent.parent.name)
                 out_tc_dir = output_dir / filename_base / 'v1'
