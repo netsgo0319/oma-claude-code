@@ -156,7 +156,27 @@ LLM 변환한 각 쿼리에 대해 직접 갱신:
 - [ ] output XML 수정됨
 - [ ] query-tracking.json의 pg_sql, conversion_method, status, conversion_history 갱신됨
 
-### 6. handoff.json 생성 (필수 — 완료 전 반드시 실행)
+### 6b. residual 확인 (LLM 변환 후 필수)
+
+LLM 변환 완료 후 conversion-report.json의 `residual_patterns`가 0인지 확인.
+0이 아니면 해당 패턴을 추가 변환해야 한다.
+
+```bash
+python3 -c "
+import json
+r = json.load(open('pipeline/step-1-convert/output/results/{file}/v1/conversion-report.json'))
+rp = r.get('residual_oracle_patterns', [])
+if rp:
+    for p in rp:
+        print(f\"  잔존: {p['pattern']} at line {p['line']}: {p['context'][:80]}\")
+else:
+    print('  잔존 패턴 없음 — OK')
+"
+```
+
+**잔존이 있으면 해당 쿼리의 output XML을 Edit으로 수정하라.**
+
+### 6c. handoff.json 생성 (필수 — 완료 전 반드시 실행)
 
 ```bash
 python3 tools/generate-handoff.py --step 1 \
