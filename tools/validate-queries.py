@@ -136,8 +136,31 @@ class QueryValidator:
             return [tracking_dir]
 
     def load_oracle_queries(self):
-        """Load original Oracle SQL from input XML files and/or query-tracking.json."""
-        # Method 1: From query-tracking.json (preferred — has oracle_sql field)
+        """Load original Oracle SQL from extracted JSON, tracking, or input XML."""
+        # Method 0 (★ best): From MyBatis-extracted Oracle SQL
+        for candidate in [
+            Path('workspace/results/_extracted'),
+            self.results_dir.parent / '_extracted',
+            Path('pipeline/step-1-convert/output/extracted_oracle'),
+        ]:
+            if candidate.exists() and list(candidate.glob('*-extracted.json')):
+                for json_file in sorted(candidate.glob('*-extracted.json')):
+                    try:
+                        data = json.load(open(json_file, 'r', encoding='utf-8'))
+                        for q in data.get('queries', []):
+                            qid = q.get('query_id', '')
+                            for v in q.get('sql_variants', []):
+                                sql = v.get('sql', '')
+                                if sql and sql.strip() and 'error' not in v:
+                                    self.oracle_queries[qid] = sql
+                                    break
+                    except Exception:
+                        pass
+                if self.oracle_queries:
+                    print(f"  [oracle] Loaded {len(self.oracle_queries)} from extracted JSON (MyBatis rendered)")
+                break
+
+        # Method 1: From query-tracking.json (supplement)
         for qt_file in self.results_dir.glob('*/v*/query-tracking.json'):
             try:
                 with open(qt_file, 'r', encoding='utf-8') as f:
@@ -145,7 +168,7 @@ class QueryValidator:
                 for q in tracking.get('queries', []):
                     qid = q.get('query_id', '')
                     oracle_sql = q.get('oracle_sql', '')
-                    if qid and oracle_sql:
+                    if qid and oracle_sql and qid not in self.oracle_queries:
                         self.oracle_queries[qid] = oracle_sql
             except Exception:
                 pass
@@ -161,6 +184,8 @@ class QueryValidator:
                 for tag in ['select', 'insert', 'update', 'delete']:
                     for elem in root.findall(f'.//{tag}'):
                         qid = elem.get('id', 'unknown')
+                        if qid in self.oracle_queries:
+                            continue  # extracted/tracking이 우선
                         parts = []
                         for text in elem.itertext():
                             parts.append(text.strip())
@@ -338,8 +363,11 @@ SET HEADING ON
                     bound_pg = self._bind_positional(pg_sql, param_names, binds)
                 else:
                     bound_pg = self.bind_params(pg_sql, binds)
-                # ★ Oracle 바인딩도 동일한 타입 인식 적용 (execution_error 방지)
-                bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
+                # ★ Oracle 바인딩: extracted(?)면 positional, 아니면 #{param}
+                if '?' in oracle_sql and '#{' not in oracle_sql:
+                    bound_oracle = self._bind_positional(oracle_sql, param_names, binds)
+                else:
+                    bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
                 if qtype in ('insert', 'update', 'delete'):
                     exec_oracle = f"{bound_oracle.rstrip(';')};\nROLLBACK;"
@@ -350,7 +378,12 @@ SET HEADING ON
                         safe_pg += ' LIMIT 100'
                     exec_pg = safe_pg + ';'
                     safe_ora = bound_oracle.rstrip(';')
-                    if 'ROWNUM' not in safe_ora.upper() and 'FETCH FIRST' not in safe_ora.upper():
+                    # ★ NEXTVAL/DUAL은 서브쿼리 래핑 불가 → 직접 실행
+                    has_nextval = re.search(r'\.NEXTVAL|nextval\s*\(', safe_ora, re.I)
+                    has_dual_only = re.match(r'\s*SELECT\s+.+\s+FROM\s+DUAL\s*$', safe_ora, re.I)
+                    if has_nextval or has_dual_only:
+                        exec_oracle = safe_ora + ';'
+                    elif 'ROWNUM' not in safe_ora.upper() and 'FETCH FIRST' not in safe_ora.upper():
                         exec_oracle = f"SELECT * FROM ({safe_ora}) WHERE ROWNUM <= 100;"
                     else:
                         exec_oracle = safe_ora + ';'
@@ -1357,14 +1390,29 @@ SET HEADING ON
                         execute_lines.append(f"\\echo SKIP_DML: {test_id} (no WHERE clause)")
                 execute_lines.append("")
 
-                # Oracle compare — 동일 로직 (SELECT: COUNT, DML: COUNT WHERE)
+                # Oracle compare — extracted면 positional, NEXTVAL/DUAL 보호
                 oracle_sql = self.oracle_queries.get(qid, '')
                 if oracle_sql:
-                    ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds, default_unbound="'1'"))
+                    if '?' in oracle_sql and '#{' not in oracle_sql:
+                        ora_bound = self._flatten_sql(self._bind_positional(oracle_sql, param_names, tc_binds))
+                    else:
+                        ora_bound = self._flatten_sql(self.bind_params(oracle_sql, tc_binds, default_unbound="'1'"))
+                    # 깨진 SQL 감지
+                    if re.match(r'\s*,', ora_bound) or 'WITH ,' in ora_bound:
+                        oracle_lines.append(f"PROMPT SKIP_BROKEN: {test_id} (malformed Oracle SQL)")
+                        oracle_lines.append("")
+                        continue
                     oracle_lines.append(f"PROMPT === {test_id} ===")
                     if qtype == 'select':
                         safe_ora = ora_bound.rstrip(';')
-                        oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
+                        has_nextval = re.search(r'\.NEXTVAL|NEXTVAL\s*\(', safe_ora, re.I)
+                        has_dual_only = re.match(r'\s*SELECT\s+.+\s+FROM\s+DUAL\s*$', safe_ora, re.I)
+                        if has_nextval:
+                            oracle_lines.append(f"PROMPT SKIP_SEQ: {test_id} (NEXTVAL in subquery not allowed)")
+                        elif has_dual_only:
+                            oracle_lines.append(f"{safe_ora};")
+                        else:
+                            oracle_lines.append(f"SELECT COUNT(*) FROM ({safe_ora});")
                     else:
                         dml_where = self._extract_dml_where(ora_bound)
                         if dml_where:
