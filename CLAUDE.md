@@ -23,14 +23,18 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  /learn (수동)
 
 **XML `*.xml` 전부 수집. 파일명 필터 금지. 파싱에서 MyBatis/iBatis 판별.**
 
-**LLM TC 환경변수 확인:**
+**LLM TC 환경변수 확인 (Step 0에서 반드시 체크):**
 ```bash
 export LLM_TC_ENABLED=1
 export AWS_REGION=ap-northeast-2
 export AWS_BEARER_TOKEN_BEDROCK=...        # Bedrock 인증
-export LLM_TC_REGIONS="us-east-1,us-west-2,ap-northeast-2"  # 멀티리전 (throttling 분산)
+export LLM_TC_REGIONS="us-east-1,us-west-2,ap-northeast-2"  # ★ 멀티리전 필수 (단일 리전 throttling)
 export LLM_TC_WORKERS=3                    # 동시 API 호출 수
+
+# boto3 있는 Python 확인 (python3.11이 필요할 수 있음)
+python3.11 -c "import boto3" 2>/dev/null || python3 -c "import boto3" || echo "ERROR: boto3 없음"
 ```
+**`LLM_TC_REGIONS` 미설정 시 단일 리전에서 throttling → 도중 멈춤.** 반드시 멀티리전 설정.
 
 ### Step 1~4: 서브에이전트 위임
 

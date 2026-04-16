@@ -59,29 +59,45 @@ ls pipeline/step-0-preflight/output/samples/*.json 2>/dev/null | wc -l
 
 ### 3. TC 생성 실행
 
+**★ 실행 전 필수 체크:**
 ```bash
-python3 tools/generate-test-cases.py \
-  --samples-dir pipeline/step-0-preflight/output/samples/ \
-  --results-dir pipeline/step-1-convert/output/results/ \
-  --output-dir pipeline/step-2-tc-generate/output/per-file/
+# 1) boto3가 있는 Python 확인 (LLM TC에 필수)
+PYTHON=$(python3.11 -c "import boto3; print('python3.11')" 2>/dev/null || \
+        python3 -c "import boto3; print('python3')" 2>/dev/null || \
+        echo "NONE")
+if [ "$PYTHON" = "NONE" ]; then
+  echo "ERROR: boto3 없음. pip install boto3 또는 python3.11 사용"
+  exit 1
+fi
+
+# 2) 멀티리전 설정 (throttling 방지 — 단일 리전이면 191파일에서 멈출 수 있음)
+export LLM_TC_REGIONS="${LLM_TC_REGIONS:-us-east-1,us-west-2,ap-northeast-2}"
+export LLM_TC_WORKERS="${LLM_TC_WORKERS:-3}"
+echo "LLM: $PYTHON, regions=$LLM_TC_REGIONS, workers=$LLM_TC_WORKERS"
 ```
 
-Java 소스가 있으면 (`$JAVA_SRC_DIR` 설정됨):
+**TC 생성 명령:**
 ```bash
-python3 tools/generate-test-cases.py \
-  --java-src "$JAVA_SRC_DIR" \
-  --samples-dir pipeline/step-0-preflight/output/samples/ \
-  --results-dir pipeline/step-1-convert/output/results/ \
-  --output-dir pipeline/step-2-tc-generate/output/per-file/
-```
-
-고객 바인드가 있으면:
-```bash
-python3 tools/generate-test-cases.py \
+$PYTHON tools/generate-test-cases.py \
   --custom-binds pipeline/shared/custom-binds.json \
   --samples-dir pipeline/step-0-preflight/output/samples/ \
   --results-dir pipeline/step-1-convert/output/results/ \
   --output-dir pipeline/step-2-tc-generate/output/per-file/
+```
+
+**파일 분배 시 (병렬 배치):**
+```bash
+$PYTHON tools/generate-test-cases.py \
+  --files "file1.xml,file2.xml,..." \
+  --custom-binds pipeline/shared/custom-binds.json \
+  --results-dir pipeline/step-1-convert/output/results/ \
+  --output-dir pipeline/step-2-tc-generate/output/per-file/
+```
+
+**★ 실행 후 반드시 확인:**
+```bash
+# LLM TC가 0건이면 잘못된 것
+grep -c '"LLM"' pipeline/step-2-tc-generate/output/per-file/*/v1/test-cases.json 2>/dev/null | tail -3
 ```
 
 **TC 소스 (현재):**
