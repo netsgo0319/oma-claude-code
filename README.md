@@ -217,3 +217,9 @@ python3 tools/generate-report.py --output pipeline/step-4-report/output/migratio
 | Compare 배치 실행 | 쿼리별 subprocess 대신 단일 세션으로 배치 (Oracle 1회 + PG 1회) |
 | File-scoped tracking | query-tracking 갱신 시 (file, qid) 스코프로 충돌 방지 |
 | Compaction 복구 | pipeline/supervisor-state.json으로 상태 복원 |
+
+<!-- harness-eval-badge:start -->
+![Harness Score](https://img.shields.io/badge/harness-7.2%2F10-yellow)
+![Harness Grade](https://img.shields.io/badge/grade-B-yellow)
+![Last Eval](https://img.shields.io/badge/eval-2026--04--16-blue)
+<!-- harness-eval-badge:end -->
