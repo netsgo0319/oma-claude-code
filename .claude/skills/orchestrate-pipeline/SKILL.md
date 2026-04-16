@@ -88,7 +88,18 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 - [ ] Step 3: validate-and-fix 위임 → gate_checks 확인 (★)
 - [ ] GATE: fix_loop=pass AND compare=pass AND NOT_TESTED<50%
 - [ ] Step 4: reporter 위임 → 산출물 3개 확인
+- [ ] Step 5: 실패 진단 (/diagnose) → 개선 액션 확인
+- [ ] (선택) /learn → 패턴 학습 + 룰 승격
 ```
+
+### Step 5: 실패 진단 (Step 4 완료 후 자동 또는 /diagnose)
+```bash
+python3 tools/diagnose-failures.py \
+  --matrix pipeline/step-4-report/output/query-matrix.json \
+  --output pipeline/diagnose/
+```
+FAIL/NOT_TESTED 근본 원인 5+3분류 → 우선순위별 개선 액션 생성.
+`improvement-actions.md`를 읽고 다음 실행에 반영.
 
 ## 참조 문서
 
