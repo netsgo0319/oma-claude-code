@@ -235,7 +235,20 @@ def main():
     val_by_qid = {}        # keyed by bare query_id (best result wins)
     # Also build file-scoped lookup for precise matching
     val_by_file_qid = {}   # keyed by (filename_base, query_id)
-    for vp in sorted(results_dir.glob('_validation*/**/validated.json')):
+    # pipeline 경로도 탐색
+    _extra_val_dirs = [
+        Path('pipeline/step-3-validate-fix/output'),
+        Path('pipeline/step-3-validate-fix/output/validation'),
+    ]
+    _val_files = set()
+    for vp in sorted(results_dir.glob('_validation*/**/validated*.json')):
+        _val_files.add(vp)
+    for _d in _extra_val_dirs:
+        if _d.exists():
+            for vp in sorted(_d.glob('**/validated*.json')):
+                if 'compare' not in vp.name:
+                    _val_files.add(vp)
+    for vp in sorted(_val_files):
         val_dir = vp.parent
         with open(vp) as _f:
             vdata = json.load(_f)
@@ -276,13 +289,27 @@ def main():
     # Load compare results — glob all _validation* directories
     # Also index by bare query_id (compare_results uses query_id or test_id)
     compare_results = {}
-    for cp in sorted(results_dir.glob('_validation*/**/compare_validated.json')):
+    _cmp_files = set()
+    for cp in sorted(results_dir.glob('_validation*/**/compare_validated*.json')):
+        _cmp_files.add(cp)
+    for _d in _extra_val_dirs:
+        if _d.exists():
+            for cp in sorted(_d.glob('**/compare_validated*.json')):
+                _cmp_files.add(cp)
+            for cp in sorted(_d.glob('**/compare_results*.json')):
+                _cmp_files.add(cp)
+    for cp in sorted(_cmp_files):
         with open(cp) as _f:
             cdata = json.load(_f)
         for r in cdata.get('results', []):
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
             compare_results.setdefault(bare, []).append(r)
+            # file-scoped compare lookup
+            parts = raw_qid.split('.')
+            if len(parts) >= 2:
+                fq_key = (parts[0], parts[1])
+                compare_results.setdefault(fq_key, []).append(r)
     for cp in sorted(results_dir.glob('_validation*/**/compare_results.json')):
         with open(cp) as _f:
             cdata = json.load(_f)
@@ -290,6 +317,11 @@ def main():
             raw_qid = r.get('query_id', r.get('test_id', ''))
             bare = _extract_bare_qid(raw_qid) if '.' in raw_qid else raw_qid
             compare_results.setdefault(bare, []).append(r)
+            # file-scoped compare lookup
+            parts = raw_qid.split('.')
+            if len(parts) >= 2:
+                fq_key = (parts[0], parts[1])
+                compare_results.setdefault(fq_key, []).append(r)
 
     # Load test-cases.json files (keyed by query_id)
     test_cases_by_qid = {}
@@ -450,9 +482,13 @@ def main():
                     explain_category = 'SYNTAX_ERROR'
 
             # --- Compare ---
-            # 1차: compare_validated.json에서 (외부 결과)
-            cmp_results = compare_results.get(qid, [])
-            # 2차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
+            # 1차: file-scoped compare (정확한 매칭)
+            fname_no_ext = fname.replace('.xml', '') if fname.endswith('.xml') else fname
+            cmp_results = compare_results.get((fname_no_ext, qid), [])
+            # 2차: bare qid compare (fallback)
+            if not cmp_results:
+                cmp_results = compare_results.get(qid, [])
+            # 3차: query-tracking.json 내부 compare_results (에이전트가 직접 기록)
             if not cmp_results:
                 tracking_cmp = q.get('compare_results', [])
                 if tracking_cmp and isinstance(tracking_cmp, list):
