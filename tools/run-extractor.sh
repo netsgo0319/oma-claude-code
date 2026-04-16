@@ -70,6 +70,17 @@ if [ "$SKIP_BUILD" = false ] && command -v python3 &>/dev/null; then
     fi
 fi
 
+# Step 1.5b: Pre-resolve <include refid> across XML files
+# Cross-file include를 인라인 치환하여 파일별 독립 Config에서도 완전한 SQL 렌더링
+if command -v python3 &>/dev/null && [ -f "$SCRIPT_DIR/pre-resolve-includes.py" ]; then
+    echo ""
+    echo "--- Pre-resolving cross-file <include refid> ---"
+    python3 "$SCRIPT_DIR/pre-resolve-includes.py" --input "$INPUT_DIR"
+    if [ -d "$OUTPUT_DIR" ]; then
+        python3 "$SCRIPT_DIR/pre-resolve-includes.py" --input "$OUTPUT_DIR"
+    fi
+fi
+
 # Step 2: Build (unless --skip-build)
 if [ "$SKIP_BUILD" = false ]; then
     echo ""
