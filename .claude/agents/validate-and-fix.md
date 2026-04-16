@@ -87,14 +87,32 @@ python3 tools/validate-queries.py --full \
 ```
 `_extracted`(Oracle)를 사용하면 Oracle SQL이 PG에 테스트되어 대량 실패한다.
 
-### 2. FAIL 분류 + 수정 루프
+### 2. FAIL 분류 + 수정 루프 (★★★ 반드시 실행)
 
-**fix-loop 스킬을 따라라:**
+**fix-loop 스킬을 따라라. 분석만 하고 멈추는 것은 금지.**
+
+**수정 루프 필수 실행 순서 (DBA 3종 외 모든 FAIL):**
+```
+1) FAIL 쿼리의 에러 메시지 확인
+2) output XML Edit (실제 수정)
+3) run-extractor.sh 재실행 (수정된 XML → SQL 재렌더링)
+4) validate-queries.py --full 재검증
+5) PASS → record-attempt.sh로 기록 / FAIL → 2번으로 (최대 3회)
+```
+
+**금지 행동:**
+- "분석 결과를 보고합니다" → **분석이 아니라 수정하라**
+- "시간이 부족합니다" → **1개라도 수정하라. 0건 수정은 불허**
+- "재추출이 필요합니다" → **run-extractor.sh가 재추출이다. 실행하라**
+- "DBA 이슈라 수정 불가합니다" → **DBA 3종(relation/column/function_missing)만 스킵. 나머지는 수정**
+
+**에이전트가 fix_attempted=0으로 끝나면 GATE에서 BLOCK된다.**
+
+분류:
 - DBA 3종 → 즉시 스킵
 - **추출 아티팩트** → xml_after 확인 후 `_extracted_pg`로 재검증 (fix-loop 스킬 참조)
 - 나머지 FAIL → 최대 3회 수정 루프
 - 매 시도 `record-attempt.sh`로 기록
-- 분석만 하고 멈추지 마라. XML Edit + 재검증 필수.
 
 ### 3. 렌더링 실패 쿼리 해결 (★ 필수)
 
