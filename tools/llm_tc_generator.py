@@ -152,7 +152,7 @@ def _call_bedrock(prompt, query_ids, max_retries=2, region=None):
 
     body = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 8192,
+        "max_tokens": 16384,
         "temperature": 0.3,
         "messages": [
             {"role": "user", "content": prompt}
