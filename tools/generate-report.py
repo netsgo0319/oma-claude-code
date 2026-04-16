@@ -810,6 +810,16 @@ const DATA = __DATA_PLACEHOLDER__;
 
 // ========== Helpers ==========
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function escHL(s,search){
+  // Escape HTML, then highlight search term with yellow background
+  let escaped=esc(s);
+  if(!search)return escaped;
+  try{
+    let re=new RegExp('('+search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    return escaped.replace(re,'<mark style="background:#fbbf24;color:#000;padding:0 1px;border-radius:2px">$1</mark>');
+  }catch(e){return escaped;}
+}
+function _getExpSearch(){return((document.getElementById('exp-search')||{}).value||'').toLowerCase();}
 function fmtSize(b){if(!b)return '-';if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB'}
 function fmtMs(ms){if(ms==null)return '-';if(ms<1000)return ms+'ms';return(ms/1000).toFixed(1)+'s'}
 function statusClass(s){return 'st-'+(s||'pending').replace(/\s/g,'_')}
@@ -1597,7 +1607,7 @@ function expRenderFiles(){
   let statusF=(document.getElementById('exp-status')||{}).value||'';
   let typeF=(document.getElementById('exp-type')||{}).value||'';
   let names=Object.keys(files).sort();
-  let html='', total=0, shown=0;
+  let html='', total=0, shown=0, firstMatch=null;
 
   for(let name of names){
     let f=files[name];
@@ -1626,13 +1636,16 @@ function expRenderFiles(){
     if(failC>0)bar+=`<span style="color:var(--fail)">${failC}F</span> `;
     if(ntC>0)bar+=`<span style="color:var(--dim)">${ntC}NT</span>`;
     html+=`<div onclick="expSelectFile('${esc(name)}')" style="padding:6px 8px;cursor:pointer;border-radius:4px;margin-bottom:2px;font-size:12px;${sel}border-left:3px solid ${failC>0?'var(--fail)':passC>0?'var(--success)':'var(--dim)'}">`;
-    html+=`<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name.replace('.xml',''))}</div>`;
+    html+=`<div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHL(name.replace('.xml',''),search)}</div>`;
     html+=`<div style="color:var(--dim)">${filtered.length}q ${bar}</div>`;
     html+=`</div>`;
+    if(search && !firstMatch) firstMatch=name;
   }
   document.getElementById('exp-panel-files').innerHTML=html||'<p style="color:var(--dim)">없음</p>';
   document.getElementById('exp-count').textContent=`${shown}/${total}`;
-  if(!expSelectedFile && names.length) expSelectFile(names[0]);
+  // 검색 시 첫 매칭 파일 자동 선택
+  if(search && firstMatch && expSelectedFile!==firstMatch) expSelectFile(firstMatch);
+  else if(!expSelectedFile && names.length) expSelectFile(names[0]);
 }
 
 function expSelectFile(name){
@@ -1642,7 +1655,7 @@ function expSelectFile(name){
   let f=(DATA.files||{})[name];
   if(!f){document.getElementById('exp-panel-queries').innerHTML='';return;}
   let queries=f.queries||[];
-  let html='';
+  let html='', _firstQ=null;
   for(let q of queries){
     let qid=q.query_id||q.id||'';
     let fs=q.final_state||'';
@@ -1651,11 +1664,16 @@ function expSelectFile(name){
     let stLabel={'PASS_COMPLETE':'PASS','PASS_HEALED':'HEALED','PASS_NO_CHANGE':'NO_CHG','FAIL_SCHEMA_MISSING':'DBA:TBL','FAIL_COLUMN_MISSING':'DBA:COL','FAIL_FUNCTION_MISSING':'DBA:FN','FAIL_SYNTAX':'SYNTAX','FAIL_COMPARE_DIFF':'CMP_DIFF','FAIL_TC_TYPE_MISMATCH':'TC_TYPE','FAIL_TC_OPERATOR':'TC_OP','FAIL_ESCALATED':'ESCALATED','NOT_TESTED_DML_SKIP':'DML','NOT_TESTED_NO_RENDER':'NO_RENDER','NOT_TESTED_NO_DB':'NO_DB','NOT_TESTED_PENDING':'PENDING'}[fs]||fs;
     let sel=expSelectedQuery===qid?'background:rgba(99,102,241,.2);':'';
     html+=`<div onclick="expSelectQuery('${esc(name)}','${esc(qid)}')" style="padding:5px 8px;cursor:pointer;border-radius:4px;margin-bottom:1px;font-size:12px;${sel}">`;
-    html+=`${icon} <strong>${esc(qid)}</strong> <span style="font-size:10px;color:${isDBA?'var(--warn)':fs.startsWith('PASS_')?'var(--success)':fs.startsWith('FAIL_')?'var(--fail)':'var(--dim)'}">${stLabel}</span>`;
+    let _s=_getExpSearch();
+    html+=`${icon} <strong>${escHL(qid,_s)}</strong> <span style="font-size:10px;color:${isDBA?'var(--warn)':fs.startsWith('PASS_')?'var(--success)':fs.startsWith('FAIL_')?'var(--fail)':'var(--dim)'}">${stLabel}</span>`;
     html+=`</div>`;
+    // 검색 시 SQL 내용 매칭된 쿼리 표시
+    if(_s && !_firstQ && ((q.oracle_sql||'')+(q.pg_sql||'')).toLowerCase().includes(_s)) _firstQ=qid;
   }
   document.getElementById('exp-panel-queries').innerHTML=html;
-  if(queries.length) expSelectQuery(name, queries[0].query_id||queries[0].id||'');
+  let _s2=_getExpSearch();
+  if(_s2 && _firstQ) expSelectQuery(name, _firstQ);
+  else if(queries.length) expSelectQuery(name, queries[0].query_id||queries[0].id||'');
 }
 
 function expSelectQuery(fname, qid){
@@ -1685,13 +1703,14 @@ function expSelectQuery(fname, qid){
   if(finalDetail)html+=`<div style="font-size:11px;color:var(--dim);margin-top:2px">${esc(finalDetail)}</div>`;
   html+=`</div>`;
 
-  // SQL side-by-side
+  // SQL side-by-side (검색어 하이라이트)
   let oraSQL=q.oracle_sql||'';
   let pgSQL=q.pg_sql||'';
+  let _hl=_getExpSearch();
   if(oraSQL||pgSQL){
     html+=`<div style="display:flex;gap:4px;margin-bottom:8px">`;
-    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">Oracle</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${esc(oraSQL)}</pre></div>`;
-    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">PostgreSQL</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${esc(pgSQL)}</pre></div>`;
+    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">Oracle</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${escHL(oraSQL,_hl)}</pre></div>`;
+    html+=`<div style="flex:1;background:rgba(0,0,0,.2);padding:6px;border-radius:4px;overflow:auto;max-height:200px"><div style="font-size:10px;color:var(--dim);margin-bottom:4px">PostgreSQL</div><pre style="font-size:11px;margin:0;white-space:pre-wrap">${escHL(pgSQL,_hl)}</pre></div>`;
     html+=`</div>`;
   }
 
@@ -1700,7 +1719,7 @@ function expSelectQuery(fname, qid){
   let errMsg=(typeof explain==='object'?explain.error:'')||'';
   if(finalStatus.startsWith('FAIL_')&&errMsg){
     html+=`<div style="padding:6px 8px;background:rgba(239,68,68,.05);border-radius:4px;margin-bottom:6px;border-left:3px solid var(--fail)">`;
-    html+=`<strong style="font-size:11px">에러:</strong> <span style="color:var(--fail);font-size:11px">${esc(String(errMsg).substring(0,200))}</span>`;
+    html+=`<strong style="font-size:11px">에러:</strong> <span style="color:var(--fail);font-size:11px">${escHL(String(errMsg).substring(0,200),_hl)}</span>`;
     html+=`</div>`;
   }
 
