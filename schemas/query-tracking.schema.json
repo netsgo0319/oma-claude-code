@@ -3,13 +3,14 @@
   "title": "Query Tracking",
   "description": "쿼리 단위 변환/검증/비교 추적. Step별로 점진적으로 채워진다.",
   "type": "object",
-  "required": ["version", "file", "ts", "queries"],
+  "required": ["version", "file", "queries"],
   "properties": {
     "version": { "type": "integer", "const": 1 },
     "file": { "type": "string", "description": "소스 XML 파일명 (= query-matrix.json의 original_file)" },
     "file_version": { "type": "integer", "description": "변환 버전 (v1, v2, ...)" },
     "ts": { "type": "integer", "description": "UTC Unix timestamp (생성 시각)" },
-    "updated_ts": { "type": "integer", "description": "UTC Unix timestamp (마지막 갱신)" },
+    "created_at": { "type": "string", "description": "ISO 8601 생성 시각 (코드 실제 필드)" },
+    "updated_at": { "type": "string", "description": "ISO 8601 마지막 갱신 (코드 실제 필드)" },
     "queries": {
       "type": "array",
       "items": {
@@ -29,7 +30,7 @@
           "oracle_sql": { "type": "string", "description": "변환 전 Oracle SQL (→ query-matrix의 sql_before)" },
           "pg_sql": { "type": "string", "description": "변환 후 PG SQL (→ query-matrix의 sql_after)" },
           "oracle_patterns": { "type": "array", "items": { "type": "string" } },
-          "conversion_method": { "type": "string", "enum": ["rule", "llm", "manual", "no_change"] },
+          "conversion_method": { "type": "string", "enum": ["rule", "llm", "no_change", "hybrid"] },
           "rules_applied": { "type": "array", "items": { "type": "string" } },
 
           "conversion_history": {
@@ -74,7 +75,7 @@
             "type": "object",
             "description": "EXPLAIN 결과 (→ query-matrix의 explain_status로 flat 변환)",
             "properties": {
-              "status": { "type": "string", "enum": ["pass", "fail", "skipped"] },
+              "status": { "type": "string", "enum": ["pass", "fail", "not_tested"] },
               "error": { "type": ["string", "null"] },
               "ts": { "type": "integer", "description": "UTC Unix timestamp" },
               "duration_ms": { "type": "integer" },
@@ -146,7 +147,7 @@
                 "error_category": { "type": ["string", "null"] },
                 "error_detail": { "type": ["string", "null"] },
                 "fix_applied": { "type": "string" },
-                "result": { "type": "string", "enum": ["pass", "fail", "unknown"] }
+                "result": { "type": "string", "enum": ["pass", "fail"] }
               }
             }
           }

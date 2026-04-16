@@ -177,9 +177,15 @@ def _find_compare_files(val_dir, batches_dir):
 
 
 def _bare_qid(test_id):
+    """Extract bare query_id from test_id.
+    'file.queryId.variant' → queryId (parts[1])
+    'file.queryId'         → queryId (parts[-1], NOT parts[-2]!)
+    'queryId'              → queryId"""
     parts = str(test_id).split('.')
-    if len(parts) >= 2:
-        return parts[-2]
+    if len(parts) >= 3:
+        return parts[1]  # file.queryId.variant → queryId
+    elif len(parts) == 2:
+        return parts[-1]  # file.queryId → queryId
     return str(test_id)
 
 

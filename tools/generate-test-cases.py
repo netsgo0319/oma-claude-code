@@ -832,10 +832,11 @@ def main():
     _SKIP_TC_NAMES = {'null_test'}
     merged_tc = {}
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
+        # filename_base는 매 루프에서 반드시 설정 (이전 루프값 재사용 방지)
+        filename_base = parsed_path.parent.parent.name
         # output-dir 지정 시 per-file TC 경로도 확인
         tc_paths = [parsed_path.parent / 'test-cases.json']
         if output_dir:
-            filename_base = parsed_path.parent.parent.name
             tc_paths.insert(0, output_dir / filename_base / 'v1' / 'test-cases.json')
         tc_path = None
         for tp in tc_paths:

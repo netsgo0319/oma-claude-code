@@ -506,6 +506,7 @@ def main():
                 'FAIL_ESCALATED', 'FAIL_SYNTAX', 'FAIL_COMPARE_DIFF',
                 'FAIL_TC_TYPE_MISMATCH', 'FAIL_TC_OPERATOR',
                 'NOT_TESTED_DML_SKIP', 'NOT_TESTED_NO_RENDER',
+                'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
             }
             if tracking_final in valid_final_states:
                 overall = tracking_final

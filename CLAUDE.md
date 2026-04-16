@@ -41,7 +41,7 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  /learn (수동)
 |------|------|-----------|
 | Step 1 (converter) | 30이하→1개, 31~100→2~3개, 100+→15파일씩 | batch-process.sh는 첫 에이전트만 |
 | Step 2 (tc-generator) | 50이하→1개, 50+→2~3개 | Oracle 메타는 1회 공유 |
-| Step 3 (validate-and-fix) | 20이하→1개, 21~100→2~5개, 100+→15파일씩 | **가장 오래 걸림, 반드시 분할** |
+| Step 3 (validate-and-fix) | 20이하→1개, 21~100→2~5개, 100+→15파일씩 | **`--extracted _extracted_pg` 필수** |
 | Step 4 (reporter) | 항상 1개 | — |
 
 **각 에이전트에 할당 파일 목록을 명시하고, 동시에 spawn하라. 순차 실행 금지.**

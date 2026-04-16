@@ -947,12 +947,12 @@ function renderOverview(){
   stateTableHtml+='</table></div>';
 
   // FAIL 원인 분석 — MyBatis 렌더링 vs 정적 추출 구분
-  let fbe=QM.fail_by_extraction||{};
+  let fbe=qm.fail_by_extraction||{};
   let extFails=fbe.extracted||{};
   let staticFails=fbe.static_fallback||{};
   let extFailTotal=Object.values(extFails).reduce((a,b)=>a+b,0);
   let staticFailTotal=Object.values(staticFails).reduce((a,b)=>a+b,0);
-  let mbx=QM.mybatis_extraction||{};
+  let mbx=qm.mybatis_extraction||{};
   if(extFailTotal+staticFailTotal>0){
     stateTableHtml+=`<div style="margin-top:16px"><h3 style="margin-bottom:8px">FAIL 원인 분석 (추출 경로별)</h3>`;
     stateTableHtml+=`<table style="font-size:12px;width:100%"><tr><th>추출 경로</th><th>쿼리 수</th><th style="text-align:right">FAIL</th><th>주요 FAIL</th><th>의미</th></tr>`;
