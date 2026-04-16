@@ -100,12 +100,22 @@ flowchart LR
 | **3** | **validate-and-fix** | run-extractor.sh + validate-queries.py | validated.json, compare.json | **gate_checks** + Scout→Broadcast |
 | **4** | **reporter** | generate-query-matrix.py, generate-report.py | csv, json, html | validation (fields complete) |
 
-### Step 3 → 4 GATE (★)
+### Step 3 → 4 GATE (★ 2중 방어)
 
-슈퍼바이저가 Step 3 handoff.json의 `gate_checks`를 읽고 판단:
-- `fix_loop_executed.status == "fail"` → 재위임 ("수정 루프 0회 쿼리 있음")
-- `compare_coverage.status == "fail"` → 재위임 ("Compare 미실행 N건")
+**방어 1: generate-handoff.py HARD BLOCK**
+- non-DBA FAIL이 있는데 fix_attempted=0이면 `status: "blocked"` 강제
+- 에이전트가 "분석만 보고"해도 handoff가 blocked → 슈퍼바이저가 재위임
+
+**방어 2: SubagentStop Hook**
+- 서브에이전트 종료 시 `check-fix-loop-ran.py` 자동 실행
+- query-tracking.json에서 non-DBA FAIL의 attempts 검증
+- 0건이면 ⚠️ 경고 → 슈퍼바이저가 인지
+
+**슈퍼바이저 GATE 체크:**
+- `fix_loop_executed.status == "fail"` → 재위임 ("수정 루프 0회")
+- `compare_coverage.status == "fail"` → 재위임 ("Compare 미실행")
 - `fix_attempted == 0` AND 비-DBA FAIL → 재위임 ("수정 0건 불허")
+- `handoff.status == "blocked"` → 무조건 재위임
 
 ---
 
@@ -248,13 +258,18 @@ stateDiagram-v2
       validate-and-fix.md              # Step 3 + gate_checks
       reporter.md                      # Step 4 + assemble
     rules/                             # 공유 규칙 (항상 로드)
-    skills/                            # 스킬 (20+)
+    skills/                            # 스킬 (26개: 6 파이프라인 + 20 도메인)
     commands/                          # CLI 명령
-    settings.json                      # hooks + permissions
+    settings.json                      # hooks (DDL차단, SubagentStop 검증) + permissions
 
   tools/                               # 공유 Python/Bash 도구
-    generate-handoff.py                # ★ handoff.json 생성 유틸
-    assemble-workspace.sh              # ★ pipeline → workspace 심링크 조립
+    generate-handoff.py                # ★ handoff.json 생성 (HARD BLOCK 내장)
+    llm_tc_generator.py                # ★ LLM TC 생성 (3 workers, 멀티리전)
+    pre-scan-stubs.py                  # ★ XML 스캔 → Java stub 자동 생성
+    check-fix-loop-ran.py              # ★ SubagentStop hook — 수정 루프 검증
+    learn-from-results.py              # 결과 학습 + 룰 승격
+    shared_fix_registry.py             # 배치 간 수정 패턴 공유 (feat 브랜치)
+    assemble-workspace.sh              # pipeline → workspace 심링크 조립
 
   schemas/
     handoff.schema.json                # ★ handoff 스키마
