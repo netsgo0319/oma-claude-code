@@ -19,4 +19,15 @@ n = tm.add_attempt('$QUERY_ID',
     fix_applied='$FIX_APPLIED',
     result='$RESULT')
 print(f'Attempt #{n} recorded for $QUERY_ID → $RESULT')
+
+# 성공한 수정은 shared-fixes에 기록 (다른 배치 참조용)
+if '$RESULT' == 'pass' and '$FIX_APPLIED':
+    try:
+        from shared_fix_registry import record_fix
+        # 에러 카테고리를 패턴 ID로 사용
+        record_fix('$ERROR_CAT', '', '',
+                   source_query='$QUERY_ID', agent='fix-loop')
+        print(f'  → Shared fix recorded: $ERROR_CAT')
+    except Exception as e:
+        print(f'  → Shared fix record skipped: {e}')
 "

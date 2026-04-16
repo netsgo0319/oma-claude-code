@@ -20,6 +20,13 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-workspace.sh
 ```
 pipeline → workspace 복사 + merged-tc.json 병합.
 
+### 0.5단계: Shared fixes pre-apply (Scout 후 실행)
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/pre-apply-fixes.sh
+```
+Scout 배치가 발견한 수정 패턴을 output XML에 일괄 적용.
+shared-fixes.jsonl이 없으면 자동 스킵.
+
 ### 1단계: MyBatis 렌더링 (★ 필수)
 ```bash
 bash ${CLAUDE_SKILL_DIR}/scripts/run-extractor.sh
