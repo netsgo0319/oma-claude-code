@@ -855,6 +855,9 @@ SET HEADING ON
 
         return result
 
+    # Framework params that should always bind to empty string (pagination/dynamic wrappers)
+    _FRAMEWORK_PARAM_KEYWORDS = ('gridpaging', 'search_condition', 'colname', 'sortvalue')
+
     @staticmethod
     def _bind_positional(sql, param_names, binds):
         """Replace ? placeholders positionally using param_names + binds dict."""
@@ -862,6 +865,12 @@ SET HEADING ON
         bound_parts = [parts[0]]
         for i in range(1, len(parts)):
             pname = param_names[i-1] if i-1 < len(param_names) else ''
+            pname_lower = pname.lower()
+            # Framework pagination/dynamic SQL params → always empty
+            if any(kw in pname_lower for kw in QueryValidator._FRAMEWORK_PARAM_KEYWORDS):
+                bound_parts.append('')
+                bound_parts.append(parts[i])
+                continue
             val = binds.get(pname) if pname else None
             if val is None:
                 bound_parts.append("'1'")
@@ -1153,13 +1162,15 @@ SET HEADING ON
                 bound_parts = [parts[0]]
                 for i in range(1, len(parts)):
                     pname = param_names[i-1] if i-1 < len(param_names) else ''
+                    pname_lower = pname.lower()
+                    # Framework pagination/dynamic SQL params → always empty
+                    if any(kw in pname_lower for kw in self._FRAMEWORK_PARAM_KEYWORDS):
+                        bound_parts.append('')
+                        bound_parts.append(parts[i])
+                        continue
                     val = tc_binds.get(pname)
                     if val is None:
-                        # GRIDPAGING params → empty (pagination wrapper)
-                        if 'gridpaging' in pname.lower():
-                            bound_parts.append('')
-                        else:
-                            bound_parts.append("'1'")  # fallback
+                        bound_parts.append("'1'")  # fallback
                     elif isinstance(val, (int, float)):
                         bound_parts.append(str(val))
                     elif isinstance(val, str):
@@ -1867,6 +1878,12 @@ SET HEADING ON
         else:
             print("[full] Step 2/5: SKIP EXPLAIN (PG_HOST/PG_DATABASE not set or no script)")
 
+        # Define paths for execute/oracle scripts (needed by Step 2.5 filtering)
+        execute_sql = output_path / 'execute_test.sql'
+        execute_out = output_path / 'execute_results.txt'
+        oracle_sql = output_path / 'oracle_compare.sql'
+        oracle_out = output_path / 'oracle_results.txt'
+
         # Step 2.5: Filter EXPLAIN failures from Execute/Compare scripts
         # Queries that fail EXPLAIN will also fail Execute — skip them to save DB time
         explain_failed = self._parse_explain_failures(explain_out)
@@ -1877,8 +1894,6 @@ SET HEADING ON
             print(f"  Removed: {removed_exec} from execute_test.sql, {removed_ora} from oracle_compare.sql")
 
         # Step 3: Execute
-        execute_sql = output_path / 'execute_test.sql'
-        execute_out = output_path / 'execute_results.txt'
         if pg_host and pg_db and execute_sql.exists():
             print("[full] Step 3/5: Running Execute via psql...")
             run_psql(execute_sql, execute_out, timeout=600)
@@ -1886,8 +1901,6 @@ SET HEADING ON
             print("[full] Step 3/5: SKIP Execute (PG_HOST/PG_DATABASE not set or no script)")
 
         # Step 4: Oracle Compare
-        oracle_sql = output_path / 'oracle_compare.sql'
-        oracle_out = output_path / 'oracle_results.txt'
         ora_host = os.environ.get('ORACLE_HOST', '')
         if ora_host and oracle_sql.exists():
             print("[full] Step 4/5: Running Oracle Compare...")

@@ -237,3 +237,33 @@ inclusion: always
 - **발견일**: 2026-04-15
 - **출처**: Step 3 검증 (21파일 77건)
 - **해결 방법**: llm (구조 변경 필요)
+
+---
+
+### TRUNC(숫자) vs TRUNC(날짜) — 타입 기반 구별
+- **Oracle**: `TRUNC(3.14, 2)` → 숫자 절삭, `TRUNC(SYSDATE)` → 날짜 자정
+- **PostgreSQL**: 숫자 `TRUNC(3.14, 2)` → 그대로 유지, 날짜 `DATE_TRUNC('day', expr)::DATE`
+- **주의**: 현재 converter가 모든 TRUNC를 DATE_TRUNC로 변환하여 숫자 TRUNC 20건+ 오변환. **인자 수 기반 구별**: 1인자=날짜 추정, 2인자=숫자 확정
+- **발견일**: 2026-04-15
+- **출처**: PR #8 보고서 — 수정 루프에서 20건+ 수동 수정
+- **해결 방법**: rule 승격 대상 — **converter.py TRUNC 룰에 인자 수 분기 추가 필요**
+
+---
+
+### REGEXP_INSTR(col, pattern) > 0 → col ~ pattern
+- **Oracle**: `REGEXP_INSTR(COL, '[0-9]') > 0` — 정규식 매칭 존재 여부
+- **PostgreSQL**: `COL ~ '[0-9]'` — POSIX 정규식 매칭
+- **주의**: `REGEXP_INSTR(...) = 0` → `COL !~ pattern`. 위치 반환이 필요한 경우는 PL/pgSQL 함수 필요
+- **발견일**: 2026-04-15 (3회 반복, 승격 대상)
+- **출처**: PR #8 보고서 — 수정 루프에서 반복 수정
+- **해결 방법**: rule 승격 대상 — **converter.py에 REGEXP_INSTR > 0 → ~ 패턴 추가 필요**
+
+---
+
+### COUNT 쿼리 내 무의미한 ORDER BY
+- **Oracle**: `SELECT COUNT(*) FROM T ORDER BY COL` — Oracle은 허용하지만 무의미
+- **PostgreSQL**: 동일하게 허용하지만 성능 저하. PG 옵티마이저가 제거하기도 함
+- **주의**: EXPLAIN 자체는 통과하지만 Compare에서 영향 가능. converter에서 COUNT 쿼리의 ORDER BY 자동 제거하면 깔끔
+- **발견일**: 2026-04-15 (5건 반복)
+- **출처**: PR #8 보고서 — adm-board, adm-item-itemunit, wms-ctmaster-location, wms-wif-das
+- **해결 방법**: rule 승격 대상
