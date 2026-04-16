@@ -59,6 +59,10 @@ else:
 "
 ```
 
+**★ validated.json을 직접 열어서 판단하지 마라.** handoff.json의 gate_checks만 확인.
+validated.json의 구조는 `{passes: [...], failures: [...]}` 형태이며 `results` 배열이 아님.
+reporter가 직접 validated.json을 파싱하면 구조를 잘못 읽어 오판단함.
+
 **gate_checks가 fail이면 여기서 중단. 슈퍼바이저에게 반환:**
 ```
 BLOCKED: fix_loop {N}건 미실행 + compare {M}건 미실행. validate-and-fix 재위임 필요.
