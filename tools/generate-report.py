@@ -1474,14 +1474,21 @@ function renderDBA(){
     html+='<p style="color:var(--dim)">누락 오브젝트 없음</p>';
   } else {
     html+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    html+='<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px">Type</th><th style="text-align:left;padding:6px">Name</th><th style="text-align:left;padding:6px">Action</th><th style="text-align:left;padding:6px">Affected Queries</th></tr>';
+    html+='<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px">Type</th><th style="text-align:left;padding:6px">DB</th><th style="text-align:left;padding:6px">Object</th><th style="text-align:left;padding:6px">조치</th><th style="text-align:left;padding:6px">영향 쿼리</th></tr>';
     for(let obj of dbaObjects){
       let typeColor=obj.type==='table'?'var(--fail)':obj.type==='column'?'var(--warn)':'var(--purple)';
-      let qList=obj.affected_queries.map(q=>`<span style="font-family:var(--mono);font-size:10px">${esc(q.query_id)}</span>`).join(', ');
+      let typeLabel={'table':'TABLE','column':'COLUMN','function':'FUNCTION'}[obj.type]||obj.type;
+      let dbLabel=obj.db||'PG';
+      // 영향 쿼리: 파일명::쿼리ID 형태로 표시
+      let qList=obj.affected_queries.map(q=>{
+        let f=q.file?q.file.replace('.xml','')+'::':'';
+        return `<span style="font-family:var(--mono);font-size:10px">${esc(f+q.query_id)}</span>`;
+      }).join(', ');
       html+=`<tr style="border-bottom:1px solid rgba(255,255,255,.05)">`;
-      html+=`<td style="padding:6px"><span style="color:${typeColor};font-weight:700">${obj.type.toUpperCase()}</span></td>`;
-      html+=`<td style="padding:6px;font-family:var(--mono)">${esc(obj.name)}</td>`;
-      html+=`<td style="padding:6px;font-family:var(--mono);font-size:11px;color:var(--accent2)">${esc(obj.action)}</td>`;
+      html+=`<td style="padding:6px"><span style="color:${typeColor};font-weight:700">${typeLabel}</span></td>`;
+      html+=`<td style="padding:6px;font-size:11px;color:var(--accent2)">${esc(dbLabel)}</td>`;
+      html+=`<td style="padding:6px;font-family:var(--mono);font-weight:bold">${esc(obj.name)}</td>`;
+      html+=`<td style="padding:6px;font-family:var(--mono);font-size:11px;color:var(--dim)">${esc(obj.action)}</td>`;
       html+=`<td style="padding:6px">${obj.affected_queries.length}건 — ${qList}</td>`;
       html+=`</tr>`;
     }

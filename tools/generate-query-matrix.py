@@ -47,14 +47,20 @@ def extract_missing_object(error):
         obj_name = m.group(1).lower().split('.')[-1]  # strip schema prefix
         if obj_name in ORACLE_BUILTIN_TABLES:
             return None  # Oracle 'dual' etc. → 변환 누락, DBA 항목 아님
-        return {'type': 'table', 'name': m.group(1), 'action': f'CREATE TABLE {m.group(1)}'}
+        return {'type': 'table', 'name': m.group(1), 'action': f'CREATE TABLE {m.group(1)}', 'db': 'PG'}
     # column "col" does not exist / of relation "table"
     m = re.search(r'column\s+"?([^"]+)"?\s+(?:of relation\s+"?([^"]+)"?\s+)?does not exist', err, re.I)
     if m:
         col = m.group(1)
         table = m.group(2) or ''
-        return {'type': 'column', 'name': f'{table}.{col}' if table else col,
-                'action': f'ALTER TABLE {table} ADD COLUMN {col}' if table else f'ADD COLUMN {col}'}
+        # 테이블명이 없으면 에러 메시지에서 FROM/JOIN/UPDATE 뒤의 테이블명 추출 시도
+        if not table:
+            t = re.search(r'(?:FROM|JOIN|UPDATE)\s+"?(\w+)"?', err, re.I)
+            if t:
+                table = t.group(1)
+        display_name = f'{table}.{col}' if table else col
+        action = f'ALTER TABLE {table} ADD COLUMN {col}' if table else f'ADD COLUMN {col} (테이블 확인 필요)'
+        return {'type': 'column', 'name': display_name, 'action': action, 'db': 'PG'}
     # function X does not exist
     m = re.search(r'function\s+"?([^"(]+)"?\s*\(', err, re.I)
     if not m:
@@ -63,7 +69,7 @@ def extract_missing_object(error):
         func_name = m.group(1).strip().lower()
         if func_name in ORACLE_BUILTIN_FUNCTIONS:
             return None  # Oracle 내장 함수 → 변환 누락, DBA 항목 아님
-        return {'type': 'function', 'name': m.group(1).strip(), 'action': f'CREATE FUNCTION {m.group(1).strip()}'}
+        return {'type': 'function', 'name': m.group(1).strip(), 'action': f'CREATE FUNCTION {m.group(1).strip()}', 'db': 'PG'}
     return None
 
 
