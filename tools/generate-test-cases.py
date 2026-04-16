@@ -20,6 +20,22 @@ Output:
 import json, re, os, sys, subprocess, argparse
 from pathlib import Path
 
+# ── .env 자동 로딩 ──────────────────────────────
+def _load_dotenv():
+    """프로젝트 루트의 .env를 읽어 미설정 환경변수만 세팅."""
+    for candidate in [Path(__file__).resolve().parent.parent / '.env', Path.cwd() / '.env']:
+        if candidate.exists():
+            for line in candidate.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, val = line.partition('=')
+                key, val = key.strip(), val.strip()
+                if key and key not in os.environ:
+                    os.environ[key] = val
+            break
+_load_dotenv()
+
 # ── Oracle helpers ──────────────────────────────
 
 def _oracle_conn_str():
