@@ -345,7 +345,7 @@ SET HEADING ON
 
             file_key = f"{query.get('file', '')}::{qid}"
             all_cases = self.test_cases.get(file_key, self.test_cases.get(qid, []))
-            selected = self._select_best_tcs(all_cases, max_tcs=2)
+            selected = self._select_best_tcs(all_cases, max_tcs=3)
             if not selected:
                 selected = [{'name': 'default', 'params': {}}]
 
@@ -1273,7 +1273,7 @@ SET HEADING ON
                 # Always try to find TC values — even without param_names
                 tc_file_key = f"{query.get('file', '')}::{qid}"
                 tc_cases = self.test_cases.get(tc_file_key, self.test_cases.get(qid, []))
-                best_tcs = self._select_best_tcs(tc_cases, max_tcs=1)
+                best_tcs = self._select_best_tcs(tc_cases, max_tcs=3)
                 if best_tcs:
                     tc_binds = best_tcs[0].get('params', best_tcs[0].get('binds', {}))
 
