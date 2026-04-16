@@ -550,13 +550,20 @@ def main():
                 'NOT_TESTED_DML_SKIP', 'NOT_TESTED_NO_RENDER',
                 'NOT_TESTED_NO_DB', 'NOT_TESTED_PENDING',
             }
+            # HEALED 판별용: xml_before≠xml_after (에이전트가 record-attempt 누락해도 XML diff로 감지)
+            _xb = xml_before_bodies.get((fname, qid), '')
+            _xa = xml_after_bodies.get((fname, qid), '')
+            xml_changed = bool(_xb and _xa and _xb.strip() != _xa.strip())
+
             if tracking_final in valid_final_states:
                 overall = tracking_final
                 overall_detail = q.get('final_state_detail', '') or f'query-tracking 확정: {tracking_final}'
-            # 성공
-            elif attempt_count > 0 and explain_status == 'pass' and compare_status == 'pass':
+            elif (attempt_count > 0 or xml_changed) and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_HEALED'
-                overall_detail = f'수정 {attempt_count}회 후 비교 통과'
+                if attempt_count > 0:
+                    overall_detail = f'수정 {attempt_count}회 후 비교 통과'
+                else:
+                    overall_detail = 'XML 변경 감지 → 비교 통과 (attempts 미기록)'
             elif conv_status == 'no_change' and explain_status == 'pass' and compare_status == 'pass':
                 overall = 'PASS_NO_CHANGE'
                 overall_detail = 'Oracle 패턴 없어 변환 불필요, 비교 통과'
