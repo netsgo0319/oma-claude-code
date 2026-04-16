@@ -25,6 +25,9 @@ LLM_TC_MAX_TCS = int(os.environ.get('LLM_TC_MAX_TCS_PER_QUERY', '3'))
 LLM_TC_WORKERS = int(os.environ.get('LLM_TC_WORKERS', '3'))  # 동시 API 호출 수
 # 멀티리전 fallback (throttling 시 다른 리전으로)
 LLM_TC_REGIONS = os.environ.get('LLM_TC_REGIONS', LLM_TC_REGION).split(',')  # e.g., "us-east-1,us-west-2,eu-west-1"
+if len(LLM_TC_REGIONS) == 1 and LLM_TC_ENABLED:
+    print(f"  ⚠️  LLM_TC_REGIONS 미설정 — 단일 리전({LLM_TC_REGIONS[0]})만 사용. throttling 위험!")
+    print(f"     export LLM_TC_REGIONS=\"us-east-1,us-west-2,ap-northeast-2\" 설정 권장")
 
 
 def _get_bedrock_client(region=None):
