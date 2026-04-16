@@ -105,7 +105,7 @@ grep -c '"LLM"' pipeline/step-2-tc-generate/output/per-file/*/v1/test-cases.json
 2. **파라미터 없는 쿼리** → NO_PARAMS (빈 TC)
 3. **나머지 전부** → **LLM (Bedrock Sonnet)** — SQL 문맥 기반 TC 생성 (source: "LLM")
 
-**infer_value()는 제거됨** — LLM이 GRIDPAGING, foreach, ${}, 분기 비활성 전부 처리.
+LLM이 GRIDPAGING, foreach, ${}, 분기 비활성 전부 처리. 쿼리당 최대 3개 TC 생성.
 
 **LLM TC 환경변수:**
 ```bash

@@ -282,10 +282,7 @@ def get_table_row_counts():
         if parts[1].isdigit(): counts[parts[0]] = int(parts[1])
     print(f"  Source-RowCounts: {len(counts)} tables"); return counts
 
-# ── infer_value() 제거됨 — LLM이 SQL 문맥 기반으로 TC 값 생성 ──
-# 이전: 파라미터명 패턴 매칭 (qty→1, date→'20260115')
-# 현재: LLM (Bedrock Sonnet)이 테이블명, 컬럼명, WHERE 조건을 보고 추론
-# GRIDPAGING/foreach 등도 LLM 프롬프트에서 가이드
+# ── TC 값 생성: LLM (Bedrock Sonnet)이 SQL 문맥 기반으로 추론 ──
 
 # ── TC assembly per query ───────────────────────
 
@@ -743,7 +740,7 @@ def main():
             custom_binds = {}
     sample_data = load_sample_data(samples_dir)  # LLM 프롬프트에 샘플 힌트로 전달
 
-    # ── TC 생성: 커스텀 바인드 → LLM (infer_value 제거됨) ──
+    # ── TC 생성: 커스텀 바인드 → LLM (Bedrock Sonnet) ──
 
     total_files, total_cases, source_counts = 0, 0, {}
     llm_candidates = []  # LLM에 보낼 쿼리 목록
