@@ -78,7 +78,10 @@ class OracleToPgConverter:
                 for qid in before_queries:
                     pg_sql = after_queries.get(qid, before_queries[qid])
                     rules = list(self.stats.get('rules_applied', {}).keys())
-                    changed = before_queries[qid] != pg_sql
+                    # 공백 정규화 후 비교 (줄바꿈/탭 차이 무시)
+                    before_norm = re.sub(r'\s+', ' ', before_queries[qid]).strip()
+                    after_norm = re.sub(r'\s+', ' ', pg_sql).strip()
+                    changed = before_norm != after_norm
                     tm.update_conversion(
                         qid, pg_sql,
                         'rule' if changed else 'no_change',
@@ -1738,12 +1741,11 @@ class OracleToPgConverter:
         import xml.etree.ElementTree as ET
         queries = {}
         try:
-            # Wrap in root if needed
-            if not content.strip().startswith('<?xml'):
-                wrapped = f'<root>{content}</root>'
-            else:
-                wrapped = content
-            root = ET.fromstring(wrapped)
+            # DOCTYPE/DTD 제거 (ET가 외부 DTD를 resolve 못 해서 ParseError)
+            cleaned = re.sub(r'<!DOCTYPE[^>]*>', '', content)
+            # 네임스페이스 제거 (mybatis-3-mapper.dtd 등)
+            cleaned = re.sub(r'\sxmlns="[^"]*"', '', cleaned)
+            root = ET.fromstring(cleaned)
             for tag in ['select', 'insert', 'update', 'delete']:
                 for elem in root.iter(tag):
                     qid = elem.get('id', '')
@@ -1752,8 +1754,17 @@ class OracleToPgConverter:
                         for t in elem.itertext():
                             text_parts.append(t.strip())
                         queries[qid] = ' '.join(text_parts)
-        except ET.ParseError:
-            pass
+        except (ET.ParseError, ValueError):
+            # Fallback: regex로 추출 (XML 파싱 불가 시)
+            for m in re.finditer(
+                r'<(select|insert|update|delete)\s+[^>]*id\s*=\s*"([^"]+)"[^>]*>(.*?)</\1>',
+                content, re.DOTALL | re.IGNORECASE
+            ):
+                qid = m.group(2)
+                # 태그 제거 후 텍스트만
+                sql_text = re.sub(r'<[^>]+>', ' ', m.group(3))
+                sql_text = re.sub(r'\s+', ' ', sql_text).strip()
+                queries[qid] = sql_text
         return queries
 
     # ========== Diff Generation ==========
