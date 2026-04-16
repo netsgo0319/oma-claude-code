@@ -1527,9 +1527,9 @@ function renderDBA(){
     html+='</table>';
   }
 
-  renderZeroSection('양쪽 모두 0건','var(--warn)','TC 바인드값 또는 데이터 확인 필요',bothZero);
-  renderZeroSection('Oracle만 0건 (PG에는 데이터 있음)','var(--orange)','Oracle 데이터 누락 또는 TC 바인드 불일치',oraZero);
-  renderZeroSection('PG만 0건 (Oracle에는 데이터 있음)','var(--fail)','변환 오류 가능성 — SQL 검토 필요',pgZero);
+  renderZeroSection('양쪽 모두 0건','var(--warn)','TC 바인드값 검토 필요 — 양쪽 다 결과 없음',bothZero);
+  renderZeroSection('Oracle만 0건 (PG에는 데이터 있음)','var(--orange)','★ 재변환 대상 — 비즈니스 로직 변환 오류로 Oracle/PG 결과가 다릅니다',oraZero);
+  renderZeroSection('PG만 0건 (Oracle에는 데이터 있음)','var(--fail)','★ 재변환 대상 — 비즈니스 로직 변환 오류로 PG에서 결과를 못 가져옵니다',pgZero);
 
   document.getElementById('dba-content').innerHTML=html;
 }

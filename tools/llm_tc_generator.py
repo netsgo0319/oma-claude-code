@@ -22,15 +22,17 @@ LLM_TC_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 LLM_TC_MAX_BATCH = int(os.environ.get('LLM_TC_MAX_QUERIES_PER_BATCH', '10'))
 LLM_TC_ENABLED = os.environ.get('LLM_TC_ENABLED', '1') == '1'
 LLM_TC_MAX_TCS = int(os.environ.get('LLM_TC_MAX_TCS_PER_QUERY', '3'))
+LLM_TC_WORKERS = int(os.environ.get('LLM_TC_WORKERS', '3'))  # 동시 API 호출 수
+# 멀티리전 fallback (throttling 시 다른 리전으로)
+LLM_TC_REGIONS = os.environ.get('LLM_TC_REGIONS', LLM_TC_REGION).split(',')  # e.g., "us-east-1,us-west-2,eu-west-1"
 
 
-def _get_bedrock_client():
-    """Bedrock Runtime 클라이언트 생성."""
+def _get_bedrock_client(region=None):
+    """Bedrock Runtime 클라이언트 생성. region 지정 가능 (멀티리전 지원)."""
     import boto3
 
-    # Bearer token 방식 (Claude Code Bedrock 환경)
     bearer = os.environ.get('AWS_BEARER_TOKEN_BEDROCK', '')
-    region = LLM_TC_REGION
+    region = region or LLM_TC_REGION
 
     if bearer:
         from botocore.config import Config
@@ -42,10 +44,8 @@ def _get_bedrock_client():
             ),
             endpoint_url=f'https://bedrock-runtime.{region}.amazonaws.com',
         )
-        # Bearer token은 환경변수로 boto3가 자동 인식하므로 별도 설정 불필요
         return client
     else:
-        # 기본 AWS credentials (IAM role, profile 등)
         return boto3.client('bedrock-runtime', region_name=region)
 
 
@@ -117,9 +117,10 @@ Dynamic tags: {json.dumps(dynamic_tags[:5])}
     return prompt
 
 
-def _call_bedrock(prompt, query_ids, max_retries=2):
-    """Bedrock Claude API 호출. tool_use로 structured output 강제."""
-    client = _get_bedrock_client()
+def _call_bedrock(prompt, query_ids, max_retries=2, region=None):
+    """Bedrock Claude API 호출. tool_use로 structured output 강제.
+    throttling 시 다른 리전으로 fallback."""
+    client = _get_bedrock_client(region=region)
 
     # tool_use 기반 structured output — JSON 스키마 강제
     tc_properties = {}
@@ -194,7 +195,14 @@ def _call_bedrock(prompt, query_ids, max_retries=2):
                 if attempt < max_retries:
                     time.sleep(2 ** attempt)
                     continue
-                print(f"  WARN: Bedrock throttled after {max_retries + 1} attempts")
+                # 모든 재시도 실패 → 다른 리전으로 fallback
+                if not region:
+                    for fallback_region in LLM_TC_REGIONS:
+                        if fallback_region.strip() != LLM_TC_REGION:
+                            print(f"  Throttled → fallback to {fallback_region.strip()}")
+                            return _call_bedrock(prompt, query_ids, max_retries=1,
+                                                region=fallback_region.strip())
+                print(f"  WARN: Bedrock throttled after {max_retries + 1} attempts (all regions)")
             else:
                 print(f"  WARN: Bedrock call failed: {e}")
             return {}
@@ -219,42 +227,63 @@ def generate_tcs_batch(queries, sample_hint=None):
     results = {}
     total = len(queries)
     batches = [queries[i:i + LLM_TC_MAX_BATCH] for i in range(0, total, LLM_TC_MAX_BATCH)]
+    workers = min(LLM_TC_WORKERS, len(batches))
 
-    print(f"  LLM TC: {total} queries in {len(batches)} batches (model: {LLM_TC_MODEL})")
+    print(f"  LLM TC: {total} queries in {len(batches)} batches, {workers} workers (model: {LLM_TC_MODEL})")
+    if len(LLM_TC_REGIONS) > 1:
+        print(f"    regions: {', '.join(r.strip() for r in LLM_TC_REGIONS)}")
 
-    for bi, batch in enumerate(batches):
+    def _process_batch(bi_batch):
+        bi, batch = bi_batch
+        # 리전 라운드로빈 (worker별로 다른 리전 사용)
+        region = LLM_TC_REGIONS[bi % len(LLM_TC_REGIONS)].strip() if len(LLM_TC_REGIONS) > 1 else None
         prompt = _build_prompt(batch, sample_hint)
         query_ids = [q['query_id'] for q in batch]
-        raw = _call_bedrock(prompt, query_ids)
-
-        if not raw:
-            continue
-
-        for qid, tcs in raw.items():
-            if not isinstance(tcs, list):
-                continue
-            cleaned = []
-            for i, tc in enumerate(tcs):
-                if isinstance(tc, dict) and 'params' in tc:
-                    params = tc['params']
-                elif isinstance(tc, dict):
-                    # params 키 없이 직접 파라미터가 온 경우
-                    params = tc
-                else:
+        raw = _call_bedrock(prompt, query_ids, region=region)
+        batch_results = {}
+        if raw:
+            for qid, tcs in raw.items():
+                if not isinstance(tcs, list):
                     continue
+                cleaned = []
+                for i, tc in enumerate(tcs):
+                    if isinstance(tc, dict) and 'params' in tc:
+                        params = tc['params']
+                    elif isinstance(tc, dict):
+                        params = tc
+                    else:
+                        continue
+                    params = {k: (v if v is not None else '') for k, v in params.items()}
+                    cleaned.append({
+                        'name': tc.get('name', f'tc_llm_{i + 1}'),
+                        'params': params,
+                        'source': 'LLM',
+                    })
+                if cleaned:
+                    batch_results[qid] = cleaned
+        return bi, batch_results
 
-                # None 값 정리
-                params = {k: (v if v is not None else '') for k, v in params.items()}
-                cleaned.append({
-                    'name': tc.get('name', f'tc_llm_{i + 1}'),
-                    'params': params,
-                    'source': 'LLM',
-                })
-            if cleaned:
-                results[qid] = cleaned
-
-        if (bi + 1) % 5 == 0 or bi == len(batches) - 1:
-            print(f"    batch {bi + 1}/{len(batches)}: {len(results)} queries generated")
+    # 병렬 실행 (ThreadPoolExecutor)
+    if workers > 1:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_process_batch, (bi, batch)): bi
+                      for bi, batch in enumerate(batches)}
+            for future in as_completed(futures):
+                try:
+                    bi, batch_results = future.result()
+                    results.update(batch_results)
+                    if (bi + 1) % 5 == 0 or bi == len(batches) - 1:
+                        print(f"    batch {bi + 1}/{len(batches)}: {len(results)} queries generated")
+                except Exception as e:
+                    print(f"    batch error: {e}")
+    else:
+        # 순차 실행 (worker=1)
+        for bi, batch in enumerate(batches):
+            _, batch_results = _process_batch((bi, batch))
+            results.update(batch_results)
+            if (bi + 1) % 5 == 0 or bi == len(batches) - 1:
+                print(f"    batch {bi + 1}/{len(batches)}: {len(results)} queries generated")
 
     print(f"  LLM TC done: {len(results)} queries with TC")
     return results

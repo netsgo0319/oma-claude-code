@@ -697,6 +697,7 @@ def main():
     ap.add_argument('--java-src', default=None, help='Java source dir for VO parsing')
     ap.add_argument('--skip-oracle', action='store_true')
     ap.add_argument('--dml-row-limit', type=int, default=10000)
+    ap.add_argument('--files', default=None, help='Comma-separated XML filenames to process (for parallel batching)')
     args = ap.parse_args()
 
     global DML_ROW_LIMIT
@@ -728,12 +729,17 @@ def main():
 
     total_files, total_cases, source_counts = 0, 0, {}
     llm_candidates = []  # LLM에 보낼 쿼리 목록
+    file_filter = set(f.strip() for f in args.files.split(',')) if args.files else None
+    if file_filter:
+        print(f"  File filter: {len(file_filter)} files")
 
     for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
         try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
         except Exception: continue
-        file_tc = {}
         filename = parsed.get('source_file', parsed_path.parent.name)
+        if file_filter and filename not in file_filter:
+            continue
+        file_tc = {}
 
         for q in parsed.get('queries', []):
             qid = q.get('query_id') or q.get('id', '')
