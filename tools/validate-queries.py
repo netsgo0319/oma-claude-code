@@ -670,37 +670,34 @@ SET HEADING ON
 
     @staticmethod
     def _select_best_tcs(tc_cases, max_tcs=2):
-        """Select best test cases prioritizing CUSTOM > SAMPLE > INFERRED > null/fallback."""
+        """Select best (hardest) test cases — 파라미터가 많이 채워진 TC 우선.
+        빈값/null TC보다 실값이 많은 TC가 더 많은 분기를 활성화하여 검증 커버리지가 높음."""
         if not tc_cases:
             return []
-        priority_map = {'CUSTOM': 0, 'SAMPLE_DATA': 1, 'SAMPLE': 1, 'INFERRED': 2}
-        buckets = {0: [], 1: [], 2: [], 9: []}
+
+        scored = []
         for tc in tc_cases:
             if not isinstance(tc, dict):
                 continue
-            source = str(tc.get('source', tc.get('name', ''))).upper()
             params = tc.get('params', tc.get('binds', {}))
-            if isinstance(params, dict) and params:
-                if sum(1 for v in params.values() if v is not None) == 0:
-                    buckets[9].append(tc)
-                    continue
-            matched = False
-            for key, pri in priority_map.items():
-                if key in source:
-                    buckets[pri].append(tc)
-                    matched = True
-                    break
-            if not matched:
-                name = str(tc.get('name', '')).lower()
-                buckets[9 if 'null' in name else 2].append(tc)
-        result = []
-        for pri in [0, 1, 2, 9]:
-            for tc in buckets[pri]:
-                if len(result) >= max_tcs:
-                    break
-                result.append(tc)
-            if len(result) >= max_tcs:
-                break
+            if not isinstance(params, dict):
+                continue
+
+            # 점수: 실값 파라미터 수 (None, '', 'NULL' 제외)
+            filled = sum(1 for v in params.values()
+                        if v is not None and v != '' and str(v).upper() != 'NULL')
+            # 리스트 파라미터는 가중치 (foreach 분기 활성)
+            list_bonus = sum(1 for v in params.values() if isinstance(v, list) and len(v) > 1)
+            # CUSTOM > LLM > 기타 소스 가중치
+            source = str(tc.get('source', '')).upper()
+            source_bonus = 3 if 'CUSTOM' in source else 2 if 'LLM' in source else 1
+
+            score = filled * 10 + list_bonus * 5 + source_bonus
+            scored.append((score, tc))
+
+        # 점수 높은 순 (가장 어려운 TC)
+        scored.sort(key=lambda x: -x[0])
+        result = [tc for _, tc in scored[:max_tcs]]
         return result
 
     def load_extracted(self, extracted_dir):
