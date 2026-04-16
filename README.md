@@ -79,7 +79,7 @@ workspace/                           하위 호환 (심링크 뷰)
 | 에이전트 | 모델 | 역할 |
 |---------|------|------|
 | **converter** | **Opus[1M]** | Oracle→PG 변환. batch-process.sh 룰 변환 + LLM 복합 변환. 11개 스킬 preload |
-| **tc-generator** | Sonnet | TC 생성. 고객바인드 > **LLM(Bedrock Sonnet)** > 분기변형 > 추론 |
+| **tc-generator** | Sonnet | TC 생성. 커스텀바인드 > **LLM(Bedrock Sonnet, 3 workers 병렬)** — infer_value 제거됨 |
 | **validate-and-fix** | **Sonnet** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
 | **reporter** | Sonnet | 보고서. query-matrix.json → HTML 4탭 (Overview/Explorer/DBA/Log) |
 
@@ -99,6 +99,12 @@ export PG_PORT=5432
 export PG_DATABASE=target_db
 export PG_USER=migration_user
 export PG_PASSWORD=****
+
+# LLM TC 생성 (Step 2)
+export LLM_TC_ENABLED=1
+export AWS_BEARER_TOKEN_BEDROCK=...                          # Bedrock 인증 토큰
+export LLM_TC_REGIONS="us-east-1,us-west-2,ap-northeast-2"  # 멀티리전 (throttling 분산)
+export LLM_TC_WORKERS=3                                      # 동시 API 호출 수
 ```
 
 ## 실행

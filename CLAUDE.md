@@ -23,7 +23,14 @@ Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  /learn (수동)
 
 **XML `*.xml` 전부 수집. 파일명 필터 금지. 파싱에서 MyBatis/iBatis 판별.**
 
-**LLM TC 환경변수 확인:** `LLM_TC_ENABLED=1`, `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK` 설정 필요.
+**LLM TC 환경변수 확인:**
+```bash
+export LLM_TC_ENABLED=1
+export AWS_REGION=ap-northeast-2
+export AWS_BEARER_TOKEN_BEDROCK=...        # Bedrock 인증
+export LLM_TC_REGIONS="us-east-1,us-west-2,ap-northeast-2"  # 멀티리전 (throttling 분산)
+export LLM_TC_WORKERS=3                    # 동시 API 호출 수
+```
 
 ### Step 1~4: 서브에이전트 위임
 
