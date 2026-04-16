@@ -863,6 +863,48 @@ def main():
     except Exception as e:
         print(f"\n  LLM TC error: {e}")
 
+    # ── foreach collection 후처리 (커스텀 + LLM 모든 TC) ──
+    # LLM이 대부분 리스트를 잘 만들지만, 커스텀 바인드에서 빠지거나 LLM이 빈값을 줄 수 있음
+    foreach_patched = 0
+    for parsed_path in sorted(results_dir.glob('*/v1/parsed.json')):
+        try: parsed = json.loads(parsed_path.read_text(encoding='utf-8'))
+        except Exception: continue
+        for q in parsed.get('queries', []):
+            foreach_cols = _foreach_collections(q)
+            if not foreach_cols:
+                continue
+            qid = q.get('query_id') or q.get('id', '')
+            # per-file TC 파일에서 해당 쿼리의 TC를 읽어 보정
+            if output_dir:
+                fname = parsed.get('source_file', parsed_path.parent.parent.name)
+                tc_path = output_dir / fname / 'v1' / 'test-cases.json'
+            else:
+                tc_path = parsed_path.parent / 'test-cases.json'
+            if not tc_path.exists():
+                continue
+            try:
+                ftcs = json.loads(tc_path.read_text(encoding='utf-8'))
+            except Exception:
+                continue
+            changed = False
+            for tc in ftcs.get(qid, []):
+                if not isinstance(tc, dict) or 'params' not in tc:
+                    continue
+                for fc in foreach_cols:
+                    val = tc['params'].get(fc)
+                    if val is None or val == '' or val == 'NULL':
+                        tc['params'][fc] = ['1', '2']
+                        foreach_patched += 1
+                        changed = True
+                    elif isinstance(val, str) and ',' in val:
+                        tc['params'][fc] = [v.strip() for v in val.split(',')]
+                        foreach_patched += 1
+                        changed = True
+            if changed:
+                tc_path.write_text(json.dumps(ftcs, indent=2, ensure_ascii=False), encoding='utf-8')
+    if foreach_patched:
+        print(f"  foreach collection 후처리: {foreach_patched} params patched")
+
     # Merged TC for MyBatis extractor
     # null_test는 MyBatis 렌더링 실패 가능 → 제외
     # empty_string은 분기 비활성 테스트에 유용 → 포함
