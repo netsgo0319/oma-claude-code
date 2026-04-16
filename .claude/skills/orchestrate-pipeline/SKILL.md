@@ -72,6 +72,40 @@ Agent({ subagent_type: "reporter", prompt: "
 | 3 | 3 |
 | 4 | 2 |
 
+## 에이전트 진행 모니터링
+
+서브에이전트 spawn 후 대기 중 주기적으로 실행하여 사용자에게 진행 상태를 보여줘라:
+
+```bash
+echo "=== 에이전트 진행 상태 ==="
+# Step 1: 변환 완료 파일 수
+echo "Step 1 변환:"
+ls pipeline/step-1-convert/output/xml/*.xml 2>/dev/null | wc -l | xargs -I{} echo "  변환 XML: {} 파일"
+
+# Step 2: TC 생성 현황
+echo "Step 2 TC:"
+python3 -c "
+import json, glob
+tc_files = glob.glob('pipeline/step-2-tc-generate/output/per-file/*/v1/test-cases.json')
+total_tcs = 0
+for f in tc_files:
+    try: total_tcs += sum(len(v) for v in json.load(open(f)).values())
+    except: pass
+print(f'  TC 파일: {len(tc_files)}, TC 총: {total_tcs}건')
+" 2>/dev/null
+
+# Step 3: 검증 배치 현황
+echo "Step 3 검증:"
+for d in pipeline/step-3-validate-fix/output/validation/batch*/; do
+  [ -d "$d" ] || continue
+  if [ -f "$d/validated.json" ]; then
+    python3 -c "import json;d=json.load(open('${d}validated.json'));print(f'  $(basename $d): PASS={d.get(\"pass\",0)} FAIL={d.get(\"fail\",0)}')" 2>/dev/null
+  else
+    echo "  $(basename $d): 진행 중..."
+  fi
+done
+```
+
 ## Compaction 복구
 
 ```bash
