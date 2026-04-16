@@ -64,12 +64,26 @@ schemas/
 
 pipeline/                            Step별 디렉토리
   shared/input/                      원본 XML
-  step-0-preflight/output/ + handoff.json
-  step-1-convert/output/ + handoff.json
-  step-2-tc-generate/output/ + handoff.json
-  step-3-validate-fix/output/ + handoff.json
-  step-4-report/output/ + handoff.json
-  supervisor-state.json              슈퍼바이저 상태
+  step-0-preflight/
+    output/samples/                  Oracle 테이블 샘플 데이터 (LLM 힌트)
+    handoff.json
+  step-1-convert/
+    output/xml/                      변환된 PostgreSQL MyBatis XML
+    output/results/{file}/v1/        query-tracking.json + parsed.json
+    handoff.json
+  step-2-tc-generate/
+    output/per-file/{file}/v1/       파일별 test-cases.json
+    output/merged-tc.json            ★ 전체 TC 통합 (extractor + validator가 사용)
+    handoff.json
+  step-3-validate-fix/
+    output/validation/batch{N}/      배치별 validated.json + compare_validated.json
+    output/extracted_pg/             MyBatis 렌더링된 PG SQL
+    handoff.json (gate_checks 포함)
+  step-4-report/
+    output/query-matrix.{csv,json}   쿼리 상태 매트릭스
+    output/migration-report.html     HTML 보고서 (4탭)
+    handoff.json
+  supervisor-state.json              슈퍼바이저 상태 (compaction 복구)
 
 workspace/                           하위 호환 (심링크 뷰)
 ```
