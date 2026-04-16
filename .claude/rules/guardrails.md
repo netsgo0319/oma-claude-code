@@ -232,6 +232,11 @@ python3 tools/generate-handoff.py --step {N} --results-dir {path} [options]
 - "어떻게 할까요?", "확인해주세요", "선택해주세요" → **금지. 직접 결정하고 실행.**
 - 완료 시 반드시 **handoff.json 생성** + **한 줄 요약 반환**으로 끝내라.
 
+### TC 생성 도구 사용 필수
+- **TC 생성은 반드시 `generate-test-cases.py`를 통해서만.** 인라인 Python(`python3 << 'PYEOF'`)으로 TC를 직접 조립하지 마라.
+- `generate-test-cases.py`가 LLM TC 생성(Bedrock Sonnet)을 내장하고 있다. LLM 없이 INFERRED/NO_PARAMS만으로 TC를 만들면 검증 품질이 떨어진다.
+- **TC source에 'LLM'이 0건이면 잘못된 것.** `generate-test-cases.py`가 정상 실행되면 LLM TC가 생성된다.
+
 ### 도구 실패 시 우회 금지 (★ 과거 실패 교훈)
 
 **도구(validate-queries.py 등)가 에러나면:**

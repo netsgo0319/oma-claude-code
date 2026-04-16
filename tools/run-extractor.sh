@@ -51,6 +51,9 @@ fi
 JAVA_VER=$(java -version 2>&1 | head -1)
 echo "Java: $JAVA_VER"
 
+# OGNL stub directory for auto-generated stubs (pre-scan + auto-retry 공용)
+STUB_DIR="$EXTRACTOR_DIR/src/main/java"
+
 # Step 1.5: Pre-scan XMLs → generate stubs BEFORE build
 # Prevents ClassNotFoundException / OGNL errors at extraction time
 if [ "$SKIP_BUILD" = false ] && command -v python3 &>/dev/null; then
@@ -115,8 +118,8 @@ if [ -f "$MERGED_TC" ]; then
     echo "--- TC params found: $MERGED_TC ---"
 fi
 
-# OGNL stub directory for auto-generated stubs
-STUB_DIR="$EXTRACTOR_DIR/src/main/java"
+# OGNL stub directory — moved up, pre-scan-stubs.py도 참조
+# STUB_DIR is defined earlier (before Step 1.5)
 STUB_CP=""
 
 # Function: run extractor with auto-stub retry for ClassNotFoundException

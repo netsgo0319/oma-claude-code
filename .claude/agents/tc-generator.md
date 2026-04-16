@@ -1,7 +1,7 @@
 ---
 name: tc-generator
 model: sonnet
-description: 쿼리별 테스트 케이스 생성. converter 완료 후 TC가 필요할 때 위임. Oracle 샘플 데이터 + V$SQL_BIND_CAPTURE로 바인드값 수집하여 merged-tc.json 생성.
+description: 쿼리별 테스트 케이스 생성. converter 완료 후 TC가 필요할 때 위임. 커스텀바인드 → LLM(Bedrock Sonnet, 3 workers 병렬) → merged-tc.json 생성. 반드시 generate-test-cases.py를 사용.
 tools:
   - Read
   - Bash
@@ -84,14 +84,21 @@ python3 tools/generate-test-cases.py \
   --output-dir pipeline/step-2-tc-generate/output/per-file/
 ```
 
-TC 소스 우선순위:
-1. **고객 바인드** (custom-binds.json, bind-variable-samples/) — 확실한 실값
-2. **Oracle 샘플** (_samples/*.json) — 테이블 실데이터
-3. **LLM TC** (Bedrock Sonnet) — 실데이터 없는 쿼리에 SQL 문맥 기반 생성 (source: "LLM")
-4. **분기 변형** (BRANCH_VARIANT) — <if>/<choose> on/off 조합
-5. **이름 추론** (infer_value) — 파라미터명 기반 fallback
+**TC 소스 (현재):**
+1. **커스텀 바인드** (custom-binds.json, *bind-variable-samples/) — 고객 제공 실값
+2. **파라미터 없는 쿼리** → NO_PARAMS (빈 TC)
+3. **나머지 전부** → **LLM (Bedrock Sonnet)** — SQL 문맥 기반 TC 생성 (source: "LLM")
 
-**LLM TC 환경변수:** `LLM_TC_ENABLED=1` (기본), `LLM_TC_MODEL=global.anthropic.claude-sonnet-4-6`
+**infer_value()는 제거됨** — LLM이 GRIDPAGING, foreach, ${}, 분기 비활성 전부 처리.
+
+**LLM TC 환경변수:**
+```bash
+export LLM_TC_ENABLED=1
+export LLM_TC_REGIONS="us-east-1,us-west-2,ap-northeast-2"  # 멀티리전
+export LLM_TC_WORKERS=3                                      # 동시 호출
+```
+
+**★ TC source에 'LLM'이 0건이면 잘못된 것.** 인라인 Python으로 TC를 직접 만들지 마라.
 
 ### 3b. 동적 SQL 분기별 TC 변형 보강
 
