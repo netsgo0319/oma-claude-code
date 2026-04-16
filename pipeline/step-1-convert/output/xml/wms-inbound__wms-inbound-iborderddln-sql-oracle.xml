@@ -1,0 +1,636 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.IbOrderDdlnMapper">
+
+	<sql id="selectIbOrderHdsql">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderHdsql - 입고마감 정보  SQL */
+		SELECT CHK
+			 , CTKEY
+			 , CTNM
+			 , OWKEY
+			 , IBHDTYPECD
+			 , IBHDKEY
+			 , IBEXPCTDATE
+			 , EXTORDERKEY
+             , REQORDERNO
+			 , ACKEY
+			 , OB_CTNM
+			 , ACNM
+			 , CLOSEYN
+			 , B2BOBCNFRMYN
+			 , IBSTATUSCD
+			 , INITQTY_SKU
+			 , INITQTY
+			 , INITQTY_INN
+			 , INITQTY_CTN
+			 , INITQTY_PLT
+			 , INITQTY_SLPRC
+			 , EXPCTQTY_SKU
+			 , EXPCTQTY
+			 , EXPCTQTY_INN
+			 , EXPCTQTY_CTN
+			 , EXPCTQTY_PLT
+			 , EXPCTQTY_SLPRC
+			 , IBQTY_SKU
+			 , IBQTY
+			 , IBQTY_INN
+			 , IBQTY_CTN
+			 , IBQTY_PLT
+			 , IBQTY_SLPRC
+			 , CNFRMQTY_SKU
+			 , CNFRMQTY
+			 , CNFRMQTY_INN
+			 , CNFRMQTY_CTN
+			 , CNFRMQTY_PLT
+			 , CNFRMQTY_SLPRC
+			 , DIFQTYYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , C.CTNM
+					 , A.OWKEY
+					 , A.IBHDTYPECD
+					 , A.IBHDKEY
+					 , A.IBEXPCTDATE
+					 , A.EXTORDERKEY
+                     , A.REQORDERNO
+					 , A.ACKEY
+					 , CASE WHEN IBHDTYPECD = '30' THEN A.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN IBHDTYPECD != '30' THEN A.ACNM
+							ELSE '' END AS ACNM
+					 , CASE WHEN SUM(IBDTSTATUSCD) > 0 THEN 'N'
+							ELSE 'Y' END AS CLOSEYN
+					 , A.B2BOBCNFRMYN
+					 , A.IBSTATUSCD
+					 , COALESCE(SUM(INITQTY_SKU), 0) AS INITQTY_SKU
+					 , COALESCE(SUM(INITQTY), 0) AS INITQTY
+					 , COALESCE(ROUND(SUM(INITQTY_INN), 2), 0) AS INITQTY_INN
+					 , COALESCE(ROUND(SUM(INITQTY_CTN), 2), 0) AS INITQTY_CTN
+					 , COALESCE(ROUND(SUM(INITQTY_PLT), 2), 0) AS INITQTY_PLT
+					 , COALESCE(SUM(INITQTY_SLPRC), 0) AS INITQTY_SLPRC
+					 , COALESCE(SUM(EXPCTQTY_SKU), 0) AS EXPCTQTY_SKU
+					 , COALESCE(SUM(EXPCTQTY), 0) AS EXPCTQTY
+					 , COALESCE(ROUND(SUM(EXPCTQTY_INN), 2), 0) AS EXPCTQTY_INN
+					 , COALESCE(ROUND(SUM(EXPCTQTY_CTN), 2), 0) AS EXPCTQTY_CTN
+					 , COALESCE(ROUND(SUM(EXPCTQTY_PLT), 2), 0) AS EXPCTQTY_PLT
+					 , COALESCE(SUM(EXPCTQTY_SLPRC), 0) AS EXPCTQTY_SLPRC
+					 , COALESCE(SUM(IBQTY_SKU), 0) AS IBQTY_SKU
+					 , COALESCE(SUM(IBQTY), 0) AS IBQTY
+					 , COALESCE(ROUND(SUM(IBQTY_INN), 2), 0) AS IBQTY_INN
+					 , COALESCE(ROUND(SUM(IBQTY_CTN), 2), 0) AS IBQTY_CTN
+					 , COALESCE(ROUND(SUM(IBQTY_PLT), 2), 0) AS IBQTY_PLT
+					 , COALESCE(SUM(IBQTY_SLPRC), 0) AS IBQTY_SLPRC
+					 , COALESCE(SUM(CNFRMQTY_SKU), 0) AS CNFRMQTY_SKU
+					 , COALESCE(SUM(CNFRMQTY), 0) AS CNFRMQTY
+					 , COALESCE(ROUND(SUM(CNFRMQTY_INN), 2), 0) AS CNFRMQTY_INN
+					 , COALESCE(ROUND(SUM(CNFRMQTY_CTN), 2), 0) AS CNFRMQTY_CTN
+					 , COALESCE(ROUND(SUM(CNFRMQTY_PLT), 2), 0) AS CNFRMQTY_PLT
+					 , COALESCE(SUM(CNFRMQTY_SLPRC), 0) AS CNFRMQTY_SLPRC
+			 		 , CASE WHEN COALESCE(SUM(EXPCTQTY), 0) = COALESCE(SUM(CNFRMQTY), 0) THEN 'Y'
+							ELSE 'N' END AS DIFQTYYN
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN (
+							SELECT A.CTKEY
+								 , A.OWKEY
+								 , A.IBHDKEY
+								 , A.UPRIBDTKEY
+								 , CASE WHEN A.INITQTY > 0 THEN 1 ELSE 0 END AS INITQTY_SKU
+								 , A.INITQTY
+								 , A.INITQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS INITQTY_INN
+								 , A.INITQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS INITQTY_CTN
+								 , A.INITQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS INITQTY_PLT
+								 , A.INITQTY * B.SLPRC AS INITQTY_SLPRC
+								 , CASE WHEN A.EXPCTQTY > 0 THEN 1 ELSE 0 END AS EXPCTQTY_SKU
+								 , A.EXPCTQTY
+								 , A.EXPCTQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS EXPCTQTY_INN
+								 , A.EXPCTQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS EXPCTQTY_CTN
+								 , A.EXPCTQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS EXPCTQTY_PLT
+								 , A.EXPCTQTY * B.SLPRC AS EXPCTQTY_SLPRC
+								 , CASE WHEN A.IBQTY > 0 THEN 1 ELSE 0 END AS IBQTY_SKU
+								 , A.IBQTY
+								 , A.IBQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS IBQTY_INN
+								 , A.IBQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS IBQTY_CTN
+								 , A.IBQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS IBQTY_PLT
+								 , A.IBQTY * B.SLPRC AS IBQTY_SLPRC
+								 , CASE WHEN A.CNFRMQTY > 0 THEN 1 ELSE 0 END AS CNFRMQTY_SKU
+								 , A.CNFRMQTY
+								 , A.CNFRMQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS CNFRMQTY_INN
+								 , A.CNFRMQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS CNFRMQTY_CTN
+								 , A.CNFRMQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS CNFRMQTY_PLT
+								 , A.CNFRMQTY * B.SLPRC AS CNFRMQTY_SLPRC
+								 , CASE WHEN A.IBDTSTATUSCD = '91' OR A.IBDTSTATUSCD = '92' THEN 0
+										ELSE 1 END AS IBDTSTATUSCD
+							  FROM TWORK_INFO_IB_DT A
+							 INNER JOIN TWORK_MST_IC B
+								ON A.CTKEY = B.CTKEY
+							   AND A.OWKEY = B.OWKEY
+							   AND A.ICKEY = B.ICKEY
+							  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE C
+								ON A.CTKEY = C.CTKEY
+							   AND A.OWKEY = C.OWKEY
+							   AND B.ICUNITKEY = C.ICUNITKEY
+							   AND C.ICUNITTYPECD = 'INN'
+							  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+								ON A.CTKEY = D.CTKEY
+							   AND A.OWKEY = D.OWKEY
+							   AND B.ICUNITKEY = D.ICUNITKEY
+							   AND D.ICUNITTYPECD = 'CTN'
+							) B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_CT C
+					ON A.CTKEY = C.CTKEY
+				 WHERE A.IBSTATUSCD != '99'
+				   AND B.UPRIBDTKEY IS NULL
+				   AND A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.IBHDTYPECD != '50'   /* 반품입고 */
+				GROUP BY A.CTKEY, C.CTNM, A.OWKEY, A.IBHDTYPECD, A.IBHDKEY, A.IBEXPCTDATE, A.REQORDERNO, A.EXTORDERKEY, A.ACKEY, A.ACNM, A.B2BOBCNFRMYN, A.IBSTATUSCD, A.INSERTDATE, A.INSERTURKEY, A.UPDATEDATE, A.UPDATEURKEY
+				)
+		  WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			AND IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			AND IBSTATUSCD = #{ibstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			AND IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(inserturkey)">
+			AND INSERTURKEY = #{inserturkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(difqtyyn)">
+			AND DIFQTYYN = #{difqtyyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(closeyn)">
+			AND CLOSEYN = #{closeyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(b2bobcnfrmyn)">
+			AND B2BOBCNFRMYN = #{b2bobcnfrmyn}
+		</if>
+	</sql>
+
+	<select id="selectIbOrderHdCount" resultType="java.lang.Integer" >
+	/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderHdCount - 입고마감 정보 건수 조회 */
+		SELECT  COUNT(1)
+		  FROM (
+			<include refid="selectIbOrderHdsql"/>
+		  )
+	</select>
+	
+	<select id="selectIbOrderHd" resultType="camelMap">
+	/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderHd - 입고마감 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectIbOrderHdsql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderDtsql">
+	/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderDtsql - 입고 마감 상세 조회  SQL */
+		SELECT *
+		  FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , A.IBDTKEY
+					 , B.IBHDTYPECD
+					 , B.IBEXPCTDATE
+					 , CASE WHEN B.IBHDTYPECD = '30' THEN B.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN B.IBHDTYPECD != '30' THEN B.ACNM
+							ELSE '' END AS ACNM
+					 , A.EXTORDERKEY
+                     , B.REQORDERNO
+					 , C.ACKEY AS IC_ACKEY
+					 , D.ACNM AS IC_ACNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN E.ASRTMASICKEY
+							ELSE A.ICKEY END AS ASRTMASICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN G.ICNM
+							ELSE C.ICNM END AS ASRTMASICNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN A.ICKEY
+							END AS ASRTDTICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN C.ICNM
+							END AS ASRTDTICNM
+					 , A.ASRTWKTGTYN AS ASRTYN
+					 , CTG3.CTGNM AS LV1_CTGNM
+					 , CTG2.CTGNM AS LV2_CTGNM
+					 , CTG1.CTGNM AS LV3_CTGNM
+					 , A.UOM
+					 , A.IBDTSTATUSCD
+					 , COALESCE(A.INITQTY, 0) AS INITQTY
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS INITQTY_INN
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS INITQTY_CTN
+					 , ROUND(A.INITQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS INITQTY_PLT
+					 , COALESCE(A.INITQTY * C.SLPRC, 0) AS INITQTY_SLPRC
+
+					 , COALESCE(A.EXPCTQTY, 0) AS EXPCTQTY
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_INN
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_CTN
+					 , ROUND(A.EXPCTQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS EXPCTQTY_PLT
+					 , COALESCE(A.EXPCTQTY * C.SLPRC, 0) AS EXPCTQTY_SLPRC
+
+					 , COALESCE(A.IBQTY, 0) AS IBQTY
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS IBQTY_INN
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS IBQTY_CTN
+					 , ROUND(A.IBQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS IBQTY_PLT
+					 , COALESCE(A.IBQTY * C.SLPRC, 0) AS IBQTY_SLPRC
+
+					 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+					 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+					 , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS CNFRMQTY_SLPRC
+
+					 , COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0) AS NONCNFRMQTY
+					 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS NONCNFRMQTY_INN
+					 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS NONCNFRMQTY_CTN
+					 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS NONCNFRMQTY_PLT
+					 , COALESCE((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) * C.SLPRC, 0) AS NONCNFRMQTY_SLPRC
+
+					 , CASE WHEN A.IBDTSTATUSCD = '91' OR A.IBDTSTATUSCD = '92' THEN 'Y'
+					 		ELSE 'N' END AS CLOSEYN
+					 , CASE WHEN A.CLAIMSNDYN = 'Y' THEN COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)
+							ELSE 0 END AS CLAIMREQQTY
+					 , A.CLAIMRSNCONT
+					 , A.ICKEY
+					 , C.ICNM
+					 , COALESCE(A.PLCMSTATUSCD, '00') AS PLCMSTATUSCD
+					 , A.UPRIBDTKEY
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_IC C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.ICKEY = C.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_AC D
+					ON A.CTKEY = D.CTKEY
+				   AND C.ACKEY = D.ACKEY
+				  LEFT OUTER JOIN TWORK_MST_ASRT E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND A.ICKEY = E.ASRTDTICKEY
+				  LEFT OUTER JOIN TWORK_MST_IC G
+					ON A.CTKEY = G.CTKEY
+				   AND A.OWKEY = G.OWKEY
+				   AND E.ASRTMASICKEY = G.ICKEY
+				 INNER JOIN TWORK_MST_CTG CTG1
+					ON A.CTKEY = CTG1.CTKEY
+				   AND A.OWKEY = CTG1.OWKEY
+				   AND C.CTGKEY = CTG1.CTGKEY
+				   AND CTG1.CTGLV = '3'
+				 INNER JOIN TWORK_MST_CTG CTG2
+					ON CTG1.CTKEY = CTG2.CTKEY
+				   AND CTG1.OWKEY = CTG2.OWKEY
+				   AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+				   AND CTG2.CTGLV = '2'
+				 INNER JOIN TWORK_MST_CTG CTG3
+					ON CTG2.CTKEY = CTG3.CTKEY
+				   AND CTG2.OWKEY = CTG3.OWKEY
+				   AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+				   AND CTG3.CTGLV = '1'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+					ON A.CTKEY = I.CTKEY
+				   AND A.OWKEY = I.OWKEY
+				   AND C.ICUNITKEY = I.ICUNITKEY
+				   AND I.ICUNITTYPECD = 'INN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+					ON A.CTKEY = J.CTKEY
+				   AND A.OWKEY = J.OWKEY
+				   AND C.ICUNITKEY = J.ICUNITKEY
+				   AND J.ICUNITTYPECD = 'CTN'
+				 INNER JOIN TWORK_MST_ICBARCODE H
+					ON A.CTKEY = H.CTKEY
+				   AND A.OWKEY = H.OWKEY
+				   AND A.ICKEY = H.ICKEY
+				   AND H.UOM = 'EA'
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.IBHDKEY = #{ibhdkey}
+				   AND A.IBDTSTATUSCD <![CDATA[<>]]> '99'
+		<if test="ickeyList != null and ickeyList.size > 0">
+			<foreach collection="ickeyList" item="ickey" open=" AND A.ICKEY IN (" separator="," close=")">
+				#{ickey}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)">
+			AND C.ICNM LIKE '%'|| #{icnm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)">
+			AND H.BARCODE = #{barcode}
+		</if>
+		    ) A
+		WHERE 1=1
+	</sql>
+
+	<select id="selectIbOrderDt" resultType="camelMap">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderDt - 입고 마감 상세 조회 */
+		<include refid="selectIbOrderDtsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+	<sql id="selectIbOrderPlcmsql">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderPlcmsql - 입고 마감 적치 조회  SQL */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.IBCFSEQNO
+			 , A.SEQNO
+			 , COALESCE(B.ASRTMASICKEY, A.ICKEY) AS ASRTMASICKEY
+			 , COALESCE(D.ICNM, C.ICNM) AS ASRTMASICNM
+			 , CASE WHEN B.ASRTDTICKEY IS NOT NULL THEN A.ICKEY
+					 END AS ASRTDTICKEY
+			 , CASE WHEN B.ASRTDTICKEY IS NOT NULL THEN C.ICNM
+					 END AS ASRTDTICNM
+			 , A.ASRTYN AS ASRTYN
+			 , CTG3.CTGNM AS LV1_CTGNM
+			 , CTG2.CTGNM AS LV2_CTGNM
+			 , CTG1.CTGNM AS LV3_CTGNM
+			 , A.PLCMDATE
+			 , A.EXPDATE
+			 , A.LCKEY
+			 , A.CNTRNO
+			 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+			 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+			 , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS CNFRMQTY_SLPRC
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_INFO_IB_PLCM_DT A
+		  LEFT OUTER JOIN TWORK_MST_ASRT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ASRTDTICKEY
+		 INNER JOIN TWORK_MST_IC C
+		 	ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.ICKEY = C.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_IC D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND B.ASRTMASICKEY = D.ICKEY
+		 INNER JOIN TWORK_MST_CTG CTG1
+			ON A.CTKEY = CTG1.CTKEY
+		   AND A.OWKEY = CTG1.OWKEY
+		   AND C.CTGKEY = CTG1.CTGKEY
+		   AND CTG1.CTGLV = '3'
+		 INNER JOIN TWORK_MST_CTG CTG2
+			ON CTG1.CTKEY = CTG2.CTKEY
+		   AND CTG1.OWKEY = CTG2.OWKEY
+		   AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+		   AND CTG2.CTGLV = '2'
+		 INNER JOIN TWORK_MST_CTG CTG3
+			ON CTG2.CTKEY = CTG3.CTKEY
+		   AND CTG2.OWKEY = CTG3.OWKEY
+		   AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+		   AND CTG3.CTGLV = '1'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+			ON A.CTKEY = I.CTKEY
+		   AND A.OWKEY = I.OWKEY
+		   AND C.ICUNITKEY = I.ICUNITKEY
+		   AND I.ICUNITTYPECD = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+			ON A.CTKEY = J.CTKEY
+		   AND A.OWKEY = J.OWKEY
+		   AND C.ICUNITKEY = J.ICUNITKEY
+		   AND J.ICUNITTYPECD = 'CTN'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTKEY = #{ibdtkey}
+	</sql>
+
+	<select id="selectIbOrderPlcm" resultType="camelMap">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderPlcm - 입고 마감 적치 조회 */
+		<include refid="selectIbOrderPlcmsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC), IBCFSEQNO, SEQNO
+			</otherwise>
+		</choose>
+	</select>
+
+	<select id="selectIbDtInfoList" resultType="camelMap">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbDtInfoList - 입고 상세 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		/*  AND UPRIBDTKEY IS NULL  아소트 자상품 제외 */
+	</select>
+
+	<select id="selectIbcfCntrInfoList" resultType="camelMap">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbcfCntrInfoList - 입고 확정 용기 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBCF_CNTR
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND QTY > 0
+	</select>
+
+	<update id="updateIbDtIbqty">
+		/* wms-inbound-iborderddln-sql-oracle.xml - updateIbDtIbqty - 입고 수량 수정 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBQTY	= CNFRMQTY
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtwkcomplyn)">
+			, ASRTWKCOMPLYN = #{asrtwkcomplyn}
+		</if>
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY 	 = #{ctkey}
+		   AND OWKEY 	 = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+	</update>
+
+	<update id="updateIbHdDdln" >
+		/* wms-inbound-iborderddln-sql-oracle.xml - updateIbHdDdln - 입고 헤더 마감 */
+		UPDATE TWORK_INFO_IB_HD
+		   SET IBSTATUSCD = '91'   /* 마감 */
+			 , IBDDLNDATE = #{sysdate}
+			 , IBDDLNURKEY = #{surkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</update>
+
+	<update id="updateIbDtDdln" >
+		/* wms-inbound-iborderddln-sql-oracle.xml - updateIbDtDdln - 입고 상세 마감 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBDTSTATUSCD = '91'   /* 마감 */
+			 , IBDDLNDATE = #{sysdate}
+			 , IBDDLNURKEY = #{surkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibdtkey)">
+			AND IBDTKEY = #{ibdtkey}
+		</if>
+
+	</update>
+
+	<select id="selectIbDtDdlnCount" resultType="integer">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbDtDdlnCount - 입고 상세 마감 count */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTSTATUSCD != '91'
+	</select>
+
+	<select id="selectIbOrderClaimReg" resultType="camelMap">
+		/* wms-inbound-iborderddln-sql-oracle.xml - selectIbOrderClaimReg - 클레임 등록 팝업 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , A.ASRTWKTGTYN AS ASRTYN
+			 , A.IBDTSTATUSCD
+			 , COALESCE(A.EXPCTQTY, 0) AS EXPCTQTY
+			 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_INN
+			 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_CTN
+			 , ROUND(A.EXPCTQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)), 2) AS EXPCTQTY_PLT
+			 , COALESCE(A.EXPCTQTY * B.SLPRC, 0) AS EXPCTQTY_SLPRC
+
+			 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+			 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+			 , COALESCE(A.CNFRMQTY * B.SLPRC, 0) AS CNFRMQTY_SLPRC
+
+			 , COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0) AS NONCNFRMQTY
+			 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(C.ICUNITQTY, 0), 0), 2) AS NONCNFRMQTY_INN
+			 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(D.ICUNITQTY, 0), 0), 2) AS NONCNFRMQTY_CTN
+			 , ROUND((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)), 2) AS NONCNFRMQTY_PLT
+			 , COALESCE((COALESCE(A.EXPCTQTY, 0) - COALESCE(A.CNFRMQTY, 0)) * B.SLPRC, 0) AS NONCNFRMQTY_SLPRC
+
+			 , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y'
+					ELSE 'N' END AS CLOSEYN
+			 , A.CLAIMRSNCONT
+			 , A.EXTORDERKEY
+			 , A.EXPORDERLINENO
+			 , A.ORHDKEY
+			 , A.ORDTKEY
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND B.ICUNITKEY = C.ICUNITKEY
+		   AND C.ICUNITTYPECD = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND B.ICUNITKEY = D.ICUNITKEY
+		   AND D.ICUNITTYPECD = 'CTN'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTSTATUSCD <![CDATA[<>]]> '99'
+           AND A.UPRIBDTKEY IS NULL
+           AND A.EXPCTQTY <![CDATA[<>]]> A.CNFRMQTY
+		ORDER BY A.IBHDKEY , CAST(A.IBDTKEY AS NUMERIC)
+	</select>
+
+	<update id="updateIbHdClaimReg" >
+		/* wms-inbound-iborderddln-sql-oracle.xml - updateIbHdClaimReg - 입고 헤더 클레임 등록 */
+		UPDATE TWORK_INFO_IB_HD
+		   SET IBSTATUSCD = '92'   /* 클레임 등록 */
+			 , CLAIMSNDYN = 'Y'
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</update>
+
+	<update id="updateIbDtClaimReg" >
+		/* wms-inbound-iborderddln-sql-oracle.xml - updateIbDtClaimReg - 입고 상세 클레임 등록 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBDTSTATUSCD = '92'   /* 클레임 등록 */
+			 , CLAIMSNDYN = 'Y'
+			 , CLAIMRSNCONT = #{claimrsncont}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+	</update>
+
+</mapper>

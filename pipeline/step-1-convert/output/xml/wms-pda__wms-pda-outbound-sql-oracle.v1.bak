@@ -1,0 +1,3553 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.pda.mapper.PdaOutboundMapper">
+	<select id="selectWaveRndList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectWaveRndList - Wave(출고회차) 조회  SQL */
+		SELECT PIHD.CTKEY
+			,  PIHD.OWKEY
+			,  PIHD.PIHDKEY
+			,  PIHD.PIHDNM
+			,  WAHD.WKTYPECD
+		  FROM TWORK_INFO_PI_HD PIHD
+		 INNER JOIN TWORK_INFO_WA_HD WAHD
+				 ON PIHD.CTKEY   = WAHD.CTKEY
+			    AND PIHD.OWKEY   = WAHD.OWKEY
+			    AND PIHD.WAHDKEY = WAHD.WAHDKEY
+		  WHERE 1 = 1
+			AND PIHD.CTKEY   = #{sctkey}
+		    AND PIHD.OWKEY   = #{sowkey}
+		    AND PIHD.PKDIVCD = '20'  /* 총량 */
+		    AND WAHD.WAWKSTATUSCD <![CDATA[ <> ]]> '99'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+		  		AND PIHD.OBREQDAY = #{obreqday}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)" >
+				AND PIHD.PIHDKEY = #{pihdkey}
+			</if>
+		  ORDER BY PIHD.PIHDKEY
+	</select>
+	
+	<select id="selectEtcWaveRndList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcWaveRndList - 기타피킹 Wave(출고회차) 조회  SQL */
+		SELECT PIHD.CTKEY
+			,  PIHD.OWKEY
+			,  PIHD.PIHDKEY
+			,  PIHD.PIHDNM
+			,  WAHD.WKTYPECD
+		  FROM TWORK_INFO_PI_HD PIHD
+		  INNER JOIN TWORK_INFO_WA_HD WAHD
+				  ON PIHD.CTKEY   = WAHD.CTKEY
+				 AND PIHD.OWKEY   = WAHD.OWKEY
+				 AND PIHD.WAHDKEY = WAHD.WAHDKEY
+		 INNER JOIN (
+						SELECT DISTINCT T.PIHDKEY
+						  FROM (
+								SELECT PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+									 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+								  FROM TWORK_INFO_PI_HD PH
+								  INNER JOIN TWORK_INFO_PI_DT PD
+								  		  ON PD.CTKEY = PH.CTKEY
+								  		 AND PD.OWKEY = PH.OWKEY
+								  		 AND PD.PIHDKEY = PH.PIHDKEY
+								 WHERE PH.CTKEY    = #{sctkey}
+								   AND PH.OWKEY    = #{sowkey}
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+									AND PH.OBREQDAY = #{obreqday}
+								</if>
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)" >
+									AND PH.PIHDKEY = #{pihdkey}
+								</if>
+								) T
+						 WHERE T.LCCNT > 1
+		 		   ) DILC
+		 		 ON DILC.PIHDKEY = PIHD.PIHDKEY
+		  WHERE 1 = 1
+			AND PIHD.CTKEY   = #{sctkey}
+		    AND PIHD.OWKEY   = #{sowkey}
+		    AND PIHD.PKDIVCD = '20'  /* 총량 */
+		    AND WAHD.WKTYPECD IN ('UW', 'PW')
+		    AND WAHD.WAWKSTATUSCD <![CDATA[ <> ]]> '99'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+		  		AND PIHD.OBREQDAY = #{obreqday}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)" >
+				AND PIHD.PIHDKEY = #{pihdkey}
+			</if>
+		  ORDER BY PIHD.PIHDKEY
+	</select>
+
+	<select id="selectPiAreaList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectPiAreaList - 피킹구역 조회  SQL */
+		SELECT DISTINCT(LC.ARKEY) AS ARKEY       /* 구역 */
+		  FROM TWORK_MST_LC LC
+		 WHERE LC.CTKEY = #{sctkey}
+		   AND LC.LCKEY IN (
+							<choose>
+								<when test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)">
+									SELECT DISTINCT T.LCKEY
+									  FROM (
+											SELECT PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+									 			, COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+											  FROM TWORK_INFO_PI_HD PH
+											  INNER JOIN TWORK_INFO_PI_DT PD
+											  		  ON PD.CTKEY = PH.CTKEY
+											  		 AND PD.OWKEY = PH.OWKEY
+											  		 AND PD.PIHDKEY = PH.PIHDKEY
+											 WHERE PH.CTKEY    = #{sctkey}
+											   AND PH.OWKEY    = #{sowkey}
+											   AND PH.PIHDKEY  = #{pihdkey}
+											) T
+									 WHERE T.LCCNT = 1
+								</when>
+								<otherwise>
+									SELECT DISTINCT PIDT.LCKEY
+						     		  FROM TWORK_INFO_PI_TOT_DT PIDT
+						 			 WHERE PIDT.CTKEY   = #{sctkey}
+						     		   AND PIDT.OWKEY   = #{sowkey}
+						   			   AND PIDT.PIHDKEY = #{pihdkey}
+								</otherwise>
+							</choose>
+		   )
+		ORDER BY LC.ARKEY
+	</select>
+	
+	<select id="selectEtcPiAreaList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcPiAreaList - 기타피킹 피킹구역 조회  SQL */
+		SELECT DISTINCT(LC.ARKEY) AS ARKEY       /* 구역 */
+		  FROM TWORK_MST_LC LC
+		 WHERE LC.CTKEY = #{sctkey}
+		   AND LC.LCKEY IN (
+							  SELECT DISTINCT T.LCKEY
+							  FROM (
+									SELECT PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+							 			, COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+									  FROM TWORK_INFO_PI_DT PD
+									 WHERE PD.CTKEY    = #{sctkey}
+									   AND PD.OWKEY    = #{sowkey}
+									   AND PD.PIHDKEY  = #{pihdkey}
+									) T
+							 WHERE T.LCCNT > 1
+		   )
+		ORDER BY LC.ARKEY
+	</select>
+
+	<select id="selectAleLocList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectAleLocList - 통로별 로케이션 조회  SQL */
+		SELECT CTKEY
+			,  OWKEY
+			,  PIHDKEY
+			,  ALTMTALENO
+			,  SUCCNT || '/' || TOTLC AS LOC
+			,  ROUND((CASE WHEN SUCCNT = '0' THEN 0
+					ELSE SUCCNT / TOTLC
+					END
+				) * 100, 1) || '%' AS LOCPERCENT
+		  FROM (
+			SELECT TOT.CTKEY
+				 , TOT.OWKEY
+				 , TOT.PIHDKEY
+				 , TOT.ALTMTALENO
+				 , SUM(CASE TOT.PKWKSTATUSCD WHEN '10' THEN 1 ELSE 0 END) AS SUCCNT
+				 , COUNT(1) AS TOTLC /* 총 로케이션 */
+			  FROM (
+			  	SELECT DISTINCT
+			  		   TOTD.CTKEY
+					,  TOTD.OWKEY
+					,  TOTD.PIHDKEY
+					,  TOTD.ICKEY
+					,  TOTD.CELLKEY
+					,  TOTD.PKIMPSYN      /* 피킹 불가 */
+					,  TOTD.LCKEY
+					,  TOTD.UOM
+					,  LC.ALTMTALENO
+					<choose>
+						<when test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)">
+							,  CASE WHEN COUNT(CNDT.PIHDKEY) > 0
+									THEN '10'
+									ELSE MAX(PKDTWKSTATUSCD) END AS PKWKSTATUSCD
+						</when>
+						<otherwise>
+							,  TOTD.PKWKSTATUSCD
+						</otherwise>
+					</choose>
+				  FROM TWORK_INFO_PI_TOT_DT TOTD
+				  <if test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)">
+				  	  INNER JOIN (
+								  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+								  FROM (
+										SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+											 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+										  FROM TWORK_INFO_PI_DT PD
+										 WHERE PD.CTKEY    = #{sctkey}
+										   AND PD.OWKEY    = #{sowkey}
+										   AND PD.PIHDKEY  = #{pihdkey}
+										) T
+								 WHERE T.LCCNT = 1 
+								 ) DILC
+							  ON DILC.CTKEY = TOTD.CTKEY
+							 AND DILC.OWKEY = TOTD.OWKEY
+							 AND DILC.PIHDKEY = TOTD.PIHDKEY
+							 AND DILC.ICKEY = TOTD.ICKEY
+							 AND DILC.LCKEY = TOTD.LCKEY
+				      LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+					  			   ON PIDT.CTKEY   = TOTD.CTKEY
+								  AND PIDT.OWKEY   = TOTD.OWKEY
+								  AND PIDT.PIHDKEY = TOTD.PIHDKEY
+								  AND PIDT.ICKEY = TOTD.ICKEY
+								  AND PIDT.LCKEY = TOTD.LCKEY
+								  AND PIDT.OBHDKEY = DILC.OBHDKEY
+					  LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT CNDT
+								   ON CNDT.CTKEY   = PIDT.CTKEY
+								  AND CNDT.OWKEY   = PIDT.OWKEY
+								  AND CNDT.PIHDKEY = PIDT.PIHDKEY
+								  AND CNDT.PIDTKEY = PIDT.PIDTKEY
+				  </if>
+				  INNER JOIN TWORK_MST_LC LC
+						  ON LC.CTKEY = TOTD.CTKEY
+						 AND LC.LCKEY = TOTD.LCKEY
+				   WHERE TOTD.CTKEY    = #{sctkey}
+					 AND TOTD.OWKEY    = #{sowkey}
+					 AND TOTD.PIHDKEY  = #{pihdkey}
+					 AND LC.ARKEY      = #{arkey}
+				   <if test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)">
+					   GROUP BY TOTD.CTKEY
+							 ,  TOTD.OWKEY
+							 ,  TOTD.PIHDKEY
+							 ,  TOTD.ICKEY
+							 ,  TOTD.CELLKEY
+							 ,  TOTD.PKIMPSYN      /* 피킹 불가 */
+							 ,  TOTD.LCKEY
+							 ,  TOTD.UOM
+							 ,  LC.ALTMTALENO
+				   </if>
+			  ) TOT
+			 GROUP BY TOT.CTKEY
+					, TOT.OWKEY
+					, TOT.PIHDKEY
+					, TOT.ALTMTALENO
+		 )
+		ORDER BY (CASE WHEN SUCCNT = TOTLC THEN 1
+					   ELSE 0
+				   END), ALTMTALENO
+	</select>
+	
+	<select id="selectEtcAleLocList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcAleLocList - 기타피킹 통로별 로케이션 조회  SQL */
+		SELECT CTKEY
+			,  OWKEY
+			,  PIHDKEY
+			,  ALTMTALENO
+			,  SUCCNT || '/' || TOTLC AS LOC
+			,  ROUND((CASE WHEN SUCCNT = '0' THEN 0
+					ELSE SUCCNT / TOTLC
+					END
+				) * 100, 1) || '%' AS LOCPERCENT
+		  FROM (
+			SELECT TOT.CTKEY
+				 , TOT.OWKEY
+				 , TOT.PIHDKEY
+				 , TOT.ALTMTALENO
+				 , SUM(CASE TOT.PKWKSTATUSCD WHEN '10' THEN 1 ELSE 0 END) AS SUCCNT
+				 , COUNT(1) AS TOTLC /* 총 로케이션 */
+			  FROM (
+			  	SELECT DISTINCT
+			  		   TOTD.CTKEY
+					,  TOTD.OWKEY
+					,  TOTD.PIHDKEY
+					,  TOTD.ICKEY
+					,  TOTD.CELLKEY
+					,  TOTD.PKIMPSYN      /* 피킹 불가 */
+					,  TOTD.LCKEY
+					,  TOTD.UOM
+					,  LC.ALTMTALENO
+					,  CASE WHEN COUNT(CNDT.PIHDKEY) > 0
+							THEN '10'
+							ELSE MAX(PKDTWKSTATUSCD) 
+						END AS PKWKSTATUSCD
+				  FROM TWORK_INFO_PI_TOT_DT TOTD
+				 INNER JOIN (
+							  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+							  FROM (
+									SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+										 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+									  FROM TWORK_INFO_PI_DT PD
+									 WHERE PD.CTKEY    = #{sctkey}
+									   AND PD.OWKEY    = #{sowkey}
+									   AND PD.PIHDKEY  = #{pihdkey}
+									) T
+							 WHERE T.LCCNT > 1
+							 ) DILC
+						  ON DILC.CTKEY = TOTD.CTKEY
+						 AND DILC.OWKEY = TOTD.OWKEY
+						 AND DILC.PIHDKEY = TOTD.PIHDKEY
+						 AND DILC.ICKEY = TOTD.ICKEY
+						 AND DILC.LCKEY = TOTD.LCKEY
+				  INNER JOIN TWORK_MST_LC LC
+						  ON LC.CTKEY = TOTD.CTKEY
+						 AND LC.LCKEY = TOTD.LCKEY
+				  LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+				  			   ON PIDT.CTKEY   = TOTD.CTKEY
+							  AND PIDT.OWKEY   = TOTD.OWKEY
+							  AND PIDT.PIHDKEY = TOTD.PIHDKEY
+							  AND PIDT.ICKEY = TOTD.ICKEY
+							  AND PIDT.LCKEY = TOTD.LCKEY
+							  AND PIDT.OBHDKEY = DILC.OBHDKEY
+				  LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT CNDT
+							   ON CNDT.CTKEY   = PIDT.CTKEY
+							  AND CNDT.OWKEY   = PIDT.OWKEY
+							  AND CNDT.PIHDKEY = PIDT.PIHDKEY
+							  AND CNDT.PIDTKEY = PIDT.PIDTKEY
+				   WHERE TOTD.CTKEY    = #{sctkey}
+					 AND TOTD.OWKEY    = #{sowkey}
+					 AND TOTD.PIHDKEY  = #{pihdkey}
+					 AND LC.ARKEY      = #{arkey}
+				   GROUP BY TOTD.CTKEY
+							 ,  TOTD.OWKEY
+							 ,  TOTD.PIHDKEY
+							 ,  TOTD.ICKEY
+							 ,  TOTD.CELLKEY
+							 ,  TOTD.PKIMPSYN      /* 피킹 불가 */
+							 ,  TOTD.LCKEY
+							 ,  TOTD.UOM
+							 ,  LC.ALTMTALENO
+			  ) TOT
+			 GROUP BY TOT.CTKEY
+					, TOT.OWKEY
+					, TOT.PIHDKEY
+					, TOT.ALTMTALENO
+		 )
+		ORDER BY (CASE WHEN SUCCNT = TOTLC THEN 1
+					   ELSE 0
+				   END), ALTMTALENO
+	</select>
+
+	<select id="selectWorkCntr" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectWorkCntr - 작업중 용기 조회 SQL */
+		SELECT CNTR.CTKEY
+			,  CNTR.OWKEY
+			,  CNTR.PIHDKEY
+			,  CNTR.CNTRBARCODE
+		    ,  CNTR.CNTRDDLNYN
+			,  CNTR.CNTRWKURKEY
+		  FROM TWORK_INFO_PK_CNTR CNTR
+		 WHERE CNTR.CTKEY       = #{sctkey}
+		   AND CNTR.OWKEY       = #{sowkey}
+		   AND CNTR.PIHDKEY     = #{pihdkey}  
+		   <choose>
+				<when test='displcyn != "" and displcyn != null and "Y".equals(displcyn)'>
+					AND COALESCE(CNTR.DISPLCYN, 'N') = 'Y'
+			   </when>
+			   <otherwise>
+					AND CNTR.CNTRWKURKEY = #{surkey}
+					AND COALESCE(CNTR.DISPLCYN, 'N') = 'N'
+			   </otherwise>
+			</choose>
+	</select>
+	
+	<select id="selectEtcWorkCntr" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcWorkCntr - 기탚작업중 용기 조회 SQL */
+		SELECT CNTR.CTKEY
+			,  CNTR.OWKEY
+			,  CNTR.PIHDKEY
+			,  CNTR.CNTRBARCODE
+		    ,  CNTR.CNTRDDLNYN
+			,  CNTR.CNTRWKURKEY
+		  FROM TWORK_INFO_PK_CNTR CNTR
+		 WHERE CNTR.CTKEY       = #{sctkey}
+		   AND CNTR.OWKEY       = #{sowkey}
+		   AND CNTR.PIHDKEY     = #{pihdkey}
+		   AND COALESCE(CNTR.DISPLCYN, 'N') = 'Y'
+	</select>
+
+	<select id="selectPickingContainerValidation" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectPickingContainerValidation - 용기 validation SQL */
+		SELECT CNTR.CTKEY
+			,  CNTR.CNTRBARCODE
+		    ,  #{pihdkey} AS PIHDKEY
+			,  CDDT.CTCDDTNM AS CNTRDIVNM
+			,  CASE MAX(CNTRDDLNYN)
+				   WHEN 'N' THEN '사용중'
+				   WHEN 'Y' THEN '완료'
+				   ELSE '신규' END AS CNTRSTATUS
+		    ,  CASE WHEN MAX(CNTRDDLNYN) IS NULL
+		        	THEN 'Y'
+		        	ELSE 'N' END AS PROCYN  /* 처리 가능여부 */
+		    ,  MAX(CNTRDDLNYN) AS CNTRDDLNYN
+			,  COUNT(TIPC.PIHDKEY) AS CNT
+		  FROM TWORK_MST_CNTR CNTR
+		  INNER JOIN TWORK_MST_CTCD_HD CDHD
+				  ON CDHD.CTKEY 	= CNTR.CTKEY
+				 AND CDHD.CTCDHDKEY = 'CNTRDIVCD'
+				 AND CDHD.DELYN 	= 'N'
+		  INNER JOIN TWORK_MST_CTCD_DT CDDT
+				  ON CDHD.CTKEY 	= CDDT.CTKEY
+				 AND CDHD.CTCDHDKEY = CDDT.CTCDHDKEY
+				 AND CDDT.CTCDDTKEY = CNTR.CNTRDIVCD
+				 AND CDDT.LAKEY 	= #{slakey}
+				 AND CDDT.DELYN 	= 'N'
+		  LEFT OUTER JOIN TWORK_INFO_PK_CNTR TIPC
+					   ON TIPC.CTKEY       = CNTR.CTKEY
+					  AND TIPC.OWKEY       = #{sowkey}
+					  AND TIPC.PIHDKEY     = #{pihdkey}
+					  AND TIPC.CNTRBARCODE = CNTR.CNTRBARCODE
+		 WHERE CNTR.CTKEY       = #{sctkey}
+		   AND CNTR.CNTRDIVCD IN ('10','20','60')
+		   AND CNTR.CNTRBARCODE = #{cntrbarcode}
+		 GROUP BY CNTR.CTKEY
+			   ,  CDDT.CTCDDTNM
+			   ,  CNTR.CNTRBARCODE
+	</select>
+	
+	<select id="selectEtcPickingContainerValidation" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcPickingContainerValidation - 기타피킹 용기 validation SQL */
+		SELECT TIPC.CNTRBARCODE
+		  FROM TWORK_INFO_PK_CNTR TIPC
+		 WHERE TIPC.CTKEY       = #{sctkey}
+		   AND TIPC.OWKEY       = #{sowkey}
+		   AND TIPC.PIHDKEY     = #{pihdkey}
+		   AND COALESCE(TIPC.DISPLCYN, 'N') = 'Y'
+		 GROUP BY TIPC.CNTRBARCODE
+	</select>
+	
+	<select id="selectEtcPickingLocationValidation" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcPickingLocationValidation - 기타피킹 로케이션 validation SQL */
+		SELECT DISTINCT T1.LCKEY
+		  FROM (
+				SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+				  FROM (
+						SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+							 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+						  FROM TWORK_INFO_PI_DT PD
+						 WHERE PD.CTKEY    = #{sctkey}
+						   AND PD.OWKEY    = #{sowkey}
+						   AND PD.PIHDKEY  = #{pihdkey}
+						) T
+				 WHERE T.LCCNT > 1
+				) T1
+		 INNER JOIN TWORK_INFO_PI_DT T2
+		  		 ON T2.CTKEY = T1.CTKEY
+		  		AND T2.OWKEY = T2.OWKEY
+		  		AND T2.PIHDKEY = T1.PIHDKEY
+		  		AND T2.ICKEY = T1.ICKEY
+		  		AND T2.LCKEY = T1.LCKEY
+		  		AND T2.OBHDKEY = T1.OBHDKEY
+		  LEFT JOIN TWORK_INFO_PK_CNTR T3
+		  		 ON T3.CTKEY = T2.CTKEY
+		  		AND T3.OWKEY = T2.OWKEY
+		  		AND T3.PIHDKEY = T2.PIHDKEY
+		  		AND COALESCE(T3.DISPLCYN, 'N') = 'Y'
+		  LEFT JOIN TWORK_INFO_PK_CNTR_DT T4
+		  		 ON T4.CTKEY = T3.CTKEY
+		  		AND T4.OWKEY = T3.OWKEY
+		  		AND T4.PIHDKEY = T3.PIHDKEY
+		  		AND T4.CNTRBARCODE = T3.CNTRBARCODE
+		  		AND T4.PIDTKEY = T2.PIDTKEY
+		 WHERE T4.CNTRBARCODE IS NULL
+	</select>
+	
+	<select id="selectDelPickingContainer" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectDelPickingContainer - 용기삭제 validation SQL */
+		SELECT A.CNTRBARCODE
+			 , CASE WHEN MAX(B.PIDTKEY) IS NULL THEN 'Y' ELSE 'N' END AS DELYN
+		  FROM TWORK_INFO_PK_CNTR A
+		  LEFT JOIN TWORK_INFO_PK_CNTR_DT B
+				 ON B.CTKEY = A.CTKEY
+				AND B.OWKEY = A.OWKEY
+				AND B.PIHDKEY = A.PIHDKEY 
+				AND B.CNTRBARCODE = A.CNTRBARCODE 
+		 WHERE A.CTKEY       = #{sctkey}
+		   AND A.OWKEY		 = #{sowkey}
+		   AND A.PIHDKEY 	 = #{pihdkey}
+		   AND A.CNTRBARCODE = #{cntrbarcode}
+		   <choose>
+				<when test='displcyn != "" and displcyn != null and "Y".equals(displcyn)'>
+					AND COALESCE(A.DISPLCYN, 'N') = COALESCE(#{displcyn}, 'N')
+			   </when>
+			   <otherwise>
+					AND A.CNTRWKURKEY = #{surkey}
+			   </otherwise>
+			</choose>
+		 GROUP BY A.CNTRBARCODE
+	</select>
+
+	<insert id="insertPickingContainer">
+		/* wms-pda-outbound-sql-oracle.xml - insertPickingContainer - PDA출고관리 피킹용기추가 SQL */
+		INSERT INTO TWORK_INFO_PK_CNTR
+			(
+				  CTKEY
+				, OWKEY
+				, PIHDKEY
+				, CNTRBARCODE
+				, CNTRDDLNYN
+				, CNTRWKURKEY
+				, DISPLCYN
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+			)
+		VALUES
+			(
+				  #{sctkey}
+				, #{sowkey}
+				, #{pihdkey}
+				, #{cntrbarcode}
+				, 'N'
+				, #{surkey}
+				, #{displcyn}
+				, #{sysdate}
+				, #{surkey}
+				, #{sysdate}
+				, #{surkey}
+			)
+	</insert>
+
+	<select id="selectCntrDivList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectCntrDivList - 용기유형 조회 SQL */
+		SELECT DISTINCT(CNTR.CNTRDIVCD) AS CNTRDIVCD
+			,  CDDT.CTCDDTNM AS CNTRDIVNM
+		  FROM TWORK_INFO_PK_CNTR TIPC
+		  INNER JOIN TWORK_MST_CNTR CNTR
+				  ON CNTR.CTKEY       = TIPC.CTKEY
+				 AND CNTR.CNTRBARCODE = TIPC.CNTRBARCODE
+		  INNER JOIN TWORK_MST_CTCD_HD CDHD
+				  ON CDHD.CTKEY     = TIPC.CTKEY
+				 AND CDHD.CTCDHDKEY = 'CNTRDIVCD'
+				 AND CDHD.DELYN     = 'N'
+		  INNER JOIN TWORK_MST_CTCD_DT CDDT
+				  ON CDHD.CTKEY     = CDDT.CTKEY
+				 AND CDHD.CTCDHDKEY = CDDT.CTCDHDKEY
+				 AND CDDT.CTCDDTKEY = CNTR.CNTRDIVCD
+				 AND CDDT.LAKEY     = #{slakey}
+				 AND CDDT.DELYN     = 'N'
+		 WHERE TIPC.CTKEY 		= #{sctkey}
+		   AND TIPC.OWKEY 		= #{sowkey}
+		   AND TIPC.PIHDKEY 	= #{pihdkey}
+		   <choose>
+				<when test='displcyn != "" and displcyn != null and "Y".equals(displcyn)'>
+					AND COALESCE(TIPC.DISPLCYN, 'N') = COALESCE(#{displcyn}, 'N')
+			   </when>
+			   <otherwise>
+					AND TIPC.CNTRWKURKEY = #{surkey}
+			   </otherwise>
+			</choose>
+	</select>
+
+	<select id="selectCntrInfoList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectCntrInfoList - 용기정보 조회 SQL */
+		SELECT CTKEY
+			,  OWKEY
+			,  PIHDKEY
+			,  CNTRBARCODE
+			,  CNTRDDLNYN
+			,  CNTRDIVCD
+			,  SUM(SKU) AS SKUCNT
+			,  SUM(EA) AS CNT
+			,  SUM(COALESCE(KGWEIGHT, 0)) AS TOTWEIGHT
+			,  SUM(LCKEYCNT) AS LCKEYCNT
+		  FROM (
+			SELECT TIPC.CTKEY
+				,  TIPC.OWKEY
+				,  TIPC.PIHDKEY
+				,  TIPC.CNTRBARCODE
+				,  TIPC.CNTRDDLNYN
+				,  CNTR.CNTRDIVCD
+				,  ICUTTYP.WEIGHT
+				,  ICUTTYP.WEIGHTUNIT
+			    ,  COUNT(DISTINCT PIDT.ICKEY) AS SKU
+				,  SUM(COALESCE(PCDT.PKQTY, 0)) AS EA
+				,  ROUND((ICUTTYP.WEIGHT * SUM(COALESCE(PCDT.PKQTY, 0)) / 1000), 2) AS KGWEIGHT
+				,  COUNT(DISTINCT(PIDT.LCKEY)) AS LCKEYCNT
+			  FROM TWORK_INFO_PK_CNTR TIPC
+			  INNER JOIN TWORK_MST_CNTR CNTR
+					  ON CNTR.CTKEY 	  = TIPC.CTKEY
+					 AND CNTR.CNTRBARCODE = TIPC.CNTRBARCODE
+			  LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT PCDT
+						   ON PCDT.CTKEY 	   = TIPC.CTKEY
+						  AND PCDT.OWKEY 	   = TIPC.OWKEY
+						  AND PCDT.PIHDKEY 	   = TIPC.PIHDKEY
+						  AND PCDT.CNTRBARCODE = TIPC.CNTRBARCODE
+			  LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+						   ON PIDT.CTKEY   = PCDT.CTKEY
+						  AND PIDT.OWKEY   = PCDT.OWKEY
+						  AND PIDT.PIHDKEY = PCDT.PIHDKEY
+						  AND PIDT.PIDTKEY = PCDT.PIDTKEY
+			  LEFT OUTER JOIN TWORK_MST_IC IC
+					  ON IC.CTKEY = PIDT.CTKEY
+					 AND IC.OWKEY = PIDT.OWKEY
+					 AND IC.ICKEY = PIDT.ICKEY
+			  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTTYP
+			  			   ON ICUTTYP.CTKEY 		= IC.CTKEY
+						  AND ICUTTYP.OWKEY 		= IC.OWKEY
+						  AND ICUTTYP.ICKEY 		= IC.ICKEY
+						  AND ICUTTYP.ICUNITTYPECD 	= IC.UOM
+						  AND ICUTTYP.ICUNITKEY 	= IC.ICUNITKEY
+			 WHERE TIPC.CTKEY 		= #{sctkey}
+			   AND TIPC.OWKEY 		= #{sowkey}
+			   AND TIPC.PIHDKEY 	= #{pihdkey}
+			<choose>
+				<when test='displcyn != "" and displcyn != null and "Y".equals(displcyn)'>
+					AND COALESCE(TIPC.DISPLCYN, 'N') = 'Y'
+			   </when>
+			   <otherwise>
+					AND TIPC.CNTRWKURKEY = #{surkey}
+					AND COALESCE(TIPC.DISPLCYN, 'N') = 'N'
+			   </otherwise>
+			</choose>
+			 GROUP BY TIPC.CTKEY
+					, TIPC.OWKEY
+					, TIPC.PIHDKEY
+					, TIPC.CNTRBARCODE
+					, TIPC.CNTRDDLNYN
+					, CNTR.CNTRDIVCD
+					, ICUTTYP.WEIGHT
+					, ICUTTYP.WEIGHTUNIT
+		  )
+		  GROUP BY CTKEY
+				,  OWKEY
+				,  PIHDKEY
+				,  CNTRBARCODE
+				,  CNTRDDLNYN
+				,  CNTRDIVCD
+		  ORDER BY CNTRDDLNYN DESC
+	</select>
+
+	<select id="selectWorkCntrList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectWorkCntrList - 용기상세정보 조회 SQL */
+		SELECT A.CTKEY
+			,  A.OWKEY
+			,  A.PIHDKEY
+			,  A.ICKEY
+			,  IC.ICNM
+			,  IC.IMGURL
+			,  ICB.BARCODE AS ICBARCODE
+			,  A.CNTRBARCODE
+			,  A.LCKEY
+			,  LC.RACKNO
+			,  CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END AS LCKEYFORMAT
+			,  ICUTTYP.WEIGHT / 1000 AS ICWEIGHT
+			,  ROUND((ICUTTYP.WEIGHT * PKQTY / 1000), 2) AS SUCWEIGHT
+			,  A.EXPCTQTY
+			,  A.CNFRMQTY
+			,  A.PKQTY
+		  FROM (
+			SELECT TIPC.CTKEY
+				,  TIPC.OWKEY
+				,  TIPC.PIHDKEY
+				,  PIDT.ICKEY
+				,  PIDT.UOM
+				,  PIDT.LCKEY
+				,  TIPC.CNTRBARCODE
+				,  SUM(PIDT.EXPCTQTY) AS EXPCTQTY
+				,  SUM(PIDT.CNFRMQTY) AS CNFRMQTY
+				,  SUM(TIPCD.PKQTY) AS PKQTY
+			  FROM TWORK_INFO_PK_CNTR TIPC
+			  INNER JOIN TWORK_INFO_PK_CNTR_DT TIPCD
+					  ON TIPCD.CTKEY = TIPC.CTKEY
+					 AND TIPCD.OWKEY = TIPC.OWKEY
+					 AND TIPCD.PIHDKEY = TIPC.PIHDKEY
+					 AND TIPCD.CNTRBARCODE = TIPC.CNTRBARCODE
+			  INNER JOIN TWORK_INFO_PI_DT PIDT
+					  ON PIDT.CTKEY   = TIPCD.CTKEY
+					 AND PIDT.OWKEY   = TIPCD.OWKEY
+					 AND PIDT.PIHDKEY = TIPCD.PIHDKEY
+					 AND PIDT.PIDTKEY = TIPCD.PIDTKEY
+			  INNER JOIN TWORK_INFO_PI_TOT_DT TOT
+					  ON TOT.CTKEY   = PIDT.CTKEY
+					 AND TOT.OWKEY   = PIDT.OWKEY
+					 AND TOT.PIHDKEY = PIDT.PIHDKEY
+					 AND TOT.ICKEY   = PIDT.ICKEY
+					 AND TOT.IVATKEY = PIDT.IVATKEY
+					 AND TOT.LCKEY   = PIDT.LCKEY
+			 WHERE TIPC.CTKEY 		= #{sctkey}
+			   AND TIPC.OWKEY 		= #{sowkey}
+			   AND TIPC.PIHDKEY 	= #{pihdkey}
+			   AND TIPC.CNTRBARCODE = #{cntrbarcode} 
+			<choose>
+				<when test='displcyn != "" and displcyn != null and "Y".equals(displcyn)'>
+					AND COALESCE(TIPC.DISPLCYN, 'N') = 'Y'
+			   </when>
+			   <otherwise>
+					AND TIPC.CNTRWKURKEY = #{surkey}
+					AND COALESCE(TIPC.DISPLCYN, 'N') = 'N'
+			   </otherwise>
+			</choose>
+			 GROUP BY TIPC.CTKEY
+				   ,  TIPC.OWKEY
+				   ,  TIPC.PIHDKEY
+				   ,  PIDT.ICKEY
+				   ,  PIDT.UOM
+				   ,  PIDT.LCKEY
+				   ,  TIPC.CNTRBARCODE
+			) A
+			INNER JOIN TWORK_MST_LC LC
+					  ON LC.CTKEY = A.CTKEY
+					 AND LC.LCKEY = A.LCKEY
+			INNER JOIN TWORK_MST_IC IC
+					ON IC.CTKEY = A.CTKEY
+				   AND IC.OWKEY = A.OWKEY
+				   AND IC.ICKEY = A.ICKEY
+			INNER JOIN TWORK_MST_ICUTXTYPE ICUTTYP
+					ON ICUTTYP.CTKEY        = IC.CTKEY
+				   AND ICUTTYP.OWKEY        = IC.OWKEY
+				   AND ICUTTYP.ICKEY        = IC.ICKEY
+				   AND ICUTTYP.ICUNITTYPECD = IC.UOM
+				   AND ICUTTYP.ICUNITKEY    = IC.ICUNITKEY
+			INNER JOIN TWORK_MST_ICBARCODE ICB
+					  ON ICB.CTKEY = A.CTKEY
+					 AND ICB.OWKEY = A.OWKEY
+					 AND ICB.ICKEY = A.ICKEY
+					 AND ICB.UOM   = A.UOM
+			 ORDER BY ZNKEY
+					, ARKEY
+					, ROWNO
+					, RACKNO
+					, TIERNO
+					, SPLNO
+	</select>
+
+	<!-- PDA출고관리 피킹용기변경 -->
+	<update id="updatePickingContainer">
+		/* wms-pda-outbound-sql-oracle.xml - updatePickingContainer - PDA출고관리 피킹용기변경 SQL */
+		UPDATE TWORK_INFO_PK_CNTR
+		   SET CNTRBARCODE = #{newcntrbarcode}
+		     , CNTRWKURKEY = #{surkey}
+		     , DISPLCYN    = COALESCE(#{displcyn}, 'N')
+		     , UPDATEDATE  = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY       = #{sctkey}
+		   AND OWKEY       = #{sowkey}
+		   AND PIHDKEY     = #{pihdkey}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<update id="updatePickingContainerDetail">
+		/* wms-pda-outbound-sql-oracle.xml - updatePickingContainer - PDA출고관리 피킹용기 상세 변경 SQL */
+		UPDATE TWORK_INFO_PK_CNTR_DT
+		   SET CNTRBARCODE = #{newcntrbarcode}
+		     , UPDATEDATE  = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY       = #{sctkey}
+		   AND OWKEY       = #{sowkey}
+		   AND PIHDKEY     = #{pihdkey}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<delete id="deletePickingContainer">
+		/* wms-pda-outbound-sql-oracle.xml - deletePickingContainer - PDA출고관리 피킹용기 삭제 SQL */
+		DELETE FROM TWORK_INFO_PK_CNTR
+		 WHERE CTKEY       = #{sctkey}
+		   AND OWKEY       = #{sowkey}
+		   AND PIHDKEY     = #{pihdkey}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</delete>
+	
+	<select id="selectTotalPickingList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectTotalPickingList - 총량피킹 작업내역 조회 SQL */
+		SELECT DISTINCT 
+			   T.CTKEY
+			 , T.OWKEY
+			 , T.PIHDKEY
+			 , T.ICKEY
+			 , T.CELLKEY
+			 , T.ICNM
+			 , T.ICBARCODE
+			 , T.EXPCKYN
+			 , T.ROBSORTERICYN
+			 , T.ASRTYN
+			 , T.BARCODEATTACHYN
+			 , T.COMPYN
+			 , T.DFSHPMTRYN
+			 , T.PKIMPSYN
+			 , T.IVINVSTGTYN
+			 , T.IMGURL
+			 , T.LCKEY
+			 , T.LCKEYFORMAT
+			 , T.PKWKSTATUSCD
+			 , SUM(T.EXPCTQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS EXPCTQTY
+			 , SUM(T.CNFRMQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS CNFRMQTY
+			 , T.ZNKEY
+			 , T.ARKEY
+			 , T.TIERNO
+			 , T.ROWNO
+			 , T.RACKNO
+			 , T.SPLNO
+			 , T.PICKCNTRBARCODE
+		     , #{altmtaleno} AS ALTMTALENO
+		     , CASE WHEN #{wktypecd} = 'PW' THEN (
+											CASE 
+												WHEN GREATEST(COALESCE(CTN.WIDTH, 0), COALESCE(CTN.DEPTH, 0), COALESCE(CTN.HEIGHT, 0)) <![CDATA[ <= ]]> 500
+													 AND (CTN.WIDTH + CTN.DEPTH + CTN.HEIGHT
+												  		- GREATEST(COALESCE(CTN.WIDTH, 0), COALESCE(CTN.DEPTH, 0), COALESCE(CTN.HEIGHT, 0))
+												  		- LEAST(COALESCE(CTN.WIDTH, 0), COALESCE(CTN.DEPTH, 0), COALESCE(CTN.HEIGHT, 0))) <![CDATA[ <= ]]> 500
+													 AND LEAST(COALESCE(CTN.WIDTH, 0), COALESCE(CTN.DEPTH, 0), COALESCE(CTN.HEIGHT, 0)) <![CDATA[ <= ]]> 350
+											THEN 'Y'
+											ELSE 'N'
+								END)
+						 ELSE NULL
+				   END AS AUTOLBYN 
+		  FROM (
+				SELECT DISTINCT
+					   A.CTKEY
+					,  A.OWKEY
+					,  A.PIHDKEY
+					,  A.ICKEY
+					,  A.CELLKEY
+					,  IC.ICNM
+					,  LISTAGG(DISTINCT ICB.BARCODE, ',') OVER(PARTITION BY A.ICKEY) AS ICBARCODE
+					,  IC.EXPCKYN 		  /* 유통기한 여부*/
+				    ,  A.ROBSORTERICYN   /* 로봇소터 여부*/
+					,  IC.ASRTYN 		  /* 아소트  여부 */
+					,  IC.BARCODEATTACHYN /* 상품부착 여부 */
+					,  IC.COMPYN 		  /* 구성품  여부 */
+				    ,  CASE WHEN A.ROBSORTERICYN = 'N' THEN 'Y' ELSE 'N' END AS DFSHPMTRYN      /* 이형물 여부 */
+					,  A.PKIMPSYN		  /* 피킹 불가 */
+					,  MAX(IVL.IVINVSTGTYN) OVER(PARTITION BY A.LCKEY, A.ICKEY) AS  IVINVSTGTYN	  /* 실사 여부 */
+					,  IC.IMGURL
+					,  A.LCKEY
+					,  CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END AS LCKEYFORMAT
+					,  A.PKWKSTATUSCD
+					,  A.EXPCTQTY
+					,  A.CNFRMQTY
+					,  LC.ZNKEY
+					,  LC.ARKEY
+					,  LC.TIERNO
+					,  LC.ROWNO
+					,  LC.RACKNO
+					,  LC.SPLNO
+					,  A.CNTRBARCODE AS PICKCNTRBARCODE
+				  FROM (
+						SELECT TOTD.CTKEY
+							,  TOTD.OWKEY
+							,  TOTD.PIHDKEY
+							,  TOTD.ICKEY
+							,  TOTD.CELLKEY
+							,  TOTD.PKIMPSYN      /* 피킹 불가 */
+							,  TOTD.LCKEY
+							,  TOTD.UOM
+							,  TOTD.IVATKEY
+							,  TOTD.ROBSORTERICYN
+						    <choose>
+								<when test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)">
+									,  CASE WHEN COUNT(CNDT.PIHDKEY) > 0
+										THEN '10'
+										ELSE MAX(PKDTWKSTATUSCD) END AS PKWKSTATUSCD
+									,  SUM(COALESCE(CNDT.PKQTY, PIDT.CNFRMQTY)) AS CNFRMQTY
+									,  LISTAGG(DISTINCT CNDT.CNTRBARCODE, ',') AS CNTRBARCODE
+									,  SUM(PIDT.EXPCTQTY) AS EXPCTQTY
+								</when>
+						     	<otherwise>
+									,  TOTD.PKWKSTATUSCD
+									,  SUM(TOTD.CNFRMQTY) OVER(PARTITION BY TOTD.ICKEY, TOTD.LCKEY) AS CNFRMQTY
+									,  NULL AS CNTRBARCODE
+									,  SUM(TOTD.EXPCTQTY) OVER(PARTITION BY TOTD.ICKEY, TOTD.LCKEY) AS EXPCTQTY
+								</otherwise>
+							</choose>
+						  FROM TWORK_INFO_PI_TOT_DT TOTD
+						<if test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)" >
+							INNER JOIN (
+										  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.PIDTKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+										  FROM (
+												SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.PIDTKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+													 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+												  FROM TWORK_INFO_PI_DT PD
+												 WHERE PD.CTKEY    = #{sctkey}
+												   AND PD.OWKEY    = #{sowkey}
+												   AND PD.PIHDKEY  = #{pihdkey}
+												) T
+										  WHERE T.LCCNT = 1
+										 ) DILC
+									  ON DILC.CTKEY = TOTD.CTKEY
+									 AND DILC.OWKEY = TOTD.OWKEY
+									 AND DILC.PIHDKEY = TOTD.PIHDKEY
+									 AND DILC.ICKEY = TOTD.ICKEY
+									 AND DILC.LCKEY = TOTD.LCKEY
+							INNER JOIN TWORK_INFO_PI_DT PIDT
+									ON PIDT.CTKEY   = TOTD.CTKEY
+								   AND PIDT.OWKEY   = TOTD.OWKEY
+								   AND PIDT.PIHDKEY = TOTD.PIHDKEY
+			                       AND PIDT.ICKEY = TOTD.ICKEY
+			                       AND PIDT.LCKEY = TOTD.LCKEY
+			                       AND PIDT.PIDTKEY = DILC.PIDTKEY
+			                       AND PIDT.OBHDKEY = DILC.OBHDKEY
+						  	LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT CNDT
+									     ON CNDT.CTKEY   = PIDT.CTKEY
+									  	AND CNDT.OWKEY   = PIDT.OWKEY
+									  	AND CNDT.PIHDKEY = PIDT.PIHDKEY
+									  	AND CNDT.PIDTKEY = PIDT.PIDTKEY
+						</if>
+						  INNER JOIN TWORK_MST_LC LC
+								  ON LC.CTKEY = TOTD.CTKEY
+								 AND LC.LCKEY = TOTD.LCKEY
+						  WHERE TOTD.CTKEY    = #{sctkey}
+							AND TOTD.OWKEY    = #{sowkey}
+							AND TOTD.PIHDKEY  = #{pihdkey}
+						    AND LC.ARKEY	   = #{arkey}
+							AND LC.ALTMTALENO = #{altmtaleno}
+						<if test="'PW'.equals(wktypecd) || 'UW'.equals(wktypecd)" >
+							GROUP BY TOTD.CTKEY
+								  ,  TOTD.OWKEY
+								  ,  TOTD.PIHDKEY
+								  ,  TOTD.ICKEY
+								  ,  TOTD.CELLKEY
+								  ,  TOTD.PKIMPSYN      /* 피킹 불가 */
+								  ,  TOTD.LCKEY
+								  ,  TOTD.UOM
+								  ,  TOTD.IVATKEY
+								  ,  TOTD.ROBSORTERICYN
+								  ,  TOTD.EXPCTQTY
+						</if>
+					 ) A 
+				 INNER JOIN TWORK_MST_LC LC
+						 ON LC.CTKEY = A.CTKEY
+						AND LC.LCKEY = A.LCKEY
+				 INNER JOIN TWORK_MST_IC IC
+						 ON IC.CTKEY = A.CTKEY
+						AND IC.OWKEY = A.OWKEY
+						AND IC.ICKEY = A.ICKEY
+				 INNER JOIN TWORK_MST_ICBARCODE ICB
+						 ON ICB.CTKEY = A.CTKEY
+						AND ICB.OWKEY = A.OWKEY
+						AND ICB.ICKEY = A.ICKEY
+				 INNER JOIN TWORK_INFO_IVATXLC IVL
+						 ON IVL.CTKEY   = A.CTKEY
+						AND IVL.OWKEY   = A.OWKEY
+						AND IVL.IVATKEY = A.IVATKEY
+						AND IVL.LCKEY   = A.LCKEY
+						AND IVL.ICKEY   = A.ICKEY
+				) T
+		  LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+				 ON CTN.CTKEY        = T.CTKEY
+				AND CTN.OWKEY        = T.OWKEY
+				AND CTN.ICKEY        = T.ICKEY
+				AND CTN.ICUNITTYPECD = 'CTN'
+		 ORDER BY T.PKWKSTATUSCD
+				, T.ZNKEY
+				, T.ARKEY
+				, T.ROWNO
+				, T.RACKNO
+				, T.TIERNO
+				, T.SPLNO
+	</select>
+	
+	<select id="selectEtcTotalPickingList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcTotalPickingList - 기타피킹 작업내역 조회 SQL */
+		SELECT DISTINCT 
+			   T.CTKEY
+			 , T.OWKEY
+			 , T.PIHDKEY
+			 , T.ICKEY
+			 , T.CELLKEY
+			 , T.ICNM
+			 , T.ICBARCODE
+			 , T.EXPCKYN
+			 , T.ROBSORTERICYN
+			 , T.ASRTYN
+			 , T.BARCODEATTACHYN
+			 , T.COMPYN
+			 , T.DFSHPMTRYN
+			 , T.PKIMPSYN
+			 , T.IVINVSTGTYN
+			 , T.IMGURL
+			 , T.LCKEY
+			 , T.LCKEYFORMAT
+			 , T.PKWKSTATUSCD
+			 , SUM(T.EXPCTQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS EXPCTQTY
+			 , SUM(T.CNFRMQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS CNFRMQTY
+			 , T.ZNKEY
+			 , T.ARKEY
+			 , T.TIERNO
+			 , T.ROWNO
+			 , T.RACKNO
+			 , T.SPLNO
+			 , T.PICKCNTRBARCODE
+			 , #{altmtaleno} AS ALTMTALENO
+		  FROM (
+				SELECT DISTINCT
+					   A.CTKEY
+					,  A.OWKEY
+					,  A.PIHDKEY
+					,  A.ICKEY
+					,  A.CELLKEY
+					,  IC.ICNM
+					,  LISTAGG(DISTINCT ICB.BARCODE, ',') OVER(PARTITION BY A.ICKEY) AS ICBARCODE
+					,  IC.EXPCKYN 		  /* 유통기한 여부*/
+				    ,  A.ROBSORTERICYN   /* 로봇소터 여부*/
+					,  IC.ASRTYN 		  /* 아소트  여부 */
+					,  IC.BARCODEATTACHYN /* 상품부착 여부 */
+					,  IC.COMPYN 		  /* 구성품  여부 */
+				    ,  CASE WHEN A.ROBSORTERICYN = 'N' THEN 'Y' ELSE 'N' END AS DFSHPMTRYN      /* 이형물 여부 */
+					,  A.PKIMPSYN		  /* 피킹 불가 */
+					,  MAX(IVL.IVINVSTGTYN) OVER(PARTITION BY A.LCKEY, A.ICKEY) AS  IVINVSTGTYN	  /* 실사 여부 */
+					,  IC.IMGURL
+					,  A.LCKEY
+					,  CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END AS LCKEYFORMAT
+					,  A.PKWKSTATUSCD
+					,  A.EXPCTQTY
+					,  A.CNFRMQTY
+					,  LC.ZNKEY
+					,  LC.ARKEY
+					,  LC.TIERNO
+					,  LC.ROWNO
+					,  LC.RACKNO
+					,  LC.SPLNO
+					,  A.CNTRBARCODE AS PICKCNTRBARCODE
+				  FROM (
+						SELECT TOTD.CTKEY
+							,  TOTD.OWKEY
+							,  TOTD.PIHDKEY
+							,  TOTD.ICKEY
+							,  TOTD.CELLKEY
+							,  TOTD.PKIMPSYN      /* 피킹 불가 */
+							,  TOTD.LCKEY
+							,  TOTD.UOM
+							,  TOTD.IVATKEY
+							,  TOTD.ROBSORTERICYN
+						    ,  CASE WHEN COUNT(CNDT.PIHDKEY) > 0
+									THEN '10'
+									ELSE MAX(PKDTWKSTATUSCD) END AS PKWKSTATUSCD
+							,  SUM(COALESCE(CNDT.PKQTY, PIDT.CNFRMQTY)) AS CNFRMQTY
+							,  LISTAGG(DISTINCT CNDT.CNTRBARCODE, ',') AS CNTRBARCODE
+							,  SUM(PIDT.EXPCTQTY) AS EXPCTQTY
+						  FROM TWORK_INFO_PI_TOT_DT TOTD
+						  INNER JOIN (
+									  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.PIDTKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+									  FROM (
+											SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.PIDTKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+												 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+											  FROM TWORK_INFO_PI_DT PD
+											 WHERE PD.CTKEY    = #{sctkey}
+											   AND PD.OWKEY    = #{sowkey}
+											   AND PD.PIHDKEY  = #{pihdkey}
+											) T
+									  WHERE T.LCCNT > 1
+									 ) DILC
+								  ON DILC.CTKEY = TOTD.CTKEY
+								 AND DILC.OWKEY = TOTD.OWKEY
+								 AND DILC.PIHDKEY = TOTD.PIHDKEY
+								 AND DILC.ICKEY = TOTD.ICKEY
+								 AND DILC.LCKEY = TOTD.LCKEY
+						INNER JOIN TWORK_INFO_PI_DT PIDT
+							    ON PIDT.CTKEY   = TOTD.CTKEY
+							   AND PIDT.OWKEY   = TOTD.OWKEY
+							   AND PIDT.PIHDKEY = TOTD.PIHDKEY
+	                           AND PIDT.ICKEY = TOTD.ICKEY
+	                           AND PIDT.LCKEY = TOTD.LCKEY
+	                           AND PIDT.PIDTKEY = DILC.PIDTKEY
+	                           AND PIDT.OBHDKEY = DILC.OBHDKEY
+					  	LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT CNDT
+								     ON CNDT.CTKEY   = PIDT.CTKEY
+								  	AND CNDT.OWKEY   = PIDT.OWKEY
+								  	AND CNDT.PIHDKEY = PIDT.PIHDKEY
+								  	AND CNDT.PIDTKEY = PIDT.PIDTKEY
+						  INNER JOIN TWORK_MST_LC LC
+								  ON LC.CTKEY = TOTD.CTKEY
+								 AND LC.LCKEY = TOTD.LCKEY
+						  WHERE TOTD.CTKEY    = #{sctkey}
+							AND TOTD.OWKEY    = #{sowkey}
+							AND TOTD.PIHDKEY  = #{pihdkey}
+						    AND LC.ARKEY	   = #{arkey}
+							AND LC.ALTMTALENO = #{altmtaleno}
+							GROUP BY TOTD.CTKEY
+								  ,  TOTD.OWKEY
+								  ,  TOTD.PIHDKEY
+								  ,  TOTD.ICKEY
+								  ,  TOTD.CELLKEY
+								  ,  TOTD.PKIMPSYN      /* 피킹 불가 */
+								  ,  TOTD.LCKEY
+								  ,  TOTD.UOM
+								  ,  TOTD.IVATKEY
+								  ,  TOTD.ROBSORTERICYN
+								  ,  TOTD.EXPCTQTY
+					 ) A 
+				 INNER JOIN TWORK_MST_LC LC
+						 ON LC.CTKEY = A.CTKEY
+						AND LC.LCKEY = A.LCKEY
+				 INNER JOIN TWORK_MST_IC IC
+						 ON IC.CTKEY = A.CTKEY
+						AND IC.OWKEY = A.OWKEY
+						AND IC.ICKEY = A.ICKEY
+				 INNER JOIN TWORK_MST_ICBARCODE ICB
+						 ON ICB.CTKEY = A.CTKEY
+						AND ICB.OWKEY = A.OWKEY
+						AND ICB.ICKEY = A.ICKEY
+				 INNER JOIN TWORK_INFO_IVATXLC IVL
+						 ON IVL.CTKEY   = A.CTKEY
+						AND IVL.OWKEY   = A.OWKEY
+						AND IVL.IVATKEY = A.IVATKEY
+						AND IVL.LCKEY   = A.LCKEY
+						AND IVL.ICKEY   = A.ICKEY
+				) T
+		 ORDER BY T.PKWKSTATUSCD
+				, T.ZNKEY
+				, T.ARKEY
+				, T.ROWNO
+				, T.RACKNO
+				, T.TIERNO
+				, T.SPLNO
+	</select>
+
+	<select id="selectIvatxlcList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectIvatxlcList - 총량피킹 상품 로케이션 재고 조회 SQL */
+		SELECT T.*
+			, NVL((SELECT 'Y'
+					FROM (SELECT ICKEY, LCKEY
+						  FROM TWORK_INFO_PI_DT
+						 WHERE CTKEY = T.CTKEY
+						   AND OWKEY = T.OWKEY
+						   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+						   		AND PIHDKEY = #{pihdkey}
+						   </if>
+						   GROUP BY ICKEY, LCKEY
+						 ) A
+					 WHERE A.ICKEY = T.ICKEY
+					   AND A.LCKEY = T.ORGLCKEY)
+				 , 'N') AS PIHDYN
+		  FROM (
+				SELECT IVL.CTKEY
+				     , IVL.OWKEY
+					 , IVL.LCKEY AS ORGLCKEY
+					 ,  CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END AS LCKEY
+				     , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+					 , IVL.ICKEY, IC.ICNM
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+						, IVL.IVATKEY
+						, IVAT.EXPDATE /* 유통기한 */
+					</if>
+					 , SUM(IVL.TOTQTY) AS TOTQTY /* 총수량 */
+					 , SUM(IVL.AVQTY) AS AVQTY /* 가용수량 */
+					 , SUM(IVL.ALQTY) AS ALQTY /* 할당수량 */
+					 , COUNT(IVL.LCKEY) AS LCKEYCNT /* 로케이션수 */
+				  FROM TWORK_INFO_IVATXLC IVL
+				 INNER JOIN TWORK_INFO_IVAT IVAT
+						 ON IVAT.CTKEY = IVL.CTKEY
+						AND IVAT.OWKEY = IVL.OWKEY
+						AND IVAT.IVATKEY = IVL.IVATKEY
+						AND IVAT.ICKEY = IVL.ICKEY
+				 INNER JOIN TWORK_MST_LC LC
+						 ON LC.CTKEY = IVL.CTKEY
+						AND LC.LCKEY = IVL.LCKEY
+				 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+						 ON IC.CTKEY = IVL.CTKEY
+						AND IC.OWKEY = IVL.OWKEY
+						AND IC.ICKEY = IVL.ICKEY
+						AND IC.UOM = 'EA'
+						AND IC.ICGRPKEY != 'SM' /* 부자재제외 */
+				 INNER JOIN TWORK_MST_CTCD_DT LCTYP /* 로케이션유형 */
+						 ON LCTYP.CTKEY = IC.CTKEY
+						AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+						AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+						AND LCTYP.LAKEY = #{slakey}
+				 WHERE IVL.CTKEY = #{sctkey}
+				   AND LC.LCTYPECD = '90'  /* 보관 로케이션 */
+				   AND IVL.TOTQTY > 0
+				   AND IC.ICKEY = #{ickey}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+						AND IVL.LCKEY = #{lckey}
+					</if>
+				GROUP BY IVL.CTKEY
+				       , IVL.OWKEY
+					   , IVL.LCKEY
+				       , LCTYP.CTCDDTNM
+					   , IVL.ICKEY
+				       , IC.ICNM
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+							, IVL.IVATKEY
+							, IVAT.EXPDATE
+						</if>
+					   , LC.ZNKEY
+					   , LC.ARKEY
+					   , LC.RACKNO
+					   , LC.ROWNO
+					   , LC.TIERNO
+					   , LC.SPLNO
+			 ) T
+		ORDER BY <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+					T.EXPDATE,
+				</if>
+			PIHDYN DESC
+			, T.ALQTY DESC
+			, T.LCKEY
+	</select>
+
+	<select id="selectIcutTypeList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectIcutTypeList - 총량피킹 상품 단위유형별 수량 조회 SQL */
+		SELECT ICUT.CTKEY
+			 , ICUT.OWKEY
+			 , ICUT.ICKEY
+			 , ICUT.ICUNITTYPECD
+			 , CDDT.CTCDDTNM AS ICUNITTYPENM
+			 , ICUT.ICUNITQTY
+		  FROM TWORK_MST_ICUTXTYPE ICUT
+		  INNER JOIN TWORK_MST_CTCD_HD CDHD
+				  ON CDHD.CTKEY     = ICUT.CTKEY
+				 AND CDHD.CTCDHDKEY = 'ICUNITTYPECD'
+				 AND CDHD.DELYN 	= 'N'
+		  INNER JOIN TWORK_MST_CTCD_DT CDDT
+				  ON CDDT.CTKEY 	= CDHD.CTKEY
+				 AND CDDT.CTCDHDKEY = CDHD.CTCDHDKEY
+				 AND CDDT.LAKEY 	= #{slakey}
+				 AND CDDT.DELYN 	= 'N'
+				 AND CDDT.CTCDDTKEY = ICUT.ICUNITTYPECD
+		 WHERE ICUT.CTKEY = #{sctkey}
+		   AND ICUT.OWKEY = #{sowkey}
+		   AND ICUT.ICKEY = #{ickey}
+	</select>
+
+	<update id="updateTotPkimpsyn">
+		/* wms-pda-outbound-sql-oracle.xml - updateTotPkimpsyn - 총량피킹 출고불가 update SQL */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		   SET UPDATEDATE   = #{sysdate}
+			,  UPDATEURKEY  = #{surkey}
+			,  PKIMPSYN = #{pkimpsyn}
+		 WHERE CTKEY   = #{sctkey}
+		   AND OWKEY   = #{sowkey}
+		   AND PIHDKEY = #{pihdkey}
+		   AND ICKEY   = #{ickey}
+		   AND LCKEY   = #{lckey}
+	</update>
+
+	<update id="updateIvinvstgyn">
+		/* wms-pda-outbound-sql-oracle.xml - updateIvinvstgyn - 실사대상 update SQL */
+		UPDATE TWORK_INFO_IVATXLC
+		   SET UPDATEDATE   = #{sysdate}
+			,  UPDATEURKEY  = #{surkey}
+		    ,  IVINVSTGTYN  = #{ivinvstgyn}
+		 WHERE CTKEY   = #{sctkey}
+		   AND OWKEY   = #{sowkey}
+		   AND ICKEY   = #{ickey}
+		   AND LCKEY   = #{lckey}
+	</update>
+
+	<select id="selectPickingDetailList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectPickingDetailList - 피킹확정시  피킹상세 정렬 + 상세 조회 SQL */
+		SELECT PIDT.CTKEY
+			,  PIDT.OWKEY
+			,  PIDT.PIHDKEY
+			,  PIDT.PIDTKEY
+		    ,  #{cntrbarcode} AS CNTRBARCODE
+			,  PIDT.UOM
+			,  PIDT.EXPCTQTY
+		  FROM TWORK_INFO_PI_HD PIHD
+		  INNER JOIN TWORK_INFO_PI_DT PIDT
+				  ON PIDT.CTKEY   = PIHD.CTKEY
+				 AND PIDT.OWKEY   = PIHD.OWKEY
+				 AND PIDT.PIHDKEY = PIHD.PIHDKEY
+		<if test='"PW".equals(wktypecd) || "UW".equals(wktypecd)'>
+			INNER JOIN (
+					  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+					  FROM (
+							SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+								 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+							  FROM TWORK_INFO_PI_DT PD
+							 WHERE PD.CTKEY    = #{sctkey}
+							   AND PD.OWKEY    = #{sowkey}
+							   AND PD.PIHDKEY  = #{pihdkey}
+							   AND PD.ICKEY 	= #{ickey}
+							) T
+					 WHERE T.LCCNT = 1 
+						 ) DILC
+				  ON DILC.CTKEY = PIDT.CTKEY
+				 AND DILC.OWKEY = PIDT.OWKEY
+				 AND DILC.PIHDKEY = PIDT.PIHDKEY
+				 AND DILC.ICKEY = PIDT.ICKEY
+				 AND DILC.LCKEY = PIDT.LCKEY
+				 AND DILC.OBHDKEY = PIDT.OBHDKEY
+		</if>		 
+		  WHERE PIHD.CTKEY   		= #{sctkey}
+			AND PIHD.OWKEY   		= #{sowkey}
+			AND PIHD.PKDIVCD 		= '20'
+		    AND PIHD.PIHDKEY 		= #{pihdkey}
+			AND PIDT.LCKEY 	 		= #{lckey}
+			AND PIDT.ICKEY 	 		= #{ickey}
+			AND PIDT.PKDTWKSTATUSCD = '00'
+		    AND NOT EXISTS(SELECT 1
+							 FROM TWORK_INFO_PK_CNTR_DT CNDT
+							WHERE CNDT.CTKEY   = PIDT.CTKEY
+							  AND CNDT.OWKEY   = PIDT.OWKEY
+							  AND CNDT.PIHDKEY = PIDT.PIHDKEY
+							  AND CNDT.PIDTKEY = PIDT.PIDTKEY
+						  )
+		  ORDER BY EXPCTQTY DESC
+				 , PIDTKEY
+	</select>
+	
+	<select id="selectEtcPickingDetailList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcPickingDetailList - 기타피킹 피킹확정시  피킹상세 정렬 + 상세 조회 SQL */
+		SELECT PIDT.CTKEY
+			,  PIDT.OWKEY
+			,  PIDT.PIHDKEY
+			,  PIDT.PIDTKEY
+		    ,  #{cntrbarcode} AS CNTRBARCODE
+			,  PIDT.UOM
+			,  PIDT.EXPCTQTY
+		  FROM TWORK_INFO_PI_HD PIHD
+		  INNER JOIN TWORK_INFO_PI_DT PIDT
+				  ON PIDT.CTKEY   = PIHD.CTKEY
+				 AND PIDT.OWKEY   = PIHD.OWKEY
+				 AND PIDT.PIHDKEY = PIHD.PIHDKEY
+		  INNER JOIN (
+					  SELECT DISTINCT T.CTKEY, T.OWKEY, T.PIHDKEY, T.ICKEY , T.LCKEY, T.OBHDKEY
+					  FROM (
+							SELECT PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.ICKEY , PD.LCKEY, PD.OBHDKEY
+								 , COUNT(DISTINCT PD.LCKEY) OVER(PARTITION BY PD.PIHDKEY, PD.ICKEY, PD.OBHDKEY) AS LCCNT
+							  FROM TWORK_INFO_PI_DT PD
+							 WHERE PD.CTKEY    = #{sctkey}
+							   AND PD.OWKEY    = #{sowkey}
+							   AND PD.PIHDKEY  = #{pihdkey}
+							   AND PD.ICKEY 	= #{ickey}
+							) T
+					 WHERE T.LCCNT > 1 
+						 ) DILC
+				  ON DILC.CTKEY = PIDT.CTKEY
+				 AND DILC.OWKEY = PIDT.OWKEY
+				 AND DILC.PIHDKEY = PIDT.PIHDKEY
+				 AND DILC.ICKEY = PIDT.ICKEY
+				 AND DILC.LCKEY = PIDT.LCKEY
+				 AND DILC.OBHDKEY = PIDT.OBHDKEY
+		  WHERE PIHD.CTKEY   		= #{sctkey}
+			AND PIHD.OWKEY   		= #{sowkey}
+			AND PIHD.PKDIVCD 		= '20'
+		    AND PIHD.PIHDKEY 		= #{pihdkey}
+			AND PIDT.LCKEY 	 		= #{lckey}
+			AND PIDT.ICKEY 	 		= #{ickey}
+			AND PIDT.PKDTWKSTATUSCD = '00'
+		    AND NOT EXISTS(SELECT 1
+							 FROM TWORK_INFO_PK_CNTR_DT CNDT
+							WHERE CNDT.CTKEY   = PIDT.CTKEY
+							  AND CNDT.OWKEY   = PIDT.OWKEY
+							  AND CNDT.PIHDKEY = PIDT.PIHDKEY
+							  AND CNDT.PIDTKEY = PIDT.PIDTKEY
+						  )
+		  ORDER BY EXPCTQTY DESC
+				 , PIDTKEY
+	</select>
+
+	<select id="selectPickingContainerDetail" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectPickingContainerDetail - 용기상세확인 select SQL */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_PK_CNTR_DT
+		 WHERE CTKEY   = #{sctkey}
+		   AND OWKEY   = #{sowkey}
+		   AND PIHDKEY = #{pihdkey}
+		   AND PIDTKEY = #{pidtkey}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+	
+	<insert id="insertPickingContainerDetail">
+		/* wms-pda-outbound-sql-oracle.xml - insertPickingContainerDetail - 용기상세 insert SQL */
+		INSERT INTO TWORK_INFO_PK_CNTR_DT
+			(
+				  CTKEY
+				, OWKEY
+				, PIHDKEY
+				, PIDTKEY
+				, CNTRBARCODE
+				, UOM
+				, PKQTY
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+			)
+		VALUES
+			(
+				  #{ctkey}
+				, #{owkey}
+				, #{pihdkey}
+				, #{pidtkey}
+				, #{cntrbarcode}
+				, #{uom}
+				, #{qty}
+				, #{sysdate}
+				, #{surkey}
+				, #{sysdate}
+				, #{surkey}
+			)
+	</insert>
+
+	<select id="selectDasPkInfoList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectDasPkInfoList - DAS/로봇 피킹 상품보기 조회 SQL */
+		SELECT DISTINCT 
+			   TOT.CTKEY
+			,  TOT.OWKEY
+			,  TOT.PIHDKEY
+			,  TOT.ICKEY
+			,  TOT.UOM
+			,  TOT.LCKEY
+			,  SUM(TOT.EXPCTQTY) OVER(PARTITION BY TOT.ICKEY, TOT.LCKEY) AS EXPCTQTY
+			,  SUM(TOT.CNFRMQTY) OVER(PARTITION BY TOT.ICKEY, TOT.LCKEY) AS CNFRMQTY
+			,  IC.ICNM
+			,  IC.IMGURL
+			,  ICB.BARCODE ICBARCODE
+			,  LC.RACKNO
+			,  CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END AS LCKEYFORMAT
+			,  ICUTTYP.WEIGHT / 1000 AS ICWEIGHT
+			,  SUM(ROUND((ICUTTYP.WEIGHT * CNFRMQTY / 1000), 2)) OVER(PARTITION BY TOT.ICKEY, TOT.LCKEY) AS SUCWEIGHT
+		  FROM TWORK_INFO_PI_TOT_DT TOT
+		  INNER JOIN TWORK_MST_LC LC
+				  ON LC.CTKEY = TOT.CTKEY
+				 AND LC.LCKEY = TOT.LCKEY
+			INNER JOIN TWORK_MST_IC IC
+					ON IC.CTKEY = TOT.CTKEY
+				   AND IC.OWKEY = TOT.OWKEY
+				   AND IC.ICKEY = TOT.ICKEY
+			INNER JOIN TWORK_MST_ICUTXTYPE ICUTTYP
+					ON ICUTTYP.CTKEY        = IC.CTKEY
+				   AND ICUTTYP.OWKEY        = IC.OWKEY
+				   AND ICUTTYP.ICKEY        = IC.ICKEY
+				   AND ICUTTYP.ICUNITTYPECD = IC.UOM
+				   AND ICUTTYP.ICUNITKEY    = IC.ICUNITKEY
+			INNER JOIN TWORK_MST_ICBARCODE ICB
+					  ON ICB.CTKEY = TOT.CTKEY
+					 AND ICB.OWKEY = TOT.OWKEY
+					 AND ICB.ICKEY = TOT.ICKEY
+					 AND ICB.UOM   = TOT.UOM
+		 WHERE TOT.CTKEY 		= #{sctkey}
+		   AND TOT.OWKEY 		= #{sowkey}
+		   AND TOT.PIHDKEY 		= #{pihdkey}
+		   AND LC.ARKEY			= #{arkey}
+		   AND TOT.PKWKSTATUSCD = '10'
+	  ORDER BY TOT.LCKEY, TOT.ICKEY
+	</select>
+
+	<update id="updateCntrDdln">
+		/* wms-pda-outbound-sql-oracle.xml - updateCntrDdln - 용기 마감 플래그 변경 SQL */
+		UPDATE TWORK_INFO_PK_CNTR
+		   SET CNTRDDLNYN  = 'Y'
+			,  UPDATEURKEY = #{surkey}
+		    ,  UPDATEDATE  = #{sysdate}
+		 WHERE CTKEY 	   = #{sctkey}
+		   AND OWKEY 	   = #{sowkey}
+		   AND PIHDKEY 	   = #{pihdkey}
+		   AND CNTRBARCODE = #{cntrbarcode}
+		   AND COALESCE(DISPLCYN, 'N') = COALESCE(#{displcyn}, 'N') 
+	</update>
+
+	<select id="selectIntegPkRndList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectIntegPkRndList - 통합피킹 회차조회  SQL */
+		SELECT PIHD.CTKEY
+			,  PIHD.OWKEY
+			,  PIHD.PIHDKEY
+			,  PIHD.PIHDNM
+		  FROM TWORK_INFO_PI_HD PIHD
+		  WHERE 1 = 1
+			AND PIHD.CTKEY   	  = #{sctkey}
+			AND PIHD.OWKEY   	  = #{sowkey}
+			AND PIHD.PKDIVCD 	  = '30'  /* 통합 */
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+		  		AND PIHD.OBREQDAY = #{obreqday}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)" >
+				AND PIHD.PIHDKEY = #{pihdkey}
+			</if>
+		  ORDER BY PIHD.PIHDKEY
+	</select>
+
+	<select id="selectWktypeQtyList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectWktypeQtyList - 통합피킹 DAS/Robot 수량 조회  SQL */
+		 SELECT WAHD.WKTYPECD
+			,  SUM(EXPCTQTY) AS EXPCTQTY
+			,  SUM(CNFRMQTY) AS CNFRMQTY
+		  FROM TWORK_INFO_WA_HD WAHD
+		  INNER JOIN TWORK_INFO_WA_DT WADT
+				  ON WADT.CTKEY   = WAHD.CTKEY
+				 AND WADT.OWKEY   = WAHD.OWKEY
+				 AND WADT.WAHDKEY = WAHD.WAHDKEY
+		  INNER JOIN TWORK_INFO_PI_DT PIDT
+				  ON PIDT.CTKEY   = WADT.CTKEY
+				 AND PIDT.OWKEY   = WADT.OWKEY
+				 AND PIDT.OBHDKEY = WADT.OBHDKEY
+		 WHERE WAHD.CTKEY   = #{sctkey}
+		   AND WAHD.OWKEY   = #{sowkey}
+		   AND WAHD.PIHDKEY = #{pihdkey}
+		   AND PIDT.ICKEY   = #{ickey}
+		   AND PIDT.LCKEY   = #{lckey}
+		 GROUP BY WAHD.WKTYPECD
+		 ORDER BY WAHD.WKTYPECD DESC
+	</select>
+
+	<select id="selectClassifRepickingRndList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingRndList - 분류재피킹 회차조회  SQL */
+		SELECT DISTINCT PH.PIHDKEY AS CODE
+			 , PH.PIHDNM AS NAME
+		  FROM TWORK_INFO_PI_HD PH
+		 INNER JOIN TWORK_INFO_WA_HD WH
+			     ON WH.CTKEY = PH.CTKEY
+			    AND WH.OWKEY = PH.OWKEY
+			    AND WH.PIHDKEY = PH.PIHDKEY
+			    AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '65' 
+		 INNER JOIN TWORK_INFO_WA_DT WD
+		 		 ON WD.CTKEY = WH.CTKEY
+			    AND WD.OWKEY = WH.OWKEY
+			    AND WD.WAHDKEY = WH.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD OH
+				 ON OH.CTKEY   = PH.CTKEY
+				AND OH.OWKEY   = PH.OWKEY
+				AND OH.PIHDKEY = PH.PIHDKEY
+				AND OH.OBHDKEY = WD.OBHDKEY
+				AND OH.OBSTATUSCD <![CDATA[ < ]]> '85'
+		  WHERE PH.CTKEY = #{sctkey}
+			AND PH.OWKEY = #{sowkey}
+			AND WH.WKTYPECD NOT IN ('PW', 'UW')    /* 단포, 덕용 제외 */
+		    AND OH.OBSTATUSCD NOT IN ('65', '70')  /* 부분출고, 출고완료 제외 */
+			<choose>
+				<when test= '"30".equals(dasdivcd)'>
+					AND WH.WKTYPECD = 'RW'
+				</when>
+				<otherwise>
+					AND WH.WKTYPECD = 'DW'
+				</otherwise>
+			</choose>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(yesterday)" >
+				AND PH.OBREQDAY BETWEEN #{yesterday} AND #{today}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+				AND PH.OBREQDAY = #{obreqday}
+			</if>
+		ORDER BY PH.PIHDKEY
+	</select>
+
+	<select id="selectDasDivList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectDasDivList - 분류재피킹 작업구분: 중분류, 소분류, 로봇 조회  SQL */
+		SELECT CTCDDTKEY AS CODE
+			 , CTCDDTNM AS NAME
+		  FROM TWORK_MST_CTCD_DT
+		 WHERE CTKEY = #{sctkey}
+		   AND LAKEY = #{slakey}
+		   AND CTCDHDKEY = 'WKPLCDIVCD'  /* 작업장구분코드 */
+		   AND DELYN = 'N'
+	</select>
+
+	<select id="selectClassifRepickingArea" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingArea - 분류재피킹 구역 조회 SQL */
+		SELECT DISTINCT AR.ARKEY AS CODE
+			 , AR.ARKEY||' : '||AR.ARNM AS NAME
+		  FROM TWORK_MST_AR AR
+		  INNER JOIN TWORK_MST_LC LC
+				  ON AR.CTKEY = LC.CTKEY
+				 AND AR.ZNKEY = LC.ZNKEY
+				 AND AR.ARKEY = LC.ARKEY
+				 AND LC.LCTYPECD = '90'
+		 WHERE AR.CTKEY = #{sctkey}
+		   AND AR.ARKEY != 'SM'
+		 ORDER BY AR.ARKEY ASC
+	</select>
+
+	<select id="selectClassifRepickingRobotList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingRobotList - 분류재피킹 총량 로봇 작업장 작업내역 조회 SQL */
+		WITH DAS_SUM AS (
+		    -- DAS 실적을 미리 집계하여 조인 시 데이터 뻥튀기 방지
+		    SELECT DISTINCT A.CTKEY, A.OWKEY, A.WAHDKEY, C.ICKEY
+		           , MAX(A.IFPRCSDATE) OVER(PARTITION BY A.WAHDKEY) AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+				   , SUM(COALESCE(C.QTY, 0))OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS ROBRSLTQTY /* 로봇 실적수량 */
+		      FROM TWORK_INFO_PI_HD PH
+		      INNER JOIN TWORK_INFO_WA_HD WH
+					ON WH.CTKEY = PH.CTKEY
+				   AND WH.OWKEY = PH.OWKEY
+				   AND WH.PIHDKEY = PH.PIHDKEY
+				   AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '65' /* 웨이브상태('60'):작업완료 */
+			   	   AND WH.WKTYPECD IN ('RW') /* 웨이브작업유형 : 로봇DAS */
+			  LEFT JOIN TWIF_ROBDAS_PRCSRSLT_WA A
+			  		 ON A.CTKEY = WH.CTKEY
+			  		AND A.OWKEY = WH.OWKEY
+			  		AND A.WAHDKEY = WH.WAHDKEY
+			  		AND A.IFTYPE = 'R'
+				    AND A.IFSTATUS = '90'
+		      LEFT JOIN TWIF_ROBDAS_PRCSRSLT_ORDER B 
+		     		 ON B.CTKEY = A.CTKEY
+					AND B.OWKEY = A.OWKEY
+					AND B.WASEQ = A.WASEQ
+		      LEFT JOIN TWIF_ROBDAS_PRCSRSLT_IC C 
+		     		 ON C.CTKEY = B.CTKEY
+					AND C.OWKEY = B.OWKEY
+					AND C.WASEQ = B.WASEQ
+					AND C.ORDERSEQ = B.ORDERSEQ 
+		     WHERE PH.CTKEY   = #{sctkey}
+			   AND PH.OWKEY   = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}     
+		),
+		PICK_BASE AS (
+		    -- 총량피킹 기본 정보 추출 (GROUP BY를 통해 DISTINCT 대체)
+		    SELECT /* hint: INDEX(IL IDX1_TWORK_INFO_IVATXLC) */
+		    	   ROW_NUMBER() OVER(PARTITION BY PTD.ICKEY ORDER BY IL.AVQTY DESC) AS ICNUM /* ICKEY기준 가용수량많은순번 */
+				 , IL.AVQTY /* 재고가용수량 */
+				 , PH.CTKEY
+				 , PH.OWKEY
+				 , PH.PIHDKEY
+				 , PH.PIHDNM
+				 , PTD.ICKEY
+				 , IC.ICNM
+				 , IC.EXPCKYN /* 유통기한여부 */
+				 , CASE WHEN ASRTDT.ASRTDTICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ASRTYN /* 아소트여부: 상품마스터의 ASRTYN(아소트여부)는 정확성이 불확실(MD가관리) */
+				 , PTD.LCKEY /* 로케이션 (HA020734)*/
+				 , PTD.CELLKEY
+				 , SUM(PTD.EXPCTQTY) OVER(PARTITION BY PH.PIHDKEY, PTD.ICKEY) AS EXPCTQTY /* 예정수량 */
+				 , SUM(PTD.CNFRMQTY) OVER(PARTITION BY PH.PIHDKEY, PTD.ICKEY) AS CNFRMQTY /* 피킹수량 */
+				 , PTD.PKIMPSYN /* 피킹불가여부 */
+				 , IC.COMPYN /* 구성품여부 */
+				 , IC.BARCODEATTACHYN /* 바코드부착여부 */
+		      FROM TWORK_INFO_PI_HD PH
+			 INNER JOIN TWORK_INFO_PI_TOT_DT PTD
+					 ON PTD.CTKEY   = PH.CTKEY
+					AND PTD.OWKEY   = PH.OWKEY
+					AND PTD.PIHDKEY = PH.PIHDKEY
+			 INNER JOIN TWORK_INFO_IVATXLC IL
+					 ON IL.CTKEY   = PTD.CTKEY
+					AND IL.OWKEY   = PTD.OWKEY
+					AND IL.LCKEY   = PTD.LCKEY
+					AND IL.ICKEY   = PTD.ICKEY
+					AND IL.IVATKEY = PTD.IVATKEY
+			 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+					 ON IC.CTKEY = PTD.CTKEY
+					AND IC.OWKEY = PTD.OWKEY
+					AND IC.ICKEY = PTD.ICKEY
+					AND IC.UOM   = 'EA'
+			 INNER JOIN TWORK_MST_ICBARCODE ICB
+					 ON ICB.CTKEY = PTD.CTKEY
+					AND ICB.OWKEY = PTD.OWKEY
+					AND ICB.ICKEY = PTD.ICKEY
+					AND ICB.UOM   = PTD.UOM
+			  LEFT JOIN TWORK_MST_ASRT ASRTDT /* 아소트자상품정보 */
+					 ON ASRTDT.CTKEY = IC.CTKEY
+					AND ASRTDT.OWKEY = IC.OWKEY
+					AND ASRTDT.ASRTDTICKEY = IC.ICKEY
+					AND ASRTDT.QTY > 0
+		     WHERE PH.CTKEY   = #{sctkey}
+			   AND PH.OWKEY   = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}
+ 		   <if test='pkimpsyn != "all"'> /* 전체가 아니면 */
+ 		   		AND PTD.PKIMPSYN = #{pkimpsyn}
+ 		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGubun)" >
+		   		<choose>
+		   			<when test="'icbarcode'.equals(icGubun)">
+		   				AND ICB.BARCODE = #{icValue}
+		   			</when>
+		   			<when test="'ickey'.equals(icGubun)">
+		   				AND PTD.ICKEY LIKE #{icValue} || '%'
+		   			</when>
+		   			<when test="'icnm'.equals(icGubun)">
+		     			AND IC.ICNM LIKE '%' || #{icValue} || '%'
+		   			</when>
+		   		</choose>
+		   </if>
+		     GROUP BY PH.CTKEY
+					, PH.OWKEY
+					, PH.PIHDKEY
+					, PH.PIHDNM
+					, PTD.ICKEY
+					, IC.ICNM
+					, IL.AVQTY
+					, IC.EXPCKYN
+					, PTD.LCKEY
+					, PTD.CELLKEY
+					, PTD.EXPCTQTY
+					, PTD.CNFRMQTY
+					, ASRTDT.ASRTDTICKEY
+					, PTD.PKIMPSYN
+					, IC.COMPYN
+					, IC.BARCODEATTACHYN          
+		)
+		SELECT DISTINCT TT.*
+			 , LC.ARKEY /* 로케이션:구역 (HA) */
+			 , CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END||' '||LC.RACKNO||'-'||LC.ROWNO||'-'||LC.TIERNO||CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' END|| LC.SPLNO AS LCKEYVIEW/* 로케이션:(구역 랙-행-단-분할) */
+			 , TT.EXPCTQTY-TT.ROBRSLTQTY  AS REPIQTY /* 재피킹수량 */
+			 , 0 AS QTY /* 입력수량 */
+			 , NULL AS REPICKLCKEY /* 재피킹로케이션 */
+		  FROM (	
+				SELECT DISTINCT PKBS.*
+					 , MAX(DASS.ROBIFPRCSDATE) OVER(PARTITION BY PKBS.PIHDKEY) AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+					 , SUM(COALESCE(DASS.ROBRSLTQTY, 0))OVER(PARTITION BY PKBS.PIHDKEY, PKBS.ICKEY) AS ROBRSLTQTY /* 로봇 실적수량 */	
+				  FROM PICK_BASE PKBS
+				 INNER JOIN TWORK_INFO_WA_HD WH
+						 ON WH.CTKEY = PKBS.CTKEY
+					    AND WH.OWKEY = PKBS.OWKEY
+					    AND WH.PIHDKEY = PKBS.PIHDKEY
+					    AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '65' /* 웨이브상태('60'):작업완료 */
+					    AND WH.WKTYPECD IN ('RW') /* 웨이브작업유형 : 로봇DAS */
+				  LEFT JOIN DAS_SUM DASS
+						 ON DASS.CTKEY = WH.CTKEY
+						AND DASS.OWKEY = WH.OWKEY
+						AND DASS.WAHDKEY = WH.WAHDKEY
+						AND DASS.ICKEY = PKBS.ICKEY
+				 WHERE PKBS.ICNUM = 1	
+				) TT 
+			INNER JOIN TWORK_MST_LC LC
+					ON LC.CTKEY = TT.CTKEY
+				   AND LC.LCKEY = TT.LCKEY
+			 LEFT JOIN TWORK_INFO_REPK_REG RR
+				    ON RR.CTKEY = TT.CTKEY
+				   AND RR.OWKEY = TT.OWKEY
+				   AND RR.PIHDKEY = TT.PIHDKEY
+				   AND RR.ICKEY = TT.ICKEY
+				   AND YY.WKPLCDIVCD IN ('30')
+			WHERE TT.EXPCTQTY <![CDATA[ <> ]]> TT.ROBRSLTQTY 
+			  AND RR.ICKEY IS NULL
+			ORDER BY TT.LCKEY, TT.ICKEY
+	</select>
+
+	<select id="selectClassifRepickingWorkList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingWorkList - 분류재피킹 총량 조회 중분류, 소분류 SQL */	
+		WITH DAS_SUM AS (
+		    -- DAS 실적을 미리 집계하여 조인 시 데이터 뻥튀기 방지
+		    SELECT DISTINCT A.CTKEY, A.OWKEY, A.WAHDKEY, C.ICKEY
+		           , MAX(CASE WHEN A.DASDIV = '2' THEN A.IFPRCSDATE ELSE NULL END) OVER(PARTITION BY A.WAHDKEY) AS DIV2IFPRCSDATE /* 중분류 인터페이스 수신일자 */
+				   , MAX(CASE WHEN A.DASDIV = '3' THEN A.IFPRCSDATE ELSE NULL END) OVER(PARTITION BY A.WAHDKEY) AS DIV3IFPRCSDATE /* 소분류 인터페이스 수신일자 */
+				   , SUM(CASE WHEN A.DASDIV = '2' THEN COALESCE(C.QTY, 0) ELSE 0 END) OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS DIV2RSLTQTY /* 중분류 실적수량 */
+				   , SUM(CASE WHEN A.DASDIV = '3' THEN COALESCE(C.QTY, 0) ELSE 0 END) OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS DIV3RSLTQTY /* 소분류 실적수량 */	
+		      FROM TWORK_INFO_PI_HD PH
+		     INNER JOIN TWORK_INFO_WA_HD WH
+					 ON WH.CTKEY = PH.CTKEY
+				    AND WH.OWKEY = PH.OWKEY
+				    AND WH.PIHDKEY = PH.PIHDKEY
+				    AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '60' /* 웨이브상태('60'):작업완료 */
+			   	    AND WH.WKTYPECD IN ('DW') /* 웨이브작업유형 : 일반DAS */
+			  LEFT JOIN TWIF_DAS_PRCSRSLT_WA A
+			  		 ON A.CTKEY = WH.CTKEY
+			  		AND A.OWKEY = WH.OWKEY
+			  		AND A.WAHDKEY = WH.WAHDKEY
+			  		AND A.IFTYPE = 'R'
+				    AND A.IFSTATUS = '90'
+			    <choose>
+					<when test= "'10'.equals(dasdiv)">
+						AND A.DASDIV = '2'
+					</when>
+					<otherwise>
+						AND A.DASDIV IN ('2','3')
+					</otherwise>
+				</choose>
+		      LEFT JOIN TWIF_DAS_PRCSRSLT_ORDER B 
+		     		 ON B.CTKEY = A.CTKEY
+					AND B.OWKEY = A.OWKEY
+					AND B.WASEQ = A.WASEQ
+		      LEFT JOIN TWIF_DAS_PRCSRSLT_IC C 
+		     		 ON C.CTKEY = B.CTKEY
+					AND C.OWKEY = B.OWKEY
+					AND C.WASEQ = B.WASEQ
+					AND C.ORDERSEQ = B.ORDERSEQ
+		     WHERE PH.CTKEY = #{sctkey}
+			   AND PH.OWKEY = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}    
+		),
+		PICK_BASE AS (
+		    -- 총량피킹 기본 정보 추출 (GROUP BY를 통해 DISTINCT 대체)
+		    SELECT /* hint: INDEX(IL IDX1_TWORK_INFO_IVATXLC) */
+		    	   ROW_NUMBER() OVER(PARTITION BY PTD.ICKEY ORDER BY IL.AVQTY DESC) AS ICNUM /* ICKEY기준 가용수량많은순번 */
+				 , IL.AVQTY /* 재고가용수량 */
+				 , PH.CTKEY
+				 , PH.OWKEY
+				 , PH.PIHDKEY
+				 , PH.PIHDNM
+				 , PTD.ICKEY
+				 , IC.ICNM
+				 , IC.EXPCKYN /* 유통기한여부 */
+				 , CASE WHEN ASRTDT.ASRTDTICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ASRTYN /* 아소트여부: 상품마스터의 ASRTYN(아소트여부)는 정확성이 불확실(MD가관리) */
+				 , PTD.LCKEY /* 로케이션 (HA020734)*/
+				 , PTD.CELLKEY
+				 , SUM(PTD.EXPCTQTY) OVER(PARTITION BY PH.PIHDKEY, PTD.ICKEY) AS EXPCTQTY /* 예정수량 */
+				 , SUM(PTD.CNFRMQTY) OVER(PARTITION BY PH.PIHDKEY, PTD.ICKEY) AS CNFRMQTY /* 피킹수량 */
+				 , PTD.PKIMPSYN /* 피킹불가여부 */
+				 , IC.COMPYN /* 구성품여부 */
+				 , IC.BARCODEATTACHYN /* 바코드부착여부 */
+		      FROM TWORK_INFO_PI_HD PH
+			 INNER JOIN TWORK_INFO_PI_TOT_DT PTD
+					 ON PTD.CTKEY   = PH.CTKEY
+					AND PTD.OWKEY   = PH.OWKEY
+					AND PTD.PIHDKEY = PH.PIHDKEY
+			 INNER JOIN TWORK_INFO_IVATXLC IL
+					 ON IL.CTKEY   = PTD.CTKEY
+					AND IL.OWKEY   = PTD.OWKEY
+					AND IL.LCKEY   = PTD.LCKEY
+					AND IL.ICKEY   = PTD.ICKEY
+					AND IL.IVATKEY = PTD.IVATKEY
+			 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+					 ON IC.CTKEY = PTD.CTKEY
+					AND IC.OWKEY = PTD.OWKEY
+					AND IC.ICKEY = PTD.ICKEY
+					AND IC.UOM   = 'EA'
+			 INNER JOIN TWORK_MST_ICBARCODE ICB
+					 ON ICB.CTKEY = PTD.CTKEY
+					AND ICB.OWKEY = PTD.OWKEY
+					AND ICB.ICKEY = PTD.ICKEY
+					AND ICB.UOM   = PTD.UOM
+			  LEFT JOIN TWORK_MST_ASRT ASRTDT /* 아소트자상품정보 */
+					 ON ASRTDT.CTKEY = IC.CTKEY
+					AND ASRTDT.OWKEY = IC.OWKEY
+					AND ASRTDT.ASRTDTICKEY = IC.ICKEY
+					AND ASRTDT.QTY > 0
+		      WHERE PH.CTKEY = #{sctkey}
+				AND PH.OWKEY = #{sowkey}
+				AND PH.PIHDKEY = #{pihdkey}
+			<if test='pkimpsyn != "all"'> /* 전체가 아니면 */
+				AND PTD.PKIMPSYN = #{pkimpsyn}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGubun)" >
+		   		<choose>
+		   			<when test="'icbarcode'.equals(icGubun)">
+		   				AND ICB.BARCODE = #{icValue}
+					</when>
+					<when test="'ickey'.equals(icGubun)">
+						AND PTD.ICKEY LIKE #{icValue} || '%'
+					</when>
+					<when test="'icnm'.equals(icGubun)">
+						AND IC.ICNM LIKE '%' || #{icValue} || '%'
+					</when>
+				</choose>
+			</if>
+		      GROUP BY PH.CTKEY
+					 , PH.OWKEY
+					 , PH.PIHDKEY
+					 , PH.PIHDNM
+					 , PTD.ICKEY
+					 , IC.ICNM
+					 , IL.AVQTY
+					 , IC.EXPCKYN
+					 , PTD.LCKEY
+					 , PTD.CELLKEY
+					 , PTD.EXPCTQTY
+					 , PTD.CNFRMQTY
+					 , ASRTDT.ASRTDTICKEY
+					 , PTD.PKIMPSYN
+					 , IC.COMPYN
+					 , IC.BARCODEATTACHYN          
+		)
+		SELECT DISTINCT TT.*
+			 , LC.ARKEY /* 로케이션:구역 (HA) */
+			 , CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END||' '||LC.RACKNO||'-'||LC.ROWNO||'-'||LC.TIERNO||CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' END|| LC.SPLNO AS LCKEYVIEW/* 로케이션:(구역 랙-행-단-분할) */
+			 , CASE WHEN #{dasdiv} = '10' THEN TT.EXPCTQTY-TT.DIV2RSLTQTY
+					ELSE TT.EXPCTQTY-TT.DIV3RSLTQTY
+				END AS REPIQTY /* 재피킹수량 */
+			 , 0 AS QTY /* 입력수량 */
+			 , NULL AS REPICKLCKEY /* 재피킹로케이션 */
+			 , 0 AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+			 , 0 AS ROBRSLTQTY /* 로봇 실적수량 */
+		  FROM (	
+				SELECT PKBS.*
+					 , MAX(DASS.DIV2IFPRCSDATE) OVER(PARTITION BY PKBS.PIHDKEY) AS DIV2IFPRCSDATE /* 중분류 인터페이스 수신일자 */
+					 , MAX(DASS.DIV3IFPRCSDATE) OVER(PARTITION BY PKBS.PIHDKEY) AS DIV3IFPRCSDATE /* 소분류 인터페이스 수신일자 */
+					 , SUM(COALESCE(DASS.DIV2RSLTQTY, 0)) OVER(PARTITION BY PKBS.PIHDKEY, PKBS.ICKEY) AS DIV2RSLTQTY /* 중분류 실적수량 */
+					 , SUM(COALESCE(DASS.DIV3RSLTQTY, 0)) OVER(PARTITION BY PKBS.PIHDKEY, PKBS.ICKEY) AS DIV3RSLTQTY /* 소분류 실적수량 */	
+				  FROM PICK_BASE PKBS
+				 INNER JOIN TWORK_INFO_WA_HD WH
+						 ON WH.CTKEY = PKBS.CTKEY
+					    AND WH.OWKEY = PKBS.OWKEY
+					    AND WH.PIHDKEY = PKBS.PIHDKEY
+					    AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '60' /* 웨이브상태('60'):작업완료 */
+					    AND WH.WKTYPECD IN ('DW') /* 웨이브작업유형 : 일반DAS */
+				  LEFT JOIN DAS_SUM DASS
+						 ON DASS.CTKEY = WH.CTKEY
+						AND DASS.OWKEY = WH.OWKEY
+						AND DASS.WAHDKEY = WH.WAHDKEY
+						AND DASS.ICKEY = PKBS.ICKEY
+				 WHERE PKBS.ICNUM = 1	
+				) TT 
+			INNER JOIN TWORK_MST_LC LC
+					ON LC.CTKEY = TT.CTKEY
+				   AND LC.LCKEY = TT.LCKEY
+			 LEFT JOIN TWORK_INFO_REPK_REG RR
+				    ON RR.CTKEY = TT.CTKEY
+				   AND RR.OWKEY = TT.OWKEY
+				   AND RR.PIHDKEY = TT.PIHDKEY
+				   AND RR.ICKEY = TT.ICKEY
+				   AND YY.WKPLCDIVCD = '10'
+			WHERE TT.EXPCTQTY <![CDATA[ <> ]]> CASE WHEN #{dasdiv} = '10' THEN TT.DIV2RSLTQTY ELSE TT.DIV3RSLTQTY END
+			  AND RR.ICKEY IS NULL
+			ORDER BY TT.LCKEY, TT.ICKEY
+	</select>
+
+	<select id="selectClassifRepickingIntegList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingIntegList - 분류재피킹 조회 통합피킹 중,소분류 SQL */
+		WITH DAS_SUM AS (
+		    -- DAS 실적을 미리 집계하여 조인 시 데이터 뻥튀기 방지
+		    SELECT DISTINCT PH.CTKEY, PH.OWKEY, PH.PIHDKEY, WH.WAHDKEY, C.ICKEY
+		           , MAX(CASE WHEN A.DASDIV = '2' THEN A.IFPRCSDATE ELSE NULL END) OVER(PARTITION BY A.WAHDKEY) AS DIV2IFPRCSDATE /* 중분류 인터페이스 수신일자 */
+				   , MAX(CASE WHEN A.DASDIV = '3' THEN A.IFPRCSDATE ELSE NULL END) OVER(PARTITION BY A.WAHDKEY) AS DIV3IFPRCSDATE /* 소분류 인터페이스 수신일자 */
+				   , SUM(CASE WHEN A.DASDIV = '2' THEN COALESCE(C.QTY, 0) ELSE 0 END) OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS DIV2RSLTQTY /* 중분류 실적수량 */
+				   , SUM(CASE WHEN A.DASDIV = '3' THEN COALESCE(C.QTY, 0) ELSE 0 END) OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS DIV3RSLTQTY /* 소분류 실적수량 */	
+		      FROM TWORK_INFO_PI_HD PH
+		      INNER JOIN TWORK_INFO_WA_HD WH
+					ON WH.CTKEY = PH.CTKEY
+				   AND WH.OWKEY = PH.OWKEY
+				   AND WH.PIHDKEY = PH.PIHDKEY
+				   AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '60' /* 웨이브상태('60'):작업완료 */
+			   	   AND WH.WKTYPECD IN ('DW') /* 웨이브작업유형 : 일반DAS */
+			  LEFT JOIN TWIF_DAS_PRCSRSLT_WA A
+			  		 ON A.CTKEY = WH.CTKEY
+			  		AND A.OWKEY = WH.OWKEY
+			  		AND A.WAHDKEY = WH.WAHDKEY
+			  		AND A.IFTYPE = 'R'
+				    AND A.IFSTATUS = '90'
+			    <choose>
+					<when test= "'10'.equals(dasdiv)">
+						AND A.DASDIV = '2'
+					</when>
+					<otherwise>
+						AND A.DASDIV IN ('2', '3')
+					</otherwise>
+				</choose>
+		      LEFT JOIN TWIF_DAS_PRCSRSLT_ORDER B 
+		     		 ON B.CTKEY = A.CTKEY
+					AND B.OWKEY = A.OWKEY
+					AND B.WASEQ = A.WASEQ
+		      LEFT JOIN TWIF_DAS_PRCSRSLT_IC C 
+		     		 ON C.CTKEY = B.CTKEY
+					AND C.OWKEY = B.OWKEY
+					AND C.WASEQ = B.WASEQ
+					AND C.ORDERSEQ = B.ORDERSEQ
+		     WHERE PH.CTKEY = #{sctkey}
+			   AND PH.OWKEY = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}      
+		),
+		PICK_BASE AS (
+		    -- 통합피킹 기본 정보 추출
+		    SELECT DISTINCT
+		    	   PH.ICNUM
+		    	 , PH.AVQTY 
+		    	 , PH.CTKEY
+				 , PH.OWKEY
+				 , PH.PIHDKEY
+				 , PH.PIHDNM
+				 , PTD.ICKEY
+				 , IC.ICNM
+				 , IC.EXPCKYN /* 유통기한여부 */
+				 , CASE WHEN ASRTDT.ASRTDTICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ASRTYN /* 아소트여부: 상품마스터의 ASRTYN(아소트여부)는 정확성이 불확실(MD가관리) */
+				 , PTD.LCKEY /* 로케이션 (HA020734)*/
+				 , PTD.CELLKEY
+				 , PH.EXPCTQTY AS EXPCTQTY /* 예정수량 */
+				 , PH.CNFRMQTY AS CNFRMQTY /* 피킹수량 */
+				 , IC.COMPYN /* 구성품여부 */
+				 , IC.BARCODEATTACHYN /* 바코드부착여부 */
+		      FROM (
+		      		SELECT ROW_NUMBER() OVER(PARTITION BY T.ICKEY ORDER BY IL.AVQTY DESC, IL.UPDATEDATE DESC) AS ICNUM /* ICKEY기준 가용수량많은순번 */
+						 , IL.AVQTY /* 재고가용수량 */
+						 , T.*
+					  FROM (
+				      		SELECT PH.CTKEY
+								 , PH.OWKEY
+								 , PH.PIHDKEY
+								 , PH.PIHDNM
+								 , INTG.ICKEY
+								 , INTG.LCKEY
+								 , SUM(INTG.DASEXPCTQTY) OVER(PARTITION BY INTG.PIHDKEY, INTG.ICKEY) AS EXPCTQTY 
+								 , SUM(INTG.DASCNFRMQTY) OVER(PARTITION BY INTG.PIHDKEY, INTG.ICKEY) AS CNFRMQTY 
+							  FROM TWORK_INFO_PI_HD PH
+				     		 INNER JOIN TWORK_INFO_PI_INTG_DT INTG
+							 		 ON INTG.CTKEY   = PH.CTKEY
+									AND INTG.OWKEY   = PH.OWKEY
+									AND INTG.PIHDKEY = PH.PIHDKEY
+							 WHERE PH.CTKEY = #{sctkey}
+							   AND PH.OWKEY = #{sowkey}
+							   AND PH.PIHDKEY = #{pihdkey}
+							   AND INTG.DASEXPCTQTY > 0
+						    ) T
+					 INNER JOIN TWORK_INFO_IVATXLC IL
+							 ON IL.CTKEY   = T.CTKEY
+							AND IL.OWKEY   = T.OWKEY
+							AND IL.LCKEY   = T.LCKEY
+							AND IL.ICKEY   = T.ICKEY
+				   ) PH
+			 INNER JOIN TWORK_INFO_PI_TOT_DT PTD
+					 ON PTD.CTKEY   = PH.CTKEY
+					AND PTD.OWKEY   = PH.OWKEY
+					AND PTD.PIHDKEY = PH.PIHDKEY
+					AND PTD.ICKEY = PH.ICKEY
+					AND PTD.LCKEY = PH.LCKEY
+			 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+					 ON IC.CTKEY = PH.CTKEY
+					AND IC.OWKEY = PH.OWKEY
+					AND IC.ICKEY = PH.ICKEY
+					AND IC.UOM   = 'EA'
+			 INNER JOIN TWORK_MST_ICBARCODE ICB
+					 ON ICB.CTKEY = PH.CTKEY
+					AND ICB.OWKEY = PH.OWKEY
+					AND ICB.ICKEY = PH.ICKEY
+			  LEFT JOIN TWORK_MST_ASRT ASRTDT /* 아소트자상품정보 */
+					 ON ASRTDT.CTKEY = IC.CTKEY
+					AND ASRTDT.OWKEY = IC.OWKEY
+					AND ASRTDT.ASRTDTICKEY = IC.ICKEY
+					AND ASRTDT.QTY > 0
+		     WHERE PH.ICNUM = 1 /* 가용재고가 제일많은 로케이션만 뽑기 */
+		       AND PH.CTKEY = #{sctkey}
+			   AND PH.OWKEY = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}
+			<if test='pkimpsyn != "all"'> /* 전체가 아니면 */
+				AND PTD.PKIMPSYN = #{pkimpsyn}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGubun)" >
+	   			<choose>
+	   				<when test="'icbarcode'.equals(icGubun)">
+	   					AND ICB.BARCODE = #{icValue}
+			  		</when>
+			  		<when test="'ickey'.equals(icGubun)">
+						AND PH.ICKEY LIKE #{icValue} || '%'
+			  		</when>
+			  		<when test="'icnm'.equals(icGubun)">
+						AND IC.ICNM LIKE '%' || #{icValue} || '%'
+			  		</when>
+			  	</choose>
+			</if>       
+		)
+		SELECT DISTINCT TT.*
+			 , LC.ARKEY /* 로케이션:구역 (HA) */
+			 , CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END||' '||LC.RACKNO||'-'||LC.ROWNO||'-'||LC.TIERNO||CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' END|| LC.SPLNO AS LCKEYVIEW/* 로케이션:(구역 랙-행-단-분할) */
+			 , CASE WHEN #{dasdiv}  = '10' THEN TT.EXPCTQTY-TT.DIV2RSLTQTY
+					WHEN #{dasdiv}  = '20' THEN TT.EXPCTQTY-TT.DIV3RSLTQTY
+					ELSE TT.EXPCTQTY-(CASE WHEN TT.DIV3RSLTQTY > 0 THEN TT.DIV3RSLTQTY ELSE TT.DIV2RSLTQTY END)
+				END AS REPIQTY /* 재피킹수량 */
+			 , 0 AS QTY /* 입력수량 */
+			 , NULL AS REPICKLCKEY /* 재피킹로케이션 */
+			 , 0 AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+			 , 0 AS ROBRSLTQTY /* 로봇 실적수량 */
+		  FROM (	
+				SELECT PKDT.*
+					 , MAX(DPW.DIV2IFPRCSDATE) OVER(PARTITION BY PKDT.PIHDKEY) AS DIV2IFPRCSDATE /* 중분류 인터페이스 수신일자 */
+					 , MAX(DPW.DIV3IFPRCSDATE) OVER(PARTITION BY PKDT.PIHDKEY) AS DIV3IFPRCSDATE /* 소분류 인터페이스 수신일자 */
+					 , SUM(COALESCE(DPW.DIV2RSLTQTY, 0)) OVER(PARTITION BY PKDT.PIHDKEY, PKDT.ICKEY) AS DIV2RSLTQTY /* 중분류 실적수량 */
+					 , SUM(COALESCE(DPW.DIV3RSLTQTY, 0)) OVER(PARTITION BY PKDT.PIHDKEY, PKDT.ICKEY) AS DIV3RSLTQTY /* 소분류 실적수량 */	
+				  FROM PICK_BASE PKDT
+				  LEFT JOIN DAS_SUM DPW
+						 ON DPW.CTKEY = PKDT.CTKEY
+						AND DPW.OWKEY = PKDT.OWKEY
+						AND DPW.PIHDKEY = PKDT.PIHDKEY
+						AND DPW.ICKEY = PKDT.ICKEY
+				) TT 
+			INNER JOIN TWORK_MST_LC LC
+					ON LC.CTKEY = TT.CTKEY
+				   AND LC.LCKEY = TT.LCKEY
+			 LEFT JOIN TWORK_INFO_REPK_REG RR
+				    ON RR.CTKEY = TT.CTKEY
+				   AND RR.OWKEY = TT.OWKEY
+				   AND RR.PIHDKEY = TT.PIHDKEY
+				   AND RR.ICKEY = TT.ICKEY
+				   AND RR.WKPLCDIVCD = #{dasdiv}
+			WHERE TT.EXPCTQTY <![CDATA[ <> ]]> CASE WHEN #{dasdiv} = '10' THEN TT.DIV2RSLTQTY ELSE TT.DIV3RSLTQTY END
+			  AND RR.ICKEY IS NULL
+			ORDER BY TT.LCKEY, TT.ICKEY
+	</select>
+	
+	<select id="selectClassifRepickingIntegRobotList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectClassifRepickingIntegRobotList - 분류재피킹 조회 통합피킹 로봇 SQL */
+		WITH DAS_SUM AS (
+		    -- DAS 실적을 미리 집계하여 조인 시 데이터 뻥튀기 방지
+		    SELECT DISTINCT PH.CTKEY, PH.OWKEY, PH.PIHDKEY, WH.WAHDKEY, C.ICKEY
+		           , MAX(A.IFPRCSDATE) OVER(PARTITION BY A.WAHDKEY) AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+				   , SUM(COALESCE(C.QTY, 0))OVER(PARTITION BY A.WAHDKEY, C.ICKEY) AS ROBRSLTQTY /* 로봇 실적수량 */
+		      FROM TWORK_INFO_PI_HD PH
+		      INNER JOIN TWORK_INFO_WA_HD WH
+					ON WH.CTKEY = PH.CTKEY
+				   AND WH.OWKEY = PH.OWKEY
+				   AND WH.PIHDKEY = PH.PIHDKEY
+				   AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '65' /* 웨이브상태('60'):작업완료 */
+			   	   AND WH.WKTYPECD IN ('RW') /* 웨이브작업유형 : 로봇DAS */
+			  LEFT JOIN TWIF_ROBDAS_PRCSRSLT_WA A
+			  		 ON A.CTKEY = WH.CTKEY
+			  		AND A.OWKEY = WH.OWKEY
+			  		AND A.WAHDKEY = WH.WAHDKEY
+			  		AND A.IFTYPE = 'R'
+				    AND A.IFSTATUS = '90'
+		      LEFT JOIN TWIF_ROBDAS_PRCSRSLT_ORDER B 
+		     		 ON B.CTKEY = A.CTKEY
+					AND B.OWKEY = A.OWKEY
+					AND B.WASEQ = A.WASEQ
+		      LEFT JOIN TWIF_ROBDAS_PRCSRSLT_IC C 
+		     		 ON C.CTKEY = B.CTKEY
+					AND C.OWKEY = B.OWKEY
+					AND C.WASEQ = B.WASEQ
+					AND C.ORDERSEQ = B.ORDERSEQ 
+		     WHERE PH.CTKEY = #{sctkey}
+			   AND PH.OWKEY = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}     
+		),
+		PICK_BASE AS (
+		    -- 통합피킹 기본 정보 추출
+		    SELECT DISTINCT
+		    	   PH.ICNUM
+		    	 , PH.AVQTY 
+		    	 , PH.CTKEY
+				 , PH.OWKEY
+				 , PH.PIHDKEY
+				 , PH.PIHDNM
+				 , PTD.ICKEY
+				 , IC.ICNM
+				 , IC.EXPCKYN /* 유통기한여부 */
+				 , CASE WHEN ASRTDT.ASRTDTICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ASRTYN /* 아소트여부: 상품마스터의 ASRTYN(아소트여부)는 정확성이 불확실(MD가관리) */
+				 , PTD.LCKEY /* 로케이션 (HA020734)*/
+				 , PTD.CELLKEY
+				 , PH.EXPCTQTY AS EXPCTQTY /* 예정수량 */
+				 , PH.CNFRMQTY AS CNFRMQTY /* 피킹수량 */
+				 , IC.COMPYN /* 구성품여부 */
+				 , IC.BARCODEATTACHYN /* 바코드부착여부 */
+		      FROM (
+		      		SELECT ROW_NUMBER() OVER(PARTITION BY T.ICKEY ORDER BY IL.AVQTY DESC, IL.UPDATEDATE DESC) AS ICNUM /* ICKEY기준 가용수량많은순번 */
+						 , IL.AVQTY /* 재고가용수량 */
+						 , T.*
+					  FROM (
+				      		SELECT PH.CTKEY
+								 , PH.OWKEY
+								 , PH.PIHDKEY
+								 , PH.PIHDNM
+								 , INTG.ICKEY
+								 , INTG.LCKEY
+								 , SUM(INTG.RSEXPCTQTY) OVER(PARTITION BY INTG.PIHDKEY, INTG.ICKEY) AS EXPCTQTY 
+								 , SUM(INTG.RSCNFRMQTY) OVER(PARTITION BY INTG.PIHDKEY, INTG.ICKEY) AS CNFRMQTY 
+							  FROM TWORK_INFO_PI_HD PH
+				     		 INNER JOIN TWORK_INFO_PI_INTG_DT INTG
+							 		 ON INTG.CTKEY   = PH.CTKEY
+									AND INTG.OWKEY   = PH.OWKEY
+									AND INTG.PIHDKEY = PH.PIHDKEY
+							 WHERE PH.CTKEY = #{sctkey}
+							   AND PH.OWKEY = #{sowkey}
+							   AND PH.PIHDKEY = #{pihdkey}
+							   AND INTG.RSEXPCTQTY > 0
+						    ) T
+					 INNER JOIN TWORK_INFO_IVATXLC IL
+							 ON IL.CTKEY   = T.CTKEY
+							AND IL.OWKEY   = T.OWKEY
+							AND IL.LCKEY   = T.LCKEY
+							AND IL.ICKEY   = T.ICKEY
+				   ) PH
+			 INNER JOIN TWORK_INFO_PI_TOT_DT PTD
+					 ON PTD.CTKEY   = PH.CTKEY
+					AND PTD.OWKEY   = PH.OWKEY
+					AND PTD.PIHDKEY = PH.PIHDKEY
+					AND PTD.ICKEY = PH.ICKEY
+					AND PTD.LCKEY = PH.LCKEY
+			 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+					 ON IC.CTKEY = PH.CTKEY
+					AND IC.OWKEY = PH.OWKEY
+					AND IC.ICKEY = PH.ICKEY
+					AND IC.UOM   = 'EA'
+			 INNER JOIN TWORK_MST_ICBARCODE ICB
+					 ON ICB.CTKEY = PH.CTKEY
+					AND ICB.OWKEY = PH.OWKEY
+					AND ICB.ICKEY = PH.ICKEY
+			  LEFT JOIN TWORK_MST_ASRT ASRTDT /* 아소트자상품정보 */
+					 ON ASRTDT.CTKEY = IC.CTKEY
+					AND ASRTDT.OWKEY = IC.OWKEY
+					AND ASRTDT.ASRTDTICKEY = IC.ICKEY
+					AND ASRTDT.QTY > 0
+		     WHERE PH.ICNUM = 1 /* 가용재고가 제일많은 로케이션만 뽑기 */
+		       AND PH.CTKEY = #{sctkey}
+			   AND PH.OWKEY = #{sowkey}
+			   AND PH.PIHDKEY = #{pihdkey}
+			<if test='pkimpsyn != "all"'> /* 전체가 아니면 */
+				AND PTD.PKIMPSYN = #{pkimpsyn}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGubun)" >
+	   			<choose>
+	   				<when test="'icbarcode'.equals(icGubun)">
+	   					AND ICB.BARCODE = #{icValue}
+			  		</when>
+			  		<when test="'ickey'.equals(icGubun)">
+						AND PH.ICKEY LIKE #{icValue} || '%'
+			  		</when>
+			  		<when test="'icnm'.equals(icGubun)">
+						AND IC.ICNM LIKE '%' || #{icValue} || '%'
+			  		</when>
+			  	</choose>
+			</if>       
+		)
+		SELECT DISTINCT TT.*
+			 , LC.ARKEY /* 로케이션:구역 (HA) */
+			 , CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END||' '||LC.RACKNO||'-'||LC.ROWNO||'-'||LC.TIERNO||CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' END|| LC.SPLNO AS LCKEYVIEW/* 로케이션:(구역 랙-행-단-분할) */
+			 , TT.EXPCTQTY-TT.ROBRSLTQTY  AS REPIQTY /* 재피킹수량 */
+			 , 0 AS QTY /* 입력수량 */
+			 , NULL AS REPICKLCKEY /* 재피킹로케이션 */
+		  FROM (	
+				SELECT PKDT.*
+					 , MAX(RPW.ROBIFPRCSDATE) OVER(PARTITION BY PKDT.PIHDKEY) AS ROBIFPRCSDATE /* 로봇 인터페이스 수신일자 */
+					 , SUM(COALESCE(RPW.ROBRSLTQTY, 0))OVER(PARTITION BY PKDT.PIHDKEY, PKDT.ICKEY) AS ROBRSLTQTY /* 로봇 실적수량 */	
+				  FROM PICK_BASE PKDT
+				  LEFT JOIN DAS_SUM RPW
+						 ON RPW.CTKEY = PKDT.CTKEY
+						AND RPW.OWKEY = PKDT.OWKEY
+						AND RPW.PIHDKEY = PKDT.PIHDKEY
+						AND RPW.ICKEY = PKDT.ICKEY
+				) TT 
+			INNER JOIN TWORK_MST_LC LC
+					ON LC.CTKEY = TT.CTKEY
+				   AND LC.LCKEY = TT.LCKEY
+			 LEFT JOIN TWORK_INFO_REPK_REG RR
+					ON RR.CTKEY = TT.CTKEY
+				   AND RR.OWKEY = TT.OWKEY
+				   AND RR.PIHDKEY = TT.PIHDKEY
+				   AND RR.ICKEY = TT.ICKEY
+				   AND YY.WKPLCDIVCD IN ('30')
+			WHERE TT.EXPCTQTY <![CDATA[ <> ]]> TT.ROBRSLTQTY 
+			  AND RR.ICKEY IS NULL
+			ORDER BY TT.LCKEY, TT.ICKEY
+	</select>
+
+	<select id="selectPickingWkStatus" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectPickingWkStatus - 피킹 상태값 조회 SQL */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_PI_HD PH
+		 INNER JOIN TWORK_INFO_OB_HD OH
+				 ON OH.CTKEY   = PH.CTKEY
+				AND OH.OWKEY   = PH.OWKEY
+				AND OH.PIHDKEY = PH.PIHDKEY
+				AND OH.OBSTATUSCD <![CDATA[ < ]]> '85'
+		 INNER JOIN TWORK_INFO_WA_HD WH
+				 ON WH.CTKEY   = PH.CTKEY
+				AND WH.OWKEY   = PH.OWKEY
+				AND WH.PIHDKEY = PH.PIHDKEY
+				AND WH.WAWKSTATUSCD <![CDATA[ < ]]> '60'
+		 WHERE PH.CTKEY   = #{sctkey}
+		   AND PH.OWKEY   = #{sowkey}
+		   AND PH.PIHDKEY = #{pihdkey}
+		   AND OH.OBSTATUSCD NOT IN ('65','70')
+	</select>
+
+	<select id="selectPickingDivcd" resultType="java.lang.String">
+		/* wms-pda-outbound-sql-oracle.xml - selectPickingDivcd - 피킹구분 조회(총량, 통합) SQL */
+		SELECT PKDIVCD
+		 FROM TWORK_INFO_PI_HD PH
+		WHERE PH.CTKEY   = #{sctkey}
+		  AND PH.OWKEY   = #{sowkey}
+		  AND PH.PIHDKEY = #{pihdkey}
+	</select>
+
+	<select id="selectRepkValidationChkLckey" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectRepkValidationChkLckey - 분류재피킹 로케이션 Validation SQL */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IVATXLC
+		 WHERE CTKEY = #{sctkey}
+		   AND OWKEY = #{sowkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+	</select>
+
+	<select id="selectRepkValidationChk" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectRepkValidationChk - 분류재피킹 피킹확정 Validation SQL */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_REPK_REG
+		 WHERE CTKEY   	  = #{sctkey}
+		   AND OWKEY   	  = #{sowkey}
+		   AND PIHDKEY 	  = #{pihdkey}
+		   AND ICKEY   	  = #{ickey}
+		   AND WKPLCDIVCD = #{wkplcdivcd}
+	</select>
+
+	<insert id="insertRepkReg">
+		/* wms-pda-outbound-sql-oracle.xml - insertRepkReg - 재피킹 등록정보 insert SQL */
+		<selectKey keyProperty="repkseq" order="BEFORE" resultType="string" >
+			SELECT COALESCE(MAX(REPKSEQ), 0)+1 AS GRPID
+			  FROM TWORK_INFO_REPK_REG
+			 WHERE CTKEY   = #{sctkey}
+			   AND OWKEY   = #{sowkey}
+			   AND PIHDKEY = #{pihdkey}
+		</selectKey>
+		INSERT INTO TWORK_INFO_REPK_REG (
+			  CTKEY
+			, OWKEY
+			, PIHDKEY
+			, REPKSEQ
+			, ICKEY
+			, LCKEY
+			, CELLKEY
+			, WKPLCDIVCD
+			, CNFRMQTY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+		      #{sctkey}
+			, #{sowkey}
+			, #{pihdkey}
+			, #{repkseq}
+			, #{ickey}
+			, #{lckey}
+			, #{cellkey}
+			, #{wkplcdivcd}
+			, #{cnfrmqty}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<select id="selectMovePkRndList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMovePkRndList - 이고피킹 회차조회  SQL */
+		SELECT PIHD.CTKEY
+			,  PIHD.OWKEY
+			,  PIHD.PIHDKEY
+			,  PIHD.PIHDNM
+		  FROM TWORK_INFO_PI_HD PIHD
+		 INNER JOIN TWORK_INFO_OB_HD OB
+				 ON OB.CTKEY   = PIHD.CTKEY
+				AND OB.OWKEY   = PIHD.OWKEY
+				AND OB.OBHDKEY = PIHD.OBHDKEY
+		  WHERE PIHD.CTKEY   	  = #{sctkey}
+			AND PIHD.OWKEY   	  = #{sowkey}
+			AND PIHD.PKDIVCD 	  = '10'  /* 이고 */
+		    AND OB.OBHDTYPECD	  = '30'  /* B2B출고 */
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obreqday)" >
+		  		AND PIHD.OBREQDAY = #{obreqday}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)" >
+				AND PIHD.PIHDKEY = #{pihdkey}
+			</if>
+		  ORDER BY PIHD.PIHDKEY
+	</select>
+
+	<select id="selectMovePkAleLocList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMovePkAleLocList - 이고피킹 통로별 로케이션 조회 (통로 / LOC 수 / 진척도) 조회  SQL */
+		SELECT CTKEY
+			,  OWKEY
+			,  PIHDKEY
+			,  ALTMTALENO
+			,  SUCCNT || '/' || TOTLC AS LOC
+			,  ROUND((CASE WHEN SUCCNT = '0' THEN 0
+					ELSE SUCCNT / TOTLC
+					END
+				) * 100, 1) || '%' AS LOCPERCENT
+		  FROM (
+			SELECT TOT.CTKEY
+				 , TOT.OWKEY
+				 , TOT.PIHDKEY
+				 , TOT.ALTMTALENO
+				 , SUM(CASE TOT.PKWKSTATUSCD WHEN '10' THEN 1 ELSE 0 END) AS SUCCNT
+				 , COUNT(1) AS TOTLC /* 총 로케이션 */
+			  FROM (
+			  	SELECT DISTINCT 
+			  		   PIHD.CTKEY
+					,  PIHD.OWKEY
+					,  PIHD.PIHDKEY
+					,  PIDT.ICKEY
+					,  PIDT.CELLKEY
+					,  PIDT.LCKEY
+					,  PIDT.UOM
+					,  PIDT.IVATKEY
+					,  PIDT.EXPCTQTY
+					,  LC.ALTMTALENO
+					,  PIDT.PKDTWKSTATUSCD AS PKWKSTATUSCD
+				  FROM TWORK_INFO_PI_HD PIHD
+				  INNER JOIN TWORK_INFO_PI_DT PIDT
+				  		  ON PIDT.CTKEY   = PIHD.CTKEY
+						 AND PIDT.OWKEY   = PIHD.OWKEY
+						 AND PIDT.PIHDKEY = PIHD.PIHDKEY
+				  INNER JOIN TWORK_MST_LC LC
+						  ON LC.CTKEY = PIDT.CTKEY
+						 AND LC.LCKEY = PIDT.LCKEY
+				   WHERE PIHD.CTKEY    = #{sctkey}
+					 AND PIHD.OWKEY    = #{sowkey}
+					 AND PIHD.PIHDKEY  = #{pihdkey}
+					 AND LC.ARKEY      = #{arkey}
+			  ) TOT
+			 GROUP BY TOT.CTKEY
+					, TOT.OWKEY
+					, TOT.PIHDKEY
+					, TOT.ALTMTALENO
+		 )
+		ORDER BY (CASE WHEN SUCCNT = TOTLC THEN 1
+					   ELSE 0
+				   END), ALTMTALENO
+	</select>
+
+	<select id="selectMovePickingList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMovePickingList - 이고피킹 작업내역 조회 SQL */
+		SELECT DISTINCT 
+			   T.CTKEY
+			 , T.OWKEY
+			 , T.PIHDKEY
+			 , T.PIDTKEY
+			 , T.ICKEY
+			 , T.CELLKEY
+			 , T.ICNM
+			 , T.ICBARCODE
+			 , T.EXPCKYN
+			 , T.ROBSORTERICYN
+			 , T.ASRTYN
+			 , T.BARCODEATTACHYN
+			 , T.COMPYN
+			 , T.DFSHPMTRYN
+			 , T.IVINVSTGTYN
+			 , T.IMGURL
+			 , T.LCKEY
+			 , T.LCKEYFORMAT
+			 , T.PKWKSTATUSCD
+			 , SUM(T.EXPCTQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS EXPCTQTY
+			 , SUM(T.CNFRMQTY) OVER(PARTITION BY T.PIHDKEY, T.LCKEY, T.ICKEY) AS CNFRMQTY
+			 , T.ZNKEY
+			 , T.ARKEY
+			 , T.TIERNO
+			 , T.ROWNO
+			 , T.RACKNO
+			 , T.SPLNO
+			 , #{altmtaleno} AS ALTMTALENO
+		  FROM (
+				SELECT DISTINCT
+					   PIDT.CTKEY
+					,  PIDT.OWKEY
+					,  PIDT.PIHDKEY
+				    ,  PIDT.PIDTKEY
+					,  PIDT.ICKEY
+					,  PIDT.CELLKEY
+					,  IC.ICNM
+					,  LISTAGG(DISTINCT ICB.BARCODE, ',') OVER(PARTITION BY IC.ICKEY) AS ICBARCODE
+					,  IC.EXPCKYN 		  /* 유통기한 여부*/
+				    ,  PIDT.ROBSORTERICYN   /* 로봇소터 여부*/
+					,  IC.ASRTYN 		  /* 아소트  여부 */
+					,  IC.BARCODEATTACHYN /* 상품부착 여부 */
+					,  IC.COMPYN 		  /* 구성품  여부 */
+				    ,  CASE WHEN PIDT.ROBSORTERICYN = 'N' THEN 'Y' ELSE 'N' END AS DFSHPMTRYN      /* 이형물 여부 */
+					,  MAX(IVL.IVINVSTGTYN) OVER(PARTITION BY PIDT.LCKEY, PIDT.ICKEY, PIDT.IVATKEY) AS  IVINVSTGTYN	  /* 실사 여부 */
+					,  IC.IMGURL
+					,  PIDT.LCKEY
+					,  CASE WHEN LC.ZNKEY = 'MLD'
+					    	THEN LC.LCKEY
+					    	ELSE CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END END AS LCKEYFORMAT
+					,  PIDT.PKDTWKSTATUSCD AS PKWKSTATUSCD
+					,  PIDT.EXPCTQTY
+					,  PIDT.CNFRMQTY
+					,  LC.ZNKEY
+					,  LC.ARKEY
+					,  LC.TIERNO
+					,  LC.ROWNO
+					,  LC.RACKNO
+					,  LC.SPLNO
+				  FROM TWORK_INFO_PI_HD PIHD
+			     INNER JOIN TWORK_INFO_PI_DT PIDT
+						 ON PIDT.CTKEY   = PIHD.CTKEY
+						AND PIDT.OWKEY   = PIHD.OWKEY
+						AND PIDT.PIHDKEY = PIHD.PIHDKEY
+				 INNER JOIN TWORK_MST_LC LC
+						 ON LC.CTKEY = PIDT.CTKEY
+						AND LC.LCKEY = PIDT.LCKEY
+				 INNER JOIN TWORK_MST_IC IC
+						 ON IC.CTKEY = PIDT.CTKEY
+						AND IC.OWKEY = PIDT.OWKEY
+						AND IC.ICKEY = PIDT.ICKEY
+				 INNER JOIN TWORK_MST_ICBARCODE ICB
+						 ON ICB.CTKEY = PIDT.CTKEY
+						AND ICB.OWKEY = PIDT.OWKEY
+						AND ICB.ICKEY = PIDT.ICKEY
+				 INNER JOIN TWORK_INFO_IVATXLC IVL
+						 ON IVL.CTKEY   = PIDT.CTKEY
+						AND IVL.OWKEY   = PIDT.OWKEY
+						AND IVL.IVATKEY = PIDT.IVATKEY
+						AND IVL.LCKEY   = PIDT.LCKEY
+						AND IVL.ICKEY   = PIDT.ICKEY
+				  WHERE PIHD.CTKEY    = #{sctkey}
+				    AND PIHD.OWKEY    = #{sowkey}
+				    AND PIHD.PIHDKEY  = #{pihdkey}
+				  	AND LC.ARKEY	  = #{arkey}
+				  	AND LC.ALTMTALENO = #{altmtaleno}
+			 ) T
+		 ORDER BY T.PKWKSTATUSCD
+				, T.ZNKEY
+				, T.ARKEY
+				, T.ROWNO
+				, T.RACKNO
+				, T.TIERNO
+				, T.SPLNO
+	</select>
+
+	<select id="selectMovePickingPkInfoList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMovePickingPkInfoList - 이고피킹 피킹된 상품 조회 SQL */
+		SELECT PIDT.CTKEY
+			,  PIDT.OWKEY
+			,  PIDT.PIHDKEY
+			,  PIDT.ICKEY
+			,  PIDT.UOM
+			,  PIDT.LCKEY
+			,  PIDT.EXPCTQTY
+			,  PIDT.CNFRMQTY
+			,  IC.ICNM
+			,  IC.IMGURL
+			,  ICB.BARCODE ICBARCODE
+			,  LC.RACKNO
+			,  CASE WHEN LC.ZNKEY = 'MLD'
+			    	THEN LC.LCKEY
+			    	ELSE CASE LC.ZNKEY WHEN 'P' THEN LC.ZNKEY ELSE LC.ARKEY END || ' ' || LC.RACKNO || '-' || LC.ROWNO || '-' || LC.TIERNO || CASE LC.ZNKEY WHEN 'P' THEN '' ELSE '-' || LC.SPLNO END END AS LCKEYFORMAT
+			,  ICUTTYP.WEIGHT / 1000 AS ICWEIGHT
+			,  ROUND((ICUTTYP.WEIGHT * CNFRMQTY / 1000), 2) AS SUCWEIGHT
+		  FROM TWORK_INFO_PI_DT PIDT
+		  INNER JOIN TWORK_MST_LC LC
+				  ON LC.CTKEY = PIDT.CTKEY
+				 AND LC.LCKEY = PIDT.LCKEY
+		  INNER JOIN TWORK_MST_IC IC
+				  ON IC.CTKEY = PIDT.CTKEY
+				 AND IC.OWKEY = PIDT.OWKEY
+				 AND IC.ICKEY = PIDT.ICKEY
+		  INNER JOIN TWORK_MST_ICUTXTYPE ICUTTYP
+				  ON ICUTTYP.CTKEY        = IC.CTKEY
+				 AND ICUTTYP.OWKEY        = IC.OWKEY
+				 AND ICUTTYP.ICKEY        = IC.ICKEY
+				 AND ICUTTYP.ICUNITTYPECD = IC.UOM
+				 AND ICUTTYP.ICUNITKEY    = IC.ICUNITKEY
+		  INNER JOIN TWORK_MST_ICBARCODE ICB
+				  ON ICB.CTKEY = PIDT.CTKEY
+				 AND ICB.OWKEY = PIDT.OWKEY
+				 AND ICB.ICKEY = PIDT.ICKEY
+				 AND ICB.UOM   = PIDT.UOM
+		  WHERE PIDT.CTKEY 		 	= #{sctkey}
+			AND PIDT.OWKEY 		 	= #{sowkey}
+			AND PIDT.PIHDKEY 	    = #{pihdkey}
+			AND LC.ARKEY			= #{arkey}
+			AND PIDT.PKDTWKSTATUSCD = '10'
+	   ORDER BY PIDT.LCKEY, PIDT.ICKEY
+	</select>
+
+	<select id="selectNonOutboundIcList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectNonOutboundIcList - 포장미출 상품등록 - 상품조회 */
+		/* STEP1. 등록: 바코드스캔시 조회 */
+		SELECT DISTINCT IC.CTKEY
+			 , IC.OWKEY
+			 , IC.ICKEY
+			 , IC.ICNM
+			 , IC.IMGURL
+			 , IC.LCKEY
+			 , CTN.ICUNITQTY AS CTNICUNITQTY /* 카톤단위수량 */
+			 , INN.ICUNITQTY AS INNICUNITQTY /* 중포단위수량 */
+			 , 0 AS CTNQTY /* 카톤수량 화면용 */
+			 , 0 AS INNQTY /* 중포수량 화면용 */
+			 , 0 AS INPUTQTY /* 입력수량 */
+			 , #{barcode} AS BARCODE
+			 , CASE WHEN IC.ICOPERSTATUSCD = '1' THEN '진행'
+					WHEN IC.ICOPERSTATUSCD = '6' THEN '가등록'
+					WHEN IC.ICOPERSTATUSCD = '7' THEN '신상품'
+					WHEN IC.ICOPERSTATUSCD = '9' THEN '단종'
+					ELSE '-'
+			    END AS ICOPERSTATUSCD /* 상품운영상태 */
+		FROM TWORK_MST_IC IC
+  INNER JOIN TWORK_MST_ICBARCODE ICB
+		  ON ICB.CTKEY        = IC.CTKEY
+		 AND ICB.OWKEY        = IC.OWKEY
+		 AND ICB.ICKEY        = IC.ICKEY
+		 AND ICB.USEYN        = 'Y'
+   LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+		  ON CTN.CTKEY        = IC.CTKEY
+		 AND CTN.OWKEY        = IC.OWKEY
+		 AND CTN.ICKEY        = IC.ICKEY
+		 AND CTN.ICUNITTYPECD = 'CTN'
+   LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+		  ON INN.CTKEY        = IC.CTKEY
+		 AND INN.OWKEY        = IC.OWKEY
+		 AND INN.ICKEY        = IC.ICKEY
+		 AND INN.ICUNITTYPECD = 'INN'
+	   WHERE IC.CTKEY         = #{sctkey}
+	     AND IC.OWKEY         = #{sowkey}
+	     AND (IC.ICKEY = #{barcode} OR ICB.BARCODE = #{barcode})
+	     AND IC.UOM 	      = 'EA'
+     ORDER BY IC.ICKEY
+	</select>
+
+	<select id="selectNonOutboundIcRegList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectNonOutboundIcRegList - 포장미출 상품등록 - 등록상품 목록 조회 */
+		/* STEP2. 등록목록조회 */
+		SELECT '0' AS CHK
+		     , TTT.*
+		     , TTT.QTY
+             , CASE WHEN TTT.CTNQTY > 0 THEN
+                          ' (' || TTT.CTNQTY || 'ctn' ||
+                               CASE WHEN TTT.REMAINAVQTY > 0 THEN ' + ' || TTT.REMAINAVQTY || 'ea)' ELSE ')'
+                                END
+                      		 	    WHEN TTT.REMAINAVQTY > 0 THEN ' (' || TTT.REMAINAVQTY || 'ea)'ELSE ''
+                  		   	 END AS QTYTEXT
+			 , CASE WHEN MININSERTDATE IS NULL THEN NULL
+					ELSE SUBSTR(MININSERTDATE, 0, 4) || '-' || SUBSTR(MININSERTDATE, 5, 2) || '-' || SUBSTR(MININSERTDATE, 7, 2)
+				END AS MININSERTDATETEXT
+			 , CASE WHEN MAXINSERTDATE IS NULL THEN NULL
+					ELSE SUBSTR(MAXINSERTDATE, 0, 4) || '-' || SUBSTR(MAXINSERTDATE, 5, 2) || '-' || SUBSTR(MAXINSERTDATE, 7, 2)
+				END AS MAXINSERTDATETEXT
+		  FROM (
+		       SELECT TT.*
+		            , DATE_TRUNC('day', TT.QTY / CTN.ICUNITQTY)::DATE AS CTNQTY /* CTN환산가용수량(소숫점제거) */
+		            , TT.QTY - (DATE_TRUNC('day', TT.QTY / CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINAVQTY /* CTN환산 후 남은가용수량 */
+		        FROM (
+		          	 SELECT T.CTKEY
+		                  , T.OWKEY
+		                  , MAX(T.SKUCNT) AS SKUCNT /* SKU수 */
+		                  , MAX(T.TOTCNT) AS TOTCNT /* 총수량 */
+		                  , T.ICKEY
+		                  , T.ICNM
+		                  , MIN(SUBSTR(T.INSERTDATE, 0, 8)) AS MININSERTDATE /* 최초등록일시 */
+		                  , MAX(SUBSTR(T.INSERTDATE, 0, 8)) AS MAXINSERTDATE /* 최종등록일시 */
+		                  , COUNT(*) AS QTY /* 상품수량 */
+		               FROM (
+		              		SELECT NIR.CTKEY
+		                         , NIR.OWKEY
+		                         , NIR.ICKEY
+		                         , IC.ICNM
+		                         , NIR.INSERTDATE
+		                         , COUNT(NIR.ICKEY) OVER(PARTITION BY NIR.CTKEY) AS TOTCNT /* 총수량 */
+		                         , COUNT(DISTINCT NIR.ICKEY) OVER(PARTITION BY NIR.CTKEY) AS SKUCNT /* SKU수 */
+		                      FROM TWORK_INFO_NOB_IC_REG NIR
+		                INNER JOIN TWORK_MST_IC IC
+		                        ON IC.CTKEY 		= NIR.CTKEY
+		                       AND IC.OWKEY 		= NIR.OWKEY
+		                       AND IC.ICKEY 		= NIR.ICKEY
+		                       AND IC.UOM 			= 'EA'
+		                     WHERE NIR.CTKEY   		= #{sctkey}
+		                       AND NIR.OWKEY   		= #{sowkey}
+		                       AND NIR.INSERTDATE   <![CDATA[ <= ]]> #{regdate} || '235959'
+		                       AND NIR.NOBPRCSYN 	= 'N'
+		                       AND NIR.NOBPRCSDIVCD = '00'
+		                    <choose>
+								<when test='radioVal == "icbarcode" and value != "undefined" and value != null and value != ""'>
+		                       		AND NIR.ICKEY IN (
+		                      						 SELECT ICKEY
+		                      						   FROM TWORK_MST_ICBARCODE
+		                      						  WHERE CTKEY   = #{sctkey}
+		                      						    AND OWKEY   = #{sowkey}
+		                      						    AND BARCODE = #{value}
+		                      						    AND USEYN   = 'Y'
+		                  							 )
+							   </when>
+								<when test='radioVal == "ickey" and value != "undefined" and value != null and value != ""'>
+									AND NIR.ICKEY LIKE #{value} || '%'
+							   </when>
+								<when test='radioVal == "icnm" and value != "undefined" and value != null and value != ""'>
+		                      	 	AND IC.ICNM LIKE '%' || #{value} || '%'
+							   </when>
+							</choose>
+		          			) T
+					 GROUP BY T.CTKEY, T.OWKEY, T.ICKEY,T.ICNM
+		      			) TT
+		        LEFT JOIN TWORK_MST_ICUTXTYPE CTN     /* CTN 상품단위유형 */
+		               ON CTN.CTKEY 		 = TT.CTKEY
+		              AND CTN.OWKEY 		 = TT.OWKEY
+		              AND CTN.ICKEY 		 = TT.ICKEY
+		              AND CTN.ICUNITTYPECD   = 'CTN'
+		 	   ) TTT
+		ORDER BY MININSERTDATE, MAXINSERTDATE, ICKEY
+	</select>
+
+	<select id="selectNonOutboundIcRegDtList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectNonOutboundIcRegDtList - 포장미출 상품등록 - 등록상품 상세목록 조회 */
+		SELECT '0' AS CHK
+  			 , NIR.CTKEY
+  			 , NIR.OWKEY
+  			 , NIR.NOBICREGNO
+  			 , NIR.ICKEY
+  			 , TO_CHAR(TO_DATE(NIR.INSERTDATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS REGDATE
+  			 , NIR.INSERTURKEY
+		  FROM TWORK_INFO_NOB_IC_REG NIR
+		  WHERE NIR.CTKEY 		 = #{ctkey}
+		    AND NIR.OWKEY 		 = #{owkey}
+		    AND NIR.NOBPRCSYN    = 'N'
+		    AND NIR.NOBPRCSDIVCD = '00'
+		    AND NIR.ICKEY 		 = #{ickey}
+	</select>
+
+	<select id="selectRegIcList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectRegIcList - 포장미출 상품등록 - 상품 존재유무 확인 */
+		SELECT *
+		  FROM TWORK_MST_IC
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND ICKEY   = #{ickey}
+	</select>
+
+	<select id="selectNextRegNo" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectNextRegNo - 포장미출 상품등록 - 미출 상품 등록 번호 조회 */
+		SELECT COALESCE(MAX(CAST(NOBICREGNO AS NUMERIC)), 0) + 1 AS NOBICREGNO
+		  FROM TWORK_INFO_NOB_IC_REG
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+	</select>
+
+	<insert id="insertNonOutboundIc">
+		/* wms-pda-outbound-sql-oracle.xml - insertNonOutboundIcReg */
+		INSERT INTO TWORK_INFO_NOB_IC_REG (
+		            CTKEY
+			      , OWKEY
+				  , NOBICREGNO
+				  , ICKEY
+				  , IMGURL
+				  , NOBPRCSYN
+				  , NOBPRCSDIVCD
+			 	  , NOBPRCSDATE
+				  , NOBPRCSURKEY
+				  , OBNISNO
+				  , OBNISDTNO
+				  , INSERTDATE
+			      , INSERTURKEY
+				  , UPDATEDATE
+				  , UPDATEURKEY
+				  )
+			 VALUES (
+				    #{ctkey}
+				  , #{owkey}
+				  , #{nobicregno}
+			 	  , #{ickey}
+				  , #{imgurl}
+				  , #{nobprcsyn}
+				  , #{nobprcsdivcd}
+				  , #{nobprcsdate}
+				  , #{nobprcsurkey}
+				  , #{obnisno}
+				  , #{obnisdtno}
+				  , #{sysdate}
+				  , #{urkey}
+				  , #{sysdate}
+			 	  , #{urkey}
+				  )
+	</insert>
+
+	<delete id="deleteNonOutboundIc">
+		/* wms-pda-outbound-sql-oracle.xml - deleteNonOutboundIc */
+		DELETE FROM TWORK_INFO_NOB_IC_REG
+		      WHERE CTKEY = #{ctkey}
+		        AND OWKEY = #{owkey}
+		        AND ICKEY = #{ickey}
+		<choose>
+			<when test='flag != null and "P".equals(flag.trim())'>
+				AND NOBICREGNO = #{nobicregno}
+			</when>
+		        <otherwise>
+					AND SUBSTR(INSERTDATE, 1, 8) BETWEEN #{mininsertdate} AND #{maxinsertdate}
+				</otherwise>
+		</choose>
+	</delete>
+
+	<select id="selectMoveOutboundContainerDetailRemainQty" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerDetailRemainQty - 기존용기바코드가 없을 시 적재가능수량 확인 */
+		SELECT SUM(PD.CNFRMQTY) - COALESCE(MAX(MCDT.QTY), 0) AS REMAINQTY
+		FROM TWORK_INFO_PI_DT PD
+			LEFT OUTER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT
+				ON PD.CTKEY = MCDT.CTKEY
+				AND PD.OWKEY = MCDT.OWKEY
+				AND PD.ICKEY = MCDT.ICKEY
+				AND PD.IVATKEY = MCDT.IVATKEY
+				AND PD.OBHDKEY = MCDT.OBHDKEY
+				AND PD.OBDTKEY = MCDT.OBDTKEY
+		WHERE PD.CTKEY = #{ctkey}
+		AND PD.OWKEY = #{owkey}
+		AND PD.PIHDKEY = #{pihdkey}
+		AND PD.OBHDKEY = #{obhdkey}
+		AND PD.OBDTKEY = #{obdtkey}
+		AND PD.ICKEY = #{ickey}
+		AND PD.IVATKEY = #{ivatkey}
+	</select>
+
+	<select id="selectMoveOutboundContainerCount" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerCount - 이고 용기 정보 데이터 존재여부확인 */
+		SELECT COUNT(1)
+		FROM TWORK_INFO_MVOB_CNTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<select id="selectMoveOutboundContainerDetailCount" resultType="java.lang.Integer">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerDetailCount - 이고 용기 상세 정보 데이터 존재여부확인 */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_MVOB_CNTR_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+		AND OBDTKEY = #{obdtkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+	</select>
+
+	<insert id="insertMoveOutboundContainerDetail">
+		/* wms-pda-outbound-sql-oracle.xml - insertMoveOutboundContainerDetail - 이고 용기 상세 INSERT */
+		INSERT INTO TWORK_INFO_MVOB_CNTR_DT (
+		            CTKEY
+					, OWKEY
+					, OBHDKEY
+					, CNTRBARCODE
+					, OBDTKEY
+					, ICKEY
+					, IVATKEY
+					, UOM
+					, QTY
+					, INSERTDATE
+					, INSERTURKEY
+					, UPDATEDATE
+					, UPDATEURKEY
+				  )
+			 VALUES (
+				    #{ctkey}
+				  , #{owkey}
+				  , #{obhdkey}
+			 	  , #{cntrbarcode}
+				  , #{obdtkey}
+				  , #{ickey}
+				  , #{ivatkey}
+				  , #{uom}
+				  , #{qty}
+				  , #{sysdate}
+				  , #{surkey}
+				  , #{sysdate}
+			 	  , #{surkey}
+				  )
+	</insert>
+
+	<update id="updateMoveOutboundContainerDetail">
+		/* wms-pda-outbound-sql-oracle.xml - updateMoveOutboundContainerDetail - 이고 용기 상세 UPDATE */
+		UPDATE TWORK_INFO_MVOB_CNTR_DT
+		SET QTY = QTY + #{qty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+		AND OBDTKEY = #{obdtkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+	</update>
+
+	<insert id="insertMoveOutboundContainer">
+		/* wms-pda-outbound-sql-oracle.xml - insertMoveOutboundContainer - 이고 용기 INSERT */
+		INSERT INTO TWORK_INFO_MVOB_CNTR (
+		            CTKEY
+					, OWKEY
+					, OBHDKEY
+					, CNTRBARCODE
+					, CNTRDDLNYN
+					, CNTRWKURKEY
+					, MVOBGRPNO
+					, CNFRMYN
+					, CNFRMDATE
+					, CNFRMURKEY
+					, INSERTDATE
+					, INSERTURKEY
+					, UPDATEDATE
+					, UPDATEURKEY
+				  )
+			 VALUES (
+				    #{ctkey}
+				  , #{owkey}
+				  , #{obhdkey}
+			 	  , #{cntrbarcode}
+				  , 'N'
+				  , #{surkey}
+				  , NULL
+				  , 'N'
+				  , NULL
+		   		  , NULL
+				  , #{sysdate}
+				  , #{surkey}
+				  , #{sysdate}
+			 	  , #{surkey}
+				  )
+	</insert>
+
+	<select id="selectMoveOutboundContainer" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainer - 이고 용기 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,CNTRBARCODE
+			,CNTRDDLNYN
+			,CNTRWKURKEY
+			,MVOBGRPNO
+			,CNFRMYN
+			,CNFRMDATE
+			,CNFRMURKEY
+		FROM TWORK_INFO_MVOB_CNTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<select id="selectMoveOutboundContainerDetail" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerDetail - 이고 용기 상세 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,CNTRBARCODE
+			,OBDTKEY
+			,ICKEY
+			,IVATKEY
+			,UOM
+			,QTY
+		FROM TWORK_INFO_MVOB_CNTR_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+		AND OBDTKEY = #{obdtkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+	</select>
+
+	<delete id="deleteMoveOutboundContainerDetail">
+		/* wms-pda-outbound-sql-oracle.xml - deleteMoveOutboundContainerDetail - 이고 용기 상세 삭제 */
+		DELETE FROM TWORK_INFO_MVOB_CNTR_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+		AND OBDTKEY = #{obdtkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+	</delete>
+
+	<delete id="deleteMoveOutboundContainer">
+		/* wms-pda-outbound-sql-oracle.xml - deleteMoveOutboundContainer - 이고 용기 삭제 */
+		DELETE FROM TWORK_INFO_MVOB_CNTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</delete>
+
+	<select id="selectMoveOutboundContainerDetailByContainer" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerDetailByContainer - 이고용기상세 대상 조회 BY 용기 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBDTKEY
+			,SUM(QTY) AS TOPAKQTY
+		FROM TWORK_INFO_MVOB_CNTR_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+		GROUP BY CTKEY, OWKEY, OBHDKEY, OBDTKEY
+		ORDER BY CTKEY, OWKEY, OBHDKEY, OBDTKEY
+	</select>
+
+	<update id="updateMoveOutboundContainerDeadline">
+		/* wms-pda-outbound-sql-oracle.xml - updateMoveOutboundContainerDeadline - 이고 용기 마감 */
+		UPDATE TWORK_INFO_MVOB_CNTR
+		SET CNTRDDLNYN = 'Y'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<update id="updateMoveOutboundContainerDeadlineCnl">
+		/* wms-pda-outbound-sql-oracle.xml - updateMoveOutboundContainerDeadlineCnl - 이고 용기 마감 취소 */
+		UPDATE TWORK_INFO_MVOB_CNTR
+		SET CNTRDDLNYN = 'N'
+		  ,UPDATEDATE = #{sysdate}
+		  ,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND OBHDKEY = #{obhdkey}
+		  AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<select id="selectMoveOutboundContainerListByOutboundHeaderKey" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOutboundContainerListByOutboundHeaderKey - 이고 용기LIST조회 BY OBHDKEY */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,CNTRBARCODE
+			,CNTRDDLNYN
+			,CNTRWKURKEY
+			,MVOBGRPNO
+			,CNFRMYN
+			,CNFRMDATE
+			,CNFRMURKEY
+		FROM TWORK_INFO_MVOB_CNTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<update id="updateMoveOutboundPakcingComplete">
+		/* wms-pda-outbound-sql-oracle.xml - updateMoveOutboundPakcingComplete - 이고 출고 환적완료 */
+		UPDATE TWORK_INFO_OB_HD
+		SET CNTRWKCOMPLYN = 'Y'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectOutboundNisDetailByObNisDtNo" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectOutboundNisDetailByObNisDtNo - 결품 상세 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBNISNO
+			,OBNISDTNO
+			,OBHDKEY
+			,OBDTKEY
+			,EXPCTQTY
+			,NISQTY
+			,CNFRMQTY
+			,NISPRCSSTATUSCD
+			,PKIMPSYN
+			,(SELECT CNFRMYN FROM TWORK_INFO_OB_NIS_HD WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND OBNISNO = #{obnisno}) AS HDCNFRMYN
+		FROM TWORK_INFO_OB_NIS_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBNISNO = #{obnisno}
+		AND OBNISDTNO = #{obnisdtno}
+	</select>
+
+	<update id="updateNonOutboundItemProcessByNisHold">
+		/* wms-pda-outbound-sql-oracle.xml - updateNonOutboundItemProcessByNisHold - 포장결품처리에 의한 미출상품등록 처리 */
+		UPDATE TWORK_INFO_NOB_IC_REG
+		SET NOBPRCSYN = 'Y'
+			,NOBPRCSDIVCD = '10' /*출고*/
+			,NOBPRCSDATE = #{sysdate}
+			,NOBPRCSURKEY = #{surkey}
+			,OBNISNO = #{obnisno}
+			,OBNISDTNO = #{obnisdtno}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND NOBICREGNO IN (
+			SELECT
+				NOBICREGNO
+			FROM TWORK_INFO_NOB_IC_REG
+			WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND ICKEY = #{ickey}
+			AND NOBPRCSYN = 'N'
+			ORDER BY NOBICREGNO
+			LIMIT #{qty})
+	</update>
+
+	<update id="updateNisHoldProcessComplete">
+		/* wms-pda-outbound-sql-oracle.xml - updateNisHoldProcessComplete - 결품보류상세 처리 */
+		UPDATE TWORK_INFO_OB_NIS_DT
+		SET NISQTY = NISQTY - #{qty}
+			,CNFRMQTY = CNFRMQTY + #{qty}
+			,NONICYN = #{nonicyn}
+			,NISPRCSSTATUSCD = CASE WHEN #{nisprcs} IS NOT NULL
+									THEN
+										CASE WHEN #{nisprcs} = 'N' THEN '00' /*00:미처리*/
+											 ELSE '20' /*20:부분확정*/
+										 END
+									ELSE
+									 	CASE WHEN EXPCTQTY = (CNFRMQTY + #{qty}) THEN '10' /*10:전체확정*/
+											 ELSE '20' /*20:부분확정*/
+										 END
+								END
+			,WKPRGRYN = 'Y'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBNISNO = #{obnisno}
+		AND OBNISDTNO = #{obnisdtno}
+	</update>
+	
+	<select id="selectNisHoldNotProcess" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectNisHoldNotProcess - 결품번호기준 전체완료, 패킹완료 상태가 아닌 DT */		
+		SELECT OBNISNO AS ORIOBNISNO
+			 , SUBSTR(OBNISNO, -4) AS OBNISNO
+			 , OBNISDTNO
+		FROM TWORK_INFO_OB_NIS_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBNISNO = #{obnisno}
+		AND NISPRCSSTATUSCD IN ('00', '20')
+	</select>
+
+	<select id="selectPackNisHoldList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectPackNisHoldList - 포장결품 보류조회 조회 */
+		SELECT CTDT.CTCDDTNM AS SEARCHNM
+			 , T.CTKEY
+			 , T.OWKEY
+			 , T.OBNISNO
+			 , T.OBNISDTNO
+			 , T.OBHDKEY
+			 , T.OBDTKEY
+			 , PD.PIHDKEY
+			 , PD.PIDTKEY
+			 , T.ICKEY
+			 , T.ICNM
+			 , T.PKIMPSYN /* 피킹불가여부 */
+			 , T.NONICYN /* 상품없음여부 */
+			 , T.NISQTY /* 결품수량 */
+			 , CASE WHEN #{nisprcsrsltcd} = '00'
+					THEN CASE WHEN T.PRCSQTY <![CDATA[ > ]]> T.NISQTY
+							  THEN T.NISQTY
+							  ELSE T.PRCSQTY END
+					ELSE T.CNFRMQTY
+				END AS PRCSQTY /* 처리가능수량 OR 처리수량 */
+			 , CASE WHEN T.PRCSQTY <![CDATA[ > ]]> T.NISQTY
+					THEN T.NISQTY
+					ELSE T.PRCSQTY
+				END AS INPUTQTY /* 입력EDIT에 바인딩할 수량(Default 처리가능수량) */
+			 , CASE WHEN #{nisprcsrsltcd} = '00' AND T.PRCSQTY <![CDATA[ >= ]]> T.NISQTY
+					THEN 'Y'
+					ELSE 'N'
+				END AS ABLECOLOR /* 처리가능ROW색상여부 */
+			 , T.NOBPRCSDATE
+			 , T.NOBPRCSURKEY
+		  FROM (
+			SELECT OND.CTKEY
+				 , OND.OWKEY
+				 , OND.OBNISNO
+				 , OND.OBNISDTNO
+				 , OND.OBHDKEY
+				 , OND.OBDTKEY
+				 , COALESCE(OH.PKOBHDKEY, OND.OBHDKEY) AS REALOBHDKEY
+				 , OND.ICKEY
+			     , IC.ICNM
+				 , OND.NISQTY /* 결품수량 */
+				 , COUNT(NIR.ICKEY) AS PRCSQTY /* 처리가능수량 */
+				 , OND.CNFRMQTY /* 처리수량 */
+				 , COALESCE(OND.PKIMPSYN, 'N') AS PKIMPSYN /* 피킹불가여부 */
+				 , COALESCE(MAX(NIR.NOBPRCSDATE), MAX(OND.UPDATEDATE)) AS NOBPRCSDATE /* 처리일시 */
+				 , COALESCE(MAX(NIR.NOBPRCSURKEY), MAX(OND.UPDATEURKEY)) AS NOBPRCSURKEY /* 처리자ID */
+				 , COALESCE(OND.NONICYN, 'N') AS NONICYN
+			  FROM TWORK_INFO_OB_NIS_DT OND
+			  INNER JOIN TWORK_INFO_OB_NIS_HD ONH
+					  ON OND.CTKEY = ONH.CTKEY
+					 AND OND.OWKEY = ONH.OWKEY
+					 AND OND.OBNISNO = ONH.OBNISNO
+			  INNER JOIN TWORK_INFO_OB_HD OH
+			  		  ON OND.CTKEY = OH.CTKEY
+			  		 AND OND.OWKEY = OH.OWKEY
+			  	 	 AND OND.OBHDKEY = OH.OBHDKEY
+			  INNER JOIN TWORK_MST_IC IC
+			      	  ON IC.CTKEY = OND.CTKEY
+					 AND IC.OWKEY = OND.OWKEY
+					 AND IC.ICKEY = OND.ICKEY
+					 AND IC.UOM = 'EA'
+			  LEFT JOIN TWORK_INFO_NOB_IC_REG NIR
+					 ON NIR.CTKEY = OND.CTKEY
+					AND NIR.OWKEY = OND.OWKEY
+					AND NIR.ICKEY = OND.ICKEY
+					AND NIR.NOBPRCSDIVCD IN ('00', '10')/* 00:등록 10:출고 */
+					<choose>
+						<when test='"00".equals(nisprcsrsltcd)'> /* 00:미처리 */
+							AND NIR.NOBPRCSYN = 'N'
+						</when>
+						<otherwise> /* 10:보충완료 20:결품처리 */
+							AND NIR.OBNISNO   = OND.OBNISNO
+							AND NIR.OBNISDTNO = OND.OBNISDTNO
+							AND NIR.NOBPRCSYN = 'Y'
+						</otherwise>
+					</choose>
+			 WHERE OND.CTKEY = #{sctkey}
+			   AND OND.OWKEY = #{sowkey}
+			   <if test='"00".equals(nisprcsrsltcd)'>
+				   AND OND.NISQTY <![CDATA[ > ]]> 0
+				   AND COALESCE(ONH.CNFRMYN, 'N') = 'N'
+			   </if>
+			   AND OND.NISPRCSSTATUSCD = #{nisprcsrsltcd} /* 00:미처리 10:보충완료 20:결품처리 */
+ 			   AND OND.INSERTDATE BETWEEN #{regdate} || '000000' AND #{regdate} || '235959'
+		       <if test="@com.kns.framework.util.StringUtil@isNotEmpty(gubun)" >
+			       	<choose>
+			       		<when test="'icbarcode'.equals(gubun)">
+							AND OND.ICKEY IN (
+								SELECT DISTINCT ICKEY
+								  FROM TWORK_MST_ICBARCODE
+								 WHERE CTKEY   = #{sctkey}
+								   AND OWKEY   = #{sowkey}
+								   AND BARCODE = #{value}
+							)
+			       		</when>
+			       		<when test="'ickey'.equals(gubun)">
+							AND (OND.ICKEY = #{value} OR IC.ICNM LIKE '%'||#{value}||'%')
+			       		</when>
+			       		<when test="'releaseno'.equals(gubun)">
+							AND OND.OBNISNO = #{value}
+			       		</when>
+					</choose>
+			   </if>
+			 GROUP BY OND.CTKEY
+					, OND.OWKEY
+					, OND.OBNISNO
+					, OND.OBNISDTNO
+					, OND.OBHDKEY
+					, OH.PKOBHDKEY
+					, OND.OBDTKEY
+					, OND.ICKEY
+					, IC.ICNM
+					, OND.NISQTY
+					, OND.PKIMPSYN
+					, OND.CNFRMQTY
+					, OND.NONICYN
+			) T
+		  INNER JOIN TWORK_INFO_PI_DT PD
+				  ON PD.CTKEY = T.CTKEY
+				 AND PD.OWKEY = T.OWKEY
+				 AND PD.OBHDKEY = T.REALOBHDKEY
+				 AND PD.ICKEY = T.ICKEY
+		  INNER JOIN TWORK_MST_CTCD_DT CTDT
+				  ON CTDT.CTKEY = T.CTKEY
+				 AND CTDT.CTCDHDKEY = 'NISPRCSSTATUSCD'
+				 AND CTDT.CTCDDTKEY = #{nisprcsrsltcd}
+				 AND CTDT.LAKEY = #{slakey}
+		 ORDER BY T.OBNISNO
+		 		, CASE WHEN #{nisprcsrsltcd} = '00'
+					   THEN CASE WHEN T.PRCSQTY <![CDATA[ > ]]> T.NISQTY
+								 THEN T.NISQTY
+								 ELSE T.PRCSQTY END
+					   ELSE T.CNFRMQTY
+				   END DESC
+				, T.ICKEY
+	</select>
+
+	<select id="selectMoveOrderOutboundList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOrderOutboundList - STEP1. 오더코드 셀렉트박스 조회 */
+		SELECT DISTINCT PH.CTKEY
+			 , PH.OWKEY
+			 , PH.PIHDKEY
+			 , PH.PIHDNM
+			 , PH.OBHDKEY
+		  FROM TWORK_INFO_PI_HD PH
+		 INNER JOIN TWORK_INFO_PI_DT PD
+				 ON PD.CTKEY   = PH.CTKEY
+				AND PD.OWKEY   = PH.OWKEY
+				AND PD.PIHDKEY = PH.PIHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD OB
+				 ON OB.CTKEY   = PH.CTKEY
+				AND OB.OWKEY   = PH.OWKEY
+				AND OB.OBHDKEY = PH.OBHDKEY
+		 WHERE PH.CTKEY = #{sctkey}
+		   AND PH.OWKEY = #{sowkey}
+		   AND PH.OBREQDAY = RPAD(#{obreqday}, 14, '0')
+		   AND PH.PKDIVCD = '10'
+		   AND PH.PKWKSTATUSCD = '10'
+		   AND PH.OBHDKEY IS NOT NULL
+		   AND COALESCE(OB.CNTRWKCOMPLYN, 'N') = 'N'
+		 ORDER BY OBHDKEY
+	</select>
+
+	<select id="selectMoveOrderOutboundWorkList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOrderOutboundWorkList - STEP2.기타주문조회 -> Row선택 시 STEP3.상세내용 보여주기 */
+		SELECT T.CTKEY
+			 , T.OWKEY
+			 , T.PIHDKEY
+			 , T.PIHDNM
+			 , T.OBHDKEY
+			 , T.OBDTKEY
+			 , T.ICKEY
+			 , T.ICNM
+			 , T.IVATKEY
+			 , IVAT.EXPDATE
+			 , T.CNTRDDLNYN
+			 , T.CNTRBARCODE /* STEP1. STEP2. 용기번호 */
+			 , COALESCE(ASRT.COLOR, '-') AS COLOR /* STEP2. 색상 */
+			 , COALESCE(ASRT.DESIGN, '-') AS DESIGN /* STEP2. 디자인 */
+			 , COALESCE(ASRT.CHRT, '-') AS CHRT /* STEP2. 캐릭터 */
+			 , CTN.ICUNITQTY AS CTNICUNITQTY /* 카톤입수량 */
+			 , INN.ICUNITQTY AS INNICUNITQTY /* 중포입수량 */
+			 , TRUNC(T.ABLEQTY/CTN.ICUNITQTY, 1) AS CTNABLEQTY /* CTN가능수량 : STEP1.CTN, STEP2.수량(라디오:CTN일때) */
+			 , TRUNC(T.ABLEQTY/INN.ICUNITQTY, 1) AS INNABLEQTY /* INN가능수량 : STEP2.수량(라디오:INN일때) */
+			 , T.ABLEQTY /* EA가능수량 : STEP1.EA, STEP2.수량(라디오:EA일때) */
+			  /****** 입력부 ******/
+			 , NULL AS INPUTCNTRBARCODE /* 적재용기번호(입력) */
+			 , TRUNC(T.ABLEQTY/CTN.ICUNITQTY, 1) AS CTNINPUTQTY /* CTN입력수량 : STEP2.적재수량(라디오:CTN일때) 적재수량 입력시 모든단위 계산해서 넣어두기 */
+			 , TRUNC(T.ABLEQTY/INN.ICUNITQTY, 1) AS INNINPUTQTY /* INN입력수량 : STEP2.적재수량(라디오:INN일때) 적재수량 입력시 모든단위 계산해서 넣어두기 */
+			 , T.ABLEQTY AS INPUTQTY /* EA입력수량(저장값) : STEP2.적재수량(라디오:EA일때) 적재수량 입력시 모든단위 계산해서 넣어두기 */
+		  FROM (
+			<if test='@com.kns.framework.util.StringUtil@isEmpty(cntryn) || "N".equals(cntryn)'>
+				/* 적재여부 = N */
+				SELECT DISTINCT PH.CTKEY
+					 , PH.OWKEY
+					 , PH.PIHDKEY
+					 , PH.PIHDNM
+					 , PH.OBHDKEY
+				     , PD.OBDTKEY
+					 , PD.ICKEY
+					 , IC.ICNM
+					 , PD.IVATKEY
+					 , '-' AS CNTRBARCODE
+					 , PD.CNFRMQTY - COALESCE(SUM(MVCD.QTY) OVER(PARTITION BY PH.OBHDKEY, PD.ICKEY, PD.IVATKEY), 0) AS ABLEQTY /* 가능수량 */
+					 , COALESCE(MVC.CNTRDDLNYN, 'N') AS CNTRDDLNYN /* 용기마감여부 */
+				  FROM TWORK_INFO_PI_HD PH
+				 INNER JOIN TWORK_INFO_PI_DT PD
+						 ON PD.CTKEY   = PH.CTKEY
+						AND PD.OWKEY   = PH.OWKEY
+						AND PD.PIHDKEY = PH.PIHDKEY
+				  INNER JOIN TWORK_MST_IC IC
+				      	  ON IC.CTKEY = PD.CTKEY
+				    	 AND IC.OWKEY = PD.OWKEY
+				      	 AND IC.ICKEY = PD.ICKEY
+						 AND IC.UOM   = 'EA'
+				  LEFT JOIN TWORK_INFO_MVOB_CNTR_DT MVCD
+						 ON MVCD.CTKEY   = PD.CTKEY
+						AND MVCD.OWKEY   = PD.OWKEY
+						AND MVCD.OBHDKEY = PD.OBHDKEY
+						AND MVCD.OBDTKEY = PD.OBDTKEY
+						AND MVCD.ICKEY   = PD.ICKEY
+						AND MVCD.IVATKEY = PD.IVATKEY
+				  LEFT JOIN TWORK_INFO_MVOB_CNTR MVC
+						 ON MVC.CTKEY 		= MVCD.CTKEY
+						AND MVC.OWKEY 		= MVCD.OWKEY
+						AND MVC.OBHDKEY     = MVCD.OBHDKEY
+						AND MVC.CNTRBARCODE = MVCD.CNTRBARCODE
+				 WHERE PH.CTKEY    = #{sctkey}
+				   AND PH.OWKEY    = #{sowkey}
+				   AND PH.PIHDKEY  = #{pihdkey}
+				   AND PH.OBREQDAY = RPAD(#{obreqday}, 14, '0')
+				   AND PH.PKDIVCD  = '10'
+				   AND PD.CNFRMQTY > 0
+				   AND COALESCE(MVC.CNTRDDLNYN, 'N') = 'N'
+				   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(gubun)" >
+					   <choose>
+						   <when test="'icbarcode'.equals(gubun)">
+							   AND PD.ICKEY IN (
+								   SELECT DISTINCT ICKEY
+								   	 FROM TWORK_MST_ICBARCODE
+								   	WHERE CTKEY   = #{sctkey}
+								   	  AND OWKEY   = #{sowkey}
+								   	  AND BARCODE = #{value}
+							   )
+						   </when>
+						   <when test="'ickey'.equals(gubun)">
+							   AND (PD.ICKEY = #{value} OR IC.ICNM LIKE '%'||#{value}||'%')
+						   </when>
+						   <when test="'cntrbarcode'.equals(gubun)">
+							   AND MVCD.CNTRBARCODE = NULL /* 조회안되게끔하기위해 NULL 처리*/
+						   </when>
+					   </choose>
+				   </if>
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isEmpty(cntryn)'>
+				UNION ALL
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isEmpty(cntryn) || "Y".equals(cntryn)'>
+				/* 적재여부 = Y */
+				SELECT DISTINCT PH.CTKEY
+					 , PH.OWKEY
+					 , PH.PIHDKEY
+					 , PH.PIHDNM
+					 , PH.OBHDKEY
+				     , PD.OBDTKEY
+					 , PD.ICKEY
+				     , IC.ICNM
+					 , PD.IVATKEY
+					 , MVCD.CNTRBARCODE
+					 , MVCD.QTY AS ABLEQTY
+					 , MVC.CNTRDDLNYN /* 용기마감여부 */
+				  FROM TWORK_INFO_PI_HD PH
+				 INNER JOIN TWORK_INFO_PI_DT PD
+						 ON PD.CTKEY   = PH.CTKEY
+						AND PD.OWKEY   = PH.OWKEY
+						AND PD.PIHDKEY = PH.PIHDKEY
+				 INNER JOIN TWORK_MST_IC IC
+				      	 ON IC.CTKEY = PD.CTKEY
+				      	AND IC.OWKEY = PD.OWKEY
+				      	AND IC.ICKEY = PD.ICKEY
+						AND IC.UOM   = 'EA'
+				 INNER JOIN TWORK_INFO_MVOB_CNTR_DT MVCD
+						 ON MVCD.CTKEY   = PD.CTKEY
+						AND MVCD.OWKEY   = PD.OWKEY
+						AND MVCD.OBHDKEY = PD.OBHDKEY
+						AND MVCD.OBDTKEY = PD.OBDTKEY
+						AND MVCD.ICKEY   = PD.ICKEY
+						AND MVCD.IVATKEY = PD.IVATKEY
+				 INNER JOIN TWORK_INFO_MVOB_CNTR MVC
+						 ON MVC.CTKEY 		= MVCD.CTKEY
+						AND MVC.OWKEY 		= MVCD.OWKEY
+						AND MVC.OBHDKEY     = MVCD.OBHDKEY
+						AND MVC.CNTRBARCODE = MVCD.CNTRBARCODE
+				 WHERE PH.CTKEY    = #{sctkey}
+				   AND PH.OWKEY    = #{sowkey}
+				   AND PH.PIHDKEY  = #{pihdkey}
+				   AND PH.OBREQDAY = RPAD(#{obreqday}, 14, '0')
+				   AND PH.PKDIVCD  = '10'
+				   AND PD.CNFRMQTY > 0
+				   AND COALESCE(MVC.CNTRDDLNYN, 'N') = 'N'
+				   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(gubun)" >
+					 <choose>
+						 <when test="'icbarcode'.equals(gubun)">
+							AND PD.ICKEY IN (
+									SELECT DISTINCT ICKEY
+									  FROM TWORK_MST_ICBARCODE
+									WHERE CTKEY = #{sctkey}
+									  AND OWKEY = #{sowkey}
+									  AND BARCODE = #{value}
+								)
+						</when>
+						 <when test="'ickey'.equals(gubun)">
+							AND (PD.ICKEY = #{value} OR IC.ICNM LIKE '%'||#{value}||'%')
+						</when>
+						 <when test="'cntrbarcode'.equals(gubun)">
+							AND MVCD.CNTRBARCODE = #{value}
+						</when>
+					 </choose>
+				   </if>
+			</if>
+			) T
+			INNER JOIN TWORK_INFO_IVAT IVAT
+					ON IVAT.CTKEY = T.CTKEY
+				   AND IVAT.OWKEY = T.OWKEY
+				   AND IVAT.IVATKEY = T.IVATKEY
+				   AND IVAT.ICKEY = T.ICKEY
+			 LEFT JOIN TWORK_MST_ASRT ASRT
+					ON ASRT.CTKEY = T.CTKEY
+				   AND ASRT.OWKEY = T.OWKEY
+				   AND ASRT.ASRTDTICKEY = T.ICKEY
+			 LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+					ON CTN.CTKEY = T.CTKEY
+				   AND CTN.OWKEY = T.OWKEY
+				   AND CTN.ICKEY = T.ICKEY
+				   AND CTN.ICUNITTYPECD = 'CTN'
+			 LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+					ON INN.CTKEY = T.CTKEY
+				   AND INN.OWKEY = T.OWKEY
+				   AND INN.ICKEY = T.ICKEY
+				   AND INN.ICUNITTYPECD = 'INN'
+			WHERE T.ABLEQTY > 0
+			ORDER BY CASE WHEN T.CNTRBARCODE = '-' THEN 0
+			           	  ELSE 1 END
+			       , T.ICKEY
+			       , T.CNTRBARCODE
+				   , IVAT.EXPDATE
+	</select>
+
+	<select id="selectObhdStatus" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectObhdStatus  - 출고주문 상태값 조회 */
+		SELECT A.CTKEY
+			,  A.OWKEY
+			,  A.OBHDKEY
+			,  A.OBSTATUSCD
+			,  A.CNTRWKCOMPLYN
+			,  (SELECT COUNT(1)
+				  FROM TWORK_INFO_PI_HD PH
+				 INNER JOIN TWORK_INFO_PI_DT PD
+						 ON PD.CTKEY   = PH.CTKEY
+						AND PD.OWKEY   = PH.OWKEY
+						AND PD.PIHDKEY = PH.PIHDKEY
+				 INNER JOIN TWORK_MST_IC IC
+						 ON IC.CTKEY = PD.CTKEY
+						AND IC.OWKEY = PD.OWKEY
+						AND IC.ICKEY = PD.ICKEY
+						AND IC.UOM   = 'EA'
+				  LEFT JOIN TWORK_INFO_MVOB_CNTR_DT MVCD
+						 ON MVCD.CTKEY   = PD.CTKEY
+						AND MVCD.OWKEY   = PD.OWKEY
+						AND MVCD.OBHDKEY = PD.OBHDKEY
+						AND MVCD.OBDTKEY = PD.OBDTKEY
+						AND MVCD.ICKEY   = PD.ICKEY
+						AND MVCD.IVATKEY = PD.IVATKEY
+				  LEFT JOIN TWORK_INFO_MVOB_CNTR MVC
+						 ON MVC.CTKEY 		= MVCD.CTKEY
+						AND MVC.OWKEY 		= MVCD.OWKEY
+						AND MVC.OBHDKEY     = MVCD.OBHDKEY
+						AND MVC.CNTRBARCODE = MVCD.CNTRBARCODE
+					WHERE PH.CTKEY    = A.CTKEY
+					  AND PH.OWKEY    = A.OWKEY
+					  AND PH.PIHDKEY  = A.PIHDKEY
+					  AND PH.PKDIVCD  = '10'
+					  AND PD.CNFRMQTY > 0
+					  AND COALESCE(MVC.CNTRDDLNYN, 'N') = 'N'
+			) AS NOTLOADCNT
+		  FROM TWORK_INFO_OB_HD A
+		 WHERE A.CTKEY   = #{sctkey}
+		   AND A.OWKEY   = #{sowkey}
+		   AND A.PIHDKEY = #{pihdkey}
+	</select>
+
+	<select id="selectMoveOrderOutboundCntrList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOrderOutboundCntrList - STEP2. 용기마감팝업 */
+		SELECT DISTINCT
+			   '0' AS CHK
+			 , PH.CTKEY
+			 , PH.OWKEY
+			 , PH.PIHDKEY
+			 , PH.OBHDKEY
+			 , MVC.CNTRBARCODE
+			 , COUNT(DISTINCT MVCD.ICKEY) OVER(PARTITION BY PH.PIHDKEY, PH.OBHDKEY, MVC.CNTRBARCODE) AS SKUCNT /* SKU수 */
+			 , MVC.CNTRDDLNYN /* 용기마감여부 : 'Y'면 체크박스 VISIBLE */
+			 , CASE WHEN MVC.CNTRDDLNYN = 'N' THEN '대기' ELSE '마감' END AS CNTRDDLNNM
+		  FROM TWORK_INFO_PI_HD PH
+		 INNER JOIN TWORK_INFO_MVOB_CNTR MVC
+				 ON MVC.CTKEY   = PH.CTKEY
+				AND MVC.OWKEY   = PH.OWKEY
+				AND MVC.OBHDKEY = PH.OBHDKEY
+		 INNER JOIN TWORK_INFO_MVOB_CNTR_DT MVCD
+				 ON MVCD.CTKEY       = MVC.CTKEY
+				AND MVCD.OWKEY 		 = MVC.OWKEY
+				AND MVCD.OBHDKEY 	 = MVC.OBHDKEY
+				AND MVCD.CNTRBARCODE = MVC.CNTRBARCODE
+		 WHERE PH.CTKEY = #{sctkey}
+		   AND PH.OWKEY = #{sowkey}
+		   AND PH.PIHDKEY = #{pihdkey}
+		   AND PH.PKDIVCD = '10'
+		 ORDER BY MVC.CNTRBARCODE
+	</select>
+
+	<select id="selectMoveOrderOutboundCntrDtList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectMoveOrderOutboundCntrDtList - STEP2.용기마감팝업 - 상세내역(용기에 담긴 상품 조회) */
+		SELECT PH.CTKEY
+			 , PH.OWKEY
+			 , PH.PIHDKEY
+			 , PH.OBHDKEY
+			 , MVC.CNTRBARCODE
+			 , MVCD.ICKEY
+		     , IC.ICNM
+			 , MVCD.QTY /* EA수량 */
+			 , CTN.ICUNITQTY /* CTN 입수량 */
+			 , COALESCE(TRUNC(MVCD.QTY / NULLIF(CTN.ICUNITQTY, 0), 1), 0) AS CTNQTY /* CTN 수량*/
+		  FROM TWORK_INFO_PI_HD PH
+		  INNER JOIN TWORK_INFO_MVOB_CNTR MVC
+		 		  ON MVC.CTKEY        = PH.CTKEY
+		 		 AND MVC.OWKEY        = PH.OWKEY
+		 		 AND MVC.OBHDKEY      = PH.OBHDKEY
+		  INNER JOIN TWORK_INFO_MVOB_CNTR_DT MVCD
+		 		  ON MVCD.CTKEY   	  = MVC.CTKEY
+		 		 AND MVCD.OWKEY   	  = MVC.OWKEY
+		 		 AND MVCD.OBHDKEY 	  = MVC.OBHDKEY
+		 		 AND MVCD.CNTRBARCODE = MVC.CNTRBARCODE
+		  INNER JOIN TWORK_MST_IC IC
+		  	 	  ON IC.CTKEY         = MVCD.CTKEY
+		  	     AND IC.OWKEY         = MVCD.OWKEY
+		  	     AND IC.ICKEY         = MVCD.ICKEY
+		   LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+		          ON CTN.CTKEY        = IC.CTKEY
+		   	     AND CTN.OWKEY        = IC.OWKEY
+		   	     AND CTN.ICKEY        = IC.ICKEY
+		   	     AND CTN.ICUNITTYPECD = 'CTN'
+		       WHERE PH.CTKEY         = #{ctkey}
+		         AND PH.OWKEY         = #{owkey}
+		         AND PH.PIHDKEY       = #{pihdkey}
+		         AND MVC.CNTRBARCODE  = #{cntrbarcode}
+				 AND PH.PKDIVCD       = '10'
+		         AND MVCD.QTY <![CDATA[ > ]]>  0
+		    ORDER BY MVCD.ICKEY
+	</select>
+
+	<select id="selectUrWorkingCntrList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectUrWorkingCntrList - 사용자 작업중 용기 Validation 체크 해당 조회에 있을 경우 처리 불가 */
+		SELECT CNTR.PIHDKEY
+			,  PIHD.PIHDNM
+		  FROM TWORK_INFO_PK_CNTR CNTR
+		 INNER JOIN TWORK_INFO_PI_HD PIHD
+				 ON PIHD.CTKEY   = CNTR.CTKEY
+				AND PIHD.OWKEY   = CNTR.OWKEY
+				AND PIHD.PIHDKEY = CNTR.PIHDKEY
+		 WHERE CNTR.CTKEY 		= #{sctkey}
+		   AND CNTR.OWKEY 		= #{sowkey}
+		   AND CNTR.CNTRWKURKEY = #{surkey}
+		   AND CNTR.PIHDKEY	   != #{pihdkey}
+		   AND CNTR.CNTRDDLNYN  = 'N'
+		   AND COALESCE(CNTR.DISPLCYN, 'N') = 'N'
+		 ORDER BY CNTR.PIHDKEY
+	</select>
+	
+	<select id="selectEtcWorkingCntrList" resultType="camelMap">
+		/* wms-pda-outbound-sql-oracle.xml - selectEtcWorkingCntrList - 기타피킹 용기 Validation 체크 해당 조회에 있을 경우 처리 불가 */
+		SELECT CNTR.PIHDKEY
+			,  PIHD.PIHDNM
+		  FROM TWORK_INFO_PK_CNTR CNTR
+		 INNER JOIN TWORK_INFO_PI_HD PIHD
+				 ON PIHD.CTKEY   = CNTR.CTKEY
+				AND PIHD.OWKEY   = CNTR.OWKEY
+				AND PIHD.PIHDKEY = CNTR.PIHDKEY
+		 WHERE CNTR.CTKEY 		= #{sctkey}
+		   AND CNTR.OWKEY 		= #{sowkey}
+		   AND CNTR.PIHDKEY	   != #{pihdkey}
+		   AND CNTR.CNTRDDLNYN  = 'N'
+		   AND COALESCE(CNTR.DISPLCYN, 'N') = 'Y'
+		 ORDER BY CNTR.PIHDKEY
+	</select>
+</mapper>

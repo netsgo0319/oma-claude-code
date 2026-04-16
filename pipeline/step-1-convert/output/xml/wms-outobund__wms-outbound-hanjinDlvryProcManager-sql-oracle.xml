@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.HanjinDlvryProcManagerMapper">
+
+	<!--택배사 출력정보 등록(한진택배)-->
+	<insert id="insertHanjinDlvryPrInfo">
+		INSERT INTO TWORK_INFO_HANJIN_PR
+		(
+			CTKEY
+			,OWKEY
+			,OBORDKEY
+			,RSLTCD
+			,RSLTMSG
+			,DPRTSPOTTMNLNM
+			,DPRTSPOTTMNLCD
+			,REFNDZIPCD
+			,DESTSPOTTMNLNM
+			,DESTSPOTTMNLCD
+			,DESTSPOTPOSTOFICNM
+			,DESTSPOTPOSTOFICCD
+			,POSTCOSTTIME
+			,RGONDIV
+			,HUBCD
+			,MDLCLASSIFCD
+			,DLVYEMPCLASSIFCD
+			,DLVYEMPCD
+			,DLVYEMPNM
+			,ADDRPRINFO
+			,DLVYORGZT
+			,SVCNM
+			,PTNRCLASSIFCD
+			,PTNRCLASSIFCDNM
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{msg_key}
+			,#{result_code}
+			,#{result_message}
+			,#{s_tml_nam}
+			,#{s_tml_cod}
+			,#{zip_cod}
+			,#{tml_nam}
+			,#{tml_cod}
+			,#{cen_nam}
+			,#{cen_cod}
+			,#{pd_tim}
+			,#{dom_rgn}
+			,#{hub_cod}
+			,#{dom_mid}
+			,#{es_cod}
+			,#{grp_rnk}
+			,#{es_nam}
+			,#{prt_add}
+			,#{dlv_typ}
+			,#{svc_nam}
+			,#{ptn_srt}
+			,#{srt_nam}
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,'BATCH'
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,'BATCH'
+		)
+	</insert>
+
+	<!--택배사 출력정보 UPDATE(한진택배)-->
+	<update id="updateHanjinDlvryPrInfo">
+		UPDATE TWORK_INFO_HANJIN_PR
+		SET RSLTCD = #{result_code}
+			,RSLTMSG = #{result_message}
+			,DPRTSPOTTMNLNM = #{s_tml_nam}
+			,DPRTSPOTTMNLCD = #{s_tml_cod}
+			,REFNDZIPCD = #{zip_cod}
+			,DESTSPOTTMNLNM = #{tml_nam}
+			,DESTSPOTTMNLCD = #{tml_cod}
+			,DESTSPOTPOSTOFICNM = #{cen_nam}
+			,DESTSPOTPOSTOFICCD = #{cen_cod}
+			,POSTCOSTTIME = #{pd_tim}
+			,RGONDIV = #{dom_rgn}
+			,HUBCD = #{hub_cod}
+			,MDLCLASSIFCD = #{dom_mid}
+			,DLVYEMPCLASSIFCD = #{es_cod}
+			,DLVYEMPCD = #{grp_rnk}
+			,DLVYEMPNM = #{es_nam}
+			,ADDRPRINFO = #{prt_add}
+			,DLVYORGZT = #{dlv_typ}
+			,SVCNM = #{svc_nam}
+			,PTNRCLASSIFCD = #{ptn_srt}
+			,PTNRCLASSIFCDNM = #{srt_nam}
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{msg_key}
+	</update>
+
+	<!--출고주문정보 출력 정보 수신 진행 여부 UPDATE-->
+	<update id="updateObOrdHdPrPrgrYn">
+		UPDATE TWORK_INFO_OB_ORD_HD
+		SET PRINFORCVPRGRYN = #{prgrYn}
+		,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY IN
+		<foreach collection="updateList" item="item" open=" (" separator="," close=")">
+			#{item.msg_key}
+		</foreach>
+	</update>
+
+
+	<!--택배사 출력정보 등록(한진택배)-->
+	<insert id="insertHanjinDlvryRiPrInfo">
+		INSERT INTO TWORK_INFO_HANJIN_RI_PR
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, RSLTCD
+			, RSLTMSG
+			, DPRTSPOTTMNLNM
+			, DPRTSPOTTMNLCD
+			, REFNDZIPCD
+			, DESTSPOTTMNLNM
+			, DESTSPOTTMNLCD
+			, DESTSPOTPOSTOFICNM
+			, DESTSPOTPOSTOFICCD
+			, POSTCOSTTIME
+			, RGONDIV
+			, HUBCD
+			, MDLCLASSIFCD
+			, DLVYEMPCLASSIFCD
+			, DLVYEMPCD
+			, DLVYEMPNM
+			, ADDRPRINFO
+			, DLVYORGZT
+			, SVCNM
+			, PTNRCLASSIFCD
+			, PTNRCLASSIFCDNM
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			 #{ctkey}
+			, #{owkey}
+			, #{msg_key}
+			, #{result_code}
+			, #{result_message}
+			, #{s_tml_nam}
+			, #{s_tml_cod}
+			, #{zip_cod}
+			, #{tml_nam}
+			, #{tml_cod}
+			, #{cen_nam}
+			, #{cen_cod}
+			, #{pd_tim}
+			, #{dom_rgn}
+			, #{hub_cod}
+			, #{dom_mid}
+			, #{es_cod}
+			, #{grp_rnk}
+			, #{es_nam}
+			, #{prt_add}
+			, #{dlv_typ}
+			, #{svc_nam}
+			, #{ptn_srt}
+			, #{srt_nam}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			, 'BATCH'
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			, 'BATCH'
+		)
+	</insert>
+
+	<!--택배사 출력정보 UPDATE(한진택배)-->
+	<update id="updateHanjinDlvryRiPrInfo">
+		UPDATE TWORK_INFO_HANJIN_RI_PR
+		   SET RSLTCD = #{result_code}
+		    , RSLTMSG = #{result_message}
+		    , DPRTSPOTTMNLNM = #{s_tml_nam}
+		    , DPRTSPOTTMNLCD = #{s_tml_cod}
+		    , REFNDZIPCD = #{zip_cod}
+		    , DESTSPOTTMNLNM = #{tml_nam}
+		    , DESTSPOTTMNLCD = #{tml_cod}
+		    , DESTSPOTPOSTOFICNM = #{cen_nam}
+		    , DESTSPOTPOSTOFICCD = #{cen_cod}
+		    , POSTCOSTTIME = #{pd_tim}
+		    , RGONDIV = #{dom_rgn}
+		    , HUBCD = #{hub_cod}
+		    , MDLCLASSIFCD = #{dom_mid}
+		    , DLVYEMPCLASSIFCD = #{es_cod}
+		    , DLVYEMPCD = #{grp_rnk}
+		    , DLVYEMPNM = #{es_nam}
+		    , ADDRPRINFO = #{prt_add}
+		    , DLVYORGZT = #{dlv_typ}
+		    , SVCNM = #{svc_nam}
+		    , PTNRCLASSIFCD = #{ptn_srt}
+		    , PTNRCLASSIFCDNM = #{srt_nam}
+		    , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+	      AND OWKEY = #{owkey}
+		  AND IBHDKEY = #{msg_key}
+	</update>
+
+
+	<update id="updateWblNotiStatus">
+		UPDATE TWORK_MST_DLVRYCORP_WBL
+		   SET TSDSENDYN 	= 'Y'
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND DLVRYCORPCD = #{dlvrycorpcd}
+		   AND #{wblcurrno} BETWEEN WBLFROMNO AND WBLTONO
+
+	</update>
+</mapper>

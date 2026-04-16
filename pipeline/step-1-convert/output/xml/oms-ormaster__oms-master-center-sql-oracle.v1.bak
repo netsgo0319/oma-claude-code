@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.ormaster.mapper.CenterMapper">
+
+	<select id="selectTOrderMstCt" resultType="camelMap" >
+		/* oms-master-center-sql-oracle.xml - selectTOrderMstCt */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		      , A.CTKEY
+		      , B.COMDTNM AS CTTYPE
+		      , A.CTNM
+		      , A.CLOSDATE
+		      , A.DELYN
+		      , A.CNTRYCD
+		      , A.ADDR1
+		      , A.ADDR2
+		      , A.ZIPCD
+		      , A.TEL
+		      , A.REGNO
+		      , A.IFYN
+		      , A.CTSUMMARYNM
+		      , A.SAFEIVOWNCRIT
+		      , A.IVOWNCRITDAYS
+		      , A.MANAGEMENTYN
+		      , A.CTLEADTIME
+		      , A.GRTIVDAYS
+		      , A.CRITMODE
+		      , A.INSERTDATE
+		      , A.INSERTURKEY
+		      , A.UPDATEDATE
+		      , A.UPDATEURKEY
+		FROM TORDER_MST_CT A
+		LEFT OUTER JOIN TORDER_MST_COM_DT B
+						 ON B.COMHDKEY ='CTTYPE'
+						AND A.CTTYPE = B.COMDTKEY
+						AND B.LAKEY = #{lakey}
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY A.UPDATEDATE DESC , A.CTKEY ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+  
+	<select id="selectTOrderMstCtCount" resultType="java.lang.Integer" >
+		/* oms-master-center-sql-oracle.xml - selectTOrderMstCtCount */
+        SELECT count(1)
+	    FROM TORDER_MST_CT A
+		LEFT OUTER JOIN TORDER_MST_COM_DT B
+						 ON B.COMHDKEY ='CTTYPE'
+						AND A.CTTYPE = B.COMDTKEY
+						AND B.LAKEY = #{lakey}
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="checkCenter" resultType="java.lang.Integer" >
+		/* oms-master-center-sql-oracle.xml - checkCenter */
+		SELECT count(1)
+		FROM TORDER_MST_CT
+		<if test="ctkey != null">
+		WHERE CTKEY = #{ctkey}
+		</if>
+	</select>	
+		
+	<insert id="insertCenter">
+		/* oms-master-center-sql-oracle.xml - insertCenter */
+		INSERT INTO TORDER_MST_CT
+		(
+		     CTKEY
+		   , CTTYPE
+		   , CTNM
+		   , CLOSDATE
+		   , DELYN
+		   , CNTRYCD
+		   , ADDR1
+		   , ADDR2
+		   , ZIPCD
+		   , TEL
+		   , REGNO
+		   , IFYN
+		   , CTSUMMARYNM
+		   , SAFEIVOWNCRIT
+		   , IVOWNCRITDAYS
+		   , MANAGEMENTYN
+		   , CTLEADTIME
+		   , GRTIVDAYS
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{ctkey}
+		  , #{cttype}
+		  , #{ctnm}
+		  , #{closdate}
+		  , COALESCE(#{delyn}, 'Y')
+		  , #{cntrycd}
+		  , #{addr1}
+		  , #{addr2}
+		  , #{zipcd}
+		  , #{tel}
+		  , #{regno}
+		  , COALESCE(#{ifyn}, 'N')
+		  , #{ctsummarynm}
+		  , #{safeivowncrit}
+		  , #{ivowncritdays}
+		  , #{managementyn}
+		  , #{ctleadtime}
+		  , #{grtivdays}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateCenter">
+		/* oms-master-center-sql-oracle.xml - updateCenter */
+		UPDATE TORDER_MST_CT
+		SET CTLEADTIME    = #{ctleadtime}
+		  , GRTIVDAYS     = #{grtivdays}
+		  , CRITMODE      = #{critmode}
+		  , UPDATEDATE    = #{sysdate}
+		  , UPDATEURKEY   = #{surkey}
+		WHERE CTKEY  = #{ctkey}
+	</update>
+		
+	<delete id="deleteCenter">
+		/* oms-master-center-sql-oracle.xml - deleteCenter */
+		UPDATE TORDER_MST_CT
+		SET DELYN        = #{delyn}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE CTKEY  = #{ctkey}
+	</delete>
+
+
+	<select id="selectTOrderMstCtMngtY" resultType="com.daiso.oms.ormaster.dto.CtDTO">
+		/* oms-master-center-sql-oracle.xml - selectTOrderMstCtMngtY */
+		SELECT  CTKEY
+		      , CTNM
+		      , CLOSDATE
+		      , DELYN
+		      , CNTRYCD
+		      , ADDR1
+		      , ADDR2
+		      , ZIPCD
+		      , TEL
+		      , REGNO
+		      , IFYN
+		      , CTSUMMARYNM
+		      , SAFEIVOWNCRIT
+		      , IVOWNCRITDAYS
+		      , MANAGEMENTYN
+		      , CTLEADTIME
+		      , GRTIVDAYS
+		      , INSERTDATE
+		      , INSERTURKEY
+		      , UPDATEDATE
+		      , UPDATEURKEY
+		FROM TORDER_MST_CT
+		WHERE MANAGEMENTYN = 'Y'
+		  AND DELYN = 'N'
+	</select>
+
+	<select id="selectTOrderMstCtOffline" resultType="com.daiso.oms.ormaster.dto.CtDTO">
+		/* oms-master-center-sql-oracle.xml - selectTOrderMstCtOffline */
+		SELECT  CTKEY
+		      , CTNM
+		      , CLOSDATE
+		      , DELYN
+		      , CNTRYCD
+		      , ADDR1
+		      , ADDR2
+		      , ZIPCD
+		      , TEL
+		      , REGNO
+		      , IFYN
+		      , CTSUMMARYNM
+		      , SAFEIVOWNCRIT
+		      , IVOWNCRITDAYS
+		      , MANAGEMENTYN
+		      , CTLEADTIME
+		      , GRTIVDAYS
+		      , INSERTDATE
+		      , INSERTURKEY
+		      , UPDATEDATE
+		      , UPDATEURKEY
+		FROM TORDER_MST_CT
+		WHERE CTTYPE = '02'
+		  AND DELYN = 'N'
+	</select>
+
+</mapper>
+	

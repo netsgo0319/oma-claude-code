@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.po.mapper.PoCnfrmMapper">
+
+    <select id="selectBatchPoCnfrmList" resultType="camelMap">
+		/* PoCnfrmMapper.xml selectBatchPoCnfrmList */
+        SELECT ICKEY AS ICKEY
+             , REQORDERDAY AS CNFRMREQORDERDAY
+             , '01' AS REQORDERDIV
+             , REQCTKEY
+             ,  1 AS SEQ
+             , SUM(CNFRMREQORDERQTY) AS CNFRMREQORDERQTY
+        FROM TORDER_INFO_REQORDER
+        WHERE REQORDERTYPE = '03'    -- 이고발주만
+          AND REQORDERSTATUS = '02'  -- 발주확정상태
+          AND URGENCYREQORDERYN = 'N' -- 정기발주
+          AND REQORDERDAY BETWEEN #{startDate} AND #{endDate}
+        GROUP BY ICKEY, REQORDERDAY , REQCTKEY
+    </select>
+
+    <select id="selectMaxReqSeq" resultType="java.lang.Integer">
+		/* PoCnfrmMapper.xml selectErpPoCnfrmList */
+        SELECT MAX(SEQ) AS SEQ
+        FROM TORDER_EAI_REQORDER_BATCH
+        WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+          AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+    </select>
+
+
+
+</mapper>

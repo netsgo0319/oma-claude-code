@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.ctmaster.mapper.ZoneMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectZone">
+		  FROM TWORK_MST_ZN ZN
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ZN.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectZoneCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-zone-sql-oracle.xml - selectZoneCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectZone"/>
+	</select>
+
+	<select id="selectZoneList" resultType="camelMap">
+		/* wms-ctmaster-zone-sql-oracle.xml - selectZoneList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+		     , ZN.CTKEY
+		     , CT.CTNM
+			 , ZN.ZNKEY
+			 , ZN.ZNNM
+		     , ZN.ZNTYPECD
+			 , ZN.INSERTDATE
+			 , ZN.INSERTURKEY
+			 , ZN.UPDATEDATE
+			 , ZN.UPDATEURKEY
+
+		<include refid="sql_selectZone"/>
+		 ORDER BY
+			   ZN.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectZoneDupCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-zone-sql-oracle.xml - selectZoneDupCheckCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ZN
+		 WHERE CTKEY = #{ctkey}
+		   AND ZNKEY = #{znkey}
+	</select>
+
+	<select id="selectZoneUseCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-zone-sql-oracle.xml - selectZoneUseCheckCount */
+		SELECT SUM(CNT)
+		  FROM (
+			   SELECT COUNT(1) CNT
+				 FROM TWORK_MST_AR
+				WHERE CTKEY = #{ctkey}
+				  AND ZNKEY = #{znkey}
+				UNION
+			   SELECT COUNT(1) AS CNT
+				 FROM TWORK_MST_LC
+				WHERE CTKEY = #{ctkey}
+				  AND ZNKEY = #{znkey}
+			 )
+	</select>
+
+	<insert id="insertZone">
+		/* wms-ctmaster-zone-sql-oracle.xml - insertZone */
+		INSERT INTO TWORK_MST_ZN (
+		  	   CTKEY
+			 , ZNKEY
+			 , ZNNM
+			 , ZNTYPECD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{znkey}
+			 , #{znnm}
+			 , #{zntypecd}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateZone">
+		/* wms-ctmaster-zone-sql-oracle.xml - updateZone */
+		UPDATE TWORK_MST_ZN
+		   SET ZNNM = #{znnm}
+		     , ZNTYPECD = #{zntypecd}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND ZNKEY = #{znkey}
+	</update>
+
+	<delete id="deleteZone">
+		/* wms-ctmaster-zone-sql-oracle.xml - deleteZone */
+		DELETE
+		  FROM TWORK_MST_ZN
+		 WHERE CTKEY = #{ctkey}
+		   AND ZNKEY = #{znkey}
+	</delete>
+
+</mapper>
+	

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObPickManagerMapper">
+			
+	<select id="selectPickDtbyPk" parameterType="obPickDtVO" resultType="obPickDtVO">
+		<![CDATA[			
+		SELECT P.CTKEY       
+		    , P.PIDTKEY    
+		    , P.OWKEY      
+		    , P.ICKEY      
+		    , P.SBKEY
+		    , P.LCKEY
+		    , P.ULCKEY
+		    , P.IVATKEY                     
+		    , P.EXQTY
+		    , P.CFQTY  
+		    , P.UOM
+		    , P.ICUTKEY
+		    , P.FR_LCKEY
+		    , P.FR_ULCKEY
+		    , P.TO_LCKEY
+		    , P.TO_ULCKEY
+		    , P.OBHDKEY    
+		    , P.OBDTKEY                          
+		    , P.IBHDKEY    
+		    , P.IBDTKEY     
+		    , P.WKSTATUS    
+		    , P.LOGGRPCD
+            , A.WRHOUS_SE
+		 FROM TWORK_INFO_PI_DT P
+            , TWORK_MST_LC L
+            , TWORK_MST_AR A
+		WHERE P.CTKEY = L.CTKEY
+          AND P.LCKEY = L.LCKEY
+          AND L.CTKEY = A.CTKEY
+          AND L.ARKEY = A.ARKEY
+		  AND P.CTKEY = #{ctkey}
+		  AND P.PIDTKEY = #{pidtkey}	 	 	
+		]]>		 	
+	</select>
+	
+	<insert id="insertPickDt" parameterType="obPickDtVO">
+		<![CDATA[
+		INSERT INTO TWORK_INFO_PI_DT (
+				CTKEY       
+				,PIDTKEY    
+				,OWKEY      
+				,ICKEY      
+				,SBKEY
+				,LCKEY
+				,IVATKEY    				   
+				,ULCKEY
+				,EXQTY
+				,CFQTY  
+				,UOM
+				,ICUTKEY	
+				,FR_LCKEY
+				,FR_ULCKEY				
+				,TO_LCKEY
+				,TO_ULCKEY
+				,OBHDKEY    
+				,OBDTKEY 				         
+				,IBHDKEY    
+				,IBDTKEY     
+				,WKSTATUS 
+				,LOGGRPCD   
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY
+				,TTQTY
+				,AVQTY			
+				,WAKEY				
+			) VALUES (
+				 #{ctkey}
+				,#{pidtkey}
+				,#{owkey}
+				,#{ickey}
+				,#{sbkey}
+				,#{lckey}
+				,#{ivatkey}				
+				,#{ulckey}
+				,#{exqty}
+				,#{cfqty}
+				,#{uom}
+				,#{icutkey}	
+				,#{fr_lckey}
+				,#{fr_ulckey}				
+				,#{to_lckey}
+				,#{to_ulckey}
+				,#{obhdkey}
+				,#{obdtkey}								
+				,#{ibhdkey}
+				,#{ibdtkey}
+				,#{wkstatus}
+				,#{loggrpcd}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+		      	,#{ttqty}				
+		      	,#{avqty}
+		      	,#{wakey}
+			)
+		]]>	
+	</insert>
+	
+	<delete id="deletePickDtByPk" parameterType="obPickDtVO">
+		<![CDATA[	
+		DELETE FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		    AND PIDTKEY = #{pidtkey}				
+		]]>
+	</delete>
+	
+	<update id="updatePickDtQtyWkstatus" parameterType="obPickDtVO">
+		UPDATE TWORK_INFO_PI_DT SET
+			EXQTY = EXQTY + #{exqty}
+			,CFQTY = CFQTY + #{cfqty}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pick_lckey)" >
+				,LCKEY = #{pick_lckey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pick_ulckey)" >
+				,ULCKEY = #{pick_ulckey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+				,WKSTATUS = #{wkstatus}
+			</if>
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND PIDTKEY = #{pidtkey}	
+	</update>
+	
+
+	<select id="selectPickDtSumByExqty" parameterType="obPickDtVO" resultType="bigdecimal">
+		<![CDATA[			
+		SELECT SUM(EXQTY) AS EXQTY
+		 FROM TWORK_INFO_PI_DT
+		]]>
+		WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND WKSTATUS = #{wkstatus}
+			AND IVATKEY = #{ivatkey}
+			AND FR_LCKEY = #{fr_lckey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pidtkey)" >
+		    AND PIDTKEY = #{pidtkey}	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)" >
+		    AND OBHDKEY IN (
+		    	SELECT OBHDKEY 
+		    	 FROM TWORK_INFO_WA_DT
+		    	WHERE WAHDKEY = #{wahdkey}
+		    )	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+		    AND OBHDKEY = #{obhdkey}	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey)" >
+		    AND OBDTKEY = #{obdtkey}	
+		</if>	 				 	 	
+	</select>
+
+	<update id="updatePickDtCurrentLckey" parameterType="obPickDtVO">
+		UPDATE TWORK_INFO_PI_DT SET
+			LCKEY = #{lckey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND WKSTATUS = #{wkstatus}
+			AND IVATKEY = #{ivatkey}
+			AND FR_LCKEY = #{fr_lckey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pidtkey)" >
+		    AND PIDTKEY = #{pidtkey}	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)" >
+		    AND OBHDKEY IN (
+		    	SELECT OBHDKEY 
+		    	 FROM TWORK_INFO_WA_DT
+		    	WHERE WAHDKEY = #{wahdkey}
+		    )	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+		    AND OBHDKEY = #{obhdkey}	
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey)" >
+		    AND OBDTKEY = #{obdtkey}	
+		</if>		
+	</update>
+	
+</mapper>	

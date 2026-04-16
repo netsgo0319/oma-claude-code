@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.ItemUnitMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectItemUnit">
+		  FROM TWORK_MST_ICUTXTYPE A
+		 INNER JOIN TWORK_MST_IC B
+		    ON B.CTKEY = A.CTKEY AND B.OWKEY = A.OWKEY AND B.ICKEY = A.ICKEY
+		 INNER JOIN TWORK_MST_CT C
+		    ON C.CTKEY = A.CTKEY
+		 INNER JOIN TWORK_MST_OW D
+			ON D.OWKEY = A.OWKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectItemUnitCount" resultType="java.lang.Integer">
+		/* wms-master-itemunit-sql-oracle.xml - selectItemUnitCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectItemUnit"/>
+	</select>
+
+	<select id="selectItemUnit" resultType="camelMap">
+		/* wms-master-itemunit-sql-oracle.xml - selectItemUnit */
+		<include refid="sql_pagingTop"/>
+		SELECT A.CTKEY
+			, C.CTNM
+			, A.OWKEY
+			, D.OWNM
+			, B.ICKEY
+			, B.ICNM
+			, B.SPEC
+			, A.ICUNITKEY
+			, A.ICUNITTYPECD
+			, A.ICUNITORDER
+			, A.ICUNITQTY
+			, A.WIDTH
+			, A.DEPTH
+			, A.HEIGHT
+			, A.VOL
+			, A.VOLUNIT
+			, A.WEIGHT
+			, A.WEIGHTUNIT
+		    , A.PLTROW
+			, A.PLTCOL
+			, A.CPPQTY
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+			<include refid="sql_selectItemUnit"/>
+		ORDER BY
+			  A.ICKEY DESC
+			, A.ICUNITORDER ASC
+			<include refid="sql_pagingBottom"/>
+	</select>
+
+	<update id="updateTWorkMstIcutxtype">
+		/* wms-master-itemunit-sql-oracle.xml - updateTWorkMstIcutxtype */
+		UPDATE TWORK_MST_ICUTXTYPE
+		   SET WIDTH = #{width}
+		     , DEPTH = #{depth}
+			 , HEIGHT = #{height}
+			 , VOL = #{vol}
+		     , WEIGHT = #{weight}
+			 , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		  AND ICUNITTYPECD = #{icunittypecd}
+	</update>
+
+	<update id="updateTWorkMstIc_actualsizeYn">
+		/* wms-master-itemunit-sql-oracle.xml - updateTWorkMstIc_actualsizeYn 실측여부 수정 */
+		UPDATE TWORK_MST_IC
+		SET ACTUALSIZE_YN = #{actualsizeYn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</update>
+
+	<update id="updateTAdminMstIcmeasurement">
+		/* wms-master-itemunit-sql-oracle.xml - updateTAdminMstIcmeasurement ( ams 센터별 실측정보 ) */
+		INSERT INTO TADMIN_MST_ICMEASUREMENT (
+				  OWKEY
+				, CTKEY
+				, ICUNITKEY
+				, ICUNITTYPE
+				, LENGTH
+				, WIDTH
+				, HEIGHT
+				, WEIGHT
+				, VOL
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+			  ) VALUES (
+				  #{owkey}
+				, #{ctkey}
+				, #{icutkey}
+				, #{icuttype}
+				, #{lgth}
+				, #{width}
+				, #{height}
+				, #{weight}
+				, #{volume}
+				, #{sysdate}
+				, 'WMS SESSION'
+				, #{sysdate}
+				, 'WMS SESSION'
+			  )
+		ON CONFLICT (OWKEY, CTKEY, ICUNITKEY, ICUNITTYPE)
+		DO UPDATE SET
+				  LENGTH = EXCLUDED.LENGTH
+				, WIDTH = EXCLUDED.WIDTH
+				, HEIGHT = EXCLUDED.HEIGHT
+				, WEIGHT = EXCLUDED.WEIGHT
+				, VOL = EXCLUDED.VOL
+				, UPDATEDATE = EXCLUDED.UPDATEDATE
+				, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</update>
+
+	<update id="updateItemUnitExcelTempVaild">
+		/* wms-master-itemunit-sql-oracle.xml - updateItemUnitExcelTempVaild */
+		<![CDATA[
+		UPDATE TWORK_UPLOAD_ICUTXTYPE TUM
+		   SET ERROR_CD = (
+							   SELECT T.ERROR_CD
+								 FROM (
+									 SELECT ULHSKEY
+										  , SEQ
+							  			  , CASE WHEN A.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+												 WHEN A.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_NULL'
+												 WHEN D.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_INVALID'
+												 WHEN A.ICUNITTYPECD IS NOT NULL AND E.ICUNITTYPECD IS NULL THEN 'TXT_UPLOAD_VALID_ITEMUNIT_INVALID'
+												 WHEN (SELECT COUNT(1) FROM TWORK_UPLOAD_ICUTXTYPE WHERE ULHSKEY = '' AND CTKEY = A.CTKEY AND OWKEY = A.OWKEY AND ICKEY = A.ICKEY AND ICUNITTYPECD = A.ICUNITTYPECD) > 1 THEN 'TXT_UPLOAD_VALID_ICUTTYPE_DUPLICATE'
+												 WHEN A.WIDTH IS NOT NULL AND A.WIDTH ~ '[^0-9]' THEN 'TXT_UPLOAD_VALID_WIDTH_NOT_NUMBER'
+												 WHEN A.DEPTH IS NOT NULL AND A.DEPTH ~ '[^0-9]' THEN 'TXT_UPLOAD_VALID_DEPTH_NOT_NUMBER'
+												 WHEN A.HEIGHT IS NOT NULL AND A.HEIGHT ~ '[^0-9]' THEN 'TXT_UPLOAD_VALID_HEIGHT_NOT_NUMBER'
+												 WHEN A.VOL IS NOT NULL AND A.VOL ~ '[^0-9.]' THEN 'TXT_UPLOAD_VALID_VOL_NOT_NUMBER'
+												 WHEN A.WEIGHT IS NOT NULL AND A.WEIGHT ~ '[^0-9.]' THEN 'TXT_UPLOAD_VALID_WEIGHT_NOT_NUMBER'
+												 WHEN COALESCE(CAST(NULLIF(TRIM(A.WIDTH),'') AS NUMERIC), 0) = 0 THEN 'TXT_UPLOAD_VALID_WIDTH_GREATER_THAN_ZERO'
+												 WHEN COALESCE(CAST(NULLIF(TRIM(A.DEPTH),'') AS NUMERIC), 0) = 0 THEN 'TXT_UPLOAD_VALID_DEPTH_GREATER_THAN_ZERO'
+												 WHEN COALESCE(CAST(NULLIF(TRIM(A.HEIGHT),'') AS NUMERIC), 0) = 0 THEN 'TXT_UPLOAD_VALID_HEIGHT_GREATER_THAN_ZERO'
+												 WHEN COALESCE(CAST(NULLIF(TRIM(A.VOL),'') AS NUMERIC), 0) = 0 THEN 'TXT_UPLOAD_VALID_VOL_GREATER_THAN_ZERO'
+												 WHEN COALESCE(CAST(NULLIF(TRIM(A.WEIGHT),'') AS NUMERIC), 0) = 0 THEN 'TXT_UPLOAD_VALID_WEIGHT_GREATER_THAN_ZERO'
+												 WHEN A.VOL IS NOT NULL AND LENGTH(SUBSTR(A.VOL, POSITION('.' IN A.VOL) + 1)) > 6 THEN 'TXT_UPLOAD_VALID_VOL_DCMLPOT_LIMIT_6'
+							 			    END AS ERROR_CD
+						 			   FROM TWORK_UPLOAD_ICUTXTYPE A
+								  	   		LEFT OUTER JOIN TWORK_MST_CT B
+												ON B.CTKEY = A.CTKEY
+								  	   		LEFT OUTER JOIN TWORK_MST_OW C
+												ON C.OWKEY = A.OWKEY
+								  	   		LEFT OUTER JOIN TWORK_MST_IC D
+												ON D.CTKEY = A.CTKEY
+												AND D.OWKEY = A.OWKEY
+												AND D.ICKEY = A.ICKEY
+									   		LEFT OUTER JOIN TWORK_MST_ICUTXTYPE E
+												ON E.CTKEY = D.CTKEY
+												AND E.OWKEY = D.OWKEY
+												AND E.ICKEY = D.ICKEY
+												AND E.ICUNITTYPECD = A.ICUNITTYPECD
+									  WHERE ULHSKEY = #{uploadKey}
+					 				) T
+								WHERE TUM.ULHSKEY = T.ULHSKEY
+				  				  AND TUM.SEQ = T.SEQ
+							 )
+		 WHERE TUM.ULHSKEY = #{uploadKey}
+		]]>
+	</update>
+
+	<select id="selectItemUnitExcelTempCount" resultType="java.lang.Integer">
+		/* wms-master-itemunit-sql-oracle.xml - selectItemUnitExcelTempCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_ICUTXTYPE
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+	</select>
+
+	<select id="selectItemUnitExcelTempList" resultType="camelMap">
+		/* wms-master-itemunit-sql-oracle.xml - selectItemUnitExcelTempList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+			 , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , ICNM
+			 , ICUNITTYPECD
+		     , WIDTH
+		     , DEPTH
+			 , HEIGHT
+			 , VOL
+			 , WEIGHT
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_ICUTXTYPE
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		 ORDER BY SEQ
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<delete id="deleteItemUnitExcelUploadTemp">
+		/* wms-master-itemunit-sql-oracle.xml - deleteItemUnitExcelUploadTemp */
+		DELETE
+		FROM TWORK_UPLOAD_ICUTXTYPE
+		WHERE ULHSKEY = #{ulhskey}
+		  AND SEQ = #{seq}
+	</delete>
+
+	<insert id="updateItemUnitExcelUploadList">
+		/* wms-master-itemunit-sql-oracle.xml - updateItemUnitExcelUploadList */
+		<![CDATA[
+		UPDATE TWORK_MST_ICUTXTYPE TUM
+		   SET (
+			   TUM.WIDTH
+			 , TUM.DEPTH
+			 , TUM.HEIGHT
+			 , TUM.VOL
+			 , TUM.WEIGHT
+			 , TUM.UPDATEDATE
+		     , TUM.UPDATEURKEY) = (SELECT A.WIDTH
+		     							, A.DEPTH
+										, A.HEIGHT
+										, A.VOL
+		                                , A.WEIGHT
+									    , #{sysdate} AS UPDATEDATE
+									    , #{surkey} AS UPDATEURKEY
+									 FROM TWORK_UPLOAD_ICUTXTYPE A
+								    WHERE A.ULHSKEY = #{uploadKey}
+									  AND A.ERROR_CD IS NULL
+									  AND TUM.CTKEY = A.CTKEY
+									  AND TUM.OWKEY = A.OWKEY
+									  AND TUM.ICKEY = A.ICKEY
+								      AND TUM.ICUNITTYPECD = A.ICUNITTYPECD)
+		WHERE EXISTS (
+			SELECT 'X'
+			FROM TWORK_UPLOAD_ICUTXTYPE B
+			WHERE B.ULHSKEY = #{uploadKey}
+			  AND B.CTKEY = TUM.CTKEY
+			  AND B.OWKEY = TUM.OWKEY
+			  AND B.ICKEY = TUM.ICKEY
+			  AND B.ICUNITTYPECD = TUM.ICUNITTYPECD
+		)
+		]]>
+	</insert>
+
+	<select id="selectItemUnitExcelUploadList" resultType="camelMap">
+		/* wms-master-itemunit-sql-oracle.xml - selectItemUnitExcelUploadList */
+		SELECT ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+		     , ICUNITTYPECD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_ICUTXTYPE
+		 WHERE ULHSKEY = #{uploadKey}
+		   AND ERROR_CD IS NULL
+		 ORDER BY SEQ
+	</select>
+
+</mapper>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.BatchManagementMapper">
+	
+	<select id="selectBatchInfoList" parameterType="map" resultType="camelMap">
+		/* adm-master-batch-sql-oracle.xml - selectBatchInfoList */
+		SELECT APKEY
+		     , BATID
+			 , BATNM
+			 , BATDESCRPT
+			 , BATJOBCLASSNM
+			 , BATEXECSTADATE
+			 , BATEXECENDDATE
+			 , CRONEXPSMETH
+			 , BATPARAM
+			 , ERRSNDCD
+			 , BATEXECYN
+			 , COALESCE(C.STATE, COALESCE(D.STATE, B.TRIGGER_STATE)) AS STATUS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM BATCH_MANAGE A
+		  LEFT JOIN QRTZ_TRIGGERS B
+				 ON A.BATID || 'Trigger' = B.TRIGGER_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS C
+		  		 ON B.TRIGGER_NAME = C.TRIGGER_NAME
+				AND A.BATID || 'Job' = C.JOB_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS D
+				 ON A.BATID || 'Job' = D.JOB_NAME
+				AND A.BATID || 'Trigger' != D.TRIGGER_NAME
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+		   AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY APKEY, BATID
+	</select>
+
+	<select id="selectBatchInfo" parameterType="java.lang.String" resultType="camelMap">
+		/* adm-master-batch-sql-oracle.xml - selectBatchInfo */
+		SELECT APKEY
+		     , BATID
+			 , BATNM
+			 , BATDESCRPT
+			 , BATJOBCLASSNM
+			 , BATEXECSTADATE
+			 , BATEXECENDDATE
+			 , CRONEXPSMETH
+			 , BATPARAM
+			 , ERRSNDCD
+			 , BATEXECYN
+			 , COALESCE(C.STATE, COALESCE(D.STATE, B.TRIGGER_STATE)) AS STATUS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM BATCH_MANAGE A
+		  LEFT JOIN QRTZ_TRIGGERS B
+				 ON A.BATID || 'Trigger' = B.TRIGGER_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS C
+				 ON B.TRIGGER_NAME = C.TRIGGER_NAME
+				AND A.BATID || 'Job' = C.JOB_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS D
+				 ON A.BATID || 'Job' = D.JOB_NAME
+				AND A.BATID || 'Trigger' != D.TRIGGER_NAME
+		  WHERE 1 = 1
+		    AND A.BATID = #{batid}
+	</select>
+
+	<insert id="saveBatchInfo">
+		/* adm-master-batch-sql-oracle.xml - saveBatchInfo */
+		MERGE INTO BATCH_MANAGE A
+		USING DUAL
+		   ON ( A.BATID = #{batid} )
+		 WHEN MATCHED THEN
+		    UPDATE SET
+		    		   BATNM = #{batnm}
+		        	 , BATDESCRPT = #{batdescrpt}
+					 , BATJOBCLASSNM = #{batjobclassnm}
+					 , BATEXECSTADATE = #{batexecstadate}
+					 , BATEXECENDDATE = #{batexecenddate}
+					 , CRONEXPSMETH = #{cronexpsmeth}
+					 , BATPARAM = #{batparam}
+					 , ERRSNDCD = #{errsndcd}
+					 , BATEXECYN = #{batexecyn}
+            		 , APKEY = #{apkey}
+		    WHEN NOT MATCHED THEN
+			  INSERT (
+				      APKEY
+				  	, BATID
+			  	    , BATNM
+			  	    , BATDESCRPT
+			  	    , BATJOBCLASSNM
+			  	    , BATEXECSTADATE
+			  	    , BATEXECENDDATE
+			  	    , CRONEXPSMETH
+			  	    , BATPARAM
+			  	    , ERRSNDCD
+			  	    , BATEXECYN
+			  	    , INSERTDATE
+			  	    , INSERTURKEY
+			  	    , UPDATEDATE
+			  	    , UPDATEURKEY
+			  )
+			  VALUES
+			  (
+				  #{apkey}
+				, #{batid}
+				, #{batnm}
+				, #{batdescrpt}
+				, #{batjobclassnm}
+				, #{batexecstadate}
+				, #{batexecenddate}
+				, #{cronexpsmeth}
+				, #{batparam}
+				, #{errsndcd}
+				, 'Y'
+				, #{sysdate}
+				, #{surkey}
+				, #{sysdate}
+				, #{surkey}
+			  )
+	</insert>
+
+	<delete id="deleteBatchInfo">
+		/* adm-master-batch-sql-oracle.xml - deleteBatchInfo */
+		DELETE
+			FROM BATCH_MANAGE
+		 WHERE BATID = #{batid}
+	</delete>
+
+
+	<select id="selectBatchLogInfo" resultType="camelMap">
+		/* adm-master-batch-sql-oracle.xml - selectBatchLogInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+			SELECT A.SEQ
+				 , A.APKEY
+				 , A.BATEXECID
+			     , A.BATID
+				 , B.BATNM
+				 , A.ERRYN
+				 , TO_CHAR(A.BATEXECDATE, 'YYYYMMDDHH24MISS') AS BATEXECDATE
+				 , A.BATEXECLOG
+				 , A.BATERRLOG
+				 , TO_CHAR(A.BATCLOSDATE, 'YYYYMMDDHH24MISS') AS BATCLOSDATE
+				 , A.TARGETCNT
+				 , A.SUCCESSCNT
+				 , A.FAILCNT
+				 , A.INSERTDATE
+				 , A.INSERTURKEY
+				 , A.UPDATEDATE
+				 , A.UPDATEURKEY
+				 , A.EXECYN
+				 , A.PARAM
+			  FROM BATCH_LOG A
+			  JOIN BATCH_MANAGE B
+			  	ON B.BATID = A.BATID
+			   AND B.BATEXECYN = 'Y'
+			 WHERE 1 = 1
+			   AND A.BATEXECDATE BETWEEN TO_DATE(#{fromDate}, 'YYYYMMDDHH24MISS') AND TO_DATE(#{toDate}, 'YYYYMMDDHH24MISS')
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+			ORDER BY SEQ DESC
+		) B
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectBatchLogInfoCount" resultType="java.lang.Integer">
+		/* adm-master-batch-sql-oracle.xml - selectBatchLogInfoCount */
+		SELECT COUNT(1)
+		  FROM BATCH_LOG A
+		 WHERE 1 = 1
+		   AND NOT EXISTS (SELECT 1 FROM BATCH_MANAGE B
+							WHERE B.BATID = A.BATID
+							  AND B.BATEXECYN = 'N')
+		   AND A.BATEXECDATE BETWEEN TO_DATE(#{fromDate}, 'YYYYMMDDHH24MISS') AND TO_DATE(#{toDate}, 'YYYYMMDDHH24MISS')
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+</mapper>

@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnAtmcMapper">
+
+	<select id="selectIvatInfoMap" resultType="camelMap" >
+	/* wms-inventory-atmc-sql-oracle.xml - selectIvatInfoMap - 재고 속성 조회  SQL */
+		SELECT CTKEY
+			 , IVATKEY
+			 , OWKEY
+			 , ICKEY
+			 , PRODUCTDATE
+			 , EXPIREDATE
+			 , ATTRIBUTE1
+			 , ATTRIBUTE2
+			 , ATTRIBUTE3
+			 , ATTRIBUTE4
+			 , ATTRIBUTE5
+			 , PRODUCTLOT
+			 , IVATSTATUS
+			 , IBCONFIRMDATE
+			 , LOGGRPCD
+			 , ACKEY
+			 , STORE_KEY
+			 , ATTRIBUTE6
+			 , ATTRIBUTE7
+			 , ATTRIBUTE8
+			 , ATTRIBUTE9
+			 , IDNTFC_NO
+			 , BDDR_GNRL_ITEM_IBYN
+			 , CON_QTY
+			 , NET_WGT
+			 , CFQTY
+			 , PLT_TYPE
+			 , PLT_LOAD_QTY
+			 , PLT_LOAD_HEIGHT
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND UOM = #{uom}
+		   AND EXPIREDATE = #{expiredate}
+	</select>
+	
+	<select id="selectIvatkeyGen" resultType="java.lang.String" >
+	/* wms-inventory-atmc-sql-oracle.xml - selectIvatkeyGen - 재고 속성 키 조회  SQL */
+		SELECT FN_GET_KEYCOUNT_IVAT(#{ctkey} , #{surkey}) AS IVATKEY
+	</select>
+	
+	<insert id="insertTworkInfoIvat">
+	/* wms-inventory-atmc-sql-oracle.xml - insertTworkInfoIvat - 재고 속성 등록  SQL */
+		INSERT INTO TWORK_INFO_IVAT
+			 (
+			 CTKEY
+			 , IVATKEY
+			 , OWKEY
+			 , ICKEY
+			 , PRODUCTDATE
+			 , EXPIREDATE
+			 , ATTRIBUTE1
+			 , ATTRIBUTE2
+			 , ATTRIBUTE3
+			 , ATTRIBUTE4
+			 , ATTRIBUTE5
+			 , PRODUCTLOT
+			 , IVATSTATUS
+			 , IBCONFIRMDATE
+			 , LOGGRPCD
+			 , ACKEY
+			 , STORE_KEY
+			 , ATTRIBUTE6
+			 , ATTRIBUTE7
+			 , ATTRIBUTE8
+			 , ATTRIBUTE9
+			 , IDNTFC_NO
+			 , BDDR_GNRL_ITEM_IBYN
+			 , CON_QTY
+			 , NET_WGT
+			 , CFQTY
+			 , PLT_TYPE
+			 , PLT_LOAD_QTY
+			 , PLT_LOAD_HEIGHT
+			 , UOM
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES 
+			 (
+			 #{ctkey}
+			 , #{ivatkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{productdate}
+			 , #{expiredate}
+			 , '2'  /* DC */
+			 , '1'  /* 일반 */
+			 , #{attribute3}
+			 , #{attribute4}
+			 , #{attribute5}
+			 , #{productlot}
+			 , '10'
+			 , COALESCE(#{ibconfirmdate}, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'))
+			 , COALESCE(#{loggrpcd}, '1')
+			 , #{ackey}
+			 , #{storeKey}
+			 , #{attribute6}
+			 , #{attribute7}
+			 , #{attribute8}
+			 , #{attribute9}
+			 , #{idntfcNo}
+			 , #{bddrGnrlItemIbyn}
+			 , #{conQty}
+			 , #{netWgt}
+			 , #{cfqty}
+			 , #{pltType}
+			 , #{pltLoadQty}
+			 , #{pltLoadHeight}
+			 , #{uom}
+			 , TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+	
+	<select id="selectIcutxtype" resultType="camelMap" >
+	/* wms-inventory-atmc-sql-oracle.xml - selectIcutQty - 상품 입수수량 조회  SQL */
+	    SELECT IC.CTKEY
+	         , IC.OWKEY
+	         , IC.ICUTKEY
+	         , IT.ICUTTYPE
+	         , IT.ICUTQTY
+	      FROM TWORK_MST_IC IC
+	           INNER JOIN
+	           TWORK_MST_ICUTXTYPE IT
+	             ON IC.CTKEY = IT.CTKEY
+	            AND IC.OWKEY = IT.OWKEY
+	            AND IC.ICUTKEY = IT.ICUTKEY
+         WHERE IC.CTKEY = #{ctkey}
+           AND IC.OWKEY = #{owkey}
+           AND IC.ICKEY = #{ickey}
+           AND IT.ICUTTYPE = #{uom}
+	</select>
+	
+	<select id="selectIvatxlculc" resultType="camelMap" >
+	/* wms-inventory-atmc-sql-oracle.xml - selectIvatxlculc - 재고 조회  SQL */
+		SELECT CTKEY
+			 , IVATKEY
+			 , LCKEY
+			 , ULCKEY
+			 , OWKEY
+			 , ICKEY
+			 , TTQTY
+			 , AVQTY
+			 , ALQTY
+			 , PIQTY
+			 , PAQTY
+			 , LOQTY
+			 , HOQTY
+			 , IVATSTATUS
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{ivatkey}
+		   
+	</select>
+	
+	<insert id="insertIvatxlculc"  parameterType="java.util.HashMap">
+	/* wms-inventory-atmc-sql-oracle.xml - insertIvatxlculc - 재고 등록  SQL */
+    	INSERT INTO TWORK_INFO_IVATXLCXULC
+				(
+				  CTKEY
+				, IVATKEY
+				, LCKEY
+				, ULCKEY
+				, OWKEY
+				, ICKEY
+				, TTQTY
+				, AVQTY
+				, ALQTY
+				, PIQTY
+				, PAQTY
+				, LOQTY
+				, HOQTY
+				, IVATSTATUS
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+				, LOGGRPCD
+				)
+		 VALUES (
+				  #{ctkey}
+				, #{ivatkey}
+				, #{lckey}
+				, COALESCE(#{ulckey}, 'NA')
+				, #{owkey}
+				, #{ickey}
+				, (#{normalqty} * #{icutqty}) + (#{hoqty} * #{icutqty})
+				, (#{normalqty} * #{icutqty})
+				, 0
+				, 0
+				, 0
+				, 0
+				, (#{hoqty} * #{icutqty})
+				, '10'
+				, #{sysdate}
+	       		, #{surkey}
+	       		, #{sysdate}
+	       		, #{surkey}
+				, #{loggrpcd}
+				)
+	</insert>
+	
+	<update id="updateInvnQty" parameterType="java.util.HashMap">
+	/* wms-inventory-atmc-sql-oracle.xml - updateInvnQty - 재고 수정  SQL */
+		 UPDATE TWORK_INFO_IVATXLCXULC
+		 	SET TTQTY = TTQTY + (#{normalqty} * #{icutqty}) + (#{hoqty} * #{icutqty})
+		 	  , AVQTY = AVQTY + (#{normalqty} * #{icutqty})
+		 	  , HOQTY = (#{hoqty} * #{icutqty})
+		 	  , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+		 	  , UPDATEURKEY = #{surkey}
+		  WHERE CTKEY = #{ctkey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+		    AND LCKEY = #{lckey}
+		    AND IVATKEY = #{ivatkey}
+	</update>
+	
+	
+	<update id="updateInvnQtyMinus" parameterType="java.util.HashMap">
+	/* wms-inventory-atmc-sql-oracle.xml - updateInvnQtyMinus - 재고 차감  SQL */
+		 UPDATE TWORK_INFO_IVATXLCXULC
+		 	SET TTQTY = TTQTY - (#{normalqty} * #{icutqty}) - (#{hoqty} * #{icutqty})
+		 	  , AVQTY = AVQTY - (#{normalqty} * #{icutqty}) - (#{hoqty} * #{icutqty})
+		 	  , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+		 	  , UPDATEURKEY = #{surkey}
+		  WHERE CTKEY = #{ctkey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+		    AND LCKEY = #{fcLckey}
+		    AND IVATKEY = #{ivatkey}
+	</update>
+</mapper>	

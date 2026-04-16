@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InboundOrderReturnDlvrSbmApiMapper">
+
+	<select id="selectObDtInfoList" resultType="camelMap">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - selectObDtInfoList - 출고정보 조회 */
+		SELECT WBLNO
+ 			 , MAX(ICNM) AS ICNM
+		  FROM (
+				SELECT OH.WBLNO
+					 , MAX(IC.ICNM) AS ICNM
+				  FROM TWORK_INFO_OB_DT OD
+				 INNER JOIN TWORK_INFO_OB_HD OH
+					ON OD.CTKEY = OH.CTKEY
+				   AND OD.OWKEY = OH.OWKEY
+				   AND OD.OBHDKEY = OH.OBHDKEY
+				 INNER JOIN TWORK_MST_IC IC
+					ON OD.CTKEY = IC.CTKEY
+				   AND OD.OWKEY = IC.OWKEY
+				   AND OD.ICKEY = IC.ICKEY
+				 WHERE OD.CTKEY = #{ctkey}
+				   AND OD.EXTERNORDERKEY = #{externorderkey}
+				   AND OD.OBDTSTATUSCD IN ('65','70') -- 부분출고 , 출고완료
+				 GROUP BY OH.WBLNO
+				 UNION ALL
+				SELECT OL.WBLNO
+					 , '' AS ICNM
+				  FROM TWORK_INFO_ASIS_OB_LIST OL
+				 WHERE OL.CTKEY = #{ctkey}
+				   AND OL.EXTERNORDERKEY = #{externorderkey}
+				 GROUP BY OL.WBLNO
+		  		) OB
+		GROUP BY WBLNO
+	</select>
+
+	<!-- 반품운송장 접수 정보 조회 -->
+	<select id="selectHanjinDlvryOrderInsert" parameterType="inboundOrderReturnDlvrRequestDTO" resultType="hanjinDlvrOrderInsertReqDTO">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - selectHanjinDlvryOrderInsert - 반품운송장 접수 정보 조회 */
+		SELECT 'R' AS SVC_CAT_CD  			/* S:출고(자체출력), E:주문예약(한진 출력), R:반품예약, F:포커스 출력 */
+			, #{custordno} AS CUST_ORD_NO
+			, #{wblno} AS WBLNO
+			, A.CNTRCTNO AS CNTRACT_NO
+			, TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '1 days', 'YYYYMMDD') AS PICKUP_ASK_DT
+			, #{recallerzipcd} AS SNDR_ZIP
+			, pkg_crypto$decrypt(#{recalleraddr1},#{encKey}) AS SNDR_BASE_ADDR
+			, pkg_crypto$decrypt(#{recalleraddr2},#{encKey}) AS SNDR_DTL_ADDR
+			, pkg_crypto$decrypt(#{recallernm},#{encKey})  AS SNDR_NM
+			, pkg_crypto$decrypt(#{recallertelno1},#{encKey})  AS SNDR_TEL_NO
+			, pkg_crypto$decrypt(#{recallertelno2},#{encKey})  AS SNDR_MOBILE_NO
+			, NULL AS SNDR_ASK_CNTENT
+			, NULL AS SNDR_REF_CNTENT
+			, C.ZIPCD AS RCVR_ZIP
+			, C.ADDR1 AS RCVR_BASE_ADDR
+			, C.ADDR2 AS RCVR_DTL_ADDR
+			, C.CTNM  AS RCVR_NM
+			, C.TELNO  AS RCVR_TEL_NO
+			, NULL  AS RCVR_MOBILE_NO
+			, NULL AS RCVR_ASK_CNTENT
+			, NULL AS RCVR_REF_CNTENT
+			, 'CT' AS PAY_TYP_CD  		/* CD(발지신용), CT(착지신용), PP(선불), CC(착불) */
+			, 'S' AS BOX_TYP_CD   		/* 박스유형 S(~60cm), A(~80cm), B(~100cm), C(~120cm), D(~140cm), E(~160cm) */
+			, NULL AS PRINT_MEMO1
+			, NULL AS PRINT_MEMO2
+			, NULL AS PRINT_MEMO3
+			, NULL AS PRINT_MEMO4
+			, COALESCE(#{icnm}, '반품상품') AS COMODITY_NM
+		FROM TWORK_MST_DLVRYCORP A
+	   INNER JOIN TWORK_MST_CT C
+		   ON A.CTKEY = C.CTKEY
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.DLVRYCORPCD = #{dlvrycorpcd}
+		   AND A.DELYN = 'N'
+	</select>
+
+
+	<select id="selectIbHdMap" resultType="camelMap">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - selectIbHdMap - 반품입고 헤더 정보 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+           AND IBHDTYPECD = '50'
+		   AND CUSTORDNO = #{custordno}
+           AND EXTORDERKEY = #{claimno}
+	</select>
+
+	<update id="updaetInboundReturnWblno">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - updaetInboundReturnWblno - 반품 운송장내역 운송장번호 및 상태 저장 */
+		UPDATE TWORK_INFO_IBRET_WBLNO
+		   SET WBLNO = #{wblno}
+			 , WBLPRGRSTATUSCD = #{wblprgrstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND WBLNO = #{obWblno}
+
+	</update>
+
+	<select id="selectIbDtInfoMap" resultType="camelMap">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - selectIbDtInfoMap - 입고 상세 조회*/
+		SELECT OH.WBLNO
+		, MAX(IC.ICNM) AS ICNM
+		FROM TWORK_INFO_OB_DT OD
+		INNER JOIN TWORK_INFO_OB_HD OH
+		ON OD.CTKEY = OH.CTKEY
+		AND OD.OWKEY = OH.OWKEY
+		AND OD.OBHDKEY = OH.OBHDKEY
+		INNER JOIN TWORK_MST_IC IC
+		ON OD.CTKEY = IC.CTKEY
+		AND OD.OWKEY = IC.OWKEY
+		AND OD.ICKEY = IC.ICKEY
+		WHERE OD.CTKEY = #{ctkey}
+		AND OD.EXTERNORDERKEY = #{externorderkey}
+		AND OD.OBDTSTATUSCD IN ('65','70') -- 부분출고 , 출고완료
+		GROUP BY OH.WBLNO
+	</select>
+
+	<update id="updateInboundReturnWblnoSbm">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - updateInboundReturnWblnoSbm - 반품운송장 접수내역 저장 */
+		UPDATE TWORK_INFO_IBRET_WBLNO_SBM
+		   SET WBLNO = #{wblno}
+			 , RICUSTORDNO = #{ricustordno}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND CUSTORDNO = #{orgcustordno}
+		   AND WBLNO = #{obWblno}
+
+	</update>
+
+	<insert id="insertInboundReturnWblnoSbm">
+		/* wms-inbound-order-dlvr-sql-oracle.xml - insertInboundReturnWblnoSbm - 반품운송장 접수내역 등록 */
+		INSERT INTO TWORK_INFO_IBRET_WBLNO_SBM
+		(
+			CTKEY
+			, CLAIMNO
+			, CUSTORDNO
+			, DLVRYCORPCD
+			, WBLNO
+			, OBWBLNO
+			, RICUSTORDNO
+			, CONT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{claimno}
+			, #{custordno}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, #{obwblno}
+			, #{ricustordno}
+			, #{cont}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+
+	</insert>
+
+
+</mapper>

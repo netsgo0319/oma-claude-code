@@ -1,0 +1,763 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObAllocateReleaseManagerMapper">
+
+	<select id="selectManualObDt" resultType="camelMap">
+		/* wms-outbound-obAllocateRelease-sql-oracle.xml - selectManualObDt - WMS > 출고 관리 > 할당(RELEASE) > 수동할당 - 할당 가능 상태 확인 */
+		SELECT OD.CTKEY /*센터코드*/
+			 , OD.OWKEY /*화주코드*/
+			 , OD.OBHDKEY /*릴리즈코드*/
+			 , OD.OBDTKEY /*릴리즈상세코드*/
+			 , COALESCE(MAX(AD.ALSEQ), 0) + 1 AS ALSEQ /*할당순번*/
+			 , 'H' AS ALDIVCD /*할당구분코드*/
+			 , IVATX.IVATKEY /*재고속성코드*/
+			 , IVATX.LCKEY /*로케이션코드*/
+			 , IVATX.LCKEY AS CELLKEY /*셀코드*/
+			 , OD.ICKEY /*상품코드*/
+			 , OD.UOM /*상품단위유형*/
+			 , #{mvqty} ALQTY /*할당수량*/
+			 , '' AS ALSTRGID /*할당전략아이디*/
+			 , '' AS PIHDKEY /*피킹헤더코드*/
+			 , '' AS PIDTKEY /*피킹상세코드*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_INFO_IVATXLC IVATX
+			ON OD.CTKEY = IVATX.CTKEY
+		   AND OD.OWKEY = IVATX.OWKEY
+		   AND OD.ICKEY = IVATX.ICKEY
+		   AND IVATX.IVSTATUSCD = '10'
+		 INNER JOIN TWORK_MST_LC LC
+			ON IVATX.CTKEY = LC.CTKEY
+		   AND IVATX.LCKEY = LC.LCKEY
+		  LEFT OUTER JOIN TWORK_INFO_AL_DT AD
+			ON OD.CTKEY = AD.CTKEY
+		   AND OD.OWKEY = AD.OWKEY
+		   AND OD.OBHDKEY = AD.OBHDKEY
+		   AND OD.OBDTKEY = AD.OBDTKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON IVATX.CTKEY = LC.CTKEY
+		   AND IVATX.LCKEY = LC.LCKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON LC.CTKEY = AR.CTKEY
+		   AND LC.ARKEY = AR.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON AR.CTKEY = ZN.CTKEY
+		   AND AR.ZNKEY = ZN.ZNKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTKEY = #{obdtkey}
+		   AND COALESCE(LC.LCLIMITDIVCD, '00') NOT IN ('20','40')
+		   AND IVATX.LCKEY = #{lckey}
+		   AND IVATX.IVATKEY = #{ivatkey}
+		   AND OD.EXPCTQTY > OD.ALQTY
+		   AND IVATX.AVQTY >= #{mvqty}
+	<choose>
+		<when test='@com.kns.framework.util.StringUtil@isNotEmpty(obhdtypecd) and obhdtypecd.equals("30")' >
+		   AND (LC.LCTYPECD = '90' /*보관 로케이션*/ OR ZN.ZNKEY = 'MLD' /*B2B이고대기구역*/)
+		</when>
+		<otherwise>
+		   AND LC.LCTYPECD = '90' /*보관 로케이션*/
+		</otherwise>
+	</choose>
+		 GROUP BY
+			   OD.CTKEY /*센터코드*/
+			 , OD.OWKEY /*화주코드*/
+			 , OD.OBHDKEY /*릴리즈코드*/
+			 , OD.OBDTKEY /*릴리즈상세코드*/
+			 , IVATX.IVATKEY /*재고속성코드*/
+			 , IVATX.LCKEY /*로케이션코드*/
+			 , OD.ICKEY /*상품코드*/
+			 , OD.UOM /*상품단위유형*/
+	</select>
+
+	<insert id="insertManualAlDt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - insertManualAlDt - 출고 관리 > 할당(RELEASE) > 수동할당 - 할당 테이블에 데이터 insert */
+		INSERT INTO TWORK_INFO_AL_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, OBDTKEY /*릴리즈상세코드*/
+			, ALSEQ /*할당순번*/
+			, ALDIVCD /*할당구분코드*/
+			, IVATKEY /*재고속성코드*/
+			, LCKEY /*로케이션코드*/
+			, CELLKEY /*셀코드*/
+			, ICKEY /*상품코드*/
+			, UOM /*상품단위유형*/
+			, ALQTY /*할당수량*/
+			, ALSTRGID /*할당전략아이디*/
+			, PIHDKEY /*피킹헤더코드*/
+			, PIDTKEY /*피킹상세코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{obdtkey} /*릴리즈상세코드*/
+			, #{alseq} /*할당순번*/
+			, #{aldivcd} /*할당구분코드*/
+			, #{ivatkey} /*재고속성코드*/
+			, #{lckey} /*로케이션코드*/
+			, #{cellkey} /*셀코드*/
+			, #{ickey} /*상품코드*/
+			, #{uom} /*상품단위유형*/
+			, #{alqty} /*할당수량*/
+			, #{alstrgid} /*할당전략아이디*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{pidtkey} /*피킹상세코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<update id="updateManualObdt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - updateManualObdt - 출고 관리 > 할당(RELEASE) > 수동할당 - 릴리즈 상세 update */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = (CASE WHEN OBDTSTATUSCD IN ('00','05') THEN (CASE WHEN EXPCTQTY > ALQTY + #{alqty} THEN '05' ELSE '10' END) ELSE OBDTSTATUSCD END)
+			 , ALQTY = ALQTY + COALESCE(#{alqty}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<select id="selectCancelProcList" resultType="camelMap">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectCancelProcList - WMS > 출고 관리 > 할당(RELEASE) > 할당취소 - 할당 취소할 주문정보 조회 */
+		SELECT OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+			 , OD.OBDTKEY
+			 , AL.ALSEQ
+			 , AL.ICKEY
+			 , AL.LCKEY
+			 , AL.IVATKEY
+			 , AL.UOM
+			 , AL.ALQTY
+		  FROM TWORK_INFO_OB_DT OD
+		 INNER JOIN TWORK_INFO_AL_DT AL
+		    ON OD.CTKEY = AL.CTKEY
+		   AND OD.OWKEY = AL.OWKEY
+		   AND OD.OBHDKEY = AL.OBHDKEY
+		   AND OD.OBDTKEY = AL.OBDTKEY
+		 WHERE OD.CTKEY = #{ctkey}
+		   AND OD.OWKEY = #{owkey}
+		   AND OD.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTKEY = #{obdtkey}
+		   AND OD.OBDTSTATUSCD IN ('05','10')
+		   AND OD.ALQTY > 0
+		 ORDER BY AL.IVATKEY, AL.LCKEY
+	</select>
+
+	<delete id="deleteCancelProcAl">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - deleteCancelProcAl - 출고 관리 > 할당(RELEASE) > 할당취소 - 할당데이터 삭제 */
+		DELETE FROM TWORK_INFO_AL_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+		   AND ALSEQ = #{alseq}
+	</delete>
+
+	<select id="selectIvatxLockByAllocate">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectIvatxLockByAllocate - 출고 관리 > 할당(RELEASE) > 할당취소 - 할당처리를 위한 재고 LOCK */
+		SELECT CTKEY
+			, OWKEY
+			, IVATKEY
+			, LCKEY
+			, ICKEY
+			, IVSERIALNO
+		FROM TWORK_INFO_IVATXLC
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+		AND LCKEY = #{lckey}
+		AND TOTQTY > 0
+		FOR UPDATE
+	</select>
+
+	<update id="updateCancelProcObDt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - updateCancelProcObDt - 출고 관리 > 할당(RELEASE) > 할당취소 - 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = (CASE WHEN ALQTY - COALESCE(#{alqty}, 0) = 0 THEN '00' WHEN EXPCTQTY > ALQTY + COALESCE(#{alqty}, 0) THEN '05' ELSE OBDTSTATUSCD END)
+			 , ALQTY = ALQTY - COALESCE(#{alqty}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<select id="selectStockOutMap" resultType="camelMap">
+		/* wms-outbound-obAllocateRelease-sql-oracle.xml - selectStockOutMap - WMS > 출고 관리 > 할당(RELEASE) > 미할당처리 - 미할당처리 가능(불가) 출고 상세 조회 */
+		SELECT OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ALQTY
+			 , OD.EXPCTQTY - ALQTY AS STOCK_OUT_QTY
+			 , (CASE WHEN OD.ALQTY = 0 THEN '01' WHEN OD.ALQTY > 0 THEN '10' ELSE OD.OBDTSTATUSCD END) AS OBDTSTATUSCD
+		  FROM TWORK_INFO_OB_DT OD
+		 INNER JOIN TWORK_INFO_OB_HD OH
+		    ON OD.CTKEY = OH.CTKEY
+		   AND OD.OWKEY = OH.OWKEY
+		   AND OD.OBHDKEY = OH.OBHDKEY
+		 WHERE OD.CTKEY = #{ctkey}
+		   AND OD.OWKEY = #{owkey}
+		   AND OD.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTKEY = #{obdtkey}
+		   AND OD.EXPCTQTY > 0
+		   AND OD.EXPCTQTY > ALQTY
+		   AND OD.OBDTSTATUSCD IN ('00','05','60')
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(flag)" >
+		   AND OH.WAHDKEY IS NULL
+		   AND OH.WKTYPECD IS NULL
+		</if>
+	</select>
+
+	<update id="updateStockOutProcObDt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - updateStockOutProcObDt - 출고 관리 > 할당(RELEASE) > 미할당처리 - 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = #{obdtstatuscd}
+			 , EXPCTQTY = EXPCTQTY - #{stockOutQty}
+			 , NISQTY = NISQTY + #{stockOutQty}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<select id="selectAlDtList" resultType="camelMap" >
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectAlDtList - WMS > 출고 관리 > 할당(RELEASE) > 자동할당 - 릴리즈 상세 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.OBHDKEY /*릴리즈코드*/
+			 , OD.OBDTKEY /*릴리즈상세코드*/
+			 , COALESCE(MAX(AL.ALSEQ), 0) + 10 AS ALSEQ /*할당순번*/
+			 , 'A' AS ALDIVCD /*할당 구분코드 : A:자동할당, H:수동할당*/
+			 , OD.ICKEY /*상품코드*/
+			 , OD.UOM /*상품단위유형*/
+			 , COALESCE(OD.EXPCTQTY, 0) - COALESCE(OD.ALQTY, 0) AS EXPCTQTY /*예정수량*/
+			 , '' AS PIHDKEY /*피킹헤더코드*/
+			 , '' AS PIDTKEY /*피킹상세코드*/
+			 , #{alstghdkey} AS ALSTGHDKEY /*할당전략아이디*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		  LEFT OUTER JOIN TWORK_INFO_AL_DT AL
+			ON OD.CTKEY = AL.CTKEY
+		   AND OD.OWKEY = AL.OWKEY
+		   AND OD.OBHDKEY = AL.OBHDKEY
+		   AND OD.OBDTKEY = AL.OBDTKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTKEY = #{obdtkey}
+		   AND OD.EXPCTQTY > 0
+		   AND OD.EXPCTQTY > OD.ALQTY
+<!--		   AND OH.OBHDTYPECD NOT IN ('30')-->
+		   AND OD.OBDTSTATUSCD IN ('00','05')
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(flag)" >
+		   AND OH.WAHDKEY IS NULL
+		   AND OH.WKTYPECD IS NULL
+		</if>
+		 GROUP BY
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ICKEY
+			 , OD.UOM
+			 , OD.EXPCTQTY
+			 , OD.ALQTY
+	</select>
+
+	<sql id="selectIvatxRefSql">
+			SELECT IVATX.CTKEY
+				 , IVATX.OWKEY
+				 , IVATX.ICKEY
+				 , IVATX.IVATKEY
+				 , IVATX.LCKEY
+				 , IVATX.AVQTY
+				 , #{expctqty} AS EXPCTQTY
+				 , ROW_NUMBER() OVER (
+						<choose>
+							<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg20) and alStg20.size > 0">
+								<foreach collection="alStg20" item="item" open="ORDER BY " separator=" , " close="">
+									${item.atvalue1} ${item.atvalue2}
+								</foreach>
+							</when>
+						</choose>
+					) AS RN
+			  FROM TWORK_INFO_IVATXLC IVATX
+			 INNER JOIN TWORK_INFO_IVAT IVAT
+				ON IVATX.CTKEY = IVAT.CTKEY
+			   AND IVATX.OWKEY = IVAT.OWKEY
+			   AND IVATX.ICKEY = IVAT.ICKEY
+			   AND IVATX.IVATKEY = IVAT.IVATKEY
+			 WHERE (IVATX.CTKEY, IVATX.OWKEY, IVATX.IVATKEY, IVATX.LCKEY, IVATX.ICKEY, IVATX.IVSERIALNO) IN
+		    <foreach collection="rowIdList" item="item" open="(" separator="," close=")">
+			    (#{item.ctkey}, #{item.owkey}, #{item.ivatkey}, #{item.lckey}, #{item.ickey}, #{item.ivserialno})
+		    </foreach>
+	</sql>
+
+	<select id="selectIvatxList" resultType="camelMap" >
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectIvatxList - WMS > 출고 관리 > 할당(RELEASE) > 자동할당 - 재고 조회 */
+		WITH IVAT AS (
+			SELECT CTKEY
+				 , OWKEY
+				 , ICKEY
+				 , IVATKEY
+				 , LCKEY
+				 , AVQTY
+				 , EXPCTQTY
+				 , RN
+			  FROM (
+					<include refid="selectIvatxRefSql"/>
+					) IV
+		), AVQTYSUM AS (
+		    SELECT P.*,
+		           SUM(AVQTY) OVER (ORDER BY RN ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS CUM_SUM,
+		           SUM(AVQTY) OVER (ORDER BY RN ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS PREV_SUM
+		    FROM IVAT P
+		), RESULT AS (
+		    SELECT AVQTYSUM.*,
+		           CASE
+		               WHEN EXPCTQTY <![CDATA[ <= ]]> COALESCE(PREV_SUM, 0) THEN 0
+		               WHEN EXPCTQTY <![CDATA[ >= ]]> CUM_SUM THEN AVQTY
+		               ELSE EXPCTQTY - COALESCE(PREV_SUM, 0)
+		           END AS ALQTY
+		    FROM AVQTYSUM
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , IVATKEY
+			 , LCKEY
+			 , AVQTY
+			 , EXPCTQTY
+			 , ALQTY
+			 , SUM(ALQTY) OVER (PARTITION BY CTKEY, OWKEY, ICKEY) AS ALTOTQTY
+		  FROM RESULT
+		 WHERE ALQTY > 0
+		 ORDER BY RN
+	</select>
+
+	<!--덕용, 단포 전용 할당대상 색인-->
+	<select id="selectFixAllocateIvatTarget" resultType="camelMap" >
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectFixAllocateIvatTarget - WMS > 출고 관리 > 할당(RELEASE) > 자동할당 - 덕용, 단포 전용 할당대상 색인 */
+		SELECT
+		    *
+		FROM (
+			SELECT
+				CTKEY
+				, OWKEY
+				, ICKEY
+				, IVATKEY
+				, LCKEY
+				, AVQTY
+				, EXPCTQTY
+				, EXPCTQTY AS ALQTY
+				, RN
+			FROM (<include refid="selectIvatxRefSql"/>) IV
+			WHERE IV.AVQTY >= IV.EXPCTQTY
+			ORDER BY RN
+		) LIMIT 1
+	</select>
+
+	<select id="selectIvatxRowIdList" resultType="camelMap">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectIvatxRowIdList - WMS > 출고 관리 > 할당(RELEASE) > 자동할당 - 재고 ROWID 조회 */
+		SELECT
+			IVATX.CTKEY
+			,IVATX.OWKEY
+			,IVATX.IVATKEY
+			,IVATX.LCKEY
+			,IVATX.ICKEY
+			,IVATX.IVSERIALNO
+			/*ROWIDTOCHAR(IVATX.ROWID) AS RID*/
+		FROM TWORK_INFO_IVATXLC IVATX
+			 INNER JOIN TWORK_INFO_IVAT IVAT
+				ON IVATX.CTKEY = IVAT.CTKEY
+			   AND IVATX.OWKEY = IVAT.OWKEY
+			   AND IVATX.ICKEY = IVAT.ICKEY
+			   AND IVATX.IVATKEY = IVAT.IVATKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON IVATX.CTKEY = IC.CTKEY
+			   AND IVATX.OWKEY = IC.OWKEY
+			   AND IVATX.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_LC LC
+				ON IVATX.CTKEY = LC.CTKEY
+			   AND IVATX.LCKEY = LC.LCKEY
+			 WHERE IVATX.CTKEY = #{ctkey}
+			   AND IVATX.OWKEY = #{owkey}
+			   AND IVATX.ICKEY = #{ickey}
+			   AND IVATX.IVSTATUSCD = '10'
+			   AND IVATX.AVQTY > 0
+			   AND COALESCE(LC.LCLIMITDIVCD, '00') NOT IN ('20','40')
+			   AND (CASE WHEN COALESCE(IC.EXPCKTYPECD, ' ') <![CDATA[ <> ]]> 'E' THEN TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+						ELSE TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS::INTEGER + TRUNC(IC.EXPCNVRSNDAYS * (IC.OBIMPSCRITRT / 100))::INTEGER,'YYYYMMDD')
+				   END) >= TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+			   AND (
+						(
+					<choose>
+						<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg10) and alStg10.size > 0">
+							/*WHERE - 10(로케이션 유형)*/
+							<foreach collection="alStg10" item="item" open=" LC.LCTYPECD IN (" separator=" , " close=")">
+								#{item.atvalue1}
+							</foreach>
+						</when>
+					</choose>
+					<choose>
+						<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg50) and alStg50.size > 0">
+							/*WHERE - 50(특정 로케이션 제외)*/
+							<foreach collection="alStg50" item="item" open="AND IVATX.LCKEY NOT IN (" separator=" , " close=")">
+								#{item.atvalue1}
+							</foreach>
+						</when>
+					</choose>
+					<choose>
+						<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg60) and alStg60.size > 0">
+							/*WHERE - 60(특정 구역 제외)*/
+							<foreach collection="alStg60" item="item" open="AND LC.ARKEY NOT IN (" separator=" , " close=")">
+								#{item.atvalue1}
+							</foreach>
+						</when>
+					</choose>
+						)
+				<choose>
+					<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg30) and alStg30.size > 0">
+						/*30(특정 로케이션 포함)*/
+						<foreach collection="alStg30" item="item" open="OR IVATX.LCKEY IN (" separator=" , " close=")">
+							#{item.atvalue1}
+						</foreach>
+					</when>
+				</choose>
+				<choose>
+					<when test="@com.kns.framework.util.StringUtil@isNotEmpty(alStg40) and alStg40.size > 0">
+						/*40(특정 구역 포함)*/
+						<foreach collection="alStg40" item="item" open="OR LC.ARKEY IN (" separator=" , " close=")">
+							#{item.atvalue1}
+						</foreach>
+					</when>
+				</choose>
+				   )
+	</select>
+
+	<select id="selectIvatxLockByRowIdList" resultType="camelMap">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectIvatxLockByRowIdList - WMS > 출고 관리 > 할당(RELEASE) > 자동할당 - 재고 ROWID 조회 */
+		SELECT CTKEY
+			, OWKEY
+			, IVATKEY
+			, LCKEY
+			, ICKEY
+			, IVSERIALNO
+		FROM TWORK_INFO_IVATXLC
+		WHERE (CTKEY, OWKEY, IVATKEY, LCKEY, ICKEY, IVSERIALNO) IN
+		<foreach collection="rowIdList" item="item" open="(" separator="," close=")">
+            (#{item.ctkey}, #{item.owkey}, #{item.ivatkey}, #{item.lckey}, #{item.ickey}, #{item.ivserialno})
+        </foreach>
+		ORDER BY IVATKEY, LCKEY
+		FOR UPDATE
+	</select>
+
+	<insert id="insertAutoProcAlDt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - insertAutoProcAlDt - 출고 관리 > 할당(RELEASE) > 자동할당 - 할당 테이블에 데이터 insert */
+		INSERT INTO TWORK_INFO_AL_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, OBDTKEY /*릴리즈상세코드*/
+			, ALSEQ /*할당순번*/
+			, ALDIVCD /*할당구분코드*/
+			, IVATKEY /*재고속성코드*/
+			, LCKEY /*로케이션코드*/
+			, CELLKEY /*셀코드*/
+			, ICKEY /*상품코드*/
+			, UOM /*상품단위유형*/
+			, ALQTY /*할당수량*/
+			, ALSTRGID /*할당전략아이디*/
+			, PIHDKEY /*피킹헤더코드*/
+			, PIDTKEY /*피킹상세코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{obdtkey} /*릴리즈상세코드*/
+			, #{alseq} /*할당순번*/
+			, #{aldivcd} /*할당구분코드*/
+			, #{ivatkey} /*재고속성코드*/
+			, #{lckey} /*로케이션코드*/
+			, #{cellkey} /*셀코드*/
+			, #{ickey} /*상품코드*/
+			, #{uom} /*상품단위유형*/
+			, #{alqty} /*할당수량*/
+			, #{alstrgid} /*할당전략아이디*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{pidtkey} /*피킹상세코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<update id="updateAutoProcObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateAutoProcObDt - WMS > 출고 관리 >할당(RELEASE) > 자동할당 - 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = (CASE WHEN OBDTSTATUSCD IN ('00','05') THEN (CASE WHEN EXPCTQTY > ALQTY + COALESCE(#{alqty}, 0) THEN '05' ELSE '10' END) ELSE OBDTSTATUSCD END)
+			 , ALQTY = ALQTY + COALESCE(#{alqty}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectMidAlDtList" resultType="camelMap" >
+			/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectMidAlDtList - WMS > 출고 관리 > 할당(RELEASE) > 이고할당 - 릴리즈 상세 조회 */
+			SELECT OH.CTKEY /*센터코드*/
+				 , OH.OWKEY /*화주코드*/
+				 , OH.OBHDKEY /*릴리즈코드*/
+				 , OD.OBDTKEY /*릴리즈상세코드*/
+				 , COALESCE(MAX(AL.ALSEQ), 0) + 10 AS ALSEQ /*할당순번*/
+				 , 'A' AS ALDIVCD /*할당 구분코드 : A:자동할당, H:수동할당*/
+				 , OD.ICKEY /*상품코드*/
+				 , OD.UOM /*상품단위유형*/
+				 , (MAX(COALESCE(OD.EXPCTQTY, 0)) - MAX(COALESCE(OD.ALQTY, 0))) AS EXPCTQTY /*예정수량*/
+				 , '' AS PIHDKEY /*피킹헤더코드*/
+				 , '' AS PIDTKEY /*피킹상세코드*/
+				 , '' AS ALSTGHDKEY /*할당전략아이디*/
+			  FROM TWORK_INFO_OB_HD OH
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			  LEFT OUTER JOIN TWORK_INFO_AL_DT AL
+				ON OD.CTKEY = AL.CTKEY
+			   AND OD.OWKEY = AL.OWKEY
+			   AND OD.OBHDKEY = AL.OBHDKEY
+			   AND OD.OBDTKEY = AL.OBDTKEY
+			 WHERE OH.CTKEY = #{ctkey}
+			   AND OH.OWKEY = #{owkey}
+			   AND OH.OBHDKEY = #{obhdkey}
+			   AND OD.OBDTKEY = #{obdtkey}
+			   AND OD.EXPCTQTY > 0
+			   AND OD.EXPCTQTY > OD.ALQTY
+			   AND OH.OBHDTYPECD = '30'
+			   AND OD.OBDTSTATUSCD IN ('00','05')
+			 GROUP BY
+				   OH.CTKEY
+				 , OH.OWKEY
+				 , OH.OBHDKEY
+				 , OD.OBDTKEY
+				 , OD.ICKEY
+				 , OD.UOM
+				 , OD.EXPCTQTY
+		</select>
+
+		<sql id="selectMidIvatxRefSql">
+			SELECT IVATX.CTKEY
+				 , IVATX.OWKEY
+				 , IVATX.ICKEY
+				 , IVATX.IVATKEY
+				 , IVATX.LCKEY
+				 , IVATX.AVQTY
+				 , #{expctqty} AS EXPCTQTY
+				 , ROW_NUMBER() OVER (ORDER BY IVATX.IVATKEY) AS RN
+			  FROM TWORK_INFO_IVATXLC IVATX
+			 INNER JOIN TWORK_INFO_IVAT IVAT
+				ON IVATX.CTKEY = IVAT.CTKEY
+			   AND IVATX.OWKEY = IVAT.OWKEY
+			   AND IVATX.ICKEY = IVAT.ICKEY
+			   AND IVATX.IVATKEY = IVAT.IVATKEY
+			 WHERE 1=1
+			<foreach collection="rowIdList" item="item" open=" AND (IVATX.ctid)::TEXT IN (" separator="," close=")">
+				#{item.rid}
+			</foreach>
+			ORDER BY
+				IVAT.EXPDATE
+				, IVATX.LCKEY
+		</sql>
+
+		<select id="selectMidIvatxRowIdList" resultType="camelMap">
+			/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectMidIvatxRowIdList - WMS > 출고 관리 > 할당(RELEASE) > 이고할당 - 재고 ROWID 조회 */
+			SELECT (IVATX.ctid)::TEXT AS RID
+			  FROM TWORK_INFO_IVATXLC IVATX
+			 INNER JOIN TWORK_INFO_IVAT IVAT
+				ON IVATX.CTKEY = IVAT.CTKEY
+			   AND IVATX.OWKEY = IVAT.OWKEY
+			   AND IVATX.ICKEY = IVAT.ICKEY
+			   AND IVATX.IVATKEY = IVAT.IVATKEY
+			 INNER JOIN TWORK_MST_LC LC
+				ON IVATX.CTKEY = LC.CTKEY
+			   AND IVATX.LCKEY = LC.LCKEY
+			 INNER JOIN TWORK_MST_AR AR
+				ON LC.CTKEY = AR.CTKEY
+			   AND LC.ARKEY = AR.ARKEY
+			 INNER JOIN TWORK_MST_ZN ZN
+				ON AR.CTKEY = ZN.CTKEY
+			   AND AR.ZNKEY = ZN.ZNKEY
+			   AND ZN.ZNKEY = 'MLD'
+			 WHERE IVATX.CTKEY = #{ctkey}
+			   AND IVATX.OWKEY = #{owkey}
+			   AND IVATX.ICKEY = #{ickey}
+			   AND IVATX.IVSTATUSCD = '10'
+			   AND IVATX.AVQTY > 0
+			 ORDER BY
+				   IVAT.EXPDATE
+				 , IVATX.LCKEY
+	</select>
+
+		<select id="selectMidIvatxList" resultType="camelMap" >
+			/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - selectMidIvatxList - WMS > 출고 관리 > 할당(RELEASE) > 이고할당 - 재고 조회 */
+			WITH IVAT AS (
+					<include refid="selectMidIvatxRefSql"/>
+			), AVQTYSUM AS (
+			    SELECT P.*,
+			           SUM(AVQTY) OVER (ORDER BY RN ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS CUM_SUM,
+			           SUM(AVQTY) OVER (ORDER BY RN ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS PREV_SUM
+			    FROM IVAT P
+			), RESULT AS (
+			    SELECT AVQTYSUM.*,
+			           CASE
+			               WHEN EXPCTQTY <![CDATA[ <= ]]> COALESCE(PREV_SUM, 0) THEN 0
+			               WHEN EXPCTQTY <![CDATA[ >= ]]> CUM_SUM THEN AVQTY
+			               ELSE EXPCTQTY - COALESCE(PREV_SUM, 0)
+			           END AS ALQTY
+			    FROM AVQTYSUM
+			)
+			SELECT CTKEY
+				 , OWKEY
+				 , ICKEY
+				 , IVATKEY
+				 , LCKEY
+				 , AVQTY
+				 , EXPCTQTY
+				 , ALQTY
+				 , SUM(ALQTY) OVER (PARTITION BY CTKEY, OWKEY, ICKEY) AS ALTOTQTY
+			  FROM RESULT
+			 WHERE ALQTY > 0
+			 ORDER BY RN
+		</select>
+
+		<insert id="insertMidAlDt">
+			/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - insertMidAlDt - 출고 관리 > 할당(RELEASE) > 이고할당 - 할당 테이블에 데이터 insert */
+			INSERT INTO TWORK_INFO_AL_DT
+			(
+				CTKEY /*센터코드*/
+				, OWKEY /*화주코드*/
+				, OBHDKEY /*릴리즈코드*/
+				, OBDTKEY /*릴리즈상세코드*/
+				, ALSEQ /*할당순번*/
+				, ALDIVCD /*할당구분코드*/
+				, IVATKEY /*재고속성코드*/
+				, LCKEY /*로케이션코드*/
+				, CELLKEY /*셀코드*/
+				, ICKEY /*상품코드*/
+				, UOM /*상품단위유형*/
+				, ALQTY /*할당수량*/
+				, ALSTRGID /*할당전략아이디*/
+				, PIHDKEY /*피킹헤더코드*/
+				, PIDTKEY /*피킹상세코드*/
+				, INSERTDATE /*입력일시*/
+				, INSERTURKEY /*입력자*/
+				, UPDATEDATE /*수정일시*/
+				, UPDATEURKEY /*수정자*/
+			)
+			VALUES
+			(
+				#{ctkey} /*센터코드*/
+				, #{owkey} /*화주코드*/
+				, #{obhdkey} /*릴리즈코드*/
+				, #{obdtkey} /*릴리즈상세코드*/
+				, #{alseq} /*할당순번*/
+				, #{aldivcd} /*할당구분코드*/
+				, #{ivatkey} /*재고속성코드*/
+				, #{lckey} /*로케이션코드*/
+				, #{cellkey} /*셀코드*/
+				, #{ickey} /*상품코드*/
+				, #{uom} /*상품단위유형*/
+				, #{alqty} /*할당수량*/
+				, #{alstrgid} /*할당전략아이디*/
+				, #{pihdkey} /*피킹헤더코드*/
+				, #{pidtkey} /*피킹상세코드*/
+				, #{sysdate} /*입력일시*/
+				, #{surkey} /*입력자*/
+				, #{sysdate} /*수정일시*/
+				, #{surkey} /*수정자*/
+			)
+		</insert>
+
+		<update id="updateMidObDt">
+			/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateAutoProcObDt - WMS > 출고 관리 >할당(RELEASE) > 이고할당 - 릴리즈 상세 업데이트 */
+			UPDATE TWORK_INFO_OB_DT
+			   SET OBDTSTATUSCD = (CASE WHEN OBDTSTATUSCD IN ('00','05') THEN (CASE WHEN EXPCTQTY > ALQTY + COALESCE(#{alqty}, 0) THEN '05' ELSE '10' END) ELSE OBDTSTATUSCD END)
+				 , ALQTY = ALQTY + COALESCE(#{alqty}, 0)
+				 , UPDATEDATE = #{sysdate}
+				 , UPDATEURKEY = #{surkey}
+			 WHERE CTKEY = #{ctkey}
+			   AND OWKEY = #{owkey}
+			   AND OBHDKEY = #{obhdkey}
+			   AND ICKEY = #{ickey}
+		</update>
+
+	<update id="updateIvatRedt">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - updateIvatRedt - WMS > 출고 관리 > 할당(RELEASE) : 재고 수량 차감 */
+		UPDATE TWORK_INFO_IVATXLC
+		   SET AVQTY = AVQTY - COALESCE(#{alqty}, 0)
+			 , ALQTY = ALQTY + COALESCE(#{alqty}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}
+		   AND COALESCE(#{alqty}, 0) <![CDATA[ <= ]]> AVQTY
+	</update>
+
+	<update id="updateIvatIncr">
+		/* wms-outbound-obAllocateReleaseManager-sql-oracle.xml - updateIvatIncr - 출고 관리 > 할당(RELEASE) : 재고 수량 증가 */
+		UPDATE TWORK_INFO_IVATXLC
+		   SET AVQTY = AVQTY + COALESCE(#{alqty}, 0)
+			 , ALQTY = ALQTY - COALESCE(#{alqty}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}
+		   AND COALESCE(#{alqty}, 0) <![CDATA[ <= ]]> ALQTY
+	</update>
+</mapper>

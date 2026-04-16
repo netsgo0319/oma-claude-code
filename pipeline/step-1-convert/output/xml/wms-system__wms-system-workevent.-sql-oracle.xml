@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.system.mapper.WorkEventMapper">
+	
+	<insert id="insertTWorkInfoWkEv" parameterType="com.daiso.wms.system.vo.WorkEventVO">
+		<![CDATA[
+		INSERT INTO TWORK_INFO_WKEV (
+				CTKEY     
+				,WKEVKEY  
+				,OWKEY
+				,WKEVTYPE 
+				,TO_APKEY     
+				,KEYVALUE1     
+				,KEYVALUE2  
+				,KEYVALUE3
+				,IFSTATUS
+				,IFMESSAGE  
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY				
+			) VALUES (
+				 #{ctkey}
+				,#{wkevkey}
+				,#{owkey}
+				,#{wkevtype}
+				,#{to_apkey}
+				,#{keyvalue1}
+				,#{keyvalue2}
+				,#{keyvalue3}
+				,#{ifstatus}
+				,#{ifmessage}
+				,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+			)
+		]]>	
+	</insert>
+	
+</mapper>

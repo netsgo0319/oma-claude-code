@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.item.mapper.MixShipItemImpossMapper">
+	
+	<select id="selectMixShipItemImpossHd" resultType="camelMap" >
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - selectMixShipItemImpossHd */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	      	   SELECT AA.* 
+	      	     FROM (
+						SELECT  '0' AS CHK
+						    	,A.OWKEY
+								,O.OWNM
+								,A.GRPID
+								,A.GRPNM
+								,A.GRPFLAG
+								,A.CMT
+								,A.INSERTDATE
+								,A.UPDATEDATE
+								, A.INSERTURKEY
+ 								, A.UPDATEURKEY
+								,A.DELYN
+				    			,'YESORNO' || ';' || A.DELYN AS DELYN_DESC
+					  	 FROM TADMIN_MST_NOMIX_HD A
+						INNER JOIN TADMIN_MST_OW O
+					  	 		ON A.OWKEY = O.OWKEY
+					) AA
+					WHERE #{SEARCH_CONDITION}
+	   			<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY UPDATEDATE DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+  </select>
+  
+	<select id="selectMixShipItemImpossHdCount" resultType="java.lang.Integer" >
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - selectMixShipItemImpossHdCount */
+	    SELECT COUNT(1)
+	      FROM
+	      (
+	        			SELECT  A.OWKEY
+								,O.OWNM
+								,A.GRPID
+								,A.GRPNM
+								,A.GRPFLAG
+								,A.CMT
+								,A.INSERTDATE
+								,A.INSERTURKEY
+								,A.UPDATEDATE
+								,A.UPDATEURKEY
+								,A.DELYN
+					  	 FROM TADMIN_MST_NOMIX_HD A
+						 INNER JOIN TADMIN_MST_OW O
+					  	 		 ON A.OWKEY = O.OWKEY
+	       ) AA
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	 	   		#{SEARCH_CONDITION}
+	    	</if>
+		</where>	
+	</select>
+	
+
+	<select id="selectMixShipItemImpossDt" resultType="camelMap">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - selectMixShipItemImpossDt */
+		SELECT  '0' AS CHK
+		    	,A.GRPID
+				,B.SUBGRPID
+				,B.OWKEY
+				,A.GRPNM
+				,A.GRPFLAG
+				,B.ICGRTYPE
+				,B.ICGRPKEY
+				,'ICGRTYPE' ||';'|| B.ICGRTYPE AS ICGRTYPE_DESC
+				,C.ICGRPNM
+				,D.ICKEY
+				,D.ICNM
+				,B.LOGGRPCD
+				,'LOGGRPCD' ||';'|| B.LOGGRPCD AS LOGGRPCD_DESC
+				,B.INSERTDATE
+				,B.UPDATEDATE
+				, B.INSERTURKEY
+ 				, B.UPDATEURKEY
+ 				,D.UDF3
+		  FROM TADMIN_MST_NOMIX_HD A
+		  INNER JOIN TADMIN_MST_NOMIX_DT B
+		      	  ON A.GRPID = B.GRPID
+				 AND A.OWKEY = B.OWKEY
+		  LEFT OUTER JOIN TADMIN_MST_ICGR C
+		      		   ON B.OWKEY = C.OWKEY
+					  AND B.ICGRPKEY = C.ICGRPKEY
+					  AND B.ICGRTYPE = C.ICGRPTYPE
+		  LEFT OUTER JOIN TADMIN_MST_IC D
+		  			   ON B.OWKEY = D.OWKEY
+					  AND B.ICKEY = D.ICKEY
+		WHERE  		  A.GRPID  = #{grpid}
+				AND   A.OWKEY     = #{owkey}
+				AND   A.DELYN   = #{delyn}
+				AND   A.GRPFLAG  = #{grpflag}
+	 ORDER BY B.UPDATEDATE DESC
+	</select>
+	
+	<select id="checkmixShipItemImposso" resultType="java.lang.Integer" >
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - checkmixShipItemImposso */
+			SELECT count(1)
+			  FROM TADMIN_MST_NOMIX_HD 
+			  WHERE GRPNM = #{grpnm}
+			    AND OWKEY = #{owkey}
+	</select>	
+	
+	<select id="checkDetailmixShipItemImposso" resultType="java.lang.Integer" >
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - checkDetailmixShipItemImposso */
+			SELECT count(1)
+			  FROM TADMIN_MST_NOMIX_HD H
+			  INNER JOIN TADMIN_MST_NOMIX_DT D
+			  		  ON H.GRPID = D.GRPID
+					 AND H.OWKEY = D.OWKEY
+			  WHERE D.GRPID = #{grpid}
+			    AND H.GRPFLAG = #{grpflag}
+			    AND H.OWKEY		= #{owkey}
+ 	    	 <if test="icgrpkey != null and icgrpkey != ''">
+	    	 	AND D.ICGRPKEY = #{icgrpkey}
+	    	 </if>
+	    	 <if test="ickey != null and ickey != ''">
+	    	 	AND D.ICKEY = #{ickey}	
+	    	 </if>			
+	    	  		 
+	</select>	
+	
+	<insert id="insertMixShipItemImposInfo">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - insertMixShipItemImposInfo */
+	 <selectKey keyProperty="id" order="BEFORE" resultType="string" >
+       SELECT (CASE COUNT(GRPID) WHEN 0 THEN 1 ELSE MAX(CAST(GRPID AS NUMERIC))+1 END)::TEXT AS GRPID
+         FROM TADMIN_MST_NOMIX_HD 
+        WHERE OWKEY= #{owkey}
+  	 </selectKey>
+		
+		INSERT INTO TADMIN_MST_NOMIX_HD
+		(
+		      GRPID
+		    , GRPNM
+		   	, OWKEY
+		   	, GRPFLAG
+		   	, CMT
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+			, DELYN
+		)
+		VALUES
+		(
+		     #{id}
+		    ,#{grpnm}
+		    ,#{owkey}
+		    ,#{grpflag}
+		    ,#{cmt}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{delyn}
+		)
+	</insert>
+	
+	<update id="updateMixShipItemImposInfo">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - updateMixShipItemImposInfo */
+		UPDATE TADMIN_MST_NOMIX_HD 
+		   SET GRPNM = #{grpnm}
+		   	 , CMT 	= #{cmt}
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}		
+		 WHERE GRPID  = #{grpid}
+	</update>
+	
+	
+	<update id="deleteMixShipItemImposInfo">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - deleteMixShipItemImposInfo */
+	<!-- 하단에 데이터가 없을 경우 상단 그리드에 데이터를 선택 후 삭제 버튼을 클릭하면 해당 데이터의 삭제구분이 Y으로 변경된다. --> 
+		UPDATE TADMIN_MST_NOMIX_HD 
+		   SET DELYN ='Y'
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}		
+		 WHERE GRPID  = #{grpid}
+	</update>
+	
+	 <insert id="insertDetailMixShipItemImposInfo">
+		 /* adm-item-mixshipitemimposs-sql-oracle.xml - insertDetailMixShipItemImposInfo */
+		<selectKey keyProperty="id" order="BEFORE" resultType="string" >
+       	SELECT (CASE COUNT(SUBGRPID) WHEN 0 THEN 1 ELSE MAX(CAST(SUBGRPID AS NUMERIC))+1 END)::TEXT AS GRPID
+       	  FROM TADMIN_MST_NOMIX_DT 
+       	 WHERE OWKEY= #{owkey} 
+       	 AND GRPID  = #{grpid}
+
+  	 	</selectKey>
+  	 
+		
+		INSERT INTO TADMIN_MST_NOMIX_DT
+		(
+		      GRPID
+		    , SUBGRPID
+		    , OWKEY
+		    
+		    <choose>
+				<when test='grpflag == 1'>
+					,ICGRPKEY
+					,ICGRTYPE
+				</when>	
+				<otherwise>
+					,ICKEY
+					,LOGGRPCD
+				</otherwise>
+			</choose>
+		    
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{grpid}
+		    ,#{id}
+		    ,#{owkey}
+		
+		    <choose>
+				<when test='grpflag == 1'>
+					,#{icgrpkey}
+					,#{icgrtype}
+				</when>	
+				<otherwise>
+					,#{ickey}
+					,#{loggrpcd}
+				</otherwise>
+		</choose>
+		    
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+			
+	<update id="updateDetailMixShipItemImposInfo">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - updateDetailMixShipItemImposInfo */
+		UPDATE TADMIN_MST_NOMIX_DT 
+		   SET 
+			   	 <choose>
+					<when test='grpflag == 1'>
+						ICGRTYPE  = #{icgrtype}
+						,ICGRPKEY  = #{icgrpkey}
+					</when>	
+					<otherwise>
+						ICKEY    = #{ickey}
+						,LOGGRPCD = #{loggrpcd}
+					</otherwise>
+				</choose>
+			  ,UPDATEDATE   = #{sysdate}
+			  ,UPDATEURKEY  = #{surkey}			
+		 
+		 WHERE GRPID 	= #{grpid}
+		 AND SUBGRPID 	= #{subGroupId}
+		 AND OWKEY		 	= #{owkey}
+
+	</update>
+	
+		
+	<delete id="deleteDetailMixShipItemImposInfo">
+		/* adm-item-mixshipitemimposs-sql-oracle.xml - deleteDetailMixShipItemImposInfo */
+		DELETE FROM TADMIN_MST_NOMIX_DT 
+		 WHERE GRPID 	= #{grpid}
+		 AND   SUBGRPID	= #{subgrpid}
+    	 AND   OWKEY 		= #{owkey}	
+	</delete>
+	
+</mapper>
+	

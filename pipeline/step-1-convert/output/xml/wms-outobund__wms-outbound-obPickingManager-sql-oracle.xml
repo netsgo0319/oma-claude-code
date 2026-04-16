@@ -1,0 +1,657 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObPickingManagerMapper">
+
+	<!--총량피킹 상품코드/로케이션코드 별 피킹확정 처리 가능수량 조회-->
+	<select id="selectTotPickingConfirmAbleQty" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectTotPickingConfirmAbleQty - 총량피킹 상품코드/로케이션코드 별 피킹확정 처리 가능수량 조회 */
+		SELECT
+			SUM(EXPCTQTY - PKFAILQTY) - SUM(CNFRMQTY) AS PKABLEQTY
+		FROM TWORK_INFO_PI_TOT_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND PKWKSTATUSCD = '00'
+		GROUP BY CTKEY, OWKEY, PIHDKEY, ICKEY, LCKEY
+	</select>
+
+	<!--총량피킹 상품코드/로케이션 별 피킹확정 가능대상 조회-->
+	<select id="selectTotPickingConfirmTargetList" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectTotPickingConfirmTargetList - 총량피킹 상품코드/로케이션 별 피킹확정 가능대상 조회 */
+		SELECT
+			PTD.CTKEY
+			,PTD.OWKEY
+			,PTD.PIHDKEY
+			,PTD.IVATKEY
+			,PTD.ICKEY
+			,PTD.LCKEY
+			,PTD.CELLKEY
+			,PTD.UOM
+			,(PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY AS PKABLEQTY
+		FROM TWORK_INFO_PI_TOT_DT PTD
+			INNER JOIN TWORK_INFO_IVAT IVAT
+			ON PTD.CTKEY = IVAT.CTKEY
+			AND PTD.OWKEY = IVAT.OWKEY
+			AND PTD.IVATKEY = IVAT.IVATKEY
+		WHERE PTD.CTKEY = #{ctkey}
+		AND PTD.OWKEY = #{owkey}
+		AND PTD.PIHDKEY = #{pihdkey}
+		AND PTD.ICKEY = #{ickey}
+		AND PTD.LCKEY = #{lckey}
+		AND PTD.CELLKEY = #{cellkey}
+		AND PTD.PKWKSTATUSCD = '00'
+		AND (PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY <![CDATA[ > ]]> 0
+		ORDER BY IVAT.IVATKEY
+	</select>
+
+	<!--총량피킹 확정 처리-->
+	<update id="updateTotPickingConfirm">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateTotPickingConfirm - 총량피킹 확정 처리 */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			,PKWKSTATUSCD = '10'
+			,PKCNFRMDATE = #{sysdate}
+			,PKCNFRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivatkey)">
+			AND IVATKEY = #{ivatkey}
+		</if>
+	</update>
+
+	<!--통합피킹 확정 처리-->
+	<update id="updateIntgPickingConfirm">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateIntgPickingConfirm - 통합피킹 확정 처리 */
+		UPDATE TWORK_INFO_PI_INTG_DT
+		SET RSCNFRMQTY = RSCNFRMQTY + LEAST(COALESCE(RSEXPCTQTY, 0), COALESCE(#{cnfrmqty}, 0))
+			,DASCNFRMQTY = DASCNFRMQTY + LEAST(DASEXPCTQTY, GREATEST(COALESCE(#{cnfrmqty} - RSEXPCTQTY, 0), 0))
+			,PKWKSTATUSCD = '10'
+			,PKCNFRMDATE = #{sysdate}
+			,PKCNFRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+	</update>
+
+	<!--총량피킹 확정수량 처리-->
+	<update id="updateTotPickingConfirmQty">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateTotPickingConfirmQty - 총량피킹 확정수량 처리 */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND IVATKEY = #{ivatkey}
+	</update>
+
+	<!--총량피킹 피킹작업상태 확인 BY PIHDKEY-->
+	<select id="selectTotPickingDetailWorkStatusCheckByPiHdKey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectTotPickingDetailWorkStatusCheckByPiHdKey - 총량피킹 피킹작업상태 확인 BY PIHDKEY*/
+		SELECT
+			MIN(PKWKSTATUSCD) AS PKWKSTATUSCD
+		FROM TWORK_INFO_PI_TOT_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+	</select>
+
+	<!--피킹헤더 피킹작업상태 확정 처리-->
+	<update id="updatePickingHeaderWorkStatus">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updatePickingHeaderWorkStatus - 피킹헤더 피킹작업상태 확정 처리 */
+		UPDATE TWORK_INFO_PI_HD
+		SET PKWKSTATUSCD = #{pkwkstatuscd}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+	</update>
+
+	<!--피킹용기 상세 데이터 조회-->
+	<select id="selectPickingContainerDetailList" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingContainerDetailList - 피킹용기 상세 데이터 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,PIDTKEY
+			,PKQTY AS CNFRMQTY
+		FROM TWORK_INFO_PK_CNTR_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<!--피킹 상세 피킹확정대상 조회-->
+	<select id="selectPickingDetailConfirmTarget" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingDetailConfirmTarget - 피킹 상세 피킹확정대상 조회 */
+		SELECT
+			PD.CTKEY
+			,PD.OWKEY
+			,PD.PIHDKEY
+			,PD.PIDTKEY
+			,PD.ICKEY
+			,PD.IVATKEY
+			,PD.LCKEY
+			,PD.CELLKEY
+			,PD.ICUNITKEY
+			,PD.UOM
+			,PD.EXPCTQTY
+			,PD.FROMLCKEY AS FRLCKEY
+			,PD.FROMCELLKEY AS FRCELLKEY
+			,PD.TOLCKEY AS TOLCKEY
+			,PD.TOCELLKEY AS TOCELLKEY
+			,PD.OBHDKEY
+			,PD.OBDTKEY
+			,PH.PKDIVCD
+		FROM TWORK_INFO_PI_HD PH
+			INNER JOIN TWORK_INFO_PI_DT PD
+				ON PH.CTKEY = PD.CTKEY
+				AND PH.OWKEY = PD.OWKEY
+				AND PH.PIHDKEY = PD.PIHDKEY
+		WHERE PD.CTKEY = #{ctkey}
+		AND PD.OWKEY = #{owkey}
+		AND PD.PIHDKEY = #{pihdkey}
+		AND PD.PIDTKEY = #{pidtkey}
+		AND PD.PKDTWKSTATUSCD = '00'
+		AND PH.PKWKSTATUSCD = '00'
+	</select>
+
+	<!--피킹상세 확정 처리-->
+	<update id="updatePickingDetailConfirm">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updatePickingDetailConfirm - 피킹상세 확정 처리 */
+		UPDATE TWORK_INFO_PI_DT
+		SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			,PKDTWKSTATUSCD = '10'
+			,PKCNFRMDATE = #{sysdate}
+			,PKCNFRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND PIDTKEY = #{pidtkey}
+	</update>
+
+	<!--피킹 헤더 조회-->
+	<select id="selectPickingHeaderByPihdkey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingHeaderByPihdkey - 피킹 헤더 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,PKDIVCD
+			,PIHDNM
+			,PKWKSTATUSCD
+			,OBREQDAY
+			,WAHDKEY
+			,OBHDKEY
+		FROM TWORK_INFO_PI_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+	</select>
+
+	<!--피킹상세 피킹작업상태 확인-->
+	<select id="selectPickingDetailWorkStatusCheck" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingDetailWorkStatusCheck - 피킹상세 피킹작업상태 확인 */
+		SELECT
+			MIN(PKDTWKSTATUSCD) AS PKDTWKSTATUSCD
+		FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		GROUP BY CTKEY, OWKEY, PIHDKEY, ICKEY, IVATKEY, LCKEY, CELLKEY
+	</select>
+
+	<!--피킹상세 피킹작업상태 확인 BY PIHDKEY-->
+	<select id="selectPickingDetailWorkStatusCheckByPiHdKey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingDetailWorkStatusCheckByPiHdKey - 피킹상세 피킹작업상태 확인 BY PIHDKEY */
+		SELECT
+			MIN(PKDTWKSTATUSCD) AS PKDTWKSTATUSCD
+		FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		GROUP BY CTKEY, OWKEY, PIHDKEY
+	</select>
+
+	<!--웨이브헤더 조회 BY PIHDKEY-->
+	<select id="selectWaveHeaderListByPiHdKey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectWaveHeaderListByPiHdKey - 웨이브헤더 조회 BY PIHDKEY */
+		SELECT
+			CTKEY
+			,OWKEY
+			,WAHDKEY
+		FROM TWORK_INFO_WA_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND WAWKSTATUSCD = '40' /*작업지시*/
+	</select>
+
+	<!--WA_HD의 작업상태 변경-->
+	<update id="updateWaveHeaderWorkStatusCd">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateWaveHeaderWorkStatusCd - WA_HD의 작업상태 변경 */
+		UPDATE TWORK_INFO_WA_HD
+		SET WAWKSTATUSCD = #{wawkstatuscd}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<!--출고상세 UPDATE(피킹수량/분류수량) BY PI_DT 확정-->
+	<update id="updateOutboundDetailByPickingDetailConfirm">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateOutboundDetailByPickingDetailConfirm - 출고상세 UPDATE(피킹수량/분류수량) BY PI_DT 확정 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = CASE WHEN PKISTQTY = (PKQTY + #{cnfrmqty}) THEN '30' /*30:피킹확정*/
+								WHEN PKISTQTY > (PKQTY + #{cnfrmqty}) THEN '25' /*25:부분피킹*/
+								ELSE OBDTSTATUSCD END
+			,PKQTY = PKQTY + #{cnfrmqty}
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(classifsyn) and classifsyn=="Y"'>
+				,CLASSIFSQTY = CLASSIFSQTY + #{cnfrmqty}
+			</if>
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--피킹지시된 출고상세 데이터 조회-->
+	<select id="selectOutboundDetailByIckey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectOutboundDetailByIckey - 피킹지시된 출고상세 데이터 조회 */
+		SELECT
+			PD.CTKEY
+			,PD.OWKEY
+			,PD.OBHDKEY
+			,PD.OBDTKEY
+			,PD.ICKEY
+			,PD.PIHDKEY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_PI_DT PD
+				ON OH.CTKEY = PD.CTKEY
+				AND OH.OWKEY = PD.OWKEY
+				AND OH.PIHDKEY = PD.PIHDKEY
+				AND OH.OBHDKEY = PD.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = COALESCE(#{pkobhdkey}, #{obhdkey})
+		AND PD.ICKEY = #{ickey}
+		GROUP BY PD.CTKEY
+				,PD.OWKEY
+				,PD.OBHDKEY
+				,PD.OBDTKEY
+				,PD.ICKEY
+				,PD.PIHDKEY
+	</select>
+
+	<!--출고상세에 해당하는 피킹상세 데이터 조회-->
+	<select id="selectPickingDetailListByOutboundDetail" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingDetailListByOutboundDetail - 출고상세에 해당하는 피킹상세 데이터 조회 */
+		SELECT
+			PD.CTKEY
+			,PD.OWKEY
+			,PD.PIHDKEY
+			,PD.PIDTKEY
+			,PD.ICKEY
+			,PD.IVATKEY
+			,PD.LCKEY
+			,PD.CELLKEY
+			,PD.EXPCTQTY
+			,PD.CNFRMQTY
+		FROM TWORK_INFO_OB_DT OD
+			INNER JOIN TWORK_INFO_PI_DT PD
+				ON OD.CTKEY = PD.CTKEY
+				AND OD.OWKEY = PD.OWKEY
+				AND OD.OBHDKEY = PD.OBHDKEY
+				AND OD.OBDTKEY = PD.OBDTKEY
+		WHERE OD.CTKEY = #{ctkey}
+		AND OD.OWKEY = #{owkey}
+		AND OD.OBHDKEY = #{obhdkey}
+		AND OD.OBDTKEY = #{obdtkey}
+		AND PD.EXPCTQTY - PD.CNFRMQTY <![CDATA[ > ]]> 0
+		ORDER BY PD.IVATKEY, PD.LCKEY
+	</select>
+
+	<!--릴리즈오더 별 피킹확정수량 배정을 위한 총량피킹상세 조회-->
+	<select id="selectPickingTotalDetailForAllotment" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingTotalDetailForAllotment - 릴리즈오더 별 피킹확정수량 배정을 위한 총량피킹상세 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,ICKEY
+			,IVATKEY
+			,LCKEY
+			,CELLKEY
+			,CNFRMQTY - DISPQTY AS REMAINQTY
+		FROM TWORK_INFO_PI_TOT_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND PKWKSTATUSCD = '10'
+		AND CNFRMQTY - DISPQTY <![CDATA[ > ]]> 0
+	</select>
+
+	<!--총량피킹 분배수량 처리-->
+	<update id="updateTotPickingDispQty">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateTotPickingDispQty - 총량피킹 분배수량 처리 */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET DISPQTY = DISPQTY + #{cnfrmqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND IVATKEY = #{ivatkey}
+	</update>
+
+	<!--총량피킹상세 미분배 데이터 BY PIHDKEY, ICKEY-->
+	<select id="selectPickingTotalDetailListNonAllotment" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingTotalDetailListNonAllotment - 총량피킹상세 미분배 데이터 BY PIHDKEY, ICKEY */
+		SELECT
+			PTD.CTKEY
+			,PTD.OWKEY
+			,PTD.PIHDKEY
+			,PD.PIDTKEY
+			,'10' AS PKDTWKSTATUSCD
+			,PTD.ICKEY
+			,PTD.IVATKEY
+			,PTD.LCKEY
+			,PTD.CELLKEY
+			,IC.ICUNITKEY
+			,PTD.UOM
+			,0 AS EXPCTQTY
+			,PTD.CNFRMQTY - PTD.DISPQTY AS REMAINQTY
+			,PTD.LCKEY AS FROMLCKEY
+			,PTD.LCKEY AS FROMCELLKEY
+			,'PICKTO' AS TOLCKEY
+			,'PICKTO' AS TOCELLKEY
+		FROM TWORK_INFO_PI_TOT_DT PTD
+			INNER JOIN TWORK_INFO_IVAT IVAT
+				ON PTD.CTKEY = IVAT.CTKEY
+				AND PTD.OWKEY = IVAT.OWKEY
+				AND PTD.IVATKEY = IVAT.IVATKEY
+			INNER JOIN TWORK_MST_IC IC
+				ON PTD.CTKEY = IC.CTKEY
+				AND PTD.OWKEY = IC.OWKEY
+				AND PTD.ICKEY = IC.ICKEY
+			LEFT OUTER JOIN TWORK_INFO_PI_DT PD
+				ON PTD.CTKEY = PD.CTKEY
+				AND PTD.OWKEY = PD.OWKEY
+				AND PTD.PIHDKEY = PD.PIHDKEY
+				AND PTD.ICKEY = PD.ICKEY
+				AND PTD.IVATKEY = PD.IVATKEY
+				AND PTD.LCKEY = PD.LCKEY
+				AND PTD.CELLKEY = PD.CELLKEY
+				AND PD.OBHDKEY = #{obhdkey}
+				AND PD.OBDTKEY = #{obdtkey}
+		WHERE PTD.CTKEY = #{ctkey}
+		AND PTD.OWKEY = #{owkey}
+		AND PTD.PIHDKEY = #{pihdkey}
+		AND PTD.ICKEY = #{ickey}
+		AND PTD.CNFRMQTY - PTD.DISPQTY > 0 /*총량피킹 분배잔여수량이 존재하는 건*/
+		ORDER BY PTD.IVATKEY, PTD.LCKEY
+	</select>
+
+	<!--총량피킹상세 미피킹 데이터 BY PIHDKEY, ICKEY-->
+	<select id="selectPickingTotalDetailListNonPicking" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingTotalDetailListNonPicking - 총량피킹상세 미피킹 데이터 BY PIHDKEY, ICKEY */
+		SELECT
+			PTD.CTKEY
+			,PTD.OWKEY
+			,PTD.PIHDKEY
+			,PD.PIDTKEY
+			,'10' AS PKDTWKSTATUSCD
+			,PTD.ICKEY
+			,PTD.IVATKEY
+			,PTD.LCKEY
+			,PTD.CELLKEY
+			,IC.ICUNITKEY
+			,PTD.UOM
+			,0 AS EXPCTQTY
+			,(PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY AS REMAINQTY
+			,PTD.LCKEY AS FROMLCKEY
+			,PTD.LCKEY AS FRLCKEY
+			,PTD.LCKEY AS FROMCELLKEY
+			,'PICKTO' AS TOLCKEY
+			,'PICKTO' AS TOCELLKEY
+		FROM TWORK_INFO_PI_TOT_DT PTD
+			INNER JOIN TWORK_INFO_IVAT IVAT
+				ON PTD.CTKEY = IVAT.CTKEY
+				AND PTD.OWKEY = IVAT.OWKEY
+				AND PTD.IVATKEY = IVAT.IVATKEY
+			INNER JOIN TWORK_MST_IC IC
+				ON PTD.CTKEY = IC.CTKEY
+				AND PTD.OWKEY = IC.OWKEY
+				AND PTD.ICKEY = IC.ICKEY
+			LEFT OUTER JOIN TWORK_INFO_PI_DT PD
+				ON PTD.CTKEY = PD.CTKEY
+				AND PTD.OWKEY = PD.OWKEY
+				AND PTD.PIHDKEY = PD.PIHDKEY
+				AND PTD.ICKEY = PD.ICKEY
+				AND PTD.IVATKEY = PD.IVATKEY
+				AND PTD.LCKEY = PD.LCKEY
+				AND PTD.CELLKEY = PD.CELLKEY
+				AND PD.OBHDKEY = #{obhdkey}
+				AND PD.OBDTKEY = #{obdtkey}
+		WHERE PTD.CTKEY = #{ctkey}
+		AND PTD.OWKEY = #{owkey}
+		AND PTD.PIHDKEY = #{pihdkey}
+		AND PTD.ICKEY = #{ickey}
+		AND (PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY > 0 /*총량피킹 확정 잔여수량이 존재하는 건*/
+		ORDER BY PTD.IVATKEY, PTD.LCKEY
+	</select>
+
+	<!--총량피킹 확정 취소 처리-->
+	<update id="updateTotPickingConfirmCancel">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateTotPickingConfirmCancel - 총량피킹 확정 취소 처리 */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET CNFRMQTY = CNFRMQTY - #{cnclqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND IVATKEY = #{ivatkey}
+	</update>
+
+	<!--피킹 상세 피킹확정취소 대상 조회-->
+	<select id="selectPickingDetailConfirmCancelTarget" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingDetailConfirmCancelTarget - 피킹 상세 피킹확정취소 조회 */
+		SELECT
+			PD.CTKEY
+			,PD.OWKEY
+			,PD.PIHDKEY
+			,PD.PIDTKEY
+			,PD.ICKEY
+			,PD.IVATKEY
+			,PD.LCKEY
+			,PD.CELLKEY
+			,PD.ICUNITKEY
+			,PD.UOM
+			,PD.EXPCTQTY
+			,PD.FROMLCKEY AS FRLCKEY
+			,PD.FROMCELLKEY AS FRCELLKEY
+			,PD.TOLCKEY AS TOLCKEY
+			,PD.TOCELLKEY AS TOCELLKEY
+			,PD.OBHDKEY
+			,PD.OBDTKEY
+			,PH.PKDIVCD
+			,PD.CNFRMQTY
+			,PD.CNFRMQTY AS CNCLQTY
+		FROM TWORK_INFO_PI_HD PH
+			INNER JOIN TWORK_INFO_PI_DT PD
+				ON PH.CTKEY = PD.CTKEY
+				AND PH.OWKEY = PD.OWKEY
+				AND PH.PIHDKEY = PD.PIHDKEY
+		WHERE PD.CTKEY = #{ctkey}
+		AND PD.OWKEY = #{owkey}
+		AND PD.PIHDKEY = #{pihdkey}
+		AND PD.PIDTKEY = #{pidtkey}
+		AND PD.PKDTWKSTATUSCD = '10'
+	</select>
+
+	<!--피킹상세 확정취소 처리-->
+	<update id="updatePickingDetailConfirmCancel">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updatePickingDetailConfirmCancel - 피킹상세 확정취소 처리 */
+		UPDATE TWORK_INFO_PI_DT
+		SET CNFRMQTY = CNFRMQTY - #{cnfrmqty}
+			,PKDTWKSTATUSCD = '00'
+			,PKCNFRMDATE = NULL
+			,PKCNFRMURKEY = NULL
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND PIDTKEY = #{pidtkey}
+	</update>
+
+	<!--총량피킹 확정 취소 처리(전체)-->
+	<update id="updateTotPickingConfirmCancelAll">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateTotPickingConfirmCancelAll - 총량피킹 확정 취소 처리(전체) */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET CNFRMQTY = CNFRMQTY - #{cnfrmqty}
+			,PKWKSTATUSCD = '00'
+			,PKCNFRMDATE = NULL
+			,PKCNFRMURKEY = NULL
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+		AND IVATKEY = #{ivatkey}
+	</update>
+
+	<!--출고상세 UPDATE(피킹수량/분류수량) BY PI_DT 확정취소-->
+	<update id="updateOutboundDetailByPickingDetailConfirmCancel">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateOutboundDetailByPickingDetailConfirmCancel - 출고상세 UPDATE(피킹수량/분류수량) BY PI_DT 확정취소 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = CASE WHEN 0 = (PKQTY - #{cnfrmqty}) THEN '20' /*20:피킹지시*/
+								ELSE (CASE WHEN PKISTQTY > (PKQTY - #{cnfrmqty})
+											THEN '25'
+											ELSE OBDTSTATUSCD END) END /*25:부분피킹*/
+			,PKQTY = PKQTY - #{cnfrmqty}
+			,CLASSIFSQTY = CLASSIFSQTY - #{cnfrmqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--재고조사 대상여부 수정-->
+	<update id="updateInventoryInvestigationTargetYn">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - updateInventoryInvestigationTargetYn - 재고조사 대상여부 수정 */
+		UPDATE TWORK_INFO_IVATXLC IVLC
+		   SET IVLC.UPDATEDATE = #{sysdate}
+			,  IVLC.UPDATEURKEY = #{surkey}
+			,  IVLC.IVINVSTGTYN = 'Y'
+		WHERE IVLC.CTKEY = #{ctkey}
+		   AND IVLC.OWKEY = #{owkey}
+		   AND IVLC.ICKEY = #{ickey}
+		   AND EXISTS (
+				SELECT 1
+				FROM TWORK_MST_LC LC
+					INNER JOIN TWORK_MST_ZN ZN
+						ON LC.CTKEY = ZN.CTKEY
+						AND LC.ZNKEY = ZN.ZNKEY
+				WHERE LC.CTKEY = IVLC.CTKEY
+				AND LC.LCKEY = IVLC.LCKEY
+				AND ZN.ZNTYPECD = '10'
+   		)
+	</update>
+
+	<!--총량피킹상세 LOCK (패킹, 출고완료 시 호출)-->
+	<select id="selectPickingTotalDetailForUpdate" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingTotalDetailForUpdate - 총량피킹상세 LOCK (패킹, 출고완료 시 호출) */
+		SELECT
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,ICKEY
+			,IVATKEY
+			,LCKEY
+			,CELLKEY
+		FROM TWORK_INFO_PI_TOT_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivatkey)">
+			AND IVATKEY = #{ivatkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+			AND LCKEY = #{lckey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cellkey)">
+			AND CELLKEY = #{cellkey}
+		</if>
+		FOR UPDATE
+	</select>
+
+	<!--피킹헤더조회 BY 피킹헤더코드-->
+	<select id="selectPickingHeaderByPickingHeaderKey" resultType="camelMap">
+		/* wms-outbound-obPickingManager-sql-oracle.xml - selectPickingHeaderByPickingHeaderKey - 피킹헤더조회 BY 피킹헤더코드 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,PKDIVCD
+			,PIHDNM
+			,PKWKSTATUSCD
+			,OBREQDAY
+			,WAHDKEY
+			,OBHDKEY
+		FROM TWORK_INFO_PI_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+	</select>
+</mapper>

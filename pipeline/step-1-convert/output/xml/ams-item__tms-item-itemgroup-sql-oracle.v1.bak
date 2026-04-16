@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemGroupTmsMapper">
+
+	<insert id="insertTTMstIcgr">
+		/* tms-item-itemgroup-sql-oracle.xml - insertTTMstIcgr */
+	   MERGE INTO TT_MST_ICGR ICGR
+	        USING (SELECT 
+					 #{surkey}  AS UPDATEURKEY
+					 ,#{sysdate}     AS UPDATEDATE
+					 ,#{surkey} AS INSERTURKEY
+					 ,#{sysdate}    AS INSERTDATE
+					 ,#{icgrtype}                                            AS ICGRTYPE                                          
+					 ,#{icgrname}                                            AS ICGRNAME                                          
+					 ,#{icgrkey}                                             AS ICGRKEY                                           
+					 ,SUBSTR(#{closdate}, 0, 14) AS CLOSDATE
+					 ,#{owkey}                                               AS OWKEY                                             
+					 ,#{samfilename}                                         AS SAMFILENAME) IN_ICGR
+	           ON (
+	                 ICGR.OWKEY = IN_ICGR.OWKEY
+	                 AND ICGR.ICGRKEY = IN_ICGR.ICGRKEY
+	                 AND ICGR.ICGRTYPE = IN_ICGR.ICGRTYPE
+	               )
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET 
+	                 ICGR.UPDATEURKEY = IN_ICGR.UPDATEURKEY    
+	                ,ICGR.UPDATEDATE  = IN_ICGR.UPDATEDATE     
+	                ,ICGR.ICGRNAME    = IN_ICGR.ICGRNAME       
+	                ,ICGR.CLOSDATE = IN_ICGR.CLOSDATE
+	                ,ICGR.SAMFILENAME = IN_ICGR.SAMFILENAME    
+	   WHEN NOT MATCHED
+	   THEN
+			 INSERT
+			 (
+				  ICGR.UPDATEURKEY
+				 ,ICGR.UPDATEDATE 
+				 ,ICGR.INSERTURKEY
+				 ,ICGR.INSERTDATE 
+				 ,ICGR.ICGRTYPE   
+				 ,ICGR.ICGRNAME   
+				 ,ICGR.ICGRKEY    
+				 ,ICGR.CLOSDATE
+				 ,ICGR.OWKEY      
+				 ,ICGR.SAMFILENAME
+			  ) VALUES (
+				  IN_ICGR.UPDATEURKEY
+				 ,IN_ICGR.UPDATEDATE 
+				 ,IN_ICGR.INSERTURKEY
+				 ,IN_ICGR.INSERTDATE 
+				 ,IN_ICGR.ICGRTYPE   
+				 ,IN_ICGR.ICGRNAME   
+				 ,IN_ICGR.ICGRKEY    
+				 ,IN_ICGR.CLOSDATE
+				 ,IN_ICGR.OWKEY      
+				 ,IN_ICGR.SAMFILENAME
+			  )  
+	</insert>
+ 	
+	<update id="updateTTMstIcgr" >
+		/* tms-item-itemgroup-sql-oracle.xml - updateTTMstIcgr */
+		UPDATE 	TT_MST_ICGR 
+		SET		UPDATEURKEY = #{surkey}
+				,UPDATEDATE  = #{sysdate}
+				,ICGRNAME    = #{icgrname}
+				,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+				,SAMFILENAME = #{samfilename}   
+	    WHERE 	OWKEY = #{owkey}
+    	AND 	ICGRKEY = #{icgrkey}
+        AND 	ICGRTYPE = #{icgrtype}
+	</update>
+ 	
+ 	<delete id="deleteTTMstIcgr" >
+		/* tms-item-itemgroup-sql-oracle.xml - deleteTTMstIcgr */
+		DELETE
+		FROM 	TT_MST_ICGR	
+ 	    WHERE 	OWKEY = #{owkey}
+	    AND  	ICGRKEY = #{icgrkey}
+        AND 	ICGRTYPE = #{icgrtype}
+	</delete>
+	
+	
+	<insert id="insertTTMstIcgrxct">
+		/* tms-item-itemgroup-sql-oracle.xml - insertTTMstIcgrxct */
+	   MERGE INTO TT_MST_ICGRXCT ICGRXCT
+	        USING (SELECT 
+						#{surkey}  AS UPDATEURKEY
+						,#{sysdate}     AS UPDATEDATE
+						,#{surkey} AS INSERTURKEY
+						,#{sysdate}    AS INSERTDATE
+						,#{icgrtype}                                            AS ICGRTYPE   
+						,#{icgrkey}                                             AS ICGRKEY    
+						,#{ctkey}                                               AS CTKEY      
+						,#{owkey}                                               AS OWKEY) IN_ICGRXCT
+	           ON (
+	                 ICGRXCT.OWKEY = IN_ICGRXCT.OWKEY
+	                 AND ICGRXCT.CTKEY = IN_ICGRXCT.CTKEY
+	                 AND ICGRXCT.ICGRKEY = IN_ICGRXCT.ICGRKEY
+	                 AND ICGRXCT.ICGRTYPE = IN_ICGRXCT.ICGRTYPE
+	               )
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET 
+				 ICGRXCT.UPDATEURKEY = IN_ICGRXCT.UPDATEURKEY
+				,ICGRXCT.UPDATEDATE = IN_ICGRXCT.UPDATEDATE
+	   WHEN NOT MATCHED
+	   THEN
+			 INSERT
+			 (
+				 ICGRXCT.UPDATEURKEY
+				,ICGRXCT.UPDATEDATE
+				,ICGRXCT.INSERTURKEY
+				,ICGRXCT.INSERTDATE
+				,ICGRXCT.ICGRTYPE
+				,ICGRXCT.ICGRKEY
+				,ICGRXCT.CTKEY
+				,ICGRXCT.OWKEY
+			  ) VALUES (
+				 IN_ICGRXCT.UPDATEURKEY
+				,IN_ICGRXCT.UPDATEDATE
+				,IN_ICGRXCT.INSERTURKEY
+				,IN_ICGRXCT.INSERTDATE
+				,IN_ICGRXCT.ICGRTYPE
+				,IN_ICGRXCT.ICGRKEY
+				,IN_ICGRXCT.CTKEY
+				,IN_ICGRXCT.OWKEY
+			  )  
+	</insert>	
+
+	<delete id="deleteTTMstIcgrxct">
+		/* tms-item-itemgroup-sql-oracle.xml - deleteTTMstIcgrxct */
+		DELETE
+	  	FROM 	TT_MST_ICGRXCT	
+     	WHERE 	OWKEY = #{owkey}
+     	AND		ICGRKEY = #{icgrkey}
+        AND 	ICGRTYPE = #{icgrtype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+	
+</mapper>

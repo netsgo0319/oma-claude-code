@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.CenterWmsMapper">
+
+	<insert id="insertTWorkMstCt" >
+		/* wms-master-center-sql-oracle.xml - insertTWorkMstCt */
+		INSERT INTO TWORK_MST_CT (
+			CTKEY, CTTYPECD, CTNAME, COUNTRYCODE, ZIPCODE, ADDRESS1,
+			TEL, REGNO, REPORTCTNAME,
+			INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY, CLOSDATE
+		) VALUES (
+			#{ctkey}, #{cttype}, #{ctname}, #{lakey}, #{zipcode}, #{address1},
+			#{tel}, #{regno}, #{reportctname},
+			#{sysdate}, #{surkey}, #{sysdate}, #{surkey}, #{closdate}
+		)
+		ON CONFLICT (CTKEY) DO UPDATE SET
+			CTTYPE = EXCLUDED.CTTYPECD,
+			CTNAME = EXCLUDED.CTNAME,
+			ZIPCODE = EXCLUDED.ZIPCODE,
+			ADDRESS1 = EXCLUDED.ADDRESS1,
+			TEL = EXCLUDED.TEL,
+			REGNO = EXCLUDED.REGNO,
+			REPORTCTNAME = EXCLUDED.REPORTCTNAME,
+			CLOSDATE = EXCLUDED.CLOSDATE,
+			UPDATEDATE = EXCLUDED.UPDATEDATE,
+			UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+	
+	<update id="updateTWorkMstCt">
+		/* wms-master-center-sql-oracle.xml - updateTWorkMstCt */
+		INSERT INTO TWORK_MST_CT (
+			CTKEY, CTTYPE, CTNAME, COUNTRYCODE, ADDRID, ZIPCODE,
+			ADDRESS1, ADDRESS2, TEL, REGNO, REPORTCTNAME,
+			INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY, CLOSDATE
+		) VALUES (
+			#{ctkey}, #{cttype}, #{ctname}, #{lakey}, #{addrid}, #{zipcode},
+			#{address1}, #{address2}, #{tel}, #{regno}, #{reportctname},
+			#{sysdate}, #{surkey}, #{sysdate}, #{surkey}, #{closdate}
+		)
+		ON CONFLICT (CTKEY) DO UPDATE SET
+			CTTYPE = EXCLUDED.CTTYPE,
+			CTNAME = EXCLUDED.CTNAME,
+			ADDRID = EXCLUDED.ADDRID,
+			ZIPCODE = EXCLUDED.ZIPCODE,
+			ADDRESS1 = EXCLUDED.ADDRESS1,
+			ADDRESS2 = EXCLUDED.ADDRESS2,
+			TEL = EXCLUDED.TEL,
+			REGNO = EXCLUDED.REGNO,
+			REPORTCTNAME = EXCLUDED.REPORTCTNAME,
+			CLOSDATE = EXCLUDED.CLOSDATE,
+			UPDATEDATE = EXCLUDED.UPDATEDATE,
+			UPDATEURKEY = EXCLUDED.UPDATEURKEY,
+			DELYN = #{delyn}
+	</update>
+	
+	<delete id="deleteTWorkMstCt">
+		/* wms-master-center-sql-oracle.xml - deleteTWorkMstCt */
+			UPDATE	TWORK_MST_CT
+			SET     CLOSDATE		= #{updatedate , typeHandler=GmtDateTimeTypeHandler }
+			WHERE	CTKEY=#{ctkey}
+	</delete>
+	
+</mapper>	

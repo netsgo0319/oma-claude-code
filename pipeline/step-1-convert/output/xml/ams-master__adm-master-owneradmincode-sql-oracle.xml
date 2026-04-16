@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.master.mapper.OwnerAdminCodeMapper">
+
+	<select id="selectTOrderMstOrdCdHd" resultType="camelMap" >
+		/* adm-master-owneradmincode-sql-oracle.xml - selectTOrderMstOrdCdHd */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		        SELECT '0' AS CHK,
+		        	   A.OWKEY,
+		        	   O.OWNM,
+		               A.OWCDHDKEY,
+		               A.OWCDHDNM,
+		               A.DELYN,
+		               A.INSERTDATE,
+		               A.INSERTURKEY,
+		               A.UPDATEDATE,
+		               A.UPDATEURKEY
+		          FROM TADMIN_MST_OWCD_HD A
+		          JOIN TADMIN_MST_OW O
+				    ON A.OWKEY = O.OWKEY
+			    <where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					 	   #{SEARCH_CONDITION}
+					</if>
+				</where>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY  A.UPDATEDATE DESC , LPAD(A.OWCDHDKEY::TEXT, 20, '0') ASC
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+  
+	<select id="selectTOrderMstOrdCdHdCount" resultType="java.lang.Integer" >
+		/* adm-master-owneradmincode-sql-oracle.xml - selectTOrderMstOrdCdHdCount */
+        SELECT count(1)
+          FROM TADMIN_MST_OWCD_HD A
+          JOIN TADMIN_MST_OW O
+		    ON A.OWKEY = O.OWKEY
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="selectTOrderMstOrdCdDt" resultType="camelMap">
+		/* adm-master-owneradmincode-sql-oracle.xml - selectTOrderMstOrdCdDt */
+		SELECT '0' AS CHK
+		     , TB1.OWKEY
+		     , TB1.OWCDHDKEY
+		     , TB2.OWCDDTKEY
+		     , TB2.OWCDDTNM
+		     , TB2.OWCDDTVALUE
+		     , TB2.OWCDDTORDER
+		     , TB2.DELYN
+		     , TB2.CMT
+		     , TB2.LAKEY
+		     , TB2.INSERTDATE
+		     , TB2.INSERTURKEY
+		     , TB2.UPDATEDATE
+		     , TB2.UPDATEURKEY
+		  FROM TADMIN_MST_OWCD_HD TB1
+		  JOIN TADMIN_MST_OWCD_DT TB2
+		    ON TB1.OWKEY = TB2.OWKEY
+		   AND TB1.OWCDHDKEY = TB2.OWCDHDKEY
+		   AND TB1.OWKEY = #{owkey}
+		   AND TB1.OWCDHDKEY = #{owcdhdkey}
+		   <if test="delyn != null">
+	          AND TB2.DELYN = #{delyn}
+		   </if>
+	     ORDER BY CASE WHEN TB2.LAKEY = 'KOR' THEN '0' ELSE '1' END, TB2.LAKEY, TB2.OWCDDTORDER ASC
+	</select>
+	
+	<select id="selectTOrderMstOrdCdDTCount"  resultType="java.lang.Integer" >
+		/* adm-master-owneradmincode-sql-oracle.xml - selectTOrderMstOrdCdDTCount */
+			SELECT COUNT(1)
+			   FROM
+		  	(
+		  	 SELECT TB1.OWCDHDKEY
+		       ,TB2.OWCDDTKEY
+		       ,TB2.OWCDDTNM
+		       ,TB2.OWCDDTVALUE
+		       ,TB2.OWCDDTORDER
+		       ,TB2.CMT
+		       ,TB2.LAKEY
+		       ,TB2.INSERTDATE
+		       ,TB2.INSERTURKEY
+		       ,TB2.UPDATEDATE
+		       ,TB2.UPDATEURKEY
+		 FROM TADMIN_MST_OWCD_HD TB1
+		 JOIN TADMIN_MST_OWCD_DT TB2
+		   ON TB1.OWKEY = TB2.OWKEY
+		  AND TB1.OWCDHDKEY = TB2.OWCDHDKEY
+		  AND TB1.OWKEY = #{owkey}
+		  AND TB1.OWCDHDKEY = #{owcdhdkey}
+		   <if test="delyn != null">
+	          AND TB2.DELYN = #{delyn}
+		   </if>
+		  	)
+	</select>
+
+	<update id="saveTOrderDtList">
+		/* adm-master-owneradmincode-sql-oracle.xml - saveTOrderDtList */
+		UPDATE TADMIN_MST_OWCD_DT
+		   SET OWCDDTVALUE = #{owcddtvalue}
+			 , CMT     = #{cmt}
+		 WHERE OWKEY 		= #{owkey}
+		   AND OWCDHDKEY 	= #{owcdhdkey}
+		   AND OWCDDTKEY   = #{owcddtkey}
+		   AND LAKEY		= #{lakey}
+	</update>
+</mapper>
+	

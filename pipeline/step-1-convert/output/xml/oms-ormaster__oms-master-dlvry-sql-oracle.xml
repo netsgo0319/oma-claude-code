@@ -1,0 +1,773 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.ormaster.mapper.DlvryMapper">
+
+	<select id="selectDlvryInfoCount" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryInfoCount */
+        SELECT COUNT(1)
+	    FROM TORDER_MST_DLVRYCORP A
+		INNER JOIN TORDER_MST_CT CT
+		        ON A.CTKEY = CT.CTKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+
+	<select id="selectDlvryInfo" resultType="camelMap" >
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		      , A.OWKEY
+		      , A.CTKEY 
+		      , CT.CTNM
+		      , A.DLVRYCORPCD
+		      , A.CNTRCTCD
+		      , A.CNTRCTNO
+		      , A.DLVRYCORPNM
+		      , A.CNTRCTSTATUS
+		      , A.CNTRCTSTARTDAY
+		      , A.CNTRCTCLOSEDAY
+		      , A.TSDNOTIRT  AS TSDNOTIRT
+		      , A.DELYN
+		      , A.INSERTDATE
+		      , A.INSERTURKEY
+		      , A.UPDATEDATE
+		      , A.UPDATEURKEY
+		FROM TORDER_MST_DLVRYCORP A
+		INNER JOIN TORDER_MST_CT CT
+		        ON A.CTKEY = CT.CTKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+<!--			<if test="ackey != null">-->
+<!--				AND ACKEY = #{ackey}-->
+<!--			</if>-->
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC , DLVRYCORPCD ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectDlvryNmCount" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryNmCount */
+        SELECT COUNT(*) 
+	    FROM TORDER_MST_OW A
+        INNER JOIN TORDER_MST_COM_DT B 
+		        ON A.OWKEY = B.OWKEY 
+			   AND B.COMHDKEY = 'CD_00414'
+		WHERE 1 = 1
+		AND B.COMDTKEY = #{dlvrycorpcd}		        
+	</select>
+	
+	<select id="selectDlvryNm" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryNm */
+		SELECT B.COMDTKEY AS FIELD1
+		     , B.COMDTNM AS FIELD2 
+	    FROM TORDER_MST_OW A
+        INNER JOIN TORDER_MST_COM_DT B 
+		        ON A.OWKEY = B.OWKEY 
+			   AND B.COMHDKEY = 'CD_00414'
+		WHERE 1 = 1
+		AND B.COMDTKEY = #{dlvrycorpcd}	
+	</select>
+  
+	<select id="selectDlvryWblInfo" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryWblInfo */
+		SELECT '0' AS CHK
+		    , A.OWKEY
+		    , A.DLVRYCORPCD
+		    , A.DLVRYCORPNM
+		    , A.CTKEY
+		    , A.CNTRCTCD
+		    , B.CTKEY
+		    , C.CTNM
+		    , ROW_NUMBER() OVER(PARTITION BY A.DLVRYCORPCD ORDER BY B.ISSUSEQ ) AS ISSUSEQ
+ 			, B.WBLFROMNO
+		    , B.WBLTONO
+		    , B.WBLCURRNO
+		    , B.USERT  AS USERT
+		    , B.DELYN
+		    , B.INSERTDATE
+		    , B.INSERTURKEY
+		    , B.UPDATEDATE
+		    , B.UPDATEURKEY
+		    , B.ISSUSEQ AS MAINISSUSEQ
+		FROM TORDER_MST_DLVRYCORP A
+		INNER JOIN TORDER_MST_DLVRYCORP_WBL B
+		        ON A.OWKEY = B.OWKEY
+		       AND A.DLVRYCORPCD = B.DLVRYCORPCD
+		       AND A.CTKEY = B.CTKEY
+		       AND A.CNTRCTCD =  B.CNTRCTCD
+		INNER JOIN TORDER_MST_CT C
+		        ON B.CTKEY = C.CTKEY 
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND A.CTKEY = #{ctkey}
+		AND	A.CNTRCTCD = #{cntrctcd}
+
+	</select>
+	
+	<select id="selectDlvryBoxInfo" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryBoxInfo */
+		SELECT '0' AS CHK
+		    , A.OWKEY
+		    , A.DLVRYCORPCD
+		    , A.DLVRYCORPNM
+			, A.CTKEY
+            , A.CNTRCTCD
+			, B.BOXTYPE
+		    , B.BOXSPEC
+		    , B.BOXWEIGHT
+		    , B.DELYN
+		    , B.INSERTDATE
+		    , B.INSERTURKEY
+		    , B.UPDATEDATE
+		    , B.UPDATEURKEY
+		FROM TORDER_MST_DLVRYCORP A
+		INNER JOIN TORDER_MST_DLVRYCORP_BOX B
+		        ON A.OWKEY = B.OWKEY
+		       AND A.DLVRYCORPCD = B.DLVRYCORPCD
+		       AND A.CTKEY = B.CTKEY
+		       AND A.CNTRCTCD =  B.CNTRCTCD
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND A.CTKEY = #{ctkey}
+		AND	A.CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<select id="selectBoxTypes" parameterType="map" resultType="string">
+	/* oms-master-dlvry-sql-oracle.xml - selectBoxTypes */
+	    SELECT BOXTYPE
+	    FROM TORDER_MST_DLVRYCORP_BOX
+	    WHERE 1 = 1
+	    AND OWKEY = #{owkey}
+	    AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND	CNTRCTCD = #{cntrctcd}
+	    ORDER BY BOXTYPE
+	</select>
+	
+	<select id="selectBoxSpec" resultType="camelMap">
+	/* oms-master-dlvry-sql-oracle.xml - selectBoxSpec */
+	    SELECT BOXTYPE
+	         , BOXSPEC || 'cm' || '/' || BOXWEIGHT || 'kg 이하' AS BOXSPEC
+	    FROM TORDER_MST_DLVRYCORP_BOX
+	    WHERE 1 = 1
+	    AND OWKEY = #{owkey}
+	    AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND	CNTRCTCD = #{cntrctcd}
+	    ORDER BY BOXTYPE
+	</select>
+	
+	<select id="selectDlvryBoxTypeCount" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryBoxTypeCount */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP_BOX
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND	CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<select id="selectDlvryBoxTypeList" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryBoxTypeList */
+		/* NOTE: Oracle PIVOT converted to conditional aggregation. ${downBoxtype}/${upBoxtype} are dynamically injected by application. */
+		SELECT '0' AS CHK,
+       		   ROW_NUMBER() OVER(ORDER BY CNTRCTCNTKEY) AS NO,
+		       OWKEY,
+		       DLVRYCORPCD,
+		       CTKEY,
+		       CNTRCTCD,
+		       CNTRCTCNT,
+			   CNTRCTCNTKEY,
+		       ${upBoxtype}
+		FROM (
+		    SELECT OWKEY,
+		           DLVRYCORPCD,
+		           CNTRCTCNT,
+		           BOXTYPE,
+				   CNTRCTCD,
+		           CTKEY,
+		           CNTRCTCNTKEY,
+		           AMT
+		    FROM TORDER_MST_DLVRYCORP_PRICE
+		    WHERE 1 = 1
+		    AND OWKEY = #{owkey}
+			AND DLVRYCORPCD = #{dlvrycorpcd}
+			AND CTKEY = #{ctkey}
+			AND	CNTRCTCD = #{cntrctcd}
+		) src
+		GROUP BY OWKEY, DLVRYCORPCD, CTKEY, CNTRCTCD, CNTRCTCNT, CNTRCTCNTKEY
+		ORDER BY CNTRCTCNTKEY
+	</select>
+	
+	<select id="checkDlvry" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - checkDlvry */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP
+		<if test="dlvrycorpcd != null">
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CNTRCTCD = #{cntrctcd}
+		</if>
+	</select>	
+		
+	<insert id="insertDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - insertDlvry */
+		INSERT INTO TORDER_MST_DLVRYCORP
+		(
+		     OWKEY
+		   , CTKEY
+		   , DLVRYCORPCD
+		   , CNTRCTCD
+           , CNTRCTNO
+		   , DLVRYCORPNM
+		   , CNTRCTSTATUS
+		   , CNTRCTSTARTDAY
+		   , CNTRCTCLOSEDAY
+		   , TSDNOTIRT
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{ctkey}
+		  , #{dlvrycorpcd}
+		  , #{cntrctcd}
+          , #{cntrctno}
+		  , #{dlvrycorpnm}
+		  , #{cntrctstatus}
+		  , #{cntrctstartday}
+		  , #{cntrctcloseday}
+		  , #{tsdnotirt}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - updateDlvry */
+		UPDATE TORDER_MST_DLVRYCORP
+		SET CNTRCTCD = #{cntrctcd}
+		  , CTKEY = #{ctkey}
+          , DLVRYCORPNM = #{dlvrycorpnm}
+          , CNTRCTNO = #{cntrctno}
+		  , CNTRCTSTATUS = #{cntrctstatus}
+		  , CNTRCTSTARTDAY = #{cntrctstartday}
+		  , CNTRCTCLOSEDAY = #{cntrctcloseday}
+		  , TSDNOTIRT = #{tsdnotirt}
+		  , DELYN = #{delyn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CNTRCTCD = #{cntrctcd}
+	</update>
+	
+	<select id="checkLeftDlvry" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - checkLeftDlvry */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP_WBL
+		<if test="dlvrycorpcd != null">
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		</if>
+	</select>
+	
+	<insert id="insertLeftDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - insertLeftDlvry */
+		INSERT INTO TORDER_MST_DLVRYCORP_WBL
+		(
+		     OWKEY
+		   , DLVRYCORPCD
+		   , CNTRCTCD
+		   , CTKEY
+		   , ISSUSEQ
+		   , WBLFROMNO
+		   , WBLTONO
+		   , WBLCURRNO
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{dlvrycorpcd}
+		  , #{cntrctcd}
+		  , #{ctkey}
+		  , ISEQ$$nextval('_89450')
+		  , #{wblfromno}
+		  , #{wbltono}
+		  , #{wblcurrno}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateLeftDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - updateLeftDlvry */
+		UPDATE TORDER_MST_DLVRYCORP_WBL
+		SET WBLFROMNO = #{wblfromno}
+          , WBLTONO = #{wbltono}
+		  , WBLCURRNO = #{wblcurrno}
+		  , DELYN = #{delyn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+	</update>
+	
+	<select id="checkWblDlvry" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - checkWblDlvry */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP_WBL
+		<if test="dlvrycorpcd != null">
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+		AND ISSUSEQ = #{mainissuseq}
+		</if>
+	</select>
+	
+	<insert id="insertWblDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - insertWblDlvry */
+		INSERT INTO TORDER_MST_DLVRYCORP_WBL
+		(
+		     OWKEY
+		   , DLVRYCORPCD
+		   , CNTRCTCD
+		   , CTKEY
+		   , WBLFROMNO
+		   , WBLTONO
+		   , WBLCURRNO
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{dlvrycorpcd}
+		  , #{cntrctcd}
+		  , #{ctkey}
+		  , #{wblfromno}
+		  , #{wbltono}
+		  , #{wblcurrno}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateWblDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - updateWblDlvry */
+		UPDATE TORDER_MST_DLVRYCORP_WBL
+		SET WBLFROMNO = #{wblfromno}
+          , WBLTONO = #{wbltono}
+		  , WBLCURRNO = #{wblcurrno}
+		  , DELYN = #{delyn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+		AND ISSUSEQ = #{mainissuseq}
+	</update>
+	
+	<select id="checkBoxDlvry" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - checkBoxDlvry */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP_BOX
+		<if test="dlvrycorpcd != null">
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+		AND BOXTYPE = #{boxtype}
+
+		</if>
+	</select>
+	
+	<insert id="insertBoxDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - insertBoxDlvry */
+		INSERT INTO TORDER_MST_DLVRYCORP_BOX
+		(
+		     OWKEY
+		   , DLVRYCORPCD
+		   , CNTRCTCD
+		   , CTKEY
+		   , BOXTYPE
+		   , BOXSPEC
+		   , BOXWEIGHT
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{dlvrycorpcd}
+		  , #{cntrctcd}
+		  , #{ctkey}
+		  , #{boxtype}
+		  , #{boxspec}
+		  , #{boxweight}
+		  , #{delyn}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateBoxDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - updateBoxDlvry */
+		UPDATE TORDER_MST_DLVRYCORP_BOX
+		SET BOXTYPE = #{boxtype}
+		  , BOXSPEC = #{boxspec}
+		  , BOXWEIGHT = #{boxweight}
+		  , DELYN = #{delyn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND BOXTYPE = #{boxtype}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+	</update>
+	
+	<select id="selectDlvryPriceInfo" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryPriceInfo */
+		SELECT '0' AS CHK
+		    , A.OWKEY
+		    , A.DLVRYCORPCD
+		    , A.DLVRYCORPNM
+		    , A.CTKEY
+			, A.CNTRCTCD
+		    , B.BOXTYPE
+		    , B.BOXSPEC
+		    , B.BOXWEIGHT
+		    , B.DELYN
+		    , B.INSERTDATE
+		    , B.INSERTURKEY
+		    , B.UPDATEDATE
+		    , B.UPDATEURKEY
+		FROM TORDER_MST_DLVRYCORP A
+		INNER JOIN TORDER_MST_DLVRYCORP_BOX B
+		        ON A.OWKEY = B.OWKEY
+		       AND A.DLVRYCORPCD = B.DLVRYCORPCD
+		       AND A.CTKEY =  B.CTKEY
+		       AND A.CNTRCTCD =  A.CNTRCTCD
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<select id="checkPriceDlvry" resultType="java.lang.Integer" >
+		/* oms-master-dlvry-sql-oracle.xml - checkPriceDlvry */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DLVRYCORP_PRICE
+		<if test="dlvrycorpcd != null">
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND BOXTYPE = #{boxtype}
+		AND CNTRCTCNTKEY = #{cntrctcntkey}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+		</if>
+	</select>
+	
+	<insert id="insertPriceDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - insertPriceDlvry */
+		INSERT INTO TORDER_MST_DLVRYCORP_PRICE
+		(
+		     OWKEY
+		   , DLVRYCORPCD
+		   , CTKEY
+		   , CNTRCTCD
+		   , CNTRCTCNTKEY
+		   , CNTRCTCNT
+		   , BOXTYPE
+		   , AMT
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{dlvrycorpcd}
+		  , #{ctkey}
+		  , #{cntrctcd}
+		  , #{cntrctcntkey}
+		  , #{cntrctcnt}
+		  , #{boxtype}
+		  , #{amt}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updatePriceDlvry">
+		/* oms-master-dlvry-sql-oracle.xml - updatePriceDlvry */
+		UPDATE TORDER_MST_DLVRYCORP_PRICE
+		SET CNTRCTCNT = #{cntrctcnt}
+		  , AMT = #{amt}
+		  , DELYN = COALESCE(#{delyn}, 'N')
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND BOXTYPE = #{boxtype}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+		AND CNTRCTCNTKEY = #{cntrctcntkey}
+	</update>
+	
+	<select id="selectCtInfo" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectCtInfo */
+		SELECT CTKEY AS FIELD1 
+		     , CTNM  AS FIELD2
+		FROM TORDER_MST_CT
+		WHERE 1 = 1
+		AND DELYN = 'N'	
+	</select>
+	
+	<select id="selectDlvryInfoMst" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryInfoMst */
+		SELECT A.CTKEY
+		     , A.OWKEY
+		     , A.DLVRYCORPCD
+		     , A.DLVRYCORPNM
+		     , A.CNTRCTCD
+		     , A.CNTRCTNO
+		     , A.CNTRCTSTATUS
+		     , A.CNTRCTSTARTDAY
+		     , A.CNTRCTCLOSEDAY
+		     , A.TSDNOTIRT
+		     , A.DELYN
+		FROM TORDER_MST_DLVRYCORP A
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND A.CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<select id="selectDlvryInfoWblList" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryInfoWblList */
+		SELECT A.DLVRYCORPCD
+		     , A.CTKEY
+		     , A.CNTRCTCD
+		     , A.ISSUSEQ
+		     , A.WBLFROMNO
+		     , A.WBLTONO
+		     , A.DELYN
+		FROM TORDER_MST_DLVRYCORP_WBL A
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND A.CTKEY = #{ctkey}
+		AND A.CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<select id="selectDlvryInfoBoxList" resultType="camelMap">
+		/* oms-master-dlvry-sql-oracle.xml - selectDlvryInfoBoxList */
+		SELECT A.DLVRYCORPCD
+			 , A.CTKEY
+			 , A.CNTRCTCD
+		     , A.BOXTYPE AS BOXTYPECD
+		     , A.BOXTYPENM
+		     , A.BOXSPEC
+		     , A.DELYN
+		FROM TORDER_MST_DLVRYCORP_BOX A
+		WHERE 1 = 1
+		AND	A.OWKEY = #{owkey}
+		AND	A.DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+		AND CNTRCTCD = #{cntrctcd}
+	</select>
+	
+	<update id="updateWblUseInfoWmsToOms">
+		/* oms-master-dlvry-sql-oracle.xml - updateWblUseInfoWmsToOms */
+		UPDATE TORDER_MST_DLVRYCORP_WBL
+		SET WBLCURRNO = #{wblcurrno}
+		  , USERT = #{usert}
+		  , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		  , UPDATEURKEY = #{interfaceUrkey}
+		WHERE 1 = 1
+		AND OWKEY = #{owkey} 
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND CTKEY = #{ctkey}
+<!--		AND CNTRCTCD = #{cntrctcd}-->
+	</update>
+	
+	<insert id="insertIntfWmsDlvryMstInfoMap">
+		/* oms-master-dlvry-sql-oracle.xml - insertIntfWmsDlvryMstInfoMap */
+		INSERT INTO TORDER_INTF_WMS_DLVRYMST
+		(
+		     INSERTSYSTM
+			, REQUESTDT
+			, IFID
+			, OWKEY
+			, CTKEY
+			, DLVRYCORPCD
+			, DLVRYCORPNM
+			, CNTRCTCD
+			, CNTRCTNO
+			, CNTRCTSTATUS
+			, CNTRCTSTARTDAY
+			, CNTRCTCLOSEDAY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{insertsystm}
+		  , #{requestDt}
+		  , #{ifid}
+		  , #{owkey}
+		  , #{ctkey}
+		  , #{dlvrycorpcd}
+		  , #{dlvrycorpnm}
+		  , #{cntrctcd}
+		  , #{cntrctno}
+		  , #{cntrctstatus}
+		  , #{cntrctstartday}
+		  , #{cntrctcloseday}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+	
+	<insert id="insertIntfWmsDlvryWblInfoMap">
+		/* oms-master-dlvry-sql-oracle.xml - insertIntfWmsDlvryWblInfoMap */
+		INSERT INTO TORDER_INTF_WMS_DLVRYWBL
+		(
+		     INSERTSYSTM
+			, REQUESTDT
+			, IFID
+			, DLVRYCORPCD
+			, ISSUSEQ
+			, WBLFROMNO
+			, WBLTONO
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{insertsystm}
+		  , #{requestDt}
+		  , #{ifid}
+		  , #{dlvrycorpcd}
+		  , #{issuseq}
+		  , #{wblfromno}
+		  , #{wbltono}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+	
+	<insert id="insertIntfWmsDlvryBoxInfoMap">
+		/* oms-master-dlvry-sql-oracle.xml - insertIntfWmsDlvryBoxInfoMap */
+		INSERT INTO TORDER_INTF_WMS_DLVRYBOX
+		(
+		     INSERTSYSTM
+			, REQUESTDT
+			, IFID
+			, DLVRYCORPCD
+			, BOXTYPECD
+			, BOXTYPENM
+			, BOXSPEC
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{insertsystm}
+		  , #{requestDt}
+		  , #{ifid}
+		  , #{dlvrycorpcd}
+		  , #{boxtypecd}
+		  , #{boxtypenm}
+		  , #{boxspec}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+	
+</mapper>
+	

@@ -1,0 +1,1030 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.IbOrderReportMapper">
+
+	<sql id="selectIbOrdersql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrdersql - 입고현황 - 주문별 현황 - 입고 주문 조회  SQL */
+		SELECT A.CTKEY
+			 , C.CTNM
+			 , A.OWKEY
+			 , A.IBHDTYPECD
+			 , A.IBHDKEY
+			 , A.IBEXPCTDATE
+             , A.REQORDERNO
+			 , A.EXTORDERKEY
+			 , A.ACKEY
+			 , CASE WHEN IBHDTYPECD = '30' THEN A.ACNM
+					ELSE '' END AS OB_CTNM
+			 , CASE WHEN IBHDTYPECD != '30' THEN A.ACNM
+					ELSE '' END AS ACNM
+			 , A.IBSTATUSCD
+			 , COALESCE(SUM(INITQTY_SKU), 0) AS INITQTY_SKU
+			 , COALESCE(SUM(INITQTY), 0) AS INITQTY
+			 , COALESCE(ROUND(SUM(INITQTY_INN), 2), 0) AS INITQTY_INN
+			 , COALESCE(ROUND(SUM(INITQTY_CTN), 2), 0) AS INITQTY_CTN
+			 , COALESCE(ROUND(SUM(INITQTY_PLT), 2), 0) AS INITQTY_PLT
+			 , COALESCE(SUM(INITQTY_SLPRC), 0) AS INITQTY_SLPRC
+			 , COALESCE(SUM(EXPCTQTY_SKU), 0) AS EXPCTQTY_SKU
+			 , COALESCE(SUM(EXPCTQTY), 0) AS EXPCTQTY
+			 , COALESCE(ROUND(SUM(EXPCTQTY_INN), 2), 0) AS EXPCTQTY_INN
+			 , COALESCE(ROUND(SUM(EXPCTQTY_CTN), 2), 0) AS EXPCTQTY_CTN
+			 , COALESCE(ROUND(SUM(EXPCTQTY_PLT), 2), 0) AS EXPCTQTY_PLT
+			 , COALESCE(SUM(EXPCTQTY_SLPRC), 0) AS EXPCTQTY_SLPRC
+			 , COALESCE(SUM(IBQTY_SKU), 0) AS IBQTY_SKU
+			 , COALESCE(SUM(IBQTY), 0) AS IBQTY
+			 , COALESCE(ROUND(SUM(IBQTY_INN), 2), 0) AS IBQTY_INN
+			 , COALESCE(ROUND(SUM(IBQTY_CTN), 2), 0) AS IBQTY_CTN
+			 , COALESCE(ROUND(SUM(IBQTY_PLT), 2), 0) AS IBQTY_PLT
+			 , COALESCE(SUM(IBQTY_SLPRC), 0) AS IBQTY_SLPRC
+			 , COALESCE(SUM(CNFRMQTY_SKU), 0) AS CNFRMQTY_SKU
+			 , COALESCE(SUM(CNFRMQTY), 0) AS CNFRMQTY
+			 , COALESCE(ROUND(SUM(CNFRMQTY_INN), 2), 0) AS CNFRMQTY_INN
+			 , COALESCE(ROUND(SUM(CNFRMQTY_CTN), 2), 0) AS CNFRMQTY_CTN
+			 , COALESCE(ROUND(SUM(CNFRMQTY_PLT), 2), 0) AS CNFRMQTY_PLT
+			 , COALESCE(SUM(CNFRMQTY_SLPRC), 0) AS CNFRMQTY_SLPRC
+			 , CASE WHEN SUM(IBDTSTATUSCD) > 0 THEN 'N'
+					ELSE 'Y' END AS CLOSEYN
+			 , MAX(A.CMT1) AS CMT1
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_INFO_IB_HD A
+		 INNER JOIN (
+					SELECT A.CTKEY
+						 , A.OWKEY
+						 , A.IBHDKEY
+						 , A.UPRIBDTKEY
+						 , CASE WHEN A.INITQTY > 0 THEN 1 ELSE 0 END AS INITQTY_SKU
+						 , A.INITQTY
+						 , A.INITQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS INITQTY_INN
+						 , A.INITQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS INITQTY_CTN
+						 , A.INITQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS INITQTY_PLT
+						 , A.INITQTY * B.SLPRC AS INITQTY_SLPRC
+						 , CASE WHEN A.EXPCTQTY > 0 THEN 1 ELSE 0 END AS EXPCTQTY_SKU
+						 , A.EXPCTQTY
+						 , A.EXPCTQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS EXPCTQTY_INN
+						 , A.EXPCTQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS EXPCTQTY_CTN
+						 , A.EXPCTQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS EXPCTQTY_PLT
+						 , A.EXPCTQTY * B.SLPRC AS EXPCTQTY_SLPRC
+						 , CASE WHEN A.IBQTY > 0 THEN 1 ELSE 0 END AS IBQTY_SKU
+						 , A.IBQTY
+						 , A.IBQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS IBQTY_INN
+						 , A.IBQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS IBQTY_CTN
+						 , A.IBQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS IBQTY_PLT
+						 , A.IBQTY * B.SLPRC AS IBQTY_SLPRC
+						 , CASE WHEN A.CNFRMQTY > 0 THEN 1 ELSE 0 END AS CNFRMQTY_SKU
+						 , A.CNFRMQTY
+						 , A.CNFRMQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS CNFRMQTY_INN
+						 , A.CNFRMQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS CNFRMQTY_CTN
+						 , A.CNFRMQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS CNFRMQTY_PLT
+						 , A.CNFRMQTY * B.SLPRC AS CNFRMQTY_SLPRC
+						 , CASE WHEN A.IBDTSTATUSCD != '91' THEN 1
+								ELSE 0 END AS IBDTSTATUSCD
+					  FROM TWORK_INFO_IB_DT A
+					 INNER JOIN TWORK_MST_IC B
+						ON A.CTKEY = B.CTKEY
+					   AND A.OWKEY = B.OWKEY
+					   AND A.ICKEY = B.ICKEY
+					  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE C
+						ON A.CTKEY = C.CTKEY
+					   AND A.OWKEY = C.OWKEY
+					   AND B.ICUNITKEY = C.ICUNITKEY
+					   AND C.ICUNITTYPECD = 'INN'
+					  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+						ON A.CTKEY = D.CTKEY
+					   AND A.OWKEY = D.OWKEY
+					   AND B.ICUNITKEY = D.ICUNITKEY
+					   AND D.ICUNITTYPECD = 'CTN'
+					) B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		 INNER JOIN TWORK_MST_CT C
+			ON A.CTKEY = C.CTKEY
+		 WHERE 1=1
+		   AND A.IBHDTYPECD != '50'   /* 반품입고 */
+		   AND B.UPRIBDTKEY IS NULL
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			AND A.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			AND A.IBHDTYPECD = #{ibhdtypecd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			AND A.IBSTATUSCD = #{ibstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(extorderkey)">
+			AND A.EXTORDERKEY = #{extorderkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+			AND A.ACKEY = #{ackey}
+		</if>
+		 GROUP BY A.CTKEY, C.CTNM, A.OWKEY, A.IBHDTYPECD, A.IBHDKEY, A.IBEXPCTDATE, A.EXTORDERKEY, A.REQORDERNO, A.ACKEY, A.ACNM, A.IBSTATUSCD, A.INSERTDATE, A.INSERTURKEY, A.UPDATEDATE, A.UPDATEURKEY
+	</sql>
+
+	<sql id="selectIbOrderDetailsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderDetailsql - 입고현황 - 주문별 현황 - 입고 주문 상세 조회 SQL */
+        WITH RECURSIVE ctg_tree AS (
+            SELECT CTKEY, OWKEY, CTGKEY, CTGNM, CTGLV, UPRCTGKEY,
+                   CTGKEY AS root_ctgkey,
+                   1 AS lvl
+              FROM TWORK_MST_CTG
+             WHERE CTGLV = '1'
+            UNION ALL
+            SELECT c.CTKEY, c.OWKEY, c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY,
+                   p.root_ctgkey,
+                   p.lvl + 1
+              FROM TWORK_MST_CTG c
+             INNER JOIN ctg_tree p
+                ON c.UPRCTGKEY = p.CTGKEY
+               AND c.CTKEY = p.CTKEY
+               AND c.OWKEY = p.OWKEY
+             WHERE p.lvl <![CDATA[<]]> 3
+        ),
+        CTG AS (
+            SELECT CTKEY
+                 , OWKEY
+                 , root_ctgkey AS CTG1KEY
+                 , MAX(CASE WHEN CTGLV = '1' THEN CTGNM END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG1NM
+                 , MAX(CASE WHEN CTGLV = '2' THEN CTGKEY END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG2KEY
+                 , MAX(CASE WHEN CTGLV = '2' THEN CTGNM END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG2NM
+                 , CTGKEY AS CTG3KEY
+                 , CTGNM  AS CTG3NM
+              FROM ctg_tree
+        )
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , A.IBDTKEY
+					 , B.IBHDTYPECD
+					 , B.IBEXPCTDATE
+					 , A.IBDTSTATUSCD
+					 , CASE WHEN B.IBHDTYPECD = '30' THEN B.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN B.IBHDTYPECD != '30' THEN B.ACNM
+							ELSE '' END AS ACNM
+					 , A.EXTORDERKEY
+                     , B.REQORDERNO
+					 , C.ACKEY AS IC_ACKEY
+					 , D.ACNM AS IC_ACNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN E.ASRTMASICKEY
+							ELSE A.ICKEY END AS ASRTMASICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN G.ICNM
+							ELSE C.ICNM END AS ASRTMASICNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN A.ICKEY
+							END AS ASRTDTICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN C.ICNM
+							END AS ASRTDTICNM
+					 , A.ASRTWKTGTYN AS ASRTYN
+					 , CTG.CTG3NM AS LV1_CTGNM
+					 , CTG.CTG3NM AS LV2_CTGNM
+					 , CTG.CTG3NM AS LV3_CTGNM
+					 , A.UOM
+
+					 , COALESCE(A.INITQTY, 0) AS INITQTY
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS INITQTY_INN
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS INITQTY_CTN
+					 , ROUND(A.INITQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS INITQTY_PLT
+					 , COALESCE(A.INITQTY * C.SLPRC, 0) AS INITQTY_SLPRC
+
+					 , COALESCE(A.EXPCTQTY, 0) AS EXPCTQTY
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_INN
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_CTN
+					 , ROUND(A.EXPCTQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS EXPCTQTY_PLT
+					 , COALESCE(A.EXPCTQTY * C.SLPRC, 0) AS EXPCTQTY_SLPRC
+
+					 , COALESCE(A.IBQTY, 0) AS IBQTY
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS IBQTY_INN
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS IBQTY_CTN
+					 , ROUND(A.IBQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS IBQTY_PLT
+					 , COALESCE(A.IBQTY * C.SLPRC, 0) AS IBQTY_SLPRC
+
+					 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+					 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+					 , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS CNFRMQTY_SLPRC
+
+					 , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y'
+							ELSE 'N' END AS CLOSEYN
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_IC C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.ICKEY = C.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_AC D
+					ON A.CTKEY = D.CTKEY
+				   AND C.ACKEY = D.ACKEY
+				  LEFT OUTER JOIN TWORK_MST_ASRT E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND A.ICKEY = E.ASRTDTICKEY
+				  LEFT OUTER JOIN TWORK_MST_IC G
+					ON A.CTKEY = G.CTKEY
+				   AND A.OWKEY = G.OWKEY
+				   AND E.ASRTMASICKEY = G.ICKEY
+				 INNER JOIN CTG
+					ON A.CTKEY = CTG.CTKEY
+				   AND A.OWKEY = CTG.OWKEY
+				   AND C.CTGKEY = CTG.CTG3KEY
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+					ON A.CTKEY = I.CTKEY
+				   AND A.OWKEY = I.OWKEY
+				   AND C.ICUNITKEY = I.ICUNITKEY
+				   AND I.ICUNITTYPECD = 'INN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+					ON A.CTKEY = J.CTKEY
+				   AND A.OWKEY = J.OWKEY
+				   AND C.ICUNITKEY = J.ICUNITKEY
+				   AND J.ICUNITTYPECD = 'CTN'
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.IBHDKEY = #{ibhdkey}
+			   ) A
+		WHERE 1=1
+
+		<if test="asrtmasickeyList != null and asrtmasickeyList.size > 0">
+			<foreach collection="asrtmasickeyList" item="item" open=" AND A.ASRTMASICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="asrtdtickeyList != null and asrtdtickeyList.size > 0">
+			<foreach collection="asrtdtickeyList" item="item" open=" AND A.ASRTDTICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtyn)">
+			AND A.ASRTYN = #{asrtyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(closeyn)">
+			AND A.CLOSEYN = #{closeyn}
+		</if>
+	</sql>
+
+	<select id="selectIbOrderCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderCount - 입고현황 - 주문별 현황 - 입고 주문 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrdersql"/>
+		)
+	</select>
+
+	<select id="selectIbOrder" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbHd - 입고현황 - 주문별 현황 - 입고 주문 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrdersql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectIbOrderDetailCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIborderDetailCount - 입고현황 - 주문별 현황 - 입고 주문 상세 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderDetailsql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderDetail" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderDetail - 입고현황 - 주문별 현황 - 입고 주문 상세 조회 */
+		<include refid="selectIbOrderDetailsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+	<sql id="selectIbDetailsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetailsql - 입고현황 - 상세현황 - 입고 상세 현황 조회 SQL */
+		WITH RECURSIVE ctg_tree2 AS (
+            SELECT CTKEY, OWKEY, CTGKEY, CTGNM, CTGLV, UPRCTGKEY,
+                   CTGKEY AS root_ctgkey,
+                   1 AS lvl
+              FROM TWORK_MST_CTG
+             WHERE CTGLV = '1'
+            UNION ALL
+            SELECT c.CTKEY, c.OWKEY, c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY,
+                   p.root_ctgkey,
+                   p.lvl + 1
+              FROM TWORK_MST_CTG c
+             INNER JOIN ctg_tree2 p
+                ON c.UPRCTGKEY = p.CTGKEY
+               AND c.CTKEY = p.CTKEY
+               AND c.OWKEY = p.OWKEY
+             WHERE p.lvl <![CDATA[<]]> 3
+        ),
+        CTG AS (
+            SELECT CTKEY
+                 , OWKEY
+                 , root_ctgkey AS CTG1KEY
+                 , MAX(CASE WHEN CTGLV = '1' THEN CTGNM END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG1NM
+                 , MAX(CASE WHEN CTGLV = '2' THEN CTGKEY END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG2KEY
+                 , MAX(CASE WHEN CTGLV = '2' THEN CTGNM END)
+                        OVER (PARTITION BY root_ctgkey) AS CTG2NM
+                 , CTGKEY AS CTG3KEY
+                 , CTGNM  AS CTG3NM
+              FROM ctg_tree2
+        )
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+					 , L.CTNM
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , A.IBDTKEY
+					 , B.IBHDTYPECD
+					 , B.IBEXPCTDATE
+					 , CASE WHEN B.IBHDTYPECD = '30' THEN B.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN B.IBHDTYPECD != '30' THEN B.ACNM
+							ELSE '' END AS ACNM
+					 , A.EXTORDERKEY
+                     , B.REQORDERNO
+					 , C.ACKEY AS IC_ACKEY
+					 , D.ACNM AS IC_ACNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN E.ASRTMASICKEY
+							ELSE A.ICKEY END AS ASRTMASICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN G.ICNM
+							ELSE C.ICNM END AS ASRTMASICNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN A.ICKEY
+							END AS ASRTDTICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL AND A.UPRIBDTKEY IS NOT NULL THEN C.ICNM
+							END AS ASRTDTICNM
+					 , A.ASRTWKTGTYN AS ASRTYN
+					 , CTG.CTG1NM AS LV1_CTGNM
+					 , CTG.CTG2NM AS LV2_CTGNM
+					 , CTG.CTG3NM AS LV3_CTGNM
+					 , A.UOM
+
+					 , COALESCE(A.INITQTY, 0) AS INITQTY
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS INITQTY_INN
+					 , ROUND(A.INITQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS INITQTY_CTN
+					 , ROUND(A.INITQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS INITQTY_PLT
+					 , COALESCE(A.INITQTY * C.SLPRC, 0) AS INITQTY_SLPRC
+
+					 , COALESCE(A.EXPCTQTY, 0) AS EXPCTQTY
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_INN
+					 , ROUND(A.EXPCTQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS EXPCTQTY_CTN
+					 , ROUND(A.EXPCTQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS EXPCTQTY_PLT
+					 , COALESCE(A.EXPCTQTY * C.SLPRC, 0) AS EXPCTQTY_SLPRC
+
+					 , COALESCE(A.IBQTY, 0) AS IBQTY
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS IBQTY_INN
+					 , ROUND(A.IBQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS IBQTY_CTN
+					 , ROUND(A.IBQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS IBQTY_PLT
+					 , COALESCE(A.IBQTY * C.SLPRC, 0) AS IBQTY_SLPRC
+
+					 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(I.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+					 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(J.ICUNITQTY, 0), 0) * NULLIF(COALESCE(J.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+					 , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS CNFRMQTY_SLPRC
+
+					 , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y'
+							ELSE 'N' END AS CLOSEYN
+					 , A.IBDTSTATUSCD
+					 , B.ACKEY
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_IC C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.ICKEY = C.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_AC D
+					ON C.CTKEY = D.CTKEY
+				   AND C.ACKEY = D.ACKEY
+				  LEFT OUTER JOIN TWORK_MST_ASRT E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND A.ICKEY = E.ASRTDTICKEY
+				  LEFT OUTER JOIN TWORK_MST_IC G
+					ON E.CTKEY = G.CTKEY
+				   AND E.OWKEY = G.OWKEY
+				   AND E.ASRTMASICKEY = G.ICKEY
+				 INNER JOIN CTG
+                    ON C.CTKEY = CTG.CTKEY
+                   AND C.OWKEY = CTG.OWKEY
+                   AND C.CTGKEY = CTG.CTG3KEY
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+					ON C.CTKEY = I.CTKEY
+				   AND C.OWKEY = I.OWKEY
+				   AND C.ICKEY = I.ICKEY
+				   AND I.ICUNITTYPECD = 'INN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+					ON C.CTKEY = J.CTKEY
+				   AND C.OWKEY = J.OWKEY
+				   AND C.ICKEY = J.ICKEY
+				   AND J.ICUNITTYPECD = 'CTN'
+				 INNER JOIN TWORK_MST_CT L
+					ON A.CTKEY = L.CTKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+                   AND B.IBHDTYPECD <![CDATA[ <> ]]> '50'
+			) A
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			AND A.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			AND A.IBHDTYPECD = #{ibhdtypecd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			AND A.IBDTSTATUSCD = #{ibstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(extorderkey)">
+			AND A.EXTORDERKEY = #{extorderkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+			AND A.ACKEY = #{ackey}
+		</if>
+		<if test="asrtmasickeyList != null and asrtmasickeyList.size > 0">
+			<foreach collection="asrtmasickeyList" item="item" open=" AND A.ASRTMASICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="asrtdtickeyList != null and asrtdtickeyList.size > 0">
+			<foreach collection="asrtdtickeyList" item="item" open=" AND A.ASRTDTICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtyn)">
+			AND A.ASRTYN = #{asrtyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(closeyn)">
+			AND A.CLOSEYN = #{closeyn}
+		</if>
+	</sql>
+
+	<select id="selectIbDetailCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetailCount - 입고현황 - 상세현황 - 입고 상세 현황 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbDetailsql"/>
+		)
+	</select>
+
+	<select id="selectIbDetail" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetail - 입고현황 - 상세현황 - 입고 상세 현황 조회 */
+		<include refid="selectIbDetailsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+
+	<sql id="selectIbOrderWorkerProdStatusReportSql">
+		SELECT A.*
+				, CASE WHEN WORKHOURS <![CDATA[ <= ]]> 0 THEN '00:00'
+					ELSE LPAD(DATE_TRUNC('day', WORKHOURS)::DATE::TEXT, 2, '0') || ':' ||
+					LPAD(DATE_TRUNC('day', MOD(WORKHOURS * 60, 60))::DATE::TEXT, 2, '0')
+		        END AS WORKTIMESTR
+				, ROUND(SKU / NULLIF(WORKHOURS, 0), 1)    AS SKUKPI
+				, ROUND(EA  / NULLIF(WORKHOURS, 0), 1)    AS EAKPI
+				, ROUND(PLTCNT / NULLIF(WORKHOURS, 0), 1) AS PLTKPI
+				, ROUND(RTCNT  / NULLIF(WORKHOURS, 0), 1) AS RTKPI
+		FROM (
+				SELECT '0' AS CHK
+						, SUBSTR(IBCF.IBCNFRMDATE, 1, 8)                  AS IBDATE
+						, MAX(UR.DEPTNM)                                AS DEPTNM
+						, IBCF.INSERTURKEY                                AS URKEY
+						, MAX(UR.URNM)                                    AS URNM
+						, COUNT(DISTINCT IBCF.ICKEY)                      AS SKU
+						, SUM(IBCF.CNFRMQTY)                              AS EA
+						, COUNT(CASE WHEN IBCF.CNTRNO LIKE 'PLT%' THEN 1 END) AS PLTCNT
+						, COUNT(CASE WHEN IBCF.CNTRNO LIKE 'RT%' THEN 1 END)  AS RTCNT
+						-- [시작/종료 시간 표시]
+						, TO_CHAR(TO_DATE(MIN(IBCF.INSERTDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS STARTTIME
+						, TO_CHAR(TO_DATE(MAX(IBCF.INSERTDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS ENDTIME
+						, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+						LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+						, GREATEST(
+								(TO_DATE(SUBSTR(MAX(IBCF.INSERTDATE), 1, 12), 'YYYYMMDDHH24MI') -
+								TO_DATE(SUBSTR(MIN(IBCF.INSERTDATE), 1, 12), 'YYYYMMDDHH24MI')) * 24 - (CAST(#{BREAKTIME} AS NUMERIC) / 60)
+								, 0) AS WORKHOURS
+				FROM TWORK_INFO_IBCF_DT IBCF
+				LEFT JOIN TADMIN_MST_UR UR
+					ON IBCF.OWKEY = UR.OWKEY
+					AND IBCF.CTKEY = UR.CTKEY
+					AND IBCF.INSERTURKEY = UR.URKEY
+				WHERE 1=1
+				GROUP BY
+					IBCF.IBCNFRMDATE
+					,IBCF.INSERTURKEY
+		) A
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBDATE DESC
+	</sql>
+
+	<select id="selectIbOrderWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderWorkerProdStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderWorkerProdStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<sql id="selectIbOrderAsrtWorkerProdStatusReportSql">
+		SELECT A.*
+			, CASE WHEN WORK_HOURS <![CDATA[ <= ]]> 0 THEN '00:00'
+			ELSE LPAD(DATE_TRUNC('day', WORK_HOURS)::DATE::TEXT, 2, '0') || ':' ||
+				LPAD(DATE_TRUNC('day', MOD(WORK_HOURS * 60, 60))::DATE::TEXT, 2, '0')
+			END AS WORKTIMESTR
+			, ROUND(PSKU / NULLIF(WORK_HOURS, 0), 1)    AS SKUKPI
+			, ROUND(ASRTSKU / NULLIF(WORK_HOURS,0),1)    AS ASRTSKUKPI
+			, ROUND(SUMEA  / NULLIF(WORK_HOURS, 0), 1)    AS EAKPI
+		FROM (
+			SELECT '0' AS CHK
+					,SUBSTR(IBDT.INSERTDATE, 1, 8)   AS IBDATE
+					,IBDT.UPDATEURKEY AS URKEY
+					,UR.URNM
+					,UR.DEPTNM
+					,COUNT(DISTINCT UPRIBDTKEY ) AS PSKU
+					,COUNT(CASE WHEN IBDT.UPRIBDTKEY IS NOT NULL AND IBDT.ASRTWKCOMPLYN = 'Y' THEN '1' END) AS ASRTSKU
+					,SUM(CASE WHEN IBDT.UPRIBDTKEY IS NOT NULL THEN IBDT.IBQTY END) AS SUMEA
+					-- [시작/종료 시간 표시]
+					, TO_CHAR(TO_DATE(MIN(IBDT.INSERTDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS STARTTIME
+					, TO_CHAR(TO_DATE(MAX(IBDT.INSERTDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS ENDTIME
+					, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+					LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+					, GREATEST(
+					(TO_DATE(SUBSTR(MAX(IBDT.INSERTDATE), 1, 12), 'YYYYMMDDHH24MI') -
+					TO_DATE(SUBSTR(MIN(IBDT.INSERTDATE), 1, 12), 'YYYYMMDDHH24MI')) * 24 - (CAST(#{BREAKTIME} AS NUMERIC) / 60)
+					, 0) AS WORK_HOURS
+			FROM TWORK_INFO_IB_DT IBDT
+			LEFT JOIN TADMIN_MST_UR UR
+			ON IBDT.OWKEY = UR.OWKEY
+			AND IBDT.CTKEY = UR.CTKEY
+			AND IBDT.UPDATEURKEY = UR.URKEY
+			WHERE 1=1
+			AND IBDT.ASRTWKCOMPLYN = 'Y'
+			AND IBDT.IBDTSTATUSCD = '40' --검수완료
+			AND IBDT.UPRIBDTKEY IS NOT NULL
+			GROUP BY SUBSTR(IBDT.INSERTDATE, 1, 8) ,IBDT.UPDATEURKEY,UR.URNM ,UR.DEPTNM,IBDT.UPDATEURKEY
+		) A
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBDATE DESC
+	</sql>
+
+	<select id="selectIbOrderAsrtWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderAsrtWorkerProdStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderAsrtWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderAsrtWorkerProdStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderLightRackWorkerProdStatusReportSql">
+		SELECT TIME.*
+				,TRUNC(TIME.ASRTSKU / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS SKUKPI
+				,TRUNC(TIME.CNFRMQTY / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS QTYKPI
+				,TRUNC(TIME.INNCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS INNKPI
+				,TRUNC(TIME.BOXCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS BOXKPI
+				,TRUNC(TIME.PLTCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS PLTKPI
+				,TRUNC(TIME.CELLCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS CELLKPI
+				,TRUNC(TIME.ROWCOUNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS ROWKPI
+		FROM (
+				SELECT
+						SUBSTR(PLCM.PLCMDATE, 1, 8)   AS IBDATE
+						, PLCM.UPDATEURKEY            AS URKEY
+						, UR.DEPTNM
+						, UR.URNM
+						, COUNT(DISTINCT PLCM.ICKEY)  AS ASRTSKU        /* 적치 SKU 수 */
+						, SUM(PLCM.CNFRMQTY)          AS CNFRMQTY
+						/* 적치 중포 수: 수량 / INN기준량 (올림 후 합산) */
+						, SUM(CEIL(PLCM.CNFRMQTY / NULLIF(ICUT.INN_UNIT_QTY, 0))) AS INNCNT
+						/* 적치 BOX 수: 수량 / CTN기준량 (올림 후 합산) */
+						, SUM(CEIL(PLCM.CNFRMQTY / NULLIF(ICUT.CTN_UNIT_QTY, 0))) AS BOXCNT
+						/* 적치 PLT 수: BOX수 / CPP기준량 (올림 후 합산) */
+						, SUM(CEIL( (PLCM.CNFRMQTY / NULLIF(ICUT.CTN_UNIT_QTY, 0)) / NULLIF(ICUT.CPP_UNIT_QTY, 0) )) AS PLTCNT
+						, COUNT(DISTINCT PLCM.LCKEY)  AS CELLCNT        /* 적치 셀 수 */
+						, SUM(CASE WHEN PLCM.PLCMDATE IS NOT NULL THEN 1 ELSE 0 END) AS ROWCOUNT
+						, TO_CHAR(MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS STARTTIME
+						, TO_CHAR(MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS ENDTIME
+						, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+						LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+						,CASE
+						WHEN (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+						THEN
+						-- 1시간 이상 작업했을 때만 1시간(휴게시간)을 뺌
+						LPAD(DATE_TRUNC('day', ((MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24) - (CAST(#{BREAKTIME} AS NUMERIC) / 60))::DATE::TEXT, 2, '0') || ':' ||
+						LPAD(MOD(DATE_TRUNC('day', (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 * 60)::DATE, 60)::TEXT, 2, '0')
+						ELSE
+						-- 작업 시간이 휴게시간 미만이면 00출력
+						'00' || ':' ||'00'
+						END AS TIMEGAP
+						,CASE
+						WHEN (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+						THEN TRUNC(((MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24) - 1,2)
+						ELSE 0
+						END AS WORK_HOUR_NUM
+				FROM TWORK_INFO_IB_PLCM_DT PLCM
+				INNER JOIN (
+						SELECT
+						ICKEY,
+						MAX(CASE WHEN ICUNITTYPECD = 'INN' THEN ICUNITQTY END) AS INN_UNIT_QTY,
+						MAX(CASE WHEN ICUNITTYPECD = 'CTN' THEN ICUNITQTY END) AS CTN_UNIT_QTY,
+						MAX(CASE WHEN ICUNITTYPECD = 'CTN' AND ICUNITQTY > 0 THEN ICUNITQTY END) AS CPP_UNIT_QTY
+						FROM TWORK_MST_ICUTXTYPE
+						WHERE ICUNITTYPECD IN ('INN', 'CTN')
+						GROUP BY ICKEY
+						) ICUT
+				ON ICUT.ICKEY = PLCM.ICKEY
+				LEFT JOIN TADMIN_MST_UR UR
+						ON PLCM.OWKEY = UR.OWKEY
+						AND PLCM.CTKEY = UR.CTKEY
+						AND PLCM.UPDATEURKEY = UR.URKEY
+		WHERE 1=1
+		AND PLCM.LCKEY LIKE ('H%')       --경량렉
+		GROUP BY
+			 SUBSTR(PLCM.PLCMDATE, 1, 8)
+			, PLCM.UPDATEURKEY
+			, UR.DEPTNM
+			, UR.URNM
+		) TIME
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBDATE DESC
+	</sql>
+
+	<select id="selectIbOrderLightRackWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderLightRackWorkerProdStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderLightRackWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderLightRackWorkerProdStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<sql id="selectIbOrderHvyRackWorkerProdStatusReportSql">
+		SELECT TIME.*
+				,TRUNC(TIME.ASRTSKU / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS SKUKPI
+				,TRUNC(TIME.CNFRMQTY / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS QTYKPI
+				,TRUNC(TIME.INNCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS INNKPI
+				,TRUNC(TIME.BOXCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS BOXKPI
+				,TRUNC(TIME.PLTCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS PLTKPI
+				,TRUNC(TIME.CELLCNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS CELLKPI
+				,TRUNC(TIME.ROWCOUNT / NULLIF(TIME.WORK_HOUR_NUM, 0),2) AS ROWKPI
+		FROM (
+				SELECT
+				SUBSTR(PLCM.PLCMDATE, 1, 8)   AS IBDATE
+				, PLCM.UPDATEURKEY            AS URKEY
+				, UR.DEPTNM
+				, UR.URNM
+				, COUNT(DISTINCT PLCM.ICKEY)  AS ASRTSKU        /* 적치 SKU 수 */
+				, SUM(PLCM.CNFRMQTY)          AS CNFRMQTY
+				/* 적치 중포 수: 수량 / INN기준량 (올림 후 합산) */
+				, SUM(CEIL(PLCM.CNFRMQTY / NULLIF(ICUT.INN_UNIT_QTY, 0))) AS INNCNT
+				/* 적치 BOX 수: 수량 / CTN기준량 (올림 후 합산) */
+				, SUM(CEIL(PLCM.CNFRMQTY / NULLIF(ICUT.CTN_UNIT_QTY, 0))) AS BOXCNT
+				/* 적치 PLT 수: BOX수 / CPP기준량 (올림 후 합산) */
+				, SUM(CEIL( (PLCM.CNFRMQTY / NULLIF(ICUT.CTN_UNIT_QTY, 0)) / NULLIF(ICUT.CPP_UNIT_QTY, 0) )) AS PLTCNT
+				, COUNT(DISTINCT PLCM.LCKEY)  AS CELLCNT        /* 적치 셀 수 */
+				, SUM(CASE WHEN PLCM.PLCMDATE IS NOT NULL THEN 1 ELSE 0 END) AS ROWCOUNT
+				, TO_CHAR(MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS STARTTIME
+				, TO_CHAR(MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS ENDTIME
+				, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+				LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+				,CASE
+				WHEN (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+				THEN
+				-- 1시간 이상 작업했을 때만 1시간(휴게시간)을 뺌
+				LPAD(DATE_TRUNC('day', ((MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24) - (CAST(#{BREAKTIME} AS NUMERIC) / 60))::DATE::TEXT, 2, '0') || ':' ||
+				LPAD(MOD(DATE_TRUNC('day', (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 * 60)::DATE, 60)::TEXT, 2, '0')
+				ELSE
+				-- 작업 시간이 휴게시간 미만이면 00출력
+				'00' || ':' ||'00'
+				END AS TIMEGAP
+				,CASE
+				WHEN (MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+				THEN TRUNC(((MAX(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(PLCM.PLCMDATE, 'YYYYMMDDHH24MISS'))) * 24)
+							- (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60),2)
+				ELSE 0
+				END AS WORK_HOUR_NUM
+		FROM TWORK_INFO_IB_PLCM_DT PLCM
+		INNER JOIN (
+				SELECT
+						ICKEY,
+						MAX(CASE WHEN ICUNITTYPECD = 'INN' THEN ICUNITQTY END) AS INN_UNIT_QTY,
+						MAX(CASE WHEN ICUNITTYPECD = 'CTN' THEN ICUNITQTY END) AS CTN_UNIT_QTY,
+						MAX(CASE WHEN ICUNITTYPECD = 'CTN' AND ICUNITQTY > 0 THEN ICUNITQTY END) AS CPP_UNIT_QTY
+				FROM TWORK_MST_ICUTXTYPE
+				WHERE ICUNITTYPECD IN ('INN', 'CTN')
+				GROUP BY ICKEY
+				) ICUT
+			ON ICUT.ICKEY = PLCM.ICKEY
+		LEFT JOIN TADMIN_MST_UR UR
+			ON PLCM.OWKEY = UR.OWKEY
+			AND PLCM.CTKEY = UR.CTKEY
+			AND PLCM.UPDATEURKEY = UR.URKEY
+		WHERE 1=1
+		AND PLCM.LCKEY LIKE ('H%')       --경량렉
+		GROUP BY
+			SUBSTR(PLCM.PLCMDATE, 1, 8)
+			, PLCM.UPDATEURKEY
+			, UR.DEPTNM
+			, UR.URNM
+			) TIME
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBDATE DESC
+	</sql>
+
+	<select id="selectIbOrderHvyRackWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderHvyRackWorkerProdStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderHvyRackWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderHvyRackWorkerProdStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderRtnWorkerProdStatusReportSql">
+		SELECT
+				RTN.*
+					,TRUNC(RTN.RTNCNT / NULLIF(RTN.WORK_HOUR_NUM, 0),2) AS RTNCNTKPI
+					,TRUNC(RTN.RTNSKU / NULLIF(RTN.WORK_HOUR_NUM, 0),2) AS RTNSKUKPI
+					,TRUNC(RTN.SUMEA / NULLIF(RTN.WORK_HOUR_NUM, 0),2) AS RTNEAKPI
+				FROM (
+					SELECT '0' AS CHK
+					, MAX(SUBSTR(IBDT.IBCNFRMPRCSDATE,1,8)) AS IBDATE -- 날짜
+					, UR.DEPTNM
+					, UR.URKEY
+					, UR.URNM
+					, COUNT( DISTINCT IBHD.IBHDKEY ) AS RTNCNT
+					, COUNT(DISTINCT IBDT.ICKEY ) AS RTNSKU
+					, SUM( IBDT.IBQTY + IBDT.CNFRMQTY + IBDT.DMGQTY +
+					IBDT.FOODDMGQTY + IBDT.DFCQTY + IBDT.DONAQTY +
+					IBDT.NONQTY + IBDT.DSPSQTY + IBDT.RJQTY) AS SUMEA
+					,TO_CHAR(MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS STARTTIME
+					,TO_CHAR(MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS ENDTIME
+					, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+					LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+					,CASE
+					WHEN (MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+					THEN
+					-- 1시간 이상 작업했을 때만 1시간(휴게시간)을 뺌
+					LPAD(DATE_TRUNC('day', ((MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS'))) * 24) - (CAST(#{BREAKTIME} AS NUMERIC) / 60))::DATE::TEXT, 2, '0') || ':' ||
+					LPAD(MOD(DATE_TRUNC('day', (MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS'))) * 24 * 60)::DATE, 60)::TEXT, 2, '0')
+					ELSE
+					-- 작업 시간이 휴게시간 미만이면 00출력
+					'00' || ':' ||'00'
+					END AS TIMEGAP
+					,CASE
+					WHEN (MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS'))) * 24 > 1
+					THEN TRUNC(((MAX(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(IBDT.IBCNFRMPRCSDATE, 'YYYYMMDDHH24MISS'))) * 24)
+							  - (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60),2)
+					ELSE 0
+					END AS WORK_HOUR_NUM
+				FROM TWORK_INFO_IB_DT IBDT
+				INNER JOIN TWORK_INFO_IB_HD IBHD
+					ON IBHD.OWKEY = IBDT.OWKEY
+					AND IBHD.CTKEY = IBDT.CTKEY
+					AND IBHD.IBHDKEY = IBDT.IBHDKEY
+				INNER JOIN TADMIN_MST_UR UR
+					ON UR.OWKEY = IBDT.OWKEY
+					AND UR.CTKEY = IBDT.CTKEY
+					AND UR.URKEY = IBDT.UPDATEURKEY
+				WHERE 1=1
+				AND IBHD.IBHDTYPECD = '50'      --작업유형: 반품
+				AND IBHD.RIPRGRSTATUSCD = '40'  --반품 입고완료
+				GROUP BY SUBSTR(IBDT.IBCNFRMPRCSDATE, 1, 8), UR.DEPTNM, UR.URKEY, UR.URNM
+				) RTN
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBDATE DESC
+	</sql>
+
+	<select id="selectIbOrderRtnWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderRtnWorkerProdStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderRtnWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderRtnWorkerProdStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderSurvayWorkerProdStatusSql">
+		SELECT
+				IVSV.*
+					,TO_CHAR(ROUND(IVSV.RAW_TIME, 2), 'FM99990.00') AS TIMEGAP
+					,COALESCE(ROUND( IVSV.CNT / NULLIF(IVSV.RAW_TIME, 0), 2), 0) AS SVCNTKPI
+					, COALESCE(ROUND(IVSV.EA  / NULLIF(IVSV.RAW_TIME, 0), 2), 0) AS SVSKUKPI
+				FROM (
+						SELECT '0' AS CHK
+						, SUBSTR(TADT.WKSTARTDATE,1,8) AS IBHDDATE -- 날짜
+						, UR.DEPTNM
+						, UR.URKEY
+						, UR.URNM
+						, COUNT( TADT.TADTKEY) AS CNT
+						, SUM (TADT.PISPQTY)  AS EA
+						,TO_CHAR(MIN(TO_DATE(TADT.WKSTARTDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS STARTTIME
+						,TO_CHAR(MAX(TO_DATE(TADT.WKCLOSDATE, 'YYYYMMDDHH24MISS')), 'HH24:MI') AS ENDTIME
+						, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+						LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+						, CASE
+						WHEN ((MAX(TO_DATE(TADT.WKCLOSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(TADT.WKSTARTDATE, 'YYYYMMDDHH24MISS'))) * 24)
+						- (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60) > 0
+						THEN
+						((MAX(TO_DATE(TADT.WKCLOSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(TADT.WKSTARTDATE, 'YYYYMMDDHH24MISS'))) * 24)
+						- (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60)
+						ELSE 0
+						END AS RAW_TIME
+				FROM TWORK_INFO_TA_HD TAHD
+				INNER JOIN TWORK_INFO_TA_DT TADT
+					ON TAHD.OWKEY = TADT.OWKEY
+					AND TAHD.CTKEY = TADT.CTKEY
+					AND TAHD.TAHDKEY = TADT.TAHDKEY
+				INNER JOIN TADMIN_MST_UR UR
+					ON TADT.OWKEY = UR.OWKEY
+					AND TADT.CTKEY = UR.CTKEY
+					AND TADT.INSERTURKEY = UR.URKEY
+				WHERE 1=1
+				AND TAHD.TAWKSTATUSCD =  '40'  --재고조사 완료
+				AND TAHD.TATYPECD  = '30'     --재고조사
+				GROUP BY  SUBSTR(TADT.WKSTARTDATE,1,8), UR.DEPTNM, UR.URKEY, UR.URNM
+				) IVSV
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IBHDDATE DESC
+	</sql>
+
+	<select id="selectIbOrderSurvayWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderSurvayWorkerProdStatusSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderSurvayWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderSurvayWorkerProdStatusSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderMoveWorkerProdStatusSql">
+	SELECT MOVE.*
+		  ,TO_CHAR(ROUND(MOVE.TIMEGAP1, 2), 'FM99990.00') AS TIMEGAP
+		 ,COALESCE(ROUND( MOVE.CNT / NULLIF(MOVE.TIMEGAP1, 0), 2), 0) AS MVCNTKPI
+		, COALESCE(ROUND( MOVE.TOTALQTY / NULLIF(MOVE.TIMEGAP1, 0), 2), 0) AS MVQTYKPI
+		FROM (
+			SELECT
+					'0' AS CHK
+					, SUBSTR(MV.IVMOVECLOSDATE, 1, 8) AS IVMOVEDATE
+					, UR.DEPTNM
+					, UR.URKEY
+					, UR.URNM
+					, COUNT(*) AS CNT
+					, SUM(MV.QTY) AS TOTALQTY
+					, TO_CHAR(TO_DATE(MIN(MV.IVMOVESTARTDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS STARTTIME
+					, TO_CHAR(TO_DATE(MAX(MV.IVMOVECLOSDATE), 'YYYYMMDDHH24MISS'), 'HH24:MI') AS ENDTIME
+					, LPAD(DATE_TRUNC('day', CAST(#{BREAKTIME} AS NUMERIC) / 60)::DATE::TEXT, 2, '0') || ':' ||
+					LPAD(MOD(CAST(#{BREAKTIME} AS NUMERIC), 60)::TEXT, 2, '0')  AS BREAKTIME
+					, NULLIF(
+						CASE
+							WHEN (MAX(TO_DATE(MV.IVMOVECLOSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(MV.IVMOVESTARTDATE, 'YYYYMMDDHH24MISS'))) * 24
+							- (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60) > 0
+							THEN (MAX(TO_DATE(MV.IVMOVECLOSDATE, 'YYYYMMDDHH24MISS')) - MIN(TO_DATE(MV.IVMOVESTARTDATE, 'YYYYMMDDHH24MISS'))) * 24
+							- (TO_NUMBER(COALESCE(#{BREAKTIME}, '0')) / 60)
+							ELSE 0
+						END, 0) AS TIMEGAP1
+			FROM ( /*관리자 이동 포함 */
+				SELECT CTKEY, OWKEY, IVMOVESTARTDATE, IVMOVECLOSDATE, QTY, IVMOVERSNCD, UPDATEURKEY
+					FROM TWORK_INFO_IV_MOVE
+			UNION ALL
+				SELECT CTKEY, OWKEY, IVMOVESTARTDATE, IVMOVECLOSDATE, QTY, IVMOVERSNCD, UPDATEURKEY
+				FROM TWORK_INFO_IV_AD_MOVE
+			) MV
+			INNER JOIN TADMIN_MST_UR UR
+				ON MV.OWKEY = UR.OWKEY
+				AND MV.CTKEY = UR.CTKEY
+				AND MV.UPDATEURKEY = UR.URKEY
+			WHERE MV.IVMOVERSNCD = '30'
+			GROUP BY
+				SUBSTR(MV.IVMOVECLOSDATE, 1, 8)
+				, UR.DEPTNM
+				, UR.URKEY
+				, UR.URNM
+		)MOVE
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY IVMOVEDATE DESC
+	</sql>
+
+	<select id="selectIbOrderMoveWorkerProdStatusCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderMoveWorkerProdStatusSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderMoveWorkerProdStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderMoveWorkerProdStatusSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+</mapper>

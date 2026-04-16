@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.ItemCategoryApiMapper">
+
+	<select id="selectInterfaceItemCategoryCount" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-itemctg-sql-oracle.xml - selectInterfaceItemCategoryCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_CTG_RCV
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND CTGKEY = #{ctgkey}			/* 카테고리코드 */
+		   AND CTGLV = #{ctglv}				/* 상품대중소구분 */
+	</select>
+
+	<insert id="insertInterfaceItemCategory" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO">
+		/* wms-master-itemctg-sql-oracle.xml - insertInterfaceItemCategory */
+		INSERT INTO TWORK_INTF_CTG_RCV (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , CTGKEY			/* 카테고리코드 */
+			 , CTGNM			/* 카테고리명 */
+			 , CTGLV			/* 상품대중소구분 */
+			 , UPRCTGKEY		/* 상위상품분류 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ctgkey}
+			 , #{ctgnm}
+			 , #{ctglv}
+			 , #{uprctgkey}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceItemCategory" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO">
+		/* wms-master-itemctg-sql-oracle.xml - updateInterfaceItemCategory */
+		UPDATE TWORK_INTF_CTG_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, CTGNM = #{ctgnm}					/* 카테고리명 */
+					, UPRCTGKEY = #{uprctgkey}			/* 상위상품분류 */
+					, DELYN = #{delyn}					/* 삭제여부 */
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = null					/* 처리일시 */
+					, RCVDATE = #{sysdate}				/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND CTGKEY = #{ctgkey}			/* 카테고리코드 */
+		   AND CTGLV = #{ctglv}				/* 상품대중소구분 */
+	</update>
+
+	<select id="selectTworkMstCtgCount" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-itemctg-sql-oracle.xml - selectTworkMstCtgCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_CTG
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+		   AND OWKEY = #{owkey}		/* 화주코드 */
+		   AND CTGKEY = #{ctgkey}	/* 카테고리코드 */
+		   AND CTGLV = #{ctglv}		/* 상품대중소구분 */
+	</select>
+
+	<insert id="insertTworkMstCtg" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO">
+		/* wms-master-itemctg-sql-oracle.xml - insertTworkMstCtg */
+		INSERT INTO TWORK_MST_CTG (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주 */
+			 , CTGKEY			/* 상품대/중/소코드 */
+			 , CTGLV			/* 상품대/중/소구분 */
+			 , CTGNM			/* 상품대/중/소명 */
+			 , UPRCTGKEY		/* 상위상품분류 */
+			 , CLOSDATE			/* 종료일시 */
+			 , DELYN			/* 삭제여부 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력사용자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정사용자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ctgkey}
+			 , #{ctglv}
+			 , #{ctgnm}
+			 , #{uprctgkey}
+			 , '29991231235959'
+			 , COALESCE(#{delyn}, 'N')
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstCtg" parameterType="com.daiso.wms.api.in.dto.ItemCategoryRequestDTO">
+		/* wms-master-itemctg-sql-oracle.xml - updateTworkMstCtg */
+		UPDATE TWORK_MST_CTG
+		   SET CTGNM = #{ctgnm}				/* 상품대/중/소명 */
+			 , UPRCTGKEY = #{uprctgkey}		/* 상위상품분류 */
+		     , DELYN = COALESCE(#{delyn}, 'N')	/* 삭제여부 */
+		     , UPDATEDATE = #{sysdate}		/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}		/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주 */
+		   AND CTGKEY = #{ctgkey}			/* 상품대/중/소코드 */
+		   AND CTGLV = #{ctglv}				/* 상품대/중/소구분 */
+	</update>
+
+</mapper>

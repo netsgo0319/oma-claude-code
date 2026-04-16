@@ -1,0 +1,1692 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.CustomerMapper">
+
+	<select id="selectCustomerCountInfo" resultType="java.lang.Integer" >
+		/* adm-master-customer-sql-oracle.xml  selectCustomerCountInfo */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_CUSTOMER A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectCustomerInfo" resultType="camelMap">
+		/* adm-master-customer-sql-oracle.xml  selectCustomerInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.OWKEY
+		     , C.OWNM
+			 , A.ACKEY
+			 , A.ACNM
+			 , A.ACSUMMARYNM
+			 , A.CGRP
+		     , A.ACTYPE2
+		     , A.ACTYPEDT
+			 , A.ZIPCD
+			 , A.ADDR1
+			 , A.ADDR2
+			 , A.CEO
+			 , A.TEL1
+			 , A.SALESPERSONKEY
+			 , UR.URNM AS SALESPERSONNAME
+			 , A.REPACKEY
+			 , B.ACNM AS REP_ACNM
+			 , A.BIZTYPE
+			 , A.BIZCTG
+			 , A.REGNO
+		     , A.ACGRADE
+		     , A.POINT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_MST_CUSTOMER A
+			LEFT OUTER JOIN TADMIN_MST_CUSTOMER B
+						 ON A.OWKEY =  B.OWKEY
+						AND A.REPACKEY =  B.ACKEY
+			LEFT OUTER JOIN TADMIN_MST_UR UR
+						 ON A.SALESPERSONKEY = UR.URKEY
+			LEFT OUTER JOIN TADMIN_MST_OW C
+						 ON A.OWKEY = C.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY A.UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectAccountGroupByUsrList" resultType="camelMap">
+		/* adm-master-customer-sql-oracle.xml  selectAccountGroupByUsrList */
+		SELECT OD.OWCDDTKEY AS ACCOUNTGROUP
+		  FROM TADMIN_MST_OWCD_DT OD
+		 WHERE OD.OWKEY = #{owkey}		     
+		   AND OD.OWCDHDKEY = #{accountgroupcode}
+		   AND OD.DELYN = 'N'
+		   AND OD.OWCDDTVALUE IN
+		                    (
+		                    <foreach collection="usrcodes" item="item" separator="UNION ALL">
+		                        SELECT #{item} AS OWCD_DTVALUE 
+		                    </foreach>
+		                    )
+	</select>
+
+	<update id="updateCustomerList">
+		/* adm-master-customer-sql-oracle.xml  updateCustomerList */
+		UPDATE TADMIN_MST_CUSTOMER A
+		SET (ACNM
+			,ACSUMMARYNM
+			,ACGRP
+			,ACTYPE
+			,ACTYPE2
+		    ,ACTYPEDT
+			,ZIPCD
+			,ADDR1
+			,ADDR2
+			,CEO
+			,TEL1
+			,SALESPERSONKEY
+			,REPACKEY
+			,BIZTYPE
+			,BIZCTG
+			,REGNO
+		    ,VACCOUNT1
+			,VACCOUNT2
+			,VACCOUNT3
+			,VACCOUNT4
+			,ACGRADE
+			,POINT
+			,UPDATEDATE
+			,UPDATEURKEY) = (SELECT B.ACNAME
+									 ,B.CUSTSUMMARYNM
+									 ,B.ACCOUNTGROUP
+									 ,'0'
+									 ,B.CUST_TYPE
+		    						 ,B.CUST_TYPE_DETAIL
+									 ,B.ZIPCODE
+									 ,B.ADDRESS1
+									 ,B.ADDRESS2
+									 ,B.CEO
+									 ,B.TEL1
+									 ,B.SALESPERSONKEY
+									 ,B.REP_ACKEY
+									 ,B.BUSINESSTYPE
+									 ,B.BUSINESSCATEGORY
+									 ,B.REGNO
+									 ,B.VACCOUNT1
+									 ,B.VACCOUNT2
+									 ,B.VACCOUNT3
+									 ,B.VACCOUNT4
+									 ,B.CUST_GRADE
+									 ,B.POINT
+									 ,#{interfaceDate}
+									 ,#{interfaceUrkey}
+			                   FROM TADMIN_INTF_CUSTOMERS B
+			                   WHERE A.ACKEY = B.ACKEY
+			                     AND A.OWKEY = #{owkey}
+			                   	 AND B.INTERFACE_ID = #{interfaceId}
+			                   	 AND B.REQUESTDT = #{requestDt}
+			                   	 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			                   )
+		WHERE EXISTS(
+		    SELECT 1
+		    FROM TADMIN_INTF_CUSTOMERS C
+			WHERE A.ACKEY = C.ACKEY
+			  AND A.OWKEY = #{owkey}
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		)
+	</update>
+
+
+	<insert id="insertCustomerList">
+		/* adm-master-customer-sql-oracle.xml  insertCustomerList */
+		INSERT INTO TADMIN_MST_CUSTOMER
+		(
+		  OWKEY
+		, ACKEY
+		, ACNM
+		, ACSUMMARYNM
+		, ACGRP
+		, ACTYPE
+		, ACTYPE2
+		, ACTYPEDT
+		, ZIPCD
+		, ADDR1
+		, ADDR2
+		, CEO
+		, TEL1
+		, SALESPERSONKEY
+<!--		, SALESPERSONNAME-->
+		, REPACKEY
+<!--		, ACKEY-->
+<!--		, ACNAME-->
+		, BIZTYPE
+		, BIZCTG
+		, REGNO
+<!--		, SEL_ADDRESS1-->
+<!--		, SEL_ADDRESS2-->
+		, VACCOUNT1
+		, VACCOUNT2
+		, VACCOUNT3
+		, VACCOUNT4
+		, ACGRADE
+		, POINT
+<!--		, DISTRIBUTIONCHINE-->
+		, IFYN
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		SELECT #{owkey}
+		     , B.ACKEY
+			 , B.ACNAME
+			 , B.CUSTSUMMARYNM
+			 , B.ACCOUNTGROUP
+			 , '0' 
+			 , B.CUST_TYPE
+		     , B.CUST_TYPE_DETAIL
+			 , B.ZIPCODE
+			 , B.ADDRESS1
+			 , B.ADDRESS2
+			 , B.CEO
+			 , B.TEL1
+			 , B.SALESPERSONKEY
+<!--			 , B.SALESPERSONNAME-->
+			 , B.REP_ACKEY
+<!--			 , B.SALEKEY-->
+<!--			 , B.SALENAME-->
+			 , B.BUSINESSTYPE
+			 , B.BUSINESSCATEGORY
+			 , B.REGNO
+<!--			 , B.SEL_ADDRESS1-->
+<!--			 , B.SEL_ADDRESS2-->
+			 , B.VACCOUNT1
+			 , B.VACCOUNT2
+			 , B.VACCOUNT3
+			 , B.VACCOUNT4
+			 , B.CUST_GRADE
+			 , B.POINT
+<!--			 , B.DISTRIBUTIONCHINE-->
+		     , 'Y'
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS B
+		LEFT OUTER JOIN TADMIN_MST_CUSTOMER A
+		  ON B.ACKEY = A.ACKEY
+		 AND A.OWKEY = #{owkey}
+		WHERE B.INTERFACE_ID = #{interfaceId}		  
+		  AND B.REQUESTDT = #{requestDt}
+		  AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND A.ACKEY IS NULL
+	</insert>
+	
+	<update id="updateAddridList">
+		/* adm-master-customer-sql-oracle.xml  updateAddridList */
+		UPDATE TADMIN_MST_CUSTOMER  C
+		   SET ADDRID = nextval('seq_tadmin_mst_addr_t')
+		 WHERE EXISTS (
+		                SELECT 1
+		                  FROM TADMIN_INTF_CUSTOMERS A
+		                  JOIN TADMIN_MST_CUSTOMER B
+		                    ON A.ACKEY = B.ACKEY
+		                   AND B.OWKEY = #{owkey}
+		                  LEFT JOIN TADMIN_MST_ADDR_T ADDR
+		                    ON B.ADDRID = ADDR.ADDRID
+		                   AND ADDR.DELYN = 'N'
+		                 WHERE A.INTERFACE_ID = #{interfaceId}
+		                   AND A.REQUESTDT = #{requestDt}
+		                   AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		                   AND A.ZIPCODE IS NOT NULL
+		                   AND A.ADDRESS1 IS NOT NULL		
+		                   AND (ADDR.ADDRID IS NULL
+		                        OR
+		                        (ADDR.ADDRID IS NOT NULL 
+		                         AND 
+		                         (TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		                          OR
+		                          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		                          OR
+		                          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+		                        )
+		                       )
+		                   AND B.OWKEY = C.OWKEY
+		                   AND B.ACKEY = C.ACKEY
+		              )  
+	</update>
+	
+	<insert id="insertAddrTList">
+		/* adm-master-customer-sql-oracle.xml  insertAddrTList */
+		INSERT INTO TADMIN_MST_ADDR_T (
+		      ADDRID
+		    , ADDNT
+		    , UNIT
+		    , STNM
+		    , CTYNM
+		    , ZIPCD
+		    , CNTRYCD
+		    , STACD
+		    , SHPGLOCNM
+		    , LAT
+		    , LON
+		    , ADDRSTTCD
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) 
+		SELECT B.ADDRID
+		     , NULL AS ADDNT
+		     , NULL AS UNIT
+		     , B.ADDR2 AS STNM
+		     , B.ADDR1 AS CTYNM
+		     , B.ZIPCD AS ZIPCD
+		     , 'KOR' AS CNTRYCD
+		     , NULL AS STACD
+		     , NULL AS SHPGLOCNM
+		     , 0 AS LAT
+		     , 0 AS LON
+		     , '1' AS ADDRSTTCD
+		     , 'N' AS DELYN
+		     , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		  FROM TADMIN_INTF_CUSTOMERS A
+		  JOIN TADMIN_MST_CUSTOMER B
+		    ON A.ACKEY = B.ACKEY
+		   AND B.OWKEY = #{owkey}
+		  LEFT JOIN TADMIN_MST_ADDR_T ADDR
+		    ON B.ADDRID = ADDR.ADDRID
+		   AND ADDR.DELYN = 'N'
+		 WHERE A.INTERFACE_ID = #{interfaceId}
+		   AND A.REQUESTDT = #{requestDt}
+		   AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		   AND A.ZIPCODE IS NOT NULL
+		   AND A.ADDRESS1 IS NOT NULL
+		   AND (ADDR.ADDRID IS NULL
+		        OR
+		        (ADDR.ADDRID IS NOT NULL 
+		         AND 
+		         (TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+		        )
+		       )
+	</insert>
+	
+	<insert id="insertWmsAddrTList">
+		/* adm-master-customer-sql-oracle.xml  insertWmsAddrTList */
+		INSERT INTO TWORK_MST_ADDR_T (
+		      ADDRID
+		    , ADDNT
+		    , UNIT
+		    , STNM
+		    , CTYNM
+		    , ZIPCD
+		    , CNTRYCD
+		    , STACD
+		    , SHPGLOCNM
+		    , LAT
+		    , LON
+		    , ADDRSTTCD
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) 
+		SELECT B.ADDRID
+		     , NULL AS ADDNT
+		     , NULL AS UNIT
+		     , B.ADDR2 AS STNM
+		     , B.ADDR1 AS CTYNM
+		     , B.ZIPCD AS ZIPCD
+		     , 'KOR' AS CNTRYCD
+		     , NULL AS STACD
+		     , NULL AS SHPGLOCNM
+		     , 0 AS LAT
+		     , 0 AS LON
+		     , '1' AS ADDRSTTCD
+		     , 'N' AS DELYN
+		     , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		  FROM TADMIN_INTF_CUSTOMERS A
+		  JOIN TADMIN_MST_CUSTOMER B
+		    ON A.ACKEY = B.ACKEY
+		   AND B.OWKEY = #{owkey}
+		  LEFT JOIN TWORK_MST_ADDR_T ADDR
+		    ON B.ADDRID = ADDR.ADDRID
+		   AND ADDR.DELYN = 'N'
+		 WHERE A.INTERFACE_ID = #{interfaceId}
+		   AND A.REQUESTDT = #{requestDt}
+		   AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		   AND A.ZIPCODE IS NOT NULL
+		   AND A.ADDRESS1 IS NOT NULL
+		   AND (ADDR.ADDRID IS NULL
+		        OR
+		        (ADDR.ADDRID IS NOT NULL 
+		         AND 
+		         (TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+		        )
+		       )
+	</insert>
+	
+	<insert id="insertTmsAddrTList">
+		/* adm-master-customer-sql-oracle.xml  insertTmsAddrTList */
+		INSERT INTO TT_ADDR_T (
+		      ADDRID
+		    , ADDNT
+		    , UNIT
+		    , STNM
+		    , CTYNM
+		    , ZIPCD
+		    , CNTRYCD
+		    , STACD
+		    , SHPGLOCNM
+		    , LAT
+		    , LON
+		    , ADDRSTTCD
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) 
+		SELECT B.ADDRID
+		     , NULL AS ADDNT
+		     , NULL AS UNIT
+		     , B.ADDR2 AS STNM
+		     , B.ADDR1 AS CTYNM
+		     , B.ZIPCD AS ZIPCD
+		     , 'KOR' AS CNTRYCD
+		     , NULL AS STACD
+		     , NULL AS SHPGLOCNM
+		     , 0 AS LAT
+		     , 0 AS LON
+		     , '1' AS ADDRSTTCD
+		     , 'N' AS DELYN
+		     , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		  FROM TADMIN_INTF_CUSTOMERS A
+		  JOIN TADMIN_MST_CUSTOMER B
+		    ON A.ACKEY = B.ACKEY
+		   AND B.OWKEY = #{owkey}
+		  LEFT JOIN TT_ADDR_T ADDR
+		    ON B.ADDRID = ADDR.ADDRID
+		   AND ADDR.DELYN = 'N'
+		 WHERE A.INTERFACE_ID = #{interfaceId}
+		   AND A.REQUESTDT = #{requestDt}
+		   AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		   AND A.ZIPCODE IS NOT NULL
+		   AND A.ADDRESS1 IS NOT NULL
+		   AND (ADDR.ADDRID IS NULL
+		        OR
+		        (ADDR.ADDRID IS NOT NULL 
+		         AND 
+		         (TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+		        )
+		       )
+	</insert>
+
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-master-customer-sql-oracle.xml  selectTAdminMstCt */
+		SELECT '0' AS CHK
+			 ,CTKEY
+			 ,CTNM
+			 ,(
+			SELECT OWKEY FROM TADMIN_MST_OW WHERE OWKEY = #{owkey}
+		) AS OWKEY
+		FROM TADMIN_MST_CT
+		WHERE DELYN = 'N'
+		ORDER BY CTKEY
+	</select>
+
+	<update id="updateAccountList">
+		/* adm-master-customer-sql-oracle.xml  updateAccountList */
+		UPDATE TADMIN_MST_AC A
+		SET (	 ACNM
+				,ACTYPE
+				,ADDRID
+				,ZIPCD
+				,ADDR1
+				,ADDR2
+				,CEO
+				,TEL1
+				,REPACKEY
+				,REPACTYPE
+				,BIZTYPE
+				,BIZCTG
+				,REGNO
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,ACGRADE
+				,ACTYPE2
+				,ACTYPEDT
+		    	,IFYN
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										, '1'  /*일반거래처*/
+										, M.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+										, B.CEO
+										, B.TEL1
+										, B.REP_ACKEY
+										, '1' AS REP_ACTYPE
+										, B.BUSINESSTYPE
+										, B.BUSINESSCATEGORY
+										, B.REGNO
+				                        , B.VACCOUNT1
+										, B.VACCOUNT2
+										, B.VACCOUNT3
+										, B.VACCOUNT4
+										, B.CUST_GRADE
+										, B.CUST_TYPE
+										, B.CUST_TYPE_DETAIL
+				                        , 'Y'
+										, #{interfaceDate}
+										, #{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+								   JOIN TADMIN_MST_CUSTOMER M
+								     ON B.ACKEY = M.ACKEY
+								    AND M.OWKEY = #{owkey}
+								   WHERE A.ACKEY = B.ACKEY
+									 AND A.OWKEY = #{owkey}
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+			WHERE A.ACKEY = C.ACKEY
+			  AND A.OWKEY = #{owkey}
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		)
+
+	</update>
+
+	<update id="updateStoreList">
+		/* adm-master-customer-sql-oracle.xml  updateStoreList */
+		UPDATE TADMIN_MST_STORE A
+		SET (	 STORENAME
+				,STORETYPE
+				,ADDRID
+				,ZIPCD
+				,ADDR1
+				,ADDR2
+				,TEL1
+				,REPSTOREKEY
+				,REGNO
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,CUSTGRADE
+				,CUSTTYPE
+				,CUSTDTTYPE
+		    	,IFYN
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										, '0' /* 운영중*/
+										, M.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+										, B.TEL1
+										, B.REP_ACKEY
+										, B.REGNO
+										, B.VACCOUNT1
+										, B.VACCOUNT2
+										, B.VACCOUNT3
+										, B.VACCOUNT4
+										, B.CUST_GRADE
+										, B.CUST_TYPE
+										, B.CUST_TYPE_DETAIL
+				                        , 'Y'
+										, #{interfaceDate}
+										, #{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+								   JOIN TADMIN_MST_CUSTOMER M
+								     ON B.ACKEY = M.ACKEY
+								    AND M.OWKEY = #{owkey}
+								   WHERE A.STORE_KEY = B.ACKEY
+									 AND A.OWKEY = M.OWKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+			WHERE A.STOREKEY = C.ACKEY
+			  AND A.OWKEY = #{owkey}
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		)
+	</update>
+
+	<insert id="insertAccountList">
+		/* adm-master-customer-sql-oracle.xml  insertAccountList */
+		INSERT INTO TADMIN_MST_AC(
+		     OWKEY
+			,ACKEY
+			,ACNM
+			,ACTYPE
+			,ADDRID
+		    ,ZIPCD
+		    ,ADDR1
+		    ,ADDR2
+		    ,CEO
+		    ,TEL1
+		    ,REPACKEY
+		    ,REPACTYPE
+		    ,BIZTYPE
+		    ,BIZCTG
+			,REGNO
+			,ASNUSEYN
+			,CLOSDATE
+			,VACCOUNT1
+			,VACCOUNT2
+			,VACCOUNT3
+			,VACCOUNT4
+			,ACGRADE
+			,ACTYPE2
+ 			,ACTYPEDT
+			,IFYN
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		SELECT M.OWKEY
+			 , A.ACKEY
+			 , A.ACNAME
+			 , '1'
+			 , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+			 , A.CEO
+			 , A.TEL1
+			 , A.REP_ACKEY
+			 , '1' AS REP_ACTYPE
+			 , A.BUSINESSTYPE
+			 , A.BUSINESSCATEGORY
+			 , A.REGNO
+		     , 'N'
+		     , #{closdate}
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+			 , A.CUST_GRADE
+			 , A.CUST_TYPE
+ 			 , A.CUST_TYPE_DETAIL
+		     , 'Y'
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+		JOIN TADMIN_MST_CUSTOMER M
+	      ON A.ACKEY = M.ACKEY
+	     AND M.OWKEY = #{owkey}
+		LEFT OUTER JOIN TADMIN_MST_AC B
+		  ON A.ACKEY = B.ACKEY
+		 AND M.OWKEY = B.OWKEY
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.ACKEY IS NULL
+
+	</insert>
+	
+	<insert id="insertStoreList">
+		/* adm-master-customer-sql-oracle.xml  insertStoreList */
+		INSERT INTO TADMIN_MST_STORE
+		( 	 OWKEY
+			,STOREKEY
+			,STROENM
+			,STORETYPE
+			,FCTYPE
+			,ADDRID
+			,ZIPCD
+			,ADDR1
+			,ADDR2
+			,TEL1
+			,REGNO
+			,CLOSDATE
+			,VACCOUNT1
+			,VACCOUNT2
+			,VACCOUNT3
+			,VACCOUNT4
+			,CUSTGRADE
+			,CUSTTYPE
+ 			,CUSTDTTYPE
+			,IFYN
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		SELECT M.OWKEY
+			 , A.ACKEY
+		     , A.ACNAME
+		     , '0'
+		     , '0'
+		     , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+		     , A.TEL1
+		     , A.REGNO
+		     , #{closdate}
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+			 , A.CUST_GRADE
+			 , A.CUST_TYPE
+			 , A.CUST_TYPE_DETAIL
+		     , 'Y'
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+		JOIN TADMIN_MST_CUSTOMER M
+	      ON A.ACKEY = M.ACKEY
+	     AND M.OWKEY = #{owkey}
+		LEFT OUTER JOIN TADMIN_MST_STORE B
+		  ON A.ACKEY = B.STOREKEY
+		 AND M.OWKEY = B.OWKEY
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.STOREKEY IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstAcxct">
+		/* adm-master-customer-sql-oracle.xml  insertTAdminMstAcxct */
+		INSERT INTO TADMIN_MST_ACXCT
+		(
+			 UPDATEURKEY
+			,UPDATEDATE
+			,INSERTURKEY
+			,INSERTDATE
+			,CTKEY
+			,ACKEY
+			,STOREORDTYPE
+			,ACICGRTYPE
+			,ICGRPKEY
+			,RNDKEY
+			,OWKEY
+			,DELYN
+		)
+		SELECT #{interfaceUrkey} AS UPDATEURKEY
+			  , #{interfaceDate} AS UPDATEDATE
+			  , #{interfaceUrkey} AS INSERTURKEY
+			  , #{interfaceDate} AS INSERTDATE
+			  , CT.CTKEY
+			  , I.ACKEY
+		      , '0' AS STOREORDTYPE
+		      , '0' AS ACICGRTYPE
+			  , '02' AS ICGRPKEY
+			  , '0' AS RNDKEY
+			  , #{owkey} AS OWKEY
+		      , 'N' AS DELYN
+		FROM TADMIN_INTF_CUSTOMERS I
+		JOIN TADMIN_MST_CT CT
+		  ON CT.DELYN = 'N'
+		 AND CT.MANAGEMENTYN = 'Y'
+		LEFT OUTER JOIN TADMIN_MST_ACXCT A
+	      ON I.ACKEY = A.ACKEY
+	     AND CT.CTKEY = A.CTKEY
+	     AND A.OWKEY = #{owkey}
+	   WHERE I.INTERFACE_ID = #{interfaceId}
+	     AND I.REQUESTDT = #{requestDt}
+	     AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+	     AND A.ACKEY IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstStorexct">
+		/* adm-master-customer-sql-oracle.xml - insertTAdminMstStorexct */
+		INSERT INTO TADMIN_MST_STOREXCT
+		(
+		  UPDATEURKEY
+		,UPDATEDATE
+		,INSERTURKEY
+		,INSERTDATE
+		,CTKEY
+		,STOREKEY
+		,RNDKEY
+		,ICGRPKEY
+		,OWKEY
+		)
+		SELECT #{interfaceUrkey} AS UPDATEURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS INSERTDATE
+			 , CT.CTKEY
+			 , I.ACKEY AS STOREKEY
+			 , '0' AS RNDKEY
+			 , '02' AS ICGRPKEY
+			 , #{owkey} AS OWKEY
+		  FROM TADMIN_INTF_CUSTOMERS I
+          JOIN TADMIN_MST_CT CT
+            ON CT.DELYN = 'N'
+           AND CT.MANAGEMENTYN = 'Y'
+          LEFT OUTER JOIN TADMIN_MST_STOREXCT A
+            ON I.ACKEY = A.STOREKEY
+           AND CT.CTKEY = A.CTKEY
+           AND A.OWKEY = #{owkey}
+         WHERE I.INTERFACE_ID = #{interfaceId}
+           AND I.REQUESTDT = #{requestDt}
+           AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+           AND A.STOREKEY IS NULL
+	</insert>
+
+	<update id="updateTmsStoreList">
+		/* adm-master-customer-sql-oracle.xml  updateTmsStoreList */
+		UPDATE TT_MST_STORE A
+		SET (	 STORE_NAME
+				,STORE_TYPE
+				,ADDRID
+				,ZIPCODE
+				,ADDRESS1
+				,ADDRESS2
+				,TEL1
+				,REGNO
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										,'0'
+										,M.ADDRID
+										,B.ZIPCODE
+										,B.ADDRESS1
+										,B.ADDRESS2
+										,B.TEL1
+										,B.REGNO
+										,B.VACCOUNT1
+										,B.VACCOUNT2
+										,B.VACCOUNT3
+										,B.VACCOUNT4
+										,#{interfaceDate}
+										,#{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+								   JOIN TADMIN_MST_CUSTOMER M
+								     ON B.ACKEY = M.ACKEY
+								    AND M.OWKEY = #{owkey}
+								   WHERE A.STORE_KEY = B.ACKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+			WHERE A.STORE_KEY = C.ACKEY
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		)
+	</update>
+
+	<insert id="insertTmsStoreList">
+		/* adm-master-customer-sql-oracle.xml  insertTmsStoreList */
+		INSERT INTO TT_MST_STORE
+		(
+		 	 STORE_KEY
+			,STORE_NAME
+			,STORE_TYPE
+			,FCTYPE
+			,ADDRID
+			,ZIPCODE
+			,ADDRESS1
+			,ADDRESS2
+			,TEL1
+			,REGNO
+			,VACCOUNT1
+			,VACCOUNT2
+			,VACCOUNT3
+			,VACCOUNT4
+			,CLOSDATE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		SELECT A.ACKEY
+			 , A.ACNAME
+			 , '0'
+			 , '0'
+			 , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+			 , A.TEL1
+			 , A.REGNO
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+		     , #{closdate}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+		JOIN TADMIN_MST_CUSTOMER M
+	      ON A.ACKEY = M.ACKEY
+	     AND M.OWKEY = #{owkey}
+		LEFT OUTER JOIN TT_MST_STORE B
+		  ON A.ACKEY = B.STORE_KEY
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.STORE_KEY IS NULL
+	</insert>
+
+	<update id="updateTmsMstStorexct">
+		/* adm-master-customer-sql-oracle.xml  updateTmsMstStorexct */
+		UPDATE TT_MST_STOREXCT M
+		   SET (
+				  UPDATEURKEY
+				, UPDATEDATE
+				, GRADE
+				, POINT
+				)
+			 = (
+			 	SELECT #{interfaceUrkey} AS UPDATEURKEY
+					 , #{interfaceDate} AS UPDATEDATE
+					 , AD.ADCDDTKEY AS CUST_GRADE
+					 , I.POINT
+				  FROM TADMIN_INTF_CUSTOMERS I
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'
+				  LEFT JOIN (
+				 			SELECT ADCDDTNM
+				 			     , MIN(ADCDDTKEY) AS ADCDDTKEY
+				 			  FROM TADMIN_MST_ADCD_DT
+							 WHERE LAKEY = 'KOR'
+							   AND ADCDHDKEY = 'STORE_GRADE'
+							   AND DELYN = 'N'
+							 GROUP BY ADCDDTNM
+				 			) AD
+				   ON I.CUST_GRADE = AD.ADCDDTNM
+				WHERE I.INTERFACE_ID = #{interfaceId}
+				  AND I.REQUESTDT = #{requestDt}
+				  AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+				  AND I.ACKEY = M.STORE_KEY
+				  AND CT.CTKEY = M.CTKEY
+			   )
+		 WHERE EXISTS (
+		 				SELECT 1
+		 				  FROM TADMIN_INTF_CUSTOMERS I
+						  JOIN TADMIN_MST_CT CT
+						    ON CT.DELYN = 'N'
+						   AND CT.MANAGEMENTYN = 'Y'
+						WHERE I.INTERFACE_ID = #{interfaceId}
+						  AND I.REQUESTDT = #{requestDt}
+						  AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+						  AND I.ACKEY = M.STORE_KEY
+						  AND CT.CTKEY = M.CTKEY
+		 			  )			   
+	</update>
+	
+	<insert id="insertTmsMstStorexct">
+		/* adm-master-customer-sql-oracle.xml - insertTMsMstStorexct */
+		INSERT INTO TT_MST_STOREXCT
+		(
+		  UPDATEURKEY
+		,UPDATEDATE
+		,INSERTURKEY
+		,INSERTDATE
+		,CLOSDATE
+		,CTKEY
+		,STORE_KEY
+		,DCKEY
+		,ICGRKEY
+		,GRADE
+		,POINT
+		)
+		SELECT #{interfaceUrkey} AS UPDATEURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS INSERTDATE
+			 , #{closdate}
+			 , CT.CTKEY
+			 , I.ACKEY AS STORE_KEY
+			 , '0' AS DCKEY
+			 , '02' AS ICGRKEY
+			 , AD.ADCDDTKEY AS GRADE
+			 , I.POINT
+		FROM TADMIN_INTF_CUSTOMERS I
+		 JOIN TADMIN_MST_CT CT
+		   ON CT.DELYN = 'N'
+		  AND CT.MANAGEMENTYN = 'Y'
+		 LEFT OUTER JOIN TT_MST_STOREXCT A
+		  ON I.ACKEY = A.STORE_KEY
+		 AND CT.CTKEY = A.CTKEY
+		 LEFT JOIN (
+		 			SELECT ADCDDTNM
+		 			     , MIN(ADCDDTKEY) AS ADCDDTKEY
+		 			  FROM TADMIN_MST_ADCD_DT
+					 WHERE LAKEY = 'KOR'
+					   AND ADCDHDKEY = 'STORE_GRADE'
+					   AND DELYN = 'N'
+					 GROUP BY ADCDDTNM
+		 			) AD
+		   ON I.CUST_GRADE = AD.ADCDDTNM
+		WHERE I.INTERFACE_ID = #{interfaceId}
+		  AND I.REQUESTDT = #{requestDt}
+		  AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND A.STORE_KEY IS NULL
+
+	</insert>
+
+	<update id="updateEAddridList">
+		/* adm-master-customer-sql-oracle.xml  updateEAddridList */
+		UPDATE TADMIN_MST_CUSTOMER C
+        SET ADDRID =
+                (
+                    SELECT T.ADDRID
+                    FROM (
+                         SELECT A.ACKEY, MAX(ADDR.ADDRID) AS ADDRID
+                         FROM TADMIN_INTF_CUSTOMERS A
+                         JOIN (
+                                SELECT DISTINCT ON (ZIPCD, CTYNM, STNM)
+                                       ADDRID
+                                     , ZIPCD
+                                     , CTYNM
+                                     , STNM
+                                  FROM TADMIN_MST_ADDR_T
+                                 WHERE DELYN = 'N'
+                                   AND ZIPCD IS NOT NULL
+                                 ORDER BY ZIPCD, CTYNM, STNM, ADDRID DESC
+                              ) ADDR
+                            ON A.ZIPCODE  = ADDR.ZIPCD
+                           AND A.ADDRESS1 = ADDR.CTYNM
+                           AND A.ADDRESS2 = ADDR.STNM
+                         WHERE A.INTERFACE_ID = #{interfaceId}
+                           AND A.REQUESTDT = #{requestDt}
+                           AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+                           AND A.ZIPCODE IS NOT NULL
+                           AND A.ADDRESS1 IS NOT NULL
+                         GROUP BY A.ACKEY
+                         ) T
+                    WHERE T.ACKEY = C.ACKEY
+                      AND C.OWKEY = #{owkey}
+                )
+        WHERE EXISTS (
+            SELECT 1
+            FROM TADMIN_INTF_CUSTOMERS A
+            JOIN (
+                    SELECT DISTINCT ON (ZIPCD, CTYNM, STNM)
+                           ADDRID
+                         , ZIPCD
+                         , CTYNM
+                         , STNM
+                      FROM TADMIN_MST_ADDR_T
+                     WHERE DELYN = 'N'
+                       AND ZIPCD IS NOT NULL
+                     ORDER BY ZIPCD, CTYNM, STNM, ADDRID DESC
+                  ) ADDR
+                ON A.ZIPCODE  = ADDR.ZIPCD
+               AND A.ADDRESS1 = ADDR.CTYNM
+               AND A.ADDRESS2 = ADDR.STNM
+            WHERE A.INTERFACE_ID = #{interfaceId}
+              AND A.REQUESTDT = #{requestDt}
+              AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+              AND A.ZIPCODE IS NOT NULL
+              AND A.ADDRESS1 IS NOT NULL
+              AND A.ACKEY = C.ACKEY )
+          AND C.OWKEY = #{owkey}
+	</update>
+
+	<update id="updateTmsShpgLocT">
+		/* adm-master-customer-sql-oracle.xml  updateTmsShpgLocT */
+		UPDATE TT_SHPG_LOC_T TMS
+		   SET ( TMS.SHPGLOCNM
+			   , TMS.SHPGLOCTYPCD
+			   , TMS.ADDRID
+			   , TMS.TELNO1
+			   , TMS.STTCD
+		       , TMS.UPDATEDATE
+		       , TMS.UPDATEURKEY ) = ( SELECT A.ACNAME
+											, '1'
+											, M.ADDRID
+											, A.TEL1
+											, 'Y'
+											,#{interfaceDate}
+											,#{interfaceUrkey}
+										FROM TADMIN_INTF_CUSTOMERS A
+											 JOIN TADMIN_MST_CUSTOMER M
+											   ON A.ACKEY = M.ACKEY
+											  AND M.OWKEY = #{owkey}
+									   WHERE TMS.SHPGLOCCD = A.ACKEY
+										 AND A.INTERFACE_ID = #{interfaceId}
+										 AND A.REQUESTDT = #{requestDt}
+										 AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+										 )
+		WHERE EXISTS(
+			SELECT 1
+			  FROM TADMIN_INTF_CUSTOMERS C
+			 WHERE TMS.SHPGLOCCD = C.ACKEY
+			   AND C.INTERFACE_ID = #{interfaceId}
+			   AND C.REQUESTDT = #{requestDt}
+			   AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+				 )
+	</update>
+
+	<insert id="insertTmsShpgLocT">
+		/* adm-master-customer-sql-oracle.xml  insertTmsShpgLocT */
+		INSERT INTO TT_SHPG_LOC_T(
+			  SHPGLOCID
+			, SHPGLOCCD
+			, SHPGLOCNM
+			, SHPGLOCTYPCD
+			, ADDRID
+			, APPTNEEDYN
+			, TELNO1
+			, STTCD
+			, DELYN
+			, INSERTDATE
+			, UPDATEDATE
+			, INSERTURKEY
+			, UPDATEURKEY
+		)
+		SELECT nextval('seq_tt_shpg_loc_t') AS SHPGLOCID ,
+				ACKEY,
+				ACNAME,
+					'1',
+				   ADDRID,
+				   'N',
+				   TEL1,
+				   'Y',
+				   'N',
+				   INSERTDATE,
+				   UPDATEDATE,
+				   INSERTURKEY,
+				   UPDATEURKEY
+		FROM (
+		SELECT A.ACKEY,
+		       CASE WHEN B.SHPGLOCCD IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN ,
+			   A.ACNAME,
+			   M.ADDRID,
+			   A.TEL1,
+			   A.INSERTDATE,
+			   A.UPDATEDATE,
+			   A.INSERTURKEY,
+			   A.UPDATEURKEY
+		FROM TADMIN_INTF_CUSTOMERS A
+			 JOIN TADMIN_MST_CUSTOMER M
+			   ON A.ACKEY = M.ACKEY
+			  AND M.OWKEY = #{owkey}
+			 LEFT JOIN TT_SHPG_LOC_T B
+			  	 	ON A.ACKEY = B.SHPGLOCCD
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/ 
+		  ) T
+		WHERE T.SAVEYN = 'Y'
+	</insert>
+
+	<update id="updateTmsAccountList">
+		/* adm-master-customer-sql-oracle.xml  updateTmsAccountList */
+		UPDATE TT_MST_AC A
+		SET (	 ACNAME
+				,ACTYPE
+				,REGNO
+		    	,BUSINESSTYPE
+		    	,BUSINESSCATEGORY
+		    	,ADDRID
+				,ZIPCODE
+				,ADDRESS1
+				,ADDRESS2
+		   	    ,CEO
+		    	,REP_ACKEY
+		    	,REP_ACTYPE
+				,TEL1
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										, '1'
+				                        , B.REGNO
+				                        , B.BUSINESSTYPE
+				                        , B.BUSINESSCATEGORY
+										, M.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+				                        , B.CEO
+				                        , B.REP_ACKEY
+				                        , M.REPACTYPE
+										, B.TEL1
+										, B.VACCOUNT1
+										, B.VACCOUNT2
+										, B.VACCOUNT3
+										, B.VACCOUNT4
+										, #{interfaceDate}
+										, #{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+										JOIN TADMIN_MST_AC M
+										  ON B.ACKEY = M.ACKEY
+										 AND M.OWKEY = #{owkey}
+								   WHERE A.ACKEY = B.ACKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+			WHERE A.ACKEY = C.ACKEY
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		)
+	</update>
+
+	<insert id="insertTmsAccountList">
+		/* adm-master-customer-sql-oracle.xml  insertTmsAccountList */
+		INSERT INTO TT_MST_AC (
+		    OWKEY
+		  , ACKEY
+		  , ACNAME
+		  , ACTYPE
+		  , ADDRID
+		  , ZIPCODE
+		  , ADDRESS1
+		  , ADDRESS2
+		  , TEL1
+		  , REGNO
+		  , CEO
+		  , COUNTRYCODE
+		  , REP_ACKEY
+		  , REP_ACTYPE
+		  , VACCOUNT1
+		  , VACCOUNT2
+		  , VACCOUNT3
+		  , VACCOUNT4
+		  , CLOSDATE
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)
+		SELECT #{owkey}
+		     , A.ACKEY
+			 , A.ACNAME
+			 , '1'
+			 , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+			 , A.TEL1
+			 , A.REGNO
+		     , A.CEO
+		     , 'KOR'
+		     , A.REP_ACKEY
+		     , M.REPACTYPE
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+		     , #{closdate}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+			 JOIN TADMIN_MST_AC M
+			   ON A.ACKEY = M.ACKEY
+			  AND M.OWKEY = #{owkey}
+			 LEFT OUTER JOIN TT_MST_AC B
+				  		  ON A.ACKEY = B.ACKEY
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.ACKEY IS NULL
+	</insert>
+
+	<update id="updateWmsAccountList">
+		/* adm-master-customer-sql-oracle.xml  updateWmsAccountList */
+		UPDATE TWORK_MST_AC A
+		SET (	 ACNAME
+				,ACTYPE
+				,REGNO
+				,BUSINESSTYPE
+				,BUSINESSCATEGORY
+				,ADDRID
+				,ZIPCODE
+				,ADDRESS1
+				,ADDRESS2
+				,CEO
+				,REP_ACKEY
+				,REP_ACTYPE
+				,TEL1
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,CUST_GRADE
+				,CUST_TYPE
+ 				,CUST_TYPE_DETAIL 
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										, '1'
+										, B.REGNO
+										, B.BUSINESSTYPE
+										, B.BUSINESSCATEGORY
+										, M.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+										, B.CEO
+										, B.REP_ACKEY
+										, M.REPACTYPE
+										, B.TEL1
+										, B.VACCOUNT1
+										, B.VACCOUNT2
+										, B.VACCOUNT3
+										, B.VACCOUNT4
+										, B.CUST_GRADE
+										, B.CUST_TYPE
+ 										, B.CUST_TYPE_DETAIL 
+										, #{interfaceDate}
+										, #{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+										INNER JOIN TADMIN_MST_AC M
+											 	ON B.ACKEY = M.ACKEY
+											   AND M.OWKEY = #{owkey}
+										INNER JOIN TADMIN_MST_CT CT
+												ON CT.MANAGEMENTYN = 'Y'
+											   AND CT.DELYN = 'N'
+								   WHERE A.ACKEY = B.ACKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+								     AND A.CTKEY = CT.CTKEY
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+				INNER JOIN TADMIN_MST_CT CT
+						ON CT.MANAGEMENTYN = 'Y'
+					   AND CT.DELYN = 'N'
+			WHERE A.ACKEY = C.ACKEY
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			  AND A.CTKEY = CT.CTKEY
+		)
+	</update>
+
+	<insert id="insertWmsAccountList">
+		/* adm-master-customer-sql-oracle.xml  insertWmsAccountList */
+		INSERT INTO TWORK_MST_AC (
+								CTKEY
+							  , OWKEY
+		                      , ACKEY
+							  , ACNAME
+							  , ACTYPE
+							  , ADDRID
+							  , ZIPCODE
+							  , ADDRESS1
+							  , ADDRESS2
+							  , TEL1
+							  , REGNO
+							  , CEO
+							  , REP_ACKEY
+							  , REP_ACTYPE
+							  , VACCOUNT1
+							  , VACCOUNT2
+							  , VACCOUNT3
+							  , VACCOUNT4
+							  , CUST_GRADE
+							  , CUST_TYPE
+ 							  , CUST_TYPE_DETAIL 
+							  , CLOSDATE
+							  , INSERTDATE
+							  , INSERTURKEY
+							  , UPDATEDATE
+							  , UPDATEURKEY
+		)
+		SELECT CT.CTKEY
+		     , #{owkey}
+			 , A.ACKEY
+			 , A.ACNAME
+			 , '1'
+			 , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+			 , A.TEL1
+			 , A.REGNO
+			 , A.CEO
+			 , A.REP_ACKEY
+			 , M.REP_ACTYPE
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+			 , A.CUST_GRADE
+			 , A.CUST_TYPE
+ 			 , A.CUST_TYPE_DETAIL 
+		     , #{closdate}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+			 INNER JOIN TADMIN_MST_AC M
+					 ON A.ACKEY = M.ACKEY
+					AND M.OWKEY = #{owkey}
+			 LEFT OUTER JOIN TWORK_MST_AC B
+						  ON A.ACKEY = B.ACKEY
+			 LEFT OUTER JOIN TADMIN_MST_CT CT
+						  ON CT.MANAGEMENTYN = 'Y'
+						 AND CT.DELYN = 'N'
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.ACKEY IS NULL
+	</insert>
+
+	<update id="updateWmsStoreList">
+		/* adm-master-customer-sql-oracle.xml updateWmsStoreList */
+		UPDATE TWORK_MST_STORE A
+		SET (	 STORE_NAME
+				,STORE_TYPE
+				,ADDRID
+				,ZIPCODE
+				,ADDRESS1
+				,ADDRESS2
+				,TEL1
+				,REGNO
+				,VACCOUNT1
+				,VACCOUNT2
+				,VACCOUNT3
+				,VACCOUNT4
+				,CUST_GRADE
+				,CUST_TYPE
+ 				,CUST_TYPE_DETAIL 
+				,UPDATEDATE
+				,UPDATEURKEY) = (SELECT B.ACNAME
+										, '0'
+										, M.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+										, B.TEL1
+										, B.REGNO
+										, B.VACCOUNT1
+										, B.VACCOUNT2
+										, B.VACCOUNT3
+										, B.VACCOUNT4
+										, B.CUST_GRADE
+										, B.CUST_TYPE
+ 										, B.CUST_TYPE_DETAIL 
+										,#{interfaceDate}
+										,#{interfaceUrkey}
+								   FROM TADMIN_INTF_CUSTOMERS B
+										INNER JOIN TADMIN_MST_CUSTOMER M
+											    ON B.ACKEY = M.ACKEY
+											   AND M.OWKEY = #{owkey}
+										INNER JOIN TADMIN_MST_CT CT
+											    ON CT.MANAGEMENTYN = 'Y'
+								   			   AND CT.DELYN = 'N'
+								   WHERE A.STORE_KEY = B.ACKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+									 AND B.EMPSAVEYN = 'N' /*직원저장대상여부*/
+									 AND A.CTKEY = CT.CTKEY
+			)
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CUSTOMERS C
+				 INNER JOIN TADMIN_MST_CT CT
+					     ON CT.MANAGEMENTYN = 'Y'
+					    AND CT.DELYN = 'N'
+			WHERE A.STORE_KEY = C.ACKEY
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+			  AND C.EMPSAVEYN = 'N' /*직원저장대상여부*/
+			  AND A.CTKEY = CT.CTKEY
+		)
+	</update>
+
+	<insert id="insertWmsStoreList">
+		/* adm-master-customer-sql-oracle.xml  insertWmsStoreList */
+		INSERT INTO TWORK_MST_STORE
+		(
+		  CTKEY
+		, OWKEY
+		, STORE_KEY
+		, STORE_NAME
+		, STORE_TYPE
+		, FCTYPE
+		, ADDRID
+		, ZIPCODE
+		, ADDRESS1
+		, ADDRESS2
+		, TEL1
+		, REGNO
+		, VACCOUNT1
+		, VACCOUNT2
+		, VACCOUNT3
+		, VACCOUNT4
+		, CUST_GRADE
+		, CUST_TYPE
+ 		, CUST_TYPE_DETAIL 
+		, CLOSDATE
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		SELECT CT.CTKEY
+		     , #{owkey}
+		     , A.ACKEY
+			 , A.ACNAME
+			 , M.ACTYPE
+			 , '0'
+			 , M.ADDRID
+			 , A.ZIPCODE
+			 , A.ADDRESS1
+			 , A.ADDRESS2
+			 , A.TEL1
+			 , A.REGNO
+			 , A.VACCOUNT1
+			 , A.VACCOUNT2
+			 , A.VACCOUNT3
+			 , A.VACCOUNT4
+			 , A.CUST_GRADE
+			 , A.CUST_TYPE
+ 			 , A.CUST_TYPE_DETAIL 
+		     , #{closdate}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CUSTOMERS A
+			 INNER JOIN TADMIN_MST_CUSTOMER M
+				     ON A.ACKEY = M.ACKEY
+					AND M.OWKEY = #{owkey}
+			 LEFT OUTER JOIN TWORK_MST_STORE B
+					  	  ON A.ACKEY = B.STORE_KEY
+			 LEFT OUTER JOIN TADMIN_MST_CT CT
+						  ON CT.MANAGEMENTYN = 'Y'
+						 AND CT.DELYN = 'N'
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND B.STORE_KEY IS NULL
+	</insert>
+
+	<insert id="insertTmsMstAcxct">
+		/* adm-master-customer-sql-oracle.xml  insertTmsMstAcxct */
+		INSERT INTO TT_MST_ACXCT
+		(
+		  UPDATEURKEY
+		, UPDATEDATE
+		, INSERTURKEY
+		, INSERTDATE
+		, CTKEY
+		, ACKEY
+		, STOREORDTYPE
+		, ACICGRTYPE
+		, ICGRKEY
+		, DCKEY
+		, OWKEY
+		, DELYN
+		)
+		SELECT #{interfaceUrkey} AS UPDATEURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS INSERTDATE
+			 , CT.CTKEY
+			 , I.ACKEY
+			 , '0' AS STOREORDTYPE
+			 , '0' AS ACICGRTYPE
+			 , '02' AS ICGRKEY
+			 , '0' AS DCKEY
+			 , #{owkey} AS OWKEY
+			 , 'N' AS DELYN
+		FROM TADMIN_INTF_CUSTOMERS I
+			 JOIN TADMIN_MST_CT CT
+			   ON CT.DELYN = 'N'
+			  AND CT.MANAGEMENTYN = 'Y'
+			 LEFT OUTER JOIN TT_MST_ACXCT A
+						  ON I.ACKEY = A.ACKEY
+						 AND CT.CTKEY = A.CTKEY
+						 AND A.OWKEY = #{owkey}
+		WHERE I.INTERFACE_ID = #{interfaceId}
+		  AND I.REQUESTDT = #{requestDt}
+		  AND I.EMPSAVEYN = 'N' /*직원저장대상여부*/
+		  AND A.ACKEY IS NULL
+	</insert>
+	
+	<select id="selectAccountGroupUsrList" resultType="camelMap">
+		/* adm-master-customer-sql-oracle.xml  selectAccountGroupUsrList */
+		SELECT CASE WHEN UR.URKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVE_YN
+		     , I.ACKEY AS URKEY
+		     , I.ACNAME AS URNAME
+		     , I.ACKEY AS URPW
+		     , OD.OWCDDTVALUE AS URTYP
+		     , I.TEL1 AS CP
+		     , I.POINT
+		  FROM TADMIN_INTF_CUSTOMERS I
+		  JOIN TADMIN_MST_OWCD_DT OD
+		    ON OD.OWKEY = #{owkey}
+		   AND I.ACCOUNTGROUP = OD.OWCDDTKEY
+		   AND OD.OWCDHDKEY = #{accountgroupcode}
+		   AND OD.DELYN = 'N'
+		  LEFT JOIN TADMIN_MST_UR UR
+		    ON I.ACKEY = UR.URKEY
+		 WHERE I.INTERFACE_ID = #{interfaceId}
+		   AND I.REQUESTDT = #{requestDt}
+		   AND I.EMPSAVEYN = 'Y' /*직원저장대상여부*/
+	</select>
+	
+	<update id="updateUsrInfo">
+		/* adm-master-customer-sql-oracle.xml  updateUsrInfo */
+		UPDATE TADMIN_MST_UR
+		   SET URNM = #{urname}
+		     , URTYP = #{urtyp}
+		     , CP = #{cp}
+		     , DEPTCD = #{point}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		     , UPDATEDATE = #{interfaceDate}
+		 WHERE URKEY = #{urkey}
+	</update>
+
+	<insert id="insertUsrInfo">
+		/* adm-master-customer-sql-oracle.xml  insertUsrInfo */
+		INSERT INTO TADMIN_MST_UR
+		(
+		       URKEY
+		     , URNM
+		     , URPW
+		     , EXP
+		     , LAKEY
+		     , TZKEY
+		     , URTYP
+		     , CP
+		     , DEPTCD
+			 , CLOSDATE
+		     , INSERTDATE
+			 , INSERTURKEY
+   		  	 , UPDATEDATE
+			 , UPDATEURKEY
+		) VALUES (
+			   #{urkey}
+		     , #{urname}
+		     , #{urpw}
+		     , SUBSTR(#{closdate}, 1, 12)
+		     , 'KOR'
+		     , 'UTC+0900'		    
+		     , #{urtyp}
+		     , #{cp}
+		     , #{point}
+		     , #{closdate}
+		     , #{interfaceDate}	     
+		     , #{interfaceUrkey}
+		     , #{interfaceDate}	     
+		     , #{interfaceUrkey}
+		)		
+	</insert>
+</mapper>

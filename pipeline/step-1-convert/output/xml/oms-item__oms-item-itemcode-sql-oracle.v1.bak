@@ -1,0 +1,3038 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.item.mapper.ItemCodeMapper">
+
+<!-- 
+06.27 : CHG_1 > MST_IC.ASRTREPKEY 삭제 및 변경 
+-->
+
+	<select id="selectItemCodeCount" resultType="java.lang.Integer" >
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeCount */
+		SELECT COUNT(1)
+	    FROM TORDER_MST_IC A
+		LEFT OUTER JOIN TORDER_MST_OW B
+					 ON A.OWKEY = B.OWKEY
+		LEFT OUTER JOIN TORDER_MST_ICGR C
+					 ON A.OWKEY   = C.OWKEY
+					AND A.ICGRPKEY = C.ICGRPKEY
+		LEFT JOIN TORDER_MST_ASRT ASRT
+          ON A.OWKEY = ASRT.OWKEY
+         AND A.ICKEY = ASRT.ASRTKEY
+        LEFT JOIN TORDER_MST_IC REP
+          ON ASRT.OWKEY = REP.OWKEY
+         AND ASRT.ASRTREPKEY = REP.ICKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+				AND NOT EXISTS (SELECT 1 FROM TORDER_MST_ASRT ASRT WHERE A.OWKEY=ASRT.OWKEY AND A.ICKEY=ASRT.ASRTREPKEY)
+			</if>
+		</where>
+
+	</select>
+	
+	<select id="selectItemCodeList" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml  selectItemCodeList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+             , A.OWKEY
+             , A.ICKEY
+             , A.ICNM
+		     , COALESCE(ASRT.ASRTREPKEY, A.ICKEY) AS ASRTREPKEY
+		     , COALESCE(REP.ICNM, A.ICNM) AS ASRTREPNM
+             , ICUT.ICUNITQTY_M
+             , ICUT.ICUNITQTY_C
+             , A.ICGRPKEY
+             , A.ICGRPTYPE
+             , A.ICUNITKEY
+             , A.UOM
+             , A.EXPCKYN
+             , A.EXPCKTYPE
+             , A.UDF2
+             , A.UDF5
+             , A.ACKEY
+		     , AC.ACNM
+             , A.DELYN
+             , A.ICTYPE
+             , A.SPEC
+             , A.CTGKEY
+             , CTG.CTGNM_LV1
+             , CTG.CTGNM_LV2
+             , CTG.CTGNM_LV3
+             , ICUT.BARCODE_C
+             , ICUT.BARCODE_M
+             , ICUT.BARCODE_E
+             , ICUT.WIDTH_E
+             , ICUT.DEPTH_E
+             , ICUT.HEIGHT_E
+             , ICUT.VOL_E
+             , ICUT.WEIGHT_E
+             , ICUT.WIDTH_C
+             , ICUT.DEPTH_C
+             , ICUT.HEIGHT_C
+             , ICUT.VOL_C
+             , ICUT.WEIGHT_C
+             , ICUT.WIDTH_M
+             , ICUT.DEPTH_M
+             , ICUT.HEIGHT_M
+             , ICUT.VOL_M
+             , ICUT.WEIGHT_M
+             , ICUT.PLTROW
+             , ICUT.PLTCOL
+             , ICUT.CPP
+             , A.CLOSDATE
+             , A.ORDSTARTDATE
+             , A.FOODYN
+             , A.SHELFDAY
+             , A.MDTEAM
+             , A.MDNM
+             , A.ICIMGURL
+             , A.OLNICKEY
+             , A.OLNICTYPE
+             , A.OFLNICTYPE
+             , A.B2BGRADE
+             , A.SEASON
+             , A.DNGMGMTYN
+             , A.CUSHNMEPCKGYN
+             , A.EACHPCKGYN
+             , A.ICORIGIN
+             , A.ICMGMTUSR
+             , A.SLPRC
+             , A.ASRTYN
+             , A.DIRCDLVYICYN
+             , A.ICSTATUSDIV
+             , A.PKOTICYN
+             , A.ROBSORTERICYN
+             , A.MTR
+             , A.OBIMPSCRITRT
+             , A.RENEWISTYN
+             , A.CHGBFIC
+             , A.CHGAFIC
+             , COALESCE(A.IFYN, 'N') AS IFYN
+             , A.UNICYN
+             , A.DSPYN
+             , A.DLVRYYN
+             , A.SALESTATUS
+             , A.POABLEYN
+             , A.OLNICDIV
+             , A.OBLIMITYN
+             , A.OLNIPKOTICYN
+             , A.OLNIPKOTICCONT
+             , A.SALESCHARA
+             , A.UNICCD
+             , A.EXPCKDAYS
+             , A.POLYBACKPCKGYN
+             , A.OVLPPCKGWIDTHVAL
+             , A.OVLPPCKGDEPTHVAL
+             , A.OVLPPCKGHEIGHTVAL
+             , A.COMPYN
+             , A.COMPCONT
+             , A.PURPRC
+             , A.PCKGOVLPYN
+             , A.OBIMPSCRITDAYS
+             , A.PCKGFOLDYN
+             , A.DFSHPMTRYN
+             , A.BARCODEATTACHYN
+             , A.EXPRATE
+             , A.HIGHFRQNCYDMGYN
+             , A.LEADTIME
+             , A.CMT
+             , ICGR.ICGRPNM
+             , A.OLNPKOTYN
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+        FROM TORDER_MST_IC A
+             INNER JOIN TORDER_MST_OW OW
+                     ON A.OWKEY = OW.OWKEY
+             INNER JOIN TORDER_MST_ICGR ICGR
+                     ON A.OWKEY = ICGR.OWKEY
+                    AND A.ICGRPKEY = ICGR.ICGRPKEY
+             LEFT JOIN TORDER_MST_ASRT ASRT
+               ON A.OWKEY = ASRT.OWKEY
+              AND A.ICKEY = ASRT.ASRTKEY
+             LEFT JOIN TORDER_MST_IC REP
+               ON ASRT.OWKEY = REP.OWKEY
+              AND ASRT.ASRTREPKEY = REP.ICKEY
+             LEFT JOIN (
+                SELECT A.OWKEY
+                    ,  A.ICKEY
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.ICUNITQTY END) AS ICUNITQTY_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.ICUNITQTY END) AS ICUNITQTY_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.ICUNITQTY END) AS ICUNITQTY_C
+
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.WIDTH  END) AS WIDTH_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.DEPTH  END) AS DEPTH_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.HEIGHT END) AS HEIGHT_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.VOL    END) AS VOL_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.WEIGHT END) AS WEIGHT_E
+
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.WIDTH  END) AS WIDTH_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.DEPTH  END) AS DEPTH_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.HEIGHT END) AS HEIGHT_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.VOL    END) AS VOL_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.WEIGHT END) AS WEIGHT_M
+
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.WIDTH  END) AS WIDTH_C
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.DEPTH  END) AS DEPTH_C
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.HEIGHT END) AS HEIGHT_C
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.VOL    END) AS VOL_C
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.WEIGHT END) AS WEIGHT_C
+
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.PLTROW END) AS PLTROW
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.PLTCOL END) AS PLTCOL
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.CPP    END) AS CPP
+
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN B.BARCODE END) AS BARCODE_E
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN B.BARCODE END) AS BARCODE_M
+                    ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN B.BARCODE END) AS BARCODE_C
+                  FROM TORDER_MST_ICUTXTYPE A
+                       LEFT JOIN TORDER_MST_ICBACODE B
+                               ON A.OWKEY = B.OWKEY
+                              AND A.ICKEY = B.ICKEY
+                              AND A.ICUNITTYPE = B.UOM
+                              AND B.DELYN = 'N'
+              	  WHERE A.DELYN = 'N'
+                 GROUP BY A.OWKEY, A.ICKEY
+             ) ICUT
+               ON A.OWKEY = ICUT.OWKEY
+              AND A.ICKEY = ICUT.ICKEY
+             INNER JOIN (
+                SELECT A.OWKEY
+                     , A.CTGKEY AS CTGKEY_LV3
+                     , A.CTGNM AS CTGNM_LV3
+                     , B.CTGKEY AS CTGKEY_LV2
+                     , B.CTGNM AS CTGNM_LV2
+                     , C.CTGKEY AS CTGKEY_LV1
+                     , C.CTGNM AS CTGNM_LV1
+                  FROM TORDER_MST_CTG A
+                       INNER JOIN TORDER_MST_CTG B
+                         ON A.OWKEY = B.OWKEY
+                        AND A.UPPERCTGKEY = B.CTGKEY
+                        AND B.DELYN = 'N'
+                       INNER JOIN TORDER_MST_CTG C
+                         ON B.OWKEY = C.OWKEY
+                        AND B.UPPERCTGKEY = C.CTGKEY
+                        AND C.DELYN = 'N'
+                 WHERE A.DELYN = 'N'
+             ) CTG
+               ON A.OWKEY = CTG.OWKEY
+              AND A.CTGKEY = CTG.CTGKEY_LV3
+              LEFT JOIN TORDER_MST_AC AC
+                     ON A.OWKEY = AC.OWKEY
+                    AND A.ACKEY = AC.ACKEY
+            <where>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                    #{SEARCH_CONDITION}
+                    AND NOT EXISTS (SELECT 1 FROM TORDER_MST_ASRT ASRT WHERE A.OWKEY=ASRT.OWKEY AND A.ICKEY=ASRT.ASRTREPKEY)
+                </if>
+            </where>
+            <choose>
+                <when test='sortValue !=null and sortValue != ""'>
+                    <if test='sortValue == "DESC" and colName !=null'>
+                        ORDER BY #{colName} DESC
+                    </if>
+                    <if test='sortValue == "ASC" and colName !=null'>
+                        ORDER BY #{colName} ASC
+                    </if>
+                </when>
+                <otherwise>
+                    ORDER BY A.ICKEY
+                </otherwise>
+            </choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <select id="selectItemCodeExcelList" resultType="camelMap">
+        /* oms-item-itemcode-sql-oracle.xml  selectItemCodeExcelList */
+        SELECT '0' AS CHK
+        , A.OWKEY
+        , A.ICKEY
+        , A.ICNM
+        , COALESCE(ASRT.ASRTREPKEY, A.ICKEY) AS ASRTREPKEY
+        , COALESCE(REP.ICNM, A.ICNM) AS ASRTREPNM
+        , ICUT.ICUNITQTY_M
+        , ICUT.ICUNITQTY_C
+        , A.ICGRPKEY
+        , A.ICGRPTYPE
+        , A.ICUNITKEY
+        , A.UOM
+        , A.EXPCKYN
+        , A.EXPCKTYPE
+        , A.UDF2
+        , A.UDF5
+        , A.ACKEY
+        , AC.ACNM
+        , A.DELYN
+        , A.ICTYPE
+        , A.SPEC
+        , A.CTGKEY
+        , CTG.CTGNM_LV1
+        , CTG.CTGNM_LV2
+        , CTG.CTGNM_LV3
+        , ICUT.BARCODE_C
+        , ICUT.BARCODE_M
+        , ICUT.BARCODE_E
+        , ICUT.WIDTH_E
+        , ICUT.DEPTH_E
+        , ICUT.HEIGHT_E
+        , ICUT.VOL_E
+        , ICUT.WEIGHT_E
+        , ICUT.WIDTH_C
+        , ICUT.DEPTH_C
+        , ICUT.HEIGHT_C
+        , ICUT.VOL_C
+        , ICUT.WEIGHT_C
+        , ICUT.WIDTH_M
+        , ICUT.DEPTH_M
+        , ICUT.HEIGHT_M
+        , ICUT.VOL_M
+        , ICUT.WEIGHT_M
+        , ICUT.PLTROW
+        , ICUT.PLTCOL
+        , ICUT.CPP
+        , A.CLOSDATE
+        , A.ORDSTARTDATE
+        , A.FOODYN
+        , A.SHELFDAY
+        , A.MDTEAM
+        , A.MDNM
+        , A.ICIMGURL
+        , A.OLNICKEY
+        , A.OLNICTYPE
+        , A.OFLNICTYPE
+        , A.B2BGRADE
+        , A.SEASON
+        , A.DNGMGMTYN
+        , A.CUSHNMEPCKGYN
+        , A.EACHPCKGYN
+        , A.ICORIGIN
+        , A.ICMGMTUSR
+        , A.SLPRC
+        , A.ASRTYN
+        , A.DIRCDLVYICYN
+        , A.ICSTATUSDIV
+        , A.PKOTICYN
+        , A.ROBSORTERICYN
+        , A.MTR
+        , A.OBIMPSCRITRT
+        , A.RENEWISTYN
+        , A.CHGBFIC
+        , A.CHGAFIC
+        , COALESCE(A.IFYN, 'N') AS IFYN
+        , A.UNICYN
+        , A.DSPYN
+        , A.DLVRYYN
+        , A.SALESTATUS
+        , A.POABLEYN
+        , A.OLNICDIV
+        , A.OBLIMITYN
+        , A.OLNIPKOTICYN
+        , A.OLNIPKOTICCONT
+        , A.SALESCHARA
+        , A.UNICCD
+        , A.EXPCKDAYS
+        , A.POLYBACKPCKGYN
+        , A.OVLPPCKGWIDTHVAL
+        , A.OVLPPCKGDEPTHVAL
+        , A.OVLPPCKGHEIGHTVAL
+        , A.COMPYN
+        , A.COMPCONT
+        , A.PURPRC
+        , A.PCKGOVLPYN
+        , A.OBIMPSCRITDAYS
+        , A.PCKGFOLDYN
+        , A.DFSHPMTRYN
+        , A.BARCODEATTACHYN
+        , A.EXPRATE
+        , A.HIGHFRQNCYDMGYN
+        , A.LEADTIME
+        , A.CMT
+        , ICGR.ICGRPNM
+        , A.OLNPKOTYN
+        , A.INSERTDATE
+        , A.INSERTURKEY
+        , A.UPDATEDATE
+        , A.UPDATEURKEY
+        FROM TORDER_MST_IC A
+        INNER JOIN TORDER_MST_OW OW
+        ON A.OWKEY = OW.OWKEY
+        INNER JOIN TORDER_MST_ICGR ICGR
+        ON A.OWKEY = ICGR.OWKEY
+        AND A.ICGRPKEY = ICGR.ICGRPKEY
+        LEFT JOIN TORDER_MST_ASRT ASRT
+        ON A.OWKEY = ASRT.OWKEY
+        AND A.ICKEY = ASRT.ASRTKEY
+        LEFT JOIN TORDER_MST_IC REP
+        ON ASRT.OWKEY = REP.OWKEY
+        AND ASRT.ASRTREPKEY = REP.ICKEY
+        LEFT JOIN (
+        SELECT A.OWKEY
+        ,  A.ICKEY
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.ICUNITQTY END) AS ICUNITQTY_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.ICUNITQTY END) AS ICUNITQTY_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.ICUNITQTY END) AS ICUNITQTY_C
+
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.WIDTH  END) AS WIDTH_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.DEPTH  END) AS DEPTH_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.HEIGHT END) AS HEIGHT_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.VOL    END) AS VOL_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN A.WEIGHT END) AS WEIGHT_E
+
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.WIDTH  END) AS WIDTH_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.DEPTH  END) AS DEPTH_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.HEIGHT END) AS HEIGHT_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.VOL    END) AS VOL_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN A.WEIGHT END) AS WEIGHT_M
+
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.WIDTH  END) AS WIDTH_C
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.DEPTH  END) AS DEPTH_C
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.HEIGHT END) AS HEIGHT_C
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.VOL    END) AS VOL_C
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.WEIGHT END) AS WEIGHT_C
+
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.PLTROW END) AS PLTROW
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.PLTCOL END) AS PLTCOL
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN A.CPP    END) AS CPP
+
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'EA'  THEN B.BARCODE END) AS BARCODE_E
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'INN' THEN B.BARCODE END) AS BARCODE_M
+        ,  MAX(CASE WHEN A.ICUNITTYPE = 'CTN' THEN B.BARCODE END) AS BARCODE_C
+        FROM TORDER_MST_ICUTXTYPE A
+        LEFT JOIN TORDER_MST_ICBACODE B
+        ON A.OWKEY = B.OWKEY
+        AND A.ICKEY = B.ICKEY
+        AND A.ICUNITTYPE = B.UOM
+        GROUP BY A.OWKEY, A.ICKEY
+        ) ICUT
+        ON A.OWKEY = ICUT.OWKEY
+        AND A.ICKEY = ICUT.ICKEY
+        INNER JOIN (
+        SELECT A.OWKEY
+        , A.CTGKEY AS CTGKEY_LV3
+        , A.CTGNM AS CTGNM_LV3
+        , B.CTGKEY AS CTGKEY_LV2
+        , B.CTGNM AS CTGNM_LV2
+        , C.CTGKEY AS CTGKEY_LV1
+        , C.CTGNM AS CTGNM_LV1
+        FROM TORDER_MST_CTG A
+        INNER JOIN TORDER_MST_CTG B
+        ON A.OWKEY = B.OWKEY
+        AND A.UPPERCTGKEY = B.CTGKEY
+        AND B.DELYN = 'N'
+        INNER JOIN TORDER_MST_CTG C
+        ON B.OWKEY = C.OWKEY
+        AND B.UPPERCTGKEY = C.CTGKEY
+        AND C.DELYN = 'N'
+        WHERE A.DELYN = 'N'
+        ) CTG
+        ON A.OWKEY = CTG.OWKEY
+        AND A.CTGKEY = CTG.CTGKEY_LV3
+        LEFT JOIN TORDER_MST_AC AC
+        ON A.OWKEY = AC.OWKEY
+        AND A.ACKEY = AC.ACKEY
+        <where>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                #{SEARCH_CONDITION}
+                AND NOT EXISTS (SELECT 1 FROM TORDER_MST_ASRT ASRT WHERE A.OWKEY=ASRT.OWKEY AND A.ICKEY=ASRT.ASRTREPKEY)
+            </if>
+        </where>
+        <choose>
+            <when test='sortValue !=null and sortValue != ""'>
+                <if test='sortValue == "DESC" and colName !=null'>
+                    ORDER BY #{colName} DESC
+                </if>
+                <if test='sortValue == "ASC" and colName !=null'>
+                    ORDER BY #{colName} ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY A.ICKEY
+            </otherwise>
+        </choose>
+    </select>
+
+	<select id="selectItemCodeAvqtyCheck" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeAvqtyCheck */
+			SELECT 
+			    TRIM(#{owkey}) AS OWKEY,
+			    A.CTKEY AS CTKEY,
+			    A.ICKEY AS ICKEY,
+			    SUM(B.AVQTY) AS VAIVQTY,/*가용재고*/
+			    SUM(B.TTQTY) AS TTQTY /*총수량*/
+			FROM
+			    TWORK_INFO_IVAT A
+			INNER JOIN TWORK_INFO_IVATXLCXULC B
+					ON A.CTKEY = B.CTKEY
+				   AND A.IVATKEY = B.IVATKEY
+				   AND A.LOGGRPCD = B.LOGGRPCD
+			WHERE
+			    A.OWKEY = TRIM(#{owkey})
+			    AND   A.ICKEY = #{ickey}
+			    AND   EXISTS (
+			        SELECT
+			            1
+			        FROM
+			            TWORK_MST_CT X
+			        WHERE
+			            A.CTKEY = X.CTKEY
+			    )
+			GROUP BY
+			    A.CTKEY,
+			    A.ICKEY
+			HAVING
+			    SUM(B.TTQTY) > 0
+	</select>
+
+	<select id="selectPkCntTadminMstIcxct" resultType="java.lang.Integer" >
+		/* oms-item-itemcode-sql-oracle.xml - selectPkCntTadminMstIcxct */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_ICXCT
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectPkCntTadminMstCtxacxic" resultType="java.lang.Integer" >
+		/* oms-item-itemcode-sql-oracle.xml - selectPkCntTadminMstCtxacxic */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_CTXACXIC
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND CTKEY = #{ctkey}
+		   AND ACKEY = #{ackey}
+	</select>
+
+	<select id="selectTAdminMstIcxct" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectTAdminMstIcxct */
+        SELECT '0' AS CHK
+        	 , A.UPDATEDATE
+             , A.INSERTDATE
+             , A.INSERTURKEY
+ 			 , A.UPDATEURKEY
+             , A.OWKEY
+             , A.ICKEY
+             , A.CTKEY
+             , B.CTNM
+             , A.LCKEY
+             , A.ROBSORTERICYN
+             , A.DFSHPMTRYN
+             , A.DSBTGRADE
+          FROM TORDER_MST_ICXCT A
+          INNER JOIN TORDER_MST_CT B
+          		  ON A.CTKEY = B.CTKEY
+          		 AND B.DELYN = 'N'
+		  WHERE A.OWKEY = #{owkey}
+		  	AND A.ICKEY = #{ickey}
+			AND A.DELYN = 'N'
+	</select>
+
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectTAdminMstCt */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , A.CTNM
+		FROM TORDER_MST_CT A
+		WHERE A.DELYN = 'N'
+		  AND MANAGEMENTYN = 'Y'
+	</select>
+
+	<insert id="insertTAdminMstIcgrxct">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcgrxct */
+		INSERT INTO TADMIN_MST_ICGRXCT
+		(
+		    UPDATEURKEY
+		  , UPDATEDATE
+		  , INSERTURKEY
+		  , INSERTDATE
+		  , ICGRPTYPE
+		  , ICGRPKEY
+		  , CTKEY
+		) VALUES (
+		  #{surkey}
+		 ,#{sysdate}
+		 ,#{surkey}
+		 ,#{sysdate}
+		 ,#{icgrptype}
+		 ,#{icgrpkey}
+		 ,#{ctkey}
+		)
+
+	</insert>
+
+	<select id="selectPkItemCode" resultType="camelMap">
+	/* oms-item-itemcode-sql-oracle.xml - selectPkItemCode */
+		SELECT A.OWKEY
+		     , B.OWNM
+			 , A.ICKEY
+			 , A.ICNM
+			 , A.ICGRPKEY
+			 , A.ICTYPE
+			 , A.SLPRC 
+			 , A.CTGKEY
+             , A.LEADTIME
+             , A.PURPRC
+             , A.ICSTATUSDIV
+             , A.CMT
+			 , CTG.CTGNM
+			 , A.EXPCKYN
+			 , A.EXPCKDAYS
+			 , A.B2BGRADE 
+			 , A.MTR
+			 , A.POLYBACKPCKGYN
+			 , A.ASRTYN 
+			 , A.PKOTICYN
+			 , A.COMPYN
+			 , A.COMPCONT
+			 , A.CUSHNMEPCKGYN
+			 , A.ROBSORTERICYN
+			 , A.OBLIMITYN
+			 , A.SALESTATUS
+			 , A.DSPYN
+			 , A.DLVRYYN
+			 , A.SALESCHARA
+			 , A.POABLEYN
+			 , A.UNICYN
+			 , A.UNICCD
+			 , A.UOM
+			 , A.ICIMGURL AS IMGURL
+			 , A.ICNM AS ICIMGNM
+			 , A.DELYN
+			 , A.UDF2
+			 , A.ICUNITKEY
+			 , A.ACKEY
+		     , D.ACNM
+			 , A.FOODYN
+			 , A.SPEC
+			 , A.EXPCKTYPE
+			 , A.SHELFDAY
+			 , A.CLOSDATE
+			 , A.OLNIPKOTICYN
+			 , A.OLNIPKOTICCONT
+			 , A.OLNICDIV
+             , ICUT.PLTROW
+             , ICUT.PLTCOL
+             , ICUT.CPP
+		FROM TORDER_MST_IC A
+		    INNER JOIN TORDER_MST_OW B
+		    		ON A.OWKEY = B.OWKEY
+			LEFT OUTER JOIN TORDER_MST_AC D
+			    		 ON D.OWKEY = A.OWKEY
+					    AND D.ACKEY = A.ACKEY
+			LEFT OUTER JOIN (
+							SELECT OWKEY
+                                 , MAX(ICUT.PLTROW) AS PLTROW
+                                 , MAX(ICUT.PLTCOL) AS PLTCOL
+                                 , MAX(ICUT.CPP) AS CPP
+							FROM TORDER_MST_ICUTXTYPE ICUT
+							WHERE ICUT.OWKEY =  #{owkey}
+							  AND ICUT.ICKEY = #{ickey}
+							GROUP BY OWKEY
+						) ICUT
+						ON ICUT.OWKEY = A.OWKEY
+			LEFT OUTER JOIN TORDER_MST_CTG CTG
+							ON A.CTGKEY = CTG.CTGKEY
+						   AND A.OWKEY  = CTG.OWKEY
+		WHERE A.OWKEY = #{owkey}
+		  AND A.ICKEY = #{ickey}
+		  AND B.DELYN = 'N'
+	</select>
+
+	<select id="selectItemGroupCode" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemGroupCode */
+		SELECT OWKEY
+		     , ICGRPNM
+			 , ICGRPKEY
+		FROM TORDER_MST_ICGR
+		WHERE 1 = 1
+	</select>
+
+	<insert id="insertTAdminMstIc">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIc */
+		INSERT INTO TORDER_MST_IC
+	    (
+			 OWKEY
+			,ICKEY
+			,ICNM
+			,ICGRPKEY
+			,ICTYPE
+			,ICUNITKEY
+            ,UDF2
+            ,ACKEY
+            ,LEADTIME
+            ,PURPRC
+            ,ICSTATUSDIV
+            ,CMT
+			,SLPRC
+			,CTGKEY
+			,EXPCKYN
+			,EXPCKDAYS
+			,B2BGRADE
+			,MTR
+			,POLYBACKPCKGYN
+			,ASRTYN
+			,PKOTICYN
+			,COMPYN
+			,COMPCONT
+			,CUSHNMEPCKGYN
+			,ROBSORTERICYN
+			,OBLIMITYN
+			,DSPYN
+			,DLVRYYN
+			,SALESTATUS
+			,OLNIPKOTICYN
+			,OLNICDIV
+			,SALESCHARA
+			,POABLEYN
+			,UNICYN
+			,UNICCD
+			,UOM
+			,ICGRPTYPE
+			,IFYN
+			,DELYN
+            ,CLOSDATE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES	
+		(
+			 #{owkey} -- 화주코드
+			,#{ickey} -- 상품코드
+			,#{icnm} -- 상품명
+			,COALESCE(#{icgrpkey}, 'GR') -- 상품그룹코드
+			,#{ictype} -- 상품구분
+			,#{icunitkey} -- 상품단위
+            ,#{udf2}
+            ,#{ackey}
+            ,#{leadtime}
+            ,#{purprc}
+            ,#{icstatusdiv}
+            ,#{cmt}
+			,#{slprc}
+			,#{ctgkey}
+			,#{expckyn}
+			,#{expckdays}
+			,#{b2bgrade}
+			,#{mtr}
+			,#{polybackpckgyn}
+			,#{asrtyn}
+			,#{pkoticyn}
+			,#{compyn}
+			,#{compcont}
+			,#{cushnmepckgyn}
+			,#{robsortericyn}
+			,#{oblimityn}
+			,#{dspyn}
+			,#{dlvryyn}
+			,#{salestatus}
+			,#{olnipkoticyn}
+			,#{olnicdiv}
+			,#{saleschara}
+			,#{poableyn}
+			,#{unicyn}
+			,#{uniccd}
+			,#{uom}
+			,#{icgrptype}
+			,'N' -- ifyn
+			,'N' -- delyn
+            ,#{closdate} -- closdate
+			,#{sysdate} -- insertdate
+			,#{surkey} -- inserturkey
+			,#{sysdate} -- updatedate
+			,#{surkey} -- updateurkey	
+		  )
+	</insert>
+
+ 	<update id="updateTAdminMstIc">
+		/* oms-item-itemcode-sql-oracle.xml - updateTAdminMstIc */
+ 		UPDATE 	TORDER_MST_IC
+ 		   SET 	ICNM = #{icnm}
+				,icgrpkey = #{icgrpkey} -- 상품그룹코드
+				,ictype = #{ictype} -- 상품구분
+				,slprc = #{slprc} -- 판매가격
+				,ctgkey = #{ctgkey} -- 카테고리코드
+				,expckyn = #{expckyn} -- 유통기한체크여부
+				,expckdays = #{expckdays} -- 유통기한일수
+				,b2bgrade = #{b2bgrade} -- B2B물류등급
+				,mtr = #{mtr} -- 재질
+				,polybackpckgyn = #{polybackpckgyn} -- 포장겹침여부
+				,asrtyn = #{asrtyn} -- 아소트여부
+				,pkoticyn = #{pkoticyn} -- 덕용상품여부
+				,compyn = #{compyn} -- 구성품여부
+				,compcont = #{compcont} -- 구성품정보
+				,cushnmepckgyn = #{cushnmepckgyn} -- 완충재포장여부
+				,robsortericyn = #{robsortericyn} -- 로봇소터가능상품여부
+				,oblimityn = #{oblimityn} -- 출고제한여부
+				,dspyn = #{dspyn} -- 전시여부
+				,dlvryyn = #{dlvryyn} -- 택배여부
+				,salestatus = #{salestatus} -- 판매상태
+				,olnipkoticyn = #{olnipkoticyn} -- 온라인덕용여부
+				,olnicdiv = #{olnicdiv} -- 다이소몰등급
+				,saleschara = #{saleschara} -- 판매특성
+				,poableyn = #{poableyn} -- 발주가능여부
+				,unicyn = #{unicyn} -- 미취급여부
+				,uniccd = #{uniccd} -- 미취급코드
+				,uom = #{uom} -- 단위
+				,icgrptype = #{icgrptype} -- 상품그룹유형
+				,updatedate = #{sysdate} -- updatedate
+				,updateurkey = #{surkey} -- updateurkey
+				--
+				,expcktype = #{expcktype} -- 유통기한체크유형
+				,udf2 = #{udf2} -- 온도구분
+				,udf5 = #{udf5} -- 사용자정의필드5
+				,ackey = #{ackey} -- 공급사코드
+				--,'N' -- delyn
+				,spec = #{spec} -- 규격
+				,closdate = #{closdate} -- 종료일시
+				,ordstartdate = #{ordstartdate} -- 상품도입일자
+				,foodyn = #{foodyn} -- 식품여부
+				,shelfday = #{shelfday} -- 보관수명
+				,mdteam = #{mdteam} -- 엠디팀
+				,mdnm = #{mdnm} -- 엠티명
+				,icimgurl = #{icimgurl}
+				,olnickey = #{olnickey} -- 온라인품번
+				,olnictype = #{olnictype} -- 상품형태(온라인)
+				,oflnictype = #{oflnictype} -- 상품형태(오프라인)
+				,season = #{season} -- 시즌
+				,dngmgmtyn = #{dngmgmtyn} -- 위험물관리여부
+				,eachpckgyn = #{eachpckgyn} -- 개별포장여부
+				,icorigin = #{icorigin} -- 상품원산지
+				,icmgmtusr = #{icmgmtusr} -- 상품담당자
+				,dircdlvyicyn = #{dircdlvyicyn} -- 직송상품여부
+				,icstatusdiv = #{icstatusdiv} -- 상품사용구분
+				,obimpscritrt = #{obimpscritrt} -- 출고불가비율
+				,renewistyn = #{renewistyn} -- 리뉴열지시여부
+				,chgbfic = #{chgbfic} -- 변경전상품
+				,chgafic = #{chgafic} -- 변경후상품
+				--,'N' -- ifyn
+ 		        ,CMT = #{cmt}
+ 		        ,DELYN = #{delyn}
+ 		        ,LEADTIME = #{leadtime}
+ 		        ,PURPRC = #{purprc}
+				,ovlppckgwidthval = #{ovlppckgwidthval} -- 겹침포장가로증가값
+				,ovlppckgdepthval = #{ovlppckgdepthval} -- 겹침포장세로증가값
+				,ovlppckgheightval = #{ovlppckgheightval} -- 겹침포장높이증가값 
+		 WHERE 	OWKEY = #{owkey}
+		   AND 	ICKEY = #{ickey}
+ 	</update>
+
+	<!-- AMS에서 상품 삭제시 DELETE하지말고 DELYN을 업데이트 -->
+	<delete id="deleteTAdminMstIc">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTAdminMstIc */
+		UPDATE TORDER_MST_IC
+		   SET DELYN        = #{delyn},
+		       CLOSDATE	= #{sysdate},
+		       UPDATEDATE	= #{sysdate},
+			   UPDATEURKEY = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</delete>
+
+	<delete id="deleteTAdminMstIcgrxct">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTAdminMstIcgrxct */
+		DELETE
+		  FROM TADMIN_MST_ICGRXCT
+ 	     WHERE
+			  ICGRPKEY = #{icgrpkey}
+          AND ICGRPTYPE = #{icgrptype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+
+	<delete id="deleteTAdminMstIcgr">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTAdminMstIcgr */
+		DELETE
+		  FROM TADMIN_MST_ICGR
+ 	     WHERE
+			ICGRPKEY = #{icgrpkey}
+          AND ICGRPTYPE = #{icgrptype}
+	</delete>
+
+	<delete id="deleteTAdminMstIcxct">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTAdminMstIcxct */
+        UPDATE TORDER_MST_ICXCT
+          SET  DELYN 		= #{delyn}
+          		,UPDATEDATE	= #{sysdate}
+				,UPDATEURKEY = #{surkey}
+         WHERE
+		       OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   <if test="ctkey != null">
+		   	AND CTKEY = #{ctkey}
+		   </if>
+	</delete>
+
+	<delete id="deleteTAdminMstCtxacxic">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTAdminMstCtxacxic */
+       UPDATE TADMIN_MST_CTXACXIC
+          SET  DELYN 		= #{delYn}
+			  ,UPDATEDATE	= #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+         WHERE
+		       OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   <if test="ctkey != null">
+		   	AND CTKEY = #{ctkey}
+		   </if>
+	</delete>
+
+
+	<delete id="updateTAdminMstIcxct">
+		/* oms-item-itemcode-sql-oracle.xml - updateTAdminMstIcxct */
+        UPDATE TADMIN_MST_ICXCT
+          SET  LOGGRPCD 		= #{udf2}
+          	   ,ACKEY			= #{ackey}
+          	   ,ICGRPKEY		= #{icgrpkey}
+          	   ,RNDKEY			= '0'
+          	   ,UPDATEDATE		= #{sysdate}
+			   ,UPDATEURKEY 	= #{surkey}
+          	   ,DELYN 		 	= #{delyn}
+         WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</delete>
+
+	<delete id="updateTAdminMstCtxacxic">
+		/* oms-item-itemcode-sql-oracle.xml - updateTAdminMstCtxacxic */
+       UPDATE TADMIN_MST_CTXACXIC
+          SET  ACKEY 		= #{ackey}
+			  ,UPDATEDATE	= #{sysdate}
+			  ,UPDATEURKEY  = #{surkey}
+          	  ,DELYN   		= #{delyn}
+         WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   <if test="ctkey != null">
+		   	AND CTKEY = #{ctkey}
+		   </if>
+	</delete>
+
+	<insert id="insertTAdminMstIcxct">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcxct */
+		INSERT INTO TADMIN_MST_ICXCT
+		(
+		  UPDATEURKEY
+		 ,UPDATEDATE
+		 ,OWKEY
+		 ,INSERTURKEY
+		 ,INSERTDATE
+		 ,ICKEY
+		 ,CTKEY
+		 ,LOGGRPCD
+		 ,VOLTYPE
+		 ,NEWYN
+		 ,ACKEY
+		 ,ORDTYPE
+		 ,ICGRPKEY
+		 ,RNDKEY
+		 ,DELYN
+		 )
+		VALUES
+		(
+		  #{surkey}
+		 ,#{sysdate}
+		 ,#{owkey}
+		 ,#{surkey}
+		 ,#{sysdate}
+		 ,#{ickey}
+		 ,#{ctkey}
+		 ,#{loggrpcd}
+		 ,'0'
+		 ,'Y'
+		 ,#{ackey}
+		 ,'0'
+		 ,#{icgrpkey}
+		 ,#{rndkey}
+		 ,'N'
+		)
+	</insert>
+
+
+	<insert id="insertTAdminMstCtxacxic">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstCtxacxic */
+		INSERT INTO TADMIN_MST_CTXACXIC
+        (
+          OWKEY
+         ,CTKEY
+         ,ICKEY
+         ,ACKEY
+         ,CP
+         ,PODDLNTIME
+         ,POICUTTYPE
+         ,SMPOMLP
+         ,ASNAUTOYN
+         ,POHDTYPE
+         ,CTPOYN
+         ,POSTOPYN
+         ,DELYN
+         ,IBTIME
+         ,HOLD
+         ,UPDATEURKEY
+         ,UPDATEDATE
+         ,INSERTURKEY
+         ,INSERTDATE
+         )
+        VALUES
+        (
+         #{owkey}
+         ,#{ctkey}
+         ,#{ickey}
+         ,#{ackey}
+         , 0
+         , '140000'
+         , 'EA'
+         , '1'
+         , 'N'
+         , '140'
+         , 'N'
+         , 'N'
+         , 'N'
+         , '110000'
+         , 'N'
+         , #{surkey}
+         ,#{sysdate}
+         ,#{surkey}
+         ,#{sysdate}
+        )
+	</insert>
+	<update id="updateSCM">
+		/* oms-item-itemcode-sql-oracle.xml - updateSCM */
+		UPDATE
+			TADMIN_MST_IC
+		SET
+			SCMCK      = #{scmyn}
+			, SCMURKEY    = COALESCE(#{scmurkey}, #{surkey})
+			, UPDATEURKEY = #{surkey}
+            , UPDATEDATE  = #{sysdate}
+		WHERE
+			OWKEY      = #{owkey}
+			AND ICKEY   = #{ickey}
+	</update>
+
+	 <select id="selecticgrCtkey" resultType="camelMap">
+		 /* oms-item-itemcode-sql-oracle.xml - selecticgrCtkey */
+		SELECT CTKEY
+		FROM TORDER_MST_ICGRXCT
+		WHERE OWKEY = #{owkey}
+		  AND ICGRPKEY = #{icgrpkey}
+		GROUP BY CTKEY
+		ORDER BY CTKEY
+	</select>
+
+
+	<select id="selecticutCtkey" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selecticutCtkey */
+		SELECT CTKEY
+		FROM TADMIN_MST_ICUTXTYPEXCT
+		WHERE OWKEY = #{owkey}
+		  AND ICUNITKEY = #{icunitkey}
+		GROUP BY CTKEY
+		ORDER BY CTKEY
+	</select>
+
+	<select id="selectTAdminMstIcut" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectTAdminMstIcut */
+		SELECT
+			 OWKEY       /* 화주 코드 */
+			,ICUNITKEY     /* 상품코드(상품단위코드) */
+			,CLOSDATE /* 종료 일시 */
+		FROM
+		    TADMIN_MST_ICUT
+		WHERE
+		    OWKEY = #{owkey}
+		    AND ICUNITKEY = #{icunitkey}
+	</select>
+
+	<insert id="insertTAdminMstIcut">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcut */
+	   MERGE INTO TADMIN_MST_ICUT ICUT
+	        USING (SELECT
+					  #{owkey}                                                  AS OWKEY
+					 ,#{icunitkey}                                                AS ICUNITKEY
+					 ,#{closdate} AS CLOSDATE
+					 ,#{surkey}     AS INSERTURKEY
+					 ,#{sysdate}        AS INSERTDATE
+					 ,#{surkey}     AS UPDATEURKEY
+					 ,#{sysdate}        AS UPDATEDATE) IN_ICUT
+	           ON (
+	                 ICUT.OWKEY = IN_ICUT.OWKEY
+	                 AND ICUT.ICUNITKEY = IN_ICUT.ICUNITKEY
+	               )
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET
+	                 ICUT.CLOSDATE = IN_ICUT.CLOSDATE
+	                 ,ICUT.UPDATEDATE = IN_ICUT.UPDATEDATE
+	                 ,ICUT.UPDATEURKEY = IN_ICUT.UPDATEURKEY
+	   WHEN NOT MATCHED
+	   THEN
+		  INSERT
+		  (
+			 ICUT.OWKEY
+			,ICUT.ICUNITKEY
+			,ICUT.CLOSDATE
+			,ICUT.INSERTDATE
+			,ICUT.INSERTURKEY
+			,ICUT.UPDATEDATE
+			,ICUT.UPDATEURKEY
+		  ) VALUES (
+			 IN_ICUT.OWKEY
+			,IN_ICUT.ICUNITKEY
+			,IN_ICUT.CLOSDATE
+			,IN_ICUT.INSERTDATE
+			,IN_ICUT.INSERTURKEY
+			,IN_ICUT.UPDATEDATE
+			,IN_ICUT.UPDATEURKEY
+		  )
+    </insert>
+
+	<select id="selectTAdminMstIcutxtype" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectTAdminMstIcutxtype */
+		SELECT
+			 OWKEY       /* 화주 코드 */
+			,ICUNITKEY     /* 상품코드(상품단위코드) */
+			,ICUNITTYPE    /* 상품단위유형 */
+			,ICUNITORDER   /* 상품단위순서 */
+			,ICUNITQTY     /* 상품단위수량 */
+		FROM TADMIN_MST_ICUTXTYPE
+		WHERE OWKEY = #{owkey}
+		  AND ICUNITKEY = #{icunitkey}
+	</select>
+
+	<select id="selectNewickeyChk" resultType="java.lang.Integer">
+		/* oms-item-itemcode-sql-oracle.xml - selectNewickeyChk */
+		SELECT COUNT(*) AS CNT
+		  FROM TORDER_MST_IC
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<select id="selectItemCodeUnitType" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeUnitType */
+		SELECT '0' AS CHK
+		     , A.OWKEY
+		     , A.ICKEY
+		     , A.ICUNITTYPE
+			 , A.ICUNITORDER
+			 , A.ICUNITQTY
+			 , A.DEPTH
+			 , A.WIDTH
+			 , A.HEIGHT
+			 , COALESCE(A.SIZEUNIT, 'MM') AS SIZEUNIT
+			 , A.WEIGHT/1000 AS WEIGHT
+			 , 'KG' AS WEIGHTUNIT
+			 , A.VOL
+			 , A.VOLUNIT
+			 , A.CPP
+             , B.BARCODE AS ICBARCODE
+			 , COALESCE(A.DELYN, 'N') AS DELYN
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TORDER_MST_ICUTXTYPE A
+        LEFT JOIN TORDER_MST_ICBACODE B
+        ON A.OWKEY = B.OWKEY
+        AND A.ICKEY =  B.ICKEY
+        AND A.ICUNITTYPE =  B.UOM
+        AND B.DELYN ='N'
+		WHERE A.OWKEY = #{owkey}
+		  AND A.ICKEY = #{ickey}
+		ORDER BY A.ICUNITORDER ASC   		 
+	</select>
+
+	<delete id="deleteItemCodeUnitType">
+		/* oms-item-itemcode-sql-oracle.xml - deleteItemCodeUnitType */
+		DELETE FROM TORDER_MST_ICUTXTYPE
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icunittype)">
+			AND ICUNITTYPE = #{icunittype}
+		</if>
+	</delete>
+
+	<delete id="deleteItemCodeUnitTypeXCenter">
+		/* oms-item-itemcode-sql-oracle.xml - deleteItemCodeUnitTypeXCenter */
+		UPDATE TORDER_MST_ICXCT SET
+		DELYN = 'Y'
+		, UPDATEDATE = #{sysdate}
+		, UPDATEURKEY = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</delete>
+
+
+	<select id="selectItemCodeDelCount" resultType="java.lang.Integer">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeDelCount */
+		SELECT COUNT(1)
+		FROM TORDER_MST_IC
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		  AND DELYN = 'Y'
+	</select>
+
+	<update id="mergeItemCodeXCenter">
+		/* oms-item-itemcode-sql-oracle.xml - mergeItemCodeXCenter */
+		MERGE INTO TADMIN_MST_ICXCT
+			USING DUAL
+			ON (OWKEY = #{owkey}
+				AND ICKEY = #{ickey}
+				)
+			WHEN MATCHED THEN
+				UPDATE
+					SET LOGGRPCD 		= #{udf2}
+						,ACKEY			= #{ackey}
+						,ICGRPKEY		= #{icgrpkey}
+						,RNDKEY			= '0'
+						,UPDATEDATE		= #{sysdate}
+						,UPDATEURKEY 	= #{surkey}
+						,DELYN 		 	= #{delyn}
+			WHEN NOT MATCHED THEN
+				INSERT (
+						UPDATEURKEY
+					,UPDATEDATE
+					,OWKEY
+					,INSERTURKEY
+					,INSERTDATE
+					,ICKEY
+					,CTKEY
+					,LOGGRPCD
+					,VOLTYPE
+					,NEWYN
+					,ACKEY
+					,ORDTYPE
+					,ICGRPKEY
+					,RNDKEY
+					,DELYN
+					)
+					VALUES
+						(
+						  #{surkey}
+						,#{sysdate}
+						,#{owkey}
+						,#{surkey}
+						,#{sysdate}
+						,#{ickey}
+						,#{ctkey}
+						,#{loggrpcd}
+						,'0'
+						,'Y'
+						,#{ackey}
+						,'0'
+						,#{icgrpkey}
+						,#{rndkey}
+						,'N'
+						)
+	</update>
+
+	<update id="mergeTAdminMstCtxacxic">
+		/* oms-item-itemcode-sql-oracle.xml - mergeTAdminMstCtxacxic */
+		MERGE INTO TADMIN_MST_CTXACXIC
+			USING DUAL
+			ON (OWKEY = #{owkey}
+				AND ICKEY = #{ickey}
+				)
+			WHEN MATCHED THEN
+				UPDATE
+					SET ACKEY 		= #{ackey}
+						,UPDATEDATE	= #{sysdate}
+						,UPDATEURKEY  = #{surkey}
+						,DELYN   		= #{delyn}
+			WHEN NOT MATCHED THEN
+				INSERT  (
+						 OWKEY
+					,CTKEY
+					,ICKEY
+					,ACKEY
+					,CP
+					,PODDLNTIME
+					,POICUTTYPE
+					,SMPOMLP
+					,ASNAUTOYN
+					,POHDTYPE
+					,CTPOYN
+					,POSTOPYN
+					,DELYN
+					,IBTIME
+					,HOLD
+					,UPDATEURKEY
+					,UPDATEDATE
+					,INSERTURKEY
+					,INSERTDATE
+					)
+					VALUES
+						(
+						  #{owkey}
+						,#{ctkey}
+						,#{ickey}
+						,#{ackey}
+						, 0
+						, '140000'
+						, 'EA'
+						, '1'
+						, 'N'
+						, '140'
+						, 'N'
+						, 'N'
+						, 'N'
+						, '110000'
+						, 'N'
+						, #{surkey}
+						,#{sysdate}
+						,#{surkey}
+						,#{sysdate}
+						)
+	</update>
+
+	<delete id="deleteExcelTemp">
+		/* oms-item-itemcode-sql-oracle.xml - deleteExcelTemp */
+		DELETE FROM TADMIN_UPLOAD_IC
+		WHERE UPLDKEY = #{upldkey}
+	</delete>
+
+	<update id="updateItemCodeErrorHeader">
+		/* oms-item-itemcode-sql-oracle.xml - updateItemCodeErrorHeader */
+		UPDATE TADMIN_UPLOAD_IC TUM
+		SET (TUM.ERRCD
+			,TUM.ERRCMTS ) = (SELECT T.ERRCD
+                                          , T.ERRCD AS ERRCMTS
+									 FROM (
+										<foreach collection="headerList" item="item" separator="UNION ALL">
+											SELECT #{item.upldkey} AS UPLDKEY
+												 , #{item.upldseq} AS UPLDSEQ
+												 , #{item.ickey} AS ICKEY
+												 , #{item.errcd} AS ERRCD
+										</foreach> ) T
+									 WHERE T.UPLDKEY = TUM.UPLDKEY
+									   AND T.UPLDSEQ = TUM.UPLDSEQ
+									 )
+		WHERE EXISTS(
+		      SELECT 1
+		      FROM (
+					<foreach collection="headerList" item="item" separator="UNION ALL">
+						SELECT #{item.upldkey} AS UPLDKEY
+							 , #{item.upldseq} AS UPLDSEQ
+							 , #{item.ickey} AS ICKEY
+							 , #{item.errcd} AS ERRCD
+					</foreach>
+					) T
+		      WHERE TUM.UPLDKEY = T.UPLDKEY
+		        AND TUM.UPLDSEQ = T.UPLDSEQ
+			)
+	</update>
+
+	<update id="updateItemCodeErrorDetail">
+		/* oms-item-itemcode-sql-oracle.xml - updateItemCodeErrorDetail */
+		UPDATE TADMIN_UPLOAD_IC TUM
+		SET (TUM.ERRCD
+			,TUM.ERRCMTS ) = (SELECT T.ERRCD
+										  , T.ERRCD AS ERRCMTS
+								     FROM (
+										<foreach collection="detailList" item="item" separator="UNION ALL">
+											SELECT #{item.upldkey} AS UPLDKEY
+												 , #{item.upldseq} AS UPLDSEQ
+												 , #{item.ickey} AS ICKEY
+												 , #{item.errcd} AS ERRCD
+										</foreach> ) T
+									WHERE T.UPLDKEY = TUM.UPLDKEY
+									  AND T.UPLDSEQ = TUM.UPLDSEQ
+									)
+		WHERE EXISTS(
+				SELECT 1
+				FROM (
+				<foreach collection="detailList" item="item" separator="UNION ALL">
+					SELECT #{item.upldkey} AS UPLDKEY
+						 , #{item.upldseq} AS UPLDSEQ
+						 , #{item.ickey} AS ICKEY
+						 , #{item.errcd} AS ERRCD
+				</foreach> ) T
+				WHERE TUM.UPLDKEY = T.UPLDKEY
+				  AND TUM.UPLDSEQ = T.UPLDSEQ
+		)
+	</update>
+
+	<update id="updateReItemCodeErrorDetail">
+		/* oms-item-itemcode-sql-oracle.xml - updateReItemCodeErrorDetail */
+		UPDATE TADMIN_UPLOAD_IC TUM
+		   SET (TUM.ERRCD
+			   ,TUM.ERRCMTS ) = (SELECT T.ERRCD
+											 , T.ERRCD AS ERRCMTS
+										FROM (
+										<foreach collection="allList" item="item" separator="UNION ALL">
+											SELECT #{item.upldkey} AS UPLDKEY
+												 , #{item.upldseq} AS UPLDSEQ
+												 , #{item.ickey} AS ICKEY
+												 , #{item.errcd} AS ERRCD
+										</foreach> ) T
+										WHERE T.UPLDKEY = TUM.UPLDKEY
+										  AND T.UPLDSEQ = TUM.UPLDSEQ )
+		WHERE TUM.UPLDKEY = #{upldkey}
+	</update>
+
+	<select id="selectExcelUploadVaildH" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectExcelUploadVaildH */
+		SELECT T.UPLDKEY
+			 , T.UPLDSEQ
+		     , T.ICKEY
+			 , T.ERRCD
+		FROM (  SELECT B.UPLDKEY
+					 , B.UPLDSEQ
+		             , B.ICKEY
+					 , CASE WHEN (SELECT COUNT(1)
+					     	      FROM TADMIN_MST_IC TP
+					     	      WHERE TP.OWKEY = #{owkey}
+					     	        AND TP.ICKEY = B.ICKEY) > 0 THEN 'IS_EXISTS_DATA'
+							WHEN B.ICKEY IS NULL THEN 'TXT_ICKEY_NULL'
+							WHEN B.ICNM IS NULL THEN 'TXT_ICNAME_NULL'
+							WHEN B.LOGGRPCD IS NULL THEN 'TXT_LOGGRPCD_NULL'
+							WHEN B.ICGRPKEY IS NULL THEN 'TXT_ICGRKEY_NULL'
+							WHEN B.UOM IS NULL THEN 'TXT_UOM_NULL'
+							WHEN B.ICTYPE IS NULL THEN 'TXT_ICTYPE_NULL'
+							WHEN B.CTGKEY IS NULL THEN 'TXT_CTGKEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'LOGGRPCD'
+									AND ADCDDTKEY = B.LOGGRPCD
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'ICUTTYPE'
+									AND ADCDDTKEY = B.UOM
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'ICTYPE'
+									AND ADCDDTKEY = B.ICTYPE
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'RUN_ITEM_ID'
+									AND ADCDDTKEY = B.OPERSTATUSTYPE
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.FOODYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.EXPCKYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'SHELFLIFECODETYPE'
+									AND ADCDDTKEY = B.EXPCKTYPE
+									AND LAKEY = #{lakey}) IS NULL AND B.EXPCKYN = 'Y' THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.WGTCFYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT ICGRPNM
+								  FROM TADMIN_MST_ICGR
+								  WHERE OWKEY = #{owkey}
+									AND ICGRPKEY = B.ICGRPKEY) IS NULL THEN 'NO_MASTER_DATA_ICGR'
+							WHEN (SELECT CTGNM
+								  FROM TADMIN_MST_CTG
+								  WHERE OWKEY = #{owkey}
+									AND CTGKEY = B.CTGKEY
+									AND DELYN = 'N') IS NULL THEN 'NO_MASTER_DATA_CTG'
+							WHEN (SELECT CTGNM
+								  FROM TADMIN_MST_CTG
+								  WHERE OWKEY = #{owkey}
+									AND CTGKEY = B.CTGKEY
+									AND CTGLV = '3'
+									AND DELYN = 'N') IS NULL THEN 'NO_MATCH_CTGLVL'
+							WHEN CASE B.ACKEY WHEN B.ACKEY IS NULL THEN '1' ELSE CASE WHEN (SELECT ACNM
+																		FROM TADMIN_MST_AC
+																		WHERE OWKEY = #{owkey}
+																		  AND ACKEY = B.ACKEY
+																		  AND DELYN = 'N') IS NULL THEN '2' END END = '2' THEN 'NO_MASTER_DATA_AC'
+							WHEN REGEXP_INSTR(OBDAYS, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(SHELFDAY, '[^0-9.]') > 0 THEN 'NO_INT_DATA' END AS ERRCD
+				FROM (SELECT UPLDKEY
+						   , ICKEY
+						   , MIN(UPLDSEQ) AS UPLDSEQ
+					  FROM TADMIN_UPLOAD_IC
+					  WHERE UPLDKEY = #{upldkey}
+						AND DELYN = 'N'
+					  GROUP BY UPLDKEY, ICKEY ) A
+						 INNER JOIN TADMIN_UPLOAD_IC B
+								 ON A.UPLDKEY = B.UPLDKEY
+								AND A.UPLDSEQ = B.UPLDSEQ
+								AND A.ICKEY 	= B.ICKEY
+				WHERE B.UPLDKEY = #{upldkey}
+				  AND B.DELYN = 'N' ) T
+		WHERE T.ERRCD IS NOT NULL
+	</select>
+
+	<select id="selectExcelUploadVaildD" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectExcelUploadVaildD */
+		SELECT T.UPLDKEY
+			 , T.UPLDSEQ
+		     , T.ICKEY
+			 , T.ERRCD
+		FROM (  SELECT A.UPLDKEY
+					 , A.UPLDSEQ
+		             , A.ICKEY
+					 , CASE WHEN (SELECT COUNT(1)
+								  FROM TADMIN_UPLOAD_IC TEMP
+								  WHERE TEMP.UPLDKEY = #{upldkey}
+									AND TEMP.ICKEY = A.ICKEY
+									AND TEMP.ICUNITTYPE = A.ICUNITTYPE
+								    AND TEMP.DELYN = 'N') > 1 THEN 'SAME_ICUTTYPE_DATA'
+							WHEN A.ICUNITTYPE IS NULL THEN 'TXT_ICUTTYPE_NULL'
+							WHEN A.ICUNITORDER IS NULL THEN 'TXT_ICUTORDER_NULL'
+							WHEN A.ICUNITQTY IS NULL THEN 'TXT_ICUTQTY_NULL'
+							WHEN REGEXP_INSTR(A.ICUNITORDER, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(A.ICUNITQTY, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(A.LENGTH, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(A.WIDTH, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(A.HEIGHT, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN NOT A.WEIGHT ~ '^\d+(\.\d+)?$' THEN 'NO_INT_DATA'
+							WHEN NOT A.VOL ~ '^\d+(\.\d+)?$' THEN 'NO_INT_DATA'  END ERRCD
+				FROM TADMIN_UPLOAD_IC A
+				WHERE A.UPLDKEY = #{upldkey}
+				  AND A.DELYN = 'N' ) T
+		WHERE T.ERRCD IS NOT NULL
+	</select>
+
+	<select id="selectExcelUploadVaild" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectExcelUploadVaild */
+		SELECT T.UPLDKEY
+			 , T.UPLDSEQ
+			 , T.ICKEY
+			 , T.ERRCD
+		FROM (  SELECT B.UPLDKEY
+					 , B.UPLDSEQ
+					 , B.ICKEY
+					 , CASE WHEN (SELECT COUNT(1)
+								  FROM TADMIN_MST_IC TP
+								  WHERE TP.OWKEY = #{owkey}
+									AND TP.ICKEY = B.ICKEY) > 0 THEN 'IS_EXISTS_DATA'
+							WHEN B.ICKEY IS NULL THEN 'TXT_ICKEY_NULL'
+							WHEN B.ICNM IS NULL THEN 'TXT_ICNAME_NULL'
+							WHEN B.LOGGRPCD IS NULL THEN 'TXT_LOGGRPCD_NULL'
+							WHEN B.ICGRPKEY IS NULL THEN 'TXT_ICGRKEY_NULL'
+							WHEN B.UOM IS NULL THEN 'TXT_UOM_NULL'
+							WHEN B.ICTYPE IS NULL THEN 'TXT_ICTYPE_NULL'
+							WHEN B.CTGKEY IS NULL THEN 'TXT_CTGKEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'LOGGRPCD'
+									AND ADCDDTKEY = B.LOGGRPCD
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'ICUTTYPE'
+									AND ADCDDTKEY = B.UOM
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'ICTYPE'
+									AND ADCDDTKEY = B.ICTYPE
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'RUN_ITEM_ID'
+									AND ADCDDTKEY = B.OPERSTATUSTYPE
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.FOODYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.EXPCKYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'SHELFLIFECODETYPE'
+									AND ADCDDTKEY = B.EXPCKTYPE
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT MAX(ADCDDTNM)
+								  FROM TADMIN_MST_ADCD_DT
+								  WHERE ADCDHDKEY = 'YESORNO'
+									AND ADCDDTKEY = B.WGTCFYN
+									AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+							WHEN (SELECT ICGRPNM
+								  FROM TADMIN_MST_ICGR
+								  WHERE OWKEY = #{owkey}
+									AND ICGRPKEY = B.ICGRPKEY) IS NULL THEN 'NO_MASTER_DATA_ICGR'
+							WHEN (SELECT CTGNM
+								  FROM TADMIN_MST_CTG
+								  WHERE OWKEY = #{owkey}
+									AND CTGKEY = B.CTGKEY
+									AND DELYN = 'N') IS NULL THEN 'NO_MASTER_DATA_CTG'
+					     	WHEN (SELECT CTGNM
+					     	      FROM TADMIN_MST_CTG
+					     	      WHERE OWKEY = #{owkey}
+					     	        AND CTGKEY = B.CTGKEY
+					     	        AND CTGLV = '3'
+					     	        AND DELYN = 'N') IS NULL THEN 'NO_MATCH_CTGLVL'
+							WHEN CASE B.ACKEY WHEN B.ACKEY IS NULL THEN '1' ELSE CASE WHEN (SELECT ACNM
+																		 FROM TADMIN_MST_AC
+																		 WHERE OWKEY = #{owkey}
+																		   AND ACKEY = B.ACKEY
+																		   AND DELYN = 'N') IS NULL THEN '2' END END = '2' THEN 'NO_MASTER_DATA_AC'
+							WHEN REGEXP_INSTR(OBDAYS, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(SHELFDAY, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN (SELECT COUNT(1)
+								  FROM TADMIN_UPLOAD_IC TEMP
+								  WHERE TEMP.UPLDKEY = #{upldkey}
+									AND TEMP.ICKEY = B.ICKEY
+									AND TEMP.ICUNITTYPE = B.ICUNITTYPE
+									AND TEMP.DELYN = 'N') > 1 THEN 'SAME_ICUTTYPE_DATA'
+							WHEN B.ICUNITTYPE IS NULL THEN 'TXT_ICUTTYPE_NULL'
+							WHEN B.ICUNITORDER IS NULL THEN 'TXT_ICUTORDER_NULL'
+							WHEN B.ICUNITQTY IS NULL THEN 'TXT_ICUTQTY_NULL'
+							WHEN REGEXP_INSTR(B.ICUNITORDER, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(B.ICUNITQTY, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(B.LENGTH, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(B.WIDTH, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN REGEXP_INSTR(B.HEIGHT, '[^0-9.]') > 0 THEN 'NO_INT_DATA'
+							WHEN NOT B.WEIGHT ~ '^\d+(\.\d+)?$' THEN 'NO_INT_DATA'
+							WHEN NOT B.VOL ~ '^\d+(\.\d+)?$' THEN 'NO_INT_DATA'
+				END AS ERRCD
+				FROM (SELECT UPLDKEY
+						   , ICKEY
+						   , MIN(UPLDSEQ) AS UPLDSEQ
+					  FROM TADMIN_UPLOAD_IC
+					  WHERE UPLDKEY = #{upldkey}
+						AND DELYN = 'N'
+					  GROUP BY UPLDKEY, ICKEY ) A
+						 INNER JOIN TADMIN_UPLOAD_IC B
+								 ON A.UPLDKEY = B.UPLDKEY
+								AND A.UPLDSEQ = B.UPLDSEQ
+								AND A.ICKEY 	= B.ICKEY ) T
+		WHERE T.ERRCD IS NOT NULL
+	</select>
+
+	<select id="selectItemCodeExcelTempCount" resultType="java.lang.Integer">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeExcelTempCount */
+		SELECT COUNT(1)
+		FROM (
+		    	SELECT UPLDKEY
+					 , ICKEY
+		    	FROM TADMIN_UPLOAD_IC
+		    	WHERE UPLDKEY = #{upldkey}
+				  AND DELYN = 'N'
+		    	GROUP BY UPLDKEY, ICKEY
+			 ) T
+	</select>
+
+	<select id="selectItemCodeExcelTempList" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeExcelTempList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , '' AS OWKEY
+		     , B.UPLDKEY
+			 , B.ICKEY
+			 , B.ICNM
+		     , B.ICTYPE
+			 , B.LOGGRPCD
+			 , B.ICGRPKEY
+			 , B.UOM
+			 , B.OPERSTATUSTYPE
+			 , B.CTGKEY
+			 , B.ACKEY
+			 , B.FOODYN
+			 , B.SPEC
+			 , B.OBDAYS
+			 , B.EXPCKYN
+			 , B.EXPCKTYPE
+			 , B.WGTCFYN
+			 , B.SHELFDAY
+			 , B.CMT
+			 , B.ERRCD
+			 , B.ERRCMTS
+		FROM (
+		    	SELECT UPLDKEY
+		    		 , ICKEY
+					 , MIN(UPLDSEQ) AS UPLDSEQ
+				FROM TADMIN_UPLOAD_IC
+				WHERE UPLDKEY = #{upldkey}
+				  AND DELYN = 'N'
+		    	GROUP BY UPLDKEY, ICKEY ) A
+			INNER JOIN TADMIN_UPLOAD_IC B
+					ON A.UPLDKEY = B.UPLDKEY
+				   AND A.UPLDSEQ = B.UPLDSEQ
+		 		   AND A.ICKEY 	   = B.ICKEY
+        WHERE B.UPLDKEY = #{upldkey}
+		  AND B.DELYN = 'N'
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		ORDER BY PAGING_NUM
+	</select>
+
+	<select id="selectItemCodeExcelDetail" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeExcelDetail */
+		SELECT '0' AS CHK
+		     , UPLDKEY
+		     , UPLDSEQ
+		     , ICKEY
+ 			 , ICUNITTYPE
+			 , ICUNITORDER
+			 , ICUNITQTY
+			 , LENGTH AS LENGTHUOM
+			 , WIDTH AS WIDTHUOM
+			 , HEIGHT AS HEIGHTUOM
+			 , WEIGHT
+			 , VOL
+			 , ERRCD
+			 , ERRCMTS
+		FROM TADMIN_UPLOAD_IC
+		WHERE UPLDKEY = #{upldkey}
+		  AND ICUNITKEY = #{ickey}
+		  AND DELYN = 'N'
+	</select>
+
+	<select id="selectExcelErrorCount" resultType="java.lang.Integer">
+		/* oms-item-itemcode-sql-oracle.xml - selectExcelErrorCount */
+		SELECT COUNT(1)
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) A
+					INNER JOIN TADMIN_UPLOAD_IC B
+							ON A.UPLDKEY  = B.UPLDKEY
+						   AND A.UPLDSEQ  = B.UPLDSEQ
+						   AND A.ICKEY 		= B.ICKEY
+		WHERE B.UPLDKEY = #{upldkey}
+		  AND B.DELYN = 'N'
+		  AND B.ERRCD IS NOT NULL
+		  AND B.ERRCMTS IS NOT NULL
+	</select>
+
+	<select id="selectItemCodeExcelError" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectItemCodeExcelError */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+			 , '' AS OWKEY
+			 , B.UPLDKEY
+			 , B.UPLDSEQ
+			 , B.ICKEY
+		     , B.ICTYPE
+			 , B.ICNM
+			 , B.LOGGRPCD
+			 , B.ICGRPKEY
+			 , B.UOM
+			 , B.OPERSTATUSTYPE
+			 , B.CTGKEY
+			 , B.ACKEY
+			 , B.FOODYN
+			 , B.SPEC
+			 , B.OBDAYS
+			 , B.EXPCKYN
+			 , B.EXPCKTYPE
+			 , B.WGTCFYN
+			 , B.SHELFDAY
+			 , B.CMT
+			 , B.ERRCD
+			 , B.ERRCMTS
+			 , B.DELYN
+			 , B.INSERTDATE
+			 , B.INSERTURKEY
+			 , B.UPDATEDATE
+			 , B.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS EXPCKYN
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) A
+					 INNER JOIN TADMIN_UPLOAD_IC B
+							 ON A.UPLDKEY = B.UPLDKEY
+							AND A.UPLDSEQ = B.UPLDSEQ
+							AND A.ICKEY 	= B.ICKEY
+		WHERE B.UPLDKEY = #{upldkey}
+		  AND B.DELYN = 'N'
+		  AND B.ERRCD IS NOT NULL
+		  AND B.ERRCMTS IS NOT NULL
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<update id="deleteExcelTempList">
+		/* oms-item-itemcode-sql-oracle.xml - deleteExcelTempList */
+		UPDATE TADMIN_UPLOAD_IC TUM
+		   SET DELYN = ( SELECT TB.DELYN
+		                 FROM ( SELECT 'Y' AS DELYN
+		                        	 , T.UPLDKEY
+		                        	 , T.UPLDSEQ
+		                        	 , T.ICKEY
+		                        FROM (
+									<foreach collection="excelList" item="item" separator="UNION ALL">
+										SELECT #{item.upldkey} AS UPLDKEY
+											 , #{item.upldseq} AS UPLDSEQ
+											 , #{item.ickey}     AS ICKEY
+									</foreach> ) T ) TB
+		                 WHERE TB.UPLDKEY = TUM.UPLDKEY
+		                   AND TB.ICKEY     = TUM.ICKEY )
+		WHERE EXISTS(
+		    SELECT 1
+		    FROM (
+				<foreach collection="excelList" item="item" separator="UNION ALL">
+					SELECT #{item.upldkey} AS UPLDKEY
+						 , #{item.upldseq} AS UPLDSEQ
+						 , #{item.ickey}     AS ICKEY
+				</foreach> ) T
+		    WHERE T.UPLDKEY = TUM.UPLDKEY
+			  AND T.ICKEY     = TUM.ICKEY
+		)
+	</update>
+
+	<update id="deleteExcelTempDetailList">
+		/* oms-item-itemcode-sql-oracle.xml - deleteExcelTempDetailList */
+		UPDATE TADMIN_UPLOAD_IC TUM
+		SET DELYN = (   SELECT TB.DELYN
+						FROM ( SELECT 'Y' AS DELYN
+									, T.UPLDKEY
+									, T.UPLDSEQ
+									, T.ICKEY
+						       	 	, T.ICUNITTYPE
+							   FROM (
+									<foreach collection="excelList" item="item" separator="UNION ALL">
+										SELECT #{item.upldkey} AS UPLDKEY
+											 , #{item.upldseq} AS UPLDSEQ
+											 , #{item.ickey}     AS ICKEY
+											 , #{item.icunittype}  AS ICUNITTYPE
+									</foreach> ) T ) TB
+						WHERE TB.UPLDKEY = TUM.UPLDKEY
+						  AND TB.UPLDSEQ = TUM.UPLDSEQ
+						  )
+		WHERE EXISTS(
+			SELECT 1
+			FROM (
+			<foreach collection="excelList" item="item" separator="UNION ALL">
+				SELECT #{item.upldkey} AS UPLDKEY
+					 , #{item.upldseq} AS UPLDSEQ
+					 , #{item.ickey}     AS ICKEY
+					 , #{item.icunittype}  AS ICUNITTYPE
+			</foreach> ) T
+			WHERE T.UPLDKEY = TUM.UPLDKEY
+			  AND T.UPLDSEQ = TUM.UPLDSEQ
+		)
+	</update>
+
+	<insert id="insertTadminMstIcut">
+		/* oms-item-itemcode-sql-oracle.xml - insertTadminMstIcut */
+		INSERT INTO TADMIN_MST_ICUT
+		SELECT #{owkey} AS OWKEY
+			 , A.ICUNITKEY
+			 , #{closdate} AS CLOSDATE
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDSEQ
+						AND A.ICKEY 	= B.ICKEY
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTWorkMstIcut">
+		/* oms-item-itemcode-sql-oracle.xml - insertTWorkMstIcut */
+		INSERT INTO TWORK_MST_ICUT
+		SELECT C.CTKEY
+			 , #{owkey}
+			 , A.ICUNITKEY
+			 , #{closdate}
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDSEQ
+						AND A.ICKEY 	= B.ICKEY
+			 INNER JOIN TADMIN_MST_ICGRXCT C
+					 ON C.OWKEY = #{owkey}
+					AND C.ICGRPKEY = A.ICGRPKEY
+					AND C.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstIcExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcExcel */
+		INSERT INTO TADMIN_MST_IC (
+		      OWKEY
+			, ICKEY
+			, ICNM
+			, ICGRPKEY
+			, ICGRPTYPE
+			, ICUNITKEY
+			, UOM
+			, EXPCKYN
+			, EXPCKTYPE
+			, UDF2
+			, UDF5
+			, ACKEY
+			, OBDAYS
+			, ICTYPE
+			, SPEC
+			, CTGKEY
+			, FOODYN
+			, OPERSTATUSYPE
+			, SHELFDAY
+			, WGTCFYN
+			, CLOSDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey} AS OWKEY
+			 , A.ICKEY
+			 , A.ICNM
+			 , A.ICGRPKEY
+		     , 'CATEGORY' AS ICGRTYPE
+			 , A.ICUNITKEY
+			 , A.UOM
+			 , A.EXPCKYN
+			 , A.EXPCKTYPE
+			 , A.LOGGRPCD
+			 , A.CMT
+			 , A.ACKEY
+			 , A.OBDAYS
+			 , A.ICTYPE
+			 , A.SPEC
+			 , A.CTGKEY
+			 , A.FOODYN
+			 , A.OPERSTATUSTYPE
+			 , A.SHELFDAY
+			 , A.WGTCFYN
+			 , #{closdate}
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDKEY
+						AND A.ICKEY 	= B.ICKEY
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTWorkMstIcExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTWorkMstIcExcel */
+		INSERT INTO TWORK_MST_IC (
+			    CTKEY
+			  , OWKEY
+			  , ICKEY
+			  , ICNAME
+			  , ICGRKEY
+			  , ICGRTYPE
+			  , ICUTKEY
+			  , UOM
+			  , SHELFLIFEINDICATOR
+			  , SHELFLIFECODETYPE
+			  , UDF2
+			  , LOGGRPCD
+			  , UDF5
+			  , ACKEY
+			  , RELEASEDAYS
+			  , ICTYPE
+			  , SPEC
+			  , CTGKEY
+			  , FOODYN
+			  , OPERSTATYPE
+			  , SHELFDAY
+			  , WGT_CF_YN
+			  , CLOSDATE
+			  , INSERTDATE
+			  , INSERTURKEY
+			  , UPDATEDATE
+			  , UPDATEURKEY )
+		SELECT C.CTKEY
+		     , #{owkey} AS OWKEY
+			 , A.ICKEY
+			 , A.ICNM
+			 , A.ICGRPKEY
+			 , 'CATEGORY' AS ICGRTYPE
+			 , A.ICUNITKEY
+			 , A.UOM
+			 , A.EXPCKYN
+			 , A.EXPCKTYPE
+			 , A.LOGGRPCD AS UDF2
+			 , A.LOGGRPCD
+			 , A.CMT
+			 , A.ACKEY
+			 , A.OBDAYS
+			 , A.ICTYPE
+			 , A.SPEC
+			 , A.CTGKEY
+			 , A.FOODYN
+			 , A.OPERSTATUSTYPE
+			 , A.SHELFDAY
+			 , A.WGTCFYN
+			 , #{closdate}
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDSEQ
+						AND A.ICKEY 	= B.ICKEY
+			 INNER JOIN TADMIN_MST_ICGRXCT C
+					 ON C.OWKEY = #{owkey}
+					AND C.ICGRPKEY = A.ICGRPKEY
+					AND C.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTTMstIcExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTTMstIcExcel */
+		INSERT INTO TT_MST_IC (
+		      OWKEY
+			, ICKEY
+			, ICNAME
+			, ICGRKEY
+			, ICGRTYPE
+			, ICUTKEY
+			, UOM
+			, SHELFLIFEINDICATOR
+			, SHELFLIFECODETYPE
+			, UDF2
+			, UDF5
+			, ACKEY
+			, RELEASEDAYS
+			, ICTYPE
+			, SPEC
+			, CTGKEY
+			, FOODYN
+			, TAXYN
+			, SHELFDAY
+			, CLOSDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey} AS OWKEY
+			 , A.ICKEY
+			 , A.ICNM
+			 , A.ICGRPKEY
+			 , 'CATEGORY' AS ICGRTYPE
+			 , A.ICUNITKEY
+			 , A.UOM
+			 , A.EXPCKYN
+			 , A.EXPCKTYPE
+			 , A.LOGGRPCD
+			 , A.CMT
+			 , A.ACKEY
+			 , A.OBDAYS
+			 , A.ICTYPE
+			 , A.SPEC
+			 , A.CTGKEY
+			 , A.FOODYN
+			 , 'N' AS TAXYN
+			 , A.SHELFDAY
+			 , #{closdate}
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+							ON A.UPLDKEY = B.UPLDKEY
+								AND A.UPLDSEQ = B.UPLDSEQ
+								AND A.ICKEY 	= B.ICKEY
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstIcutTypeExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcutTypeExcel */
+		INSERT INTO TADMIN_MST_ICUTXTYPE (
+			  OWKEY
+			, ICUNITKEY
+			, ICUNITTYPE
+			, ICUNITORDER
+			, ICUNITQTY
+			, LENGTH
+			, WIDTH
+			, HEIGHT
+			, SIZEUNIT
+			, WEIGHT
+			, WEIGHTUNIT
+			, VOL
+			, VOLUNIT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey} AS OWKEY
+			 , A.ICUNITKEY
+			 , A.ICUNITTYPE
+			 , A.ICUNITORDER
+			 , A.ICUNITQTY
+			 , A.LENGTH
+			 , A.WIDTH
+			 , A.HEIGHT
+			 , 'MM' AS SIZEUNIT
+			 , TRUNC(A.WEIGHT, 3) * 1000 AS WEIGHT
+			 , 'G' AS WEIGHTUNIT
+			 , TRUNC(A.VOL, 3) AS VOL
+			 , 'MM3' AS VOLUNIT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_UPLOAD_IC A
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTWorkMstIcutTypeExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTWorkMstIcutTypeExcel */
+		INSERT INTO TWORK_MST_ICUTXTYPE (
+			  OWKEY
+			, CTKEY
+			, ICUTKEY
+			, ICUTTYPE
+			, ICUTORDER
+			, ICUTQTY
+			, LENGTH
+			, WIDTH
+			, HEIGHT
+			, SIZEUNIT
+			, WEIGHT
+			, WEIGHTUNIT
+			, VOLUME
+			, VOLUMEUNIT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey} AS OWKEY
+		     , B.CTKEY
+			 , A.ICUNITKEY
+			 , A.ICUNITTYPE
+			 , A.ICUNITORDER
+			 , A.ICUNITQTY
+			 , A.LENGTH
+			 , A.WIDTH
+			 , A.HEIGHT
+			 , 'MM' AS SIZEUNIT
+			 , TRUNC(A.WEIGHT, 3) * 1000 AS WEIGHT
+			 , 'G' AS WEIGHTUNIT
+			 , TRUNC(A.VOLUME, 3) AS VOLUME
+			 , 'MM3' AS VOLUMEUNIT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_UPLOAD_IC A
+			INNER JOIN TADMIN_MST_ICGRXCT B
+				    ON B.OWKEY = #{owkey}
+				   AND B.ICGRPKEY = A.ICGRPKEY
+				   AND B.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTTMstIcutTypeExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTTMstIcutTypeExcel */
+		INSERT INTO TT_MST_ICUTXTYPE (
+			  OWKEY
+			, ICUTKEY
+			, ICUTTYPE
+			, ICUTORDER
+			, ICUTQTY
+			, LENGTH
+			, WIDTH
+			, HEIGHT
+			, SIZEUNIT
+			, WEIGHT
+			, WEIGHTUNIT
+			, VOLUME
+			, VOLUMEUNIT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey} AS OWKEY
+			 , A.ICUNITKEY
+			 , A.ICUNITTYPE
+			 , A.ICUNITORDER
+			 , A.ICUNITQTY
+			 , A.LENGTH
+			 , A.WIDTH
+			 , A.HEIGHT
+			 , 'MM' AS SIZEUNIT
+			 , TRUNC(A.WEIGHT, 3) * 1000 AS WEIGHT
+			 , 'G' AS WEIGHTUNIT
+			 , TRUNC(A.VOL, 3) AS VOLUME
+			 , 'MM3' AS VOLUMEUNIT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_UPLOAD_IC A
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTWorkWcs">
+		/* oms-item-itemcode-sql-oracle.xml - insertTWorkWcs */
+		INSERT INTO TWORK_INTF_ICWCS (
+		  CTKEY
+		, OWKEY
+		, ICKEY
+		, IF_YN
+		, INSERTDATE    /*입력일시*/
+		, INSERTURKEY    /*입력사용자*/
+		, UPDATEDATE    /*수정일시*/
+		, UPDATEURKEY    /*수정사용자*/
+		)
+		SELECT B.CTKEY
+			 , #{owkey} AS OWEKY
+			 , A.ICKEY
+			 , 'N' AS IF_YN
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_UPLOAD_IC A
+			 INNER JOIN TADMIN_MST_ICGRXCT B
+					 ON B.OWKEY = #{owkey}
+					AND B.ICGRPKEY = A.ICGRPKEY
+					AND B.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstIcxctExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcxctExcel */
+		INSERT INTO TADMIN_MST_ICXCT (
+			  OWKEY
+			, ICKEY
+			, CTKEY
+			, LOGGRPCD
+			, NEWYN
+			, ACKEY
+			, ORDTYPE
+			, ICGRPKEY
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey} AS OWKEY
+			 , A.ICKEY
+			 , C.CTKEY
+			 , A.LOGGRPCD
+			 , 'Y' AS NEWYN
+			 , A.ACKEY
+		     , '0' AS ORDTYPE
+			 , A.ICGRPKEY
+			 , 'N' AS DELYN
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDSEQ
+						AND A.ICKEY 	= B.ICKEY
+			 INNER JOIN TADMIN_MST_ICGRXCT C
+					 ON C.OWKEY = #{owkey}
+					AND C.ICGRPKEY = A.ICGRPKEY
+					AND C.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTTMstIcxctExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTTMstIcxctExcel */
+		INSERT INTO TT_MST_ICXCT (
+			  OWKEY
+			, ICKEY
+			, CTKEY
+			, LOGGRPCD
+			, VOLTYPE
+			, NEWYN
+			, ORDTYPE
+			, ICGRKEY
+			, DCKEY
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey} AS OWKEY
+			 , A.ICKEY
+			 , C.CTKEY
+			 , A.LOGGRPCD
+			 , '0' AS VOLTYPE
+			 , 'Y' AS NEWYN
+			 , '0' AS ORDTYPE
+			 , A.ICGRPKEY
+			 , '1' AS DCKEY
+			 , 'N' AS DELYN
+			 , A.INSERTDATE    /*입력일자*/
+			 , A.INSERTURKEY    /*입력사용자*/
+			 , A.UPDATEDATE    /*수정일자*/
+			 , A.UPDATEURKEY    /*수정사용자*/
+		FROM (   SELECT UPLDKEY
+					  , ICKEY
+					  , MIN(UPLDSEQ) AS UPLDSEQ
+				 FROM TADMIN_UPLOAD_IC
+				 WHERE UPLDKEY = #{upldkey}
+				   AND DELYN = 'N'
+				 GROUP BY UPLDKEY, ICKEY ) B
+				 INNER JOIN TADMIN_UPLOAD_IC A
+						 ON A.UPLDKEY = B.UPLDKEY
+						AND A.UPLDSEQ = B.UPLDSEQ
+						AND A.ICKEY 	= B.ICKEY
+			 INNER JOIN TADMIN_MST_ICGRXCT C
+					 ON C.OWKEY = #{owkey}
+					AND C.ICGRPKEY = A.ICGRPKEY
+					AND C.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+
+	<insert id="insertTAdminMstCtxAcXIcxctExcel">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstCtxAcXIcxctExcel */
+		INSERT INTO TADMIN_MST_CTXACXIC (
+		  	  OWKEY
+			, CTKEY
+			, ICKEY
+			, ACKEY
+			, CP
+			, PODDLNTIME
+			, POICUTTYPE
+			, SMPOMLP
+			, ASNAUTOYN
+			, POHDTYPE
+			, CTPOYN
+			, POSTOPYN
+			, DELYN
+			, IBTIME
+			, HOLD
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY )
+		SELECT #{owkey}
+			 , C.CTKEY
+			 , A.ICKEY
+			 , A.ACKEY
+			 ,  0
+			 ,  '140000'
+			 ,  'EA'
+			 ,  '1'
+			 ,  'N'
+			 ,  '140'
+			 ,  'N'
+			 ,  'N'
+			 ,  'N'
+			 ,  '110000'
+			 ,  'N'
+			 , A.INSERTDATE    /*입력일자*/
+			 , A.INSERTURKEY    /*입력사용자*/
+			 , A.UPDATEDATE    /*수정일자*/
+			 , A.UPDATEURKEY    /*수정사용자*/
+		FROM (	 SELECT T.UPLDKEY
+		              , T.UPLDSEQ
+		              , CASE WHEN T.ACKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				   FROM (   SELECT UPLDKEY
+								 , ICKEY
+								 , MIN(UPLDSEQ) AS UPLDSEQ
+							FROM TADMIN_UPLOAD_IC
+							WHERE UPLDKEY = #{upldkey}
+							  AND DELYN = 'N'
+							GROUP BY UPLDKEY, ICKEY ) B
+							INNER JOIN TADMIN_UPLOAD_IC T
+									ON T.UPLDKEY = B.UPLDKEY
+								   AND T.UPLDSEQ = B.UPLDSEQ
+								   AND T.ICKEY 	   = B.ICKEY
+				 WHERE T.UPLDKEY = #{upldkey}
+				   AND T.DELYN = 'N'
+				   AND T.ERRCD IS NULL ) B
+			INNER JOIN TADMIN_UPLOAD_IC A
+					ON B.UPLDKEY = A.UPLDKEY
+				   AND B.UPLDSEQ = A.UPLDSEQ
+			INNER JOIN TADMIN_MST_ICGRXCT C
+					ON C.OWKEY = #{owkey}
+				   AND C.ICGRPKEY = A.ICGRPKEY
+				   AND C.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND B.SAVEYN = 'N'
+	</insert>
+
+	<insert id="insertTAdminMstIcutxtypexct">
+		/* oms-item-itemcode-sql-oracle.xml - insertTAdminMstIcutxtypexct */
+		INSERT INTO TADMIN_MST_ICUTXTYPEXCT (
+			  OWKEY    /*화주 코드*/
+			, ICUNITKEY    /*물품 단위 코드*/
+			, ICUNITTYPE    /*물품 단위 유형*/
+			, CTKEY    /*센터 코드*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT #{owkey} AS OWKEY
+			 , A.ICUNITKEY    /*물품 단위 코드*/
+			 , A.ICUNITTYPE    /*물품 단위 유형*/
+			 , B.CTKEY    /*센터 코드*/
+			 , A.INSERTDATE    /*입력 일시*/
+			 , A.INSERTURKEY    /*입력 사용자 ID*/
+			 , A.UPDATEDATE    /*수정 일시*/
+			 , A.UPDATEURKEY    /*수정 사용자 ID*/
+		FROM TADMIN_UPLOAD_IC A
+			 INNER JOIN TADMIN_MST_ICGRXCT B
+					 ON B.OWKEY = #{owkey}
+					AND B.ICGRPKEY = A.ICGRPKEY
+					AND B.ICGRPTYPE = 'CATEGORY'
+		WHERE A.UPLDKEY = #{upldkey}
+		  AND A.DELYN = 'N'
+		  AND A.ERRCD IS NULL
+	</insert>
+	
+	<select id="selectAsrtMst" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectAsrtMst */
+		SELECT B.OWKEY
+		     , B.ASRTKEY 
+		     , B.ASRTREPKEY 
+			 , B.ASRTNM 
+			 , CTG.SCTGCD 
+			 , CTG.SCTGNM
+			 , CTG.MCTGCD
+			 , CTG.MCTGNM
+			 , CTG.LCTGCD
+			 , CTG.LCTGNM
+			 , B.QTY 
+			 , B.ASRTSTATUS 
+			 , B.ASRTREPKEY AS ICKEY
+			 , #{icgrpkey} AS ICGRPKEY
+			 , CASE WHEN AC.ICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ASRTICYN
+			 , B.INSERTDATE 
+			 , B.INSERTURKEY
+			 , B.UPDATEDATE 
+			 , B.UPDATEURKEY
+		FROM (SELECT MB.OWKEY
+                   , MB.ASRTKEY AS ICKEY
+                FROM TORDER_MST_ASRT MA
+                JOIN TORDER_MST_ASRT MB
+                  ON MA.OWKEY = MB.OWKEY
+                 AND MA.ASRTREPKEY = MB.ASRTREPKEY
+               WHERE MA.OWKEY = #{owkey}
+                 AND MA.ASRTKEY = #{ickey}
+               UNION ALL
+              SELECT MB.OWKEY
+                   , MB.ASRTKEY AS ICKEY
+                FROM TORDER_MST_IC MA
+                JOIN TORDER_MST_ASRT MB
+                  ON MA.OWKEY = MB.OWKEY
+                 AND MA.ICKEY = MB.ASRTREPKEY
+               WHERE MA.OWKEY = #{owkey}
+                 AND MA.ICKEY = #{ickey}
+             ) A
+        INNER JOIN TORDER_MST_ASRT B
+        ON A.OWKEY = B.OWKEY 
+        AND A.ICKEY = B.ASRTKEY -- ERP에서 받는 데이터 정합하지 않을 경우 대비 -- MST_IC.ASRTREPKEY 변경 및 삭제
+		LEFT OUTER JOIN TORDER_MST_IC AC
+		ON B.OWKEY = AC.OWKEY
+		AND B.ASRTKEY = AC.ICKEY
+		LEFT OUTER JOIN (
+						SELECT A.CTGKEY AS SCTGCD
+							 , A.CTGNM AS SCTGNM
+							 , A.UPPERCTGKEY AS MCTGCD
+							 , B.CTGNM AS MCTGNM
+							 , C.CTGKEY AS LCTGCD
+							 , C.CTGNM AS LCTGNM
+						FROM TORDER_MST_CTG A
+						LEFT OUTER JOIN TORDER_MST_CTG B
+						ON A.UPPERCTGKEY = B.CTGKEY
+						LEFT OUTER JOIN TORDER_MST_CTG C
+						ON B.UPPERCTGKEY = C.CTGKEY
+						WHERE A.DELYN = 'N' 
+						AND A.CTGKEY = #{ctgkey}
+						) CTG
+		ON 1 = 1
+		WHERE 1 = 1
+	</select>
+	
+	<select id="selectAsrtHst" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - selectAsrtHst */
+		SELECT B.ASRTKEY 
+		     , B.ASRTNM 
+		     , B.UPDATEDATE 
+		     , B.ASRTSTATUS 
+		     , B.QTY 
+		     , '비고' AS BIGO
+		     , B.SEQ 
+		     , B.INSERTDATE 
+			 , B.INSERTURKEY
+			 , B.UPDATEDATE 
+			 , B.UPDATEURKEY
+		FROM TORDER_MST_ASRT A
+		INNER JOIN TORDER_HIST_ASRT B
+		ON A.OWKEY = B.OWKEY 
+		AND A.ASRTKEY = B.ASRTKEY
+		WHERE 1 = 1
+		AND A.OWKEY = #{owkey}
+		AND A.ASRTKEY = #{asrtkey}
+		ORDER BY B.SEQ
+	</select>
+	
+	<insert id="mergeTAdminMstIcutxtype">
+		/* oms-item-itemcode-sql-oracle.xml - mergeTAdminMstIcutxtype */
+		MERGE INTO TADMIN_MST_ICUTXTYPE A
+			 USING DUAL
+				ON (OWKEY = #{owkey}
+			   AND ICUNITKEY = #{icunitkey}
+			   AND ICUNITTYPE = #{icunittype})
+			WHEN MATCHED THEN
+				UPDATE
+					SET ICUNITQTY 	= #{icunitqty}
+					  , ICUNITORDER 	= #{icunitorder}
+					  , LENGTH    	= #{lengthunit}
+					  , WIDTH	    = #{widthunit}
+					  , HEIGHT 		= #{heightunit}
+					  , WEIGHT 		= #{weight}
+					  , VOL 		= #{vol}
+					  , WEIGHTUNIT  = 'G'
+					  , UPDATEURKEY = #{surkey}
+					  , UPDATEDATE  = #{sysdate}
+			WHEN NOT MATCHED THEN
+				INSERT (
+						OWKEY
+						,ICUNITKEY
+						,ICUNITTYPE
+						,ICUNITORDER
+						,ICUNITQTY
+						,INSERTDATE
+						,INSERTURKEY
+						,UPDATEDATE
+						,UPDATEURKEY
+						,LENGTH
+						,WIDTH
+						,HEIGHT
+						,WEIGHT
+						,VOL
+						,SIZEUNIT
+						,VOLUNIT
+						,WEIGHTUNIT
+					)	
+					VALUES	
+					(
+					 #{owkey}
+				   ,#{icunitkey}
+				   ,#{icunittype}
+				   ,#{icunitorder}
+				   ,#{icunitqty}
+				   ,#{sysdate}
+				   ,#{surkey}
+				   ,#{sysdate}
+				   ,#{surkey}
+				   ,#{lengthunit}
+				   ,#{widthunit}
+				   ,#{heightunit}
+				   ,#{weight}
+				   ,#{vol}
+				   ,#{sizeunit}
+				   ,#{volunit}
+				   ,'G'
+				   )
+	</insert>
+	
+	<select id="getTAdminMstCtList" resultType="camelMap">
+		/* oms-item-itemcode-sql-oracle.xml - getTAdminMstCtList */
+		SELECT 	'0' AS CHK
+		    	,CTKEY
+				,CTNM
+		  FROM 	TORDER_MST_CT
+		 WHERE	CLOSDATE >= #{sysdate}
+		   AND	DELYN = 'N'
+		   AND  MANAGEMENTYN = 'Y'
+	</select>
+	
+	<insert id="mergeTAdminMstIcutxtypexct">
+		/* oms-item-itemcode-sql-oracle.xml - mergeTAdminMstIcutxtypexct */
+		MERGE INTO TORDER_MST_ICUTXTYPE
+			USING DUAL
+			ON (
+				OWKEY = #{owkey}
+				AND ICKEY = #{ickey}
+				AND ICUNITTYPE = #{icunittype}
+			   )
+			WHEN MATCHED THEN
+				UPDATE
+				   SET ICUNITORDER = #{icunitorder}
+				     , ICUNITQTY = #{icunitqty}
+				     , DEPTH = #{depth}
+				     , WIDTH = #{width}
+				     , HEIGHT = #{height}				     
+				     , SIZEUNIT = #{sizeunit}
+				     , DELYN = #{delyn}
+				     , UPDATEDATE = #{sysdate}
+					 , UPDATEURKEY = #{surkey}
+			WHEN NOT MATCHED THEN
+				INSERT  
+				(
+				 OWKEY
+			    ,ICKEY
+				,ICUNITTYPE
+				,ICUNITORDER
+				,ICUNITQTY
+				,DEPTH
+				,WIDTH
+				,HEIGHT
+				,SIZEUNIT
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+				)	
+				VALUES	
+				(
+				 #{owkey}
+			    ,#{ickey}
+			    ,#{icunittype}
+			    ,#{icunitorder}
+			    ,#{icunitqty}
+			    ,#{depth}
+			    ,#{width}
+			    ,#{height}
+			    ,#{sizeunit}
+			    ,#{sysdate}
+			    ,#{surkey}
+			    ,#{sysdate}
+			    ,#{surkey}
+			   )
+	</insert>
+	
+	<insert id="insertTorderMstIcutxtypexct">
+		/* oms-item-itemcode-sql-oracle.xml - insertTorderMstIcutxtypexct */
+		INSERT INTO TORDER_MST_ICUTXTYPE	
+				(
+				 OWKEY
+			    ,ICKEY
+				,ICUNITTYPE
+				,ICUNITORDER
+				,ICUNITQTY
+				,DEPTH
+				,WIDTH
+				,HEIGHT
+				,SIZEUNIT
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+				)	
+				VALUES	
+				(
+				 #{owkey}
+			    ,#{ickey}
+			    ,#{icunittype}
+			    ,#{icunitorder}
+			    ,#{icunitqty}
+			    ,#{depth}
+			    ,#{width}
+			    ,#{height}
+			    ,#{sizeunit}
+			    ,#{sysdate}
+			    ,#{surkey}
+			    ,#{sysdate}
+			    ,#{surkey}
+			   )
+	</insert>
+	
+	<update id="updateTAdminMstIcutxtypexct">
+		/* oms-item-itemcode-sql-oracle.xml - updateTAdminMstIcutxtypexct */
+		UPDATE TORDER_MST_ICUTXTYPE		
+		   SET ICUNITORDER = #{icunitorder}
+		     , ICUNITQTY = #{icunitqty}
+		     , DEPTH = #{depth}
+		     , WIDTH = #{width}
+		     , HEIGHT = #{height}				     
+		     , SIZEUNIT = #{sizeunit}
+		     , DELYN = #{delyn}
+		     , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+			WHERE OWKEY = #{owkey}
+				AND ICKEY = #{ickey}
+				AND ICUNITTYPE = #{icunittype}
+	</update>
+	
+	<insert id="insertTAdminMstByAmsIcutxtypexct">
+		/* adm-item-itemunit-sql-oracle.xml - insertTAdminMstByAmsIcutxtypexct */
+		INSERT INTO TADMIN_MST_ICUTXTYPEXCT
+		(
+			  OWKEY    /*화주 코드*/
+			, ICUNITKEY    /*물품 단위 코드*/
+			, ICUNITTYPE    /*물품 단위 유형*/
+			, CTKEY    /*센터 코드*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT TT.OWKEY    /*화주 코드*/
+			 , TT.ICUNITKEY    /*물품 단위 코드*/
+			 , TT.ICUNITTYPE    /*물품 단위 유형*/
+			 , #{ctkey} AS CTKEY    /*센터 코드*/
+			 , #{sysdate} AS INSERTDATE       /*입력 일시*/
+		     , #{surkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{sysdate} AS UPDATEDATE       /*수정 일시*/
+		     , #{surkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+		  		SELECT IC.OWKEY    /*화주 코드*/
+					 , IC.ICUNITKEY    /*물품 단위 코드*/
+					 , IU.ICUNITTYPE    /*물품 단위 유형*/
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM TADMIN_MST_IC IC
+				  JOIN TADMIN_MST_ICUTXTYPE IU
+				    ON IC.OWKEY = IU.OWKEY
+				   AND IC.ICUNITKEY = IU.ICUNITKEY
+				  LEFT JOIN TADMIN_MST_ICUTXTYPEXCT M
+				    ON IU.OWKEY = M.OWKEY
+				   AND IU.ICUNITKEY = M.ICUNITKEY
+				   AND IU.ICUNITTYPE = M.ICUNITTYPE
+				   AND M.CTKEY = #{ctkey}
+				 WHERE IC.OWKEY = #{owkey}
+				   AND IC.ICKEY = #{ickey}
+		  	   ) TT
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+
+	<select id="checkItemAckey" resultType="java.lang.Integer">
+		/* oms-item-itemcode-sql-oracle.xml - checkItemAckey */
+		SELECT COUNT(1)
+		FROM TORDER_MST_IC
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		  AND ACKEY = #{ackey}
+	</select>
+
+    <select id="selectItemCodeNoraml" resultType="camelMap">
+        /* oms-item-itemcode-sql-oracle.xml - selectItemCodeNoraml */
+		SELECT A.OWKEY
+             , A.ICKEY
+             , A.ICNM
+             , COALESCE(REP.ICKEY, A.ICKEY) AS ASRTREPKEY
+             , COALESCE(REP.ICNM, A.ICNM) AS ASRTREPNM
+             , A.ICGRPKEY
+             , A.ICGRPTYPE
+             , A.ICUNITKEY
+             , A.UOM
+             , A.EXPCKYN
+             , A.EXPCKTYPE
+             , A.UDF2
+             , A.UDF5
+             , A.ACKEY
+		     , D.ACNM
+             , A.DELYN
+             , A.ICTYPE
+             , A.SPEC
+             , A.CTGKEY
+             , A.CLOSDATE
+             , A.ORDSTARTDATE
+             , A.FOODYN
+             , A.SHELFDAY
+             , A.MDTEAM
+             , A.MDNM
+             , #{domain} || A.ICIMGURL as ICIMGURL
+             , A.OLNICKEY
+             , A.OLNICTYPE
+             , A.OFLNICTYPE
+             , A.B2BGRADE
+             , A.SEASON
+             , A.DNGMGMTYN
+             , A.CUSHNMEPCKGYN
+             , A.EACHPCKGYN
+             , A.ICORIGIN
+             , A.ICMGMTUSR
+             , A.SLPRC
+             , A.ASRTYN
+             , A.DIRCDLVYICYN
+             , A.ICSTATUSDIV
+             , A.PKOTICYN
+             , A.ROBSORTERICYN
+             , A.MTR
+             , A.OBIMPSCRITRT
+             , A.RENEWISTYN
+             , A.CHGBFIC
+             , A.CHGAFIC
+             , A.IFYN
+             , A.UNICYN
+             , A.DSPYN
+             , A.DLVRYYN
+             , A.SALESTATUS
+             , A.POABLEYN
+             , A.OLNICDIV
+             , A.OBLIMITYN
+             , A.OLNIPKOTICYN
+             , A.OLNIPKOTICCONT
+             , A.SALESCHARA
+             , A.UNICCD
+             , A.EXPCKDAYS
+             , A.POLYBACKPCKGYN
+             , A.OVLPPCKGWIDTHVAL
+             , A.OVLPPCKGDEPTHVAL
+             , A.OVLPPCKGHEIGHTVAL
+             , A.COMPYN
+             , A.COMPCONT
+             , A.PURPRC
+             , A.PCKGOVLPYN
+             , A.OBIMPSCRITDAYS
+             , A.PCKGFOLDYN
+             , A.DFSHPMTRYN
+             , A.BARCODEATTACHYN
+             , A.EXPRATE
+             , A.HIGHFRQNCYDMGYN
+             , A.LEADTIME
+             , A.CMT
+		     , CASE WHEN A.PKOTICYN = 'Y' AND A.DSPYN = 'Y' THEN 'Y'
+		            ELSE 'N'
+		        END AS PKOTDIS
+		     , A.OLNPKOTYN
+             , CTG.LV1
+		     , CTG.LV2
+		     , CTG.LV3
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+		FROM TORDER_MST_IC A
+		LEFT JOIN TORDER_MST_ASRT ASRT
+          ON A.OWKEY = ASRT.OWKEY
+         AND A.ICKEY = ASRT.ASRTKEY
+        LEFT JOIN TORDER_MST_IC REP
+          ON ASRT.OWKEY = REP.OWKEY
+         AND ASRT.ASRTREPKEY = REP.ICKEY
+		    INNER JOIN TORDER_MST_OW B
+		    		ON A.OWKEY = B.OWKEY
+			LEFT OUTER JOIN TORDER_MST_AC D
+			    		 ON D.OWKEY = A.OWKEY
+					    AND D.ACKEY = A.ACKEY
+			LEFT JOIN (
+                SELECT A.OWKEY
+                     , A.CTGKEY AS CTGKEY_LV3
+                     , A.CTGNM AS LV3
+                     , B.CTGKEY AS CTGKEY_LV2
+                     , B.CTGNM AS LV2
+                     , C.CTGKEY AS CTGKEY_LV1
+                     , C.CTGNM AS LV1
+                  FROM TORDER_MST_CTG A
+                       INNER JOIN TORDER_MST_CTG B
+                         ON A.OWKEY = B.OWKEY
+                        AND A.UPPERCTGKEY = B.CTGKEY
+                        AND B.DELYN = 'N'
+                       INNER JOIN TORDER_MST_CTG C
+                         ON B.OWKEY = C.OWKEY
+                        AND B.UPPERCTGKEY = C.CTGKEY
+                        AND C.DELYN = 'N'
+                 WHERE A.DELYN = 'N'
+             ) CTG
+               ON A.OWKEY = CTG.OWKEY
+              AND A.CTGKEY = CTG.CTGKEY_LV3
+		WHERE A.OWKEY = #{owkey}
+		  AND A.ICKEY = #{ickey}
+		  AND B.DELYN = 'N'
+    </select>
+
+    <update id="updateTorderIcutxtype">
+        /* oms-item-itemcode-sql-oracle.xml - updateTorderIcutxtype */
+        UPDATE TORDER_MST_ICUTXTYPE
+           SET PLTROW = #{pltrow}
+             , PLTCOL = #{pltcol}
+             , CPP = #{cpp}
+         WHERE OWKEY = #{owkey}
+           AND ICKEY = #{ickey}
+    </update>
+    
+    
+    <insert id="insertOmsMstIcbarcode">
+
+		/* oms-item-itemcode-sql-oracle.xml - insertOmsMstIcbarcode */
+			
+			INSERT INTO TORDER_MST_ICBACODE (
+				    OWKEY
+				  , ICKEY
+				  , SEQ
+				  , BARCODE
+				  , UOM
+				  , INSERTDATE
+				  , INSERTURKEY
+				  , UPDATEDATE
+				  , UPDATEURKEY
+			)
+			VALUES (				
+				   #{owkey}
+				 , #{ickey}
+				 , (SELECT COALESCE(MAX(SEQ), 0) +1 
+				 	  FROM TORDER_MST_ICBACODE 
+				 	 WHERE OWKEY = #{owkey}
+				 	   AND  ICKEY = #{ickey})
+				 , #{icbarcode}
+				 , #{uom}
+				 , #{sysdate}
+				 , #{surkey}
+				 , #{sysdate}
+				 , #{surkey}	   
+			  )
+	</insert>
+	
+	<update id ="updateOmsMstIcbarcode">
+		UPDATE TORDER_MST_ICBACODE
+		  SET      DELYN = #{delyn}			
+				 , UPDATEDATE = #{sysdate}
+				 , UPDATEURKEY = #{surkey}
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icbarcode)">
+				 , BARCODE = #{icbarcode}
+				 </if>
+		WHERE OWKEY = #{owkey} 
+		  AND ICKEY = #{ickey}
+		  AND UOM = #{uom}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(seq)">
+		  AND SEQ  = #{seq}			   		 	
+		  </if>
+	</update>
+	
+	<!--상품 바코드 삭제 -->
+	<delete id="deleteTOderMstIcbarcode">
+		/* oms-item-itemcode-sql-oracle.xml - deleteTOderMstIcbarcode */
+		UPDATE TORDER_MST_ICBACODE
+		   SET DELYN = #{delyn}	 
+	   	     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(seq)">
+		   AND SEQ = #{seq}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(uom)">
+		   AND UOM = #{uom}
+		   </if>
+	</delete>
+	
+	<!--상품 바코드 중복체크-->
+	<select id="selectDupliCountOmsMstIcbarcode" resultType="camelMap">
+		SELECT OWKEY, ICKEY, UOM, SEQ, BARCODE, DELYN 
+		  FROM TORDER_MST_ICBACODE		 
+		 WHERE BARCODE = #{icbarcode}		  		  		 
+	</select>
+
+	<!--상품 단위 삭제-->
+	<delete id="deleteICUnitType">
+			/* oms-item-itemcode-sql-oracle.xml - deleteICUnitType */
+			UPDATE TORDER_MST_ICUTXTYPE
+			   SET DELYN = #{delyn}
+			   	 , UPDATEDATE = #{sysdate}
+			   	 , UPDATEURKEY = #{surkey}
+			WHERE OWKEY = #{owkey}
+			  AND ICKEY = #{ickey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icunittype)">
+				AND ICUNITTYPE = #{icunittype}
+			</if>
+	</delete>
+	
+	<!--상품 관리 센터 삭제 여부 체크-->
+	<select id="selectItemCodeUnitTypeUseCheck">
+		SELECT COUNT(*)
+		  FROM TORDER_MST_ICUTXTYPE		 
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}	
+		  AND DELYN != 'Y'	  		  
+	</select>
+
+
+    <insert id="insertTorderWmsIcBatch" parameterType="map">
+        /* oms-item-itemcode-sql-oracle.xml - insertTorderWmsIcBatch */
+        INSERT INTO TORDER_WMS_IC_BATCH
+        (
+          REQDATE
+        , ICKEY
+        , SENDYN
+        , INSERTDATE
+        , INSERTURKEY
+        , UPDATEDATE
+        , UPDATEURKEY
+        )
+        VALUES
+        (
+          TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+        , #{ickey}
+        , 'N'
+        , #{sysdate}
+        , #{surkey}
+        , #{sysdate}
+        , #{surkey}
+        )
+    </insert>
+
+
+</mapper>	

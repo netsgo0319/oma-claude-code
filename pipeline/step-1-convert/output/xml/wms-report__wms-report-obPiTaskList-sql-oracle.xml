@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.ObPiTaskListMapper">
+
+    <sql id="sql_selectObPiTask">
+        SELECT OH.CTKEY                                                                                                         /* 센터 */
+             , OH.OWKEY                                                                                                         /* 화주 */
+             , CM.POINT                                                                                                         /* 거점코드 */
+             , OCD.OWCDDTNM                                                                                                  /* 거점명 */
+             , OH.OBREQUESTDATE 	                                                                                            /* 출고예정일자 */
+             , COUNT(DISTINCT CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.STORE_KEY ELSE NULL END) 	AS STORE_CNT        /* 시판건과 거래처수 */
+             , COUNT(DISTINCT CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.ORHDKEY ELSE NULL END)    AS ORDER_CNT        /* 시판건과 오더수 */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN RT.ROLL_CNT ELSE 0 END), 0)         AS ROLL_CNT         /* 시판건과 롤테이너수 */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.EX_BOX_QTY ELSE 0 END), 0)       AS ORDER_BOX_QTY    /* 시판건과 주문수량(BOX) */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.EX_BOL_QTY ELSE 0 END), 0)       AS ORDER_BOL_QTY    /* 시판건과 주문수량(BOL) */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.AL_BOX_QTY ELSE 0 END), 0)       AS AL_BOX_QTY       /* 시판건과 주문수량(BOX) */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.AL_BOL_QTY ELSE 0 END), 0)       AS AL_BOL_QTY       /* 시판건과 주문수량(BOL) */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.PI_BOX_QTY ELSE 0 END), 0)       AS PI_BOX_QTY       /* 시판건과 피킹수량(BOX) */
+             , NVL(SUM(CASE WHEN OH.OBHDTYPE <![CDATA[ <> ]]> '25' THEN OH.PI_BOL_QTY ELSE 0 END), 0)       AS PI_BOL_QTY       /* 시판건과 피킹수량(BOL) */
+             , COUNT(DISTINCT CASE WHEN OH.OBHDTYPE = '25' THEN OH.STORE_KEY ELSE NULL END)                	AS B_STORE_CNT      /* 베이커리 거래처수 */
+             , COUNT(DISTINCT CASE WHEN OH.OBHDTYPE = '25' THEN OH.ORHDKEY ELSE NULL END)                   AS B_ORDER_CNT      /* 베이커리 오더수 */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN RT.ROLL_CNT ELSE 0 END), 0)                        AS B_ROLL_CNT       /* 베이커리 롤테이너수 */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.EX_BOX_QTY ELSE 0 END), 0)                      AS B_ORDER_BOX_QTY 	/* 시판건과 주문수량(BOX) */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.EX_EA_QTY ELSE 0 END), 0)                       AS B_ORDER_EA_QTY   /* 시판건과 주문수량(EA) */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.AL_BOX_QTY ELSE 0 END), 0)                      AS B_AL_BOX_QTY     /* 시판건과 주문수량(BOX) */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.AL_EA_QTY ELSE 0 END), 0)                       AS B_AL_EA_QTY      /* 시판건과 주문수량(EA) */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.PI_BOX_QTY ELSE 0 END), 0)                      AS B_PI_BOX_QTY     /* 시판건과 피킹수량(BOX) */
+             , COALESCE(SUM(CASE WHEN OH.OBHDTYPE = '25' THEN OH.PI_EA_QTY ELSE 0 END), 0)                       AS B_PI_EA_QTY      /* 시판건과 피킹수량(EA) */
+          FROM (SELECT OH.CTKEY
+                     , OH.OWKEY
+                     , OH.ORHDKEY
+                     , OH.OBHDTYPE
+                     , OH.OBREQUESTDATE AS OBREQUESTDATE
+                     , OH.STORE_KEY
+                     , SUM(CASE WHEN OD.UOM = 'BOX' THEN OD.INITQTY / ICUT.ICUTQTY ELSE 0 END) AS EX_BOX_QTY
+                     , SUM(CASE WHEN OD.UOM = 'BOL' THEN OD.INITQTY / ICUT.ICUTQTY ELSE 0 END) AS EX_BOL_QTY
+                     , SUM(CASE WHEN OD.UOM = 'EA' THEN OD.INITQTY / ICUT.ICUTQTY ELSE 0 END) AS EX_EA_QTY
+                     , SUM(CASE WHEN OD.UOM = 'BOX' THEN OD.ALQTY / ICUT.ICUTQTY ELSE 0 END) AS AL_BOX_QTY
+                     , SUM(CASE WHEN OD.UOM = 'BOL' THEN OD.ALQTY / ICUT.ICUTQTY ELSE 0 END) AS AL_BOL_QTY
+                     , SUM(CASE WHEN OD.UOM = 'EA' THEN OD.ALQTY / ICUT.ICUTQTY ELSE 0 END) AS AL_EA_QTY
+                     , SUM(CASE WHEN OD.UOM = 'BOX' THEN OD.PIQTY / ICUT.ICUTQTY ELSE 0 END) AS PI_BOX_QTY
+                     , SUM(CASE WHEN OD.UOM = 'BOL' THEN OD.PIQTY / ICUT.ICUTQTY ELSE 0 END) AS PI_BOL_QTY
+                     , SUM(CASE WHEN OD.UOM = 'EA' THEN OD.PIQTY / ICUT.ICUTQTY ELSE 0 END) AS PI_EA_QTY
+                  FROM TWORK_INFO_OB_HD OH
+                 INNER JOIN TWORK_INFO_OB_DT OD
+                    ON OH.CTKEY = OD.CTKEY
+                   AND OH.OWKEY = OD.OWKEY
+                   AND OH.OBHDKEY = OD.OBHDKEY
+                 INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                    ON OD.CTKEY = ICUT.CTKEY
+                   AND OD.OWKEY = ICUT.OWKEY
+                   AND OD.ICUTKEY = ICUT.ICUTKEY
+                   AND OD.UOM = ICUT.ICUTTYPE
+                 WHERE OH.WKSTATUS <![CDATA[ <> ]]> '99'
+                   AND OH.OBHDTYPE <![CDATA[ <> ]]> '180'
+                 GROUP BY OH.CTKEY
+                        , OH.OWKEY
+                        , OH.ORHDKEY
+                        , OH.OBHDTYPE
+                        , OH.OBREQUESTDATE
+                        , OH.STORE_KEY
+               ) OH
+          LEFT JOIN (SELECT ROLL.SHPMNO
+                          , COUNT(DISTINCT ROLL.ROLL_NUMBER) AS ROLL_CNT
+                       FROM TWORK_INFO_OB_HD OH
+                      INNER JOIN TT_SHPM_DETL_ROLL_T ROLL
+                         ON OH.ORHDKEY = ROLL.SHPMNO
+                      WHERE ROLL.ROLL_NUMBER IS NOT NULL
+                      GROUP BY ROLL.SHPMNO
+               ) RT
+            ON OH.ORHDKEY = RT.SHPMNO
+          LEFT JOIN TADMIN_MST_CUSTOMER CM
+            ON OH.OWKEY = CM.OWKEY
+           AND OH.STORE_KEY = CM.ACKEY
+          LEFT JOIN TADMIN_MST_OWCD_DT OCD
+            ON CM.OWKEY = OCD.OWKEY
+           AND OCD.OWCDHDKEY = '10025'
+           AND OCD.LAKEY = 'KOR'
+           AND CM.POINT = OCD.OWCDDTKEY
+         GROUP BY OH.CTKEY
+                , OH.OWKEY
+                , CM.POINT
+                , OCD.OWCDDTNM
+                , OH.OBREQUESTDATE
+         ORDER BY OBREQUESTDATE
+                , POINT
+    </sql>
+
+    <sql id="sql_selectObPiTaskDetail">
+        SELECT T1.CTKEY             /* 센터코드 */
+             , T1.OWKEY             /* 화주코드 */
+             , T1.OBHDTYPE          /* 출고유형코드 */
+             , T1.POINT             /* 거래처코드 */
+             , T1.OBHDTYPE_DESC     /* 출고유형명 */
+             , T1.OWCDDTNM       /* 거래처명 */
+             , T1.TODAY_STORE_CNT   /* 당일 - 거래처수 */
+             , T1.TODAY_ORDER_CNT   /* 당일 - 오더수 */
+             , T1.TODAY_BOX_QTY     /* 당일 - BOX 수량 */
+             , T1.TODAY_BOL_QTY     /* 당일 - BOL 수량 */
+             , T1.TODAY_EA_QTY      /* 당일 - EA 수량 */
+             , T2.TOTAL_STORE_CNT   /* 당월누계 - 거래처수 */
+             , T2.TOTAL_ORDER_CNT   /* 당월누계 - 오더수 */
+             , T1.TOTAL_BOX_QTY     /* 당월누계 - BOX 수량 */
+             , T1.TOTAL_BOL_QTY     /* 당월누계 - BOL 수량 */
+             , T1.TOTAL_EA_QTY      /* 당월누계 - EA 수량 */
+          FROM (SELECT T.CTKEY
+                     , T.OWKEY
+                     , T.OBHDTYPE
+                     , T.POINT
+                     , CD.OWCDDTNM AS OBHDTYPE_DESC
+                     , T.OWCDDTNM
+                     , COUNT(DISTINCT CASE WHEN T.OBREQUESTDATE = TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'),'YYYYMMDD') THEN T.STORE_KEY ELSE NULL END) AS TODAY_STORE_CNT
+                     , COUNT(DISTINCT CASE WHEN T.OBREQUESTDATE = TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'),'YYYYMMDD') THEN T.ORHDKEY ELSE NULL END) AS TODAY_ORDER_CNT
+                     , SUM(CASE WHEN T.OBREQUESTDATE = TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'),'YYYYMMDD') AND T.UOM = 'BOX' THEN UINT_CFQTY ELSE 0 END) AS TODAY_BOX_QTY
+                     , SUM(CASE WHEN T.OBREQUESTDATE = TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'),'YYYYMMDD') AND T.UOM = 'BOL' THEN UINT_CFQTY ELSE 0 END) AS TODAY_BOL_QTY
+                     , SUM(CASE WHEN T.OBREQUESTDATE = TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'),'YYYYMMDD') AND T.UOM = 'EA' THEN UINT_CFQTY ELSE 0 END) AS TODAY_EA_QTY
+                     , SUM(CASE WHEN T.UOM = 'BOX' THEN UINT_CFQTY ELSE 0 END) AS TOTAL_BOX_QTY
+                     , SUM(CASE WHEN T.UOM = 'BOL' THEN UINT_CFQTY ELSE 0 END) AS TOTAL_BOL_QTY
+                     , SUM(CASE WHEN T.UOM = 'EA' THEN UINT_CFQTY ELSE 0 END)  AS TOTAL_EA_QTY
+                  FROM (SELECT OH.CTKEY
+                             , OH.OWKEY
+                             , CM.POINT
+                             , OCD.OWCDDTNM
+                             , SUBSTR(OH.OBREQUESTDATE, 1, 8) AS OBREQUESTDATE
+                             , OH.STORE_KEY
+                             , OD.UOM
+                             , OD.CFQTY
+                             , OD.CFQTY / ICUT.ICUTQTY AS UINT_CFQTY
+                             , OH.OBHDTYPE
+                             , OH.ORHDKEY
+                          FROM TWORK_INFO_OB_HD OH
+                         INNER JOIN TWORK_INFO_OB_DT OD
+                            ON OH.CTKEY = OD.CTKEY
+                           AND OH.OWKEY = OD.OWKEY
+                           AND OH.OBHDKEY = OD.OBHDKEY
+                         INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                            ON OD.CTKEY = ICUT.CTKEY
+                           AND OD.OWKEY = ICUT.OWKEY
+                           AND OD.ICUTKEY = ICUT.ICUTKEY
+                           AND OD.UOM = ICUT.ICUTTYPE
+                         INNER JOIN TADMIN_MST_CUSTOMER CM
+                            ON OH.OWKEY = CM.OWKEY
+                           AND OH.STORE_KEY = CM.ACKEY
+                         INNER JOIN TADMIN_MST_OWCD_DT OCD
+                            ON CM.OWKEY = OCD.OWKEY
+                           AND OCD.OWCD_HDKEY = '10025'
+                           AND OCD.LAKEY = 'KOR'
+                           AND CM.POINT = OCD.OWCD_DTKEY
+                         WHERE OH.WKSTATUS <![CDATA[ <> ]]> '99'
+                           AND OH.OBHDTYPE <![CDATA[ <> ]]> '180'
+                           AND OH.OBREQUESTDATE BETWEEN TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'), 'YYYYMM') || '01000000' AND TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'), 'YYYYMMDD') || '235959'
+                       ) T
+                 INNER JOIN TWORK_MST_CTCD_DT CD
+                    ON T.CTKEY = CD.CTKEY
+                   AND CD.CTCD_HDKEY = 'OBHDTYPE'
+                   AND CD.LAKEY = 'KOR'
+                   AND CD.CTCD_DTKEY = T.OBHDTYPE
+                 GROUP BY T.CTKEY
+                        , T.OWKEY
+                        , T.POINT
+                        , T.OWCDDTNM
+                        , T.OBHDTYPE
+                        , CD.OWCDDTNM
+               ) T1
+         INNER JOIN (SELECT CTKEY
+                          , OWKEY
+                          , OBHDTYPE
+                          , POINT
+                          , SUM(TOTAL_STORE_CNT) AS TOTAL_STORE_CNT
+                          , SUM(TOTAL_ORDER_CNT) AS TOTAL_ORDER_CNT
+                       FROM (SELECT OH.CTKEY
+                                  , OH.OWKEY
+                                  , OH.OBHDTYPE
+                                  , CM.POINT
+                                  , SUBSTR(OH.OBREQUESTDATE, 1, 8)
+                                  , COUNT(DISTINCT OH.STORE_KEY) AS TOTAL_STORE_CNT
+                                  , COUNT(DISTINCT OH.ORHDKEY) AS TOTAL_ORDER_CNT
+                               FROM TWORK_INFO_OB_HD OH
+                              INNER JOIN TADMIN_MST_CUSTOMER CM
+                                 ON OH.OWKEY = CM.OWKEY
+                                AND OH.STORE_KEY = CM.ACKEY
+                              WHERE OH.WKSTATUS <![CDATA[ <> ]]> '99'
+                                AND OH.OBHDTYPE <![CDATA[ <> ]]> '180'
+                                AND OH.OBREQUESTDATE BETWEEN TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'), 'YYYYMM') || '01000000' AND TO_CHAR(TO_DATE(#{obrequestdate}, 'YYYYMMDD'), 'YYYYMMDD') || '235959'
+                              GROUP BY OH.CTKEY
+                                     , OH.OWKEY
+                                     , OH.OBHDTYPE
+                                     , CM.POINT
+                                     , SUBSTR(OH.OBREQUESTDATE, 1, 8)
+                            )
+                      GROUP BY CTKEY
+                             , OWKEY
+                             , OBHDTYPE
+                             , POINT
+               ) T2
+            ON T1.CTKEY = T2.CTKEY
+           AND T1.OWKEY = T2.OWKEY
+           AND T1.OBHDTYPE = T2.OBHDTYPE
+           AND T1.POINT = T2.POINT
+         ORDER BY T1.OBHDTYPE
+                , T1.POINT
+    </sql>
+
+    <select id="selectObPiTaskCount" resultType="java.lang.Integer">
+        /* wms-report-obPiTaskList-sql-oracle.xml - selectObPiTaskCount */
+        SELECT COUNT(1) FROM ( <include refid="sql_selectObPiTask"/> ) A
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </select>
+
+    <select id="selectObPiTaskList" resultType="camelMap">
+        /* wms-report-obPiTaskList-sql-oracle.xml - selectObPiTaskList */
+        SELECT A.* FROM ( <include refid="sql_selectObPiTask"/> ) A
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </select>
+
+    <select id="selectObPiTaskDetailCount" resultType="java.lang.Integer">
+        /* wms-report-obPiTaskList-sql-oracle.xml - selectObPiTaskDetailCount */
+        SELECT COUNT(1) FROM ( <include refid="sql_selectObPiTaskDetail"/> ) A
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </select>
+
+    <select id="selectObPiTaskDetailList" resultType="camelMap">
+        /* wms-report-obPiTaskList-sql-oracle.xml - selectObPiTaskDetailList */
+        SELECT A.* FROM ( <include refid="sql_selectObPiTaskDetail"/> ) A
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </select>
+
+</mapper>

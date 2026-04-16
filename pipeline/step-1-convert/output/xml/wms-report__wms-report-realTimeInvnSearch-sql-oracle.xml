@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.RealTimeInvnSearchMapper">
+
+    <sql id="sql_selectRealTimeInvnDetail">
+        SELECT T.ICKEY
+             , T.ICNAME
+             , CTG.CTGKEY
+             , CTG.CTGNAME
+             , SUM(T.BEFORE_IB_BOX_QTY) AS BEFORE_IB_BOX_QTY
+             , SUM(T.BEFORE_IB_BOL_QTY) AS BEFORE_IB_BOL_QTY
+             , SUM(T.BEFORE_IB_EA_QTY)  AS BEFORE_IB_EA_QTY
+             , SUM(T.BEFORE_OB_BOX_QTY) AS BEFORE_OB_BOX_QTY
+             , SUM(T.BEFORE_OB_BOL_QTY) AS BEFORE_OB_BOL_QTY
+             , SUM(T.BEFORE_OB_EA_QTY)  AS BEFORE_OB_EA_QTY
+             , SUM(T.TOT_BOX_QTY)       AS TOT_BOX_QTY
+             , SUM(T.TOT_BOL_QTY)       AS TOT_BOL_QTY
+             , SUM(T.TOT_EA_QTY)        AS TOT_EA_QTY
+             , SUM(T.AL_BOX_QTY)        AS AL_BOX_QTY
+             , SUM(T.AL_BOL_QTY)        AS AL_BOL_QTY
+             , SUM(T.AL_EA_QTY)         AS AL_EA_QTY
+             , SUM(T.AV_BOX_QTY)        AS AV_BOX_QTY
+             , SUM(T.AV_BOL_QTY)        AS AV_BOL_QTY
+             , SUM(T.AV_EA_QTY)         AS AV_EA_QTY
+             , SUM(T.HO_BOX_QTY)        AS HO_BOX_QTY
+             , SUM(T.HO_BOL_QTY)        AS HO_BOL_QTY
+             , SUM(T.HO_EA_QTY)         AS HO_EA_QTY
+          FROM (
+               /* 전일기준 */
+               SELECT BEF.ICKEY
+                    , BEF.ICNAME
+                    , BEF.CTGKEY
+                    , SUM(BEF.BEFORE_IB_BOX_QTY) AS BEFORE_IB_BOX_QTY
+                    , SUM(BEF.BEFORE_IB_BOL_QTY) AS BEFORE_IB_BOL_QTY
+                    , SUM(BEF.BEFORE_IB_EA_QTY)  AS BEFORE_IB_EA_QTY
+                    , SUM(BEF.BEFORE_OB_BOX_QTY) AS BEFORE_OB_BOX_QTY
+                    , SUM(BEF.BEFORE_OB_BOL_QTY) AS BEFORE_OB_BOL_QTY
+                    , SUM(BEF.BEFORE_OB_EA_QTY)  AS BEFORE_OB_EA_QTY
+                    , 0 AS TOT_BOX_QTY
+                    , 0 AS TOT_BOL_QTY
+                    , 0 AS TOT_EA_QTY
+                    , 0 AS AL_BOX_QTY
+                    , 0 AS AL_BOL_QTY
+                    , 0 AS AL_EA_QTY
+                    , 0 AS AV_BOX_QTY
+                    , 0 AS AV_BOL_QTY
+                    , 0 AS AV_EA_QTY
+                    , 0 AS HO_BOX_QTY
+                    , 0 AS HO_BOL_QTY
+                    , 0 AS HO_EA_QTY
+                 FROM (
+                      /* 당월입고 BOX,BOL,EA */
+                      SELECT ID.ICKEY
+                           , IC.ICNAME
+                           , IC.CTGKEY
+                           , DATE_TRUNC('day', SUM(CASE WHEN Id.UOM = 'BOX' THEN CD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_IB_BOX_QTY
+                           , DATE_TRUNC('day', SUM(CASE WHEN Id.UOM = 'BOL' THEN CD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_IB_BOL_QTY
+                           , DATE_TRUNC('day', SUM(CASE WHEN Id.UOM = 'EA'  THEN CD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_IB_EA_QTY
+                           , 0                                                                            AS BEFORE_OB_BOX_QTY
+                           , 0                                                                            AS BEFORE_OB_BOL_QTY
+                           , 0                                                                            AS BEFORE_OB_EA_QTY
+                        FROM TWORK_INFO_IB_HD IH
+                       INNER JOIN TWORK_INFO_IB_DT ID
+                          ON IH.CTKEY = ID.CTKEY
+                         AND IH.OWKEY = ID.OWKEY
+                         AND IH.IBHDKEY = ID.IBHDKEY
+                       INNER JOIN TWORK_MST_IC IC
+                          ON ID.CTKEY = IC.CTKEY
+                         AND ID.OWKEY = IC.OWKEY
+                         AND ID.ICKEY = IC.ICKEY
+                       INNER JOIN TWORK_INFO_IBCF_DT CD
+                          ON ID.CTKEY = CD.CTKEY
+                         AND ID.OWKEY = CD.OWKEY
+                         AND ID.IBHDKEY = CD.IBHDKEY
+                         AND ID.IBDTKEY = CD.IBDTKEY
+                       INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                          ON IH.CTKEY = ICUT.CTKEY
+                         AND ID.OWKEY = ICUT.OWKEY
+                         AND ID.ICUTKEY = ICUT.ICUTKEY
+                         AND ICUT.ICUTTYPE = ID.UOM
+                       WHERE ID.CTKEY = #{ctkey}
+                         AND ID.OWKEY = #{owkey}
+                         AND ID.WKSTATUS = '91'
+                         AND CD.IBCONFIRMDATE >= TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD') - 1, 'YYYYMM') || '01000000'
+                         AND CD.IBCONFIRMDATE <![CDATA[ <= ]]> TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD') - 1, 'YYYYMMDD') || '235959'
+                       GROUP BY ID.ICKEY, IC.ICNAME, IC.CTGKEY
+
+                       UNION ALL
+
+                       /* 당월출고 BOX,BOL,EA */
+                      SELECT OD.ICKEY
+                           , IC.ICNAME
+                           , IC.CTGKEY
+                           , 0                                                                            AS BEFORE_IB_EA_QTY
+                           , 0                                                                            AS BEFORE_IB_BOL_QTY
+                           , 0                                                                            AS BEFORE_IB_EA_QTY
+                           , DATE_TRUNC('day', SUM(CASE WHEN OD.UOM = 'BOX' THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_OB_BOX_QTY
+                           , DATE_TRUNC('day', SUM(CASE WHEN OD.UOM = 'BOL' THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_OB_BOL_QTY
+                           , DATE_TRUNC('day', SUM(CASE WHEN OD.UOM = 'EA'  THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END))::DATE AS BEFORE_OB_EA_QTY
+                        FROM TWORK_INFO_OB_DT OD
+                       INNER JOIN TWORK_MST_IC IC
+                          ON OD.CTKEY = IC.CTKEY
+                         AND OD.OWKEY = IC.OWKEY
+                         AND OD.ICKEY = IC.ICKEY
+                       INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                          ON OD.CTKEY = ICUT.CTKEY
+                         AND OD.OWKEY = ICUT.OWKEY
+                         AND OD.ICUTKEY = ICUT.ICUTKEY
+                         AND ICUT.ICUTTYPE = OD.UOM
+                       WHERE OD.CTKEY = #{ctkey}
+                         AND OD.OWKEY = #{owkey}
+                         AND EXISTS (SELECT 1 FROM TWORK_INFO_OB_HD OH
+                                      WHERE OH.CTKEY = #{ctkey}
+                                        AND OH.OWKEY = #{owkey}
+                                        AND OH.OBCONFIRMDATE >= TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD') - 1, 'YYYYMM') || '01000000'
+                                        AND OH.OBCONFIRMDATE <![CDATA[ <= ]]> TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD') - 1, 'YYYYMMDD') || '235959'
+                                        AND OH.CTKEY = OD.CTKEY
+                                        AND OH.OWKEY = OD.OWKEY
+                                        AND OH.OBHDKEY = OD.OBHDKEY
+                                    )
+                         AND OD.WKSTATUS = '90'
+                       GROUP BY OD.ICKEY, IC.ICNAME, IC.CTGKEY
+                      ) BEF
+                GROUP BY BEF.ICKEY, BEF.ICNAME, BEF.CTGKEY
+
+                UNION ALL
+
+               /* 현재고기준 */
+               SELECT IV.ICKEY
+                    , IV.ICNAME
+                    , IV.CTGKEY
+                    , 0 AS BEFORE_IB_BOX_QTY
+                    , 0 AS BEFORE_IB_BOL_QTY
+                    , 0 AS BEFORE_IB_EA_QTY
+                    , 0 AS BEFORE_OB_BOX_QTY
+                    , 0 AS BEFORE_OB_BOL_QTY
+                    , 0 AS BEFORE_OB_EA_QTY
+                    , SUM(IV.TOT_BOX_QTY) AS TOT_BOX_QTY
+                    , SUM(IV.TOT_BOL_QTY) AS TOT_BOL_QTY
+                    , SUM(IV.TOT_EA_QTY) AS TOT_EA_QTY
+                    , SUM(IV.AL_BOX_QTY) AS AL_BOX_QTY
+                    , SUM(IV.AL_BOL_QTY) AS AL_BOL_QTY
+                    , SUM(IV.AL_EA_QTY)  AS AL_EA_QTY
+                    , SUM(IV.AV_BOX_QTY) AS AV_BOX_QTY
+                    , SUM(IV.AV_BOL_QTY) AS AV_BOL_QTY
+                    , SUM(IV.AV_EA_QTY)  AS AV_EA_QTY
+                    , SUM(IV.HO_BOX_QTY) AS HO_BOX_QTY
+                    , SUM(IV.HO_BOL_QTY) AS HO_BOL_QTY
+                    , SUM(IV.HO_EA_QTY)  AS HO_EA_QTY
+                 FROM (
+                      WITH B AS (
+                           SELECT IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.CTGKEY, IVAT.ICNAME, IVAT.LCKEY, IVAT.IVATKEY
+                                , IVAT.TTQTY, IVAT.AVQTY, IVAT.ALQTY, IVAT.HOQTY
+                                , IVAT.ICUTKEY, IVAT.UOM, ICUT.ICUTQTY, ICUT2.ICUTQTY AS BOL_ICUTQTY
+                             FROM (SELECT IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IC.ICNAME, IC.CTGKEY, IVAT.LCKEY, IVAT.IVATKEY, IC.ICUTKEY, IV.UOM
+                                        , IVAT.TTQTY, IVAT.AVQTY, IVAT.ALQTY, IVAT.HOQTY
+                                     FROM TWORK_INFO_IVATXLCXULC IVAT
+                                    INNER JOIN TWORK_INFO_IVAT IV
+                                       ON IVAT.CTKEY = IV.CTKEY
+                                      AND IVAT.OWKEY = IV.OWKEY
+                                      AND IVAT.ICKEY = IV.ICKEY
+                                      AND IVAT.IVATKEY = IV.IVATKEY
+                                    INNER JOIN TWORK_MST_IC IC
+                                       ON IVAT.CTKEY = IC.CTKEY
+                                      AND IVAT.OWKEY = IC.OWKEY
+                                      AND IVAT.ICKEY = IC.ICKEY
+                                      AND IC.DELYN   = 'N'
+                                    WHERE IVAT.CTKEY = #{ctkey}
+                                      AND IVAT.OWKEY = #{owkey}
+                                      AND IVAT.TTQTY > 0
+                                  ) IVAT
+                            INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                               ON IVAT.CTKEY  = ICUT.CTKEY
+                              AND IVAT.OWKEY = ICUT.OWKEY
+                              AND IVAT.ICKEY = ICUT.ICUTKEY
+                              AND IVAT.UOM   = ICUT.ICUTTYPE
+                              AND ICUT.OUTBOUNDUSEYN = 'Y'
+                             LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT2
+                               ON IVAT.CTKEY  = ICUT2.CTKEY
+                              AND IVAT.OWKEY = ICUT2.OWKEY
+                              AND IVAT.ICKEY = ICUT2.ICUTKEY
+                              AND ICUT2.ICUTTYPE = 'BOL'
+                              AND ICUT2.OUTBOUNDUSEYN = 'Y'
+                              AND ICUT2.ICUTQTY > 0
+                            WHERE EXISTS (SELECT 1 FROM TWORK_MST_LC LC WHERE LC.CTKEY = IVAT.CTKEY AND LC.LCKEY = IVAT.LCKEY AND LC.LCTYPE = '90')
+                           )
+
+                      SELECT B.ICKEY
+                           , B.ICNAME
+                           , B.CTGKEY
+                           , SUM(CASE WHEN B.UOM = 'BOX' THEN DATE_TRUNC('day', B.TTQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS TOT_BOX_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOL' THEN DATE_TRUNC('day', B.TTQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS TOT_BOL_QTY
+                           , SUM(CASE WHEN B.UOM = 'EA'  THEN DATE_TRUNC('day', B.TTQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS TOT_EA_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOX' THEN DATE_TRUNC('day', B.ALQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AL_BOX_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOL' THEN DATE_TRUNC('day', B.ALQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AL_BOL_QTY
+                           , SUM(CASE WHEN B.UOM = 'EA'  THEN DATE_TRUNC('day', B.ALQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AL_EA_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOX' THEN DATE_TRUNC('day', B.AVQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AV_BOX_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOL' THEN DATE_TRUNC('day', B.AVQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AV_BOL_QTY
+                           , SUM(CASE WHEN B.UOM = 'EA'  THEN DATE_TRUNC('day', B.AVQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS AV_EA_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOX' THEN DATE_TRUNC('day', B.HOQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS HO_BOX_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOL' THEN DATE_TRUNC('day', B.HOQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS HO_BOL_QTY
+                           , SUM(CASE WHEN B.UOM = 'EA'  THEN DATE_TRUNC('day', B.HOQTY/ B.ICUTQTY)::DATE ELSE 0 END) AS HO_EA_QTY
+                        FROM B
+                       GROUP BY B.ICKEY, B.ICNAME, B.CTGKEY
+
+                       UNION ALL
+
+                      SELECT B.ICKEY
+                           , B.ICNAME
+                           , B.CTGKEY
+                           , 0 AS TOT_BOX_QTY
+                           , COALESCE(SUM(((B.TTQTY- (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / B.BOL_ICUTQTY), 0) AS TOT_BOL_QTY
+                           , 0 AS TOT_EA_QTY
+                           , 0 AS AL_BOX_QTY
+                           , COALESCE(SUM(((B.ALQTY- (DATE_TRUNC('day', B.ALQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / B.BOL_ICUTQTY), 0) AS AL_BOL_QTY
+                           , 0 AS AL_EA_QTY
+                           , 0 AS AV_BOX_QTY
+                           , COALESCE(SUM(((B.AVQTY- (DATE_TRUNC('day', B.AVQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / B.BOL_ICUTQTY), 0) AS AV_BOL_QTY
+                           , 0 AS AV_EA_QTY
+                           , 0 AS HO_BOX_QTY
+                           , COALESCE(SUM(((B.HOQTY- (DATE_TRUNC('day', B.HOQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / B.BOL_ICUTQTY), 0) AS HO_BOL_QTY
+                           , 0 AS HO_EA_QTY
+                        FROM B
+                       WHERE MOD(B.TTQTY, B.ICUTQTY) > 0
+                         AND MOD((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY)), B.BOL_ICUTQTY) = 0
+                       GROUP BY B.ICKEY, B.ICNAME, B.CTGKEY
+
+                       UNION ALL
+
+                      SELECT B.ICKEY
+                           , B.ICNAME
+                           , B.CTGKEY
+                           , 0 AS TOT_BOX_QTY
+                           , 0 AS TOT_BOL_QTY
+                           , COALESCE(SUM(((B.TTQTY- (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / ICUT3.ICUTQTY), 0) AS TOT_EA_QTY
+                           , 0 AS AL_BOX_QTY
+                           , 0 AS AL_BOL_QTY
+                           , COALESCE(SUM(((B.ALQTY- (DATE_TRUNC('day', B.ALQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / ICUT3.ICUTQTY), 0) AS AL_EA_QTY
+                           , 0 AS AV_BOX_QTY
+                           , 0 AS AV_BOL_QTY
+                           , COALESCE(SUM(((B.AVQTY- (DATE_TRUNC('day', B.AVQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / ICUT3.ICUTQTY), 0) AS AV_EA_QTY
+                           , 0 AS HO_BOX_QTY
+                           , 0 AS HO_BOL_QTY
+                           , COALESCE(SUM(((B.HOQTY- (DATE_TRUNC('day', B.HOQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / ICUT3.ICUTQTY), 0) AS HO_EA_QTY
+                        FROM B
+                        LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT3
+                          ON B.CTKEY = ICUT3.CTKEY
+                         AND B.OWKEY = ICUT3.OWKEY
+                         AND B.ICKEY = ICUT3.ICUTKEY
+                         AND ICUT3.ICUTTYPE = 'EA'
+                       WHERE MOD(B.TTQTY, B.ICUTQTY) > 0
+                         AND MOD((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY)), B.BOL_ICUTQTY) > 0
+                       GROUP BY B.ICKEY, B.ICNAME, B.CTGKEY
+                      ) IV
+                GROUP BY IV.ICKEY, IV.ICNAME, IV.CTGKEY
+               ) T
+         INNER JOIN TWORK_MST_CTG CTG
+            ON CTG.CTKEY = #{ctkey}
+           AND CTG.OWKEY = #{owkey}
+           AND CTG.CTGLEVEL = '1'
+           AND CTG.CTGKEY = SUBSTR(T.CTGKEY, 0, 10)
+         GROUP BY T.ICKEY, T.ICNAME, CTG.CTGKEY, CTG.CTGNAME
+    </sql>
+
+    <select id="selectRealTimeInvn" resultType="camelMap">
+        /* wms-report-realTimeInvnSearch-sql-oracle.xml - selectRealTimeInvn*/
+        SELECT A.CTGKEY                 AS CTGKEY
+             , A.CTGNAME                AS CTGNAME
+             , COUNT(A.ICKEY)           AS SKU_CNT
+             , SUM(A.BEFORE_IB_BOX_QTY) AS BEFORE_IB_BOX_QTY
+             , SUM(A.BEFORE_IB_BOL_QTY) AS BEFORE_IB_BOL_QTY
+             , SUM(A.BEFORE_IB_EA_QTY)  AS BEFORE_IB_EA_QTY
+             , SUM(A.BEFORE_OB_BOX_QTY) AS BEFORE_OB_BOX_QTY
+             , SUM(A.BEFORE_OB_BOL_QTY) AS BEFORE_OB_BOL_QTY
+             , SUM(A.BEFORE_OB_EA_QTY)  AS BEFORE_OB_EA_QTY
+             , SUM(A.TOT_BOX_QTY)       AS TOT_BOX_QTY
+             , SUM(A.TOT_BOL_QTY)       AS TOT_BOL_QTY
+             , SUM(A.TOT_EA_QTY)        AS TOT_EA_QTY
+             , SUM(A.AL_BOX_QTY)        AS AL_BOX_QTY
+             , SUM(A.AL_BOL_QTY)        AS AL_BOL_QTY
+             , SUM(A.AL_EA_QTY)         AS AL_EA_QTY
+             , SUM(A.AV_BOX_QTY)        AS AV_BOX_QTY
+             , SUM(A.AV_BOL_QTY)        AS AV_BOL_QTY
+             , SUM(A.AV_EA_QTY)         AS AV_EA_QTY
+             , SUM(A.HO_BOX_QTY)        AS HO_BOX_QTY
+             , SUM(A.HO_BOL_QTY)        AS HO_BOL_QTY
+             , SUM(A.HO_EA_QTY)         AS HO_EA_QTY
+          FROM ( <include refid="sql_selectRealTimeInvnDetail"/> ) A
+         GROUP BY A.CTGKEY, A.CTGNAME
+         ORDER BY A.CTGKEY
+    </select>
+
+    <select id="selectRealTimeInvnDetail" resultType="camelMap">
+        /* wms-report-realTimeInvnSearch-sql-oracle.xml - selectRealTimeInvnDetail*/
+        SELECT A.*
+          FROM ( <include refid="sql_selectRealTimeInvnDetail"/> ) A
+         WHERE A.CTGKEY = #{ctgkey}
+         ORDER BY A.ICKEY
+    </select>
+
+</mapper>

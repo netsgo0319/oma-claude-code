@@ -1,0 +1,872 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.ItemApiMapper">
+
+	<select id="selectItemActualsizeyn" resultType="String">
+		/* wms-master-item-sql-oracle.xml - selectItemActualsizeyn */
+		SELECT CASE WHEN COALESCE(IXT.WIDTH, 0) = 0 OR COALESCE(IXT."DEPTH", 0) = 0 OR COALESCE(IXT.HEIGHT, 0) = 0 OR COALESCE(IXT.VOL, 0) = 0 OR COALESCE(IXT.WEIGHT, 0) = 0 THEN 'N'
+					WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'N'
+					WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL + IC.OVLPPCKGDEPTHVAL + IC.OVLPPCKGHEIGHTVAL) <![CDATA[ <= ]]> 0 THEN 'N'
+					WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'N'
+					ELSE 'Y' END AS ACTUALSIZEYN
+		  FROM TWORK_MST_IC IC
+		  JOIN TWORK_MST_ICUTXTYPE IXT
+			ON IXT.CTKEY = IC.CTKEY
+		   AND IXT.OWKEY = IC.OWKEY
+		   AND IXT.ICKEY = IC.ICKEY
+		   AND IXT.ICUNITKEY = IC.ICUNITKEY
+		   AND IXT.ICUNITTYPECD = IC.UOM
+		 WHERE IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey}
+		   AND IC.ICKEY = #{ickey}
+	</select>
+
+	<select id="selectInterfaceItemCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectInterfaceItemCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_IC_RCV
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+	</select>
+
+	<insert id="insertInterfaceItem" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO">
+		/* wms-master-item-sql-oracle.xml - insertInterfaceItem */
+		INSERT INTO TWORK_INTF_IC_RCV (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , ICKEY			/* 상품코드 */
+			 , ICNAME			/* 상품명 */
+			 , ICGRPKEY			/* 상품그룹코드 */
+			 , CTGKEY			/* 상품소분류 */
+			 , ICUNITKEY		/* 상품단위코드 */
+			 , UOM				/* 단위 */
+			 , EXPCKYN			/* 유통기한체크여부 */
+			 , EXPCKTYPECD		/* 유통 기한 체크 유형 */
+			 , ICTMPRDIVCD		/* 상품온도구분코드 */
+			 , SPEC				/* 규격 */
+			 , ASRTREPKEY		/* 대표품번 */
+			 , OLNICKEY			/* 온라인품번 */
+			 , OLNICTYPECD		/* 상품형태(온라인) */
+			 , OFLNICTYPECD		/* 상품형태(오프라인) */
+			 , B2BGRADE			/* B2B등급 */
+			 , SEASON			/* 시즌 */
+			 , DNGMGMTYN		/* 위험물관리여부 */
+			 , CUSHNMEPCKGYN	/* 완충재포장여부 */
+			 , EACHPCKGYN		/* 개별포장여부 */
+			 , ICORIGIN			/* 상품원산지 */
+			 , ICMGMTUSR		/* 상품담당자 */
+			 , PURPRC			/* 구매가격 */
+			 , SLPRC			/* 판매가격 */
+			 , ASRTYN			/* 아소트여부 */
+			 , DIRCDLVYICYN		/* 직송상품여부 */
+			 , ICSTATUSDIV		/* 상품사용구분 */
+			 , PKOTICYN			/* 덕용상품여부 */
+			 , ROBSORTERICYN	/* 로봇소터가능상품여부 */
+			 , MTR				/* 재질 */
+			 , EXPCNVRSNDAYS	/* 유통기한전환일수 */
+			 , OBIMPSCRITRT		/* 출고불가기준율 */
+			 , COMPYN			/* 구성품여부 */
+			 , COMPCONT			/* 구성품내용 */
+			 , DSPYN			/* 전시여부 */
+			 , DLVRYYN			/* 택배여부 */
+			 , POSBLKYN			/* POS차단여부 */
+			 , ACTUALSIZEYN		/* 실측여부 */
+			 , POLYBAGPCKGYN	/* 폴리백포장여부 */
+			 , PCKGOVLPYN		/* 포장겹침여부 */
+			 , OVLPPCKGWIDTHVAL	/* 겹침포장가로증가값 */
+			 , OVLPPCKGDEPTHVAL	/* 겹침포장세로증가값 */
+			 , OVLPPCKGHEIGHTVAL/* 겹침포장높이증가값 */
+			 , PCKGFOLDYN		/* 포장접기여부 */
+			 , DFSHPMTRYN		/* 이형물여부 */
+			 , FOODYN			/* 식품 여부 (Y:식품,N:비식품) */
+			 , UNICYN			/* 미취급여부 */
+			 , BARCODEATTACHYN	/* 상품바코드부착여부 */
+			 , OLNICDIV			/* 다이소몰등급코드 */
+			 , OLNIPKOTICYN		/* 판매특성여부 */
+			 , SALESTATUSCD		/* 판매상태코드 */
+			 , POABLEYN			/* 발주가능여부 */
+			 , OLNPKOTYN		/* 온라인덕용여부 */
+			 , OBLIMITYN		/* 출고제한여부 */
+			 , HIGHFRQNCYDMGYN	/* 고빈도파손여부 */
+			 , MASICYN			/* 모상품여부 */
+			 , ACKEY			/* 거래처 코드 */
+			 , IMGURL			/* 상품 이미지 URL */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{icname}
+			 , #{icgrpkey}
+			 , #{ctgkey}
+			 , #{icunitkey}
+			 , #{uom}
+			 , #{expckyn}
+			 , #{expcktypecd}
+			 , #{ictmprdivcd}
+			 , #{spec}
+			 , #{asrtrepkey}
+			 , #{olnickey}
+			 , #{olnictypecd}
+			 , #{oflnictypecd}
+			 , #{b2bgrade}
+			 , #{season}
+			 , #{dngmgmtyn}
+			 , #{cushnmepckgyn}
+			 , #{eachpckgyn}
+			 , #{icorigin}
+			 , #{icmgmtusr}
+			 , #{purprc}
+			 , #{slprc}
+			 , #{asrtyn}
+			 , #{dircdlvyicyn}
+			 , #{icstatusdiv}
+			 , #{pkoticyn}
+			 , #{robsortericyn}
+			 , #{mtr}
+			 , #{expcnvrsndays}
+			 , #{obimpscritrt}
+			 , #{compyn}
+			 , #{compcont}
+			 , #{dspyn}
+			 , #{dlvryyn}
+			 , #{posblkyn}
+			 , #{actualsizeyn}
+			 , #{polybagpckgyn}
+			 , #{pckgovlpyn}
+			 , #{ovlppckgwidthval}
+			 , #{ovlppckgdepthval}
+			 , #{ovlppckgheightval}
+			 , #{pckgfoldyn}
+			 , #{dfshpmtryn}
+			 , #{foodyn}
+			 , #{unicyn}
+			 , #{barcodeattachyn}
+			 , #{olnicdiv}
+			 , #{olnipkoticyn}
+			 , #{salestatuscd}
+			 , #{poableyn}
+			 , #{olnpkotyn}
+			 , #{oblimityn}
+			 , #{highfrqncydmgyn}
+			 , #{masicyn}
+			 , #{ackey}
+			 , #{imgurl}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceItem" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO">
+		/* wms-master-item-sql-oracle.xml - updateInterfaceItem */
+		UPDATE TWORK_INTF_IC_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, ICNAME			 = #{icname}				/* 상품명 */
+					, ICGRPKEY			 = #{icgrpkey}				/* 상품그룹코드 */
+					, CTGKEY			 = #{ctgkey}				/* 상품소분류 */
+					, ICUNITKEY			 = #{icunitkey}				/* 상품단위코드 */
+					, UOM				 = #{uom}					/* 단위 */
+					, EXPCKYN			 = #{expckyn}				/* 유통기한체크여부 */
+					, EXPCKTYPECD		 = #{expcktypecd}			/* 유통 기한 체크 유형 */
+					, ICTMPRDIVCD		 = #{ictmprdivcd}			/* 상품온도구분코드 */
+					, SPEC				 = #{spec}					/* 규격 */
+					, ASRTREPKEY		 = #{asrtrepkey}			/* 대표품번 */
+					, OLNICKEY			 = #{olnickey}				/* 온라인품번 */
+					, OLNICTYPECD		 = #{olnictypecd}			/* 상품형태(온라인) */
+					, OFLNICTYPECD		 = #{oflnictypecd}			/* 상품형태(오프라인) */
+					, B2BGRADE			 = #{b2bgrade}				/* B2B등급 */
+					, SEASON			 = #{season}				/* 시즌 */
+					, DNGMGMTYN			 = #{dngmgmtyn}				/* 위험물관리여부 */
+					, CUSHNMEPCKGYN		 = #{cushnmepckgyn}			/* 완충재포장여부 */
+					, EACHPCKGYN		 = #{eachpckgyn}			/* 개별포장여부 */
+					, ICORIGIN			 = #{icorigin}				/* 상품원산지 */
+					, ICMGMTUSR			 = #{icmgmtusr}				/* 상품담당자 */
+					, PURPRC			 = #{purprc}				/* 구매가격 */
+					, SLPRC				 = #{slprc}					/* 판매가격 */
+					, ASRTYN			 = #{asrtyn}				/* 아소트여부 */
+					, DIRCDLVYICYN		 = #{dircdlvyicyn}			/* 직송상품여부 */
+					, ICSTATUSDIV		 = #{icstatusdiv}			/* 상품사용구분 */
+					, PKOTICYN			 = #{pkoticyn}				/* 덕용상품여부 */
+					, ROBSORTERICYN		 = #{robsortericyn}			/* 로봇소터가능상품여부 */
+					, MTR				 = #{mtr}					/* 재질 */
+					, EXPCNVRSNDAYS		 = #{expcnvrsndays}			/* 유통기한전환일수 */
+					, OBIMPSCRITRT		 = #{obimpscritrt}			/* 출고불가기준율 */
+					, COMPYN			 = #{compyn}				/* 구성품여부 */
+					, COMPCONT			 = #{compcont}				/* 구성품내용 */
+					, DSPYN				 = #{dspyn}					/* 전시여부 */
+					, DLVRYYN			 = #{dlvryyn}				/* 택배여부 */
+					, POSBLKYN			 = #{posblkyn}				/* POS차단여부 */
+					, ACTUALSIZEYN		 = #{actualsizeyn}			/* 실측여부 */
+					, POLYBAGPCKGYN	 	 = #{polybagpckgyn}		/* 폴리백포장여부 */
+					, PCKGOVLPYN		 = #{pckgovlpyn}			/* 포장겹침여부 */
+					, OVLPPCKGWIDTHVAL	 = #{ovlppckgwidthval}		/* 겹침포장가로증가값 */
+					, OVLPPCKGDEPTHVAL	 = #{ovlppckgdepthval}		/* 겹침포장세로증가값 */
+					, OVLPPCKGHEIGHTVAL	 = #{ovlppckgheightval}		/* 겹침포장높이증가값 */
+					, PCKGFOLDYN		 = #{pckgfoldyn}			/* 포장접기여부 */
+					, DFSHPMTRYN		 = #{dfshpmtryn}			/* 이형물여부 */
+					, FOODYN			 = #{foodyn}				/* 식품 여부 (Y:식품,N:비식품) */
+					, UNICYN			 = #{unicyn}				/* 미취급여부 */
+					, BARCODEATTACHYN	 = #{barcodeattachyn}		/* 상품바코드부착여부 */
+					, OLNICDIV			 = #{olnicdiv}				/* 다이소몰등급코드 */
+					, OLNIPKOTICYN		 = #{olnipkoticyn}			/* 판매특성여부 */
+					, SALESTATUSCD		 = #{salestatuscd}			/* 판매상태코드 */
+					, POABLEYN			 = #{poableyn}				/* 발주가능여부 */
+					, OLNPKOTYN			 = #{olnpkotyn}				/* 온라인덕용여부 */
+					, OBLIMITYN			 = #{oblimityn}				/* 출고제한여부 */
+					, HIGHFRQNCYDMGYN	 = #{highfrqncydmgyn}		/* 고빈도파손여부 */
+		     		, MASICYN 			 = #{masicyn}				/* 모상품여부 */
+					, ACKEY 			 = #{ackey}					/* 거래처 코드 */
+					, IMGURL 			 = #{imgurl}					/* 상품 이미지 URL */
+					, PRCSYN 			 = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE 			 = null						/* 처리일시 */
+					, RCVDATE			 = #{sysdate}				/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+	</update>
+
+	<select id="selectTworkMstIcCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectTworkMstIcCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_IC
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+		   AND OWKEY = #{owkey}		/* 화주코드 */
+		   AND ICKEY = #{ickey}		/* 상품코드 */
+	</select>
+
+	<insert id="insertTworkMstIc" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO">
+		/* wms-master-item-sql-oracle.xml - insertTworkMstIc */
+		INSERT INTO TWORK_MST_IC (
+			   CTKEY					/* 센터 코드 */
+			 , OWKEY					/* 화주 코드 */
+			 , ICKEY					/* 상품 코드 */
+			 , ICNM		 	  		    /* 상품명 */
+			 , ICGRPKEY					/* 상품그룹코드 */
+			 , ICGRPTYPECD              /* 상품그룹유형코드 */
+			 , CTGKEY					/* 상품소분류 */
+			 , ICUNITKEY				/* 상품단위코드 */
+			 , UOM						/* 단위 */
+			 , EXPCKYN					/* 유통기한체크여부 */
+			 , EXPCKTYPECD				/* 유통 기한 체크 유형 */
+			 , ICTMPRDIVCD				/* 상품온도구분코드 */
+			 , SPEC						/* 규격 */
+			 , ASRTREPKEY				/* 대표품번 */
+			 , OLNICKEY					/* 온라인품번 */
+			 , OLNICTYPECD				/* 상품형태(온라인) */
+			 , OFLNICTYPECD				/* 상품형태(오프라인) */
+			 , B2BGRADE					/* B2B등급 */
+			 , SEASON					/* 시즌 */
+			 , DNGMGMTYN				/* 위험물관리여부 */
+			 , EACHPCKGYN				/* 개별포장여부 */
+			 , ICORIGIN					/* 상품원산지 */
+			 , ICMGMTUSR				/* 상품담당자 */
+			 , PURPRC					/* 구매가격 */
+			 , SLPRC					/* 판매가격 */
+			 , ASRTYN					/* 아소트여부 */
+			 , DIRCDLVYICYN				/* 직송상품여부 */
+			 , ICSTATUSDIV				/* 상품사용구분 */
+			 , ICOPERSTATUSCD			/* 상품운영상태 */
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pkoticyn)'>
+			 , PKOTICYN					/* 덕용상품여부 */
+		</if>
+			 , MTR						/* 재질 */
+			 , EXPCNVRSNDAYS			/* 유통기한전환일수 */
+			 , OBIMPSCRITRT				/* 출고불가기준율 */
+			 , DSPYN					/* 전시여부 */
+			 , DLVRYYN					/* 택배여부 */
+			 , POSBLKYN					/* POS차단여부 */
+			 , ACTUALSIZEYN				/* 실측여부 */
+			 , FOODYN					/* 식품 여부 (Y:식품,N:비식품) */
+			 , UNICYN					/* 미취급여부 */
+			 , OLNICDIV					/* 다이소몰등급코드 */
+			 , OLNIPKOTICYN				/* 판매특성여부 */
+			 , SALESTATUSCD				/* 판매상태코드 */
+			 , POABLEYN					/* 발주가능여부 */
+			 , OLNPKOTYN				/* 온라인덕용여부 */
+			 , OBLIMITYN				/* 출고제한여부 */
+			 , MASICYN					/* 모상품여부 */
+			 , ACKEY					/* 거래처 코드 */
+			 , IMGURL					/* 상품 이미지 URL */
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , DFSHPMTRYN				/* 이형물여부 */
+			 , ROBSORTERICYN			/* 로봇소터가능상품여부 */
+			 , CUSHNMEPCKGYN			/* 완충재포장여부 */
+			 , PCKGOVLPYN				/* 포장겹침여부 */
+			 , OVLPPCKGWIDTHVAL			/* 겹침포장가로증가값 */
+			 , OVLPPCKGDEPTHVAL			/* 겹침포장세로증가값 */
+			 , OVLPPCKGHEIGHTVAL		/* 겹침포장높이증가값 */
+			 , COMPYN					/* 구성품여부 */
+			 , COMPCONT					/* 구성품내용 */
+			 , PCKGFOLDYN				/* 포장접기여부 */
+			 , BARCODEATTACHYN			/* 상품바코드부착여부 */
+			 , POLYBAGPCKGYN			/* 폴리백포장여부 */
+			 , HIGHFRQNCYDMGYN			/* 고빈도파손여부 */
+		</if>
+
+			 , INSERTDATE				/* 입력일시 */
+			 , INSERTURKEY				/* 입력 사용자 ID */
+			 , UPDATEDATE				/* 수정 일시 */
+			 , UPDATEURKEY				/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{icname}
+			 , COALESCE(#{icgrpkey}, 'GR')
+			 , 'CATEGORY'
+			 , #{ctgkey}
+			 , #{ickey}
+			 , #{uom}
+			 , #{expckyn}
+			 , (CASE WHEN COALESCE(#{expckyn}, 'N') = 'Y' THEN 'E' ELSE #{expcktypecd} END)
+			 , COALESCE(#{ictmprdivcd}, '1')
+			 , #{spec}
+			 , #{asrtrepkey}
+			 , #{olnickey}
+			 , #{olnictypecd}
+			 , #{oflnictypecd}
+			 , #{b2bgrade}
+			 , #{season}
+			 , #{dngmgmtyn}
+			 , #{eachpckgyn}
+			 , #{icorigin}
+			 , #{icmgmtusr}
+			 , #{purprc}
+			 , #{slprc}
+			 , #{asrtyn}
+			 , #{dircdlvyicyn}
+			 , #{icstatusdiv}
+			 , #{icstatusdiv}
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pkoticyn)'>
+			 , #{pkoticyn}
+		</if>
+			 , #{mtr}
+			 , #{expcnvrsndays}
+			 , #{obimpscritrt}
+			 , #{dspyn}
+			 , #{dlvryyn}
+			 , #{posblkyn}
+			 , #{actualsizeyn}
+			 , #{foodyn}
+			 , #{unicyn}
+			 , #{olnicdiv}
+			 , #{olnipkoticyn}
+			 , #{salestatuscd}
+			 , #{poableyn}
+			 , #{olnpkotyn}
+			 , #{oblimityn}
+			 , #{masicyn}
+			 , #{ackey}
+
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(imgurl)'>
+				<choose>
+					<when test='imgurl.startsWith("https")'>
+						, #{imgurl}
+					</when>
+					<otherwise>
+						, #{domain} || #{imgurl}
+					</otherwise>
+				</choose>
+			</when>
+			<otherwise>
+				, NULL
+			</otherwise>
+		</choose>
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , CASE #{robsortericyn} WHEN 'Y' THEN 'N' WHEN 'N' THEN 'Y' ELSE #{dfshpmtryn} END   	/* dfshpmtryn 이형물이 Y면 N, N이면 Y */
+			 , #{robsortericyn}
+			 , #{cushnmepckgyn}
+			 , #{pckgovlpyn}
+			 , #{ovlppckgwidthval}
+			 , #{ovlppckgdepthval}
+			 , #{ovlppckgheightval}
+			 , #{compyn}
+			 , #{compcont}
+			 , #{pckgfoldyn}
+			 , #{barcodeattachyn}
+			 , #{polybagpckgyn}
+			 , #{highfrqncydmgyn}
+		</if>
+
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstIc" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO">
+		/* wms-master-item-sql-oracle.xml - updateTworkMstIc */
+		UPDATE TWORK_MST_IC
+		   SET ICNM			     = #{icname}			/* 상품명 */
+			 , ICGRPKEY			 = COALESCE(#{icgrpkey}, 'GR')			/* 상품그룹코드 */
+			 , CTGKEY			 = #{ctgkey}			/* 상품소분류 */
+			 , ICUNITKEY		 = #{ickey}				/* 상품단위코드 */
+			 , UOM				 = #{uom}				/* 단위 */
+			 , EXPCKYN			 = #{expckyn}			/* 유통기한체크여부 */
+			 , EXPCKTYPECD		 = (CASE WHEN COALESCE(#{expckyn}, 'N') = 'Y' THEN 'E' ELSE #{expcktypecd} END)		/* 유통 기한 체크 유형 */
+			 , ICTMPRDIVCD		 = COALESCE(#{ictmprdivcd}, '1')		/* 상품온도구분코드 */
+			 , SPEC				 = #{spec}				/* 규격 */
+			 , ASRTREPKEY		 = #{asrtrepkey}		/* 대표품번 */
+			 , OLNICKEY			 = #{olnickey}			/* 온라인품번 */
+			 , OLNICTYPECD		 = #{olnictypecd}		/* 상품형태(온라인) */
+			 , OFLNICTYPECD		 = #{oflnictypecd}		/* 상품형태(오프라인) */
+			 , B2BGRADE			 = #{b2bgrade}			/* B2B등급 */
+			 , SEASON			 = #{season}			/* 시즌 */
+			 , DNGMGMTYN		 = #{dngmgmtyn}			/* 위험물관리여부 */
+			 , EACHPCKGYN		 = #{eachpckgyn}		/* 개별포장여부 */
+			 , ICORIGIN			 = #{icorigin}			/* 상품원산지 */
+			 , ICMGMTUSR		 = #{icmgmtusr}			/* 상품담당자 */
+			 , PURPRC			 = #{purprc}			/* 구매가격 */
+			 , SLPRC			 = #{slprc}				/* 판매가격 */
+			 , ASRTYN			 = #{asrtyn}			/* 아소트여부 */
+			 , DIRCDLVYICYN		 = #{dircdlvyicyn}		/* 직송상품여부 */
+			 , ICSTATUSDIV	 	 = #{icstatusdiv}		/* 상품사용구분 */
+			 , ICOPERSTATUSCD	 = #{icstatusdiv}		/* 상품운영상태 */
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pkoticyn)'>
+			 , PKOTICYN			 = #{pkoticyn}			/* 덕용상품여부 */
+		</if>
+			 , MTR				 = #{mtr}				/* 재질 */
+			 , EXPCNVRSNDAYS	 = #{expcnvrsndays}		/* 유통기한전환일수 */
+			 , OBIMPSCRITRT		 = #{obimpscritrt}		/* 출고불가기준율 */
+			 , DSPYN			 = #{dspyn}				/* 전시여부 */
+			 , DLVRYYN			 = #{dlvryyn}			/* 택배여부 */
+			 , POSBLKYN			 = #{posblkyn}			/* POS차단여부 */
+			 , ACTUALSIZEYN		 = #{actualsizeyn}		/* 실측여부 */
+			 , FOODYN			 = #{foodyn}			/* 식품 여부 (Y:식품,N:비식품) */
+			 , UNICYN			 = #{unicyn}			/* 미취급여부 */
+			 , OLNICDIV			 = #{olnicdiv}			/* 다이소몰등급코드 */
+			 , OLNIPKOTICYN		 = #{olnipkoticyn}		/* 판매특성여부 */
+			 , SALESTATUSCD		 = #{salestatuscd}		/* 판매상태코드 */
+			 , POABLEYN			 = #{poableyn}			/* 발주가능여부 */
+			 , OLNPKOTYN		 = #{olnpkotyn}			/* 온라인덕용여부 */
+			 , OBLIMITYN		 = #{oblimityn}			/* 출고제한여부 */
+		     , MASICYN 			 = #{masicyn}			/* 모상품여부 */
+		     , ACKEY			 = #{ackey}				/* 거래처 코드 */
+
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(imgurl)'>
+				<choose>
+					<when test='imgurl.startsWith("https")'>
+						, IMGURL 	 = #{imgurl}					/* 상품 이미지 URL */
+					</when>
+					<otherwise>
+						, IMGURL	 = #{domain} || #{imgurl}		/* 상품 이미지 URL */
+					</otherwise>
+				</choose>
+			</when>
+			<otherwise>
+				, IMGURL			 = NULL			/* 상품 이미지 URL */
+			</otherwise>
+		</choose>
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , DFSHPMTRYN		 = CASE #{robsortericyn} WHEN 'Y' THEN 'N' WHEN 'N' THEN 'Y' ELSE #{dfshpmtryn} END   	/* 이형물여부 dfshpmtryn 이형물이 Y면 N, N이면 Y */
+			 , ROBSORTERICYN	 = #{robsortericyn}		/* 로봇소터가능상품여부 */
+			 , CUSHNMEPCKGYN	 = #{cushnmepckgyn}		/* 완충재포장여부 */
+			 , PCKGOVLPYN		 = #{pckgovlpyn}		/* 포장겹침여부 */
+			 , OVLPPCKGWIDTHVAL	 = #{ovlppckgwidthval}	/* 겹침포장가로증가값 */
+			 , OVLPPCKGDEPTHVAL	 = #{ovlppckgdepthval}	/* 겹침포장세로증가값 */
+			 , OVLPPCKGHEIGHTVAL = #{ovlppckgheightval}	/* 겹침포장높이증가값 */
+			 , COMPYN			 = #{compyn}			/* 구성품여부 */
+			 , COMPCONT			 = #{compcont}			/* 구성품내용 */
+			 , PCKGFOLDYN		 = #{pckgfoldyn}		/* 포장접기여부 */
+			 , BARCODEATTACHYN	 = #{barcodeattachyn}	/* 상품바코드부착여부 */
+			 , POLYBAGPCKGYN	 = #{polybagpckgyn}		/* 폴리백포장여부 */
+			 , HIGHFRQNCYDMGYN	 = #{highfrqncydmgyn}	/* 고빈도파손여부 */
+		</if>
+
+			 , UPDATEDATE		 = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY		 = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+		   AND OWKEY = #{owkey}		/* 화주코드 */
+		   AND ICKEY = #{ickey}		/* 상품코드 */
+	</update>
+
+	<delete id="deleteTworkMstIc" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO">
+		/* wms-master-item-sql-oracle.xml - deleteTworkMstIc */
+		DELETE
+		  FROM TWORK_MST_IC
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+		   AND OWKEY = #{owkey}		/* 화주코드 */
+		   AND ICKEY = #{ickey}		/* 상품코드 */
+	</delete>
+
+	<select id="selectInterfaceIcutCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectInterfaceIcutCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_ICUTXTYPE_RCV
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+           AND ICKEY = #{ickey}             /* 상품코드 */
+		   AND ICUNITTYPE = #{icunittype}	/* 상품 단위 유형 */
+	</select>
+
+	<insert id="insertInterfaceIcut" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo">
+		/* wms-master-item-sql-oracle.xml - insertInterfaceIcut */
+		INSERT INTO TWORK_INTF_ICUTXTYPE_RCV (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+             , ICKEY            /* 상품 코드 */
+			 , ICUNITTYPE		/* 상품 단위 유형 */
+			 , ICUNITORDER		/* 물품 단위 순서 */
+			 , ICUNITQTY		/* 물품 단위 수량 */
+			 , PLTROW			/* PLT 단 */
+			 , PLTCOL			/* PLT 열 (한단 수량) */
+			 , CPP				/* 팔레트 CPP */
+			 , DEPTH			/* 세로 */
+			 , WIDTH			/* 가로 */
+			 , HEIGHT			/* 높이 */
+			 , SIZEUNIT			/* 측정단위 */
+			 , WEIGHT			/* 중량 */
+			 , WEIGHTUNIT		/* 중량단위 */
+			 , VOL				/* 부피 */
+			 , VOLUNIT			/* 부피단위 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+             , #{ickey}
+			 , #{icunittype}
+			 , #{icunitorder}
+			 , #{icunitqty}
+			 , #{pltrow}
+			 , #{pltcol}
+			 , #{cpp}
+			 , #{depth}
+			 , #{width}
+			 , #{height}
+			 , #{sizeunit}
+			 , #{weight}
+			 , #{weightunit}
+			 , #{vol}
+			 , #{volunit}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceIcut" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo">
+		/* wms-master-item-sql-oracle.xml - updateInterfaceIcut */
+		UPDATE TWORK_INTF_ICUTXTYPE_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, ICUNITORDER	 = #{icunitorder}	/* 물품 단위 순서 */
+					, ICUNITQTY		 = #{icunitqty}		/* 물품 단위 수량 */
+					, PLTROW		 = #{pltrow}		/* PLT 단 */
+					, PLTCOL		 = #{pltcol}		/* PLT 열 (한단 수량) */
+					, CPP			 = #{cpp}			/* 팔레트 CPP */
+					, DEPTH			 = #{depth}			/* 세로 */
+					, WIDTH			 = #{width}			/* 가로 */
+					, HEIGHT		 = #{height}		/* 높이 */
+					, SIZEUNIT		 = #{sizeunit}		/* 측정단위 */
+					, WEIGHT		 = #{weight}		/* 중량 */
+					, WEIGHTUNIT	 = #{weightunit}	/* 중량단위 */
+					, VOL			 = #{vol}			/* 부피 */
+					, VOLUNIT		 = #{volunit}		/* 부피단위 */
+					, DELYN			 = #{delyn}			/* 삭제여부 */
+					, PRCSYN 		 = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE 		 = null				/* 처리일시 */
+					, RCVDATE		 = #{sysdate}		/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+           AND ICKEY = #{ickey}             /* 상품코드 */
+		   AND ICUNITTYPE = #{icunittype}	/* 상품 단위 유형 */
+	</update>
+
+	<select id="selectTworkMstIcutCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectTworkMstIcutCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ICUTXTYPE
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+           AND ICKEY = #{ickey}             /* 상품코드 */
+		   AND ICUNITTYPECD = #{icunittype}	/* 상품 단위 유형 */
+	</select>
+
+	<insert id="insertTworkMstIcut" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo">
+		/* wms-master-item-sql-oracle.xml - insertTworkMstIcut */
+		INSERT INTO TWORK_MST_ICUTXTYPE (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+             , ICKEY            /* 상품 코드 */
+             , ICUNITKEY        /* 상품 단위 코드 */
+			 , ICUNITTYPECD		/* 상품 단위 유형 */
+			 , ICUNITORDER		/* 물품 단위 순서 */
+			 , ICUNITQTY		/* 물품 단위 수량 */
+			 , PLTROW			/* PLT 단 */
+			 , PLTCOL			/* PLT 열 (한단 수량) */
+			 , CPPQTY			/* 팔레트 CPP */
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , DEPTH			/* 세로 */
+			 , WIDTH			/* 가로 */
+			 , HEIGHT			/* 높이 */
+			 , SIZEUNIT			/* 측정단위 */
+			 , WEIGHT			/* 중량 */
+			 , WEIGHTUNIT		/* 중량단위 */
+			 , VOL				/* 부피 */
+			 , VOLUNIT			/* 부피단위 */
+		</if>
+
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+             , #{ickey}
+             , #{ickey}
+	  		 , #{icunittype}
+			 , #{icunitorder}
+			 , #{icunitqty}
+			 , #{pltrow}
+			 , #{pltcol}
+			 , #{cpp}
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , #{depth}
+			 , #{width}
+			 , #{height}
+			 , #{sizeunit}
+			 , #{weight}
+			 , #{weightunit}
+			 , #{vol}
+			 , #{volunit}
+		</if>
+
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstIcut" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo">
+		/* wms-master-item-sql-oracle.xml - updateTworkMstIcut */
+		UPDATE TWORK_MST_ICUTXTYPE
+		   SET ICUNITORDER	 = #{icunitorder}	/* 물품 단위 순서 */
+			 , ICUNITQTY	 = #{icunitqty}		/* 물품 단위 수량 */
+			 , PLTROW		 = #{pltrow}		/* PLT 단 */
+			 , PLTCOL		 = #{pltcol}		/* PLT 열 (한단 수량) */
+			 , CPPQTY		 = #{cpp}			/* 팔레트 CPP */
+
+		<if test='"N".equals(wmsactualsizeyn)'>
+			 , DEPTH		 = #{depth}			/* 세로 */
+			 , WIDTH		 = #{width}			/* 가로 */
+			 , HEIGHT		 = #{height}		/* 높이 */
+			 , SIZEUNIT		 = #{sizeunit}		/* 측정단위 */
+			 , WEIGHT		 = #{weight}		/* 중량 */
+			 , WEIGHTUNIT	 = #{weightunit}	/* 중량단위 */
+			 , VOL			 = #{vol}			/* 부피 */
+			 , VOLUNIT		 = #{volunit}		/* 부피단위 */
+		</if>
+
+			 , UPDATEDATE	 = #{sysdate}		/* 수정일시 */
+			 , UPDATEURKEY	 = #{surkey}		/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+           AND ICKEY = #{ickey}  /* 상품 코드 */
+           AND ICUNITTYPECD = #{icunittype}	/* 상품 단위 유형 */
+	</update>
+
+	<delete id="deleteTworkMstIcut" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcUnitVo">
+		/* wms-master-item-sql-oracle.xml - deleteTworkMstIcut */
+		DELETE
+		  FROM TWORK_MST_ICUTXTYPE
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+           AND ICKEY = #{ickey}  			/* 상품 코드 */
+           AND ICUNITTYPECD = #{icunittype}	/* 상품 단위 유형 */
+	</delete>
+
+	<select id="selectInterfaceIcbcCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectInterfaceIcbcCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_ICBARCODE_RCV
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+		   AND UOM = #{uom}					/* 단위 */
+	</select>
+
+	<insert id="insertInterfaceIcbc" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo">
+		/* wms-master-item-sql-oracle.xml - insertInterfaceIcbc */
+		INSERT INTO TWORK_INTF_ICBARCODE_RCV (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+			 , ICKEY			/* 상품코드 */
+			 , SEQNO			/* 일련번호 */
+			 , UOM				/* 단위 */
+			 , BARCODE			/* 바코드 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{seqno}
+			 , #{uom}
+			 , #{barcode}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceIcbc" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo">
+		/* wms-master-item-sql-oracle.xml - updateInterfaceIcbc */
+		UPDATE TWORK_INTF_ICBARCODE_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, BARCODE		 = #{barcode}		/* 바코드 */
+					, DELYN 		 = #{delyn}			/* 삭제여부 */
+					, PRCSYN 		 = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE 		 = null				/* 처리일시 */
+					, RCVDATE		 = #{sysdate}		/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+		   AND UOM = #{uom}					/* 단위 */
+	</update>
+
+	<select id="selectTworkMstIcbarcodeCount" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo" resultType="java.lang.Integer">
+		/* wms-master-item-sql-oracle.xml - selectTworkMstIcbarcodeCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ICBARCODE
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+		   AND UOM = #{uom}					/* 단위 */
+	</select>
+
+	<insert id="insertTworkMstIcbarcode" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo">
+		/* wms-master-item-sql-oracle.xml - insertTworkMstIcbarcode */
+		INSERT INTO TWORK_MST_ICBARCODE (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+			 , ICKEY			/* 상품코드 */
+			 , SEQNO			/* 일련번호*/
+			 , UOM				/* 단위 */
+			 , BARCODE			/* 바코드 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{seqno}
+			 , #{uom}
+			 , #{barcode}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstIcbarcode" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo">
+		/* wms-master-item-sql-oracle.xml - updateTworkMstIcbarcode */
+		UPDATE TWORK_MST_ICBARCODE
+		   SET UPDATEDATE	 = #{sysdate}	/* 수정일시 */
+			 , UPDATEURKEY	 = #{surkey}	/* 수정사용자 */
+			 , BARCODE		 = #{barcode}	/* 바코드 */
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+		   AND UOM = #{uom}					/* 단위 */
+	</update>
+
+	<delete id="deleteTworkMstIcbarcode" parameterType="com.daiso.wms.api.in.dto.ItemRequestDTO$IcBarcodeVo">
+		/* wms-master-item-sql-oracle.xml - deleteTworkMstIcbarcode */
+		DELETE
+		  FROM TWORK_MST_ICBARCODE
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICKEY = #{ickey}				/* 상품코드 */
+		   AND UOM = #{uom}					/* 단위 */
+	</delete>
+
+</mapper>

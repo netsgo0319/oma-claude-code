@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OwOrTypeMappIcomMapper">
+	
+	<select id="selectOrMappCount" resultType="java.lang.Integer" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrMappCount */
+        SELECT COUNT(1)
+		  FROM (
+		  		SELECT ME.OWKEY
+				     , ME.EXTORDERTYPECD
+				     , ME.EXTORDERTYPENM
+				     , CASE WHEN OM.ORDERTYPECD IS NOT NULL THEN 'Y' ELSE 'N' END AS MAPP_YN
+				     , OM.ORDERTYPECD            
+				     , OM.MALPERFMANSYN -- TRANYN
+				     , COALESCE(OM.DELYN, 'N') AS DELYN
+				     , OM.INSERTDATE
+				     , OM.INSERTURKEY
+				     , OM.UPDATEDATE
+				     , OM.UPDATEURKEY
+				     --, OM.CUSTTYPE    
+				     --, OM.OCCURRENCE_ORDER_TYPE_YN
+				  FROM TORDER_MST_EXTERN ME
+				  LEFT JOIN TORDER_INFO_ORTYPE_MAPPING OM
+				    ON ME.OWKEY = OM.OWKEY
+				   AND ME.EXTORDERTYPECD = OM.EXTORDERTYPECD
+				 WHERE ME.DELYN = 'N'	
+		  	   ) B 				  
+		 WHERE 1=1			
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		       AND #{SEARCH_CONDITION}
+		</if>
+		<if test="owkey != null">
+		  	   AND B.OWKEY = #{owkey}
+		</if>			
+	</select>
+	
+	<select id="selectOrMappList" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrMappList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT '0' AS CHK
+				     , B.OWKEY
+				     , O.OWNM AS OWKEYNM
+				     , B.EXTORDERTYPECD
+				     , B.EXTORDERTYPENM
+				     , B.ORDERTYPECD
+				     , b.ERPPERFMANSYN
+				     , b.MALPERFMANSYN
+				     , B.ORDERTYPECD AS SERVERORDERTYPECD
+				     , B.DELYN
+				     , B.INSERTDATE
+				     , B.INSERTURKEY
+				     , B.UPDATEDATE
+				     , B.UPDATEURKEY
+				     --, B.CUSTTYPE                
+				     --, COALESCE(B.MALPERFMANSYN, 'Y') AS MALPERFMANSYN
+				     --, COALESCE(B.OCCURRENCE_ORDER_TYPE_YN, 'N') AS OCCURRENCE_ORDER_TYPE_YN
+				     --, B.LOADINGYN
+					 --, B.SPECIALOUTTYPE
+					 --, B.SPECIALORDERTYPE
+				  FROM (
+				  		SELECT ME.OWKEY
+						     , ME.EXTORDERTYPECD
+						     , ME.EXTORDERTYPENM
+						     , CASE WHEN OM.ORDERTYPECD IS NOT NULL THEN 'Y' ELSE 'N' END AS MAPP_YN
+						     , OM.ORDERTYPECD                
+						     , OM.ERPPERFMANSYN              
+						     , OM.MALPERFMANSYN
+						     , COALESCE(OM.DELYN, 'N') AS DELYN
+						     , OM.INSERTDATE
+						     , OM.INSERTURKEY
+						     , OM.UPDATEDATE
+						     , OM.UPDATEURKEY
+						     --, OM.CUSTTYPE
+						     --, OM.OCCURRENCE_ORDER_TYPE_YN
+				  		     --, OM.LOADINGYN
+				  		     --, OM.SPECIALOUTTYPE
+				  		     --, OM.SPECIALORDERTYPE
+						  FROM TORDER_MST_EXTERN ME
+						  LEFT JOIN TORDER_INFO_ORTYPE_MAPPING OM
+						    ON ME.OWKEY = OM.OWKEY
+						   AND ME.EXTORDERTYPECD = OM.EXTORDERTYPECD
+						 WHERE ME.DELYN = 'N'	
+				  	   ) B 				  
+				  LEFT JOIN TORDER_MST_OW O
+				    ON B.OWKEY = O.OWKEY
+				 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				       AND #{SEARCH_CONDITION}
+				</if>
+				<if test="owkey != null">
+		    	  	   AND B.OWKEY = #{owkey}
+		    	</if>			    	
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY B.EXTORDERTYPECD
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectOrMappType" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrMappType */
+		SELECT ORDERTYPECD AS FIELD1
+		     , ORDERTYPECD||':'||ORDERTYPENM AS FIELD2
+		  FROM TORDER_MST_ORTYPE
+		 WHERE OWKEY = #{owkey}
+		   AND DELYN = 'N'		       
+		 ORDER BY ORDERTYPECD		 
+	</select>
+	
+	<select id="selectOwOrMappType" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOwOrMappType */
+		SELECT EXTORDERTYPECD AS FIELD1
+		     , EXTORDERTYPECD||':'||EXTORDERTYPENM AS FIELD2
+		  FROM TORDER_MST_EXTERN
+		 WHERE OWKEY = #{owkey}
+		   AND DELYN = 'N'		       
+		 ORDER BY EXTORDERTYPECD		 
+	</select>		
+	
+	<select id="selectOwOrMappPoint" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOwOrMappPoint */
+		SELECT OWCDDTKEY AS field1
+		     , OWCDDTKEY||':'||OWCDDTNM AS field2
+		  FROM TADMIN_MST_OWCD_DT
+		 WHERE OWKEY = #{owkey}
+		   AND OWCDHDKEY = '10025'
+		   AND LAKEY = #{lakey}
+		   AND DELYN = 'N'
+		 ORDER BY OWCDDTORDER
+	</select>	
+	
+	<select id="checkOrMappInfo" resultType="java.lang.Integer" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml checkOrMappInfo */
+		SELECT COUNT(1)
+		  FROM TORDER_INFO_ORTYPE_MAPPING	
+    	 WHERE OWKEY = #{owkey}
+    	   AND EXTORDERTYPECD = #{extordertypecd}
+    	   AND ORDERTYPECD = #{ordertypecd}
+	</select>	
+	
+	<insert id="insertOrMapp">
+	/* oms-master-owOrTypeMapp-sql-oracle.xml insertOrMapp */
+		INSERT INTO TORDER_INFO_ORTYPE_MAPPING
+		(
+		      OWKEY
+			, EXTORDERTYPECD
+			, ORDERTYPECD
+			, ERPPERFMANSYN
+			, MALPERFMANSYN
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+			--, CUSTTYPE
+			--, OCCURRENCE_ORDER_TYPE_YN
+			--, LOADINGYN
+			--, SPECIALOUTTYPE
+			--, SPECIALORDERTYPE
+		)
+		VALUES
+		(
+		      #{owkey}
+			, #{extordertypecd}
+			, #{ordertypecd}
+			, #{erpperfmansyn}
+			, #{malperfmansyn}
+		    , #{delyn}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		    <!--
+			, #{custtype}
+			, #{occurrenceOrderTypeYn}
+		    , #{surkey}
+			, #{loadingyn}
+			, #{specialouttype}
+			, #{specialordertype}
+			-->
+		)
+	</insert>
+	
+	<update id="updateOrMapp">
+	/* oms-master-owOrTypeMapp-sql-oracle.xml updateOrMapp */
+		UPDATE TORDER_INFO_ORTYPE_MAPPING
+		   SET ERPPERFMANSYN			= #{erpperfmansyn}
+		     , MALPERFMANSYN			= #{malperfmansyn}
+		     , DELYN        			= #{delyn}
+		     , UPDATEDATE   			= #{sysdate}
+		     , UPDATEURKEY  			= #{surkey}
+		 WHERE OWKEY 		  = #{owkey}
+		   AND EXTORDERTYPECD = #{extordertypecd}
+		   AND ORDERTYPECD 	  = #{ordertypecd}
+	</update>
+
+	<select id="selectOrderMovementType" resultType="camelMap">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrderMovementType */
+		SELECT '0' AS CHK
+		     , OWCDHDKEY
+			 , OWCDDTKEY AS MOVEMENT_TYPE_CD
+		     , OWCDDTORDER
+			 , OWCDDTNM AS MOVEMENT_TYPE_NM
+		FROM TADMIN_MST_OWCD_DT
+		WHERE OWKEY = #{owkey}
+		  AND OWCDHDKEY = 'OMSCODE99'
+		  AND LAKEY = #{lakey}
+		  AND DELYN = 'N'
+		ORDER BY OWCDDTORDER ASC
+	</select>
+
+	<select id="selectOrderMovementTypeS" resultType="camelMap">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrderMovementTypeS */
+		SELECT '0' AS CHK
+		     , A.OWKEY
+			 , A.EXTORDERTYPECD
+		     , A.ORDERTYPECD
+			 , A.MOVEMENT_TYPE AS MOVEMENT_TYPE_CD
+			 , B.OWCDDTNM AS MOVEMENT_TYPE_NM
+		FROM TORDER_INFO_ORTYPE_DTMAPPING A
+		LEFT OUTER JOIN TADMIN_MST_OWCD_DT B
+					 ON A.OWKEY = B.OWKEY
+					AND A.MOVEMENT_TYPE = B.OWCDDTKEY
+					AND B.OWCDHDKEY = 'OMSCODE99'
+				    AND B.LAKEY = #{lakey}
+		WHERE A.OWKEY = #{owkey}
+		  AND A.EXTORDERTYPECD = #{extordertypecd}
+		  AND A.ORDERTYPECD = #{ordertypecd}
+		  AND A.DELYN = 'N'
+		ORDER BY B.OWCDDTORDER ASC
+	</select>
+
+	<update id="updateOrderMovementDel">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml updateOrderMovementDel */
+		UPDATE TORDER_INFO_ORTYPE_DTMAPPING
+		   SET DELYN 	   = 'Y'
+		   	 , UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND EXTORDERTYPECD = #{extordertypecd}		  
+		  AND ORDERTYPECD = #{ordertypecd}
+	</update>
+
+	<update id="mergeOrderMovementType">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml mergeOrderMovementType */
+		MERGE INTO TORDER_INFO_ORTYPE_DTMAPPING
+			 USING DUAL
+			    ON ( OWKEY = #{owkey}
+			   AND   EXTORDERTYPECD = #{extordertypecd}
+			   AND   ORDERTYPECD = #{ordertypecd}
+			   AND   MOVEMENT_TYPE = #{movementTypeCd})
+		WHEN MATCHED THEN
+			UPDATE
+			   SET DELYN = 'N'
+				 , UPDATEDATE = #{sysdate}
+				 , UPDATEURKEY = #{surkey}
+		WHEN NOT MATCHED THEN
+			INSERT (
+		    	 OWKEY
+		    	,EXTORDERTYPECD
+		    	,ORDERTYPECD
+		    	,MOVEMENT_TYPE
+		    	,DELYN
+		    	,INSERTDATE
+		    	,INSERTURKEY
+		    	,UPDATEDATE
+		    	,UPDATEURKEY
+			)VALUES (
+			        #{owkey}
+				   ,#{extordertypecd}
+				   ,#{ordertypecd}
+				   ,#{movementTypeCd}
+				   ,'N'
+				   ,#{sysdate}
+				   ,#{surkey}
+				   ,#{sysdate}
+				   ,#{surkey}
+				   )
+
+	</update>
+	
+	<select id="selectOrderDeptList" resultType="camelMap">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrderDeptList */
+		SELECT '0' AS CHK
+		     , A.OWKEY
+		     , A.EXTORDERTYPECD
+		     , A.ORDERTYPECD
+		     , A.DEPTCD
+		     , A.DEPTCD AS DEPTCD_SERVER
+		     , A.DELYN
+		     , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TORDER_INFO_ORTYPE_DEPMAPPING A
+		WHERE A.OWKEY = #{owkey}
+		  AND A.EXTORDERTYPECD = #{extordertypecd}
+		  AND A.ORDERTYPECD = #{ordertypecd}
+		  AND A.DELYN = 'N'
+		ORDER BY A.DEPTCD
+	</select>
+	
+	<update id="updateOrderDeptDel">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml updateOrderDeptDel */
+		UPDATE TORDER_INFO_ORTYPE_DEPMAPPING
+		   SET DELYN 	   = 'Y'
+		   	 , UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND EXTORDERTYPECD = #{extordertypecd}		  
+		  AND ORDERTYPECD = #{ordertypecd}
+		  AND DEPTCD = #{deptcd}
+	</update>
+	
+	<update id="mergeOrderDept">
+		/* oms-master-owOrTypeMapp-sql-oracle.xml mergeOrderDept */
+		MERGE INTO TORDER_INFO_ORTYPE_DEPMAPPING
+			 USING DUAL
+			    ON ( OWKEY = #{owkey}
+			   AND   EXTORDERTYPECD = #{extordertypecd}
+			   AND   ORDERTYPECD = #{ordertypecd}
+			   AND   DEPTCD = #{deptcd})
+		WHEN MATCHED THEN
+			UPDATE
+			   SET DELYN = 'N'
+				 , UPDATEDATE = #{sysdate}
+				 , UPDATEURKEY = #{surkey}
+		WHEN NOT MATCHED THEN
+			INSERT (
+		    	 OWKEY
+		    	,EXTORDERTYPECD
+		    	,ORDERTYPECD
+		    	,DEPTCD
+		    	,DELYN
+		    	,INSERTDATE
+		    	,INSERTURKEY
+		    	,UPDATEDATE
+		    	,UPDATEURKEY
+			)VALUES (
+			        #{owkey}
+				   ,#{extordertypecd}
+				   ,#{ordertypecd}
+				   ,#{deptcd}
+				   ,'N'
+				   ,#{sysdate}
+				   ,#{surkey}
+				   ,#{sysdate}
+				   ,#{surkey}
+				   )
+
+	</update>
+	
+</mapper>

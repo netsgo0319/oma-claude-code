@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.OwnerByRoleMapper">
+
+	<select id="selectTAdminMstOw" resultType="camelMap" >
+		/* adm-role-ownerbyrole-sql-oracle.xml - selectTAdminMstOw */
+		SELECT
+			  '0' AS CHK
+			, A.CTKEY
+			, A.CTNM
+			, B.OWKEY
+			, B.OWNM
+			, #{rokey} AS ROKEY
+		FROM TADMIN_MST_CT A
+		INNER JOIN TADMIN_MST_CTXOW C
+				ON A.CTKEY = C.CTKEY
+		INNER JOIN TADMIN_MST_OW B
+				ON B.OWKEY = C.OWKEY
+		WHERE EXISTS (
+			SELECT 1 FROM TADMIN_MST_ROXCTGT WHERE CTKEY = A.CTKEY AND ROKEY = #{rokey}
+		)
+	</select>
+	
+	<select id="selectOwnerByRole" resultType="camelMap" >
+		/* adm-role-ownerbyrole-sql-oracle.xml - selectOwnerByRole */
+			SELECT
+			      '0' AS CHK
+				, B.CTKEY
+			    , C.CTNM
+			    , A.OWKEY
+			    , A.OWNM
+				, B.ROKEY
+			  FROM TADMIN_MST_OW A
+			  INNER JOIN  TADMIN_MST_ROXOWGT B
+			      	  ON A.OWKEY = B.OWKEY
+			  INNER JOIN  TADMIN_MST_CT C
+			  	  	  ON  B.CTKEY = C.CTKEY
+			 WHERE B.ROKEY = #{rokey}
+	</select>
+	
+	<select id="selectTAdminMstRoxowgt" resultType="camelMap" >
+		/* adm-role-ownerbyrole-sql-oracle.xml - selectTAdminMstRoxowgt */
+			SELECT '0' AS CHK
+			     	, CTKEY
+			       ,OWKEY
+			       ,ROKEY
+			  FROM TADMIN_MST_ROXOWGT
+			 WHERE ROKEY = #{rokey}
+	</select>
+
+	<insert id="insertTAdminMstRoxowgt">
+		/* adm-role-ownerbyrole-sql-oracle.xml - insertTAdminMstRoxowgt */
+		INSERT INTO TADMIN_MST_ROXOWGT (
+			 ROKEY
+			, CTKEY
+			 ,OWKEY
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,UPDATEURKEY
+			 ,UPDATEDATE
+		) VALUES ( 
+			 #{rokey}
+				 ,#{ctkey}
+			 ,#{owkey}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+	
+		)	
+	</insert>
+	
+	<delete id="deleteTAdminMstRoxowgt">
+		/* adm-role-ownerbyrole-sql-oracle.xml - deleteTAdminMstRoxowgt */
+		DELETE 
+		  FROM TADMIN_MST_ROXOWGT
+		 WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		 <if test='rokey !=null'> 
+		 AND ROKEY = #{rokey}
+		 </if>
+		    
+	</delete>
+</mapper>	

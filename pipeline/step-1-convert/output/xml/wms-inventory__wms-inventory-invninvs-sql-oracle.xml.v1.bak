@@ -1,0 +1,938 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnInvsMapper">
+
+    <sql id="selectInvnInvsTab1NonTaskRefSql">
+        SELECT '0' AS CHK
+             , A.CTKEY
+             , A.OWKEY
+             , A.IVATKEY
+             , A.LCKEY
+             , C.ZNKEY
+             , D.ZNNM
+             , C.ARKEY
+             , E.ARNM
+             , C.ALTMTARNO
+             , C.ALTMTALENO
+             , A.ICKEY
+             , F.ICNM
+             , G.BARCODE
+             , B.EXPDATE
+             , B.PRDCTDATE
+             , A.TOTQTY
+             , A.IVINVSTGTYN
+             , D.ZNTYPECD
+          FROM TWORK_INFO_IVATXLC A
+         INNER JOIN TWORK_INFO_IVAT B
+            ON A.CTKEY = B.CTKEY
+           AND A.OWKEY = B.OWKEY
+           AND A.IVATKEY = B.IVATKEY
+         INNER JOIN TWORK_MST_LC C
+            ON A.CTKEY = C.CTKEY
+           AND A.LCKEY = C.LCKEY
+         INNER JOIN TWORK_MST_ZN D
+            ON A.CTKEY = D.CTKEY
+           AND C.ZNKEY = D.ZNKEY
+         INNER JOIN TWORK_MST_AR E
+            ON A.CTKEY = E.CTKEY
+           AND C.ARKEY = E.ARKEY
+         INNER JOIN TWORK_MST_IC F
+            ON A.CTKEY = F.CTKEY
+           AND A.OWKEY = F.OWKEY
+           AND A.ICKEY = F.ICKEY
+          LEFT OUTER JOIN TWORK_MST_ICBARCODE G
+            ON A.CTKEY = G.CTKEY
+           AND A.OWKEY = G.OWKEY
+           AND A.ICKEY = G.ICKEY
+           AND G.UOM = 'EA'
+           AND G.USEYN = 'Y'
+	</sql>
+
+    <select id="selectCountTab1InvnInvsHD" resultType="java.lang.Integer" >
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectCountTab1InvnInvsHD */
+        SELECT  COUNT(1)
+        FROM  (
+        <include refid="selectInvnInvsTab1NonTaskRefSql"/>
+        )
+        WHERE 1=1
+            AND CTKEY = #{ctkey}
+            AND TOTQTY > 0
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)" >
+            AND ZNKEY = #{znkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+            AND ARKEY = #{arkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtarno)" >
+            AND ALTMTARNO = #{altmtarno}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtalenoFr) and @com.kns.framework.util.StringUtil@isNotEmpty(altmtalenoTo)" >
+            AND ALTMTALENO BETWEEN #{altmtalenoFr} AND #{altmtalenoTo}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckeyFr) and @com.kns.framework.util.StringUtil@isNotEmpty(lckeyTo)" >
+            AND LCKEY BETWEEN #{lckeyFr} AND #{lckeyTo}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+            AND ICKEY IN
+            <foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)" >
+            AND BARCODE = #{barcode}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)" >
+            AND ICNM LIKE '%' || #{icnm} || '%'
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivinvstgtyn)" >
+            AND IVINVSTGTYN = #{ivinvstgtyn}
+        </if>
+
+    </select>
+
+    <select id="selectListTab1InvnInvsHD" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectListTab1InvnInvsHD */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT  *
+        FROM  (
+        <include refid="selectInvnInvsTab1NonTaskRefSql"/>
+        )
+        WHERE 1=1
+        AND CTKEY = #{ctkey}
+        AND TOTQTY > 0
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)" >
+            AND ZNKEY = #{znkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+            AND ARKEY = #{arkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtarno)" >
+            AND ALTMTARNO = #{altmtarno}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtalenoFr) and @com.kns.framework.util.StringUtil@isNotEmpty(altmtalenoTo)" >
+            AND ALTMTALENO BETWEEN #{altmtalenoFr} AND #{altmtalenoTo}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckeyFr) and @com.kns.framework.util.StringUtil@isNotEmpty(lckeyTo)" >
+            AND LCKEY BETWEEN #{lckeyFr} AND #{lckeyTo}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+            AND ICKEY IN
+            <foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)" >
+            AND BARCODE = #{barcode}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)" >
+            AND ICNM LIKE '%' || #{icnm} || '%'
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivinvstgtyn)" >
+            AND IVINVSTGTYN = #{ivinvstgtyn}
+        </if>
+        <choose>
+            <when test='sortValue !=null and sortValue != ""'>
+                <if test='sortValue == "DESC" and colName !=null'>
+                    ORDER BY #{colName} DESC
+                </if>
+                <if test='sortValue == "ASC" and colName !=null'>
+                    ORDER BY #{colName} ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY LCKEY, ICKEY
+            </otherwise>
+        </choose>
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <select id="selectTaskHDInvnInvs" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectTaskHDInvnInvs */
+        SELECT *
+          FROM (
+                SELECT '0' AS CHK
+                     , A.CTKEY
+                     , A.OWKEY
+                     , A.TATYPECD
+                     , A.TAHDKEY
+                     , A.IVINVSTYPECD
+                     , A.CMT
+                     , B.LCCNT    /* 로케이션 수 */
+                     , B.SKUCNT   /* SKU수 */
+                     , B.TOTQTY   /* 총수량(낱개) */
+                     , B.PRGRRT   /* 진척률 */
+                     , A.TAWKSTATUSCD
+                     , A.ERPSNDYN
+                     , A.MALSNDYN
+                     , A.FRWKDATE
+                     , A.TOWKDATE
+                     , A.INSERTDATE
+                     , A.INSERTURKEY
+                     , A.UPDATEDATE
+                     , A.UPDATEURKEY
+                  FROM TWORK_INFO_TA_HD A
+                       LEFT OUTER JOIN
+                       (
+                        SELECT TH.CTKEY
+                             , TH.OWKEY
+                             , TH.TAHDKEY
+                             , COUNT(DISTINCT TD.FRLCKEY) AS LCCNT
+                             , COUNT(DISTINCT TD.ICKEY) AS SKUCNT
+                             , CASE WHEN TH.TAWKSTATUSCD IN ('00','30') THEN SUM(TD.IVQTY)
+                                    ELSE SUM(TD.PISPQTY) + SUM(TD.INNPISPQTY * INN_ICUT.ICUNITQTY) + SUM(TD.CTNPISPQTY * CTN_ICUT.ICUNITQTY)
+                               END AS TOTQTY
+                             , CASE WHEN TH.TAWKSTATUSCD = '00' THEN 0    /* 작업생성 상태면 진척률 0 */
+                                    WHEN TH.TAWKSTATUSCD = '40' THEN 100  /* 작업생성 상태면 진척률 100 */
+                                    WHEN TH.TAWKSTATUSCD = '30' THEN ROUND(SUM(CASE WHEN TD.PISPCKYN = 'Y' THEN 1 ELSE 0 END) / COUNT(1) * 100,2)
+                               END AS PRGRRT
+                          FROM TWORK_INFO_TA_HD TH
+                               INNER JOIN
+                               TWORK_INFO_TA_DT TD
+                                 ON TH.CTKEY = TD.CTKEY
+                                AND TH.OWKEY = TD.OWKEY
+                                AND TH.TAHDKEY = TD.TAHDKEY
+                               LEFT OUTER JOIN
+                               TWORK_MST_ICUTXTYPE INN_ICUT
+                                 ON TD.CTKEY = INN_ICUT.CTKEY
+                                AND TD.OWKEY = INN_ICUT.OWKEY
+                                AND TD.ICKEY = INN_ICUT.ICKEY
+                                AND INN_ICUT.ICUNITTYPECD = 'INN'
+                                LEFT OUTER JOIN
+                                TWORK_MST_ICUTXTYPE CTN_ICUT
+                                  ON TD.CTKEY = CTN_ICUT.CTKEY
+                                 AND TD.OWKEY = CTN_ICUT.OWKEY
+                                 AND TD.ICKEY = CTN_ICUT.ICKEY
+                                 AND CTN_ICUT.ICUNITTYPECD = 'CTN'
+                         WHERE TH.CTKEY = #{ctkey}
+                           AND TH.TATYPECD = '30' /* 재고 조사 */
+                         GROUP BY
+                               TH.CTKEY
+                             , TH.OWKEY
+                             , TH.TAHDKEY
+                             , TH.TAWKSTATUSCD
+                       ) B
+                         ON A.CTKEY = B.CTKEY
+                        AND A.OWKEY = B.OWKEY
+                        AND A.TAHDKEY = B.TAHDKEY
+                )
+          WHERE CTKEY = #{ctkey}
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivinvstypecd)" >
+                AND IVINVSTYPECD = #{ivinvstypecd}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(invsFr) and @com.kns.framework.util.StringUtil@isNotEmpty(invsFr)" >
+                AND FRWKDATE BETWEEN #{invsFr} AND #{invsTo}
+            </if>
+            AND TATYPECD = '30' /* 재고 조사 */
+        ORDER BY INSERTDATE DESC
+    </select>
+
+    <sql id="selectInvnInvsTab1TaskDetailRefSql">
+        SELECT '0' AS CHK
+             , A.CTKEY
+             , A.OWKEY
+             , A.TAHDKEY
+             , A.TADTKEY
+             , CASE WHEN A.IVQTY = COALESCE(A.PISPQTY, 0) + COALESCE(A.INNPISPQTY, 0) * COALESCE(I.ICUNITQTY, 0) + COALESCE(A.CTNPISPQTY, 0) * COALESCE(J.ICUNITQTY, 0)
+                    THEN 'MATCHED'
+                    ELSE 'UNMATCHED'
+                     END MATCHEDYN
+             , A.TAWKDTSTATUSCD
+             , A.PISPCKYN
+             , A.ICKEY
+             , B.ICNM
+             , C.EXPDATE
+             , D.ZNKEY
+             , E.ZNNM
+             , D.ARKEY
+             , F.ARNM
+             , A.FRLCKEY
+             , COALESCE(G.TOTQTY, 0) AS TOTQTY
+             , COALESCE(G.AVQTY, 0) AS AVQTY
+             , COALESCE(G.ALQTY, 0) AS ALQTY
+             , COALESCE(A.IVQTY, 0) AS IVQTY
+             , COALESCE(A.PISPQTY, 0) + COALESCE(A.INNPISPQTY, 0) * COALESCE(I.ICUNITQTY, 0) + COALESCE(A.CTNPISPQTY, 0) * COALESCE(J.ICUNITQTY, 0) - COALESCE(A.IVQTY, 0) AS DIFQTY
+             , COALESCE(A.PISPQTY, 0) AS PISPQTY
+             , COALESCE(A.INNPISPQTY, 0) AS INNPISPQTY
+             , COALESCE(A.CTNPISPQTY, 0) AS CTNPISPQTY
+             , CASE WHEN COALESCE(A.PISPQTY, 0) + COALESCE(A.INNPISPQTY, 0) * COALESCE(I.ICUNITQTY, 0) + COALESCE(A.CTNPISPQTY, 0) * COALESCE(J.ICUNITQTY, 0) - COALESCE(A.IVQTY, 0) + COALESCE(G.AVQTY, 0) <![CDATA[ < ]]> 0 THEN 'N'
+                    ELSE 'Y' END AS ABLEYN
+             , H.ERPSNDYN
+             , H.MALSNDYN
+             , A.IVATKEY
+             , COALESCE(I.ICUNITQTY, 0) AS ICUNITQTY_INN
+             , COALESCE(J.ICUNITQTY, 0) AS ICUNITQTY_CTN
+             , A.MOVECNTRNO AS CNTRNO
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+          FROM TWORK_INFO_TA_DT A
+         INNER JOIN TWORK_MST_IC B
+            ON A.CTKEY = B.CTKEY
+           AND A.OWKEY = B.OWKEY
+           AND A.ICKEY = B.ICKEY
+         INNER JOIN TWORK_INFO_IVAT C
+            ON A.CTKEY = C.CTKEY
+           AND A.OWKEY = C.OWKEY
+           AND A.IVATKEY = C.IVATKEY
+         INNER JOIN TWORK_MST_LC D
+            ON A.CTKEY = D.CTKEY
+           AND A.FRLCKEY = D.LCKEY
+         INNER JOIN TWORK_MST_ZN E
+            ON A.CTKEY = E.CTKEY
+           AND D.ZNKEY = E.ZNKEY
+         INNER JOIN TWORK_MST_AR F
+            ON A.CTKEY = F.CTKEY
+           AND D.ARKEY = F.ARKEY
+          LEFT JOIN TWORK_INFO_IVATXLC G
+            ON A.CTKEY = G.CTKEY
+           AND A.OWKEY = G.OWKEY
+           AND A.IVATKEY = G.IVATKEY
+           AND A.FRLCKEY = G.LCKEY
+         INNER JOIN TWORK_INFO_TA_HD H
+            ON A.CTKEY = H.CTKEY
+           AND A.OWKEY = H.OWKEY
+           AND A.TAHDKEY = H.TAHDKEY
+          LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+            ON A.CTKEY = I.CTKEY
+           AND A.OWKEY = I.OWKEY
+           AND B.ICUNITKEY = I.ICUNITKEY
+           AND I.ICUNITTYPECD = 'INN'
+          LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+            ON A.CTKEY = J.CTKEY
+           AND A.OWKEY = J.OWKEY
+           AND B.ICUNITKEY = J.ICUNITKEY
+           AND J.ICUNITTYPECD = 'CTN'
+         WHERE 1=1
+           AND A.CTKEY = #{ctkey}
+           AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND A.TAHDKEY = #{tahdkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)" >
+                AND A.FRLCKEY LIKE '%'|| #{lckey} || '%'
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+                AND (B.ICKEY LIKE '%'|| #{ickey} || '%' OR B.ICNM LIKE '%'|| #{ickey} || '%')
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+            AND B.ICKEY IN
+            <foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+	</sql>
+
+    <select id="selectListInvnInvsDTCount" resultType="java.lang.Integer" >
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectListInvnInvsDTCount */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectInvnInvsTab1TaskDetailRefSql"/>
+        )
+    </select>
+
+
+    <select id="selectListInvnInvsDT" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectListInvnInvsDT */
+        SELECT *
+        FROM (
+        <include refid="selectInvnInvsTab1TaskDetailRefSql"/>
+        )
+        <choose>
+            <when test='sortValue !=null and sortValue != ""'>
+                <if test='sortValue == "DESC" and colName !=null'>
+                    ORDER BY #{colName} DESC
+                </if>
+                <if test='sortValue == "ASC" and colName !=null'>
+                    ORDER BY #{colName} ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY FRLCKEY , ICKEY
+            </otherwise>
+        </choose>
+    </select>
+
+    <insert id="insertTaHd" parameterType="taHdVO">
+        /* wms-inventory-invnInvs-sql-oracle.xml - insertTaHd */
+        INSERT INTO TWORK_INFO_TA_HD
+             ( CTKEY
+             , OWKEY
+             , TAHDKEY
+             , TATYPECD
+             , IVINVSTYPECD
+             , REGDATE
+             , FRWKDATE
+             , TOWKDATE
+             , TADDLNDATE
+             , TAWKSTATUSCD
+             , ERPSNDYN
+             , MALSNDYN
+             , CMT
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+             ) VALUES
+             ( #{ctkey}
+             , COALESCE(#{owkey}, #{sowkey})
+             , #{tahdkey}
+             , #{tatypecd}
+             , #{ivinvstypecd}
+             , #{sysdate}
+             , #{frwkdate}
+             , #{towkdate}
+             , #{taddlndate}
+             , #{tawkstatuscd}
+             , #{erpsndyn}
+             , #{malsndyn}
+             , #{cmt}
+             , #{sysdate}
+             , #{inserturkey}
+             , #{sysdate}
+             , #{updateurkey}
+             )
+
+    </insert>
+
+    <insert id="insertTaDt" parameterType="taDtVO">
+        /* wms-inventory-invnInvs-sql-oracle.xml - insertTaDt */
+        INSERT INTO WMSON.TWORK_INFO_TA_DT
+             ( CTKEY
+             , OWKEY
+             , TAHDKEY
+             , TADTKEY
+             , WKREGDATE
+             , WKSTARTDATE
+             , WKCLOSDATE
+             , ICKEY
+             , IVATKEY
+             , PRDCTDATE
+             , EXPDATE
+             , FRLCKEY
+             , TOLCKEY
+             , UOM
+             , ISTQTY
+             , OUTQTY
+             , INQTY
+             , IVQTY
+             , PISPQTY
+             , INNPISPQTY
+             , CTNPISPQTY
+             , IVEXPTPRCSQTY
+             , PISPCKYN
+             , PLCMCNTRNO
+             , MOVECNTRNO
+             , MOVECNTRDIVCD
+             , IVMOVERSNCD
+             , IVMOVEDTCONT
+             , TAWKDTSTATUSCD
+             , CMT
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+             ) VALUES
+             ( #{ctkey}
+             , COALESCE(#{owkey}, #{sowkey})
+             , #{tahdkey}
+             , #{tadtkey}
+             , #{sysdate}
+             , #{wkstartdate}
+             , #{wkclosdate}
+             , #{ickey}
+             , #{ivatkey}
+             , #{prdctdate}
+             , #{expdate}
+             , #{frlckey}
+             , #{tolckey}
+             , #{uom}
+             , #{istqty}
+             , #{outqty}
+             , #{inqty}
+             , #{ivqty}
+             , #{pispqty}
+             , #{innpispqty}
+             , #{ctnpispqty}
+             , #{ivexptprcsqty}
+             , #{pispckyn}
+             , #{plcmcntrno}
+             , #{movecntrno}
+             , #{movecntrdivcd}
+             , #{ivmoversncd}
+             , #{ivmovedtcont}
+             , #{tawkdtstatuscd}
+             , #{cmt}
+             , #{sysdate}
+             , #{inserturkey}
+             , #{sysdate}
+             , #{updateurkey}
+             )
+
+    </insert>
+
+    <select id="selectInvnInvsMstIcMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectInvnInvsMstIcMap */
+        SELECT *
+          FROM TWORK_MST_IC
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND ICKEY = #{ickey}
+    </select>
+
+    <select id="selectInvnInvsMstIcutxtypeMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectInvnInvsMstIcutxtypeMap */
+        SELECT *
+          FROM TWORK_MST_ICUTXTYPE
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND ICKEY = #{ickey}
+           AND ICUNITTYPECD = #{icunittypecd}
+    </select>
+
+    <select id="selectInvnInvsIvatByLcMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectInvnInvsIvatByLcMap */
+        SELECT *
+          FROM TWORK_INFO_IVATXLC
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND LCKEY = #{lckey}
+           AND IVATKEY = #{ivatkey}
+    </select>
+
+    <select id="selectTaHdMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectTaHdMap */
+        SELECT *
+          FROM TWORK_INFO_TA_HD
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </select>
+
+    <select id="selectTaDtMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectTaDtMap */
+        SELECT *
+          FROM TWORK_INFO_TA_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+           AND TADTKEY = #{tadtkey}
+    </select>
+
+    <select id="selectTaDtDuplMap" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectTaDtDuplMap */
+        SELECT *
+          FROM TWORK_INFO_TA_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+           AND ICKEY = #{ickey}
+           AND FRLCKEY = #{lckey}
+           AND IVATKEY = #{ivatkey}
+    </select>
+
+    <select id="selectNextTadtkey" resultType="string">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectNextTadtkey */
+        SELECT MAX(CAST(TADTKEY AS NUMERIC)) + 1 AS TADTKEY
+          FROM TWORK_INFO_TA_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </select>
+
+    <delete id="deleteTaHd">
+        /* wms-inventory-invnInvs-sql-oracle.xml - deleteTaHd */
+        DELETE FROM TWORK_INFO_TA_HD
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </delete>
+
+    <delete id="deleteTaDt">
+        /* wms-inventory-invnInvs-sql-oracle.xml - deleteTaDt */
+        DELETE FROM TWORK_INFO_TA_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(tadtkey)" >
+            AND TADTKEY = #{tadtkey}
+        </if>
+    </delete>
+
+    <insert id="insertTaDtFullIv">
+        /* wms-inventory-invnInvs-sql-oracle.xml - insertTaDtFullIv */
+        INSERT INTO TWORK_INFO_TA_DT (
+               CTKEY
+             , OWKEY
+             , TAHDKEY
+             , TADTKEY
+             , WKREGDATE
+             , ICKEY
+             , IVATKEY
+             , PRDCTDATE
+             , EXPDATE
+             , FRLCKEY
+             , UOM
+             , IVQTY
+             , TAWKDTSTATUSCD
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+        )
+        SELECT CTKEY
+             , OWKEY
+             , #{tahdkey} AS TAHDKEY
+             , ROWNUM AS TADTKEY
+             , #{sysdate} AS WKREGDATE
+             , ICKEY
+             , IVATKEY
+             , PRDCTDATE
+             , EXPDATE
+             , FRLCKEY
+             , UOM
+             , IVQTY
+             , '30' AS TAWKDTSTATUSCD       /* 재고 조사 시작 */
+             , #{sysdate} AS INSERTDATE
+             , #{surkey} AS INSERTURKEY
+             , #{sysdate} AS UPDATEDATE
+             , #{surkey} AS UPDATEURKEY
+          FROM (
+                SELECT A.CTKEY
+                     , A.OWKEY
+                     , A.ICKEY
+                     , A.IVATKEY
+                     , B.PRDCTDATE
+                     , B.EXPDATE
+                     , A.LCKEY AS FRLCKEY
+                     , 'EA' AS UOM
+                     , A.TOTQTY AS IVQTY
+                  FROM TWORK_INFO_IVATXLC A
+                 INNER JOIN TWORK_INFO_IVAT B
+                    ON A.CTKEY = B.CTKEY
+                   AND A.OWKEY = B.OWKEY
+                   AND A.IVATKEY = B.IVATKEY
+                 INNER JOIN TWORK_MST_LC C
+                    ON A.CTKEY = C.CTKEY
+                   AND A.LCKEY = C.LCKEY
+                 INNER JOIN TWORK_MST_ZN D
+                    ON A.CTKEY = D.CTKEY
+                   AND C.ZNKEY = D.ZNKEY
+                 WHERE A.CTKEY = #{ctkey}
+                   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+                   AND A.TOTQTY > 0
+                )
+    </insert>
+
+    <update id="updateIvatxlcIvinvstgtyn">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateIvatxlcIvinvstgtyn */
+        UPDATE TWORK_INFO_IVATXLC
+           SET IVINVSTGTYN  = #{ivinvstgyn}
+             , UPDATEDATE   = #{sysdate}
+             , UPDATEURKEY  = #{surkey}
+         WHERE CTKEY   = #{ctkey}
+           AND OWKEY   = COALESCE(#{owkey}, #{sowkey})
+           AND ICKEY   = #{ickey}
+           AND LCKEY   = #{lckey}
+    </update>
+
+    <select id="selectObImpsYn" resultType="string">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectObImpsYn */
+        SELECT CASE WHEN IC.EXPCKYN = 'N' THEN 'N'
+                    ELSE CASE WHEN TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS * (IC.OBIMPSCRITRT / 100)),0),'YYYYMMDD') <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'N'
+                    ELSE 'Y'
+                     END END AS OBIMPSYN  /* 출고불가여부 */
+          FROM TWORK_INFO_IVAT IVAT
+         INNER JOIN TWORK_MST_IC IC
+            ON IVAT.CTKEY = IC.CTKEY
+           AND IVAT.OWKEY = IC.OWKEY
+           AND IVAT.ICKEY = IC.ICKEY
+         WHERE IVAT.CTKEY = #{ctkey}
+           AND IVAT.OWKEY = #{owkey}
+           AND IVAT.ICKEY = #{ickey}
+           AND IVAT.IVATKEY = #{ivatkey}
+    </select>
+
+    <update id="updateTaHdTawkstatus">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateTaHdTawkstatus */
+        UPDATE TWORK_INFO_TA_HD
+           SET TAWKSTATUSCD = #{tawkstatuscd}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(frwkdate)" >
+            , FRWKDATE = #{frwkdate}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(towkdate)" >
+            , TOWKDATE = #{towkdate}
+        </if>
+             , UPDATEDATE  = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </update>
+
+    <update id="updateTaDtTawkdtstatus">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateTaDtTawkdtstatus */
+        UPDATE TWORK_INFO_TA_DT
+           SET TAWKDTSTATUSCD = #{tawkdtstatuscd}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstartdate)" >
+             , WKSTARTDATE = #{wkstartdate}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkclosdate)" >
+             , WKCLOSDATE = #{wkclosdate}
+        </if>
+             , UPDATEDATE  = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </update>
+
+    <update id="updateTaHdErpsndyn">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateTaHdErpsndyn */
+        UPDATE TWORK_INFO_TA_HD
+           SET ERPSNDYN = 'Y'
+             , UPDATEDATE  = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+        WHERE CTKEY = #{ctkey}
+          AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+          AND TAHDKEY = #{tahdkey}
+    </update>
+
+    <update id="updateTaDtPispqty">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateTaDtPispqty */
+        UPDATE TWORK_INFO_TA_DT
+           SET PISPQTY = #{pispqty}
+             , INNPISPQTY = #{innpispqty}
+             , CTNPISPQTY = #{ctnpispqty}
+             , PISPCKYN = #{pispckyn}
+             , IVQTY = #{ivqty}
+             , UPDATEDATE  = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+           AND TADTKEY = #{tadtkey}
+    </update>
+
+    <select id="selectTaDtList" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectTaDtList */
+        SELECT *
+          FROM TWORK_INFO_TA_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND TAHDKEY = #{tahdkey}
+    </select>
+
+    <update id="updateVaildInvnInvsExcelUploadList">
+        /* wms-inventory-invnInvs-sql-oracle.xml - updateVaildInvnInvsExcelUploadList */
+        UPDATE TWORK_UPLOAD_IVAT_INVS TUM
+           SET (TUM.ERROR_CD) = (
+                                SELECT T.ERROR_CD
+                                  FROM (
+                                         SELECT ULHSKEY
+                                              , SEQ
+                                              , CASE WHEN TMP.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+                                                     WHEN CT.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_INVALID'
+                                                     WHEN TMP.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_LCKEY_NULL'
+                                                     WHEN LC.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_LCKEY_INVALID'
+                                                     WHEN TMP.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_NULL'
+                                                     WHEN IC.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_INVALID'
+                                                     WHEN TMP.BARCODE IS NULL THEN 'TXT_UPLOAD_VALID_BARCODE_NULL'
+                                                     WHEN BC.BARCODE IS NULL THEN 'TXT_UPLOAD_VALID_BARCODE_INVALID'
+                                                     WHEN TMP.TOTQTY IS NULL THEN 'TXT_UPLOAD_VALID_INVS_QTY_NULL'
+                                                     WHEN IVAT.IVATKEY IS NULL THEN 'TXT_UPLOAD_VALID_IVATKEY_INVALID'
+                                                     WHEN IVLC.CTKEY IN NULL THEN 'TXT_UPLOAD_VALID_TOTQTY_INVALID'
+                                                     WHEN REGEXP_INSTR(TMP.TOTQTY,<![CDATA[ '^[0-9]+$' ]]>) <![CDATA[ <> ]]> 1 THEN 'TXT_UPLOAD_VALID_INVS_QTY_NOT_NUMBER'
+                                                     WHEN TMP.TOTQTY <![CDATA[ <= ]]> 0 THEN 'TXT_UPLOAD_VALID_INVS_QTY_CHECK'
+                                                      END AS ERROR_CD
+                                          FROM TWORK_UPLOAD_IVAT_INVS TMP
+                                          LEFT JOIN TWORK_MST_CT CT
+                                            ON CT.CTKEY = TMP.CTKEY
+                                          LEFT JOIN TWORK_MST_ZN ZN
+                                            ON ZN.ZNNM = TMP.ZNNM
+                                          LEFT JOIN TWORK_MST_AR AR
+                                            ON AR.CTKEY = TMP.CTKEY
+                                           AND AR.ARNM = TMP.ARNM
+                                          LEFT JOIN TWORK_MST_LC LC
+                                            ON LC.CTKEY = TMP.CTKEY
+                                           AND LC.LCKEY = TMP.LCKEY
+                                          LEFT JOIN TWORK_MST_IC IC
+                                            ON IC.CTKEY = TMP.CTKEY
+                                           AND IC.OWKEY = TMP.OWKEY
+                                           AND IC.ICKEY = TMP.ICKEY
+                                          LEFT JOIN TWORK_MST_ICBARCODE BC
+                                            ON BC.CTKEY = TMP.CTKEY
+                                           AND BC.OWKEY = TMP.OWKEY
+                                           AND BC.ICKEY = TMP.ICKEY
+                                           AND BC.UOM = 'EA'
+                                          LEFT JOIN TWORK_INFO_IVAT IVAT
+                                            ON IVAT.CTKEY = TMP.CTKEY
+                                           AND IVAT.OWKEY = TMP.OWKEY
+                                           AND IVAT.ICKEY = TMP.ICKEY
+                                           AND COALESCE(IVAT.EXPDATE, 'NA') = COALESCE(TMP.EXPDATE, 'NA')
+                                          LEFT JOIN TWORK_INFO_IVATXLC IVLC
+                                            ON IVLC.CTKEY = TMP.CTKEY
+                                           AND IVLC.OWKEY = TMP.OWKEY
+                                           AND IVLC.LCKEY = TMP.LCKEY
+                                           AND IVLC.ICKEY = TMP.ICKEY
+                                           AND IVLC.IVATKEY = IVAT.IVATKEY
+                                           AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+                                         WHERE TMP.ULHSKEY = #{upldkey}
+                                         GROUP BY TMP.ULHSKEY
+                                             , TMP.SEQ
+                                             , TMP.CTKEY
+                                             , CT.CTKEY
+                                             , TMP.LCKEY
+                                             , LC.LCKEY
+                                             , TMP.ICKEY
+                                             , IC.ICKEY
+                                             , TMP.BARCODE
+                                             , BC.BARCODE
+                                             , TMP.TOTQTY
+                                             , IVAT.IVATKEY
+                                             , IVLC.CTKEY
+                                 ) T
+         WHERE TUM.ULHSKEY = T.ULHSKEY
+           AND TUM.SEQ = T.SEQ
+             )
+        WHERE TUM.ULHSKEY = #{upldkey}
+    </update>
+
+    <select id="selectInvnInvsExcelUploadCount" resultType="java.lang.Integer">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectInvnInvsExcelUploadCount */
+        SELECT COUNT(1)
+          FROM TWORK_UPLOAD_IVAT_INVS
+         WHERE ULHSKEY = #{upldkey}
+
+        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter)'>
+            <choose>
+                <when test='"Y".equals(filter)'>
+                    AND ERROR_CD IS NOT NULL
+                </when>
+                <when test='"N".equals(filter)'>
+                    AND ERROR_CD IS NULL
+                </when>
+            </choose>
+        </if>
+    </select>
+
+    <select id="selectInvnInvsExcelUploadList" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectInvnInvsExcelUploadList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+
+        SELECT '0' AS CHK
+             , ULHSKEY
+             , SEQ
+             , CTKEY
+             , OWKEY
+             , ZNNM
+             , ARNM
+             , LCKEY
+             , ICKEY
+             , ICNM
+             , BARCODE
+             , EXPDATE
+             , TOTQTY
+             , ERROR_CD
+             , ERROR_COMMENTS
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+          FROM TWORK_UPLOAD_IVAT_INVS
+         WHERE ULHSKEY = #{upldkey}
+
+        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and "Y".equals(filter)'>
+            AND ERROR_CD IS NOT NULL
+        </if>
+
+        ORDER BY SEQ
+
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <select id="searchInvnInvsUploadList" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - searchInvnInvsUploadList */
+        SELECT '1' AS CHK
+             , A.CTKEY
+             , A.OWKEY
+             , A.ZNNM
+             , A.ARNM
+             , A.LCKEY
+             , A.ICKEY
+             , B.ICNM
+             , A.BARCODE
+             , A.EXPDATE
+             , A.TOTQTY
+             , C.IVATKEY
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+          FROM TWORK_UPLOAD_IVAT_INVS A
+         INNER JOIN TWORK_MST_IC B
+            ON A.CTKEY = B.CTKEY
+           AND A.OWKEY = B.OWKEY
+           AND A.ICKEY = B.ICKEY
+         INNER JOIN TWORK_INFO_IVAT C
+            ON A.CTKEY = C.CTKEY
+           AND A.OWKEY = C.OWKEY
+           AND A.ICKEY = C.ICKEY
+           AND COALESCE(A.EXPDATE, 'NA') = COALESCE(C.EXPDATE, 'NA')
+         WHERE 1=1
+           AND ULHSKEY = #{upldkey}
+           AND ERROR_CD IS NULL
+    </select>
+
+    <delete id="deleteInvnInvsExcelUpload">
+        /* wms-inventory-invnInvs-sql-oracle.xml - deleteInvnInvsExcelUpload */
+        DELETE FROM TWORK_UPLOAD_IVAT_INVS
+         WHERE ULHSKEY = #{ulhskey}
+          AND SEQ = #{seq}
+    </delete>
+
+    <sql id="tab2InvnInvsHdCondition">
+        SELECT *
+          FROM (
+                SELECT '0' AS CHK
+                      , A.CTKEY
+                      , A.OWKEY
+                      , A.TATYPECD
+                      , A.TAHDKEY
+                      , A.IVINVSTYPECD
+                      , A.CMT
+                      , A.TAWKSTATUSCD
+                      , A.FRWKDATE
+                      , A.TOWKDATE
+                      , A.INSERTDATE
+                      , A.INSERTURKEY
+                      , A.UPDATEDATE
+                      , A.UPDATEURKEY
+                   FROM TWORK_INFO_TA_HD A
+                )
+          WHERE CTKEY = #{ctkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivinvstypecd)" >
+            AND IVINVSTYPECD = #{ivinvstypecd}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(invsFr) and @com.kns.framework.util.StringUtil@isNotEmpty(invsFr)" >
+            AND FRWKDATE BETWEEN #{invsFr} AND #{invsTo}
+        </if>
+            AND TATYPECD = '30' /* 재고 조사 */
+        ORDER BY INSERTDATE DESC
+    </sql>
+
+    <select id="selectListTab2InvnInvsHDCount" resultType="java.lang.Integer">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectListTab2InvnInvsHDCount */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="tab2InvnInvsHdCondition"/>
+        )
+    </select>
+
+    <select id="selectListTab2InvnInvsHD" resultType="camelMap">
+        /* wms-inventory-invnInvs-sql-oracle.xml - selectListTab2InvnInvsHD */
+        <include refid="tab2InvnInvsHdCondition"/>
+    </select>
+
+</mapper>

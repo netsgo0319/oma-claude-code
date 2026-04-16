@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.CtgLevelMapper">
+
+	<select id="selectCtgLevelCount" resultType="java.lang.Integer">
+		/* wms-master-ctglevel-sql-oracle.xml- selectCtgLevelCount */
+		SELECT COUNT(1)
+		  FROM (
+			   SELECT CTG.CTKEY
+					, CT.CTNM
+					, CTG.OWKEY
+					, OW.OWNM
+					, CTG.CTGLV
+					, CTG.CTGKEY
+					, CTG.CTGNM AS CTGTREE
+					, CTG.UPRCTGKEY
+					, UPR_CTG.CTGNM AS UPRCTGNM
+					, CTG.DELYN
+					, CTG.INSERTDATE
+					, CTG.INSERTURKEY
+					, CTG.UPDATEDATE
+					, CTG.UPDATEURKEY
+				 FROM TWORK_MST_CTG CTG
+				INNER JOIN TWORK_MST_CT CT
+					ON CT.CTKEY = CTG.CTKEY
+				INNER JOIN TWORK_MST_OW OW
+					ON OW.OWKEY = CTG.OWKEY
+				LEFT JOIN TWORK_MST_CTG UPR_CTG
+					ON UPR_CTG.CTKEY = CTG.CTKEY
+					AND UPR_CTG.OWKEY = CTG.OWKEY
+					AND UPR_CTG.CTGKEY = CTG.UPRCTGKEY
+
+			<where>
+				AND CTG.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+				AND CTG.DELYN = 'N'
+				AND CTG.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			</where>
+
+			 ) A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		CONNECT BY PRIOR A.CTGKEY =  A.UPRCTGKEY
+					 AND A.CTKEY = #{CTKEY}
+					 AND A.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+					 AND A.DELYN = 'N'
+		  START WITH A.CTKEY = #{CTKEY}
+				 AND A.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+				 AND A.CTGLV = '1'
+		  ORDER SIBLINGS BY A.CTKEY DESC
+						  , A.OWKEY DESC
+						  , A.CTGKEY ASC
+	</select>
+
+	<select id="selectCtgLevelList" resultType="camelMap">
+		/* wms-master-ctglevel-sql-oracle.xml- selectCtgLevelList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+			   SELECT CTG.CTKEY
+					, CT.CTNM
+					, CTG.OWKEY
+					, OW.OWNM
+			        , CTG.CTGLV
+					, CTG.CTGKEY
+					, CTG.CTGNM AS CTGTREE
+					, CTG.UPRCTGKEY
+					, UPR_CTG.CTGNM AS UPRCTGNM
+					, CTG.DELYN
+					, CTG.INSERTDATE
+					, CTG.INSERTURKEY
+					, CTG.UPDATEDATE
+					, CTG.UPDATEURKEY
+				 FROM TWORK_MST_CTG CTG
+				INNER JOIN TWORK_MST_CT CT
+					ON CT.CTKEY = CTG.CTKEY
+				INNER JOIN TWORK_MST_OW OW
+					ON OW.OWKEY = CTG.OWKEY
+				LEFT JOIN TWORK_MST_CTG UPR_CTG
+					ON UPR_CTG.CTKEY = CTG.CTKEY
+					AND UPR_CTG.OWKEY = CTG.OWKEY
+					AND UPR_CTG.CTGKEY = CTG.UPRCTGKEY
+
+			<where>
+				AND CTG.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+				AND CTG.DELYN = 'N'
+				AND CTG.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			</where>
+
+			 ) A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		CONNECT BY PRIOR A.CTGKEY =  A.UPRCTGKEY
+					 AND A.CTKEY = #{CTKEY}
+					 AND A.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+					 AND A.DELYN = 'N'
+		  START WITH A.CTKEY = #{CTKEY}
+				 AND A.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+				 AND A.CTGLV = '1'
+		  ORDER SIBLINGS BY A.CTKEY DESC
+						  , A.OWKEY DESC
+						  , A.CTGKEY ASC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<update id="updateCtgLevelInfo">
+		/* wms-master-ctglevel-sql-oracle.xml- updateCtgLevelInfo */
+		UPDATE TWORK_MST_CTG
+		   SET WRHOUS_SE = #{wrhousSe}
+		     , BOL_WRHOUS_SE = #{bolWrhousSe}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND CTGLEVEL = #{ctglevel}
+		  AND CTGKEY = #{ctgkey}
+	</update>
+</mapper>	

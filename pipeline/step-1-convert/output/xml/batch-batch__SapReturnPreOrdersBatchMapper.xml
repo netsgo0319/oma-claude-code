@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapReturnPreOrdersBatchMapper">
+
+    <update id="savePreOrder">
+		/* SapReturnPreOrdersBatchMapper.xml savePreOrder */
+		UPDATE TORDER_INFO_PREORDERS
+		   SET SAPTRANSYN = CASE WHEN #{saptransfailyn}='Y' THEN 'N' ELSE 'Y' END
+		     , SAPTRANSFAILYN = #{saptransfailyn}
+		     , UPDATEDATE = #{interfaceDate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY  = #{owkey} 
+		   AND PREKEY = #{prekey} 
+		   AND ORG_CUSTOMERORDERKEY = #{orgCustomerorderkey} 
+		   AND ORG_CUSTOMERORDERDTKEY = #{orgCustomerorderdtkey}
+    </update>
+</mapper>

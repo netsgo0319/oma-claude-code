@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.item.mapper.ItemRestTmsMapper">
+
+	<insert id="insertIcunit">
+		/* tms-item-itemrest-sql-oracle.xml  insertIcunit */
+		INSERT INTO TT_MST_ICUT
+		(
+		      OWKEY    /*화주 코드*/
+		    , ICUTKEY    /*상품 단위 코드*/
+		    , CLOSDATE    /*종료 일시*/
+		    , INSERTDATE    /*입력 일시*/
+		    , INSERTURKEY    /*입력 사용자 ID*/
+		    , UPDATEDATE    /*수정 일시*/
+		    , UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT OWKEY    /*화주 코드*/
+			 , ICUTKEY    /*상품 단위 코드*/
+			 , #{closdate} AS CLOSDATE    /*종료 일시*/
+			 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+			 , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+			 , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+			 , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+				SELECT T.OWKEY
+				     , T.ICKEY AS ICUTKEY
+					 , CASE WHEN IU.ICUTKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+						SELECT #{owkey} AS OWKEY
+							 , I.ICKEY
+						  FROM TADMIN_INTF_ICUNIT I              
+						 WHERE I.INTERFACE_ID = #{interfaceId}  
+						   AND I.REQUESTDT = #{requestDt}
+						 GROUP BY I.ICKEY
+					   ) T
+				  LEFT JOIN TT_MST_ICUT IU
+					ON T.OWKEY = IU.OWKEY
+				   AND T.ICKEY = IU.ICUTKEY
+			   ) TT
+		 WHERE SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateIctxtype">
+		/* tms-item-itemrest-sql-oracle.xml  updateIctxtype */
+		UPDATE TT_MST_ICUTXTYPE M
+		   SET (
+					  ICUTORDER    /*상품단위순서*/
+					, ICUTQTY    /*상품단위수량*/
+					, LENGTH    /*길이*/
+					, WIDTH    /*너비*/
+					, HEIGHT    /*높이*/
+					, SIZEUNIT    /*측정단위*/
+					, WEIGHT    /*중량*/
+					, WEIGHTUNIT    /*중량단위*/
+					, VOLUME    /*부피*/
+					, VOLUMEUNIT    /*부피단위*/
+				    , UPDATEDATE    /*수정 일시*/
+				    , UPDATEURKEY    /*수정 사용자 ID*/
+				)
+			  = (
+				SELECT U.ICUNITORDER    /*상품단위순서*/
+					 , U.ICUNITQTY    /*상품단위수량*/
+					 , U.LENGTH    /*길이*/
+					 , U.WIDTH    /*너비*/
+					 , U.HEIGHT    /*높이*/
+					 , U.SIZEUNIT    /*측정단위*/
+					 , U.WEIGHT    /*중량*/
+					 , U.WEIGHTUNIT    /*중량단위*/
+					 , U.VOL    /*부피*/
+					 , U.VOLUNIT    /*부피단위*/
+				     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+			 		 , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+				  FROM TADMIN_MST_ICUTXTYPE U
+				 WHERE EXISTS (
+								SELECT 1
+								  FROM TADMIN_INTF_ICUNIT I
+								 WHERE I.INTERFACE_ID = #{interfaceId}  
+								   AND I.REQUESTDT = #{requestDt}
+								   AND U.OWKEY = #{owkey}
+								   AND I.ICKEY = U.ICUTKEY 
+							   )
+				   AND U.OWKEY = M.OWKEY
+				   AND U.ICUNITKEY = M.ICUTKEY
+				   AND U.ICUNITTYPE = M.ICUTTYPE
+				)
+		  WHERE EXISTS (
+				  		SELECT 1
+						  FROM TADMIN_INTF_ICUNIT IU
+						 WHERE IU.INTERFACE_ID = #{interfaceId}  
+						   AND IU.REQUESTDT = #{requestDt} 
+						   AND IU.ICKEY = M.ICUTKEY
+						   AND M.OWKEY = #{owkey} 
+		  				) 						
+	</update>
+	
+	<insert id="insertIctxtype">
+		/* tms-item-itemrest-sql-oracle.xml  insertIctxtype */
+		INSERT INTO TT_MST_ICUTXTYPE
+		(
+		      OWKEY    /*화주 코드*/
+		    , ICUTKEY    /*상품코드(상품단위코드)*/
+			, ICUTTYPE    /*상품단위유형*/
+			, ICUTORDER    /*상품단위순서*/
+			, ICUTQTY    /*상품단위수량*/
+			, LENGTH    /*길이*/
+			, WIDTH    /*너비*/
+			, HEIGHT    /*높이*/
+			, SIZEUNIT    /*측정단위*/
+			, WEIGHT    /*중량*/
+			, WEIGHTUNIT    /*중량단위*/
+			, VOLUME    /*부피*/
+			, VOLUMEUNIT    /*부피단위*/
+		    , INSERTDATE    /*입력 일시*/
+		    , INSERTURKEY    /*입력 사용자 ID*/
+		    , UPDATEDATE    /*수정 일시*/
+		    , UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT TT.OWKEY    /*화주 코드*/
+			 , TT.ICUNITKEY    /*상품코드(상품단위코드)*/
+			 , TT.ICUNITTYPE    /*상품단위유형*/
+			 , TT.ICUNITORDER    /*상품단위순서*/
+			 , TT.ICUNITQTY    /*상품단위수량*/
+			 , TT.LENGTH    /*길이*/
+			 , TT.WIDTH    /*너비*/
+			 , TT.HEIGHT    /*높이*/
+			 , TT.SIZEUNIT    /*측정단위*/
+			 , TT.WEIGHT    /*중량*/
+			 , TT.WEIGHTUNIT    /*중량단위*/
+			 , TT.VOLUME    /*부피*/
+			 , TT.VOLUMEUNIT    /*부피단위*/
+			 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+		  		SELECT T.OWKEY    /*화주 코드*/
+					 , T.ICUNITKEY    /*상품코드(상품단위코드)*/
+					 , T.ICUNITTYPE    /*상품단위유형*/
+					 , T.ICUNITORDER    /*상품단위순서*/
+					 , T.ICUNITQTY    /*상품단위수량*/
+					 , T.LENGTH    /*길이*/
+					 , T.WIDTH    /*너비*/
+					 , T.HEIGHT    /*높이*/
+					 , T.SIZEUNIT    /*측정단위*/
+					 , T.WEIGHT    /*중량*/
+					 , T.WEIGHTUNIT    /*중량단위*/
+					 , T.VOL    /*부피*/
+					 , T.VOLUNIT    /*부피단위*/
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM TADMIN_INTF_ICUNIT IU
+				  JOIN TADMIN_MST_ICUTXTYPE T
+				    ON IU.ICKEY = T.ICUNITKEY
+				   AND IU.UOM = T.ICUNITTYPE
+				   AND T.OWKEY = #{owkey}
+				  LEFT JOIN TT_MST_ICUTXTYPE M
+				    ON T.OWKEY = M.OWKEY
+				   AND T.ICUNITKEY = M.ICUTKEY
+				   AND T.ICUNITTYPE = M.ICUTTYPE
+				 WHERE IU.INTERFACE_ID = #{interfaceId}  
+				   AND IU.REQUESTDT = #{requestDt} 
+		  	   ) TT
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+	
+	<insert id="insertIctxtypexct">
+		/* tms-item-itemrest-sql-oracle.xml  insertIctxtypexct */
+		INSERT INTO TT_MST_ICUTXTYPEXCT
+		(
+			  OWKEY    /*화주 코드*/
+			, ICUNITKEY    /*물품 단위 코드*/
+			, ICUNITTYPE    /*물품 단위 유형*/
+			, CTKEY    /*센터 코드*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT TT.OWKEY    /*화주 코드*/
+			 , TT.ICUTKEY    /*상품코드(상품단위코드)*/
+			 , TT.ICUTTYPE    /*상품단위유형*/
+			 , TT.CTKEY
+			 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+		  		SELECT T.OWKEY    /*화주 코드*/
+					 , T.ICUNITKEY    /*상품코드(상품단위코드)*/
+					 , T.ICUNITTYPE    /*상품단위유형*/
+					 , CT.CTKEY
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM TADMIN_INTF_ICUNIT IU
+				  JOIN TADMIN_MST_ICUTXTYPE T
+				    ON IU.ICKEY = T.ICUNITKEY
+				   AND IU.UOM = T.ICUNITTYPE
+				   AND T.OWKEY = #{owkey}
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'
+				  LEFT JOIN TT_MST_ICUTXTYPEXCT M
+				    ON T.OWKEY = M.OWKEY
+				   AND T.ICUNITKEY = M.ICUTKEY
+				   AND T.ICUNITTYPE = M.ICUTTYPE
+				   AND CT.CTKEY = M.CTKEY
+				 WHERE IU.INTERFACE_ID = #{interfaceId}  
+				   AND IU.REQUESTDT = #{requestDt} 
+		  	   ) TT
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateItems">
+		/* tms-item-itemrest-sql-oracle.xml  updateItems */
+		UPDATE TT_MST_IC UC
+		   SET (
+		   		  UC.ICNAME    /*물품명*/
+				, UC.ICGRKEY    /*카테고리*/
+				, UC.ICGRTYPE    /*물품그룹유형*/
+				, UC.ICUTKEY    /*물품단위코드*/
+				, UC.UOM    /*단위(UOM)*/
+				, UC.SPEC    /*규격*/
+				, UC.WIDTH    /*박스가로*/
+				, UC.LENGTH    /*박스세로*/
+				, UC.HEIGHT    /*박스높이*/
+				, UC.VOLUME    /*부피*/
+				, UC.WEIGHT    /*무게*/
+				, UC.SHELFLIFEINDICATOR    /*유통기한체크여부*/
+				, UC.SHELFLIFE    /*입고기준일*/
+				, UC.UDF2    /*사용자정의필드2*/
+				, UC.CTGKEY    /*소분류*/
+				, UC.ICTYPE    /*1일반상품, 2이벤트상품*/
+				, UC.UPDATEDATE    /*수정일시*/
+				, UC.UPDATEURKEY    /*수정사용자*/
+				, UC.WIDTHPI    /*단품가로*/
+				, UC.LENGTHPI    /*단품세로*/
+				, UC.HEIGHTPI    /*단품높이*/
+				, UC.BOL_WIDTH    /*BOL 가로*/
+				, UC.BOL_LENGTH    /*BOL 세로*/
+				, UC.BOL_HEIGHT    /*BOL 높이*/
+				, UC.BOL_WEIGHT    /*BOL 중량*/
+				, UC.BOL_VOLUME    /*BOL 부피*/
+			   ) = (
+			   		SELECT M.ICNM    /*물품명*/
+						 , M.ICGRPKEY    /*카테고리*/
+						 , M.ICGRPTYPE    /*물품그룹유형*/
+						 , M.ICUNITKEY    /*물품단위코드*/
+						 , M.UOM    /*단위(UOM)*/
+						 , M.SPEC    /*규격*/
+						 , M.WIDTH    /*박스가로*/
+						 , M.LENGTH    /*박스세로*/
+						 , M.HEIGHT    /*박스높이*/
+						 , M.VOL    /*부피*/
+						 , M.WEIGHT    /*무게*/
+						 , M.EXPCKYN    /*유통기한체크여부*/
+						 , M.SHELFLIFE    /*입고기준일*/
+						 , M.UDF2    /*사용자정의필드2*/
+						 , M.CTGKEY    /*소분류*/
+						 , M.ICTYPE    /*1일반상품, 2이벤트상품*/
+					     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+					     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+						 , M.WIDTHPI    /*단품가로*/
+						 , M.LENGTHPI    /*단품세로*/
+						 , M.HEIGHTPI    /*단품높이*/
+						 , M.BOLWIDTH    /*BOL 가로*/
+						 , M.BOLLENGTH    /*BOL 세로*/
+						 , M.BOLHEIGHT    /*BOL 높이*/
+						 , M.BOLWEIGHT    /*BOL 중량*/
+						 , M.BOLVOL    /*BOL 부피*/
+			        FROM TADMIN_INTF_IC I
+					JOIN TADMIN_MST_IC M
+					  ON I.ICKEY = M.ICKEY
+					 AND M.OWKEY = #{owkey}		 
+			       WHERE I.INTERFACE_ID = #{interfaceId}
+			         AND I.REQUESTDT = #{requestDt} 
+			         AND M.ICKEY = UC.ICKEY
+			         AND M.OWKEY = UC.OWKEY 
+			   	   )
+		 WHERE OWKEY = #{owkey}
+		   AND EXISTS (SELECT 1
+		   				 FROM TADMIN_INTF_IC T1
+				        WHERE T1.INTERFACE_ID = #{interfaceId}
+				          AND T1.REQUESTDT = #{requestDt} 
+				          AND T1.ICKEY = UC.ICKEY   
+		   			  ) 			   	   
+	</update>
+	
+	<insert id="insertItems">
+		/* tms-item-itemrest-sql-oracle.xml  insertItems */
+		INSERT INTO TT_MST_IC
+		(
+			  OWKEY    /*화주코드*/
+			, ICKEY    /*물품코드*/
+			, ICNAME    /*물품명*/
+			, ICGRKEY    /*카테고리*/
+			, ICGRTYPE    /*물품그룹유형*/
+			, ICUTKEY    /*물품단위코드*/
+			, UOM    /*단위(UOM)*/
+			, SPEC    /*규격*/
+			, WIDTH    /*박스가로*/
+			, LENGTH    /*박스세로*/
+			, HEIGHT    /*박스높이*/
+			, VOLUME    /*부피*/
+			, WEIGHT    /*무게*/
+			, BRANDCODE    /*브랜드코드*/
+			, SHELFLIFEINDICATOR    /*유통기한체크여부*/
+			, SHELFLIFE    /*입고기준일*/
+			, SHELFLIFECODETYPE    /*유통기한체크유형*/
+			, UDF1    /*사용자정의필드1*/
+			, UDF2    /*사용자정의필드2*/
+			, UDF3    /*사용자정의필드3*/
+			, UDF4    /*사용자정의필드4*/
+			, UDF5    /*사용자정의필드5*/
+			, SERIALINPUTTYPE    /*시리얼 입력 유형*/
+			, CLOSDATE    /*종료일시*/
+			, ACKEY    /*거래처코드*/
+			, REGDATE    /*변경일자*/
+			, TAXYN    /*과세구분*/
+			, DELYN    /*삭제구분*/
+			, BOXPRICE    /*박스금액*/
+			, BOTTLEPRICE    /*병금액*/
+			, CTGKEY    /*소분류*/
+			, RETURNOR    /*점포반품구분*/
+			, ORDSTOPDATE    /*센터에서 거래처 시 발주정지예정일자*/
+			, RELEASEDAYS    /*출고가능일수*/
+			, LO_NON_STOCK_TYPE    /*무재고상품구분*/
+			, DISPSHELFKEY    /*진열대코드*/
+			, ACCSTOCKTYPE    /*체화재고운영구분*/
+			, ACCSTOCKDATE    /*체화재고운영일자*/
+			, RFIDBOX    /*RFID_박스*/
+			, RFIDBOTTLE    /*RFID_병*/
+			, ICTYPE    /*1일반상품, 2이벤트상품*/
+			, MINORDQTY    /*배수상한상품최소수량*/
+			, MAXORDQTY    /*배수상한상품최대수량*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자*/
+			, ORDSTARTDATE    /*상품도입일자*/
+			, FOODYN    /*식품비식품여부*/
+			, CHITTYPE    /*전표생성구분*/
+			, STC_APPLY_GRADE_CD    /*재고등급코드*/
+			, SHELFDAY    /*보관수명(DAY)*/
+			, WIDTHPI    /*단품가로*/
+			, LENGTHPI    /*단품세로*/
+			, HEIGHTPI    /*단품높이*/
+			, BOL_WIDTH    /*BOL 가로*/
+			, BOL_LENGTH    /*BOL 세로*/
+			, BOL_HEIGHT    /*BOL 높이*/
+			, BOL_WEIGHT    /*BOL 중량*/
+			, BOL_VOLUME    /*BOL 부피*/
+		)
+		SELECT M.OWKEY    /*화주코드*/
+			 , M.ICKEY    /*물품코드*/
+			 , M.ICNM    /*물품명*/
+			 , M.ICGRPKEY    /*카테고리*/
+			 , M.ICGRPTYPE    /*물품그룹유형*/
+			 , M.ICUNITKEY    /*물품단위코드*/
+			 , M.UOM    /*단위(UOM)*/
+			 , M.SPEC    /*규격*/
+			 , M.WIDTH    /*박스가로*/
+			 , M.LENGTH    /*박스세로*/
+			 , M.HEIGHT    /*박스높이*/
+			 , M.VOL    /*부피*/
+			 , M.WEIGHT    /*무게*/
+			 , M.BRANDCD    /*브랜드코드*/
+			 , M.EXPCKYN    /*유통기한체크여부*/
+			 , M.SHELFLIFE    /*입고기준일*/
+			 , M.EXPCKTYPE    /*유통기한체크유형*/
+			 , M.UDF1    /*사용자정의필드1*/
+			 , M.UDF2    /*사용자정의필드2*/
+			 , M.UDF3    /*사용자정의필드3*/
+			 , M.UDF4    /*사용자정의필드4*/
+			 , M.UDF5    /*사용자정의필드5*/
+			 , M.SERIALINPUTTYPE    /*시리얼 입력 유형*/
+			 , M.CLOSDATE    /*종료일시*/
+			 , M.ACKEY    /*거래처코드*/
+			 , M.REGDATE    /*변경일자*/
+			 , M.TAXYN    /*과세구분*/
+			 , M.DELYN    /*삭제구분*/
+			 , M.BOXPRICE    /*박스금액*/
+			 , M.BOTTLEPRICE    /*병금액*/
+			 , M.CTGKEY    /*소분류*/
+			 , M.RETURNOR    /*점포반품구분*/
+			 , M.ORDSTOPDATE    /*센터에서 거래처 시 발주정지예정일자*/
+			 , M.OBDAYS    /*출고가능일수*/
+			 , M.LONONSTOCKTYPE    /*무재고상품구분*/
+			 , M.DISPSHELFKEY    /*진열대코드*/
+			 , M.STGNIVTYPE    /*체화재고운영구분*/
+			 , M.STGNIVDATE    /*체화재고운영일자*/
+			 , M.RFIDBOX    /*RFID_박스*/
+			 , M.RFIDBOTTLE    /*RFID_병*/
+			 , M.ICTYPE    /*1일반상품, 2이벤트상품*/
+			 , M.MINORDQTY    /*배수상한상품최소수량*/
+			 , M.MAXORDQTY    /*배수상한상품최대수량*/
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+			 , M.ORDSTARTDATE    /*상품도입일자*/
+			 , M.FOODYN    /*식품비식품여부*/
+			 , M.CHITTYPE    /*전표생성구분*/
+			 , M.STCAPPLYGRADECD    /*재고등급코드*/
+			 , M.SHELFDAY    /*보관수명(DAY)*/
+			 , M.WIDTHPI    /*단품가로*/
+			 , M.LENGTHPI    /*단품세로*/
+			 , M.HEIGHTPI    /*단품높이*/
+			 , M.BOLWIDTH    /*BOL 가로*/
+			 , M.BOLLENGTH    /*BOL 세로*/
+			 , M.BOLHEIGHT    /*BOL 높이*/
+			 , M.BOLWEIGHT    /*BOL 중량*/
+			 , M.BOLVOL    /*BOL 부피*/
+        FROM TADMIN_INTF_IC I
+		JOIN TADMIN_MST_IC M
+		  ON I.ICKEY = M.ICKEY
+		 AND M.OWKEY = #{owkey}		 
+		LEFT JOIN TT_MST_IC A
+          ON M.ICKEY = A.ICKEY
+         AND M.OWKEY = A.OWKEY
+       WHERE I.INTERFACE_ID = #{interfaceId}
+         AND I.REQUESTDT = #{requestDt} 
+         AND A.ICKEY IS NULL 
+	</insert>
+	
+	<update id="updateIcxct">
+		/* tms-item-itemrest-sql-oracle.xml  updateIcxct */
+		UPDATE TT_MST_ICXCT UCT
+		   SET (
+			  	  UCT.LOGGRPCD
+				, UCT.ICGRKEY
+				, UCT.UPDATEDATE
+				, UCT.UPDATEURKEY
+			   ) = (
+			   		SELECT IC.LOGGRPCD
+					     , IC.ICGRPKEY
+					     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+					     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+					  FROM TADMIN_INTF_IC I
+					  JOIN TADMIN_MST_ICXCT IC
+					    ON I.ICKEY = IC.ICKEY
+					   AND IC.OWKEY = #{owkey}			         
+			         WHERE I.INTERFACE_ID = #{interfaceId}
+			           AND I.REQUESTDT = #{requestDt} 
+				       AND IC.ICKEY = UCT.ICKEY
+			           AND IC.CTKEY = UCT.CTKEY
+			           AND IC.OWKEY = UCT.OWKEY
+			   	   )
+		 WHERE UCT.OWKEY = #{owkey}
+		   AND EXISTS (SELECT 1
+		   				 FROM TADMIN_INTF_IC T1
+		   				 JOIN TADMIN_MST_ICXCT T2
+				           ON T1.ICKEY = T2.ICKEY
+				          AND T2.OWKEY = #{owkey}
+				        WHERE T1.INTERFACE_ID = #{interfaceId}
+				          AND T1.REQUESTDT = #{requestDt} 
+				          AND T2.ICKEY = UCT.ICKEY   
+				          AND T2.CTKEY = UCT.CTKEY  
+				          AND T2.OWKEY = UCT.OWKEY  
+		   			  )			   	   
+	</update>
+	
+	<insert id="insertIcxct">
+		/* tms-item-itemrest-sql-oracle.xml  insertIcxct */
+		INSERT INTO TT_MST_ICXCT
+		(
+		  	  OWKEY
+			, ICKEY
+			, CTKEY
+			, LOGGRPCD
+			, VOLTYPE
+			, NEWYN
+			, ORDTYPE
+			, ICGRKEY
+			, DCKEY
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT IC.OWKEY
+		     , IC.ICKEY
+		     , IC.CTKEY
+		     , IC.LOGGRPCD
+		     , '0' AS VOLTYPE
+		     , 'Y' AS NEWYN
+		     , '0' AS ORDTYPE
+		     , IC.ICGRPKEY
+		     , '1' AS DCKEY
+		     , 'N' AS DELYN
+		     , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM TADMIN_INTF_IC I
+		  JOIN TADMIN_MST_ICXCT IC
+		    ON I.ICKEY = IC.ICKEY
+		   AND IC.OWKEY = #{owkey}
+          LEFT JOIN TT_MST_ICXCT A
+            ON IC.ICKEY = A.ICKEY
+           AND IC.CTKEY = A.CTKEY
+           AND IC.OWKEY = A.OWKEY
+         WHERE I.INTERFACE_ID = #{interfaceId}
+           AND I.REQUESTDT = #{requestDt} 
+	       AND A.ICKEY IS NULL 
+	</insert>
+		
+</mapper>

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.OwXIbObCfDtExtendMapper">
+	
+	<sql id="owXIbObCfDtExtendHdRefSql">
+
+		SELECT '0' AS CHK ,
+		       A.OWNM,
+			   A.OWKEY,
+			   A.REGNO,
+			   A.OBCFINPUTRESTRICT OBCF_INPUTRESTRICT_ORI,
+			   '0' OBCF_INPUTRESTRICT,
+			   A.DELYN,
+			   A.INSERTDATE,
+			   A.UPDATEDATE,
+				A.INSERTURKEY AS INSERTURNAME ,
+				A.UPDATEURKEY AS UPDATEURNAME
+		  FROM TADMIN_MST_OW A
+		 WHERE 1=1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+			</if>
+		 ORDER BY A.OWKEY
+	</sql>
+	
+	<sql id="owXIbObCfDtExtendDtRefSql">
+		SELECT '0' AS CHK ,
+		       A.OWNAME,
+			   A.OWKEY,
+			   A.REGNO,
+			   A.OBCF_INPUTRESTRICT OBCF_INPUTRESTRICT_ORI,
+			   '0' AS OBCF_INPUTRESTRICT,
+			   A.DELYN,
+			   A.INSERTDATE,
+			   A.UPDATEDATE,
+				A.INSERTURKEY AS INSERTURNAME ,
+				A.UPDATEURKEY AS UPDATEURNAME
+		  FROM TWORK_MST_OW A
+		 WHERE 1=1
+		   AND A.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+			</if>
+		 ORDER BY A.OWKEY
+	</sql>	  
+	
+	<select id="selectOwXIbObCfDtExtendHdCount" resultType="java.lang.Integer" >
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - selectOwXIbObCfDtExtendHdCount */
+		SELECT 	COUNT(1)
+		  FROM	(
+		  	<include refid="owXIbObCfDtExtendHdRefSql"/>
+		)
+	</select> 
+	
+	<select id="selectOwXIbObCfDtExtendHd" resultType="camelMap">
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - selectOwXIbObCfDtExtendHd */
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		  	<include refid="owXIbObCfDtExtendHdRefSql"/>  
+		)
+		<choose>
+			<when test='sortValue !=null'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>
+			<otherwise>
+				<!-- ORDER BY UPDATEDATE DESC -->
+			</otherwise>
+		</choose>		
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectOwXIbObCfDtExtendDtCount" resultType="java.lang.Integer" >
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - selectOwXIbObCfDtExtendDtCount */
+		SELECT 	COUNT(1)
+		  FROM	(
+		  	<include refid="owXIbObCfDtExtendDtRefSql"/>
+		)
+	</select>
+		
+	<select id="selectOwXIbObCfDtExtendDt" resultType="camelMap">
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - selectOwXIbObCfDtExtendDt */
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		  	<include refid="owXIbObCfDtExtendDtRefSql"/>
+		)  
+		<choose>
+			<when test='sortValue !=null'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	 
+			</when>
+			<otherwise>
+				<!-- ORDER BY UPDATEDATE DESC -->
+			</otherwise>
+		</choose>		
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<update id="updateOwXIbObCfDtExtendHd">
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - updateOwXIbObCfDtExtendHd */
+	UPDATE TADMIN_MST_OW
+	   SET UPDATEDATE = #{sysdate},
+		   UPDATEURKEY = #{surkey},
+		   <choose>
+			   <when test='btnId == "btnClear"'>
+			   		OBCFINPUTRESTRICT = 3
+			   </when>
+			   <when test='btnId == "btnExtend"'>
+			   		OBCFINPUTRESTRICT = #{obcfInputrestrict}
+			   </when>
+		   </choose>
+     WHERE OWKEY = #{owkey}
+	</update>
+	
+	<update id="updateOwXIbObCfDtExtendDt">
+		/* adm-master-owxibobcfdtextend-sql-oracle.xml - updateOwXIbObCfDtExtendDt */
+	UPDATE TWORK_MST_OW
+	   SET UPDATEDATE = #{sysdate},
+		   UPDATEURKEY = #{surkey},
+		   <choose>
+			   <when test='btnId == "btnClear"'>
+			   OBCF_INPUTRESTRICT = 3
+			   </when>
+			   <when test='btnId == "btnExtend"'>
+			   OBCF_INPUTRESTRICT = #{obcfInputrestrict}
+			   </when>
+			   <otherwise>
+			   </otherwise>
+		   </choose>
+     WHERE OWKEY = #{owkey}
+	</update>
+</mapper>

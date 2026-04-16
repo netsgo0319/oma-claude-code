@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.system.mapper.AccessControlMapper">
+
+    <select id="selectAccessControlList" resultType="com.daiso.ams.system.vo.AccessControlVO">
+        /* adm-system-accessControl-sql-oracle.xml - selectAccessControlList */
+        SELECT ID,
+               IPADDR,
+               MACADDR,
+               PRDCTTYPE,
+               DESCRPT,
+               INSERTDATE,
+               INSERTURKEY,
+               UPDATEDATE,
+               UPDATEURKEY,
+               DELYN
+        FROM TADMIN_MST_ACTL
+       WHERE DELYN = 'N'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+        </if>
+    </select>
+
+    <select id="selectAccessControl" resultType="camelMap">
+        /* adm-system-accessControl-sql-oracle.xml - selectAccessControl */
+        SELECT
+            ID,
+            IPADDR,
+            MACADDR,
+            PRDCTTYPE,
+            DESCRPT,
+            INSERTDATE,
+            INSERTURKEY,
+            UPDATEDATE,
+            UPDATEURKEY,
+            DELYN
+        FROM TADMIN_MST_ACTL
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY ID
+    </select>
+
+    <update id="saveAccessControlInfo">
+        /* adm-system-accessControl-sql-oracle.xml - saveAccessControlInfo */
+        INSERT INTO TADMIN_MST_ACTL (
+            ID, IPADDR, MACADDR, PRDCTTYPE, DESCRPT,
+            INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY, DELYN
+        ) VALUES (
+            #{id}, #{ipaddr}, #{macaddr}, #{prdcttype}, #{descrpt},
+            #{sysdate}, #{surkey}, #{sysdate}, #{surkey}, #{delyn}
+        )
+        ON CONFLICT (ID) DO UPDATE SET
+            IPADDR = EXCLUDED.IPADDR,
+            MACADDR = EXCLUDED.MACADDR,
+            PRDCTTYPE = EXCLUDED.PRDCTTYPE,
+            DESCRPT = EXCLUDED.DESCRPT,
+            UPDATEDATE = EXCLUDED.UPDATEDATE,
+            UPDATEURKEY = EXCLUDED.UPDATEURKEY,
+            DELYN = EXCLUDED.DELYN
+
+    </update>
+
+    <delete id="deleteAccessControlInfo">
+        /* adm-system-accessControl-sql-oracle.xml - deleteAccessControlInfo */
+        DELETE
+        FROM TADMIN_MST_ACTL
+        WHERE ID = #{id}
+    </delete>
+</mapper>

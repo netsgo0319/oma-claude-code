@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.SubstitutionMapper">
+	
+	<select id="selectPkCountSubstitution" resultType="java.lang.Integer" >
+		/* adm-item-substitution-sql-oracle.xml - selectPkCountSubstitution */ 
+		SELECT COUNT(1)
+		FROM 
+			( SELECT A.ICKEY
+			   FROM TADMIN_MST_ICSB A
+			   INNER JOIN TADMIN_MST_IC B
+			   		   ON A.OWKEY = B.OWKEY
+					  AND A.ICKEY = B.ICKEY
+			 WHERE  1 = 1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   AND #{SEARCH_CONDITION}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			   AND A.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+			   AND A.ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sbkey)">
+			   AND A.SBKEY = #{sbkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(chkPk)">
+			   UNION ALL
+			SELECT  A.ICKEY
+			  FROM 	TADMIN_MST_IC A 
+		     WHERE 	A.OWKEY =  #{owkey}
+			   AND 	A.ICKEY = #{sbkey}
+			</if>
+			
+		)
+	  	  
+	</select>	
+
+	<select id="selectSubstitutionCount" resultType="java.lang.Integer">
+		/* adm-item-substitution-sql-oracle.xml - selectSubstitutionCount */
+		SELECT COUNT(1)
+		FROM
+		( SELECT A.ICKEY
+		FROM TADMIN_MST_ICSB A
+		INNER JOIN TADMIN_MST_IC B
+				ON A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+
+		)
+	</select>
+
+	<select id="selectListSubstitution" resultType="camelMap">
+		/* adm-item-substitution-sql-oracle.xml - selectListSubstitution */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT A.*
+			  FROM (
+              	SELECT '0' AS CHK
+              	       ,A.OWKEY
+              	       ,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNM
+				       ,A.ICKEY
+				       ,B.ICNM
+				       ,A.SBKEY
+					   ,B.SPEC
+				       ,A.ICUNITTYPE
+				       ,A.UDF1
+				       ,A.UDF2
+				       ,A.UDF3
+				       ,A.CLOSDATE
+				       ,A.INSERTDATE
+				       ,A.UPDATEDATE
+				       ,A.INSERTURKEY
+ 					   ,A.UPDATEURKEY
+				       ,B.ICUNITKEY
+        			   ,A.DELYN
+				       ,B.UDF3 AS CHGUOM
+                  FROM TADMIN_MST_ICSB A
+				  	   LEFT OUTER JOIN TADMIN_MST_IC B
+                  					ON A.OWKEY = B.OWKEY
+                   				   AND A.ICKEY = B.ICKEY
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+			) A
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkSubstitution" resultType="camelMap">
+		/* adm-item-substitution-sql-oracle.xml - selectPkSubstitution */
+    	SELECT A.OWKEY
+    	      ,C.OWNM
+			  ,A.ICKEY
+  			  ,B.ICNM
+			  ,A.SBKEY
+			  ,A.ICUNITTYPE
+			  ,A.UDF1
+			  ,A.UDF2
+			  ,A.UDF3
+			  ,A.CLOSDATE
+			  ,A.INSERTDATE
+			  ,A.INSERTURKEY
+			  ,A.UPDATEDATE
+			  ,A.UPDATEURKEY
+			  ,B.ICUNITKEY
+          FROM  TADMIN_MST_ICSB A
+  			LEFT OUTER JOIN TADMIN_MST_IC B
+             			 ON A.OWKEY = B.OWKEY
+                  	  	AND A.ICKEY = B.ICKEY
+            LEFT OUTER JOIN TADMIN_MST_OW C
+          				 ON A.OWKEY = C.OWKEY
+		 WHERE  A.OWKEY = #{owkey}
+		   AND  A.ICKEY = #{ickey} 
+		   AND  A.SBKEY = #{sbkey} 
+	</select>
+	
+	<insert id="insertTAdminMstIcsb" >
+		/* adm-item-substitution-sql-oracle.xml - insertTAdminMstIcsb */
+		INSERT INTO TADMIN_MST_ICSB	(
+    		OWKEY
+			,ICKEY
+			,SBKEY
+			,ICUNITTYPE
+			,UDF1
+			,UDF2
+			,UDF3
+			,CLOSDATE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		) VALUES (
+			#{owkey}
+			,#{ickey}
+			,#{sbkey}
+			,COALESCE(#{icunittype}, 'EA')
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,SUBSTR(#{closdate}, 0, 14)
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)			
+	</insert>
+	
+	<update id="updateTAdminMstIcsb">
+		/* adm-item-substitution-sql-oracle.xml - updateTAdminMstIcsb */
+		UPDATE 	TADMIN_MST_ICSB 
+		   SET	ICUNITTYPE = #{icunittype}
+           		,UDF1 = #{udf1}
+           		,UDF2 = #{udf2}
+           		,UDF3 = #{udf3}
+           		,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+		        ,UPDATEDATE = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		 WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+		   AND	SBKEY = #{sbkey}
+	</update>
+
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-item-substitution-sql-oracle.xml - selectTAdminMstCt */
+		SELECT '0' AS CHK
+			 , CTKEY
+		     , CTNM
+		FROM TADMIN_MST_CT
+		WHERE MANAGEMENTYN = 'Y'
+		  AND DELYN = 'N'
+	</select>
+
+	
+	<select id="selectPkCountTadminMstIcsbxct" resultType="java.lang.Integer" >
+		/* adm-item-substitution-sql-oracle.xml - selectPkCountTadminMstIcsbxct */
+		SELECT COUNT(1)
+	  	  FROM TADMIN_MST_ICSBXCT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	 	   AND ICKEY = #{ickey}
+		   AND SBKEY = #{sbkey}	
+	</select>
+
+	<select id="selectTAdminMstIcsbxctCount" resultType="java.lang.Integer">
+		/* adm-item-substitution-sql-oracle.xml - selectTAdminMstIcsbxctCount */
+		SELECT	COUNT(1)
+		FROM	TADMIN_MST_ICSB A
+		WHERE A.OWKEY = #{owkey}
+		  AND A.ICKEY = #{ickey}
+		  AND A.SBKEY = #{sbkey}
+		  AND A.DELYN = 'Y'
+	</select>
+
+	<select id="selectTAdminMstIcsbxct" resultType="camelMap">
+		/* adm-item-substitution-sql-oracle.xml - selectTAdminMstIcsbxct */
+		SELECT	'0' AS CHK
+		    	,A.OWKEY
+				,A.ICKEY
+				,A.SBKEY
+				,A.CTKEY
+		      	,B.CTNM
+		  FROM	TADMIN_MST_ICSBXCT A 
+		  INNER JOIN TADMIN_MST_CT B
+		  		  ON A.CTKEY = B.CTKEY
+		 WHERE  A.OWKEY = #{owkey}
+			AND A.ICKEY = #{ickey}
+			AND A.SBKEY = #{sbkey}
+	</select>
+	
+	<insert id="insertTAdminMstIcsbxct" >
+		/* adm-item-substitution-sql-oracle.xml - insertTAdminMstIcsbxct */
+			INSERT INTO TADMIN_MST_ICSBXCT(
+			     	OWKEY
+                	,ICKEY
+                    ,SBKEY
+                    ,CTKEY
+					,UDF1
+                    ,INSERTDATE
+                    ,INSERTURKEY
+                    ,UPDATEDATE
+                    ,UPDATEURKEY
+			    ) VALUES (
+					#{owkey}
+					,#{ickey}
+					,#{sbkey}
+					,#{ctkey}
+					,#{udf1}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+	
+	<delete id="deleteSubstitution">
+		/* adm-item-substitution-sql-oracle.xml - deleteSubstitution */
+		UPDATE 	TADMIN_MST_ICSB
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{sysdate}
+		WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+		<if test="sbkey != null">
+		   AND	SBKEY = #{sbkey}	
+		</if> 	
+	</delete>
+	
+	<update id="updateTAdminMstIcsbxct">
+		/* adm-item-substitution-sql-oracle.xml - updateTAdminMstIcsbxct */
+		UPDATE	TADMIN_MST_ICSBXCT
+		SET		OWKEY = #{owkey}
+				,ICKEY = #{ickey}
+				,SBKEY = #{sbkey}
+				,CTKEY = #{ctkey}    		      		        
+		        ,UPDATEDATE = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		WHERE	OWKEY = #{owkey}
+		  AND	ICKEY = #{ickey}		
+		  AND	SBKEY = #{sbkey}
+		  AND	CTKEY = #{ctkey}		
+	</update>
+	
+	<delete id="deleteTAdminMstIcsbxct">
+		/* adm-item-substitution-sql-oracle.xml - deleteTAdminMstIcsbxct */
+			DELETE 
+			 FROM	TADMIN_MST_ICSBXCT
+			WHERE	OWKEY = #{owkey}
+			  AND	ICKEY = #{ickey}
+			<if test="sbkey != null">
+			  AND	SBKEY = #{sbkey}	
+			</if> 
+			<if test="ctkey != null">
+	 	  	  AND   CTKEY = #{ctkey}
+	    	</if> 
+	</delete>
+	
+	<select id="selectPkCountIcxCt" resultType="java.lang.Integer" >
+		/* adm-item-substitution-sql-oracle.xml - selectPkCountIcxCt */
+		SELECT 	COUNT(*)
+		FROM 	TADMIN_MST_ICXCT
+		WHERE 	CTKEY = #{ctkey}
+		AND 	ICKEY = #{ickey}        
+	</select>
+	
+	<select id="selectPkCountIcuttypexIcxCt" resultType="java.lang.Integer" >
+		/* adm-item-substitution-sql-oracle.xml - selectPkCountIcuttypexIcxCt */
+		SELECT 	COUNT(*)
+		FROM 	(SELECT A.ICKEY 
+						,A.ICUNITKEY
+						,A.OWKEY 
+						,B.CTKEY
+				FROM 	TADMIN_MST_IC A
+				INNER JOIN TADMIN_MST_ICXCT B
+						ON A.OWKEY = B.OWKEY
+					   AND A.ICKEY = B.ICKEY
+				) TB1
+		INNER JOIN TADMIN_MST_ICUTXTYPEXCT TB2
+				ON TB1.CTKEY = TB2.CTKEY
+			   AND TB1.ICUNITKEY = TB2.ICUNITKEY
+		WHERE 	TB1.CTKEY = #{ctkey}
+		AND 	TB1.OWKEY = #{owkey}
+		AND 	TB1.ICKEY = #{ickey}
+		AND 	TB2.ICUNITTYPE = #{icunittype}
+	</select>
+
+	<select id="selectItemCodeType" resultType="camelMap">
+		/* adm-item-substitution-sql-oracle.xml - selectItemCodeType */
+		SELECT A.ICUNITTYPE AS FIELD1
+			 , B.ADCDDTNM AS FIELD2
+			 , A.ICUNITKEY AS FIELD3
+			 , A.LENGTH AS FIELD4
+			 , A.WIDTH AS FIELD5
+			 , A.HEIGHT AS FIELD6
+			 , A.WEIGHT/1000 AS FIELD7
+			 , A.VOL/1000 AS FIELD8
+			 , A.ICUNITQTY AS FIELD9
+		FROM TADMIN_MST_ICUTXTYPE A
+				 LEFT OUTER JOIN (
+			SELECT B.ADCDDTKEY
+				 , B.ADCDDTNM
+			FROM TADMIN_MST_ADCD_HD A
+					 INNER JOIN TADMIN_MST_ADCD_DT B
+								ON A.ADCDHDKEY = B.ADCDHDKEY
+									AND A.ADCDHDKEY ='ICUTTYPE'
+									AND B.LAKEY = #{slakey}
+		) B
+								 ON A.ICUNITTYPE = B.ADCDDTKEY
+		WHERE A.OWKEY = #{owkey}
+		  AND A.ICUNITKEY = #{icunitkey}
+	</select>
+</mapper>

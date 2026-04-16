@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnIvtfMapper">
+	<select id="selectSerialUlcCheck" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		FROM TWORK_INFO_IVATXULCXSN
+		WHERE CTKEY = #{ctkey}
+		  AND ULCKEY = #{ulckey}
+	</select>
+	
+	<insert id="insertIvtfHd">
+		INSERT INTO TWORK_INFO_IVTF_HD
+		(
+			CTKEY, IVTF_HDKEY, OR_TYPE_CD, WKSTATUS,
+			REQUESTDATE, CONFIRMDATE,
+			INSERTDATE, INSERTURKEY, 
+			UPDATEDATE, UPDATEURKEY
+		)
+		VALUES(
+			#{ctkey}, #{ivtf_hdkey}, '950', '00',
+			#{requestdate, typeHandler=GmtDateTimeTypeHandler}, #{confirmdate, typeHandler=GmtDateTimeTypeHandler},
+			#{sysdate},  #{surkey},
+			#{sysdate},  #{surkey}
+		)
+	</insert>
+	
+	<insert id="insertIvtfDt">
+		INSERT INTO TWORK_INFO_IVTF_DT
+		(
+			CTKEY, IVTF_HDKEY, IVTF_DTKEY, WKSTATUS, IVATKEY, 
+			OWKEY, ICKEY, EXQTY, CFQTY, UOM, LOGGRPCD, LCKEY, ULCKEY, 
+			INSERTDATE, INSERTURKEY, 
+			UPDATEDATE, UPDATEURKEY
+		)
+		VALUES(
+			#{ctkey}, #{ivtf_hdkey}, #{ivtf_dtkey}, '00', #{ivatkey}, 
+			#{owkey}, #{ickey}, #{mv_qty}, 0, #{uom}, #{loggrpcd}, #{lckey}, #{ulckey}, 
+			#{sysdate},  #{surkey},
+			#{sysdate},  #{surkey}
+		)
+	</insert>
+	
+</mapper>	

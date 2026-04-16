@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.oms.ormaster.mapper.OwnerMapper">
+	
+	<select id="selectOwnerList"  resultType="com.daiso.oms.ormaster.dto.OwDTO">
+		/* oms-master-owner-sql-oracle.xml selectOwnerList */
+        SELECT OWKEY
+		     , OWNM
+		     , REGNO
+		     , BIZTYPE
+		     , BIZCTG
+		     , CITY
+		     , STATE
+		     , TEL1
+		     , TEL2
+		     , FAX
+		     , CONTACT
+		     , CEO
+		     , CNTRYCD
+		     , ADDR1
+		     , ADDR2
+		     , ZIPCD
+		     , DELYN
+		     , CLOSDATE
+		     , INSERTDATE
+		     , INSERTURKEY
+		     , UPDATEDATE
+		     , UPDATEURKEY
+		FROM TORDER_MST_OW
+		WHERE OWKEY = 'DAISO'
+	</select>
+	
+</mapper>

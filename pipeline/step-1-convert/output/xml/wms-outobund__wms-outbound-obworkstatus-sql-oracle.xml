@@ -1,0 +1,1189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObReportMapper">
+    <select id="selectPkRemainCount" resultType="java.lang.Integer">
+        /* wms-outbound-pkcnfrm-sql-oracle.xml - selectPkRemainCount - 피킹확정 - 피킹지시 정보 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectPkRemainSql"/>
+        )
+    </select>
+
+    <select id="selectPkRemain" resultType="camelMap">
+        /* wms-outbound-pkcnfrm-sql-oracle.xml - selectPkRemain - 피킹확정 - 피킹지시 정보 조회 */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT *
+        FROM (
+        <include refid="selectPkRemainSql"/>
+        )
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectPkRemainSql">
+        /* wms-outbound-pkcnfrm-sql-oracle.xml - selectPkRemainSql - 피킹확정 - 피킹지시 상세 조회 SQL */
+        SELECT * FROM (
+                SELECT 0 AS CHK                                                                              /*체크박스*/
+                        ,PIHD.CTKEY                                                                          /*센터코드*/
+                        ,PIHD.OWKEY                                                                          /*화주코드*/
+                        ,SUBSTR(WAHD.WAHDDAY, 1, 8) AS WAHDDAY                                            /*웨이브작업일*/
+                        ,WAHD.WARND                                                                        /*웨이브 회차*/
+                        ,PIDT.ICKEY                                                                          /*상품코드*/
+                        ,CASE WHEN REG.PIHDKEY IS NOT NULL THEN '재피킹' ELSE '일반' END AS PKTYPE                /*구분*/
+                        ,OBHD.WKTYPECD                                                                      /*작업 유형*/
+                        ,IC.ICNM                                                                               /*상품명*/
+                        ,PIDT.LCKEY                                                                      /*로케이션 코드*/
+                        ,SUM (PIDT.EXPCTQTY) AS EXPCTQTY                                                     /*지시수량*/
+                        ,SUM (PIDT.CNFRMQTY) AS CNFRMQTY                                                     /*피킹수량*/
+                        ,SUM(PIDT.EXPCTQTY - PIDT.CNFRMQTY) AS REMAINQTY                                   /*미피킹 수량*/
+                        ,MAX(PIDT.PKCNFRMURKEY) AS UPDATEURKEY                                               /*작업지시자*/
+                        ,MAX(PIHD.PKCNFRMDATE) AS UPDATEDATE                                               /*작업 지시일 */
+                FROM TWORK_INFO_OB_HD OBHD
+                    INNER JOIN TWORK_INFO_PI_HD PIHD
+                        ON OBHD.CTKEY = PIHD.CTKEY
+                        AND OBHD.OWKEY = PIHD.OWKEY
+                        AND OBHD.PIHDKEY = PIHD.PIHDKEY
+                    INNER JOIN TWORK_INFO_WA_HD WAHD
+                        ON OBHD.CTKEY = WAHD.CTKEY
+                        AND OBHD.OWKEY = WAHD.OWKEY
+                        AND OBHD.WAHDKEY = WAHD.WAHDKEY
+                    INNER JOIN TWORK_INFO_PI_DT PIDT
+                        ON PIHD.CTKEY = PIDT.CTKEY
+                        AND PIHD.OWKEY = PIDT.OWKEY
+                        AND PIHD.PIHDKEY = PIDT.PIHDKEY
+                    INNER JOIN TWORK_INFO_OB_DT OBDT
+                        ON PIHD.CTKEY = OBDT.CTKEY
+                        AND PIHD.OWKEY = OBDT.OWKEY
+                        AND PIDT.OBHDKEY = OBDT.OBHDKEY
+                        AND PIDT.OBDTKEY = OBDT.OBDTKEY
+                    INNER JOIN TWORK_MST_IC IC
+                        ON PIDT.CTKEY = IC.CTKEY
+                        AND PIDT.OWKEY = IC.OWKEY
+                        AND PIDT.ICKEY = IC.ICKEY
+                    LEFT OUTER JOIN TWORK_INFO_REPK_REG REG
+                        ON PIHD.CTKEY = REG.CTKEY
+                        AND PIHD.OWKEY = REG.OWKEY
+                        AND PIHD.PIHDKEY = REG.PIHDKEY
+                WHERE OBDT.OBDTSTATUSCD IN ('25', '30')                                            /*부분피킹 OR 피킹완료*/
+                GROUP BY
+                    PIHD.CTKEY,
+                    PIHD.OWKEY,
+                    SUBSTR(WAHD.WAHDDAY, 1, 8),
+                    WAHD.WARND,
+                    PIDT.ICKEY,
+                    PIDT.LCKEY,
+                    CASE WHEN REG.PIHDKEY IS NOT NULL THEN '재피킹' ELSE '일반' END,
+                    IC.ICNM,
+                    OBHD.WKTYPECD
+                HAVING SUM(PIDT.EXPCTQTY - PIDT.CNFRMQTY) > 0                                     /*미피킹 수량이 있을 때*/
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY CTKEY, OWKEY , WAHDDAY DESC, WARND
+    </sql>
+
+    <sql id="selectObTotalReportSql">
+        /* wms-outbound-pkcnfrm-sql-oracle.xml - selectObTotalReportSql -  - 총량 피킹 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT
+                         '0' AS CHK
+                        ,MAX(PIDT.CTKEY)                                           AS CTKEY
+                        ,MAX(PIDT.OWKEY)                                           AS OWKEY
+                        , PIDT.PIHDKEY                                             AS PIHDKEY
+                        , WAHD.WAHDDAY                                             AS WAHDDAY
+                        ,MAX(PIDT.PKCNFRMDATE)                                     AS UPDATEDATE
+                        , WAHD.WARND                                               AS WARND
+                        , PIHD.WAHDKEY                                             AS WAHDKEY
+                        , MAX(CASE WHEN PIHD.PKDIVCD = '30' THEN 'Y' ELSE 'N' END) AS TOTPKYN
+                        , PIHD.PKDIVCD                                             AS PKDIVCD
+                        , WAHD.WKTYPECD                                            AS WKTYPECD
+                        , PIDT.PKDTWKSTATUSCD                                      AS PKDTWKSTATUSCD
+                        , PIDT.ICKEY                                               AS ICKEY
+                        , IC.ICNM                                                  AS ICNM
+                        , SUM(PIDT.EXPCTQTY)                                       AS EXPCTQTY
+                        , SUM(PIDT.CNFRMQTY)                                       AS CNFRMQTY
+                        , MAX(IVAT.EXPDATE)                                        AS EXPDATE
+                        , MAX(IC.ROBSORTERICYN)                                    AS ROBSORTERICYN
+                        , MAX(IC.PKOTICYN)                                         AS PKOTICYN
+                        , MAX(LC.ZNKEY)                                            AS ZNKEY
+                        , MAX(LC.ARKEY)                                            AS ARKEY
+                        , MAX(PIDT.LCKEY)                                          AS LCKEY
+                        , CNTR.CNTRBARCODE                                         AS CNTRBARCODE
+                        , MAX(PIDT.PKCNFRMURKEY)                                    AS UPDATEURKEY
+                FROM TWORK_INFO_PI_DT PIDT                                     /*피킹 상세*/
+                INNER JOIN TWORK_INFO_PI_HD PIHD                               /*피킹 해더*/
+                        ON PIDT.CTKEY = PIHD.CTKEY
+                        AND PIDT.OWKEY = PIHD.OWKEY
+                        AND PIDT.PIHDKEY = PIHD.PIHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WAHD                               /*웨이브해더*/
+                        ON PIHD.CTKEY = WAHD.CTKEY
+                        AND PIHD.OWKEY = WAHD.OWKEY
+                        AND PIHD.WAHDKEY = WAHD.WAHDKEY
+                LEFT JOIN TWORK_MST_IC IC                                     /*상품마스터*/
+                        ON PIDT.CTKEY = IC.CTKEY
+                        AND PIDT.OWKEY = IC.OWKEY
+                        AND PIDT.ICKEY = IC.ICKEY
+                LEFT JOIN TWORK_INFO_IVAT IVAT                                /*상품속성(유통기한)*/
+                        ON PIDT.CTKEY = IVAT.CTKEY
+                        AND PIDT.OWKEY = IVAT.OWKEY
+                        AND PIDT.IVATKEY = IVAT.IVATKEY
+                LEFT JOIN TWORK_INFO_PK_CNTR_DT CNTR                          /*용기*/
+                        ON PIDT.CTKEY = CNTR.CTKEY
+                        AND PIDT.OWKEY = CNTR.OWKEY
+                        AND PIDT.PIHDKEY = CNTR.PIHDKEY
+                        AND PIDT.PIDTKEY = CNTR.PIDTKEY
+                LEFT JOIN TWORK_MST_LC LC                                    /*로케이션 마스터*/
+                        ON PIDT.CTKEY = LC.CTKEY
+                        AND PIDT.LCKEY = LC.LCKEY
+                WHERE 1=1
+                        AND PIDT.PKDTWKSTATUSCD = '10'                         /*완료건*/
+                        AND PIHD.PKDIVCD = '20'                                /*총량 피킹 */
+                GROUP BY
+                        PIDT.PIHDKEY
+                        , WAHD.WAHDDAY
+                        , WAHD.WARND
+                        , PIHD.WAHDKEY
+                        , PIHD.PKDIVCD
+                        , WAHD.WKTYPECD
+                        , PIDT.PKDTWKSTATUSCD
+                        , PIDT.ICKEY
+                        , IC.ICNM
+                        , CNTR.CNTRBARCODE   --용기기준으로 그륩핑 1상품 - N건 용기
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC, UPDATEDATE DESC, WARND DESC, CNTRBARCODE DESC
+    </sql>
+
+    <select id="selectObTotalReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObTotalReportSql"/>
+        )
+    </select>
+
+    <select id="selectObTotalReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+            <include refid="selectObTotalReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectObHybridPkReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectObHybridPkReportSql -  - 통합 피킹 통계 조회 SQL */
+        WITH WADW_CTE AS (
+            SELECT  CTKEY
+                    , OWKEY
+                    , PIHDKEY
+                    , WAHDDAY
+                    , WAHDKEY
+                    , WKTYPECD
+            FROM TWORK_INFO_WA_HD
+            WHERE 1=1
+            AND WKTYPECD = 'DW'
+        ),
+        WARW_CTE AS (
+        SELECT  CTKEY
+                , OWKEY
+                , PIHDKEY
+                , WAHDKEY
+                , WKTYPECD
+        FROM TWORK_INFO_WA_HD
+        WHERE 1=1
+        AND WKTYPECD = 'RW'
+        ),
+        PDS_CTE AS (
+                SELECT
+                PD.CTKEY
+                , PD.OWKEY
+                , PD.PIHDKEY
+                , PD.LCKEY
+                , PD.ICKEY
+                , SUM(CASE WHEN WA.WKTYPECD = 'DW' THEN PD.CNFRMQTY ELSE 0 END) AS DW_QTY
+                , SUM(CASE WHEN WA.WKTYPECD = 'RW' THEN PD.CNFRMQTY ELSE 0 END) AS RW_QTY
+                FROM TWORK_INFO_PI_DT PD
+                INNER JOIN TWORK_INFO_OB_HD OH
+                ON PD.CTKEY    = OH.CTKEY
+                AND PD.OWKEY   = OH.OWKEY
+                AND PD.OBHDKEY = OH.OBHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WA
+                ON OH.CTKEY    = WA.CTKEY
+                AND OH.OWKEY   = WA.OWKEY
+                AND OH.WAHDKEY = WA.WAHDKEY
+                WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(dwcd) or @com.kns.framework.util.StringUtil@isNotEmpty(rwcd)">
+                    AND WA.WAHDKEY IN (
+                    <trim suffixOverrides=",">
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(dwcd)">
+                            #{dwcd},
+                        </if>
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(rwcd)">
+                            #{rwcd},
+                        </if>
+                    </trim>
+                    )
+                </if>
+                GROUP BY PD.CTKEY, PD.OWKEY, PD.PIHDKEY, PD.LCKEY, PD.ICKEY
+        )
+        SELECT * FROM (
+                SELECT 0 AS CHK
+                        , PIDT.PIHDKEY
+                        , PIDT.CTKEY
+                        , PIDT.OWKEY
+                        , WADW.WAHDDAY                 AS WAHDDAY
+                        , MAX(PIDT.PKCNFRMDATE)        AS UPDATEDATE
+                        , PIHD.PIHDNM                  AS PIHDNM
+                        , WADW.WAHDKEY                 AS DWCD
+                        , WARW.WAHDKEY                 AS RWCD
+                        , PIDT.ICKEY                   AS ICKEY
+                        , IC.ICNM                      AS ICNM
+                        , SUM(PIDT.CNFRMQTY)           AS CNFRMQTY
+                        , SUM(COALESCE(PDS.DW_QTY, 0))      AS DWCNFRMQTY
+                        , SUM(COALESCE(PDS.RW_QTY, 0))      AS RWCNFRMQTY
+                        , MIN(IVAT.EXPDATE)            AS EXPDATE
+                        , IC.ROBSORTERICYN             AS ROBSORTERICYN
+                        , IC.PKOTICYN                  AS PKOTICYN
+                        , LC.ZNKEY                     AS ZNKEY
+                        , LC.ARKEY                     AS ARKEY
+                        , PIDT.LCKEY                   AS LCKEY
+                        , PIDT.PKCNFRMURKEY            AS UPDATEURKEY
+                FROM TWORK_INFO_PI_HD PIHD
+                INNER JOIN TWORK_INFO_PI_TOT_DT PIDT
+                        ON PIDT.CTKEY   = PIHD.CTKEY
+                        AND PIDT.OWKEY  = PIHD.OWKEY
+                        AND PIDT.PIHDKEY = PIHD.PIHDKEY
+                        AND PIDT.PKWKSTATUSCD = '10'
+                INNER JOIN WADW_CTE WADW
+                        ON PIHD.CTKEY   = WADW.CTKEY
+                        AND PIHD.OWKEY  = WADW.OWKEY
+                        AND PIHD.PIHDKEY = WADW.PIHDKEY
+                INNER JOIN WARW_CTE WARW
+                        ON PIHD.CTKEY   = WARW.CTKEY
+                        AND PIHD.OWKEY  = WARW.OWKEY
+                        AND PIHD.PIHDKEY = WARW.PIHDKEY
+                INNER JOIN PDS_CTE PDS
+                        ON PIDT.CTKEY   = PDS.CTKEY
+                        AND PIDT.OWKEY  = PDS.OWKEY
+                        AND PIDT.PIHDKEY = PDS.PIHDKEY
+                        AND PIDT.LCKEY  = PDS.LCKEY
+                        AND PIDT.ICKEY  = PDS.ICKEY
+                LEFT JOIN TWORK_MST_IC IC
+                        ON PIDT.CTKEY   = IC.CTKEY
+                        AND PIDT.OWKEY  = IC.OWKEY
+                        AND PIDT.ICKEY  = IC.ICKEY
+                LEFT JOIN TWORK_INFO_IVAT IVAT
+                        ON PIDT.CTKEY   = IVAT.CTKEY
+                        AND PIDT.OWKEY  = IVAT.OWKEY
+                        AND PIDT.IVATKEY = IVAT.IVATKEY
+                LEFT JOIN TWORK_MST_LC LC
+                        ON PIDT.CTKEY   = LC.CTKEY
+                        AND PIDT.LCKEY  = LC.LCKEY
+                WHERE 1=1
+                 AND PIHD.PKDIVCD ='30'      /* 통합피킹 */
+                GROUP BY
+                PIDT.PIHDKEY
+                , PIDT.CTKEY
+                , PIDT.OWKEY
+                , WADW.WAHDDAY
+                , PIHD.PIHDNM, WADW.WAHDKEY
+                , WARW.WAHDKEY, PIDT.ICKEY
+                , IC.ICNM
+                , IC.ROBSORTERICYN
+                , IC.PKOTICYN
+                , LC.ZNKEY
+                , LC.ARKEY
+                , PIDT.LCKEY
+                , PIDT.PKCNFRMURKEY
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+            AND OWKEY = #{owkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+            AND CTKEY = #{ctkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(waStartDate+waEndDate)" >
+            AND WAHDDAY BETWEEN #{waStartDate}  AND #{waEndDate}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+            AND ICKEY = #{ickey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(zonekey)" >
+            AND ZNKEY = #{zonekey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+            AND ARKEY = #{arkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)" >
+            AND LCKEY = #{lckey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(urkey)" >
+            AND UPDATEURKEY = #{urkey}
+        </if>
+        ORDER BY WAHDDAY DESC, UPDATEDATE DESC
+    </sql>
+
+    <select id="selectObHybridPkReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObHybridPkReportSql"/>
+        )
+    </select>
+
+    <select id="selectObHybridPkReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectObHybridPkReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectClassMidReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectClassMidReportSql -  -  중분류 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                        , WIFWA.CTKEY        AS CTKEY
+                        , WIFWA.OWKEY        AS OWKEY
+                        , WA.WAHDDAY         AS WAHDDAY        /*웨이브작업일자*/
+                        , WA.WAHDKEY
+                        , WIFIC.UPDATEDATE   AS UPDATEDATE    /*작업일시*/
+                        , WA.WARND           AS WARND          /*차수*/
+                        , WIFIC.ICKEY        AS ICKEY          /*상품코드*/
+                        , WIFIC.ICNM         AS ICNM           /*상품명*/
+                        , WIFIC.QTY          AS CNFRMQTY       /*처리수량*/
+                        , STN.STNDIVCD       AS STNDIVCD       /*구분파레트렉*/
+                        , STN.STNNO          AS STNNO          /*중분류 STN*/
+                        , CELL.CELLNO        AS CELLNO         /*셀*/
+                        , WIFOR.DASCELLBRCD  AS DASCELLBRCD    /*셀바코드*/
+                        , WIFIC.EMPNOBRCD    AS EMPNOBRCD      /*작업자*/
+                        FROM TWIF_DAS_PRCSRSLT_WA WIFWA
+                        INNER JOIN TWIF_DAS_PRCSRSLT_ORDER WIFOR
+                            ON WIFWA.CTKEY = WIFOR.CTKEY
+                            AND WIFWA.OWKEY = WIFOR.OWKEY
+                            AND WIFWA.WASEQ = WIFOR.WASEQ
+                        INNER JOIN TWIF_DAS_PRCSRSLT_IC WIFIC
+                            ON WIFWA.CTKEY = WIFIC.CTKEY
+                            AND WIFWA.OWKEY = WIFIC.OWKEY
+                            AND WIFOR.WASEQ = WIFIC.WASEQ
+                            AND WIFOR.ORDERSEQ = WIFIC.ORDERSEQ
+                        INNER JOIN TWORK_MST_STNWKCELL CELL
+                            ON CELL.CTKEY = WIFIC.CTKEY
+                            AND CELL.CELLBARCODE = WIFOR.DASCELLBRCD
+                        INNER JOIN TWORK_INFO_WA_HD WA
+                            ON WA.CTKEY = WA.CTKEY
+                            AND WA.OWKEY = WA.OWKEY
+                            AND WA.WAHDKEY = WIFWA.WAHDKEY
+                        LEFT JOIN TWORK_MST_STN STN
+                            ON STN.CTKEY = WIFIC.CTKEY
+                            AND STN.STNBARCODE = CELL.STNBARCODE
+                        LEFT JOIN TWIF_DAS_CLASSIFTOTE_MAPP_ORDER MAPP
+                            ON MAPP.CTKEY = WIFIC.CTKEY
+                            AND MAPP.OWKEY = WIFIC.OWKEY
+                            AND MAPP.WASEQ = WIFIC.WASEQ
+                            AND MAPP.ORDERSEQ = WIFIC.ORDERSEQ
+                            AND MAPP.DASCELLBRCD = WIFOR.DASCELLBRCD
+                WHERE WIFWA.DASDIV = '2'                          /*중분류*/
+                AND WIFWA.IFSTATUS = '90'                         /*완료건만*/
+                ORDER BY WA.INSERTDATE DESC , WIFIC.INSERTDATE DESC , WA.WARND ASC
+            )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+
+    </sql>
+
+    <select id="selectClassMidReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectClassMidReportSql"/>
+        )
+    </select>
+
+    <select id="selectClassMidReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectClassMidReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectRePkReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectRePkReportSql -  - 재피킹 통계 조회 SQL */
+        SELECT * FROM (
+                    SELECT  '0' AS CHK
+                            ,REG.OWKEY                                                                     AS OWKEY
+                            ,REG.CTKEY                                                                     AS CTKEY
+                            ,WAHD.WAHDDAY                                                                  AS WAHDDAY
+                            ,TO_CHAR(TO_DATE(REG.UPDATEDATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS UPDATEDATE
+                            ,WAHD.WARND                                                                    AS WARND
+                            ,WAHD.WAHDKEY                                                                  AS WAHDKEY
+                            ,CASE WHEN PIHD.PKDIVCD = '30' THEN 'Y'
+                            ELSE 'N' END                                                                   AS "TOTYN"      /*통합회차 여부*/
+                            ,WAHD.WKTYPECD                                                                 AS "WKTYPECD"
+                            ,REG.ICKEY                                                                     AS "ICKEY"
+                            ,IC.ICNM                                                                       AS "ICNM"
+                            ,REG.CNFRMQTY                                                                  AS "CNFRMQTY"
+                            ,IC.ROBSORTERICYN                                                              AS "ROBSORTERICYN"
+                            ,IC.PKOTICYN                                                                   AS "PKOTICYN"
+                            ,LC.ZNKEY                                                                      AS "ZNKEY"
+                            ,LC.ARKEY                                                                      AS "ARKEY"
+                            ,REG.LCKEY                                                                     AS "LCKEY"
+                            ,REG.UPDATEURKEY                                                               AS "UPDATEURKEY"
+                            ,UR.URNM                                                                       AS "URNM"
+                    FROM TWORK_INFO_REPK_REG REG
+                    INNER JOIN TWORK_INFO_WA_HD WAHD
+                            ON WAHD.OWKEY = REG.OWKEY
+                            AND WAHD.CTKEY = REG.CTKEY
+                            AND WAHD.PIHDKEY = REG.PIHDKEY
+                            AND WAHD.WKTYPECD = CASE REG.WKPLCDIVCD WHEN '30' THEN 'RW' ELSE 'DW' END
+                    INNER JOIN TWORK_INFO_PI_HD PIHD
+                            ON PIHD.OWKEY = REG.OWKEY
+                            AND PIHD.CTKEY = REG.CTKEY
+                            AND PIHD.PIHDKEY = REG.PIHDKEY
+                    INNER JOIN TWORK_MST_IC IC
+                            ON IC.OWKEY = REG.OWKEY
+                            AND IC.CTKEY = REG.CTKEY
+                            AND IC.ICKEY = REG.ICKEY
+                    INNER JOIN TWORK_MST_LC LC
+                            ON LC.CTKEY = REG.CTKEY
+                            AND LC.LCKEY = REG.LCKEY
+                    INNER JOIN TADMIN_MST_UR UR
+                            ON UR.CTKEY = REG.CTKEY
+                            AND UR.OWKEY = REG.OWKEY
+                            AND UR.URKEY = REG.UPDATEURKEY
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC, UPDATEDATE DESC , WARND DESC
+    </sql>
+
+    <select id="selectRePkCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectRePkReportSql"/>
+        )
+    </select>
+
+    <select id="selectRePkReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectRePkReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectClassSmlReportSql">
+
+        /* wms-outbound-ObReport-sql-oracle.xml - selectClassSmlReportSql -  - 소분류 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                        ,WIFIC.OWKEY
+                        ,WIFIC.CTKEY
+                        ,WAHD.WAHDDAY                                   /*웨이브 작업일자*/
+                        ,WAHD.WAHDKEY
+                        ,WIFIC.UPDATEDATE                               /*작업시간*/
+                        ,WAHD.WARND                                     /*차수*/
+                        ,WIFIC.ICKEY                                    /*상품코드*/
+                        ,WIFIC.ICNM                                     /*상품이름*/
+                        ,WIFIC.QTY                                      /*처리수량*/
+                        ,OBHD.CLASSIFSPECCD                             /*규격*/
+                        ,SUBSTR(WIFOR.DASCELLBRCD, 2, 2) AS STNNO       /*스테이션번호*/
+                        ,SUBSTR(WIFOR.DASCELLBRCD, -2) AS CELLNO        /*셀번호*/
+                        ,WIFOR.DASCELLBRCD                              /*셀바코드*/
+                        ,OBHD.EXTERNORDERKEY                            /*원주문번호*/
+                        ,OBHD.OBHDKEY                                   /*릴리즈코드*/
+                        ,OBHD.WBLNO                                     /*송장번호*/
+                        ,OBHD.CLASSIFCNTRBARCODE                        /*용기바코드*/
+                        ,WIFIC.EMPNOBRCD                                /*사번*/
+                FROM TWIF_DAS_PRCSRSLT_IC WIFIC                         /*상품 마감 테이블*/
+                INNER JOIN TWIF_DAS_PRCSRSLT_ORDER WIFOR                /*주문 마감 테이블*/
+                        ON WIFIC.OWKEY = WIFOR.OWKEY
+                        AND WIFIC.CTKEY = WIFOR.CTKEY
+                        AND WIFIC.ORDERSEQ = WIFOR.ORDERSEQ
+                        AND WIFIC.WASEQ = WIFOR.WASEQ
+                INNER JOIN TWIF_DAS_PRCSRSLT_WA WIFWA
+                        ON WIFOR.OWKEY = WIFWA.OWKEY
+                        AND WIFOR.CTKEY = WIFWA.CTKEY
+                        AND WIFOR.WASEQ = WIFWA.WASEQ
+                INNER JOIN TWORK_INFO_OB_HD OBHD
+                        ON WIFOR.CTKEY = OBHD.CTKEY
+                        AND WIFOR.OWKEY = OBHD.OWKEY
+                        AND WIFOR.OBHDKEY = OBHD.OBHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WAHD
+                        ON WAHD.OWKEY = WIFWA.OWKEY
+                        AND WAHD.CTKEY = WIFWA.CTKEY
+                        AND WAHD.WAHDKEY = WIFWA.WAHDKEY
+                WHERE 1=1
+                AND WIFWA.DASDIV = '3'                                 /*소분류만*/
+                AND WIFWA.IFSTATUS = '90'                              /*전송완료*/
+                )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC , UPDATEDATE DESC, WARND ASC
+    </sql>
+
+    <select id="selectClassSmlReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectClassSmlReportSql"/>
+        )
+    </select>
+
+    <select id="selectClassSmlReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectClassSmlReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectClassSmlClosReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectClassSmlClosReportSql -  - 소분류 마감 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                        , WIFIC.OWKEY
+                        , WIFIC.CTKEY
+                        , WAHD.WAHDDAY                                             /*웨이브생성일*/
+                        , MIN(WIFIC.UPDATEDATE) AS STARTTIME                           /*첫 매핑시간*/
+                        , MAX(WIFIC.UPDATEDATE) AS ENDTIME                         /*종료시간*/
+                        , TO_CHAR(
+                            DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE + (
+                            TO_DATE(MAX(WIFIC.UPDATEDATE), 'YYYYMMDDHH24MISS') -
+                            TO_DATE(MIN(WIFIC.UPDATEDATE) , 'YYYYMMDDHH24MISS')
+                            ), 'HH24:MI:SS'
+                        ) AS TIMEGAP
+                        , WAHD.WARND AS WARND                                        /*차수*/
+                        , OBHD.CLASSIFCNTRBARCODE
+                        , OBHD.CLASSIFSPECCD AS CLASSIZE                             /*셀크기*/
+                        , SUBSTR(WIFORD.DASCELLBRCD, 2, 2) AS STNNO                  /*스테이션번호*/
+                        , SUBSTR(WIFORD.DASCELLBRCD, 5, 2) AS CELLNO                 /*셀번호*/
+                        , WIFORD.DASCELLBRCD AS CELLBRCD                             /*셀바코드*/
+                        , OBHD.EXTERNORDERKEY                                        /*원주문코드*/
+                        , OBHD.OBHDKEY                                               /*릴리즈코드*/
+                        , OBHD.WBLNO                                                 /*송장번호*/
+                        , COUNT(DISTINCT WIFIC.ICKEY) AS SKU                         /*sku수*/
+                        , SUM(WIFIC.QTY) AS SUMEA                                    /*완료수량*/
+                        , MAX(WIFIC.UPDATEURKEY) AS UPDATEURKEY                      /*처리자*/
+                FROM TWIF_DAS_CLASSIFTOTE_CLOS_IC WIFIC
+                INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_ORDER WIFORD
+                    ON WIFORD.OWKEY = WIFIC.OWKEY
+                    AND WIFORD.CTKEY = WIFIC.CTKEY
+                    AND WIFORD.ORDERSEQ = WIFIC.ORDERSEQ
+                    AND WIFORD.WASEQ = WIFIC.WASEQ
+                    AND WIFORD.WAHDKEY = WIFIC.WAHDKEY
+                    AND WIFORD.OBHDKEY = WIFIC.OBHDKEY
+                INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_WA WIFWA
+                    ON WIFWA.OWKEY = WIFORD.OWKEY
+                    AND WIFWA.CTKEY = WIFORD.CTKEY
+                    AND WIFWA.WASEQ = WIFORD.WASEQ
+                    AND WIFWA.WAHDKEY = WIFORD.WAHDKEY
+                    AND WIFWA.IFTYPE = 'R'                                         /*수신 이력만*/
+                INNER JOIN TWORK_INFO_OB_HD OBHD
+                    ON WIFIC.OWKEY = OBHD.OWKEY
+                    AND WIFIC.CTKEY = OBHD.CTKEY
+                    AND WIFIC.OBHDKEY = OBHD.OBHDKEY
+                    AND WIFIC.WAHDKEY = OBHD.WAHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WAHD
+                    ON WAHD.OWKEY = WIFIC.OWKEY
+                    AND WAHD.CTKEY = WIFIC.CTKEY
+                    AND WAHD.WAHDKEY = WIFIC.WAHDKEY
+        WHERE 1=1
+        AND WIFWA.IFSTATUS = '90'                                              /*인터페이스 완료 건만*/
+        GROUP BY WAHD.WAHDDAY
+                , WAHD.WARND
+                , OBHD.CLASSIFSPECCD
+                , WIFORD.DASCELLBRCD
+                , OBHD.EXTERNORDERKEY
+                , OBHD.OBHDKEY
+                , OBHD.WBLNO
+                , WAHD.WAHDKEY
+                , OBHD.OWKEY
+                , OBHD.CTKEY
+                ,OBHD.CLASSIFCNTRBARCODE
+                , WIFIC.OWKEY
+                , WIFIC.CTKEY
+        ORDER BY WAHD.WAHDKEY DESC
+                , WAHD.WARND ASC
+                , MAX(WIFIC.UPDATEDATE) DESC
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC , ENDTIME DESC, WARND ASC
+    </sql>
+
+    <select id="selectClassSmlClosReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectClassSmlClosReportSql"/>
+        )
+    </select>
+
+    <select id="selectClassSmlClosReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectClassSmlClosReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectClasPackingReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectClasPackingReportSql -  - 포장 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                        ,OBDT.CTKEY                    AS CTKEY
+                        ,OBDT.OWKEY                   AS OWKEY
+                        ,WAHD.WAHDDAY                 AS WAHDDAY
+                        ,OBHD.OBSTATUSCD              AS OBDTATUSCD
+                        ,WAHD.WARND                   AS WARND
+                        ,OBHD.WKTYPECD                AS WKTYPECD
+                        ,OBHD.EXTERNORDERKEY          AS EXTERNORDERKEY
+                        ,OBHD.OBHDKEY                 AS OBHDKEY
+                        ,OBHD.WBLNO                   AS WBLNO
+                        ,OBDT.ICKEY                   AS ICKEY
+                        ,IC.ICNM                      AS ICNM
+                        ,OBDT.CNFRMQTY                AS CNFRMQTY
+                        ,OBDT.CNFRMQTY * IC.SLPRC     AS PRICE
+                        ,ICT.VOL                      AS VOL
+                        ,BOX.BOXNM                    AS BOXNM
+                        ,OBHD.PCKGDATE              AS UPDATEDATE
+                        ,OBHD.PCKGURKEY             AS UPDATEURKEY
+                FROM TWORK_INFO_OB_HD OBHD
+                INNER JOIN TWORK_INFO_OB_DT OBDT
+                        ON OBHD.OWKEY = OBDT.OWKEY
+                        AND OBHD.CTKEY = OBDT.CTKEY
+                        AND OBHD.OBHDKEY = OBDT.OBHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WAHD
+                        ON WAHD.CTKEY = OBHD.CTKEY
+                        AND WAHD.OWKEY = WAHD.OWKEY
+                        AND OBHD.WAHDKEY = WAHD.WAHDKEY
+                INNER JOIN TWORK_MST_IC IC
+                        ON OBDT.OWKEY = IC.OWKEY
+                        AND OBDT.CTKEY = IC.CTKEY
+                        AND OBDT.ICKEY = IC.ICKEY
+                LEFT JOIN TWORK_MST_ICUTXTYPE ICT
+                        ON IC.OWKEY = ICT.OWKEY
+                        AND IC.CTKEY = ICT.CTKEY
+                        AND IC.ICKEY = ICT.ICKEY
+                        AND IC.ICUNITKEY = ICT.ICUNITKEY
+                        AND ICT.ICUNITTYPECD = 'EA'
+                LEFT JOIN TWORK_MST_BOX BOX
+                        ON OBHD.CTKEY = BOX.CTKEY
+                        AND OBHD.PCKGBOXBARCODE = BOX.BOXBARCODE
+                WHERE 1=1
+                AND OBHD.OBSTATUSCD IN ('65','70','85')           --부분출고,출고확정,결품보류확정
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC , WARND DESC , OBHDKEY ASC ,UPDATEDATE DESC
+    </sql>
+
+    <select id="selectClasPackingReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectClasPackingReportSql"/>
+        )
+    </select>
+
+    <select id="selectClasPackingReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectClasPackingReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectObNisReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectObNisReportSql -  - 결품 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                        ,WAHD.WAHDDAY                                     /*웨이브생성일*/
+                        ,NISHD.UPDATEDATE                                 /*작업일*/
+                        ,WAHD.WARND                                       /*차수*/
+                        ,WAHD.WKTYPECD                                    /*작업유형(dw,rw)*/
+                        ,NISHD.OBNISNO                                    /*결품 보류 번호*/
+                        ,OBHD.EXTERNORDERKEY                              /*원주문 번호*/
+                        ,OBHD.OBHDKEY                                     /*릴리즈코드*/
+                        ,OBHD.WBLNO                                       /*송장번호*/
+                        ,NISDT.ICKEY                                      /*상품번호*/
+                        ,IC.ICNM                                          /*상품명*/
+                        ,NISDT.NISQTY                                   /*처리수량*/
+                        ,NISDT.CNFRMQTY * IC.SLPRC AS PRICE               /*금액*/
+                        ,ICT.VOL                                          /*용적*/
+                        ,NISDT.INSERTURKEY                                /*처리자*/
+                        ,NISDT.CTKEY
+                        ,NISDT.OWKEY
+                FROM TWORK_INFO_OB_NIS_HD NISHD
+                INNER JOIN TWORK_INFO_OB_NIS_DT NISDT
+                        ON NISDT.OWKEY = NISHD.OWKEY
+                        AND NISDT.CTKEY = NISHD.CTKEY
+                        AND NISDT.OBNISNO = NISHD.OBNISNO
+                INNER JOIN TWORK_INFO_OB_HD OBHD
+                        ON OBHD.CTKEY = NISDT.CTKEY
+                        AND OBHD.OWKEY = NISDT.OWKEY
+                        AND OBHD.OBHDKEY = NISDT.OBHDKEY
+                INNER JOIN TWORK_INFO_WA_HD WAHD
+                        ON WAHD.CTKEY = OBHD.CTKEY
+                        AND WAHD.OWKEY = OBHD.OWKEY
+                        AND WAHD.WAHDKEY = OBHD.WAHDKEY
+                LEFT JOIN TWORK_MST_IC IC
+                        ON IC.OWKEY = NISDT.OWKEY
+                        AND IC.CTKEY = NISDT.CTKEY
+                        AND IC.ICKEY = NISDT.ICKEY
+                LEFT JOIN TWORK_MST_ICUTXTYPE ICT
+                        ON IC.OWKEY = ICT.OWKEY
+                        AND IC.CTKEY = ICT.CTKEY
+                        AND IC.ICKEY = ICT.ICKEY
+                        AND IC.ICUNITKEY = ICT.ICUNITKEY
+                        AND ICT.ICUNITTYPECD = 'EA'
+                WHERE 1=1
+                AND NISDT.NISPRCSSTATUSCD = '99'  --종결건만
+                AND NISDT.NISQTY > 0              --결품난 항목만
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC ,  UPDATEDATE DESC, WARND ASC
+    </sql>
+
+    <select id="selectObNisReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObNisReportSql"/>
+        )
+    </select>
+
+    <select id="selectObNisReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectObNisReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectObRbReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectObRbReportSql -  - 로봇 실적 통계 조회 SQL */
+        WITH ROBOT_NOMAL AS (                                           /*이형물 + 일반*/
+                    SELECT  '0' AS CHK
+                             ,ROIC.CTKEY
+                            ,ROIC.OWKEY
+                            ,WAHD.WAHDDAY
+                            ,ROIC.UPDATEDATE
+                            ,WAHD.WARND
+                            ,CASE WHEN INDUCTNM = '99' THEN '이형물'
+                            ELSE '일반'
+                            END AS ROBDASRSLTTYPENM                            /*구분*/
+                            ,ROIC.INDUCTNM                               /*인덕션 번호*/
+                            ,ROIC.SEEDWALL                                /*시딩월번호*/
+                            ,ROIC.DASLOC                                     /*셀번호*/
+                            ,ROIC.ROBNO  AS ROBNO                        /*로봇 번호*/
+                            ,ROIC.ICKEY   AS ICKEY                         /*상품코드*/
+                            ,ROIC.ICNM
+                            ,ROIC.QTY                                      /*처리수량*/
+                            ,ROIC.EMPNOBRCD                                   /*사번*/
+                    FROM  TWIF_ROBDAS_PRCSRSLT_WA ROWA
+                    INNER JOIN TWIF_ROBDAS_PRCSRSLT_ORDER ROOR
+                            ON ROWA.OWKEY = ROOR.OWKEY
+                            AND ROWA.CTKEY = ROOR.CTKEY
+                            AND ROWA.WASEQ = ROOR.WASEQ
+                    INNER JOIN TWIF_ROBDAS_PRCSRSLT_IC ROIC
+                            ON ROIC.OWKEY = ROOR.OWKEY
+                            AND ROIC.CTKEY = ROOR.CTKEY
+                            AND ROIC.WASEQ = ROOR.WASEQ
+                            AND ROIC.ORDERSEQ = ROOR.ORDERSEQ
+                    INNER JOIN TWORK_INFO_WA_HD WAHD
+                            ON WAHD.OWKEY = ROWA.OWKEY
+                            AND WAHD.CTKEY = ROWA.CTKEY
+                            AND WAHD.WAHDKEY = ROWA.WAHDKEY
+                    ),
+        ROBOT_NIS AS (                                          /*결품 테이블 */
+                    SELECT  '0' AS CHK
+                            , ROIC.CTKEY
+                            , ROIC.OWKEY
+                            , WAHD.WAHDDAY                              /*웨이브생성일*/
+                            , ROIC.UPDATEDATE                              /*작업일*/
+                            ,WAHD.WARND                                    /*차수*/
+                            ,'미출' AS ROBDASRSLTTYPENM
+                            ,'-' AS INDUCTNM                          /*인덕션 번호*/
+                            ,'-' AS  SEEDWALL                          /*시딩월번호*/
+                            ,'-'  AS DASLOC                               /*셀번호*/
+                            ,'-'  AS ROBNO                         /*셀바코드*/
+                            ,ROIC.ICKEY                                  /*상품코드*/
+                            ,ROIC.ICNM
+                            ,ROIC.QTY  /*처리수량*/
+                            ,ROIC.EMPNOBRCD  /*사번*/
+                    FROM TWIF_ROBDAS_RSLTXNIS_IC ROIC
+                    INNER JOIN TWIF_ROBDAS_RSLTXNIS_ORDER ROOR
+                            ON ROIC.OWKEY = ROOR.OWKEY
+                            AND ROIC.CTKEY = ROOR.CTKEY
+                            AND ROIC.WASEQ = ROOR.WASEQ
+                            AND ROIC.ORDERSEQ = ROOR.ORDERSEQ
+                    INNER JOIN TWIF_ROBDAS_RSLTXNIS_WA ROWA
+                            ON ROIC.OWKEY = ROWA.OWKEY
+                            AND ROIC.CTKEY = ROWA.CTKEY
+                            AND ROIC.WASEQ = ROWA.WASEQ
+                    INNER JOIN TWORK_INFO_WA_HD WAHD
+                            ON WAHD.OWKEY = ROWA.OWKEY
+                            AND WAHD.CTKEY = ROWA.CTKEY
+                            AND WAHD.WAHDKEY = ROWA.WAHDKEY
+                            WHERE ROOR.ROBDASRSLTTYPE = '2'       /*미출건만 조회*/
+        ),
+        ROBOT_STRANGE AS (                                /*이형물 테이블 */
+                    SELECT
+                            '0' AS CHK
+                            , ROIC.CTKEY
+                            ,ROIC.OWKEY
+                            ,WAHD.WAHDDAY                            /*웨이브생성일*/
+                            ,ROIC.UPDATEDATE                            /*작업일*/
+                            ,WAHD.WARND                                  /*차수*/
+                            ,'이형물' AS ROBDASRSLTTYPENM
+                            ,'-' AS INDUCTNM                        /*인덕션 번호*/
+                            ,'-' AS SEEDWALL                       /*시딩월번호*/
+                            ,'-'  AS CELLNO                            /*셀번호*/
+                            ,'-'  AS ROBNO                     /*셀바코드*/
+                            ,ROIC.ICKEY                              /*상품코드*/
+                            ,ROIC.ICNM
+                            ,ROIC.QTY /*처리수량*/
+                            ,ROIC.EMPNOBRCD  /*사번*/
+                    FROM TWIF_ROBDAS_RSLTXNIS_IC ROIC
+                    INNER JOIN TWIF_ROBDAS_RSLTXNIS_ORDER ROOR
+                            ON ROIC.OWKEY = ROOR.OWKEY
+                            AND ROIC.CTKEY = ROOR.CTKEY
+                            AND ROIC.WASEQ = ROOR.WASEQ
+                            AND ROIC.ORDERSEQ = ROOR.ORDERSEQ
+                    INNER JOIN TWIF_ROBDAS_RSLTXNIS_WA ROWA
+                            ON ROIC.OWKEY = ROWA.OWKEY
+                            AND ROIC.CTKEY = ROWA.CTKEY
+                            AND ROIC.WASEQ = ROWA.WASEQ
+                    INNER JOIN TWORK_INFO_WA_HD WAHD
+                            ON WAHD.OWKEY = ROWA.OWKEY
+                            AND WAHD.CTKEY = ROWA.CTKEY
+                            AND WAHD.WAHDKEY = ROWA.WAHDKEY
+                    WHERE ROOR.ROBDASRSLTTYPE = '1'       /*이형물 조회*/
+        )
+        SELECT *
+            FROM(
+            SELECT * FROM ROBOT_NOMAL
+                    UNION ALL
+            SELECT * FROM ROBOT_STRANGE
+                    UNION ALL
+            SELECT * FROM ROBOT_NIS
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC ,  UPDATEDATE DESC, WARND ASC
+    </sql>
+
+    <select id="selectObRbReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObRbReportSql"/>
+        )
+    </select>
+
+    <select id="selectObRbReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectObRbReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectObRbClosReportSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectObRbClosReportSql -  - 로봇 마감 통계 조회 SQL */
+        SELECT * FROM (
+                SELECT '0' AS CHK
+                ,WAHD.CTKEY
+                ,WAHD.OWKEY
+                ,WAHD.WAHDDAY                       /*WA생성일*/
+                ,WIFIC.UPDATEDATE                     /*작업일*/
+                ,WAHD.WARND                            /*차수*/
+                ,'일반' AS WKTYPECD                     /*일반*/
+                ,OBHD.EXTERNORDERKEY                /*주문번호*/
+                ,OBHD.OBHDKEY                      /*릴리즈번호*/
+                ,OBHD.WBLNO
+                ,WIFIC.ICKEY
+                ,IC.ICNM
+                ,WIFIC.QTY
+                ,WIFIC.QTY * IC.SLPRC AS PRICE
+                ,ICT.VOL
+                ,WIFOR.BOXSIZE
+                ,WIFIC.EMPNOBRCD
+        FROM TWIF_ROBDAS_PAKCOMPL_IC WIFIC
+        INNER JOIN TWIF_ROBDAS_PAKCOMPL_ORDER WIFOR
+                ON WIFIC.OWKEY = WIFOR.OWKEY
+                AND WIFIC.CTKEY = WIFOR.CTKEY
+                AND WIFIC.WASEQ = WIFOR.WASEQ
+                AND WIFIC.ORDERSEQ = WIFOR.ORDERSEQ
+        INNER JOIN TWIF_ROBDAS_PAKCOMPL_WA WIFWA
+                ON WIFOR.OWKEY = WIFWA.OWKEY
+                AND WIFOR.CTKEY = WIFWA.CTKEY
+                AND WIFOR.WASEQ = WIFWA.WASEQ
+        INNER JOIN TWORK_INFO_WA_HD WAHD
+                ON WAHD.OWKEY = WIFWA.OWKEY
+                AND WAHD.CTKEY = WIFWA.CTKEY
+                AND WAHD.WAHDKEY = WIFWA.WAHDKEY
+        INNER JOIN TWORK_INFO_OB_HD OBHD    --릴리즈코드
+                ON OBHD.OWKEY = WIFOR.OWKEY
+                AND OBHD.CTKEY = WIFOR.CTKEY
+                AND OBHD.OBHDKEY = WIFOR.OBHDKEY
+        LEFT JOIN TWORK_MST_IC IC
+                ON WIFIC.OWKEY = IC.OWKEY
+                AND WIFIC.CTKEY = IC.CTKEY
+                AND WIFIC.ICKEY = IC.ICKEY
+        LEFT JOIN TWORK_MST_ICUTXTYPE ICT
+                ON ICT.OWKEY = IC.OWKEY
+                AND ICT.CTKEY = IC.CTKEY
+                AND ICT.ICKEY = IC.ICKEY
+                AND IC.ICUNITKEY = ICT.ICUNITKEY
+                AND ICT.ICUNITTYPECD = 'EA'
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        ORDER BY WAHDDAY DESC ,  UPDATEDATE DESC, WARND ASC
+    </sql>
+
+    <select id="selectObRbClosReportCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObRbClosReportSql"/>
+        )
+    </select>
+
+    <select id="selectObRbClosReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectObRbClosReportSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectOrdReciptStatusSql">
+        /* wms-outbound-ObReport-sql-oracle.xml - selectOrdReciptStatusSql -  - 주문 인입 통계 조회 SQL */
+        SELECT * FROM (
+                    SELECT '0'                             AS CHK
+                            , MAX(OBHD.CTKEY)              AS CTKEY                                         /*센터키*/
+                            , MAX(OBHD.OWKEY)              AS OWKEY                                         /*화주키*/
+                            , SUBSTR(OBHD.OBHDDAY, 1, 4)   AS YYYY                                           /*년도*/
+                            , SUBSTR(OBHD.OBHDDAY, 5, 2)   AS MM                                              /*월*/
+                            <if test='"20".equals(div)'>
+                            , SUBSTR(OBHD.OBHDDAY, 7, 2)   AS DD                                              /*일*/
+                            , TO_CHAR(TO_DATE(SUBSTR(OBHD.OBHDDAY, 1, 8), 'YYYYMMDD'), 'DY') AS DAY         /*요일*/
+                            </if>
+                            , COUNT(DISTINCT OBHD.OBORDKEY)   AS ORDERCNT                                 /*주문수*/
+                            , COUNT(DISTINCT OBHD.OBHDKEY)    AS WBLCNT                                  /*송장 수*/
+                            , COUNT(DISTINCT OBDT.ICKEY)      AS SKU                                     /*SKU 수*/
+                            , SUM(OBDT.INITQTY)               AS EA                                       /*EA 수*/
+                            , SUM(OBDT.INITQTY * IC.SLPRC)    AS AMOUNT                                   /*총가격*/
+                            -- [시간대별 집계]
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '00' THEN OBHD.OBORDKEY END) AS TIME00
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '01' THEN OBHD.OBORDKEY END) AS TIME01
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '02' THEN OBHD.OBORDKEY END) AS TIME02
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '03' THEN OBHD.OBORDKEY END) AS TIME03
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '04' THEN OBHD.OBORDKEY END) AS TIME04
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '05' THEN OBHD.OBORDKEY END) AS TIME05
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '06' THEN OBHD.OBORDKEY END) AS TIME06
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '07' THEN OBHD.OBORDKEY END) AS TIME07
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '08' THEN OBHD.OBORDKEY END) AS TIME08
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '09' THEN OBHD.OBORDKEY END) AS TIME09
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '10' THEN OBHD.OBORDKEY END) AS TIME10
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '11' THEN OBHD.OBORDKEY END) AS TIME11
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '12' THEN OBHD.OBORDKEY END) AS TIME12
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '13' THEN OBHD.OBORDKEY END) AS TIME13
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '14' THEN OBHD.OBORDKEY END) AS TIME14
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '15' THEN OBHD.OBORDKEY END) AS TIME15
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '16' THEN OBHD.OBORDKEY END) AS TIME16
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '17' THEN OBHD.OBORDKEY END) AS TIME17
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '18' THEN OBHD.OBORDKEY END) AS TIME18
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '19' THEN OBHD.OBORDKEY END) AS TIME19
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '20' THEN OBHD.OBORDKEY END) AS TIME20
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '21' THEN OBHD.OBORDKEY END) AS TIME21
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '22' THEN OBHD.OBORDKEY END) AS TIME22
+                            , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '23' THEN OBHD.OBORDKEY END) AS TIME23
+                    FROM TWORK_INFO_OB_HD OBHD
+                    INNER JOIN TWORK_INFO_OB_DT OBDT
+                            ON OBHD.OWKEY = OBDT.OWKEY
+                            AND OBHD.CTKEY = OBDT.CTKEY
+                            AND OBHD.OBHDKEY = OBDT.OBHDKEY
+                    INNER JOIN TWORK_INFO_OB_ORD_HD ORDHD
+                            ON ORDHD.OWKEY = OBHD.OWKEY
+                            AND ORDHD.CTKEY = OBHD.CTKEY
+                            AND ORDHD.OBORDKEY = OBHD.OBORDKEY
+                    LEFT JOIN TWORK_MST_IC IC
+                            ON IC.OWKEY = OBDT.OWKEY
+                            AND IC.CTKEY = OBDT.CTKEY
+                            AND IC.ICKEY = OBDT.ICKEY
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                        AND OBHD.OWKEY = #{owkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                        AND OBHD.CTKEY = #{ctkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                        AND OBHD.OBHDDAY BETWEEN #{wrkStartDate} || '000000' AND #{wrkEndDate} || '235959'
+                    </if>
+                    GROUP BY
+                        <choose>
+                        <when test='"20".equals(div)' >
+                        SUBSTR(OBHD.OBHDDAY, 1, 4)
+                        , SUBSTR(OBHD.OBHDDAY, 5, 2)
+                        , SUBSTR(OBHD.OBHDDAY, 7, 2)
+                        ,TO_CHAR(TO_DATE(SUBSTR(OBHD.OBHDDAY, 1, 8), 'YYYYMMDD'), 'DY')
+                        </when>
+                        <otherwise>
+                         SUBSTR(OBHD.OBHDDAY, 1, 4)
+                         ,SUBSTR(OBHD.OBHDDAY, 5, 2)
+                        </otherwise>
+                        </choose>
+        )
+    </sql>
+
+    <select id="selectOrdReciptStatusCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectOrdReciptStatusSql"/>
+        )
+    </select>
+
+    <select id="selectOrdReciptStatus"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectOrdReciptStatusSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectObBoxtypeStatusSql">
+        SELECT * FROM (
+        SELECT '0'                     AS CHK
+        , MAX(OBHD.CTKEY)              AS CTKEY                                         /*센터키*/
+        , MAX(OBHD.OWKEY)              AS OWKEY                                         /*화주키*/
+        , SUBSTR(OBHD.OBHDDAY, 1, 4)   AS YYYY                                           /*년도*/
+        , SUBSTR(OBHD.OBHDDAY, 5, 2)   AS MM                                              /*월*/
+        <if test='"20".equals(div)'>
+            , SUBSTR(OBHD.OBHDDAY, 7, 2)   AS DD                                              /*일*/
+            , TO_CHAR(TO_DATE(SUBSTR(OBHD.OBHDDAY, 1, 8), 'YYYYMMDD'), 'DY') AS DAY         /*요일*/
+        </if>
+        , COUNT(DISTINCT OBHD.OBORDKEY)   AS ORDERCNT                                 /*주문수*/
+        , COUNT(DISTINCT OBHD.OBHDKEY)    AS WBLCNT                                  /*송장 수*/
+        , COUNT(DISTINCT OBDT.ICKEY)      AS SKU                                     /*SKU 수*/
+        , SUM(OBDT.INITQTY)               AS EA                                       /*EA 수*/
+        , SUM(OBDT.INITQTY * IC.SLPRC)    AS AMOUNT                                   /*총가격*/
+        -- [시간대별 집계]
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '00' THEN OBHD.OBORDKEY END) AS TIME00
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '01' THEN OBHD.OBORDKEY END) AS TIME01
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '02' THEN OBHD.OBORDKEY END) AS TIME02
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '03' THEN OBHD.OBORDKEY END) AS TIME03
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '04' THEN OBHD.OBORDKEY END) AS TIME04
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '05' THEN OBHD.OBORDKEY END) AS TIME05
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '06' THEN OBHD.OBORDKEY END) AS TIME06
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '07' THEN OBHD.OBORDKEY END) AS TIME07
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '08' THEN OBHD.OBORDKEY END) AS TIME08
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '09' THEN OBHD.OBORDKEY END) AS TIME09
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '10' THEN OBHD.OBORDKEY END) AS TIME10
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '11' THEN OBHD.OBORDKEY END) AS TIME11
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '12' THEN OBHD.OBORDKEY END) AS TIME12
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '13' THEN OBHD.OBORDKEY END) AS TIME13
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '14' THEN OBHD.OBORDKEY END) AS TIME14
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '15' THEN OBHD.OBORDKEY END) AS TIME15
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '16' THEN OBHD.OBORDKEY END) AS TIME16
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '17' THEN OBHD.OBORDKEY END) AS TIME17
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '18' THEN OBHD.OBORDKEY END) AS TIME18
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '19' THEN OBHD.OBORDKEY END) AS TIME19
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '20' THEN OBHD.OBORDKEY END) AS TIME20
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '21' THEN OBHD.OBORDKEY END) AS TIME21
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '22' THEN OBHD.OBORDKEY END) AS TIME22
+        , COUNT(DISTINCT CASE WHEN SUBSTR(OBHD.OBHDDAY, 9, 2) = '23' THEN OBHD.OBORDKEY END) AS TIME23
+        FROM TWORK_INFO_OB_HD OBHD
+        INNER JOIN TWORK_INFO_OB_DT OBDT
+        ON OBHD.OWKEY = OBDT.OWKEY
+        AND OBHD.CTKEY = OBDT.CTKEY
+        AND OBHD.OBHDKEY = OBDT.OBHDKEY
+        INNER JOIN TWORK_INFO_OB_ORD_HD ORDHD
+        ON ORDHD.OWKEY = OBHD.OWKEY
+        AND ORDHD.CTKEY = OBHD.CTKEY
+        AND ORDHD.OBORDKEY = OBHD.OBORDKEY
+        LEFT JOIN TWORK_MST_IC IC
+        ON IC.OWKEY = OBDT.OWKEY
+        AND IC.CTKEY = OBDT.CTKEY
+        AND IC.ICKEY = OBDT.ICKEY
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+            AND OBHD.OWKEY = #{owkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+            AND OBHD.CTKEY = #{ctkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+            AND OBHD.OBHDDAY BETWEEN #{wrkStartDate} || '000000' AND #{wrkEndDate} || '235959'
+        </if>
+        GROUP BY
+        <choose>
+        <when test='"20".equals(div)' >
+            SUBSTR(OBHD.OBHDDAY, 1, 4)
+            , SUBSTR(OBHD.OBHDDAY, 5, 2)
+            , SUBSTR(OBHD.OBHDDAY, 7, 2)
+            ,TO_CHAR(TO_DATE(SUBSTR(OBHD.OBHDDAY, 1, 8), 'YYYYMMDD'), 'DY')
+        </when>
+        <otherwise>
+            SUBSTR(OBHD.OBHDDAY, 1, 4)
+            ,SUBSTR(OBHD.OBHDDAY, 5, 2)
+        </otherwise>
+        </choose>
+        )
+    </sql>
+
+    <select id="selectObBoxtypeStatusCount"  resultType="int">
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObBoxtypeStatusSql"/>
+        )
+    </select>
+
+    <select id="selectObBoxtypeStatusReport"  resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectObBoxtypeStatusSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+
+    <select id="selectObTotalReportTot" resultType="camelMap">
+        <include refid="selectObTotalReportSql"/>
+    </select>
+
+    <select id="selectObHybridPkReportTot" resultType="camelMap">
+        <include refid="selectObHybridPkReportSql"/>
+    </select>
+
+    <select id="selectRePkReportTot" resultType="camelMap">
+        <include refid="selectRePkReportSql"/>
+    </select>
+
+    <select id="selectClassMidReportTot" resultType="camelMap">
+        <include refid="selectClassMidReportSql"/>
+    </select>
+
+    <select id="selectClassSmlReportTot" resultType="camelMap">
+        <include refid="selectClassSmlReportSql"/>
+    </select>
+
+    <select id="selectClassSmlClosReportTot" resultType="camelMap">
+        <include refid="selectClassSmlClosReportSql"/>
+    </select>
+
+    <select id="selectClasPackingReportTot" resultType="camelMap">
+        <include refid="selectClasPackingReportSql"/>
+    </select>
+
+    <select id="selectObNisReportTot" resultType="camelMap">
+        <include refid="selectObNisReportSql"/>
+    </select>
+
+    <select id="selectObRbReportTot" resultType="camelMap">
+        <include refid="selectObRbReportSql"/>
+    </select>
+
+    <select id="selectObRbClosReportTot" resultType="camelMap">
+        <include refid="selectObRbClosReportSql"/>
+    </select>
+    
+</mapper>

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.UlcMapper">
+
+	<select id="selectUlcMaster" parameterType="ulcVO" resultType="ulcVO">
+		<![CDATA[
+		SELECT ctkey
+			 ,ulckey
+			 ,ulctype
+			 ,width
+			 ,length
+			 ,height
+			 ,capacity
+		FROM TWORK_MST_ULC
+		WHERE CTKEY = #{ctkey}
+		  AND ULCKEY = #{ulckey}
+		]]>
+	</select>
+
+	<resultMap id="selectUlcMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="ulckey" column="ULCKEY" />
+		<result property="ulctype" column="ULCTYPE" />
+		<result property="ulctype_desc" column="ULCTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="width" column="WIDTH" />
+		<result property="lengths" column="LENGTH" />
+		<result property="height" column="HEIGHT" />
+		<result property="capacity" column="CAPACITY" />
+		<result property="weight" column="WEIGHT" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+	</resultMap>
+
+	<select id="selectUlcCount" resultType="java.lang.Integer">
+		SELECT COUNT(1) 
+		 FROM TWORK_MST_ULC
+		WHERE 
+		      CTKEY = #{ctkey} 
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		  AND #{SEARCH_CONDITION}
+			</if>
+		  <if test="ulckey != null">
+		  AND ULCKEY = #{ulckey}
+		  </if>
+		  <if test="ultype != null">
+		  AND ULCTYPE = #{ulctype}
+		  </if>
+	</select>
+
+	<select id="selectUlc" resultMap="selectUlcMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT 
+			      CTKEY
+			     ,ULCKEY
+			     ,ULCTYPE
+			     ,#{ctkey} || ';' || 'ULCTYPE' ||';'|| ULCTYPE AS ULCTYPE_DESC
+			     ,WIDTH
+			     ,LENGTH
+			     ,HEIGHT
+			     ,CAPACITY
+			     ,INSERTDATE
+			     ,INSERTURKEY
+			     ,UPDATEDATE
+			     ,UPDATEURKEY
+			     ,WEIGHT
+			 FROM TWORK_MST_ULC
+			<where>
+			        CTKEY = #{ctkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+      	<choose>
+			<when test='sortValue != null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectUlcInfoForReportCount" resultType="java.lang.Integer">
+		SELECT COUNT(1) 
+		 FROM TWORK_MST_ULC
+		WHERE CTKEY = #{ctkey}
+		  AND ULCKEY IN	
+		<foreach item="ULCKEY_LIST" index="index" collection="ULCKEY_LIST" open="(" separator="," close=")">
+			#{ULCKEY_LIST}
+		</foreach>	
+	</select>
+
+	<select id="selectUlcInfoForReport" resultMap="selectUlcMap">
+		SELECT WEIGHT
+		      ,LENGTH
+		      ,ULCKEY
+		  FROM TWORK_MST_ULC
+		 WHERE CTKEY = #{ctkey}
+		  AND ULCKEY IN	
+		<foreach item="ULCKEY_LIST" index="index" collection="ULCKEY_LIST" open="(" separator="," close=")">
+			#{ULCKEY_LIST}
+		</foreach>			
+		ORDER BY ULCKEY	
+	</select>
+		
+	<insert id="insertTWorkMstUlc">
+		INSERT INTO TWORK_MST_ULC
+		(
+		     CTKEY
+		    ,ULCKEY
+		    ,ULCTYPE
+		    ,WIDTH
+		    ,LENGTH
+		    ,HEIGHT
+		    ,CAPACITY
+		    ,INSERTDATE
+		    ,INSERTURKEY
+		    ,UPDATEDATE
+		    ,UPDATEURKEY
+		    ,WEIGHT
+		) 
+		VALUES 
+		(
+		     #{ctkey}
+		    ,#{ulckey}
+		    ,#{ulctype}
+		    ,#{width}
+		    ,#{lengths}
+		    ,#{height}
+		    ,#{capacity}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		    ,#{weight}
+		)  
+	</insert>
+
+	<update id="updateTWorkMstUlc">
+		UPDATE TWORK_MST_ULC
+		   SET
+		         ULCTYPE     = #{ulctype}    
+		        ,WIDTH       = #{width}      
+		        ,LENGTH      = #{lengths}     
+		        ,HEIGHT      = #{height}     
+		        ,CAPACITY    = #{capacity}   
+		        ,UPDATEDATE  = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		        ,WEIGHT      = #{weight}         
+		 WHERE
+		       CTKEY = #{ctkey}
+		   AND ULCKEY = #{ulckey}
+	</update>
+
+	<delete id="deleteTWorkMStUlc">
+		DELETE 
+		  FROM TWORK_MST_ULC
+		 WHERE
+		       CTKEY = #{ctkey}
+		   AND ULCKEY = #{ulckey}
+	</delete>
+	 
+</mapper>	

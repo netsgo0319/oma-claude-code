@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.MenuHistoryMapper">
+
+	<select id="selectMenuHistory" resultType="camelMap">
+		/* adm-system-menuhistory-sql-oracle.xml - selectMenuHistoryCount */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT	MEHS.MEHSKEY
+			  , MEHS.IPADDR
+			  , MEHS.URKEY
+			  , UR.URNM
+			  , MEHS.APKEY
+			  , MEHS.MEKEY
+			  , MUDT.DISPLAYMSG AS MENM
+			  , MEHS.ACSDT
+			  , MEHS.ACSDATE
+		FROM TADMIN_INFO_URMEHS MEHS
+		INNER JOIN TADMIN_MST_UR UR
+				ON MEHS.URKEY = UR.URKEY
+		INNER JOIN TADMIN_MST_ME MENU
+				ON MEHS.MEKEY = MENU.MEKEY
+		INNER JOIN TADMIN_MST_MULAAPMSG_HD MUHD
+				ON MENU.MENM = MUHD.MULAAPMSGHDKEY
+		INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+				ON MUDT.MULAAPMSGHDKEY = MUHD.MULAAPMSGHDKEY
+			   AND MUDT.LAKEY = #{slakey}
+		WHERE	1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY MEHS.MEHSKEY DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectMenuHistoryCount" resultType="java.lang.Integer" >
+		/* adm-system-menuhistory-sql-oracle.xml - selectMenuHistoryCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_INFO_URMEHS MEHS
+		  INNER JOIN TADMIN_MST_UR UR
+				  ON MEHS.URKEY = UR.URKEY
+		  INNER JOIN TADMIN_MST_ME MENU
+				  ON MEHS.MEKEY = MENU.MEKEY
+		  INNER JOIN TADMIN_MST_MULAAPMSG_HD MUHD
+				  ON MENU.MENM = MUHD.MULAAPMSGHDKEY
+		  INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+				  ON MUDT.MULAAPMSGHDKEY = MUHD.MULAAPMSGHDKEY
+				 AND MUDT.LAKEY = #{slakey}
+		 WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<insert id="insertMeHistory">
+		/* adm-system-menuhistory-sql-oracle.xml - insertMeHistory */
+		INSERT INTO TADMIN_INFO_URMEHS (
+			  	   MEHSKEY
+			     , IPADDR
+			     , URKEY
+			     , APKEY
+			     , MEKEY
+			     , ACSDT
+			     , ACSDATE
+			     , INSERTDATE
+		) VALUES (
+				   #{mehskey}
+				 , #{ipaddr}
+				 , #{surkey}
+				 , #{apkey}
+				 , #{mekey}
+				 , SUBSTR(#{sysdate}, 0, 8)
+				 , #{sysdate}
+				 , #{sysdate}
+				 )
+	</insert>
+
+	<select id="selectTotalHistory" resultType="camelMap" >
+		/* adm-system-menuhistory-sql-oracle.xml - selectTotalHistory */
+		SELECT MEHS.MEKEY
+			 , MUDT.DISPLAYMSG AS MENM
+			 , COUNT(1) AS CNT
+		  FROM TADMIN_INFO_URMEHS MEHS
+		  INNER JOIN TADMIN_MST_UR UR
+				  ON MEHS.URKEY = UR.URKEY
+		  INNER JOIN TADMIN_MST_ME MENU
+				  ON MEHS.MEKEY = MENU.MEKEY
+		  INNER JOIN TADMIN_MST_MULAAPMSG_HD MUHD
+				  ON MENU.MENM = MUHD.MULAAPMSGHDKEY
+		  INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+				  ON MUDT.MULAAPMSGHDKEY = MUHD.MULAAPMSGHDKEY
+				 AND MUDT.LAKEY = #{slakey}
+		 WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+		GROUP BY MEHS.MEKEY, MUDT.DISPLAYMSG
+		ORDER BY CNT DESC, MEKEY
+	</select>
+</mapper>	

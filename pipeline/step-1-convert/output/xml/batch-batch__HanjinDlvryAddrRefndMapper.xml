@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.HanjinDlvryAddrRefndMapper">
+	
+	<!-- 한진택배 주소정제 대상 조회 -->
+	<select id="selectHanjinDlvryAddrRefndTgtList" resultType="com.daiso.batch.biz.wms.dto.HanjinDlvryAddrRefndAddrDTO">
+		/* HanjinDlvryAddrRefndMapper.selectHanjinDlvryAddrRefndTgtList 한진택배 주소정제 대상 조회 */
+		SELECT
+			REFND_TGT.CNTRCTNO AS csr_num
+			,REFND_TGT.SVCDIV AS svc_div
+			,REFND_TGT.OBORDKEY AS msg_key
+			,REFND_TGT.ADDR AS address
+			,REFND_TGT.CTZIPCD AS snd_zip
+			,REFND_TGT.RCPPRSNZIPCD AS rcv_zip
+		FROM (
+			SELECT
+				DL.CNTRCTNO
+				,'GN' AS SVCDIV
+				,OH.OBORDKEY
+				,TRIM(pkg_crypto$decrypt(OH.RCPPRSNADDR1, #{encKey}))||' '||TRIM(pkg_crypto$decrypt(OH.RCPPRSNADDR2, #{encKey})) ADDR
+				,CT.ZIPCD AS CTZIPCD
+				,OH.RCPPRSNZIPCD
+				,ROW_NUMBER() OVER (ORDER BY OH.OBORDKEY) AS RN
+			FROM TWORK_INFO_OB_ORD_HD OH
+				LEFT OUTER JOIN TWORK_INFO_HANJIN_PR HPI
+					ON OH.CTKEY = HPI.CTKEY
+					AND OH.OWKEY = HPI.OWKEY
+					AND OH.OBORDKEY = HPI.OBORDKEY
+				INNER JOIN TWORK_MST_DLVRYCORP DL
+					ON OH.CTKEY = DL.CTKEY
+					AND OH.OWKEY = DL.OWKEY
+					AND DL.DLVRYCORPCD = #{dlvryCorpCd}
+					AND DL.DELYN = 'N'
+				INNER JOIN TWORK_MST_CT CT
+					ON OH.CTKEY = CT.CTKEY
+			WHERE OH.CTKEY = #{ctkey}
+			AND OH.OWKEY = #{owkey}
+			AND OH.PRINFORCVPRGRYN = 'N' /* 택배주소정제 진행중이 아닌 데이터*/
+			AND DL.CNTRCTNO IS NOT NULL /* 택배사 계약이 된 데이터 */
+			AND HPI.RSLTCD IS NULL /* 택배주소정제가 안된 데이터 */
+		) REFND_TGT
+		WHERE RN <![CDATA[<=]]> 100
+		ORDER BY RN
+	</select>
+
+	<!-- 택배사 계약코드(한진택배-EDI_CD) 조회 -->
+	<select id="selectDlvryCorpCntrctCd" resultType="String">
+		/* HanjinDlvryAddrRefndMapper.selectDlvryCorpCntrctCd 택배사 계약코드(한진택배-EDI_CD) 조회 */
+		SELECT CNTRCTCD
+		FROM TWORK_MST_DLVRYCORP
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND DLVRYCORPCD = #{dlvryCorpCd}
+		AND DELYN = 'N'
+	</select>
+
+	<!--택배사 주소정보 기등록 데이터 API 결과코드 조회(한진택배)-->
+	<select id="selectHanjinDlvryPrInfoRsltCd" resultType="String">
+		SELECT
+			RSLTCD
+		FROM TWORK_INFO_HANJIN_PR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{msg_key}
+	</select>
+
+	<!--택배사 출력정보 등록(한진택배)-->
+	<insert id="insertHanjinDlvryPrInfo">
+		INSERT INTO TWORK_INFO_HANJIN_PR
+		(
+			CTKEY
+			,OWKEY
+			,OBORDKEY
+			,RSLTCD
+			,RSLTMSG
+			,DPRTSPOTTMNLNM
+			,DPRTSPOTTMNLCD
+			,REFNDZIPCD
+			,DESTSPOTTMNLNM
+			,DESTSPOTTMNLCD
+			,DESTSPOTPOSTOFICNM
+			,DESTSPOTPOSTOFICCD
+			,POSTCOSTTIME
+			,RGONDIV
+			,HUBCD
+			,MDLCLASSIFCD
+			,DLVYEMPCLASSIFCD
+			,DLVYEMPCD
+			,DLVYEMPNM
+			,ADDRPRINFO
+			,DLVYORGZT
+			,SVCNM
+			,PTNRCLASSIFCD
+			,PTNRCLASSIFCDNM
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{msg_key}
+			,#{result_code}
+			,#{result_message}
+			,#{s_tml_nam}
+			,#{s_tml_cod}
+			,#{zip_cod}
+			,#{tml_nam}
+			,#{tml_cod}
+			,#{cen_nam}
+			,#{cen_cod}
+			,#{pd_tim}
+			,#{dom_rgn}
+			,#{hub_cod}
+			,#{dom_mid}
+			,#{es_cod}
+			,#{grp_rnk}
+			,#{es_nam}
+			,#{prt_add}
+			,#{dlv_typ}
+			,#{svc_nam}
+			,#{ptn_srt}
+			,#{srt_nam}
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,'BATCH'
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,'BATCH'
+		)
+	</insert>
+
+	<!--택배사 출력정보 UPDATE(한진택배)-->
+	<update id="updateHanjinDlvryPrInfo">
+		UPDATE TWORK_INFO_HANJIN_PR
+		SET RSLTCD = #{result_code}
+			,RSLTMSG = #{result_message}
+			,DPRTSPOTTMNLNM = #{s_tml_nam}
+			,DPRTSPOTTMNLCD = #{s_tml_cod}
+			,REFNDZIPCD = #{zip_cod}
+			,DESTSPOTTMNLNM = #{tml_nam}
+			,DESTSPOTTMNLCD = #{tml_cod}
+			,DESTSPOTPOSTOFICNM = #{cen_nam}
+			,DESTSPOTPOSTOFICCD = #{cen_cod}
+			,POSTCOSTTIME = #{pd_tim}
+			,RGONDIV = #{dom_rgn}
+			,HUBCD = #{hub_cod}
+			,MDLCLASSIFCD = #{dom_mid}
+			,DLVYEMPCLASSIFCD = #{es_cod}
+			,DLVYEMPCD = #{grp_rnk}
+			,DLVYEMPNM = #{es_nam}
+			,ADDRPRINFO = #{prt_add}
+			,DLVYORGZT = #{dlv_typ}
+			,SVCNM = #{svc_nam}
+			,PTNRCLASSIFCD = #{ptn_srt}
+			,PTNRCLASSIFCDNM = #{srt_nam}
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{msg_key}
+	</update>
+
+	<!--출고주문정보 출력 정보 수신 진행 여부 UPDATE-->
+	<update id="updateObOrdHdPrPrgrYn">
+		UPDATE TWORK_INFO_OB_ORD_HD
+		SET PRINFORCVPRGRYN = #{prgrYn}
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY IN
+		<foreach collection="updateList" item="item" open=" (" separator="," close=")">
+			#{item.msg_key}
+		</foreach>
+	</update>
+</mapper>

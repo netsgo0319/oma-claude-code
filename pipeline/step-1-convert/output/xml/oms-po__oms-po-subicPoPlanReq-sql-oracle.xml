@@ -1,0 +1,760 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.po.mapper.SubicPoPlanReqMapper">
+	<select id="selectTOrderSubicPoPlanReq" resultType="camelMap" >
+			/* oms-po-SubicPoPlanReq-sql-oracle.xml - selectTOrderSubicPoPlanReq */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<![CDATA[
+			SELECT
+				  T.CHK
+				, T.OWKEY
+				, T.CTKEY
+				, T.ICKEY
+				, T.ICNM
+				, T.UNICYN
+				, T.ICTGT
+				, T.SLPRC
+				, T.ICEA
+				, T.ICBND
+				, T.ICCTN
+				, T.ICPLT
+				, T.ABLEREQORDERYN
+				, T.URGENCYREQORDERYN
+				, COALESCE(T.EADAYAVGOBQTY, 0) AS EADAYAVGOBQTY
+				, COALESCE(T.BNDDAYAVGOBQTY, 0) AS BNDDAYAVGOBQTY
+				, COALESCE(T.PLTDAYAVGOBQTY, 0) AS PLTDAYAVGOBQTY
+				, COALESCE(T.EAMONTHAVGOBQTY, 0) AS EAMONTHAVGOBQTY
+				, COALESCE(T.BNDMONTHAVGOBQTY, 0) AS BNDMONTHAVGOBQTY
+				, COALESCE(T.PLTMONTHAVGOBQTY, 0) AS PLTMONTHAVGOBQTY
+				, COALESCE(T.AVQTY, 0) AS AVQTY
+				, COALESCE(T.B2CIBQTY, 0) AS B2CIBQTY
+				, COALESCE(T.TOTQTY, 0) AS TOTQTY
+				, COALESCE(T.CALAVDAYS, 0) AS CALAVDAYS
+				, COALESCE(T.CTLEADTIME, 0) AS CTLEADTIME
+				, COALESCE(T.AVDAYS, 0) AS AVDAYS
+				, COALESCE(T.PONEEDDAYS, 0) AS PONEEDDAYS
+				, COALESCE(T.PONEEDQTYEA, 0) AS PONEEDQTYEA
+				, COALESCE(T.PONEEDQTYBND, 0) AS PONEEDQTYBND
+				, COALESCE(T.PONEEDQTYPLT, 0) AS PONEEDQTYPLT
+				, T.IBEXPCTDAY
+				, T.REQORDERUNIT
+				, T.DLVYREQORDERUNIT
+				, CASE T.DLVYREQORDERUNIT
+						WHEN 'BND' THEN BASEUNITQTY * ICBND
+						WHEN 'CTN' THEN BASEUNITQTY * ICCTN
+						WHEN 'PLT' THEN BASEUNITQTY * ICPLT
+						ELSE 0
+				  END AS  REQORDERQTY
+
+				 ,  ROUND(CASE T.DLVYREQORDERUNIT
+						WHEN 'BND' THEN BASEUNITQTY * ICBND
+						WHEN 'CTN' THEN BASEUNITQTY * ICCTN
+						WHEN 'PLT' THEN BASEUNITQTY * ICPLT
+						ELSE 0
+				     END   / NULLIF(ICBND, 0),2) AS REQORDERBND
+				 ,  ROUND(CASE T.DLVYREQORDERUNIT
+						WHEN 'BND' THEN BASEUNITQTY * ICBND
+						WHEN 'CTN' THEN BASEUNITQTY * ICCTN
+						WHEN 'PLT' THEN BASEUNITQTY * ICPLT
+						ELSE 0
+				     END   / NULLIF(ICCTN, 0) ,2) AS REQORDERCTN
+
+				 , ROUND(CASE T.DLVYREQORDERUNIT
+						WHEN 'BND' THEN BASEUNITQTY * ICBND
+						WHEN 'CTN' THEN BASEUNITQTY * ICCTN
+						WHEN 'PLT' THEN BASEUNITQTY * ICPLT
+						ELSE 0
+				     END   / NULLIF(ICPLT, 0) ,2 ) AS REQORDERPLT
+
+				, T.REQORDERDAY
+				, T.REQORDERSTATUS
+				, T.REQORDEREXCEPTYN
+				, T.REQORDERSTATUSNM
+				, T.SEQ
+				, COALESCE(T.EXPCTAVDAYS, 0) AS EXPCTAVDAYS
+				, COALESCE(T.AVGOBFROMDAY, 0) AS AVGOBFROMDAY
+				, COALESCE(T.AVGOBTODAY, 0) AS AVGOBTODAY
+				, COALESCE(T.AVGAPLYDAYS, 0)  AS AVGAPLYDAYS
+				, T.ACKEY
+				, T.ACNM
+				, T.SOHDKEY
+				, T.REQORDERNO
+				, T.REQORDERTYPE
+				, T.INSERTDATE
+				, T.INSERTURKEY
+				, T.UPDATEDATE
+				, T.UPDATEURKEY
+			FROM
+			(
+			SELECT  '0' AS CHK
+				  , F.OWKEY
+				  , F.CTKEY
+				  -- 상품정보
+				  , F.ICKEY
+				  , F.ICNM
+				  , F.UNICYN
+				  , F.LCKEY  AS ICTGT
+				  , F.SLPRC
+				  , F.ICEA
+				  , F.ICBND
+				  , F.ICCTN
+		          , F.ICPLT
+				  , F.POABLEYN AS ABLEREQORDERYN
+				  , F.URGENCYREQORDERYN
+
+				  -- 일평균 출고량
+				  , F.EADAYAVGOBQTY --일평균수량
+				  , F.BNDDAYAVGOBQTY
+				  , F.PLTDAYAVGOBQTY
+
+				  -- 월평균 출고량 (집계테이블생성 필요 : 배치)
+				  , F.EAMONTHAVGOBQTY  -- 월평균수량
+				  , F.BNDMONTHAVGOBQTY
+				  , F.PLTMONTHAVGOBQTY
+
+				  -- 온라인 재고 정보
+				  , F.AVQTY
+				  , F.AVGQTY
+				  , 0 AS B2CIBQTY
+				  , F.TOTQTY
+				  , F.NOWCNVRTAVDAYS AS CALAVDAYS --현재 환산 가용일
+
+				  -- 발주 가용일 산정
+				  , F.CTLEADTIME
+				  , F.AVDAYS
+				  --발주 필요 가능일 : (가용일 + 센터 리드타임) - 현재 환산 가용일 [현재 환산가용일 : 총재고 / 일평균수량]
+				  , CASE WHEN F.PONEEDDAYS < 0 THEN 0
+				         ELSE F.PONEEDDAYS
+				    END AS PONEEDDAYS
+				  -- 필요 발주량 : 발주 필요 가능일 * 일평균 수량 [ 발주 필요 가능일 : (가용일 + 센터 리드타임) - (총재고 / 일평균수량)
+				  -- 필요 발주일이 1일보다 작을 경우 0으로 표현
+				  , CASE WHEN F.PONEEDDAYS < 0 THEN 0
+				         ELSE F.PONEEDDAYS * AVGQTY
+				    END AS PONEEDQTYEA
+				  , CASE WHEN F.PONEEDDAYS < 0 THEN 0
+				         ELSE ROUND(F.PONEEDDAYS * AVGQTY / NULLIF(ICBND,0), 2)
+				    END AS PONEEDQTYBND
+				  , CASE WHEN F.PONEEDDAYS < 0 THEN 0
+				         ELSE ROUND(F.PONEEDDAYS * AVGQTY / NULLIF(ICCTN,0), 2)
+				    END AS PONEEDQTYCTN
+				  , CASE WHEN F.PONEEDDAYS < 0 THEN 0
+				         ELSE ROUND(F.PONEEDDAYS * AVGQTY / NULLIF(ICPLT,0), 2)
+				    END AS PONEEDQTYPLT
+
+				  -- 발주 요청
+		          , TO_CHAR(CURRENT_TIMESTAMP + (COALESCE(F.CTLEADTIME, 0)), 'YYYYMMDD') AS IBEXPCTDAY
+				  , F.REQORDERQTY -- 발주요청수량
+				  , ROUND(F.REQORDERQTY / NULLIF(ICBND,0), 2) AS REQORDERBND
+				  , ROUND(F.REQORDERQTY / NULLIF(ICCTN,0), 2) AS REQORDERCTN
+				  , ROUND(F.REQORDERQTY / NULLIF(ICPLT,0), 2) AS REQORDERPLT
+
+				  , CASE COALESCE(F.DLVYREQORDERUNIT, CASE WHEN ICBND > 0 THEN 'BND' WHEN ICCTN > 0 THEN 'CTN' WHEN ICPLT > 0 THEN 'PLT' ELSE '' END)
+					   WHEN 'BND' THEN CEIL(COALESCE(F.REQORDERQTY, COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY) / NULLIF(ICBND, 0))
+					   WHEN 'CTN' THEN CEIL(COALESCE(F.REQORDERQTY, COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY) / NULLIF(ICCTN, 0))
+					   WHEN 'PLT' THEN CEIL(COALESCE(F.REQORDERQTY, COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY) / NULLIF(ICPLT, 0))
+					   ELSE 0
+				    END AS BASEUNITQTY
+
+				  , COALESCE(F.REQORDERUNIT, CASE WHEN ICBND > 0 THEN 'BND'
+											  WHEN ICCTN > 0 THEN 'CTN'
+											  WHEN ICPLT > 0 THEN 'PLT'
+											  ELSE '' END) AS REQORDERUNIT
+
+				 , COALESCE(F.DLVYREQORDERUNIT, CASE WHEN ICBND > 0 THEN 'BND'
+												  WHEN ICCTN > 0 THEN 'CTN'
+												  WHEN ICPLT > 0 THEN 'PLT'
+												  ELSE '' END) AS DLVYREQORDERUNIT
+
+				  , F.REQORDERDAY
+		          , F.REQORDERSTATUS
+		          , F.REQORDEREXCEPTYN
+				  , (SELECT COMDTNM FROM TORDER_MST_COM_DT DT WHERE DT.OWKEY = F.OWKEY AND DT.COMHDKEY = 'POSTATUS' AND DT.INSERTSYSTM = 'OMS' AND DT.COMDTKEY = F.REQORDERSTATUS AND DT.LAKEY = 'KOR') AS REQORDERSTATUSNM
+				  , COALESCE(F.SEQ, 1) AS SEQ
+
+				  -- 예정가용일 : (현 재고 - 일평균출고량 * 리드타임 + 발주산정량) / 일평균출고량
+				, ROUND(
+						(
+							F.TOTQTY
+							- CASE F.EADAYAVGOBQTY WHEN 0 THEN 1 ELSE F.EADAYAVGOBQTY END * F.CTLEADTIME
+							+ COALESCE(F.REQORDERQTY, CASE COALESCE(F.DLVYREQORDERUNIT, CASE WHEN ICBND > 0 THEN 'BND' WHEN ICCTN > 0 THEN 'CTN' WHEN ICPLT > 0 THEN 'PLT' ELSE '' END)
+									WHEN 'BND' THEN
+										 CEIL(COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY / NULLIF(ICBND, 0)) * ICBND
+									WHEN 'CTN' THEN
+										 CEIL(COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY / NULLIF(ICCTN, 0)) * ICCTN
+									WHEN 'PLT' THEN
+										 CEIL(COALESCE(F.EXPCTAVDAYS, F.PONEEDDAYS) * AVGQTY / NULLIF(ICPLT, 0)) * ICPLT
+									ELSE 0
+								END)
+						) / NULLIF(F.EADAYAVGOBQTY, 0)
+					, 1) AS EXPCTAVDAYS
+				  ,	F.OBFROMDAY AS AVGOBFROMDAY
+				  , F.OBTODAY   AS AVGOBTODAY
+				  , F.APLYDAYS  AS AVGAPLYDAYS
+		          , F.ACKEY
+		          , F.ACNM
+		          , F.SOHDKEY
+		          , F.REQORDERNO
+				  , F.REQORDERTYPE
+				  , F.INSERTDATE
+				  , F.INSERTURKEY
+				  , F.UPDATEDATE
+				  , F.UPDATEURKEY
+			FROM (
+						SELECT I.OWKEY
+							 , IC.CTKEY
+							 -- 상품정보
+							 , I.ICKEY
+							 , I.ICNM
+							 , I.UNICYN
+		                     , COALESCE(I.PURPRC, 0) AS SLPRC
+		                     , I.ACKEY
+		                     , AC.ACNM
+		                     , SO.SOHDKEY
+							 , IC.LCKEY
+							 , S_ICUT.IC_EA AS ICEA
+							 , S_ICUT.IC_BND AS ICBND
+							 , S_ICUT.IC_CTN AS ICCTN
+							 , S_ICUT.IC_PLT AS ICPLT
+							 , I.POABLEYN
+							 -- 발주구역
+							 , LC.ANSUNGB2BPOCTG
+							 , LC.NAMSAB2BPOCTG
+							 , LC.BUSANB2BPOCTG
+							  -- 일평균 출고량
+							 , COALESCE(AV.QTY, 0)  AS EADAYAVGOBQTY --일평균수량
+							 , TRUNC(COALESCE(AV.QTY, 0) / NULLIF(IC_BND,0)) AS BNDDAYAVGOBQTY
+							 , TRUNC(COALESCE(AV.QTY, 0) / NULLIF(IC_PLT,0)) AS PLTDAYAVGOBQTY
+							 -- 월평균 출고량 (집계테이블 생성 필요 : 배치)
+							 , COALESCE(ST.QTY, 0)  AS EAMONTHAVGOBQTY  -- 월평균수량
+							 , TRUNC(COALESCE(ST.QTY, 0) / NULLIF(IC_BND,0)) AS BNDMONTHAVGOBQTY
+							 , TRUNC(COALESCE(ST.QTY, 0) / NULLIF(IC_PLT,0)) AS PLTMONTHAVGOBQTY
+
+							 -- 온라인 재고 정보
+							 , COALESCE(RIV.AVQTY, 0) AS AVQTY
+							 , COALESCE(RIV.AVQTY, 0) AS TOTQTY
+
+							 -- 발주 가용일 산정
+							 , COALESCE(RE.CTLEADTIME, COALESCE(I.LEADTIME, 0)) AS CTLEADTIME  -- 부자재는 거래처 리드타임을 보아야 한다.
+							 , COALESCE(RE.AVDAYS, RO.NEEDDAYS) AS AVDAYS
+							 , COALESCE(RE.CALAVDAYS, TRUNC((COALESCE(RIV.AVQTY, 0)) / NULLIF(AV.QTY, 0))) AS NOWCNVRTAVDAYS
+							 -- 계산식 필요컬럼
+							 , COALESCE(AV.QTY, 0) AS AVGQTY
+
+							 --발주 필요 가능일 : (가용일 + 센터 리드타임) - 현재 환산 가용일 [현재 환산가용일 : 총재고 / 일평균수량]
+							 , (COALESCE(RE.CTLEADTIME, COALESCE(I.LEADTIME, 0)) + COALESCE(RE.AVDAYS, RO.NEEDDAYS)) - COALESCE(RE.CALAVDAYS, TRUNC(COALESCE(RIV.AVQTY, 0) / NULLIF(COALESCE(AV.QTY, 1),0))) AS PONEEDDAYS
+
+ 							 -- 예정가용일 : (현 재고 - 일평균출고량 * 리드타임 + 발주산정량) / 일평균출고량
+							 , ROUND((COALESCE(RIV.AVQTY, 0)- CASE COALESCE(AV.QTY, 0) WHEN 0 THEN 1 ELSE COALESCE(AV.QTY, 0) END * COALESCE(RE.CTLEADTIME, COALESCE(I.LEADTIME, 0))  + RE.REQORDERQTY) / NULLIF(COALESCE(AV.QTY, 0), 0), 1) AS EXPCTAVDAYS
+							 --발주요청 데이터
+							 , RE.REQORDERUNIT -- 발주단위
+							 , RE.DLVYREQORDERUNIT -- 배송용기단위
+							 , RE.REQORDERQTY -- 발주요청수량
+							 , COALESCE(REQORDERDAY, TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd'))  AS REQORDERDAY
+							 , 'N' AS URGENCYREQORDERYN
+							 , COALESCE(RE.REQORDERAR, '') AS REQORDERAR
+							 , COALESCE(RE.REQORDERTYPE, '04') AS REQORDERTYPE  -- 03 : 이고발주
+							 , COALESCE(RE.REQORDEREXCEPTYN, 'N') AS REQORDEREXCEPTYN
+							 , RE.REQORDERSTATUS
+							 , RE.REQORDERNO
+							 , COALESCE(RE.SEQ, 1) AS SEQ
+		                     , OBAVG.OBFROMDAY
+							 , OBAVG.OBTODAY
+							 , OBAVG.APLYDAYS
+
+							 , RE.INSERTDATE
+							 , RE.INSERTURKEY
+							 , RE.UPDATEDATE
+							 , RE.UPDATEURKEY
+					FROM TORDER_MST_IC I
+					INNER JOIN TORDER_MST_ICXCT IC
+						   ON I.OWKEY = IC.OWKEY
+						  AND I.ICKEY = IC.ICKEY
+					INNER JOIN TORDER_MST_CT CT
+						   ON IC.CTKEY = CT.CTKEY
+					INNER JOIN (
+								SELECT ICKEY
+									 , OWKEY
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'EA'  THEN ICUNITQTY END), 1) AS IC_EA
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'BND' THEN ICUNITQTY END), 0) AS IC_BND
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 0) AS IC_CTN
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'PLT' THEN ICUNITQTY END), 0) AS IC_PLT
+								FROM TORDER_MST_ICUTXTYPE
+								WHERE OWKEY = 'DAISO'
+								GROUP BY ICKEY, OWKEY
+								) S_ICUT
+						   ON I.OWKEY = S_ICUT.OWKEY
+						  AND I.ICKEY = S_ICUT.ICKEY
+					INNER JOIN TORDER_MST_REQORDER RO
+							ON IC.OWKEY = RO.OWKEY
+						   AND IC.CTKEY = RO.CTKEY
+						   AND IC.ICKEY = RO.ICKEY
+					INNER JOIN TORDER_MST_AC AC
+		                   ON I.OWKEY = AC.OWKEY
+		                  AND I.ACKEY = AC.ACKEY
+		                  AND AC.DELYN = 'N'
+					LEFT JOIN TORDER_INFO_OBSTAT_AVG AV
+						   ON IC.OWKEY = AV.OWKEY
+						  AND IC.CTKEY = AV.CTKEY
+						  AND IC.ICKEY = AV.ICKEY
+					LEFT JOIN (
+							   SELECT OWKEY, CTKEY, ICKEY
+									 , TRUNC(SUM(QTY) / 30) AS QTY
+								FROM TORDER_INFO_ORDER_STAT
+								WHERE CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '30 days', 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+								GROUP BY OWKEY, CTKEY, ICKEY
+							 ) ST
+						   ON IC.OWKEY = ST.OWKEY
+						  AND IC.CTKEY = ST.CTKEY
+						  AND IC.ICKEY = ST.ICKEY
+					LEFT JOIN TORDER_INFO_REQORDERIV RIV
+						   ON IC.OWKEY = RIV.OWKEY
+						  AND IC.CTKEY = RIV.CTKEY
+						  AND IC.ICKEY = RIV.ICKEY
+					LEFT JOIN TORDER_INFO_REQORDER RE
+						   ON IC.OWKEY = RE.OWKEY
+						  AND IC.CTKEY = RE.CTKEY
+						  AND IC.ICKEY = RE.ICKEY
+		                  AND RE.REQORDERDAY = TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+						  AND RE.URGENCYREQORDERYN = 'N'
+					LEFT JOIN TORDER_INFO_SO_HD SO
+					       ON RE.OWKEY = SO.OWKEY
+					      AND RE.REQORDERNO = SO.RFRNCKEY
+					      AND RE.IBEXPCTDAY = SO.DLVYEXPCTDAY 
+						  AND SO.WKSTATUS != #{soCancelStatus}
+					LEFT JOIN TORDER_MST_LC LC
+						   ON IC.CTKEY = LC.CTKEY
+						  AND IC.LCKEY = LC.LCKEY
+					LEFT JOIN TORDER_MST_OBAVGQTY OBAVG
+						   ON IC.OWKEY = OBAVG.OWKEY
+						  AND IC.CTKEY = OBAVG.CTKEY
+						  AND IC.ICKEY = OBAVG.ICKEY
+				    WHERE I.POABLEYN = 'Y'
+					  AND RO.REQORDERTYPE = '04' --  REQORDERTYPE : 04(부자재)
+			]]>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY)" >
+						AND I.OWKEY = #{OWKEY}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTKEY)" >
+						AND IC.CTKEY = #{CTKEY}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+						AND IC.ICKEY IN
+						<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+							#{item}
+						</foreach>
+					</if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(REQORDERSTATUS)" >
+						AND RE.REQORDERSTATUS = #{REQORDERSTATUS}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(REQORDEREXCEPTYN)" >
+						AND RE.REQORDEREXCEPTYN = #{REQORDEREXCEPTYN}
+					  </if>
+
+			) F
+
+			<where> 1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PONEEDDAYS)" >
+					<if test='PONEEDDAYS == "N" '>
+						AND F.PONEEDDAYS <![CDATA[ <= ]]> 0
+					</if>
+					<if test='PONEEDDAYS == "Y" '>
+						AND F.PONEEDDAYS <![CDATA[ > ]]> 0
+					</if>
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY F.UPDATEDATE DESC NULLS LAST, F.ICKEY ASC
+				</otherwise>
+			</choose>
+		) T
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTOrderSubicPoPlanReqCount" resultType="java.lang.Integer" >
+		/* oms-po-SubicPoPlanReq-sql-oracle.xml - selectTOrderSubicPoPlanReqCount */
+		<![CDATA[
+			SELECT  COUNT(*)
+			FROM (
+					SELECT I.OWKEY
+						 , IC.CTKEY
+						 -- 상품정보
+						 , I.ICKEY
+						 , I.ICNM
+						 , I.UNICYN
+	                     , I.SLPRC
+	                     , I.ACKEY
+	                     , AC.ACNM
+	                     , SO.SOHDKEY
+						 , IC.LCKEY
+						 , S_ICUT.IC_EA AS ICEA
+						 , S_ICUT.IC_BND AS ICBND
+						 , S_ICUT.IC_PLT AS ICPLT
+						 , I.POABLEYN
+						 -- 발주구역
+						 , LC.ANSUNGB2BPOCTG
+						 , LC.NAMSAB2BPOCTG
+						 , LC.BUSANB2BPOCTG
+						  -- 일평균 출고량
+						 , COALESCE(AV.QTY, 0)  AS EADAYAVGOBQTY --일평균수량
+						 , TRUNC(COALESCE(AV.QTY, 0) / IC_BND) AS BNDDAYAVGOBQTY
+						 , TRUNC(COALESCE(AV.QTY, 0) / IC_PLT) AS PLTDAYAVGOBQTY
+						 -- 월평균 출고량 (집계테이블 생성 필요 : 배치)
+						 , COALESCE(ST.QTY, 0)  AS EAMONTHAVGOBQTY  -- 월평균수량
+						 , TRUNC(COALESCE(ST.QTY, 0) / IC_BND) AS BNDMONTHAVGOBQTY
+						 , TRUNC(COALESCE(ST.QTY, 0) / IC_PLT) AS PLTMONTHAVGOBQTY
+
+						 -- 온라인 재고 정보
+						 , COALESCE(RIV.AVQTY, 0) AS AVQTY
+						 , COALESCE(RIV.AVQTY, 0) AS TOTQTY
+
+						 -- 발주 가용일 산정
+						 , COALESCE(RE.CTLEADTIME, COALESCE(I.LEADTIME, 0)) AS CTLEADTIME  -- 부자재는 거래처 리드타임을 보아야 한다.
+						 , COALESCE(RE.AVDAYS, RO.NEEDDAYS) AS AVDAYS
+						 , COALESCE(RE.CALAVDAYS, TRUNC((COALESCE(RIV.AVQTY, 0)) / NULLIF(COALESCE(AV.QTY, 0),0))) AS NOWCNVRTAVDAYS
+						 -- 계산식 필요컬럼
+						 , COALESCE(AV.QTY, 0) AS AVGQTY
+
+						 --발주 필요 가능일 : (가용일 + 센터 리드타임) - 현재 환산 가용일 [현재 환산가용일 : 총재고 / 일평균수량]
+						, (COALESCE(RE.CTLEADTIME, COALESCE(I.LEADTIME, 0)) + COALESCE(RE.AVDAYS, RO.NEEDDAYS)) - COALESCE(RE.CALAVDAYS, TRUNC(COALESCE(RIV.AVQTY, 0) / NULLIF(COALESCE(AV.QTY, 1),0))) AS PONEEDDAYS
+						 --발주요청 데이터
+						 , RE.REQORDERUNIT -- 발주단위
+						 , RE.DLVYREQORDERUNIT -- 배송용기단위
+						 , RE.REQORDERQTY -- 발주요청수량
+						 , COALESCE(REQORDERDAY, TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd'))  AS REQORDERDAY
+						 , 'N' AS URGENCYREQORDERYN
+						 , COALESCE(RE.REQORDERAR, '') AS REQORDERAR
+						 , COALESCE(RE.REQORDERTYPE, '04') AS REQORDERTYPE  -- 03 : 이고발주
+						 , COALESCE(RE.REQORDEREXCEPTYN, 'N') AS REQORDEREXCEPTYN
+						 , RE.REQORDERSTATUS
+						 , RE.REQORDERNO
+						 , COALESCE(RE.SEQ, 1) AS SEQ
+	                     , OBAVG.OBFROMDAY
+						 , OBAVG.OBTODAY
+						 , OBAVG.APLYDAYS
+
+						 , RE.INSERTDATE
+						 , RE.INSERTURKEY
+						 , RE.UPDATEDATE
+						 , RE.UPDATEURKEY
+				FROM TORDER_MST_IC I
+				INNER JOIN TORDER_MST_ICXCT IC
+					   ON I.OWKEY = IC.OWKEY
+					  AND I.ICKEY = IC.ICKEY
+				INNER JOIN TORDER_MST_CT CT
+					   ON IC.CTKEY = CT.CTKEY
+				INNER JOIN (
+							SELECT ICKEY
+								 , OWKEY
+								 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'EA'  THEN ICUNITQTY END), 1)  AS IC_EA
+								 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'BND' THEN ICUNITQTY END), 1) AS IC_BND
+								 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'PLT' THEN ICUNITQTY END), 1)  AS IC_PLT
+							FROM TORDER_MST_ICUTXTYPE
+							WHERE OWKEY = 'DAISO'
+							GROUP BY ICKEY, OWKEY
+							) S_ICUT
+					   ON I.OWKEY = S_ICUT.OWKEY
+					  AND I.ICKEY = S_ICUT.ICKEY
+				INNER JOIN TORDER_MST_REQORDER RO
+						ON IC.OWKEY = RO.OWKEY
+					   AND IC.CTKEY = RO.CTKEY
+					   AND IC.ICKEY = RO.ICKEY
+				INNER JOIN TORDER_MST_AC AC
+	                   ON I.OWKEY = AC.OWKEY
+	                  AND I.ACKEY = AC.ACKEY
+	                  AND AC.DELYN = 'N'
+				LEFT JOIN TORDER_INFO_OBSTAT_AVG AV
+					   ON IC.OWKEY = AV.OWKEY
+					  AND IC.CTKEY = AV.CTKEY
+					  AND IC.ICKEY = AV.ICKEY
+				LEFT JOIN (
+						   SELECT OWKEY, CTKEY, ICKEY
+								 , TRUNC(SUM(QTY) / 30) AS QTY
+							FROM TORDER_INFO_ORDER_STAT
+							WHERE CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '30 days', 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+							GROUP BY OWKEY, CTKEY, ICKEY
+						 ) ST
+					   ON IC.OWKEY = ST.OWKEY
+					  AND IC.CTKEY = ST.CTKEY
+					  AND IC.ICKEY = ST.ICKEY
+				LEFT JOIN TORDER_INFO_REQORDERIV RIV
+					   ON IC.OWKEY = RIV.OWKEY
+					  AND IC.CTKEY = RIV.CTKEY
+					  AND IC.ICKEY = RIV.ICKEY
+				LEFT JOIN TORDER_INFO_REQORDER RE
+					   ON IC.OWKEY = RE.OWKEY
+					  AND IC.CTKEY = RE.CTKEY
+					  AND IC.ICKEY = RE.ICKEY
+	                  AND RE.REQORDERDAY = TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+					  AND RE.URGENCYREQORDERYN = 'N'
+				LEFT JOIN TORDER_INFO_SO_HD SO
+				       ON RE.OWKEY = SO.OWKEY
+				      AND RE.REQORDERNO = SO.RFRNCKEY
+				      AND RE.IBEXPCTDAY = SO.DLVYEXPCTDAY 
+					  AND SO.WKSTATUS != #{soCancelStatus}
+				LEFT JOIN TORDER_MST_LC LC
+					   ON IC.CTKEY = LC.CTKEY
+					  AND IC.LCKEY = LC.LCKEY
+				LEFT JOIN TORDER_MST_OBAVGQTY OBAVG
+					   ON IC.OWKEY = OBAVG.OWKEY
+					  AND IC.CTKEY = OBAVG.CTKEY
+					  AND IC.ICKEY = OBAVG.ICKEY
+			    WHERE I.POABLEYN = 'Y'
+				  AND RO.REQORDERTYPE = '04' --  REQORDERTYPE : 04(부자재)
+			]]>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY)" >
+						AND I.OWKEY = #{OWKEY}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTKEY)" >
+						AND IC.CTKEY = #{CTKEY}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+						AND IC.ICKEY IN
+						<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+							#{item}
+						</foreach>
+					</if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(REQORDERSTATUS)" >
+						AND RE.REQORDERSTATUS = #{REQORDERSTATUS}
+					  </if>
+					  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(REQORDEREXCEPTYN)" >
+						AND RE.REQORDEREXCEPTYN = #{REQORDEREXCEPTYN}
+					  </if>
+
+			) F
+
+			<where> 1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PONEEDDAYS)" >
+					<if test='PONEEDDAYS == "N" '>
+						AND F.PONEEDDAYS <![CDATA[ <= ]]> 0
+					</if>
+					<if test='PONEEDDAYS == "Y" '>
+						AND F.PONEEDDAYS <![CDATA[ > ]]> 0
+					</if>
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY F.UPDATEDATE DESC NULLS LAST, F.ICKEY ASC
+				</otherwise>
+			</choose>
+	</select>
+
+	<insert id="insertSubicPoPlanReq">
+		/* oms-po-SubicPoPlanReq-sql-oracle.xml - insertSubicPoPlanReq */
+		INSERT INTO TORDER_INFO_REQORDER
+		(
+			  OWKEY
+            , CTKEY
+            , REQORDERDAY
+            , ICKEY
+            , REQORDERTYPE
+            , URGENCYREQORDERYN
+            , SEQ
+            , ICTGT
+            , REQORDERAR
+            , REQORDERNO
+            , REQORDERSTATUS
+            , ABLEREQORDERYN
+            , UNICYN
+            , AVGOBQTY
+            , AVGOBFROMDAY
+            , AVGOBTODAY
+            , AVGAPLYDAYS
+            , AVQTY
+            , IBEXPCTQTY
+            , REQCTKEY
+            , CALAVDAYS
+            , DLVYREQORDERUNIT
+            , REQORDERQTY
+            , CNFRMREQORDERQTY
+            , AVDAYS
+            , REQORDERUNIT
+            , CTLEADTIME
+		    , IBEXPCTDAY
+		    , REQORDEREXCEPTYN
+		    , UPLOADYN
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+			)
+		VALUES	(
+			  #{owkey}
+            , #{ctkey}
+            , #{reqorderday}
+            , #{ickey}
+            , #{reqordertype}
+            , #{urgencyreqorderyn}
+            , #{seq}
+            , #{ictgt}
+            , #{reqorderar}
+            , #{reqorderno}
+            , #{reqorderstatus}
+            , #{ablereqorderyn}
+            , #{unicyn}
+            , #{eadayavgobqty}
+            , #{avgobfromday}
+            , #{avgobtoday}
+            , #{avgaplydays}
+            , #{avqty}
+            , #{b2cibqty}
+            , #{ctkey}
+            , #{calavdays}
+            , #{reqorderunit}
+            , #{reqorderqty}
+            , #{cnfrmreqorderqty}
+            , #{avdays}
+            , #{reqorderunit}
+            , #{ctleadtime}
+			, #{ibexpctday}
+		    , #{reqorderexceptyn}
+		    , 'N'
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+
+	<update id="updateSubicPoPlanReq">
+		/* oms-po-SubicPoPlanReq-sql-oracle.xml - updateSubicPoPlanReq */
+		UPDATE TORDER_INFO_REQORDER
+		   SET ICTGT            = #{ictgt}
+             , REQORDERAR       = #{reqorderar}
+             , REQORDERNO       = #{reqorderno}
+             , REQORDERSTATUS   = #{reqorderstatus}
+             , ABLEREQORDERYN   = #{ablereqorderyn}
+             , UNICYN           = #{unicyn}
+             , AVGOBQTY         = #{eadayavgobqty}
+             , AVGOBFROMDAY     = #{avgobfromday}
+             , AVGOBTODAY       = #{avgobtoday}
+             , AVGAPLYDAYS      = #{avgaplydays}
+             , AVQTY            = #{avqty}
+             , IBEXPCTQTY       = #{b2cibqty}
+             , REQCTKEY         = #{ctkey}
+             , CALAVDAYS        = #{calavdays}
+             , DLVYREQORDERUNIT = #{reqorderunit}
+             , REQORDERQTY      = #{reqorderqty}
+             , CNFRMREQORDERQTY = #{cnfrmreqorderqty}
+             , AVDAYS           = #{avdays}
+             , REQORDERUNIT     = #{reqorderunit}
+             , CTLEADTIME       = #{CTLEADTIME}
+             , UPDATEDATE       = #{sysdate}
+             , UPDATEURKEY      = #{surkey}
+		WHERE OWKEY             = #{owkey}
+	      AND CTKEY             = #{ctkey}
+	      AND REQORDERDAY       = #{reqorderday}
+          AND ICKEY             = #{ickey}
+          AND REQORDERTYPE      = #{reqordertype}
+          AND URGENCYREQORDERYN = #{urgencyreqorderyn}
+          AND SEQ               = #{seq}
+	</update>
+
+	<insert id="insertSubicSoHd">
+		<selectKey keyColumn="sohdkey" keyProperty="sohdkey" order="BEFORE" resultType="String">
+			SELECT #{ibexpctday} || #{orderNoType} || LPAD(nextval('seq_torder_info_so_hd')::TEXT, 6, '0')
+			-- ibexpctday 입고예정일 ( 현재날짜 + 거래처 리드타임), ackey 는 torder_mst_ic에서 조회 , orderNoType = 'S'( OrderNoTypeEnum.SO )
+		</selectKey>
+		INSERT INTO TORDER_INFO_SO_HD
+		(    OWKEY
+		   , SOHDKEY
+		   , DLVYEXPCTDAY
+		   , ORDERISTDAY
+		   , ORDERTYPECD
+		   , WKSTATUS
+		   , CTKEY
+		   , ACKEY
+		   , POTYPE
+		   , RFRNCKEY
+		   , ORGORDERKEY
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)  VALUES(
+			 #{owkey}
+		   , #{sohdkey}
+		   , #{ibexpctday}
+		   , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+		   , '40' -- 부자재입고 (주문유형코드)
+		   , #{wkstatus} -- 작업생성 (주문기준코드 : SOSTATUS)
+		   , #{ctkey}
+		   , #{ackey}
+		   , '04' -- 발주유형 : 04(부자재)
+		   , #{reqorderno}
+		   , #{reqorderno}
+		   , #{insertdate}
+		   , #{inserturkey}
+		   , #{updatedate}
+		   , #{updateurkey}
+		)
+	</insert>
+
+	<insert id="insertSubicSoDt">
+		INSERT INTO TORDER_INFO_SO_DT (
+			OWKEY
+		  , SOHDKEY
+		  , SODTKEY
+		  , ICKEY
+		  , UOM
+		  , INITQTY
+		  , EXPCTQTY
+		  , CNFRMQTY
+		  , DLVYEXPCTDAY
+		  , ORDERISTDAY
+		  , WKSTATUS
+		  , RFRNCKEY
+		  , ORGORDERKEY
+		  , DLVYCNTRUNIT
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)  VALUES(
+			 #{owkey}
+		   , #{sohdkey}
+		   , #{sodtkey}
+		   , #{ickey}
+		   , 'EA'
+		   , #{reqorderqty} -- 발주요청수량
+		   , #{reqorderqty} --
+		   , 0 -- 발주요청수량
+		   , #{ibexpctday}
+		   , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+		   , #{wkstatus} -- 작업생성 (주문기준코드 : SOSTATUS)
+		   , #{reqorderno}
+		   , #{reqorderno}
+		   , #{dlvyreqorderunit}
+		   , #{insertdate}
+		   , #{inserturkey}
+		   , #{updatedate}
+		   , #{updateurkey}
+		)
+	</insert>
+
+	<select id="checkSohdkey" resultType="java.lang.String">
+		SELECT SOHDKEY
+		FROM TORDER_INFO_SO_HD
+		WHERE RFRNCKEY = #{reqorderno}
+	</select>
+</mapper>

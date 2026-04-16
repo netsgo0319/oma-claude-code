@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.VehicleMapper">
+
+	<select id="selectEqmtList" resultType="camelMap" >
+		/* adm-master-vehicle-sql-oracle.xml - selectEqmtList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.*
+		  FROM (
+			SELECT
+				 EQ.EQUIPID
+				,EQ.EQUIPTYPCD
+				,EQ.EQUIPTYPDESC
+				,EQ.CTKEY
+				,EQ.LOGGRPCD
+				,EQ.ICGRKEY
+				,EQ.LEN
+				,EQ.WDTH
+				,EQ.HGHT
+				,EQ.TAREWGT
+				,EQ.USABLLEN
+				,EQ.USABLWDTH
+				,EQ.USABLHGHT
+				,EQ.MAXLDWGT
+				,EQ.MAXLDVOL
+				,EQ.UOMTYP
+				,EQ.WGTUOM
+				,EQ.LENUOM
+				,EQ.DISTUOM
+				,EQ.SDYN
+				,EQ.STTCD
+				,EQ.PLATENO
+				,EQ.ATTRIBUTE1
+				,EQ.ATTRIBUTE1 AS DTGID
+				,EQ.ATTRIBUTE2
+				,EQ.ATTRIBUTE3
+				,EQ.ATTRIBUTE4
+				,EQ.ATTRIBUTE5
+				,EQ.ATTRIBUTE6
+				,EQ.ATTRIBUTE7
+				,EQ.ATTRIBUTE8
+				,EQ.ATTRIBUTE9
+				,EQ.ATTRIBUTE10
+				,EQ.ATTRIBUTE11
+				,EQ.ATTRIBUTE12
+				,EQ.ATTRIBUTE13
+				,EQ.ATTRIBUTE14
+				,EQ.ATTRIBUTE15
+				,EQ.ATTRIBUTE16
+				,EQ.ATTRIBUTE17
+				,EQ.ATTRIBUTE18
+				,EQ.ATTRIBUTE19
+				,EQ.ATTRIBUTE20
+				,EQ.VEHICLETYP
+				,EQ.VEHICLEYEAR
+				,EQ.REGULATYP
+				,EQ.CARRCD
+				,EQ.DELYN
+				,EQ.CLOSDATE
+				,EQ.INSERTDATE
+				,EQ.UPDATEDATE
+				,EQ.INSERTURKEY
+				,EQ.UPDATEURKEY
+				,EQ.DCKEY
+				,B.TMCD_DTNAME AS EQUIPTYPCDNAME
+				,C.TMCD_DTNAME AS LOGGRPCDNAME
+				,D.TMCD_DTNAME AS UOMTYPNAME
+				,E.TMCD_DTNAME AS DELYNNAME
+				,F.TMCD_DTNAME AS DCKEYNAME
+				,G.TMCD_DTNAME AS REGULATYPNAME
+				,CARR.CARRNM
+				,CT.CTNAME
+				,EQ.MAX_LOAD_ROLLTAINER_QTY
+				,EQ.DONG
+				,EQ.DOCK_NO
+				,DM.DOCKDESC
+			FROM
+				 TT_EQUIP_T EQ
+			LEFT OUTER JOIN TT_CARR_T CARR
+				     	 ON EQ.CARRCD = CARR.CARRCD
+			LEFT OUTER JOIN TT_MST_CT CT
+			   			 ON EQ.CTKEY = CT.CTKEY
+			LEFT OUTER JOIN TT_MST_DOCK_MASTER DM
+			   			 ON EQ.DOCK_NO		= DM.DOCK_NO
+						AND EQ.DONG	 		= DM.DONG
+						AND EQ.CTKEY 		= DM.CTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTKEY ,TMCD_DTNAME FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'EQUIPTYPCD' AND LAKEY = #{slakey})  B
+				     	 ON EQ.EQUIPTYPCD   = B.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'LOGGRPCD' AND LAKEY = #{slakey}) C
+				     	 ON EQ.LOGGRPCD 	= C.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'UOMTYP' AND LAKEY = #{slakey}) D
+				     	 ON EQ.UOMTYP 		= D.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'YESORNO' AND LAKEY = #{slakey}) E
+				     	 ON EQ.DELYN	 	= E.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'DCKEY' AND LAKEY = #{slakey}) F
+				     	 ON EQ.DCKEY		= F.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTKEY ,TMCD_DTNAME FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'REGULATYP' AND LAKEY = #{slakey})  G
+				 		 ON EQ.REGULATYP	= G.TMCD_DTKEY
+			WHERE
+				EQ.DELYN = 'N'
+			) A
+			WHERE 1=1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_DIVLOGGRPCD)" >
+				AND #{SEARCH_DIVLOGGRPCD}
+			</if>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<!--각 화면별 Default 정렬 컬럼으로 수정. 특별히 없으면 UPDATEDATE DESC 기본-->
+				<otherwise>
+					ORDER BY COALESCE(UPDATEDATE, INSERTDATE) DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<select id="selectEqmtCount" resultType="java.lang.Integer" >
+		/* adm-master-vehicle-sql-oracle.xml - selectEqmtCount */
+		SELECT
+	    	COUNT(1)
+		FROM
+			(
+			SELECT
+				 EQ.EQUIPID
+				,EQ.EQUIPTYPCD
+				,EQ.EQUIPTYPDESC
+				,EQ.CTKEY
+				,EQ.LOGGRPCD
+				,EQ.DCKEY
+				,EQ.ICGRKEY
+				,EQ.LEN
+				,EQ.WDTH
+				,EQ.HGHT
+				,EQ.TAREWGT
+				,EQ.USABLLEN
+				,EQ.USABLWDTH
+				,EQ.USABLHGHT
+				,EQ.MAXLDWGT
+				,EQ.MAXLDVOL
+				,EQ.UOMTYP
+				,EQ.WGTUOM
+				,EQ.LENUOM
+				,EQ.DISTUOM
+				,EQ.SDYN
+				,EQ.STTCD
+				,EQ.PLATENO
+				,EQ.ATTRIBUTE1
+				,EQ.ATTRIBUTE2
+				,EQ.ATTRIBUTE3
+				,EQ.ATTRIBUTE4
+				,EQ.ATTRIBUTE5
+				,EQ.ATTRIBUTE6
+				,EQ.ATTRIBUTE7
+				,EQ.ATTRIBUTE8
+				,EQ.ATTRIBUTE9
+				,EQ.ATTRIBUTE10
+				,EQ.ATTRIBUTE11
+				,EQ.ATTRIBUTE12
+				,EQ.ATTRIBUTE13
+				,EQ.ATTRIBUTE14
+				,EQ.ATTRIBUTE15
+				,EQ.ATTRIBUTE16
+				,EQ.ATTRIBUTE17
+				,EQ.ATTRIBUTE18
+				,EQ.ATTRIBUTE19
+				,EQ.ATTRIBUTE20
+				,EQ.VEHICLETYP
+				,EQ.VEHICLEYEAR
+				,EQ.REGULATYP
+				,EQ.CARRCD
+				,EQ.DELYN
+				,EQ.CLOSDATE
+				,EQ.INSERTDATE
+				,EQ.INSERTURKEY
+				,EQ.UPDATEDATE
+				,EQ.UPDATEURKEY
+				,B.TMCD_DTNAME AS EQUIPTYPCDNAME
+				,C.TMCD_DTNAME AS LOGGRPCDNAME
+				,CARR.CARRNM
+				,CT.CTNAME
+			FROM
+				 TT_EQUIP_T EQ
+			LEFT OUTER JOIN TT_CARR_T CARR
+				     	 ON EQ.CARRCD = CARR.CARRCD
+			LEFT OUTER JOIN TT_MST_CT CT
+				     	 ON EQ.CTKEY = CT.CTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTKEY ,TMCD_DTNAME FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'EQUIPTYPCD' AND LAKEY = #{slakey})  B
+				     	 ON EQ.EQUIPTYPCD = B.TMCD_DTKEY
+			LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'LOGGRPCD' AND LAKEY = #{slakey}) C
+				 		 ON EQ.LOGGRPCD 	= C.TMCD_DTKEY
+			WHERE
+				EQ.DELYN = 'N'
+			) A
+			WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_DIVLOGGRPCD)" >
+				    AND #{SEARCH_DIVLOGGRPCD}
+				</if>
+	</select>
+
+</mapper>

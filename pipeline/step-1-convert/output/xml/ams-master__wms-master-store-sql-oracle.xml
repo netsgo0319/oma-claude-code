@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.StoreWmsMapper">
+
+	<delete id="deleteTWorkMstStore">
+		/* wms-master-store-sql-oracle.xml - deleteTWorkMstStore */
+	   UPDATE
+	   TWORK_MST_STORE
+	   SET DELYN = #{delyn}
+	   	  ,CLOSDATE				= #{closdate}
+			,TEL1					= #{tel1}
+			,ADDRESS1				= #{address1}
+			,ADDRESS2				= #{address2}
+			,OWNER_NAME				= #{owner_name}
+			,REGNO					= #{regno}
+			,KTG_AREA_CD			= #{ktgAreaCd}
+			,CLOSEDATE				= #{closedate}
+			,UPDATEDATE				= #{sysdate}
+			,UPDATEURKEY			= #{surkey}
+			,TEL2					= #{tel2}
+			,URKEY					= #{urkey}
+			,ZIPCODE				= #{zipcode}
+			,ADDRID					= #{addrid}
+		    ,HLMANAGETYPE			= #{hlmanagetype}
+	   WHERE
+		   STORE_KEY = #{storeKey}
+		   
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(rndkey)" >
+			AND DCKEY = #{rndkey}
+		   </if>
+		   
+	</delete>
+
+	<insert id="insertTWorkMstStore">
+		/* wms-master-store-sql-oracle.xml - insertTWorkMstStore */
+		INSERT INTO TWORK_MST_STORE
+		(
+			  OWKEY	
+			, CTKEY
+		    , STORE_KEY
+		    , DCKEY
+		    , STORE_NAME
+			, FCTYPE
+			, DELYN
+			, DLDAY
+			, ZIPCODE
+		    , TEL1
+		    , ADDRESS1
+		    , ADDRESS2
+		    , SV_NM
+		    , OWNER_NAME
+		    , REGNO
+		    , TEL2
+		    , ADDRID
+			, ISMANAGESTORE
+			, CLOSDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			, CUST_TYPE
+			, CUST_TYPE_DETAIL
+		) VALUES (
+			  #{owkey}
+			, #{ctkey}
+		    , #{storeKey}
+		    , #{rndkey}
+		    , #{storeName}
+			, '0'
+			, 'N'
+			, 'N'
+			, #{zipcode}
+	        , #{tel1}
+	        , #{address1}
+	        , #{address2}
+	        , #{scNm}
+	        , #{ownerName}
+	        , #{regno}
+	        , #{tel2}
+	        , #{addrid}
+	        , 'N'
+	        , SUBSTR(#{closdate}, 0, 14)
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			, #{custType}
+			, #{custTypeDetail}
+		) 		
+	</insert>
+	
+	<update id="updateTWorkMstStore">
+		/* wms-master-store-sql-oracle.xml - updateTWorkMstStore */
+		UPDATE TWORK_MST_STORE
+			SET ZIPCODE					= #{zipcode}
+			  ,ADDRESS1					= #{address1}
+			  ,ADDRESS2					= #{address2}
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ifyn) and "N".equals(ifyn)'>
+			  ,STORE_NAME				= #{storeName}
+			  ,TEL1						= #{tel1}
+			  ,SV_NM					= #{scNm}
+			  ,OWNER_NAME				= #{owner_name}
+			  ,REGNO					= #{regno}
+			  ,CLOSEDATE				= #{closedate}
+			  ,TEL2						= #{tel2}
+			  ,ADDRID					= #{addrid}
+			  ,CLOSDATE				= SUBSTR(#{closdate}, 0, 14)
+			  ,HLMANAGETYPE				= #{hlmanagetype}
+			  ,CUST_TYPE				= #{custType}
+			  ,CUST_TYPE_DETAIL	    	= #{custTypeDetail}
+			  ,DELYN					= #{delyn}
+		</if>
+			,UPDATEDATE				= #{sysdate}
+			,UPDATEURKEY			= #{surkey}
+		WHERE
+		 	STORE_KEY = #{storeKey}
+	</update>
+	
+	<select id="selectPkCntTWorkMstStorexct" resultType="java.lang.Integer" >
+		/* wms-master-store-sql-oracle.xml - selectPkCntTWorkMstStorexct */
+		SELECT COUNT(1)  
+		  FROM TWORK_MST_STORE
+		 WHERE
+		    STORE_KEY = #{storeKey}	
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(rndkey)" >
+			AND DCKEY = #{rndkey}
+		   </if>
+	</select> 
+
+</mapper>	

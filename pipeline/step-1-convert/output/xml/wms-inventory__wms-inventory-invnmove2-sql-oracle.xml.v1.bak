@@ -1,0 +1,923 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnMove2Mapper">
+
+	<resultMap id="selectInvnMoveRefMap" type="java.util.HashMap">
+		<result property="totalcount" column="TOTALCOUNT" javaType="java.lang.String"/>
+		<result property="ctkey" column="CTKEY" />
+		<result property="ivatkey" column="IVATKEY" />
+		<result property="lckey" column="LCKEY" />
+		<result property="ulckey" column="ULCKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="owname" column="OWNAME" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="ttqty" column="TTQTY" 			javaType="java.math.BigDecimal" />
+		<result property="avqty" column="AVQTY" 			javaType="java.math.BigDecimal" />
+		<result property="alqty" column="ALQTY" 			javaType="java.math.BigDecimal" />
+		<result property="piqty" column="PIQTY" 			javaType="java.math.BigDecimal" />
+		<result property="paqty" column="PAQTY" 			javaType="java.math.BigDecimal" />
+		<result property="hoqty" column="HOQTY" 			javaType="java.math.BigDecimal" />
+		<result property="oravqty" column="ORAVQTY" 		javaType="java.math.BigDecimal" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="to_lctype" column="TO_LCTYPE" />
+		<result property="to_erpstlc" column="TO_ERPSTLC" />
+		<result property="to_ulckey" column="TO_ULCKEY" />
+		<result property="mv_qty" column="MV_QTY"           javaType="java.math.BigDecimal" />
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="ivatstatus" column="IVATSTATUS" /> 
+		<result property="ivatstatus_desc" column="IVATSTATUS_DESC" typeHandler="CodeDescTypeHandler"/> 		
+		<result property="attribute1" column="ATTRIBUTE1" /> 
+		<result property="attribute1_desc" 		column="ATTRIBUTE1_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="attribute2" column="ATTRIBUTE2" /> 
+		<result property="attribute2_desc" 		column="ATTRIBUTE2_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="attribute3" column="ATTRIBUTE3" /> 
+		<result property="attribute3_desc" 		column="ATTRIBUTE3_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="erpstlc" column="ERPSTLC" />
+		<result property="use_erpstlc" column="USE_ERPSTLC" />
+		<result property="uom" column="UOM" />
+		<result property="spec" column="SPEC" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="mvreason_yn" column="MVREASON_YN" />
+		<result property="mv_reasontype" column="MV_REASONTYPE" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="urkey" column="URKEY" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="urkey_desc" column="URKEY_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="znkey" column="ZNKEY" />
+		<result property="lcstortype" column="LCSTORTYPE" />
+		<result property="lcstortype_desc" column="LCSTORTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="wkstatus_desc" column="WKSTATUS_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="lcsholdtype" column="LCHOLDTYPE" />
+		<result property="shelflifecodetype" column="SHELFLIFECODETYPE" />
+		<result property="emrgncy_ob_yn" column="EMRGNCY_OB_YN" />
+		<result property="inserturnm" column="INSERTURNM" />
+		<result property="updateurnm" column="UPDATEURNM" />
+		<result property="attribute7" column="ATTRIBUTE7" />
+		
+		<result property="sum_ttqty" column="SUM_TTQTY" />
+		<result property="sum_avqty" column="SUM_AVQTY" />
+		<result property="sum_alqty" column="SUM_ALQTY" />
+		<result property="sum_piqty" column="SUM_PIQTY" />
+		<result property="sum_paqty" column="SUM_PAQTY" />
+		<result property="sum_hoqty" column="SUM_HOQTY" />
+		<result property="sum_oravqty" column="SUM_ORAVQTY" />
+	</resultMap> 
+	
+	<resultMap id="selectInvnMoveMap" type="java.util.HashMap" extends="selectInvnMoveRefMap" >
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibconfirmdate" column="IBCONFIRMDATE"/>
+		<result property="lctype" column="LCTYPE" />
+		<result property="lctype_desc" column="LCTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="urkey" column="URKEY" />
+		<result property="ackey" column="ACKEY" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="erpstlc" column="ERPSTLC" />
+		<result property="erpstlc_desc" column="ERPSTLC_DESC" typeHandler="CodeDescTypeHandler"/>
+	</resultMap> 
+	
+	<resultMap id="selectTaskInventoryMoveMap" type="java.util.HashMap">
+		<result property="totalcount" column="TOTALCOUNT" javaType="java.lang.String"/>
+		<result property="owkey" column="OWKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="minqty" column="MINQTY" />
+		<result property="maxqty" column="MAXQTY" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="shelflifedate" column="SHELFLIFEDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="fr_lckey_avqty" column="FR_LCKEY_AVQTY" />
+		<result property="cal_fr_lckey_avqty" column="CAL_FR_LCKEY_AVQTY" />
+		<result property="to_lckey_avqty" column="TO_LCKEY_AVQTY" />
+		<result property="fr_lckey" column="FR_LCKEY" />
+		<result property="bundlekey" column="BUNDLEKEY" />
+		<result property="ivatkey" column="IVATKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="ta_hdkey" column="TA_HDKEY" />
+		<result property="ta_dtkey" column="TA_DTKEY" />
+		<result property="qty" column="QTY" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="wkstatus_desc" column="WKSTATUS_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="ttqty" column="TTQTY" />
+		<result property="puqty" column="PUQTY" />
+		<result property="lckey" column="LCKEY" />		
+	</resultMap> 
+	
+	<update id="callSpUnitMove" statementType="CALLABLE" parameterType="java.util.HashMap">
+    	{
+    		CALL SP_SET_TASK_MOVE_ASRS_MENUAL(
+				 #{unit_value,mode=IN,jdbcType=VARCHAR}
+			   , #{move_value,mode=IN,jdbcType=VARCHAR}
+			   , #{ctkey,mode=IN,jdbcType=VARCHAR}
+			   , #{owkey,mode=IN,jdbcType=VARCHAR}
+			   , #{ickey,mode=IN,jdbcType=VARCHAR}
+			   , #{ivatkey,mode=IN,jdbcType=VARCHAR}
+			   , #{ulckey,mode=IN,jdbcType=VARCHAR}
+			   , #{lckey,mode=IN,jdbcType=VARCHAR}
+			   , #{urkey,mode=IN,jdbcType=VARCHAR}
+			   , #{O_RTN_CODE,mode=OUT,jdbcType=VARCHAR}
+		       , #{O_RTN_MSG,mode=OUT,jdbcType=VARCHAR}	
+			)
+		}
+	</update>
+	
+	<select id="selectAlqty" resultType="java.lang.Integer">
+		SELECT COALESCE(ALQTY, 0)
+	    FROM TWORK_INFO_IVATXLCXULC
+	    WHERE CTKEY   = #{ctkey}
+	      AND OWKEY   = #{owkey}
+	      AND IVATKEY = #{ivatkey}
+	      AND LCKEY   = #{lckey}
+	      AND ULCKEY  = #{ulckey} 
+	</select>
+	
+	<select id="selectIvatStatus" resultType="java.lang.String">
+		SELECT IVATSTATUS
+	    FROM TWORK_INFO_IVATXLCXULC
+	    WHERE CTKEY   = #{ctkey}
+	      AND OWKEY   = #{owkey}
+	      AND IVATKEY = #{ivatkey}
+	      AND LCKEY   = #{lckey}
+	      AND ULCKEY  = #{ulckey} 
+	</select>
+
+	<select id="selectLcWkstatus" resultType="java.lang.String">
+		SELECT WKSTATUS
+		FROM TWORK_MST_LC
+		WHERE CTKEY = #{ctkey}
+		  AND LCKEY = #{lckey} 
+	</select>
+	
+	<sql id="selectInvnMoveRefSql">
+	     SELECT AA.*
+	     	, COUNT(*)OVER() AS TOTALCOUNT 
+		 FROM (
+			    	SELECT   B.PRODUCTLOT
+			    			,A.CTKEY
+			                ,A.IVATKEY
+			                ,A.LCKEY
+			                ,A.ULCKEY
+			                ,A.OWKEY
+			                ,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+			                ,A.ICKEY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.TTQTY / G.ICUTQTY END AS TTQTY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.AVQTY / G.ICUTQTY END AS AVQTY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.ALQTY / G.ICUTQTY END AS ALQTY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PIQTY / G.ICUTQTY END AS PIQTY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PAQTY / G.ICUTQTY END AS PAQTY
+			                ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.HOQTY / G.ICUTQTY END AS HOQTY
+			                ,A.INSERTDATE
+			                ,A.INSERTURKEY
+			                ,A.UPDATEDATE
+			                ,A.UPDATEURKEY
+			                ,B.PRODUCTDATE
+			                ,B.EXPIREDATE
+			                ,B.IBCONFIRMDATE
+			                ,B.IVATSTATUS
+			                ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| A.IVATSTATUS AS IVATSTATUS_DESC 
+			                ,B.ATTRIBUTE1
+			                ,A.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| B.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+			                ,B.ATTRIBUTE2
+			                ,A.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| B.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+			                ,B.ATTRIBUTE3			                
+			                ,A.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| B.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+			                ,C.ERPSTLC
+			                ,CASE WHEN J.LCKEY = A.LCKEY THEN '' 
+			                      ELSE J.LCKEY
+			                  END AS TO_LCKEY
+			                ,'' AS TO_ERPSTLC
+			                ,'' AS TO_ULCKEY
+			                ,0  AS MV_QTY
+			                ,'10' AS MV_REASONTYPE
+			                ,D.USE_ERPSTLC
+			                ,E.UOM
+			                ,A.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+			                ,E.ICUTKEY
+			                ,G.ICUTQTY
+			                ,E.ICNAME
+			                ,E.SPEC
+			                ,C.MVREASON_YN
+			                ,H.ACKEY
+			                ,H.ACNAME
+			                ,I.URKEY
+			                ,I.URKEY AS URKEY_DESC
+			                ,K.ZNKEY
+			                ,C.LCSTORTYPE
+			                ,A.CTKEY ||';'||'LCSTORTYPE'||';'|| C.LCSTORTYPE AS LCSTORTYPE_DESC
+			                ,C.WKSTATUS
+			                ,A.CTKEY ||';'||'LC_WKSTATUS'||';'|| C.WKSTATUS AS WKSTATUS_DESC
+			                ,C.LCHOLDTYPE
+			                ,E.SHELFLIFECODETYPE
+			                ,E.LOGGRPCD
+			                ,A.CTKEY || ';' || 'LOGGRPCD' || ';' || E.LOGGRPCD AS LOGGRPCD_DESC
+			          FROM 	TWORK_INFO_IVATXLCXULC A
+			                ,TWORK_INFO_IVAT B
+			                ,TWORK_MST_LC C
+			                ,TWORK_MST_OW D
+			                ,TWORK_MST_IC E
+			                ,TWORK_MST_ICUT F
+			                ,TWORK_MST_ICUTXTYPE G   
+			                ,TWORK_MST_AC H
+			                ,TWORK_MST_ACXUR I
+			                ,TWORK_MST_LCXIC J
+			                ,TWORK_MST_ZN K
+			                ,TWORK_MST_AR L 
+                 	 WHERE A.CTKEY = B.CTKEY
+                       AND A.IVATKEY = B.IVATKEY
+                       AND A.CTKEY = C.CTKEY
+                       AND A.LCKEY = C.LCKEY
+                       AND A.OWKEY = D.OWKEY
+                       AND B.CTKEY = E.CTKEY
+                       AND B.OWKEY = E.OWKEY
+                       AND B.ICKEY = E.ICKEY
+                       AND E.OWKEY = F.OWKEY(+)
+                       AND E.OWKEY = G.OWKEY(+)
+                       AND E.CTKEY = F.CTKEY(+)
+                       AND E.ICUTKEY = F.ICUTKEY(+)
+                       AND E.CTKEY = G.CTKEY(+)
+                       AND E.ICUTKEY = G.ICUTKEY(+)
+                       AND E.UOM = G.ICUTTYPE(+)
+					   AND F.CLOSDATE >= #{sysdate}
+					   AND A.CTKEY = #{ctkey}
+                       AND A.TTQTY > 0
+                       AND E.CTKEY = H.CTKEY(+)
+                       AND E.ACKEY = H.ACKEY(+)
+                       AND E.OWKEY = H.OWKEY(+)
+                       AND E.CTKEY = I.CTKEY(+)
+                       AND E.ACKEY = I.ACKEY(+)
+                       AND E.LOGGRPCD = I.LOGGRPCD(+)
+                       AND E.OWKEY = I.OWKEY(+)
+                       AND J.CTKEY(+) = E.CTKEY
+                       AND J.OWKEY(+) = E.OWKEY
+                       AND J.ICKEY(+) = E.ICKEY
+                       AND  C.CTKEY = K.CTKEY(+)
+                       AND C.CTKEY = L.CTKEY                                 
+                       AND C.ARKEY = L.ARKEY                                 
+                       AND L.CTKEY = K.CTKEY                               
+                       AND L.ZNKEY = K.ZNKEY                          
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 ) AA
+	</sql>
+	
+	<sql id="selectInvnMovePickToRefSql">
+		SELECT 	
+		         A.CTKEY
+				,A.IVATKEY
+				,A.LCKEY
+				,A.ULCKEY
+				,A.OWKEY
+				,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+				,A.ICKEY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.TTQTY / G.ICUTQTY END AS TTQTY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.AVQTY / G.ICUTQTY END AS AVQTY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.ALQTY / G.ICUTQTY END AS ALQTY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PIQTY / G.ICUTQTY END AS PIQTY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PAQTY / G.ICUTQTY END AS PAQTY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.HOQTY / G.ICUTQTY END AS HOQTY
+				,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.UPDATEURKEY
+				,B.PRODUCTDATE
+				,B.EXPIREDATE
+				,B.IBCONFIRMDATE
+				,B.IVATSTATUS
+				,A.CTKEY || ';' || 'IVATSTATUS' || ';' || A.IVATSTATUS AS IVATSTATUS_DESC
+				,C.ERPSTLC
+				,H.LCKEY AS TO_LCKEY
+				,(SELECT LCTYPE FROM TWORK_MST_LC LC WHERE LC.LCKEY = H.LCKEY AND LC.CTKEY = H.CTKEY ) AS TO_LCTYPE
+				,'' AS TO_ERPSTLC
+				,'' AS TO_ULCKEY
+				,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE (A.AVQTY + A.HOQTY) / G.ICUTQTY END AS MV_QTY
+				,D.USE_ERPSTLC
+				,E.UOM
+				,A.CTKEY || ';' || 'ICUTTYPE' || ';' || E.UOM AS UOM_DESC
+				,E.ICUTKEY
+				,G.ICUTQTY
+				,E.ICNAME
+				,E.SPEC
+		  FROM 	TWORK_INFO_IVATXLCXULC A
+				,TWORK_INFO_IVAT B
+				,TWORK_MST_LC C
+				,TWORK_MST_OW D
+				,TWORK_MST_IC E
+				,TWORK_MST_ICUT F
+				,TWORK_MST_ICUTXTYPE G
+				,TWORK_MST_LCXIC H
+		 WHERE 
+				A.CTKEY = B.CTKEY
+		   AND  A.IVATKEY = B.IVATKEY
+		   AND  A.CTKEY = C.CTKEY
+		   AND  A.LCKEY = C.LCKEY
+		   AND  A.OWKEY = D.OWKEY
+		   AND  B.CTKEY = E.CTKEY
+		   AND  B.ICKEY = E.ICKEY
+		   AND  E.OWKEY = F.OWKEY (+)
+		   AND  E.OWKEY = G.OWKEY (+)
+		   AND  E.CTKEY = F.CTKEY (+)
+		   AND  E.ICUTKEY = F.ICUTKEY (+)
+		   AND  E.CTKEY = G.CTKEY (+)
+		   AND  E.ICUTKEY = G.ICUTKEY (+)
+		   AND  E.UOM = G.ICUTTYPE (+)
+		   AND  A.CTKEY = H.CTKEY (+)
+		   AND  A.OWKEY = H.OWKEY (+)
+		   AND  A.ICKEY = H.ICKEY (+)
+		   AND  A.AVQTY + A.HOQTY > 0
+		   AND  (A.LCKEY IN ('PICKTO_A','PICKTO_B','PICKTO_C') )
+		   AND  ( (A.AVQTY + A.HOQTY ) / G.ICUTQTY ) > 0
+		   AND  F.CLOSDATE >= #{sysdate}
+		   AND  A.CTKEY = #{ctkey}					   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+		</if>	
+	</sql>
+	
+
+	<sql id="selectInvnMoveRecommendLocRefSql">
+		SELECT 	
+			     A.CTKEY
+			    ,A.IVATKEY
+			    ,A.LCKEY
+			    ,A.ULCKEY
+			    ,A.OWKEY
+			    ,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+			    ,A.ICKEY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.TTQTY / G.ICUTQTY END AS TTQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.AVQTY / G.ICUTQTY END AS AVQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.ALQTY / G.ICUTQTY END AS ALQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PIQTY / G.ICUTQTY END AS PIQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.PAQTY / G.ICUTQTY END AS PAQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE A.HOQTY / G.ICUTQTY END AS HOQTY
+			    ,CASE G.ICUTQTY WHEN 0 THEN 0 ELSE (A.AVQTY + A.HOQTY) / G.ICUTQTY END AS MV_QTY
+			    ,A.INSERTDATE
+			    ,A.INSERTURKEY
+			    ,A.UPDATEDATE
+			    ,A.UPDATEURKEY
+			    ,B.PRODUCTDATE
+			    ,B.EXPIREDATE
+			    ,B.IBCONFIRMDATE
+			    ,B.IVATSTATUS
+			    ,A.CTKEY || ';' || 'IVATSTATUS' || ';' || A.IVATSTATUS AS IVATSTATUS_DESC
+			    ,C.ERPSTLC
+			    ,A.CTKEY || ';' || 'ERPSTLC' ||';'|| C.ERPSTLC AS ERPSTLC_DESC
+			    ,H.LCKEY AS TO_LCKEY
+			    ,'' AS TO_ERPSTLC
+			    ,'' AS TO_ULCKEY
+			    ,D.USE_ERPSTLC
+			    ,E.UOM
+			    ,A.CTKEY || ';' || 'ICUTTYPE' || ';' || E.UOM AS UOM_DESC
+			    ,E.ICUTKEY
+			    ,G.ICUTQTY
+			    ,E.ICNAME
+			    ,E.SPEC
+			    ,E.ACKEY
+			    ,I.ACNAME
+			    ,J.URKEY
+			    ,J.URKEY AS URKEY_DESC
+                ,C.LCTYPE
+                ,A.CTKEY || ';' || 'LCTYPE' ||';'|| C.LCTYPE AS LCTYPE_DESC
+                ,E.LOGGRPCD
+                ,A.CTKEY || ';' || 'LOGGRPCD' || ';' || E.LOGGRPCD AS LOGGRPCD_DESC
+		  FROM 	TWORK_INFO_IVATXLCXULC A
+			    ,TWORK_INFO_IVAT B
+			    ,TWORK_MST_LC C
+			    ,TWORK_MST_OW D
+			    ,TWORK_MST_IC E
+			    ,TWORK_MST_ICUT F
+			    ,TWORK_MST_ICUTXTYPE G
+			    ,TWORK_MST_LCXIC H
+			    ,TWORK_MST_AC I
+			    ,TWORK_MST_ACXUR J
+		 WHERE 	A.CTKEY = B.CTKEY
+		   AND  A.IVATKEY = B.IVATKEY
+		   AND  A.CTKEY = C.CTKEY
+		   AND  A.LCKEY = C.LCKEY
+		   AND  A.OWKEY = D.OWKEY
+		   AND  B.CTKEY = E.CTKEY
+		   AND  B.ICKEY = E.ICKEY
+		   AND  E.OWKEY = F.OWKEY (+)
+		   AND  E.OWKEY = G.OWKEY (+)
+		   AND  E.CTKEY = F.CTKEY (+)
+		   AND  E.ICUTKEY = F.ICUTKEY (+)
+		   AND  E.CTKEY = G.CTKEY (+)
+		   AND  E.ICUTKEY = G.ICUTKEY (+)
+		   AND  E.UOM = G.ICUTTYPE (+)
+		   AND  A.CTKEY = H.CTKEY (+)
+		   AND  A.OWKEY = H.OWKEY (+)
+		   AND  A.ICKEY = H.ICKEY (+)
+		   AND  E.CTKEY = I.CTKEY (+)
+		   AND  E.ACKEY = I.ACKEY (+)
+		   AND  E.OWKEY = I.OWKEY (+)
+		   AND  E.CTKEY = J.CTKEY(+)
+		   AND  E.ACKEY = J.ACKEY(+)
+           AND  E.LOGGRPCD = J.LOGGRPCD(+)
+           AND  E.OWKEY = J.OWKEY(+)
+		   AND  F.CLOSDATE >= #{sysdate}
+		   AND  A.CTKEY = #{ctkey}
+		   AND  A.AVQTY + A.HOQTY > 0	
+		   			   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<sql id="selectInvnMoveNormalRefSql">
+		SELECT *
+		 FROM (
+			    	SELECT
+			    	         COUNT(*)OVER() AS TOTALCOUNT 
+						    ,A.ZNKEY
+						    ,E.LOGGRPCD
+						    ,D.LCKEY
+						    ,'' AS TO_LCKEY
+						    ,D.ULCKEY
+						    ,A.CTKEY
+						    ,E.UOM
+						    ,D.ICKEY
+						    ,E.ICNAME
+						    ,E.ICUTKEY
+						    ,E.SPEC
+						    ,D.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.TTQTY / F.ICUTQTY END AS TTQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS AVQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.ALQTY / F.ICUTQTY END AS ALQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PIQTY / F.ICUTQTY END AS PIQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PAQTY / F.ICUTQTY END AS PAQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS HOQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END + CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS ORAVQTY 
+						    ,0 AS MV_QTY
+						    ,D.OWKEY
+							,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = D.OWKEY) AS OWNAME
+						    ,C.PRODUCTLOT
+						    ,C.PRODUCTDATE
+						    ,C.EXPIREDATE
+						    ,C.IBCONFIRMDATE
+						    ,D.IVATKEY
+						    ,C.IVATSTATUS
+						    ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| C.IVATSTATUS AS IVATSTATUS_DESC 
+						    ,C.ATTRIBUTE1
+						    ,D.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| C.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+						    ,C.ATTRIBUTE2
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+						    ,C.ATTRIBUTE3			                
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+						    ,B.ERPSTLC
+						    ,'10' AS MV_REASONTYPE
+						    ,D.INSERTDATE
+						    ,D.INSERTURKEY
+						    ,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = D.INSERTURKEY) INSERTURNM
+						    ,D.UPDATEDATE
+						    ,D.UPDATEURKEY
+						    ,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = D.UPDATEURKEY) UPDATEURNM
+						    ,F.ICUTTYPE
+						    ,C.ATTRIBUTE7
+					FROM 
+					     TWORK_MST_AR A
+						,TWORK_MST_LC B
+						,TWORK_INFO_IVAT C
+						,TWORK_INFO_IVATXLCXULC D
+						,TWORK_MST_IC E
+						,TWORK_MST_ICUTXTYPE F
+					WHERE 
+						    A.WRHOUS_SE = 'GNRL'  --일반창고
+						AND A.CTKEY = B.CTKEY
+						AND A.ARKEY = B.ARKEY
+						AND A.CTKEY = C.CTKEY
+						AND C.CTKEY = D.CTKEY
+						AND C.IVATKEY = D.IVATKEY
+						AND B.LCKEY = D.LCKEY
+						AND C.OWKEY = E.OWKEY
+						AND C.CTKEY = E.CTKEY
+						AND C.ICKEY = E.ICKEY
+						AND C.OWKEY = F.OWKEY(+)
+						AND E.CTKEY = F.CTKEY(+)
+						AND E.ICUTKEY = F.ICUTKEY(+)
+						AND E.UOM = F.ICUTTYPE(+)
+						AND C.ATTRIBUTE2 = '1'
+						AND D.TTQTY > 0
+						AND (D.IVATSTATUS = '10' AND D.AVQTY > 0 OR D.IVATSTATUS = '30' AND D.HOQTY > 0 )
+						AND A.CTKEY = #{ctkey}                        
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 )
+	</sql>
+	
+	
+	<sql id="selectInvnMoveNoRwcsRefSql">
+     SELECT AA.*
+     	, COUNT(*)OVER() AS TOTALCOUNT 
+		 FROM (
+			    	SELECT
+			    	         A.ZNKEY
+						    ,E.LOGGRPCD
+						    ,D.LCKEY
+						    ,'' AS TO_LCKEY
+						    ,D.ULCKEY
+						    ,A.CTKEY
+						    ,E.UOM
+						    ,D.ICKEY
+						    ,E.ICUTKEY
+						    ,E.ICNAME
+						    ,E.SPEC
+						    ,D.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.TTQTY / F.ICUTQTY END AS TTQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS AVQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.ALQTY / F.ICUTQTY END AS ALQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PIQTY / F.ICUTQTY END AS PIQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PAQTY / F.ICUTQTY END AS PAQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS HOQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END + CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS ORAVQTY
+						    ,0 AS MV_QTY
+						    ,D.OWKEY
+							,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = D.OWKEY) AS OWNAME
+						    ,C.PRODUCTLOT
+						    ,C.PRODUCTDATE
+						    ,C.EXPIREDATE
+						    ,C.IBCONFIRMDATE
+						    ,D.IVATKEY
+						    ,C.IVATSTATUS
+						    ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| C.IVATSTATUS AS IVATSTATUS_DESC 
+						    ,C.ATTRIBUTE1
+						    ,D.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| C.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+						    ,C.ATTRIBUTE2
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+						    ,C.ATTRIBUTE3			                
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+						    ,B.ERPSTLC
+						    ,D.INSERTDATE
+						    ,D.INSERTURKEY
+						    ,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = D.INSERTURKEY) INSERTURNM
+						    ,D.UPDATEDATE
+						    ,D.UPDATEURKEY
+						    ,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = D.UPDATEURKEY) UPDATEURNM
+						    ,F.ICUTTYPE
+						    ,'N' AS EMRGNCY_OB_YN
+						    ,C.ATTRIBUTE7
+					FROM 
+					     TWORK_MST_AR A
+						,TWORK_MST_LC B
+						,TWORK_INFO_IVAT C
+						,TWORK_INFO_IVATXLCXULC D
+						,TWORK_MST_IC E
+						,TWORK_MST_ICUTXTYPE F
+					WHERE   A.WRHOUS_SE = 'ATMC'  --자동창고
+						AND A.CTKEY = B.CTKEY
+						AND A.ARKEY = B.ARKEY
+						AND A.CTKEY = C.CTKEY
+						AND C.CTKEY = D.CTKEY
+						AND C.IVATKEY = D.IVATKEY
+						AND B.LCKEY = D.LCKEY
+						AND C.OWKEY = E.OWKEY
+						AND C.CTKEY = E.CTKEY
+						AND C.ICKEY = E.ICKEY
+						AND C.OWKEY = F.OWKEY(+)
+						AND E.CTKEY = F.CTKEY(+)
+						AND E.ICUTKEY = F.ICUTKEY(+)
+						AND E.UOM = F.ICUTTYPE(+)
+						AND C.ATTRIBUTE2 = '1'
+						AND D.AVQTY > 0
+						AND D.IVATSTATUS = '10'
+				    	AND A.CTKEY = #{ctkey}                  
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 ) AA
+	</sql>
+		
+	<select id="selectInvnMoveNormal" resultMap="selectInvnMoveMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnMoveNormalRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnMoveNoRwcs" resultMap="selectInvnMoveMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnMoveNoRwcsRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<sql id="selectInvnMoveBondedRefSql">
+		SELECT *
+		 FROM (
+			    	SELECT
+			    			 COUNT(*)OVER() AS TOTALCOUNT 
+						    ,A.ZNKEY
+						    ,E.LOGGRPCD
+						    ,D.LCKEY
+						    ,'' AS TO_LCKEY
+						    ,D.ULCKEY
+						    ,A.CTKEY
+						    ,E.UOM
+						    ,D.ICKEY
+						    ,E.ICNAME
+						    ,E.ICUTKEY
+						    ,E.SPEC
+						    ,D.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.TTQTY / F.ICUTQTY END AS TTQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS AVQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.ALQTY / F.ICUTQTY END AS ALQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PIQTY / F.ICUTQTY END AS PIQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PAQTY / F.ICUTQTY END AS PAQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS HOQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END + CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS ORAVQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS MV_QTY  <!-- 보세는 이동수량 수정이 안되며 가용수량이랑 값이 같기 때문에 같은 값 사용 YSS --> 
+						    ,D.OWKEY
+							,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = D.OWKEY) AS OWNAME
+						    ,C.PRODUCTLOT
+						    ,C.PRODUCTDATE
+						    ,C.EXPIREDATE
+						    ,C.IBCONFIRMDATE
+						    ,D.IVATKEY
+						    ,C.IVATSTATUS
+						    ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| C.IVATSTATUS AS IVATSTATUS_DESC 
+						    ,C.ATTRIBUTE1
+						    ,D.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| C.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+						    ,C.ATTRIBUTE2
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+						    ,C.ATTRIBUTE3			                
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+						    ,B.ERPSTLC
+						    ,'10' AS MV_REASONTYPE
+						    ,D.INSERTDATE
+						    ,D.INSERTURKEY
+						    ,D.UPDATEDATE
+						    ,D.UPDATEURKEY
+						    ,F.ICUTTYPE
+					FROM 
+					     TWORK_MST_AR A
+						,TWORK_MST_LC B
+						,TWORK_INFO_IVAT C
+						,TWORK_INFO_IVATXLCXULC D
+						,TWORK_MST_IC E
+						,TWORK_MST_ICUTXTYPE F
+					WHERE 
+						    A.WRHOUS_SE = 'GNRL'  --일반창고
+						AND A.CTKEY = B.CTKEY
+						AND A.ARKEY = B.ARKEY
+						AND A.CTKEY = C.CTKEY
+						AND C.CTKEY = D.CTKEY
+						AND C.IVATKEY = D.IVATKEY
+						AND B.LCKEY = D.LCKEY
+						AND C.OWKEY = E.OWKEY
+						AND C.CTKEY = E.CTKEY
+						AND C.ICKEY = E.ICKEY
+						AND C.OWKEY = F.OWKEY(+)
+						AND E.CTKEY = F.CTKEY(+)
+						AND E.ICUTKEY = F.ICUTKEY(+)
+						AND E.UOM = F.ICUTTYPE(+)
+						AND C.ATTRIBUTE2 = '2'
+						AND D.TTQTY > 0
+						AND (D.IVATSTATUS = '10' AND D.AVQTY > 0 OR D.IVATSTATUS = '30' AND D.HOQTY > 0 )
+						AND A.CTKEY = #{ctkey}                        
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 )
+	</sql>
+	
+	
+	<sql id="selectInvnMoveBoRwcsRefSql">
+		SELECT *
+		 FROM (
+			    	SELECT
+			    			 COUNT(*)OVER() AS TOTALCOUNT 
+						    ,A.ZNKEY
+						    ,E.LOGGRPCD
+						    ,D.LCKEY
+						    ,'' AS TO_LCKEY
+						    ,D.ULCKEY
+						    ,A.CTKEY
+						    ,E.UOM
+						    ,D.ICKEY
+						    ,E.ICUTKEY
+						    ,E.ICNAME
+						    ,E.SPEC
+						    ,D.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.TTQTY / F.ICUTQTY END AS TTQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS AVQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.ALQTY / F.ICUTQTY END AS ALQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PIQTY / F.ICUTQTY END AS PIQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.PAQTY / F.ICUTQTY END AS PAQTY
+			                ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS HOQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END + CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.HOQTY / F.ICUTQTY END AS ORAVQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS MV_QTY  <!-- 보세는 이동수량 수정이 안되며 가용수량이랑 값이 같기 때문에 같은 값 사용 YSS --> 
+						    ,D.OWKEY
+							,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = D.OWKEY) AS OWNAME
+						    ,C.PRODUCTLOT
+						    ,C.PRODUCTDATE
+						    ,C.EXPIREDATE
+						    ,C.IBCONFIRMDATE
+						    ,D.IVATKEY
+						    ,C.IVATSTATUS
+						    ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| C.IVATSTATUS AS IVATSTATUS_DESC 
+						    ,C.ATTRIBUTE1
+						    ,D.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| C.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+						    ,C.ATTRIBUTE2
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+						    ,C.ATTRIBUTE3			                
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+						    ,B.ERPSTLC
+						    ,D.INSERTDATE
+						    ,D.INSERTURKEY
+						    ,D.UPDATEDATE
+						    ,D.UPDATEURKEY
+						    ,F.ICUTTYPE
+						    ,'N' AS EMRGNCY_OB_YN
+					FROM 
+					     TWORK_MST_AR A
+						,TWORK_MST_LC B
+						,TWORK_INFO_IVAT C
+						,TWORK_INFO_IVATXLCXULC D
+						,TWORK_MST_IC E
+						,TWORK_MST_ICUTXTYPE F
+					WHERE 
+						    A.WRHOUS_SE = 'ATMC'  --자동창고
+						AND A.CTKEY = B.CTKEY
+						AND A.ARKEY = B.ARKEY
+						AND A.CTKEY = C.CTKEY
+						AND C.CTKEY = D.CTKEY
+						AND C.IVATKEY = D.IVATKEY
+						AND B.LCKEY = D.LCKEY
+						AND C.OWKEY = E.OWKEY
+						AND C.CTKEY = E.CTKEY
+						AND C.ICKEY = E.ICKEY
+						AND C.OWKEY = F.OWKEY(+)
+						AND E.CTKEY = F.CTKEY(+)
+						AND E.ICUTKEY = F.ICUTKEY(+)
+						AND E.UOM = F.ICUTTYPE(+)
+						AND C.ATTRIBUTE2 = '2'
+						AND D.AVQTY > 0
+						AND D.IVATSTATUS = '10'
+						AND A.CTKEY = #{ctkey}                   
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 )
+	</sql>
+	
+	
+	<sql id="selectInvnConfirmInfoRefSql">
+		SELECT *
+		 FROM (
+			    	SELECT
+			    			 COUNT(*)OVER() AS TOTALCOUNT 
+						    ,A.ZNKEY
+						    ,E.LOGGRPCD
+						    ,D.LCKEY
+						    ,'' AS TO_LCKEY
+						    ,D.ULCKEY
+						    ,A.CTKEY
+						    ,E.UOM
+						    ,D.ICKEY
+						    ,E.ICUTKEY
+						    ,E.ICNAME
+						    ,E.SPEC
+						    ,D.CTKEY || ';' || 'ICUTTYPE' ||';'|| E.UOM AS UOM_DESC
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS AVQTY
+						    ,CASE F.ICUTQTY WHEN 0 THEN 0 ELSE D.AVQTY / F.ICUTQTY END AS MV_QTY  <!-- 보세는 이동수량 수정이 안되며 가용수량이랑 값이 같기 때문에 같은 값 사용 YSS --> 
+						    ,D.OWKEY
+							,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = D.OWKEY) AS OWNAME
+						    ,C.PRODUCTLOT
+						    ,C.PRODUCTDATE
+						    ,C.EXPIREDATE
+						    ,C.IBCONFIRMDATE
+						    ,D.IVATKEY
+						    ,C.IVATSTATUS
+						    ,A.CTKEY || ';' || 'IVATSTATUS' ||';'|| C.IVATSTATUS AS IVATSTATUS_DESC 
+						    ,C.ATTRIBUTE1
+						    ,D.CTKEY || ';' || 'ATTRIBUTE1' ||';'|| C.ATTRIBUTE1 AS ATTRIBUTE1_DESC
+						    ,C.ATTRIBUTE2
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE2 AS ATTRIBUTE2_DESC
+						    ,C.ATTRIBUTE3			                
+						    ,D.CTKEY || ';' || 'ATTRIBUTE2' ||';'|| C.ATTRIBUTE3 AS ATTRIBUTE3_DESC
+						    ,B.ERPSTLC
+						    ,D.INSERTDATE
+						    ,D.INSERTURKEY
+						    ,D.UPDATEDATE
+						    ,D.UPDATEURKEY
+						    ,F.ICUTTYPE
+					FROM 
+					     TWORK_MST_AR A
+						,TWORK_MST_LC B
+						,TWORK_INFO_IVAT C
+						,TWORK_INFO_IVATXLCXULC D
+						,TWORK_MST_IC E
+						,TWORK_MST_ICUTXTYPE F
+					WHERE 
+						    A.WRHOUS_SE = 'ATMC'  --자동창고
+						AND A.CTKEY = B.CTKEY
+						AND A.ARKEY = B.ARKEY
+						AND A.CTKEY = C.CTKEY
+						AND C.CTKEY = D.CTKEY
+						AND C.IVATKEY = D.IVATKEY
+						AND B.LCKEY = D.LCKEY
+						AND C.OWKEY = E.OWKEY
+						AND C.CTKEY = E.CTKEY
+						AND C.ICKEY = E.ICKEY
+						AND C.OWKEY = F.OWKEY(+)
+						AND E.CTKEY = F.CTKEY(+)
+						AND E.ICUTKEY = F.ICUTKEY(+)
+						AND E.UOM = F.ICUTTYPE(+)
+						AND D.AVQTY > 0
+						AND D.IVATSTATUS = '10'
+						AND A.CTKEY = #{ctkey}                   
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					</if>
+		 )
+	</sql>
+	
+
+	<update id="callSpSetStockMove" statementType="CALLABLE" parameterType="java.util.HashMap">
+    	{
+    		CALL SP_SET_STOCK_MOVE(
+				 #{ctkey,mode=IN,jdbcType=VARCHAR}
+			   , #{ivatkey,mode=IN,jdbcType=VARCHAR}
+			   , #{lckey,mode=IN,jdbcType=VARCHAR}
+			   , #{ulckey,mode=IN,jdbcType=VARCHAR}
+			   , #{owkey,mode=IN,jdbcType=VARCHAR}
+			   , #{ickey,mode=IN,jdbcType=VARCHAR}
+			   , #{mv_qty,mode=IN,jdbcType=INTEGER}
+			   , #{to_lckey,mode=IN,jdbcType=VARCHAR}
+			   , #{to_ulckey,mode=IN,jdbcType=VARCHAR}
+			   , #{mv_reasontype,mode=IN,jdbcType=VARCHAR}
+			   , #{mv_reasontype_detail,mode=IN,jdbcType=VARCHAR}
+			   , #{bondgb,mode=IN,jdbcType=VARCHAR}
+			   , #{urkey,mode=IN,jdbcType=VARCHAR}			   
+			   , #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+		       , #{O_ERRM,mode=OUT,jdbcType=VARCHAR}	
+			)
+		}
+	</update>
+	
+	<update id="callSpSetRwcsActionOutMoveAuto" statementType="CALLABLE" parameterType="java.util.HashMap">
+    	{
+    		CALL SP_SET_RWCS_ACTION_OUT_MOVE_AUTO(
+    		     #{tocnvno,mode=IN,jdbcType=VARCHAR}
+			   , #{ctkey,mode=IN,jdbcType=VARCHAR}
+			   , #{owkey,mode=IN,jdbcType=VARCHAR}
+			   , #{ickey,mode=IN,jdbcType=VARCHAR}			   
+			   , #{ivatkey,mode=IN,jdbcType=VARCHAR}
+			   , #{lckey,mode=IN,jdbcType=VARCHAR}
+			   , #{ulckey,mode=IN,jdbcType=VARCHAR}
+			   , #{emrgncy_ob_yn,mode=IN,jdbcType=VARCHAR}
+			   , #{urkey,mode=IN,jdbcType=VARCHAR}			   
+			   , #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+		       , #{O_ERRM,mode=OUT,jdbcType=VARCHAR}	
+			)
+		}
+	</update>
+	
+</mapper>	

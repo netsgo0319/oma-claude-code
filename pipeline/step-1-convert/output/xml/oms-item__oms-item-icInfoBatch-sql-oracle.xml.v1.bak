@@ -1,0 +1,818 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.api.in.mapper.ItemApiBatchMapper">
+	<sql id="repListSubQuery">
+		( SELECT 'repList empty guard dummy row' AS ASRTREPKEY
+		<foreach collection="repList" item="rep" separator=" union all "  open=" union all ">
+			SELECT #{rep} AS ASRTREPKEY
+		</foreach> )
+	</sql>
+
+	<insert id="insertIntfTableIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertIntfTableIcInfo */
+		INSERT INTO TORDER_INTF_MAL_IC (
+		     INSERTSYSTM
+		   , PD_NO
+		   , ONLD_PD_NO
+		   , PD_GRAD
+		   , SLE_ATR
+		   , ODR_PSBL_YN
+		   , SLE_STS_CD
+		   , EXH_YN
+		   , PDS_OR_PSBL_YN
+		   , PKG_YN
+		   , DLVY_LMT_YN
+		   , NOT_HDL_RSN_CD
+		   , DIST_DDLN_RTE
+		   , RPS_IMG_URL
+		   , EXISTSYN
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		   #{insertsystm}
+		 , #{ickey}
+         , #{olnickey}
+         , #{olnicdiv}
+         , #{olnipkoticcont}
+         , #{poableyn}
+         , #{salestatus}
+         , #{dspyn}
+         , #{dlvryyn}
+         , #{olnpkotyn} <!--0219--> 
+         , #{oblimityn}
+         , #{uniccd}
+         , #{obimpscritrt}
+         , #{repimgurl}
+         , #{existsyn}
+		 , #{requestDt}
+		 , #{interfaceId}
+		 , #{sysdate}
+		 , #{interfaceUrkey}
+		 , #{sysdate}
+		 , #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateMalItemIntfIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateMalItemIntfIcInfo */	
+		UPDATE TORDER_MST_IC
+		   SET OLNICDIV     = #{olnicdiv}
+		     , OLNIPKOTICCONT = #{olnipkoticcont}
+		     , POABLEYN     = #{poableyn}
+		     , SALESTATUS   = #{salestatus}
+		     , DSPYN        = #{dspyn}
+		     , DLVRYYN      = #{dlvryyn}
+		     , OLNPKOTYN    = #{olnpkotyn} <!--0219-->
+		     , OBLIMITYN    = #{oblimityn}
+		     , UNICCD       = #{uniccd}
+		     , UNICYN       = #{unicyn}
+		     , OBIMPSCRITRT = #{obimpscritrt}
+		     , ICIMGURL    = #{repimgurl}
+		     , UPDATEDATE   = #{sysdate}
+		     , UPDATEURKEY  = #{interfaceUrkey}
+	     WHERE OWKEY = #{owkey}
+	       AND ICKEY = #{ickey}
+	</update>
+
+	<update id="updateMalItemIntfIcOrgInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateMalItemIntfIcOrgInfo */
+		UPDATE TORDER_MST_IC_ORG
+		   SET OLNICDIV     = #{olnicdiv}
+		     , OLNIPKOTICCONT = #{olnipkoticcont}
+		     , POABLEYN     = #{poableyn}
+		     , SALESTATUS   = #{salestatus}
+		     , DSPYN        = #{dspyn}
+		     , DLVRYYN      = #{dlvryyn}
+		     , OLNPKOTYN    = #{olnpkotyn} <!--0219-->
+		     , OBLIMITYN    = #{oblimityn}
+		     , UNICCD       = #{uniccd}
+		     , UNICYN       = #{unicyn}
+		     , OBIMPSCRITRT = #{obimpscritrt}
+		     , REPIMGURL    = #{repimgurl}
+		     , UPDATEDATE   = #{sysdate}
+		     , UPDATEURKEY  = #{interfaceUrkey}
+	     WHERE OWKEY = #{owkey}
+	       AND ICKEY = #{ickey}
+	</update>
+	
+	<update id="updateIntfItemErpStatus">
+		/* oms-master-icInfoBatch-sql-oracle.xml - updateIntfItemErpStatus */
+		UPDATE TORDER_EAI_IC_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+		   AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+	</update>
+	
+	<insert id="insertIntfWmsItemCbm">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertIntfWmsItemCbm */
+		INSERT INTO TORDER_INTF_WMS_ICUTXTYPE (
+		  INSERTSYSTM
+		, CTKEY
+		, OWKEY
+		, ICKEY
+		, ICUNITTYPE
+		, BARCODE
+		, WIDTH
+		, DEPTH
+		, HEIGHT
+		, VOL
+		, WEIGHT
+		, CUSHNMEPCKGYN
+		, ROBSORTERICYN
+		, POLYBAGPCKGYN
+		, PCKGOVLPYN
+		, OVLPPCKGWIDTHVAL
+		, OVLPPCKGDEPTHVAL
+		, OVLPPCKGHEIGHTVAL
+		, COMPYN
+		, COMPCONT
+		, BARCODEATTACHYN
+		, HIGHFRQNCYDMGYN
+		, PCKGFOLDYN
+		, REQUESTDT
+		, IFID
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		) VALUES (
+		  'WMS'
+		, #{ctkey}
+		, #{owkey}
+		, #{ickey}
+		, #{icunittypecd}
+		, #{barcode}
+		, #{width}
+		, #{depth}
+		, #{height}
+		, #{vol}
+		, #{weight}
+		, #{cushnmepckgyn}
+		, #{robsortericyn}
+		, #{polybagpckgyn}
+		, #{pckgovlpyn}
+		, #{ovlppckgwidthval}
+		, #{ovlppckgdepthval}
+		, #{ovlppckgheightval}
+		, #{compyn}
+		, #{compcont}
+		, #{barcodeattachyn}
+		, #{highfrqncydmgyn}
+		, #{pckgfoldyn}
+		, #{requestDt}
+		, #{interfaceId}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertIntfErpTableItemCbm">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertIntfErpTableItemCbm */
+		INSERT INTO TORDER_EAI_ICUTXTYPE_BATCH
+		(
+		     SND_NO
+		   , SND_ROW
+		   , SND_TOT_ROW
+		   , SND_DATE
+		   , SND_DT
+		   , SND_TRSN_TYP
+		   , SND_PROC_TYP
+		   , CTKEY
+		   , ICKEY
+		   , UNITTYPE
+		   , BARCODE
+		   , WIDTH
+		   , DEPTH
+		   , HEIGHT
+		   , WEIGHT
+		   , VOL
+		   , CUSHNMEPCKGYN
+		   , OLNROBSORTERICYN
+		   , OLNCUSHNMEPCKGYN
+		   , PCKGOVLPYN
+		   , OVLPPCKGWIDTHVAL
+		   , OVLPPCKGDEPTHVAL
+		   , OVLPPCKGHEIGHTVAL
+		   , COMPCONT
+		   , BARCODEATTACHYN
+		   , POLYBACKPCKGYN
+		   , CMT
+		   , INSERTDATE
+		)
+		   SELECT #{interfaceId} AS SND_NO
+		        , ROW_NUMBER() OVER() AS ROWNUM
+		        , COUNT(1) AS SND_TOT_ROW
+		        , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')   AS SND_DATE
+		        , CURRENT_TIMESTAMP AS SND_DT
+		        , 'I'
+		        , 'N' AS SND_PROC_TYP
+		        , IC.CTKEY
+		        , IC.ICKEY
+		        , IC.ICUNITTYPE AS UNITTYPE
+		        , IC.BARCODE
+		        , (IC.WIDTH / 10) AS WIDTH
+		        , (IC.DEPTH / 10) AS DEPTH
+		        , (IC.HEIGHT / 10) AS HEIGHT
+		        , (IC.WEIGHT / 1000) AS WEIGHT
+		        , IC.VOL
+		        , IC.CUSHNMEPCKGYN
+		        , IC.ROBSORTERICYN
+		        , IC.CUSHNMEPCKGYN
+		        , IC.PCKGOVLPYN
+		        , IC.OVLPPCKGWIDTHVAL
+		        , IC.OVLPPCKGDEPTHVAL
+		        , IC.OVLPPCKGHEIGHTVAL
+		        , IC.COMPCONT
+		        , IC.BARCODEATTACHYN
+			    , IC.POLYBAGPCKGYN AS POLYBACKPCKGYN
+			    , '' AS CMT
+			    , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS INSERTDATE
+		   FROM TORDER_INTF_WMS_ICUTXTYPE IC
+		   INNER JOIN TORDER_MST_IC I
+		           ON IC.OWKEY = I.OWKEY
+		          AND IC.ICKEY = I.ICKEY
+		   WHERE IC.IFID = #{interfaceId}
+		   GROUP BY IC.CTKEY
+		          , IC.ICKEY
+		          , IC.ICUNITTYPE
+		          , IC.BARCODE
+		          , IC.WIDTH
+		          , IC.DEPTH
+		          , IC.HEIGHT
+		          , IC.WEIGHT
+		          , IC.VOL
+		          , IC.CUSHNMEPCKGYN
+		          , IC.ROBSORTERICYN
+		          , IC.CUSHNMEPCKGYN
+		          , IC.PCKGOVLPYN
+		          , IC.OVLPPCKGWIDTHVAL
+		          , IC.OVLPPCKGDEPTHVAL
+		          , IC.OVLPPCKGHEIGHTVAL
+		          , IC.COMPCONT
+		          , IC.BARCODEATTACHYN
+			      , IC.POLYBAGPCKGYN
+	</insert>
+	
+	<insert id="insertIntfWmsItemLc">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertIntfWmsItemLc */
+		INSERT INTO TORDER_INTF_WMS_ICXCT (
+		    OWKEY
+          , CTKEY
+          , ICKEY
+          , LCKEY
+		  , REQUESTDT
+		  , IFID
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		) VALUES (
+		    #{owkey}
+          , #{ctkey}
+          , #{ickey}
+          , #{lckey}
+		  , #{requestDt}
+		  , #{interfaceId}
+		  , #{sysdate}
+		  , #{interfaceUrkey}
+		  , #{sysdate}
+		  , #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateIntfCommonCodeErpStatus">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateIntfCommonCodeErpStatus */
+		UPDATE TORDER_EAI_ICUTXCTPLT_BATCH
+           SET SND_PROC_TYP = 'Y'
+		WHERE TRN_ID IN
+				<foreach item="trnId" index="index" collection="trnId"    open="(" separator="," close=")">
+					#{trnId}
+				</foreach>
+	</update>
+	
+	<insert id="insertErpItemIntfIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertErpItemIntfIcInfo */
+		INSERT INTO TORDER_MST_IC
+		(
+		  OWKEY
+		, ICGRPKEY
+		, UOM
+		, ICKEY
+		, ICNM
+		, ASRTREPKEY
+		, ICUNITKEY
+		, OLNICKEY
+		, ERPIMGURL
+		, CTGKEY
+		, OLNICTYPE
+		, OFLNICTYPE
+		, EXPCKYN
+		, DNGMGMTYN
+		, CUSHNMEPCKGYN
+		, ICORIGIN
+		, ACKEY
+		, ICMGMTUSR
+		, SLPRC
+		, ASRTYN
+		, DIRCDLVYICYN
+		, ICSTATUSDIV
+		, PKOTICYN
+		, ROBSORTERICYN
+		, MTR
+		, EXPCKDAYS
+		, B2BGRADE
+		, ORGASRTYN
+		, IFYN
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, 'GR'
+		, 'EA'
+		, #{ickey}
+		, #{icnm}
+		, #{ickey}
+		, #{repkey}
+		, #{olnickey}
+		, #{icimgurl}
+		, #{ctgkey}
+		, #{olnictype}
+		, #{oflnictype}
+		, COALESCE(#{expckyn}, 'N')
+		, #{dngmgmtyn}
+		, #{cushnmepckgyn}
+		, #{icorigin}
+		, #{ackey}
+		, #{icmgmtusr}
+		, #{slprc}
+		, CASE WHEN  #{asrtrepkey} IS NULL THEN   'N' ELSE #{asrtyn} END
+		, #{dircdlvyicyn}
+		, #{icstatusdiv}
+		, #{pkoticyn}
+		, #{robsortericyn}
+		, #{mtr}
+		, #{expdays}
+		, #{b2bgrade}
+		, #{asrtyn}
+		, 'Y'
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, 'ErpItemIntfIcInfo'
+		)
+	</insert>
+	
+	<update id="updateErpItemIntfIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateErpItemIntfIcInfo */
+		UPDATE TORDER_MST_IC A
+		   SET ICNM          = #{icnm}
+		     , OLNICKEY      = #{olnickey}
+		     , ASRTREPKEY    = #{repkey}
+		     , ERPIMGURL     = #{icimgurl}
+		     , CTGKEY        = #{ctgkey}
+		     , OLNICTYPE     = #{olnictype}
+		     , OFLNICTYPE    = #{oflnictype}
+		     , EXPCKYN       = #{expckyn}
+		     , DNGMGMTYN     = #{dngmgmtyn}
+		     , ICORIGIN      = #{icorigin}
+		     , ACKEY         = #{ackey}
+		     , ICMGMTUSR     = #{icmgmtusr}
+		     , SLPRC         = #{slprc}
+		     , DIRCDLVYICYN  = #{dircdlvyicyn}
+		     , ICSTATUSDIV   = #{icstatusdiv}
+		     , MTR           = #{mtr}
+		     , EXPCKDAYS     = #{expdays}
+		     , B2BGRADE      = #{b2bgrade}
+		     , ASRTYN        = CASE WHEN #{asrtrepkey} IS NULL THEN 'N' ELSE ASRTYN END
+		     , ORGASRTYN     = #{asrtyn}
+		     , PKOTICYN      = #{pkoticyn}
+		     , ROBSORTERICYN = CASE
+		                          WHEN EXISTS (
+		                              SELECT 1
+		                                FROM TORDER_MST_ICUTXTYPE B
+		                               WHERE B.ICKEY = A.ICKEY
+		                                 AND B.ICUNITTYPE = 'EA'
+		                                 AND B.MEASUREMENTYN = 'Y'
+		                          )
+		                          THEN ROBSORTERICYN
+		                          ELSE #{robsortericyn}
+		                       END
+		
+		     , CUSHNMEPCKGYN = CASE
+		                          WHEN EXISTS (
+		                              SELECT 1
+		                                FROM TORDER_MST_ICUTXTYPE B
+		                               WHERE B.ICKEY = A.ICKEY
+		                                 AND B.ICUNITTYPE = 'EA'
+		                                 AND B.MEASUREMENTYN = 'Y'
+		                          )
+		                          THEN CUSHNMEPCKGYN
+		                          ELSE #{cushnmepckgyn}
+		                       END
+		
+		     , UPDATEDATE    = #{sysdate}
+		     , UPDATEURKEY   = 'ErpItemIntfIcInfo'
+		 WHERE A.OWKEY = #{owkey}
+		   AND A.ICKEY = #{ickey}
+	</update>
+	
+	<insert id="insertErpItemIntfIcOrgInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertErpItemIntfIcOrgInfo */
+		INSERT INTO TORDER_MST_IC_ORG
+		(
+		  OWKEY
+		, ICGRPKEY
+		, UOM
+		, ICKEY
+		, ICNM
+		, ASRTREPKEY
+		, ICUNITKEY
+		, OLNICKEY
+		, ICIMGURL
+		, CTGKEY
+		, OLNICTYPE
+		, OFLNICTYPE
+		, EXPCKYN
+		, DNGMGMTYN
+		, CUSHNMEPCKGYN
+		, ICORIGIN
+		, ACKEY
+		, ICMGMTUSR
+		, SLPRC
+		, ASRTYN
+		, DIRCDLVYICYN
+		, ICSTATUSDIV
+		, PKOTICYN
+		, ROBSORTERICYN
+		, MTR
+		, EXPCKDAYS
+		, B2BGRADE
+		, PCSBARCODE
+		, IPCBARCODE
+		, CARTBARCODE
+		, QTYPERIPC
+		, QTYPERCARTON
+		, IFYN
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, 'GR'
+		, 'EA'
+		, #{ickey}
+		, #{icnm}
+		, #{repkey}
+		, #{ickey}
+		, #{olnickey}
+		, #{icimgurl}
+		, #{ctgkey}
+		, #{olnictype}
+		, #{oflnictype}
+		, COALESCE(#{expckyn}, 'N')
+		, #{dngmgmtyn}
+		, #{cushnmepckgyn}
+		, #{icorigin}
+		, #{ackey}
+		, #{icmgmtusr}
+		, #{slprc}
+		, #{asrtyn}
+		, #{dircdlvyicyn}
+		, #{icstatusdiv}
+		, #{pkoticyn}
+		, #{robsortericyn}
+		, #{mtr}
+		, #{expdays}
+		, #{b2bgrade}
+		, #{pcsbarcode}
+		, #{ipcbarcode}
+		, #{cartbarcode}
+		, #{qtyperipc}
+		, #{qtypercarton}
+		, 'Y'
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateErpItemIntfIcOrgInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateErpItemIntfIcOrgInfo */
+		UPDATE TORDER_MST_IC_ORG
+		   SET ICNM         = #{icnm}
+			 , OLNICKEY     = #{olnickey}
+			 , ASRTREPKEY   = #{repkey}
+			 , ICIMGURL     = #{icimgurl}
+			 , CTGKEY       = #{ctgkey}
+			 , OLNICTYPE    = #{olnictype}
+			 , OFLNICTYPE   = #{oflnictype}
+			 , EXPCKYN      = #{expckyn}
+			 , DNGMGMTYN    = #{dngmgmtyn}
+			 , CUSHNMEPCKGYN = #{cushnmepckgyn}
+			 , ICORIGIN     = #{icorigin}
+			 , ACKEY        = #{ackey}
+			 , ICMGMTUSR    = #{icmgmtusr}
+			 , SLPRC        = #{slprc}
+			 , ASRTYN       = #{asrtyn}
+			 , DIRCDLVYICYN = #{dircdlvyicyn}
+			 , ICSTATUSDIV  = #{icstatusdiv}
+			 , PKOTICYN     = #{pkoticyn}
+			 , ROBSORTERICYN = #{robsortericyn}
+			 , MTR          = #{mtr}
+			 , EXPCKDAYS    = #{expdays}
+		  	 , B2BGRADE     = #{b2bgrade}
+			 , PCSBARCODE = #{pcsbarcode}
+			 , IPCBARCODE = #{ipcbarcode}
+			 , CARTBARCODE = #{cartbarcode}
+			 , QTYPERIPC   = #{qtyperipc}
+			 , QTYPERCARTON   = #{qtypercarton}
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{interfaceUrkey}
+	   WHERE OWKEY = #{owkey}
+	     AND ICKEY = #{ickey}
+	</update>
+	
+	<insert id="insertErpItemIntfIcutxtypeInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertErpItemIntfIcutxtypeInfo */
+		INSERT INTO TORDER_MST_ICUTXTYPE
+		(
+		  OWKEY
+		, ICKEY
+		, ICUNITTYPE
+		, ICUNITORDER
+		, ICUNITQTY
+		, DEPTH
+		, WIDTH
+		, HEIGHT
+		, SIZEUNIT
+		, WEIGHT
+		, WEIGHTUNIT
+		, VOL
+		, VOLUNIT
+		, PLTROW
+		, PLTCOL
+		, CPP
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, #{ickey}
+		, #{icunittype}
+		, #{icunitorder}
+		, #{icunitqty}
+		, #{depth}
+		, #{width}
+		, #{height}
+		, 'MM'
+		, #{weight}
+		, 'G'
+		, #{vol}
+		, 'M3'
+		, #{pltrow}
+		, #{pltcol}
+		, #{cpp}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateErpItemIntfIcutxtypeInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateErpItemIntfIcutxtypeInfo */
+		UPDATE TORDER_MST_ICUTXTYPE
+		   SET WIDTH  = CASE WHEN MEASUREMENTYN = 'N' THEN #{width}  ELSE WIDTH  END
+		     , DEPTH  = CASE WHEN MEASUREMENTYN = 'N' THEN #{depth}  ELSE DEPTH  END
+		     , HEIGHT = CASE WHEN MEASUREMENTYN = 'N' THEN #{height} ELSE HEIGHT END
+		     , WEIGHT = CASE WHEN MEASUREMENTYN = 'N' THEN #{weight} ELSE WEIGHT END
+		     , VOL    = CASE WHEN MEASUREMENTYN = 'N' THEN #{vol}    ELSE VOL    END
+		     , PLTROW = #{pltrow}
+		     , PLTCOL = #{pltcol}
+		     , CPP    = #{cpp}
+		     , ICUNITQTY = #{icunitqty}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND ICUNITORDER = #{icunitorder}
+		   AND ICUNITTYPE = #{icunittype}
+	</update>
+	
+	<update id="updateErpItemIntfIcutxtypeMstReqorder">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateErpItemIntfIcutxtypeMstReqorder */
+		UPDATE TORDER_MST_REQORDER
+		SET
+		    EAUOM = CASE WHEN #{icunittype} = 'EA' THEN COALESCE(#{icunitqty}, 0) ELSE COALESCE(EAUOM, 0) END
+		  , INNUOM = CASE WHEN #{icunittype} = 'INN' THEN COALESCE(#{icunitqty}, 0) ELSE COALESCE(INNUOM, 0) END
+		  , CTNUOM = CASE WHEN #{icunittype} = 'CTN' THEN COALESCE(#{icunitqty}, 0) ELSE COALESCE(CTNUOM, 0) END
+		  , CPPUOM = CASE WHEN #{icunittype} = 'CTN' THEN COALESCE(#{cpp}, 0) ELSE COALESCE(CPPUOM, 0) END
+		  , VOL = CASE WHEN #{icunittype} = 'INN' THEN COALESCE(#{vol}, 0) ELSE COALESCE(VOL, 0) END
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{interfaceUrkey}
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</update>
+	
+	<insert id="insertErpItemIntfIcbarcodeInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertErpItemIntfIcbarcodeInfo */
+		INSERT INTO TORDER_MST_ICBACODE (
+				  OWKEY
+				, ICKEY
+				, SEQ
+				, BARCODE
+				, UOM
+				, DELYN
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+			)
+			SELECT
+				  #{owkey}
+				, #{ickey}
+				, DEFAULT
+				, #{barcode}
+				, #{uom}
+				, 'N'
+				, #{sysdate}
+				, #{interfaceUrkey}
+				, #{sysdate}
+				, #{interfaceUrkey}
+			WHERE NOT EXISTS (
+				SELECT 1 FROM TORDER_MST_ICBACODE
+				WHERE OWKEY   = #{owkey}
+				  AND ICKEY   = #{ickey}
+				  AND BARCODE = #{barcode}
+				  AND UOM     = #{uom}
+				  AND DELYN   = 'N'
+			)
+	</insert>
+
+
+	<!-- 1. TORDER_MST_ASRT UPDATE -->
+	<update id="updateAsrtStatus" parameterType="map">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateAsrtStatus */
+		UPDATE TORDER_MST_ASRT
+		   SET ASRTSTATUS =
+				   CASE
+					   WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='Y' THEN '00'  /*단품화 건 */
+		               WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='N' THEN '01'  /*단종건 */
+					   WHEN #{casetype} = 'C' AND #{orgqty} = 0 THEN '01'
+					   WHEN #{casetype} = 'C' AND #{orgqty} != 0 THEN NULL
+						ELSE ASRTSTATUS
+				   END,
+			   QTY =
+				   CASE
+					   WHEN #{casetype} = 'B' AND #{orgqty} > 0 THEN 0
+					   ELSE QTY
+				   END,
+			   UPDATEDATE  = #{sysdate},
+			   UPDATEURKEY = #{urkey}
+		 WHERE ASRTKEY = #{asrtkey}
+	</update>
+
+
+	<!-- 2. TORDER_MST_IC UPDATE - 자상품용 'A' 인 경우 아소트 여부는 'N'으로 판단함. -->
+	<!-- 변경 내역 입수량 0, 이고, 원상품주문이 존재하면,  단품화 , 아닌경우는 단종 -->
+	<!-- CASEB는 ERP로 부터 받지 않음. -->
+	<update id="updateIcByAsrtKey" parameterType="map">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateIcByAsrtKey */
+		UPDATE TORDER_MST_IC
+		   SET ASRTYN =
+				   CASE
+					   WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='Y' THEN 'N'
+		               WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='N' THEN 'Y'
+					   WHEN #{casetype} = 'C' THEN 'Y'
+					   ELSE ASRTYN
+				   END,
+			   REQORDEREXCEPTYN =
+				   CASE
+				  	   WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='Y' THEN 'N'
+					   WHEN #{casetype} IN ('A' ,'B') AND #{masteryn} ='N' THEN 'Y'
+					   WHEN #{casetype} = 'C' THEN 'Y'
+					   ELSE REQORDEREXCEPTYN
+				   END,
+			   UPDATEDATE  = #{sysdate},
+			   UPDATEURKEY ='IcByAsrtKey'
+		 WHERE ICKEY = #{asrtkey}
+	</update>
+
+
+	<!-- 3. TORDER_MST_IC UPDATE - 대표코드용 -->
+	<update id="updateIcRepKey" parameterType="map">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateIcRepKey */
+		UPDATE TORDER_MST_IC
+		   SET ASRTYN = #{repasrtyn},
+		       ORGASRTYN = ASRTYN ,
+		       REQORDEREXCEPTYN = CASE
+					WHEN #{repasrtyn} = 'Y' THEN 'N'   /* 아소트 유지 → 발주 가능*/
+					ELSE 'Y'     END   ,                    /* 해체 → 발주 불가 */
+			   UPDATEDATE  = #{sysdate},
+			   UPDATEURKEY = #{urkey}
+		 WHERE ICKEY = #{asrtrepkey}
+	</update>
+
+
+
+	<update id="updateAsrtBatchStatusBySet">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateAsrtBatchStatusBySet */
+		UPDATE TORDER_WMS_ASRT_BATCH A
+		SET SENDSTATUS  = CASE WHEN SEQ =#{seq} THEN 'N' ELSE  'Y' END
+		, UPDATEDATE  = #{sysdate}
+		, UPDATEURKEY = #{urkey}
+		WHERE A.REQDATE     = #{reqdate}
+		AND A.ASRTREPKEY  = #{asrtrepkey}
+		AND A.SENDSTATUS  = 'W'
+		AND A.SEQ       <![CDATA[ <= ]]> #{seq}
+	</update>
+
+	<insert id="insertWmsIcBatch" parameterType="map">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertWmsIcBatch */
+		INSERT INTO TORDER_WMS_IC_BATCH (
+			REQDATE,
+			ICKEY,
+			SENDYN,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+		SELECT
+			#{reqdate},
+			#{ickey},
+			'N',
+			TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'),
+			#{interfaceUrkey},
+			TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'),
+			#{interfaceUrkey}
+		WHERE NOT EXISTS (
+			SELECT 1
+			  FROM TORDER_WMS_IC_BATCH
+			 WHERE REQDATE = #{reqdate}
+			   AND ICKEY   = #{ickey}
+		       AND SENDYN ='N'
+		)
+	</insert>
+
+	<insert id="insertSendWmsIcxctTaget" parameterType="map">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertSendWmsIcxctTaget */
+		INSERT INTO TORDER_MST_ICXCT
+		(
+			  OWKEY
+			, ICKEY
+			, CTKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey}
+			, #{ickey}
+			, #{ctkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+			WHERE NOT EXISTS (
+					SELECT 1
+						FROM TORDER_MST_ICXCT
+						WHERE OWKEY = #{owkey}
+						AND ICKEY = #{ickey}
+						AND CTKEY = #{ctkey}
+					)
+	</insert>
+
+	<update id="updateErpAsrtDelete">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateErpAsrtDelete */
+		UPDATE TORDER_MST_ICBACODE
+			SET DELYN  ='Y'
+			  , UPDATEDATE = #{sysdate}
+			  , UPDATEURKEY	= 'ErpAsrtDelete'
+		WHERE OWKEY = #{owkey}
+		AND ICKEY = #{ickey}
+		AND UOM   = #{uom}
+		AND BARCODE != #{barcode}
+	</update>
+
+</mapper>	

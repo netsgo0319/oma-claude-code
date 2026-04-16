@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.RoleByUserMapper">
+
+	<select id="selectUserCount" resultType="java.lang.Integer" >
+		/* adm-role-rolebyuser-sql-oracle.xml - selectUserCount */
+		SELECT COUNT(*)
+		FROM TADMIN_MST_UR
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectTAdminMstRo" resultType="camelMap" >
+		/* adm-role-rolebyuser-sql-oracle.xml - selectTAdminMstRo */
+		SELECT '0' AS CHK
+		       ,ROKEY
+			   ,RONM
+		FROM TADMIN_MST_RO
+	</select>
+
+	<select id="selectRoleByUser" resultType="camelMap" >
+		/* adm-role-rolebyuser-sql-oracle.xml - selectRoleByUser */
+		SELECT '0' AS CHK
+		       ,URXROGT.ROKEY AS ROKEY
+			   ,RO.RONM AS RONM
+		       ,URXROGT.URKEY AS URKEY
+		FROM TADMIN_MST_URXROGT URXROGT
+		INNER JOIN TADMIN_MST_RO RO
+				ON URXROGT.ROKEY = RO.ROKEY
+		WHERE URXROGT.URKEY = #{urkey}
+	</select>
+
+
+	<select id="selectUser" resultType="camelMap" >
+		/* adm-role-rolebyuser-sql-oracle.xml - selectUser */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT URKEY
+		,URNM
+		FROM TADMIN_MST_UR
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY URKEY ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectTAdminMstUrxrogt" resultType="camelMap" >
+		/* adm-role-rolebyuser-sql-oracle.xml - selectTAdminMstUrxrogt */
+		SELECT URKEY
+			   ,ROKEY
+		  FROM TADMIN_MST_URXROGT
+		 <where>
+		 	<choose>
+				<when test="urkey != null and urkey != ''">
+					URKEY = #{urkey}
+				</when>
+				<otherwise>
+					ROKEY = #{rokey}
+				</otherwise>
+			</choose>
+		 </where>
+	</select>
+	
+	<insert id="insertTAdminMstUrxrogt">
+		/* adm-role-rolebyuser-sql-oracle.xml - insertTAdminMstUrxrogt */
+		INSERT INTO TADMIN_MST_URXROGT (
+			 ROKEY
+			 ,URKEY
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,UPDATEURKEY
+			 ,UPDATEDATE
+		) VALUES ( 
+			 #{rokey}
+			 ,#{urkey}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+	
+		)	
+	</insert>
+	
+	<delete id="deleteTAdminMstUrxrogt">
+		/* adm-role-rolebyuser-sql-oracle.xml - deleteTAdminMstUrxrogt */
+		DELETE 
+		  FROM TADMIN_MST_URXROGT
+		 WHERE ROKEY = #{rokey}
+		   AND URKEY = #{urkey}
+	</delete>
+</mapper>	

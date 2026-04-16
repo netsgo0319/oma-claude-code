@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnExpdateModMapper">
+
+	<sql id="selectInvnExpdateModRefSql">
+	/* wms-inventory-invnexpdatemod-sql-oracle.xml - selectInvnExpdateModRefSql - 유통기한 변경 조회  SQL */
+			SELECT *
+			  FROM (
+					SELECT '0' AS CHK
+						 , A.CTKEY
+						 , B.CTNM
+						 , A.OWKEY
+						 , C.ZNKEY
+						 , D.ZNNM
+						 , C.ARKEY
+						 , E.ARNM
+						 , A.LCKEY
+						 , C.LCSTORGTYPECD
+						 , A.ICKEY
+						 , F.ICNM
+						 , G.BARCODE
+						 , H.IVATKEY
+						 , H.PRDCTDATE
+						 , H.EXPDATE AS BF_EXPDATE
+						 , H.EXPDATE
+						 , A.TOTQTY AS BF_TOTQTY
+						 , A.TOTQTY
+						 , A.AVQTY
+						 , A.ALQTY
+						 , A.HOLDQTY
+						 , H.IVATSTATUSCD
+						 , F.EXPCKYN
+						 , F.EXPCKTYPECD
+						 , A.IVSERIALNO
+					 	 , A.IVSERIALDIVCD
+						 , A.INSERTDATE
+						 , A.INSERTURKEY
+						 , A.UPDATEDATE
+						 , A.UPDATEURKEY
+					  FROM TWORK_INFO_IVATXLC A
+					 INNER JOIN TWORK_MST_CT B
+						ON A.CTKEY = B.CTKEY
+					  LEFT OUTER JOIN TWORK_MST_LC C
+						ON A.CTKEY = C.CTKEY
+					   AND A.LCKEY = C.LCKEY
+					  LEFT OUTER JOIN TWORK_MST_ZN D
+						ON A.CTKEY = D.CTKEY
+					   AND C.ZNKEY = D.ZNKEY
+					  LEFT OUTER  JOIN TWORK_MST_AR E
+						ON A.CTKEY = E.CTKEY
+					   AND C.ARKEY = E.ARKEY
+		  			 INNER JOIN TWORK_MST_IC F
+						ON A.CTKEY = F.CTKEY
+					   AND A.OWKEY = F.OWKEY
+					   AND A.ICKEY = F.ICKEY
+					  LEFT OUTER JOIN TWORK_MST_ICBARCODE G
+						ON A.CTKEY = G.CTKEY
+					   AND A.OWKEY = G.OWKEY
+					   AND A.ICKEY = G.ICKEY
+					   AND G.UOM = 'EA'
+					 INNER JOIN TWORK_INFO_IVAT H
+						ON A.CTKEY = H.CTKEY
+					   AND A.OWKEY = H.OWKEY
+					   AND A.IVATKEY = H.IVATKEY
+					 WHERE 1=1
+	                   AND A.TOTQTY <![CDATA[ >= ]]> 0
+					   AND D.ZNTYPECD = '10'            /* 보관존 */
+					   AND F.EXPCKYN = 'Y'
+			  )
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			WHERE  #{SEARCH_CONDITION}
+			</if>				  
+	</sql>	
+	
+	
+	<select id="selectInvnExpdateMod" resultType="camelMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnExpdateModRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY LCKEY , ICKEY , IVATKEY
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnExpdateModExcelList" resultType="camelMap">
+		/* wms-inventory-invnexpdatemod-sql-oracle.xml - selectInvnExpdateModExcelList */
+		SELECT *
+		  FROM (
+				  WITH T_CODE AS (
+					SELECT
+						  B.CTKEY
+						, B.CTCDHDKEY
+						, B.CTCDDTKEY
+						, B.CTCDDTNM
+					FROM TWORK_MST_CTCD_HD A
+					INNER JOIN TWORK_MST_CTCD_DT B
+						ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+					<where>
+						AND A.DELYN = 'N'
+						AND B.DELYN = 'N'
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+								AND B.LAKEY = #{lakey}
+						</if>
+
+						AND A.CTCDHDKEY IN ('LCSTORGTYPECD', 'IVATSTATUS')
+					</where>
+				)
+				SELECT A.CTKEY
+					 , B.CTNM
+					 , A.OWKEY
+					 , C.ZNKEY
+					 , D.ZNNM
+					 , C.ARKEY
+					 , E.ARNM
+					 , A.LCKEY
+					 , CD1.CTCDDTNM AS LCSTORGTYPECD
+					 , A.ICKEY
+					 , F.ICNM
+					 , G.BARCODE
+					 , H.IVATKEY
+					 , H.PRDCTDATE
+					 , H.EXPDATE AS BF_EXPDATE
+					 , H.EXPDATE
+					 , A.TOTQTY AS BF_TOTQTY
+					 , A.TOTQTY
+					 , A.AVQTY
+					 , A.ALQTY
+					 , A.HOLDQTY
+					 , CD2.CTCDDTNM AS IVATSTATUSCD
+					 , F.EXPCKYN
+					 , F.EXPCKTYPECD
+					 , A.IVSERIALNO
+					 , A.IVSERIALDIVCD
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IVATXLC A
+				 INNER JOIN TWORK_MST_CT B
+					ON A.CTKEY = B.CTKEY
+				  LEFT OUTER JOIN TWORK_MST_LC C
+					ON A.CTKEY = C.CTKEY
+				   AND A.LCKEY = C.LCKEY
+				  LEFT OUTER JOIN TWORK_MST_ZN D
+					ON A.CTKEY = D.CTKEY
+				   AND C.ZNKEY = D.ZNKEY
+				  LEFT OUTER  JOIN TWORK_MST_AR E
+					ON A.CTKEY = E.CTKEY
+				   AND C.ARKEY = E.ARKEY
+				 INNER JOIN TWORK_MST_IC F
+					ON A.CTKEY = F.CTKEY
+				   AND A.OWKEY = F.OWKEY
+				   AND A.ICKEY = F.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_ICBARCODE G
+					ON A.CTKEY = G.CTKEY
+				   AND A.OWKEY = G.OWKEY
+				   AND A.ICKEY = G.ICKEY
+				   AND G.UOM = 'EA'
+				 INNER JOIN TWORK_INFO_IVAT H
+					ON A.CTKEY = H.CTKEY
+				   AND A.OWKEY = H.OWKEY
+				   AND A.IVATKEY = H.IVATKEY
+				  LEFT JOIN T_CODE CD1
+					ON CD1.CTKEY = A.CTKEY
+				   AND CD1.CTCDHDKEY = 'LCSTORGTYPECD'
+				   AND CD1.CTCDDTKEY = C.LCSTORGTYPECD
+				  LEFT JOIN T_CODE CD2
+					ON CD2.CTKEY = A.CTKEY
+				   AND CD2.CTCDHDKEY = 'IVATSTATUS'
+				   AND CD2.CTCDDTKEY = H.IVATSTATUSCD
+				 WHERE 1=1
+				   AND A.TOTQTY <![CDATA[ >= ]]> 0
+				   AND D.ZNTYPECD = '10'            /* 보관존 */
+				   AND F.EXPCKYN = 'Y'
+			 )
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		 WHERE  #{SEARCH_CONDITION}
+		</if>
+
+		 ORDER BY LCKEY , ICKEY , IVATKEY
+	</select>
+
+	<select id="selectInvnExpdateModCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectInvnExpdateModRefSql"/>
+		  ) 
+	</select>
+
+	<select id="selectMstIc" resultType="camelMap" >
+	/* wms-inventory-invnexpdatemod-sql-oracle.xml - selectMstIc - 상품 조회 */
+		SELECT *
+	 	  FROM TWORK_MST_IC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<select id="selectInfoIvatxlc" resultType="camelMap" >
+	/* wms-inventory-invnexpdatemod-sql-oracle.xml - selectInfoIvatxlc - 재고 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IVATXLC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{ivatkey}
+	</select>
+
+
+	<update id="updateInfoIvatExpdate">
+	/* wms-inventory-invnexpdatemod-sql-oracle.xml - updateInfoIvatExpdate - 재고 속성 수정 */
+		UPDATE TWORK_INFO_IVAT
+		   SET EXPDATE = #{expdate}
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IVATKEY = #{ivatkey}
+
+	</update>
+	
+</mapper>

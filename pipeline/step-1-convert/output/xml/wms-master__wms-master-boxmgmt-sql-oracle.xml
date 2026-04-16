@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.BoxMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectBoxMgmt">
+		  FROM TWORK_MST_BOX BOX
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = BOX.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectBoxMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectBoxMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectBoxMgmt"/>
+	</select>
+
+	<select id="selectBoxMgmtList" resultType="camelMap">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectBoxMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , BOX.CTKEY
+		     , CT.CTNM
+			 , BOX.BOXDIVCD
+			 , BOX.BOXNM
+			 , BOX.BOXBARCODE
+			 , BOX.WIDTH
+			 , BOX.DEPTH
+			 , BOX.HEIGHT
+			 , BOX.CBMSTARTRNG
+			 , BOX.CBMCLOSRNG
+			 , BOX.USEYN
+			 , BOX.INSERTDATE
+			 , BOX.INSERTURKEY
+			 , BOX.UPDATEDATE
+		  	 , BOX.UPDATEURKEY
+		<include refid="sql_selectBoxMgmt"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectBoxMgmtMap" resultType="camelMap">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectBoxMgmtMap */
+		SELECT BOX.CTKEY
+		     , CT.CTNM
+			 , BOX.BOXDIVCD
+			 , BOX.BOXNM
+			 , BOX.BOXBARCODE
+		     , IC.ICKEY
+		     , IC.ICNM
+			 , BOX.WIDTH
+			 , BOX.DEPTH
+			 , BOX.HEIGHT
+			 , BOX.CBMSTARTRNG
+			 , BOX.CBMCLOSRNG
+			 , BOX.USEYN
+			 , BOX.INSERTDATE
+			 , BOX.INSERTURKEY
+			 , BOX.UPDATEDATE
+		  	 , BOX.UPDATEURKEY
+		  FROM TWORK_MST_BOX BOX
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = BOX.CTKEY
+		  LEFT JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = BOX.CTKEY
+		   AND IC.ICKEY = BOX.ICKEY
+		 WHERE BOX.CTKEY = #{ctkey}
+		   AND BOX.BOXBARCODE = #{boxbarcode}
+	</select>
+
+	<select id="selectInfoBoxDlvryList" resultType="camelMap">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectInfoBoxDlvryList */
+		SELECT '0' AS CHK
+			 , DLVRY.CTKEY
+			 , DLVRY.BOXBARCODE
+			 , DLVRY.DLVRYCORPCD
+		     , DLVRY.DLVRYCORPCD AS ORG_DLVRYCORPCD
+			 , DLVRY.BOXTYPECD
+			 , DLVRY.DLVRYAMT
+			 , DLVRY.INSERTDATE
+			 , DLVRY.INSERTURKEY
+			 , DLVRY.UPDATEDATE
+			 , DLVRY.UPDATEURKEY
+		  FROM TWORK_INFO_BOX_DLVRY DLVRY
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = DLVRY.CTKEY
+		 WHERE DLVRY.CTKEY = #{ctkey}
+		   AND DLVRY.BOXBARCODE = #{boxbarcode}
+	</select>
+
+	<select id="selectInfoBoxDlvryDupCount" resultType="java.lang.Integer">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectInfoBoxDlvryDupCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_BOX_DLVRY
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXBARCODE = #{boxbarcode}
+		   AND DLVRYCORPCD = #{dlvrycorpcd}
+	</select>
+
+	<select id="selectBoxDupCount">
+		/* wms-master-boxmgmt-sql-oracle.xml - selectBoxDupCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_BOX
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXBARCODE = #{boxbarcode}
+	</select>
+
+	<insert id="insertBoxMgmt">
+<!--		<selectKey keyProperty="boxbarcode" resultType="String" order="BEFORE">-->
+<!--			SELECT #{boxbarcode} || TO_CHAR(SYSDATE,'YYYY')-->
+<!--			  FROM DUAL-->
+<!--		</selectKey>-->
+
+		/* wms-master-boxmgmt-sql-oracle.xml - insertBoxMgmt */
+		INSERT INTO TWORK_MST_BOX (
+			   CTKEY
+			 , BOXDIVCD
+			 , BOXNM
+			 , BOXBARCODE
+			 , ICKEY
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		VALUES (
+			   #{ctkey}
+			 , #{boxdivcd}
+			 , #{boxnm}
+			 , #{boxbarcode}
+		  	 , #{ickey}
+			 , COALESCE(#{width}, 0)
+			 , COALESCE(#{depth}, 0)
+			 , COALESCE(#{height}, 0)
+			 , COALESCE(#{cbmstartrng}, 0)
+			 , COALESCE(#{cbmclosrng}, 0)
+			 , #{useyn}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateBoxMgmt">
+		/* wms-master-boxmgmt-sql-oracle.xml - updateBoxMgmt */
+		UPDATE TWORK_MST_BOX
+		   SET BOXNM = #{boxnm}
+		     , ICKEY= #{ickey}
+			 , WIDTH = COALESCE(#{width}, 0)
+			 , DEPTH = COALESCE(#{depth}, 0)
+			 , HEIGHT = COALESCE(#{height}, 0)
+			 , CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , USEYN = #{useyn}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXDIVCD = #{boxdivcd}
+		   AND BOXBARCODE = #{boxbarcode}
+	</update>
+
+	<delete id="deleteBoxMgmt">
+		/* wms-master-boxmgmt-sql-oracle.xml - deleteBoxMgmt */
+		DELETE
+		  FROM TWORK_MST_BOX
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXDIVCD = #{boxdivcd}
+		   AND BOXBARCODE = #{boxbarcode}
+	</delete>
+
+	<insert id="insertInfoBoxDlvry">
+		/* wms-master-boxmgmt-sql-oracle.xml - insertInfoBoxDlvry */
+		INSERT INTO TWORK_INFO_BOX_DLVRY (
+			   CTKEY
+			 , BOXBARCODE
+			 , DLVRYCORPCD
+			 , BOXTYPECD
+			 , DLVRYAMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{ctkey}
+		     , #{boxbarcode}
+		     , #{dlvrycorpcd}
+		     , #{boxtypecd}
+		     , COALESCE(#{dlvryamt}, 0)
+		     , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , #{surkey}
+		     , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , #{surkey}
+		     )
+	</insert>
+
+	<update id="updateInfoBoxDlvry">
+		/* wms-master-boxmgmt-sql-oracle.xml - updateInfoBoxDlvry */
+		UPDATE TWORK_INFO_BOX_DLVRY
+		   SET DLVRYCORPCD = #{dlvrycorpcd}
+			 , BOXTYPECD = #{boxtypecd}
+			 , DLVRYAMT = COALESCE(#{dlvryamt}, 0)
+	 		 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXBARCODE = #{boxbarcode}
+		   AND DLVRYCORPCD = #{orgDlvrycorpcd}
+	</update>
+
+	<delete id="deleteInfoBoxDlvry">
+		/* wms-master-boxmgmt-sql-oracle.xml - deleteInfoBoxDlvry */
+		DELETE
+		  FROM TWORK_INFO_BOX_DLVRY
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXBARCODE = #{boxbarcode}
+		   AND DLVRYCORPCD = #{orgDlvrycorpcd}
+	</delete>
+
+</mapper>

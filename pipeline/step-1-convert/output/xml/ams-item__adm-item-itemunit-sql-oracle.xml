@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemUnitMapper">
+
+	<select id="selectItemUnitCount" resultType="java.lang.Integer" >
+		/* adm-item-itemunit-sql-oracle.xml - selectItemUnitCount */
+		SELECT COUNT(1)
+			FROM (
+					SELECT  A.OWKEY
+					    ,C.OWNM
+						,A.ICUNITKEY 
+				        ,B.ICUNITTYPE
+				        ,'ICUTTYPE' ||';'|| B.ICUNITTYPE AS ICUTTYPE_DESC
+				        ,B.ICUNITQTY
+				        ,A.CLOSDATE
+				        ,B.INSERTDATE 
+				        ,B.UPDATEDATE
+				        ,B.INSERTURKEY
+ 						,B.UPDATEURKEY
+				        ,B.ICUNITORDER
+				        ,(SELECT MAX(C.ICNM) FROM TADMIN_MST_IC C WHERE C.ICKEY = A.ICUNITKEY) ICNM
+				        ,(SELECT MAX(C.ICKEY) FROM TADMIN_MST_IC C WHERE C.ICKEY = A.ICUNITKEY) ICKEY
+				  FROM 	TADMIN_MST_ICUT A
+				  INNER JOIN TADMIN_MST_ICUTXTYPE B
+				      	  ON A.OWKEY = B.OWKEY
+						 AND  A.ICUNITKEY = B.ICUNITKEY
+				  INNER JOIN TADMIN_MST_OW C
+				  	  	  ON A.OWKEY = C.OWKEY
+				  LEFT OUTER JOIN TADMIN_MST_IC IC
+							   ON A.OWKEY = IC.OWKEY
+							  AND A.ICUNITKEY = IC.ICUNITKEY
+				  WHERE IC.DELYN ='N'
+			   ) A
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   WHERE 	#{SEARCH_CONDITION}
+			</if>
+	</select>
+	
+	<select id="selectItemIcutCount" resultType="java.lang.Integer" >
+		/* adm-item-itemunit-sql-oracle.xml - selectItemIcutCount */
+		SELECT COUNT(1)
+			FROM (
+					SELECT  A.OWKEY
+						,A.ICUNITKEY 
+				        ,B.ICUNITTYPE
+				        ,'ICUTTYPE' ||';'|| B.ICUNITTYPE AS ICUTTYPE_DESC
+				        ,B.ICUNITQTY
+				        ,A.CLOSDATE
+				        ,B.INSERTDATE 
+				        ,B.INSERTURKEY 
+				        ,B.UPDATEDATE 
+				        ,B.UPDATEURKEY
+				        ,B.ICUNITORDER
+				        ,(SELECT MAX(C.ICNM) FROM TADMIN_MST_IC C WHERE C.ICKEY = A.ICUNITKEY) ICNM
+				  FROM 	TADMIN_MST_ICUT A
+				  INNER JOIN TADMIN_MST_ICUTXTYPE B
+				  		  ON A.OWKEY = B.OWKEY
+						 AND  A.ICUNITKEY = B.ICUNITKEY
+				  INNER JOIN TADMIN_MST_OW C
+						  ON A.OWKEY = C.OWKEY
+				  LEFT OUTER JOIN TADMIN_MST_IC IC
+							   ON A.OWKEY = IC.OWKEY
+							  AND A.ICUNITKEY = IC.ICUNITKEY
+				  WHERE IC.DELYN ='N'
+			)
+	</select>
+
+	<select id="selectItemUnit" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectItemUnit */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.* 
+		FROM (
+				SELECT '0' AS CHK
+				    ,A.OWKEY
+				    ,C.OWNM
+					,A.ICUNITKEY
+			        ,B.ICUNITTYPE
+			        ,B.ICUNITQTY
+			        ,A.CLOSDATE
+			        ,B.INSERTDATE 
+			        ,B.UPDATEDATE
+			        ,B.INSERTURKEY
+ 					,B.UPDATEURKEY
+			        ,B.ICUNITORDER
+			        ,IC.ICNM
+			        ,IC.ICKEY
+			        ,IC.SPEC
+					,IC.IFYN
+				FROM TADMIN_MST_ICUT A
+			    INNER JOIN TADMIN_MST_ICUTXTYPE B
+				   		ON A.OWKEY = B.OWKEY
+					   AND  A.ICUNITKEY = B.ICUNITKEY
+			    INNER JOIN TADMIN_MST_OW C
+				    	ON A.OWKEY = C.OWKEY
+			    LEFT OUTER JOIN TADMIN_MST_IC IC
+							 ON A.OWKEY = IC.OWKEY
+							AND A.ICUNITKEY = IC.ICUNITKEY
+			 	WHERE 	IC.DELYN ='N'
+		   ) A
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   WHERE 	#{SEARCH_CONDITION}
+		</if>		
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY UPDATEDATE DESC , ICUNITKEY ASC
+			</otherwise>
+		</choose>       
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	
+	<select id="selectTAdminMstIcutxtypexctCount" resultType="java.lang.Integer" >
+		/* adm-item-itemunit-sql-oracle.xml - selectTAdminMstIcutxtypexctCount */
+		SELECT 	COUNT(1) 
+		  FROM 	TADMIN_MST_ICUTXTYPEXCT
+		 WHERE 	CTKEY = #{ctkey}
+		   AND  OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+		   AND	ICUNITTYPE = #{icunittype}
+	</select>
+
+	<select id="selectTAdminMstIcutxtypexct" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectTAdminMstIcutxtypexct */
+		SELECT  '0' AS CHK
+		    	,A.OWKEY
+				,A.ICUNITKEY
+		      	,A.CTKEY
+		      	,B.CTNM
+		      	,A.ICUNITTYPE
+		  FROM 	TADMIN_MST_ICUTXTYPEXCT A
+		  INNER JOIN TADMIN_MST_CT B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND B.DELYN = 'N'
+		 WHERE	A.OWKEY = #{owkey}
+		   AND  A.ICUNITKEY = #{icunitkey}
+		   AND  A.ICUNITTYPE = #{icunittype}
+		   AND  B.MANAGEMENTYN = 'Y'
+	</select>
+
+	<select id="selectItemUnitType" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectItemUnitType */
+		SELECT  A.OWKEY
+				,C.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+				,A.ICUNITKEY
+		        ,B.ICUNITTYPE
+		        ,B.ICUNITQTY
+		        ,A.CLOSDATE
+		        ,B.INSERTDATE
+		        ,B.INSERTURKEY
+		        ,B.ICUNITORDER
+		        ,(SELECT MAX(C.ICNM) FROM TADMIN_MST_IC C WHERE C.ICKEY = A.ICUNITKEY) ICNM
+		  FROM 	TADMIN_MST_ICUT A
+		  INNER JOIN TADMIN_MST_ICUTXTYPE B
+		      	  ON A.OWKEY = B.OWKEY
+				 AND  A.ICUNITKEY = B.ICUNITKEY
+		  INNER JOIN TADMIN_MST_OW C
+		  	  	  ON A.OWKEY = C.OWKEY
+		 WHERE  A.OWKEY = #{owkey}
+		   AND 	A.ICUNITKEY = #{icunitkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icunittype)" >
+		   AND  B.ICUNITTYPE = #{icunittype}
+		</if>
+	</select>
+
+	<select id="selectTAdminMstIcut" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectTAdminMstIcut */
+		SELECT
+				INSERTDATE
+				,UPDATEDATE
+				,INSERTURKEY
+ 				,UPDATEURKEY
+				,ICUNITKEY
+				,CLOSDATE
+		  FROM 	TADMIN_MST_ICUT
+		 WHERE 	OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+	</select>
+
+	<select id="selecticuttypeChk" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selecticuttypeChk */
+		SELECT I.ICUNITTYPE, T.ICUNITKEY
+          FROM (
+                SELECT OWKEY
+                     , ICUNITKEY
+                     , CASE WHEN ICUNITKEY=#{icunitkey} THEN 0 ELSE 1 END AS KEYORDER
+                     , SUM(CASE WHEN ICUNITTYPE='EA' AND ICUNITQTY=1 THEN 1 ELSE 0 END) AS EA_CNT
+                     , SUM(CASE WHEN ICUNITTYPE='CS' AND ICUNITQTY=COALESCE(#{boxqtyset}, 1) THEN 1 ELSE 0 END) AS BOX_CNT
+                     , SUM(CASE WHEN ICUNITTYPE='BOL' AND ICUNITQTY=COALESCE(#{bolqtyset}, 1) THEN 1 ELSE 0 END) AS BOL_CNT
+                  FROM TADMIN_MST_ICUTXTYPE
+                 WHERE OWKEY = #{owkey}
+                 GROUP BY OWKEY, ICUNITKEY
+                HAVING COUNT(1) = 3 /*ea, cs, bol 이 모두 있어야 set로 봄*/
+               ) T
+          JOIN TADMIN_MST_ICUTXTYPE I
+            ON T.OWKEY = I.OWKEY
+           AND T.ICUNITKEY = I.ICUNITKEY
+           AND I.ICUNITORDER = 1
+         WHERE 1=1
+           AND T.EA_CNT > 0
+           AND T.BOX_CNT > 0
+           AND T.BOL_CNT > 0
+         ORDER BY T.KEYORDER
+                , T.ICUNITKEY DESC
+	</select>
+
+	<insert id="insertTAdminMstIcut">
+		/* adm-item-itemunit-sql-oracle.xml - insertTAdminMstIcut */
+		INSERT INTO TADMIN_MST_ICUT
+		(
+		      OWKEY    /*화주 코드*/
+		    , ICUNITKEY    /*상품 단위 코드*/
+		    , CLOSDATE    /*종료 일시*/
+		    , INSERTDATE    /*입력 일시*/
+		    , INSERTURKEY    /*입력 사용자 ID*/
+		    , UPDATEDATE    /*수정 일시*/
+		    , UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT OWKEY    /*화주 코드*/
+		     , ICUNITKEY    /*상품 단위 코드*/
+		     , SUBSTR(#{closdate}, 0, 14)
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		  FROM (
+		  		SELECT T.OWKEY
+		  		     , T.ICUNITKEY
+		  		     , CASE WHEN IU.ICUNITKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+		  		  FROM (
+		  		  		SELECT #{owkey} AS OWKEY
+		  		  		     , #{icunitkey} AS ICUNITKEY
+		  		  	   ) T
+		  		  LEFT JOIN TADMIN_MST_ICUT IU
+		  		    ON T.OWKEY = IU.OWKEY
+		  		   AND T.ICUNITKEY = IU.ICUNITKEY
+		  	   ) TT
+		 WHERE SAVEYN = 'Y'
+	</insert>
+
+
+	<select id="selectTAdminMstIcutxtype" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectTAdminMstIcutxtype */
+		SELECT OWKEY
+                ,ICUNITKEY
+                ,ICUNITTYPE
+                ,ICUNITORDER
+                ,ICUNITQTY
+                ,INSERTDATE
+                ,UPDATEDATE
+                ,INSERTURKEY
+ 				,UPDATEURKEY
+                ,(SELECT MAX(C.ICNM) FROM TADMIN_MST_IC C WHERE C.ICKEY = A.ICUNITKEY) ICNM
+            FROM (
+          SELECT     A.OWKEY
+                ,A.ICUNITKEY
+                ,A.ICUNITTYPE
+                ,A.ICUNITORDER
+                ,A.ICUNITQTY
+                ,A.INSERTDATE
+                ,A.UPDATEDATE
+                ,A.INSERTURKEY
+ 				,A.UPDATEURKEY
+          FROM  TADMIN_MST_ICUTXTYPE A
+          ) A
+	     WHERE  OWKEY = #{owkey}
+		   AND  ICUNITKEY = #{icunitkey}
+		<if test="icuttype != null">
+		   AND ICUNITTYPE = #{icunittype}
+		</if>
+	</select>
+
+	<update id="updateTAdminMstIcut">
+		/* adm-item-itemunit-sql-oracle.xml - updateTAdminMstIcut */
+		UPDATE 	TADMIN_MST_ICUT
+		   SET 	CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+			  	,UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+		 WHERE  OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+	</update>
+
+	<insert id="insertTAdminMstIcutxtype">
+		/* adm-item-itemunit-sql-oracle.xml - insertTAdminMstIcutxtype */
+		INSERT INTO TADMIN_MST_ICUTXTYPE
+		(
+			OWKEY
+			,ICUNITKEY
+			,ICUNITTYPE
+			,ICUNITORDER
+			,ICUNITQTY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,LENGTH
+			,WIDTH
+			,HEIGHT
+			,WEIGHT
+			,VOL
+			,SIZEUNIT
+			,VOLUNIT
+			,WEIGHTUNIT
+		 )	VALUES	(
+		 	#{owkey}
+			,#{icunitkey}
+			,#{icunittype}
+			,#{icunitorder}
+			,#{icunitqty}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{lengthuom}
+			,#{width}
+			,#{height}
+			,#{weight}
+			,#{vol}
+			,#{sizeunit}
+			,#{volunit}
+			,#{weightunit}
+		 )
+	</insert>
+
+	<update id="updateTAdminMstIcutxtype">
+		/* adm-item-itemunit-sql-oracle.xml - updateTAdminMstIcutxtype */
+		UPDATE 	TADMIN_MST_ICUTXTYPE
+		   SET 	ICUNITORDER = #{icunitorder}
+		   		,ICUNITQTY = #{icunitqty}
+		   		,UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+		 WHERE  OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+		   AND 	ICUNITTYPE = #{icunittype}
+	</update>
+
+	<delete id="deleteTAdminMstIcutxtype">
+		/* adm-item-itemunit-sql-oracle.xml - deleteTAdminMstIcutxtype */
+		DELETE
+		  FROM 	TADMIN_MST_ICUTXTYPE
+		 WHERE 	OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+		   AND 	ICUNITTYPE = #{icunittype}
+	</delete>
+
+	<insert id="insertTAdminMstIcutxtypexct">
+		/* adm-item-itemunit-sql-oracle.xml - insertTAdminMstIcutxtypexct */
+		INSERT INTO TADMIN_MST_ICUTXTYPEXCT
+		(
+			OWKEY
+			,ICUNITKEY
+			,ICUNITTYPE
+			,CTKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )	VALUES	(
+		 	#{owkey}
+		 	,#{icunitkey}
+			,#{icunittype}
+			,#{ctkey}
+		 	,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		 )
+	</insert>
+
+	<insert id="insertTAdminMstByAmsIcutxtypexct">
+		/* adm-item-itemunit-sql-oracle.xml - insertTAdminMstByAmsIcutxtypexct */
+		INSERT INTO TADMIN_MST_ICUTXTYPEXCT
+		(
+			  OWKEY    /*화주 코드*/
+			, ICUNITKEY    /*물품 단위 코드*/
+			, ICUNITTYPE    /*물품 단위 유형*/
+			, CTKEY    /*센터 코드*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT TT.OWKEY    /*화주 코드*/
+			 , TT.ICUNITKEY    /*물품 단위 코드*/
+			 , TT.ICUNITTYPE    /*물품 단위 유형*/
+			 , #{ctkey} AS CTKEY    /*센터 코드*/
+			 , #{sysdate} AS INSERTDATE       /*입력 일시*/
+		     , #{surkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{sysdate} AS UPDATEDATE       /*수정 일시*/
+		     , #{surkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+		  		SELECT IC.OWKEY    /*화주 코드*/
+					 , IC.ICUNITKEY    /*물품 단위 코드*/
+					 , IU.ICUNITTYPE    /*물품 단위 유형*/
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM TADMIN_MST_IC IC
+				  JOIN TADMIN_MST_ICUTXTYPE IU
+				    ON IC.OWKEY = IU.OWKEY
+				   AND IC.ICUNITKEY = IU.ICUNITKEY
+				  LEFT JOIN TADMIN_MST_ICUTXTYPEXCT M
+				    ON IU.OWKEY = M.OWKEY
+				   AND IU.ICUNITKEY = M.ICUNITKEY
+				   AND IU.ICUNITTYPE = M.ICUNITTYPE
+				   AND M.CTKEY = #{ctkey}
+				 WHERE IC.OWKEY = #{owkey}
+				   AND IC.ICKEY = #{ickey}
+		  	   ) TT
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+
+	<delete id="deleteTAdminMstIcutxtypexct">
+		/* adm-item-itemunit-sql-oracle.xml - deleteTAdminMstIcutxtypexct */
+		DELETE
+		  FROM 	TADMIN_MST_ICUTXTYPEXCT
+		 WHERE 	OWKEY = #{owkey}
+		   AND	ICUNITKEY = #{icunitkey}
+		   AND 	ICUNITTYPE =  #{icunittype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+		   AND 	CTKEY = #{ctkey}
+		</if>
+	</delete>
+
+	<select id="selectItemUnitUseYn" resultType="camelMap">
+		/* adm-item-itemunit-sql-oracle.xml - selectItemUnitUseYn */
+		SELECT
+		    A.ICUNITKEY
+		FROM
+		    TADMIN_MST_IC A
+		LEFT OUTER JOIN TADMIN_MST_ICSB B
+					 ON A.OWKEY = B.OWKEY
+				    AND A.ICKEY = B.ICKEY
+		INNER JOIN TADMIN_MST_OW C
+				ON A.OWKEY = C.OWKEY
+		LEFT OUTER JOIN TADMIN_MST_AC D
+					 ON A.OWKEY = D.OWKEY
+				    AND A.ACKEY = D.ACKEY
+		WHERE   A.OWKEY = #{owkey}
+		    AND A.DELYN = 'N'
+		    AND A.ICUNITKEY IN (#{icunitkeyAry})
+	</select>
+
+	<insert id="mergeTAdminMstIcutxtype">
+		/* adm-item-itemunit-sql-oracle.xml - mergeTAdminMstIcuttype */
+		/* Converted from: MERGE INTO TADMIN_MST_ICUTXTYPE ON CONFLICT */
+		INSERT INTO TADMIN_MST_ICUTXTYPE (
+					OWKEY, ICUNITKEY, ICUNITTYPE, ICUNITORDER, ICUNITQTY
+					,INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+					,LENGTH, WIDTH, HEIGHT, WEIGHT, VOL, SIZEUNIT, VOLUNIT, WEIGHTUNIT
+				) VALUES (
+					 #{owkey}, #{icunitkey}, #{icunittype}, #{icunitorder}, #{icunitqty}
+					,#{sysdate}, #{surkey}, #{sysdate}, #{surkey}
+					,#{lengthunit}, #{widthunit}, #{heightunit}, #{weight}, #{vol}, #{sizeunit}, #{volunit}, 'G'
+				)
+		ON CONFLICT (OWKEY, ICUNITKEY, ICUNITTYPE) DO UPDATE SET
+					ICUNITQTY 	= #{icunitqty}
+					, ICUNITORDER 	= #{icunitorder}
+					, LENGTH    	= #{lengthunit}
+					, WIDTH	    = #{widthunit}
+					, HEIGHT 		= #{heightunit}
+					, WEIGHT 		= #{weight}
+					, VOL 		= #{vol}
+					, WEIGHTUNIT  = 'G'
+					, UPDATEURKEY = #{surkey}
+					, UPDATEDATE  = #{sysdate}
+	</insert>
+
+	<insert id="mergeTAdminMstIcutxtypexct">
+		/* adm-item-itemunit-sql-oracle.xml - mergeTAdminMstIcutxtypexct */
+		/* Converted from: MERGE INTO TADMIN_MST_ICUTXTYPEXCT ON CONFLICT */
+		INSERT INTO TADMIN_MST_ICUTXTYPEXCT (
+					 OWKEY, ICUNITKEY, ICUNITTYPE, CTKEY
+					,INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+				) VALUES (
+					 #{owkey}, #{icunitkey}, #{icunittype}, #{ctkey}
+					,#{sysdate}, #{surkey}, #{sysdate}, #{surkey}
+				)
+		ON CONFLICT (OWKEY, CTKEY, ICUNITKEY, ICUNITTYPE) DO UPDATE SET
+					UPDATEDATE	= #{sysdate}
+					,UPDATEURKEY 	= #{surkey}
+	</insert>
+</mapper>

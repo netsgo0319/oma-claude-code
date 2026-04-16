@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.EquipmentWmsMapper">
+
+
+	<select id="selectPkCntTWorkMstEq" resultType="java.lang.Integer" >
+		/* wms-master-equipment-sql-oracle.xml - selectPkCntTWorkMstEq */
+		SELECT	COUNT(1)
+	  	  FROM	TWORK_MST_EQ
+	     WHERE	EQKEY = #{eqkey}
+	       AND	PRTYPE = #{prtype}
+		<if test="ctkey != null">
+	 	  AND CTKEY = #{ctkey}
+	    </if>     
+	</select>
+
+	<delete id="deleteTWorkMstEq" >
+		/* wms-master-equipment-sql-oracle.xml - deleteTWorkMstEq */
+	   DELETE	
+	     FROM	TWORK_MST_EQ
+	    WHERE	EQKEY = #{eqkey}
+	      AND	PRTYPE = #{prtype}
+		<if test="ctkey != null">
+	 	  AND CTKEY = #{ctkey}
+	    </if> 
+	</delete>
+	
+	<insert id="insertTWorkMstEq">
+		/* wms-master-equipment-sql-oracle.xml - insertTWorkMstEq */
+	  INSERT INTO TWORK_MST_EQ
+			( 
+			 CTKEY
+             ,EQKEY
+             ,EQTYPE
+             ,IPADDRESS
+             ,EQNAME
+             ,CLOSDATE
+             ,UPDATEURKEY
+             ,UPDATEDATE             
+             ,INSERTURKEY
+             ,INSERTDATE
+             ,PRTYPE
+			)
+			VALUES 
+			( 
+			 #{ctkey}
+			 ,#{eqkey}
+			 ,#{eqtype}
+			 ,#{ipaddress}
+			 ,#{eqname}
+			 ,#{closdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{prtype}
+			)   		 	
+	</insert>
+	
+	<update id="updateTWorkMstEq">
+		/* wms-master-equipment-sql-oracle.xml - updateTWorkMstEq */
+			UPDATE TWORK_MST_EQ 
+			   SET
+               		EQTYPE 				= #{eqtype}
+               		,IPADDRESS 			= #{ipaddress}
+               		,EQNAME 			= #{eqname}
+               		,CLOSDATE 		= #{closdate}
+			        ,UPDATEDATE 		= #{sysdate}
+			        ,UPDATEURKEY 		= #{surkey}
+			WHERE	EQKEY = #{eqkey}
+			    AND PRTYPE	= #{prtype}
+		<if test="ctkey != null">
+	 	  	AND CTKEY = #{ctkey}
+	    </if> 
+	</update>
+
+	
+	 
+</mapper>	

@@ -1,0 +1,1194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.api.in.mapper.ItemApiMapper">
+	<select id="selectErpItemIntfIcInfo" resultType="camelMap">
+		/* oms-item-icInfo-sql-oracle.xml - selectErpItemIntfIcInfo */
+		SELECT
+			CASE WHEN IC.ICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS EXISTYN,
+			CASE WHEN ORG.ICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS ORGEXISTYN,
+			T.OWKEY,
+			T.ORGYN,
+			T.ICKEY,
+			T.ICNM,
+			T.ASRTREPKEY AS REPKEY,
+			Z.ASRTREPKEY,
+			T.OLNICKEY,
+			T.ICIMGURL,
+			T.CTGKEY,
+			T.OLNICTYPE,
+			T.OFLNICTYPE,
+			T.EXPCKYN,
+			T.DNGMGMTYN,
+			T.CUSHNMEPCKGYN,
+			T.ICORIGIN,
+			T.ACKEY,
+			T.ICMGMTUSR,
+			T.SLPRC,
+			T.ASRTYN,
+			T.DIRCDLVYICYN,
+			T.ICSTATUSDIV,
+			T.PKOTICYN,
+			T.ROBSORTERICYN,
+			T.MTR,
+			T.EXPDAYS,
+			T.B2BGRADE,
+			T.PCSBARCODE,
+			T.IPCBARCODE,
+			T.CARTBARCODE,
+			T.QTYPERIPC,
+			T.QTYPERCARTON
+		FROM (
+
+			SELECT
+				#{owkey} AS OWKEY,
+				'Y' AS ORGYN,
+				ICKEY,
+				ICNM,
+				ASRTREPKEY,
+				OLNICKEY,
+				ICIMGURL,
+				SMLCTG AS CTGKEY,
+				OLNICTYPE,
+				OFLNICTYPE,
+				COALESCE(EXPUSEYN, 'N') AS EXPCKYN,
+				DNGMGMTYN,
+				CUSHNMEPCKGYN,
+				ICORIGIN,
+				ACKEY,
+				ICMGMTUSR,
+				SLPRC,
+				ASRTYN,
+				DIRCDLVYICYN,
+				ICSTATUSDIV,
+				PKOTICYN,
+				ROBSORTERICYN,
+				MTR,
+				EXPDAYS,
+				B2BGRADE,
+				PCSBARCODE,
+				IPCBARCODE,
+				CARTBARCODE,
+				QTYPERIPC,
+				QTYPERCARTON
+			FROM TORDER_EAI_IC_BATCH
+			WHERE TRN_ID = #{trnId}
+			  AND SND_PROC_TYP = 'N'
+			  AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+
+			UNION ALL
+
+
+			SELECT
+				#{owkey} AS OWKEY,
+				'N' AS ORGYN,
+				ASRT.ICKEY,
+				ASRT.ICNM,
+				ASRT.ASRTREPKEY,
+				ASRT.OLNICKEY,
+				ASRT.ICIMGURL,
+				ASRT.CTGKEY,
+				ASRT.OLNICTYPE,
+				ASRT.OFLNICTYPE,
+				ASRT.EXPCKYN,
+				ASRT.DNGMGMTYN,
+				ASRT.CUSHNMEPCKGYN,
+				ASRT.ICORIGIN,
+				ASRT.ACKEY,
+				ASRT.ICMGMTUSR,
+				ASRT.SLPRC,
+				ASRT.ASRTYN,
+				ASRT.DIRCDLVYICYN,
+				ASRT.ICSTATUSDIV,
+				ASRT.PKOTICYN,
+				ASRT.ROBSORTERICYN,
+				ASRT.MTR,
+				ASRT.EXPDAYS,
+				ASRT.B2BGRADE,
+				ASRT.PCSBARCODE,
+				ASRT.IPCBARCODE,
+				ASRT.CARTBARCODE,
+				ASRT.QTYPERIPC,
+				ASRT.QTYPERCARTON
+			FROM (
+				SELECT
+					MB.OWKEY,
+					MB.ASRTKEY AS ICKEY,
+					MB.ASRTNM AS ICNM,
+					MB.ASRTREPKEY,
+					IB.OLNICKEY,
+					MB.ICIMGURL,
+					MB.SMLCTG AS CTGKEY,
+					IB.OLNICTYPE,
+					IB.OFLNICTYPE,
+					COALESCE(IB.EXPUSEYN, 'N') AS EXPCKYN,
+					IB.DNGMGMTYN,
+					IB.CUSHNMEPCKGYN,
+					IB.ICORIGIN,
+					IB.ACKEY,
+					IB.ICMGMTUSR,
+					IB.SLPRC,
+					IB.ASRTYN,
+					IB.DIRCDLVYICYN,
+					IB.ICSTATUSDIV,
+					IB.PKOTICYN,
+					IB.ROBSORTERICYN,
+					IB.MTR,
+					IB.EXPDAYS,
+					IB.B2BGRADE,
+					IB.PCSBARCODE,
+					IB.IPCBARCODE,
+					IB.CARTBARCODE,
+					IB.QTYPERIPC,
+					IB.QTYPERCARTON
+				FROM TORDER_EAI_IC_BATCH IB
+				JOIN TORDER_MST_ASRT MB
+				  ON MB.OWKEY = #{owkey}
+				 AND IB.ICKEY = MB.ASRTREPKEY
+				LEFT JOIN TORDER_MST_IC_ORG ORG2
+				  ON ORG2.OWKEY = MB.OWKEY
+				 AND ORG2.ICKEY = MB.ASRTKEY
+				WHERE IB.TRN_ID = #{trnId}
+				  AND IB.SND_PROC_TYP = 'N'
+				  AND IB.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+				  AND (
+						MB.QTY > 0
+					 OR (MB.QTY = 0 AND ORG2.ICKEY IS NULL)
+					  )
+			) ASRT
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM TORDER_EAI_IC_BATCH B
+				WHERE B.TRN_ID = #{trnId}
+				  AND B.ICKEY = ASRT.ICKEY
+			)
+		) T
+		LEFT JOIN TORDER_MST_IC IC
+		  ON T.OWKEY = IC.OWKEY
+		 AND T.ICKEY = IC.ICKEY
+		LEFT JOIN TORDER_MST_IC_ORG ORG
+		  ON ORG.OWKEY = T.OWKEY
+		 AND ORG.ICKEY = T.ICKEY
+		LEFT JOIN TORDER_MST_ASRT Z
+		  ON Z.OWKEY = T.OWKEY
+		 AND Z.ASRTKEY = T.ICKEY
+	</select>
+	
+	<select id="selectErpItemIntfIcutxtypeInfo" resultType="camelMap">
+		/* oms-item-icInfo-sql-oracle.xml - selectErpItemIntfIcutxtypeInfo */
+		WITH WITH_BATCH AS
+		(
+			SELECT #{owkey} AS OWKEY
+	             , ICKEY
+	             , 'CTN' AS ICUNITTYPE
+	             , '1' AS ICUNITORDER
+	             , QTYPERCARTON AS ICUNITQTY 
+	             , CARTWIDTH AS WIDTH
+	             , CARTDEPTH AS DEPTH
+	             , CARTHEIGHT AS HEIGHT
+	             , CARTVOL AS VOL
+	             , CARTWEIGHT AS WEIGHT
+	             , PLTROW
+	             , PLTCOL
+	             , CPP
+	        FROM TORDER_EAI_IC_BATCH
+	        WHERE TRN_ID = #{trnId}
+	        AND  SND_PROC_TYP = 'N'
+			AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+	        UNION ALL 
+	        SELECT #{owkey} AS OWKEY
+	             , ICKEY
+	             , 'INN' AS ICUNITTYPE
+	             , '2' AS ICUNITORDER
+	             , QTYPERIPC AS ICUNITQTY 
+	             , IPCWIDTH AS WIDTH
+	             , IPCDEPTH AS DEPTH
+	             , IPCHEIGHT AS HEIGHT
+	             , IPCVOL AS VOL
+	             , IPCWEIGHT AS WEIGHT
+	             , 0 AS PLTROW
+	             , 0 AS PLTCOL 
+	             , 0 AS CPP
+	        FROM TORDER_EAI_IC_BATCH
+	        WHERE TRN_ID = #{trnId}
+	        AND  SND_PROC_TYP = 'N'
+			AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+	        UNION ALL 
+	        SELECT #{owkey} AS OWKEY
+	             , ICKEY
+	             , 'EA' AS ICUNITTYPE
+	             , '3' AS ICUNITORDER
+	             , 1 AS ICUNITQTY 
+	             , PCSWIDTH AS WIDTH
+	             , PCSDEPTH AS DEPTH
+	             , PCSHEIGHT AS HEIGHT
+	             , PCSVOL AS VOL
+	             , PCSWEIGHT AS WEIGHT
+	             , 0 AS PLTROW
+	             , 0 AS PLTCOL 
+	             , 0 AS CPP
+	        FROM TORDER_EAI_IC_BATCH
+	        WHERE TRN_ID = #{trnId}
+	        AND  SND_PROC_TYP = 'N'
+			AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+		)
+		SELECT CASE -- WMS 체적정보 EA 체크 중복 인서트 방지
+			        WHEN IC.ICKEY IS NOT NULL AND IC.ICUNITTYPE = 'CTN' THEN 'Y' 
+			        WHEN IC.ICKEY IS NOT NULL AND IC.ICUNITTYPE = 'INN' THEN 'Y'
+			        WHEN IC.ICKEY IS NOT NULL AND IC.ICUNITTYPE = 'EA' THEN 'Y'
+			   ELSE 'N' END AS EXISTYN 
+		     , T.OWKEY
+             , T.ICKEY
+             , T.ICUNITTYPE
+             , T.ICUNITORDER
+             , T.ICUNITQTY 
+             , T.WIDTH
+             , T.DEPTH
+             , T.HEIGHT
+             , T.VOL
+             , T.WEIGHT
+             , T.PLTROW
+             , T.PLTCOL 
+             , T.CPP
+		  FROM (
+		  		SELECT OWKEY
+		             , ICKEY
+		             , ICUNITTYPE
+		             , ICUNITORDER
+		             , ICUNITQTY 
+		             , WIDTH
+		             , DEPTH
+		             , HEIGHT
+		             , VOL
+		             , WEIGHT
+		             , PLTROW
+		             , PLTCOL 
+		             , CPP
+		        FROM WITH_BATCH
+		        UNION
+	            SELECT OWKEY
+	                 , ICKEY
+	                 , ICUNITTYPE
+	                 , ICUNITORDER
+	                 , ICUNITQTY
+	                 , WIDTH
+	                 , DEPTH
+	                 , HEIGHT
+	                 , VOL
+	                 , WEIGHT
+	                 , PLTROW
+	                 , PLTCOL
+	                 , CPP
+	              FROM (
+	                    SELECT IB.OWKEY
+	                         , MB.ASRTKEY AS ICKEY
+	                         , IB.ICUNITTYPE
+	                         , IB.ICUNITORDER
+	                         , IB.ICUNITQTY
+	                         , IB.WIDTH
+	                         , IB.DEPTH
+	                         , IB.HEIGHT
+	                         , IB.VOL
+	                         , IB.WEIGHT
+	                         , IB.PLTROW
+	                         , IB.PLTCOL
+	                         , IB.CPP
+	                      FROM WITH_BATCH IB
+	                           JOIN TORDER_MST_ASRT MB
+	                            ON IB.OWKEY = MB.OWKEY
+	                           AND IB.ICKEY = MB.ASRTREPKEY
+	                   )  ASRT
+	             WHERE ASRT.ICKEY NOT IN (SELECT ICKEY FROM WITH_BATCH)
+		  	   ) T
+		  LEFT JOIN TORDER_MST_ICUTXTYPE IC 
+		    ON T.OWKEY = IC.OWKEY
+		   AND T.ICKEY = IC.ICKEY
+		   AND T.ICUNITORDER = IC.ICUNITORDER
+		   AND T.ICUNITTYPE = IC.ICUNITTYPE
+	</select>
+	
+	<select id="selectErpItemIntfIcbarcodeInfo" resultType="camelMap">
+		/* oms-item-icInfo-sql-oracle.xml - selectErpItemIntfIcbarcodeInfo */
+		WITH WITH_BATCH AS
+		(
+			SELECT #{owkey} AS OWKEY
+				 , ICKEY
+				 , PCSBARCODE AS BARCODE
+				 , '1' AS SEQ
+				 , 'EA' AS UOM
+			FROM TORDER_EAI_IC_BATCH
+			WHERE TRN_ID = #{trnId}
+			  AND  SND_PROC_TYP = 'N'
+		      AND PCSBARCODE IS NOT NULL
+			  AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+			UNION ALL 
+			SELECT #{owkey} AS OWKEY
+				 , ICKEY
+				 , IPCBARCODE AS BARCODE
+				 , '2' AS SEQ
+				 , 'INN' AS UOM
+			FROM TORDER_EAI_IC_BATCH
+			WHERE TRN_ID = #{trnId}
+			AND  SND_PROC_TYP = 'N'
+			AND IPCBARCODE IS NOT NULL
+		    AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+			UNION ALL 
+			SELECT #{owkey} AS OWKEY
+				 , ICKEY
+				 , CARTBARCODE AS BARCODE
+				 , '3' AS SEQ
+				 , 'CTN' AS UOM
+			FROM TORDER_EAI_IC_BATCH
+			WHERE TRN_ID = #{trnId}
+			  AND  SND_PROC_TYP = 'N'
+		      AND CARTBARCODE IS NOT NULL
+			  AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+		)
+		SELECT OWKEY
+			 , ICKEY
+			 , BARCODE
+			 , SEQ
+			 , UOM
+		  FROM (
+		  		SELECT CASE WHEN IC.ICKEY IS NULL THEN 'Y' ELSE 'N' END AS NEWYN
+				     , T.OWKEY
+					 , T.ICKEY
+					 , T.BARCODE
+					 , T.SEQ
+					 , T.UOM
+				  FROM (
+				  		SELECT OWKEY
+							 , ICKEY
+							 , BARCODE
+							 , SEQ
+							 , UOM
+						FROM WITH_BATCH
+						UNION ALL 
+						SELECT IB.OWKEY
+							 , MB.ASRTKEY AS ICKEY
+							 , MB.ASRTKEY AS BARCODE
+							 , IB.SEQ
+							 , IB.UOM
+						  FROM WITH_BATCH IB
+						  JOIN TORDER_MST_ASRT MB
+					        ON IB.OWKEY = MB.OWKEY
+					       AND IB.ICKEY = MB.ASRTREPKEY
+						   AND IB.UOM ='EA'
+						   AND NOT EXISTS( SELECT 1
+										   FROM TORDER_EAI_IC_BATCH
+										   WHERE TRN_ID = #{trnId}
+											 AND ICKEY = IB.ICKEY )
+				  	   ) T
+				  LEFT JOIN TORDER_MST_ICBACODE IC 
+				    ON T.OWKEY = IC.OWKEY
+				   AND T.ICKEY = IC.ICKEY
+				   AND T.SEQ = IC.SEQ
+				   AND T.BARCODE = IC.BARCODE
+				   AND T.UOM = IC.UOM
+		  	   ) TT
+	</select>
+	
+	<select id="selectMalItemIntfIcInfoList" resultType="camelMap">
+        /* oms-item-icInfo-sql-oracle.xml - selectMalItemIntfIcInfoList */
+        SELECT T.OWKEY
+		     , T.ICKEY
+		     , T.OLNICDIV
+		     , T.OLNIPKOTICCONT
+		     , T.POABLEYN
+		     , T.SALESTATUS
+		     , T.DSPYN
+		     , T.DLVRYYN
+		     , T.OLNPKOTYN
+		     , T.OBLIMITYN
+		     , T.UNICCD
+		     , T.UNICYN
+		     , T.OBIMPSCRITRT
+		     , T.REPIMGURL
+		  FROM (
+		  		SELECT #{owkey} AS OWKEY
+				     , ONLD_PD_NO AS ICKEY
+				     , ONLD_PD_NO AS OLNICKEY
+				     , PD_GRAD AS OLNICDIV
+				     , SLE_ATR AS OLNIPKOTICCONT
+				     , ODR_PSBL_YN AS POABLEYN
+				     , SLE_STS_CD AS SALESTATUS
+				     , EXH_YN AS DSPYN
+				     , PDS_OR_PSBL_YN AS DLVRYYN
+				     , PKG_YN AS OLNPKOTYN
+				     , DLVY_LMT_YN AS OBLIMITYN
+				     , NOT_HDL_RSN_CD AS UNICCD
+				     , CASE WHEN NOT_HDL_RSN_CD IS NULL THEN 'N' ELSE 'Y' END AS UNICYN
+				     , DIST_DDLN_RTE AS OBIMPSCRITRT
+				     , RPS_IMG_URL AS REPIMGURL
+				  FROM TORDER_INTF_MAL_IC
+				 WHERE IFID = #{interfaceId}
+				 AND EXISTSYN = 'Y'
+		  	   ) T
+    </select>
+    
+	<update id="updateMallItemIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateMallItemIcInfo */
+		UPDATE 	TORDER_MST_IC
+		   SET	 OLNICKEY = #{olnickey}
+				,DSPYN = #{dspyn}
+				,DLVRYYN = #{dlvryyn}
+				,SALESTATUS = #{salestatus}
+				,PKOTICYN = #{pkoticyn}
+				<!--, = #{posBanYn}-->
+		WHERE ICKEY = #{ickey}
+	</update>
+	
+	<select id="selectOlnickeyValidCheck" parameterType="string" resultType="int">
+    	/* oms-item-icInfoBatch-sql-oracle.xml selectOlnickeyValidCheck */
+        SELECT COUNT(1)
+        FROM TORDER_MST_IC
+        WHERE ICKEY = #{olnickey}
+          AND DELYN = 'N'
+    </select>
+	
+	<insert id="insertWmsItemCbmIcInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertWmsItemCbmIcInfo */
+		INSERT INTO TORDER_MST_IC (
+		      OWKEY
+		    , ICKEY
+		    , CUSHNMEPCKGYN
+		    , ROBSORTERICYN
+		    , POLYBACKPCKGYN
+		    , PCKGOVLPYN
+		    , OVLPPCKGWIDTHVAL
+		    , OVLPPCKGDEPTHVAL
+		    , OVLPPCKGHEIGHTVAL
+		    , COMPYN
+		    , COMPCONT
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		SELECT
+		      IN_IC.OWKEY
+		    , IN_IC.ICKEY
+		    , IN_IC.CUSHNMEPCKGYN
+		    , IN_IC.ROBSORTERICYN
+		    , IN_IC.POLYBAGPCKGYN
+		    , IN_IC.PCKGOVLPYN
+		    , IN_IC.OVLPPCKGWIDTHVAL
+		    , IN_IC.OVLPPCKGDEPTHVAL
+		    , IN_IC.OVLPPCKGHEIGHTVAL
+		    , IN_IC.COMPYN
+		    , IN_IC.COMPCONT
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		FROM (
+		   SELECT OWKEY
+		        , ICKEY
+		        , CUSHNMEPCKGYN
+		        , ROBSORTERICYN
+		        , POLYBAGPCKGYN
+		        , PCKGOVLPYN
+		        , PCKGFOLDYN
+		        , OVLPPCKGWIDTHVAL
+		        , OVLPPCKGDEPTHVAL
+		        , OVLPPCKGHEIGHTVAL
+		        , COMPYN
+		        , COMPCONT
+		   FROM TORDER_INTF_WMS_ICUTXTYPE
+		   WHERE IFID = #{interfaceId}
+		) AS IN_IC
+		ON CONFLICT (OWKEY, ICKEY) DO UPDATE SET
+		      CUSHNMEPCKGYN = EXCLUDED.CUSHNMEPCKGYN
+		    , ROBSORTERICYN = EXCLUDED.ROBSORTERICYN
+		    , POLYBACKPCKGYN = EXCLUDED.POLYBACKPCKGYN
+		    , PCKGOVLPYN = EXCLUDED.PCKGOVLPYN
+		    , PCKGFOLDYN = (SELECT PCKGFOLDYN FROM TORDER_INTF_WMS_ICUTXTYPE WHERE IFID = #{interfaceId} AND OWKEY = EXCLUDED.OWKEY AND ICKEY = EXCLUDED.ICKEY)
+		    , OVLPPCKGWIDTHVAL = EXCLUDED.OVLPPCKGWIDTHVAL
+		    , OVLPPCKGDEPTHVAL = EXCLUDED.OVLPPCKGDEPTHVAL
+		    , OVLPPCKGHEIGHTVAL = EXCLUDED.OVLPPCKGHEIGHTVAL
+		    , COMPYN = EXCLUDED.COMPYN
+		    , COMPCONT = EXCLUDED.COMPCONT
+		    , UPDATEDATE = #{sysdate}
+		    , UPDATEURKEY = #{interfaceUrkey}
+	</insert>
+
+
+	<insert id="insertWmsItemCbmBarcodeInfo">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertWmsItemCbmBarcodeInfo */
+		INSERT INTO TORDER_MST_ICBACODE (
+		  OWKEY
+		, ICKEY
+		, BARCODE
+		, UOM
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		SELECT
+		  IN_ICB.OWKEY
+		, IN_ICB.ICKEY
+		, IN_ICB.BARCODE
+		, 'EA'
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		FROM (
+		SELECT OWKEY
+		     , ICKEY
+		     , BARCODE
+		FROM TORDER_INTF_WMS_ICUTXTYPE
+		WHERE IFID = #{interfaceId}
+		) AS IN_ICB
+		ON CONFLICT (OWKEY, ICKEY, UOM) DO UPDATE SET
+		  BARCODE = EXCLUDED.BARCODE
+		, UPDATEDATE = #{sysdate}
+		, UPDATEURKEY = #{interfaceUrkey}
+	</insert>
+
+	<insert id="insertWmsItemCbm">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertWmsItemCbm */
+		INSERT INTO TORDER_MST_ICUTXTYPE (
+		      OWKEY
+		    , ICKEY
+		    , ICUNITTYPE
+		    , ICUNITORDER -- 누락되어 추가
+		    , WIDTH
+		    , DEPTH
+		    , HEIGHT
+		    , VOL
+		    , WEIGHT
+		    , MEASUREMENTYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		SELECT
+		      IN_ICUT.OWKEY
+		    , IN_ICUT.ICKEY
+		    , 'EA'
+		    , 3 -- 누락되어 추가
+		    , IN_ICUT.WIDTH
+		    , IN_ICUT.DEPTH
+		    , IN_ICUT.HEIGHT
+		    , IN_ICUT.VOL
+		    , IN_ICUT.WEIGHT
+		    , 'Y'
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		FROM (
+		   SELECT OWKEY
+		        , ICKEY
+		        , WIDTH
+		        , DEPTH
+		        , HEIGHT
+		        , VOL
+		        , WEIGHT
+				, CASE
+					WHEN WIDTH = 0
+					  OR DEPTH = 0
+					  OR HEIGHT =0
+					  OR VOL =0
+					  OR WEIGHT =0 THEN 'N'
+					WHEN ROBSORTERICYN   IS NULL
+					  OR CUSHNMEPCKGYN   IS NULL
+					  OR BARCODEATTACHYN IS NULL
+					  OR POLYBAGPCKGYN   IS NULL
+					  OR PCKGOVLPYN      IS NULL THEN 'N'
+					WHEN PCKGOVLPYN = 'Y'
+					 AND OVLPPCKGWIDTHVAL  = 0
+					 AND OVLPPCKGDEPTHVAL  = 0
+					 AND OVLPPCKGHEIGHTVAL = 0 THEN 'N'
+					WHEN PCKGFOLDYN      IS NULL
+					  OR HIGHFRQNCYDMGYN IS NULL THEN 'N'
+					ELSE 'Y'
+				END AS ICYN
+		   FROM TORDER_INTF_WMS_ICUTXTYPE
+		   WHERE IFID = #{interfaceId}
+		) AS IN_ICUT
+		ON CONFLICT (OWKEY, ICKEY, ICUNITTYPE) DO UPDATE SET
+		      WIDTH       = EXCLUDED.WIDTH
+		    , DEPTH       = EXCLUDED.DEPTH
+		    , HEIGHT      = EXCLUDED.HEIGHT
+		    , VOL         = EXCLUDED.VOL
+		    , WEIGHT      = EXCLUDED.WEIGHT
+		    , MEASUREMENTYN = (SELECT CASE
+					WHEN WIDTH = 0 OR DEPTH = 0 OR HEIGHT = 0 OR VOL = 0 OR WEIGHT = 0 THEN 'N'
+					WHEN ROBSORTERICYN IS NULL OR CUSHNMEPCKGYN IS NULL OR BARCODEATTACHYN IS NULL OR POLYBAGPCKGYN IS NULL OR PCKGOVLPYN IS NULL THEN 'N'
+					WHEN PCKGOVLPYN = 'Y' AND OVLPPCKGWIDTHVAL = 0 AND OVLPPCKGDEPTHVAL = 0 AND OVLPPCKGHEIGHTVAL = 0 THEN 'N'
+					WHEN PCKGFOLDYN IS NULL OR HIGHFRQNCYDMGYN IS NULL THEN 'N'
+					ELSE 'Y' END FROM TORDER_INTF_WMS_ICUTXTYPE WHERE IFID = #{interfaceId} AND OWKEY = EXCLUDED.OWKEY AND ICKEY = EXCLUDED.ICKEY)
+		    , UPDATEDATE  = #{sysdate}
+		    , UPDATEURKEY = #{interfaceUrkey}
+	</insert>
+
+	<insert id="insertItemLc">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertItemLc */
+		INSERT INTO TORDER_MST_ICXCT (
+		      OWKEY
+            , ICKEY
+            , CTKEY
+            , LCKEY
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		SELECT DISTINCT
+		      OWKEY
+            , ICKEY
+            , CTKEY
+            , LCKEY
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		    , #{sysdate}
+		    , #{interfaceUrkey}
+		FROM TORDER_INTF_WMS_ICXCT
+		WHERE IFID = #{interfaceId}
+		ON CONFLICT (OWKEY, CTKEY, ICKEY) DO UPDATE SET
+		      LCKEY       = EXCLUDED.LCKEY
+		    , UPDATEDATE  = #{sysdate}
+		    , UPDATEURKEY = #{interfaceUrkey}
+	</insert>
+	
+	<insert id="insertItemCtCpp">
+		/* oms-item-icInfoBatch-sql-oracle.xml - insertItemCtCpp */
+		INSERT INTO TORDER_MST_ICXB2BCPP
+		(
+			  CTKEY
+            , ICKEY
+            , CPP
+            , ICUNITQTY
+            , IPCWEIGHT
+            , IPCVOL
+            , CARTWEIGHT
+            , CARTVOL
+            , PLTROW
+            , PLTCOL
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+		) SELECT
+			  A.CTKEY
+            , A.ICKEY
+            , MAX(A.CPP) AS CPP
+            , MAX(A.ICUNITQTY) AS ICUNITQTY
+            , MAX(A.IPCWEIGHT) AS IPCWEIGHT
+            , MAX(A.IPCVOL) AS IPCVOL
+            , MAX(A.CARTWEIGHT) AS CARTWEIGHT
+            , MAX(A.CARTVOL) AS CARTVOL
+            , MAX(A.PLTROW) AS PLTROW
+            , MAX(A.PLTCOL) AS PLTCOL
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS INSERTDATE
+			, #{interfaceUrkey} AS INSERTURKEY
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS UPDATEDATE
+			, #{interfaceUrkey} AS UPDATEURKE
+		FROM TORDER_EAI_ICUTXCTPLT_BATCH A
+		LEFT JOIN TORDER_MST_ICXB2BCPP B
+		       ON A.CTKEY = B.CTKEY
+		      AND A.ICKEY = B.ICKEY
+		WHERE A.TRN_ID IN
+		<foreach item="trnId" index="index" collection="trnId"    open="(" separator="," close=")">
+			#{trnId}
+		</foreach>
+		  AND B.CTKEY IS NULL
+		  AND B.ICKEY IS NULL
+		GROUP BY A.CTKEY, A.ICKEY
+
+	</insert>
+
+	<update id="updateItemCtCpp">
+		/* oms-item-icInfoBatch-sql-oracle.xml - updateItemCtCpp */
+		UPDATE (
+			SELECT A.CTKEY, B.CTKEY AS TO_CTKEY
+				 , A.ICKEY, B.ICKEY AS TO_ICKEY
+				 , A.CPP, B.CPP AS TO_CPP
+				 , A.ICUNITQTY, B.ICUNITQTY AS TO_ICUNITQTY
+				 , A.IPCWEIGHT, B.IPCWEIGHT AS TO_IPCWEIGHT
+				 , A.IPCVOL, B.IPCVOL AS TO_IPCVOL
+				 , A.CARTWEIGHT, B.CARTWEIGHT AS TO_CARTWEIGHT
+				 , A.CARTVOL, B.CARTVOL AS TO_CARTVOL
+				 , A.PLTROW, B.PLTROW AS TO_PLTROW
+				 , A.PLTCOL, B.PLTCOL AS TO_PLTCOL
+			FROM TORDER_MST_ICXB2BCPP A
+			JOIN (
+				SELECT CTKEY, ICKEY,
+					   MAX(CPP) AS CPP
+					 , MAX(ICUNITQTY) AS ICUNITQTY
+					 , MAX(IPCWEIGHT) AS IPCWEIGHT
+					 , MAX(IPCVOL) AS IPCVOL
+					 , MAX(CARTWEIGHT) AS CARTWEIGHT
+					 , MAX(CARTVOL) AS CARTVOL
+					 , MAX(PLTROW) AS PLTROW
+					 , MAX(PLTCOL) AS PLTCOL
+					 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS UPDATEDATE
+					 , 'I/F Item Cpp' AS UPDATEURKE
+				FROM TORDER_EAI_ICUTXCTPLT_BATCH
+				WHERE TRN_ID IN
+					<foreach item="trnId" index="index" collection="trnId"    open="(" separator="," close=")">
+						#{trnId}
+					</foreach>
+				GROUP BY CTKEY, ICKEY
+			) B
+			   ON A.CTKEY = B.CTKEY AND A.ICKEY = B.ICKEY
+		) t
+		SET T.CPP = T.TO_CPP
+		  , T.ICUNITQTY = T.TO_ICUNITQTY
+		  , T.IPCWEIGHT= T.TO_IPCWEIGHT
+		  , T.IPCVOL = T.TO_IPCVOL
+		  , T.CARTWEIGHT = T.TO_CARTWEIGHT
+		  , T.CARTVOL = T.TO_CARTVOL
+		  , T.PLTROW = T.TO_PLTROW
+		  , T.PLTCOL = T.TO_PLTCOL
+
+	</update>
+	
+	<select id="selectOmsToWmsIcList" resultType="com.daiso.oms.api.in.dto.ItemInfoInDTO$ItemInfoVO">
+        /* oms-item-icInfoBatch-sql-oracle.xml - selectOmsToWmsIcList */
+		SELECT IC.OWKEY
+		     , CT.CTKEY
+		     , IC.ICKEY
+		     , IC.OLNICKEY
+		     , IC.DSPYN
+		     , IC.OLNICDIV
+		     , IC.OLNIPKOTICCONT
+		     , IC.POABLEYN
+		     , IC.DLVRYYN
+		     , IC.SALESTATUS
+		     , IC.PKOTICYN
+		     , IC.OBLIMITYN
+		     , IC.UNICCD
+		     , IC.EXPRATE
+		     , IC.CMT
+		     , IC.ICNM
+		     , IC.ASRTREPKEY
+		     , IC.ICIMGURL
+		     , INN.ICUNITQTY AS QTYPERIPC
+		     , CTN.ICUNITQTY AS QTYPERCARTON
+		     , IC.CTGKEY AS SMLCTG
+		     , EAB.BARCODE AS PCSBARCODE
+		     , INNB.BARCODE AS IPCBARCODE
+		     , CTNB.BARCODE AS CARTBARCODE
+		     , IC.OLNICTYPE
+		     , INN.WIDTH    AS IPCWIDTH
+		     , INN.DEPTH    AS IPCDEPTH
+		     , INN.HEIGHT   AS IPCHEIGHT
+		     , INN.VOL      AS IPCVOL
+		     , INN.WEIGHT   AS IPCWEIGHT
+		     , CTN.WIDTH    AS CARTWIDTH
+		     , CTN.DEPTH    AS CARTDEPTH
+		     , CTN.HEIGHT   AS CARTHEIGHT
+		     , CTN.VOL      AS CARTVOL
+		     , CTN.WEIGHT   AS CARTWEIGHT
+		     , CTN.PLTROW
+		     , CTN.PLTCOL
+		     , CTN.CPP
+		     , IC.EXPCKYN AS EXPUSEYN
+		     , IC.ACKEY
+		     , AC.ACNM
+		     , IC.ICMGMTUSR
+		     , IC.SLPRC
+		     , IC.ASRTYN
+		     , IC.DIRCDLVYICYN
+		     , IC.ICSTATUSDIV
+		     , IC.ROBSORTERICYN
+		     , IC.MTR
+		  FROM (
+		        SELECT T.OWKEY
+		             , T.ICKEY
+		          FROM (
+		                /*IC 인터페이스 와 저장된 아소트 정보*/
+		                SELECT #{owkey} AS OWKEY
+		                     , IB.ICKEY
+		                  FROM TORDER_EAI_IC_BATCH IB
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 UNION ALL
+		                SELECT MB.OWKEY
+		                     , MB.ASRTKEY AS ICKEY
+		                  FROM TORDER_EAI_IC_BATCH IB
+		                  JOIN TORDER_MST_ASRT MB
+		                    ON MB.OWKEY = #{owkey}
+		                   AND IB.ICKEY = MB.ASRTREPKEY
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 UNION ALL
+		                /*아소트 인터페이스 와 모상품*/
+		                SELECT #{owkey} AS OWKEY
+		                     , IB.MASICICKEY AS ICKEY
+		                  FROM TORDER_EAI_ASRT_BATCH IB
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 GROUP BY IB.MASICICKEY
+		                 UNION ALL
+		                SELECT MB.OWKEY
+		                     , MB.ASRTKEY AS ICKEY
+		                  FROM (SELECT MASICICKEY
+		                          FROM TORDER_EAI_ASRT_BATCH
+		                         WHERE TRN_ID IN
+				                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+					                #{trnList}
+					            </foreach>
+		                         GROUP BY MASICICKEY) IB
+		                  JOIN TORDER_MST_ASRT MB
+		                    ON MB.OWKEY = #{owkey}
+		                   AND IB.MASICICKEY = MB.ASRTREPKEY
+		                ) T
+		          GROUP BY T.OWKEY, T.ICKEY
+		       ) M
+		  JOIN TORDER_MST_IC IC
+		    ON M.OWKEY = IC.OWKEY
+		   AND M.ICKEY = IC.ICKEY
+		   AND M.ICKEY = IC.ICUNITKEY
+		  JOIN TORDER_MST_CT CT
+		    ON CT.MANAGEMENTYN = 'Y'
+		   AND CT.DELYN = 'N'
+		  LEFT JOIN TORDER_MST_AC AC
+		    ON IC.OWKEY = AC.OWKEY
+		   AND IC.ACKEY = AC.ACKEY
+		  LEFT JOIN TORDER_MST_ICUTXTYPE CTN
+		    ON IC.OWKEY = CTN.OWKEY
+		   AND IC.ICKEY = CTN.ICKEY
+		   AND CTN.ICUNITTYPE = 'CTN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE INN
+		    ON IC.OWKEY = INN.OWKEY
+		   AND IC.ICKEY = INN.ICKEY
+		   AND INN.ICUNITTYPE = 'INN'
+		  LEFT JOIN TORDER_MST_ICBACODE CTNB
+		    ON IC.OWKEY = CTNB.OWKEY
+		   AND IC.ICKEY = CTNB.ICKEY
+		   AND CTNB.UOM = 'CTN'
+		  LEFT JOIN TORDER_MST_ICBACODE INNB
+		    ON IC.OWKEY = INNB.OWKEY
+		   AND IC.ICKEY = INNB.ICKEY
+		   AND INNB.UOM = 'INN'
+		  LEFT JOIN TORDER_MST_ICBACODE EAB
+		    ON IC.OWKEY = EAB.OWKEY
+		   AND IC.ICKEY = EAB.ICKEY
+		   AND EAB.UOM = 'EA'
+    </select>
+    
+    <select id="selectOmsToWmsIcBatchList" resultType="com.daiso.oms.api.in.dto.ItemInfoInDTO$ItemInfoVO">
+        /* oms-item-icInfo-sql-oracle.xml - selectOmsToWmsIcBatchList */
+        SELECT CT.CTKEY
+		     , IC.OWKEY
+		     , IC.ICKEY
+		     , IC.ICNM AS ICNAME
+		     , IC.ICGRPKEY
+		     , IC.ICGRPKEY AS ICGRKEY 
+		     , IC.CTGKEY
+		     , IC.ICUNITKEY
+		     , IC.UOM
+		     , COALESCE(IC.EXPCKYN, 'N') AS EXPCKYN
+		     , IC.EXPCKTYPE AS EXPCKTYPECD
+		     , IC.UDF2 AS ICTMPRDIVCD
+		     , IC.SPEC
+		     , IC.ASRTREPKEY
+		     , IC.OLNICKEY
+		     , IC.OLNICTYPE AS OLNICTYPECD
+		     , IC.OFLNICTYPE AS OFLNICTYPECD
+		     , IC.B2BGRADE
+		     , IC.SEASON
+		     , IC.DNGMGMTYN
+		     , IC.CUSHNMEPCKGYN
+		     , IC.EACHPCKGYN
+		     , IC.ICORIGIN
+		     , IC.ICMGMTUSR
+		     , IC.PURPRC
+		     , IC.SLPRC
+		     , IC.ASRTYN
+		     , IC.DIRCDLVYICYN
+		     , IC.ICSTATUSDIV
+		     , IC.PKOTICYN
+		     , IC.ROBSORTERICYN
+		     , IC.MTR
+		     , IC.OBIMPSCRITRT
+		     , IC.COMPYN
+		     , IC.COMPCONT
+		     , IC.DSPYN
+		     , IC.DLVRYYN
+		     , IC.POLYBACKPCKGYN AS POLYBAGPCKGYN
+		     , IC.PCKGOVLPYN
+		     , IC.OVLPPCKGWIDTHVAL
+		     , IC.OVLPPCKGDEPTHVAL
+		     , IC.OVLPPCKGHEIGHTVAL
+		     , IC.PCKGOVLPYN AS PCKGFOLDYN
+		     , IC.DFSHPMTRYN
+		     , IC.FOODYN
+		     , IC.UNICYN
+		     , IC.EXPCKDAYS AS EXPCNVRSNDAYS
+		     , IC.BARCODEATTACHYN
+		     , IC.OLNICDIV
+		     , IC.OLNIPKOTICCONT
+		     , IC.SALESTATUS
+		     , IC.POABLEYN
+		     , IC.OLNPKOTYN
+		     , IC.OBLIMITYN
+		     , IC.HIGHFRQNCYDMGYN
+		     , COALESCE(IC.ICIMGURL, IC.ERPIMGURL) AS ICIMGURL
+		     , 'A' AS CHGDIVCD /*A : 전체 , M : 상품마스터 , U : 상품단위 , B : 바코드*/
+		     , BA.SEQ AS SEQNO
+		     , BA.BARCODE
+		     , IU.ICUNITTYPE
+		     , IU.ICUNITORDER
+		     , IU.ICUNITQTY
+		     , IU.PLTROW
+		     , IU.PLTCOL
+		     , IU.CPP
+		     , IU.DEPTH
+		     , IU.WIDTH
+		     , IU.HEIGHT
+		     , IU.SIZEUNIT
+		     , IU.WEIGHT
+		     , IU.WEIGHTUNIT
+		     , IU.VOL
+		     , IU.VOLUNIT
+        	 , CASE WHEN IO.ICKEY IS NULL THEN 'N' ELSE 'Y' END AS MASICYN -- 모상품여부
+        	 , IC.ACKEY
+        	 , COALESCE(IC.DELYN, 'N') AS ICDELYN
+        	 , COALESCE(IU.DELYN, 'N') AS IUDELYN
+        	 , COALESCE(BA.DELYN, 'N') AS BADELYN
+		  FROM (
+		        SELECT T.OWKEY
+		             , T.ICKEY
+		          FROM (
+		          	<if test='@com.kns.framework.util.StringUtil@isEmpty(channel)' >
+	          			/*방어로직*/
+	          			SELECT NULL AS OWKEY
+					         , NULL AS ICKEY
+          			</if>
+	          		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(channel) and "OMS".equals(channel)' >
+	          			/*TORDER_WMS_IC_BATCH 정보*/
+		                SELECT #{owkey} AS OWKEY
+		                     , BATCH.ICKEY
+		                  FROM TORDER_WMS_IC_BATCH BATCH
+		                 WHERE BATCH.ICKEY IN
+		                <foreach item="ickey" index="index" collection="ickeyList"  open="(" separator="," close=")">
+			                #{ickey}
+			            </foreach>	
+			            AND REQDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') 		   
+					</if>
+		                ) T
+		          GROUP BY T.OWKEY, T.ICKEY
+		       ) M
+		  JOIN TORDER_MST_IC IC
+		    ON M.OWKEY = IC.OWKEY
+		   AND M.ICKEY = IC.ICKEY
+		  JOIN TORDER_MST_CT CT
+		    ON CT.MANAGEMENTYN = 'Y'
+		   AND CT.DELYN = 'N'
+		  LEFT JOIN TORDER_MST_AC AC
+		    ON IC.OWKEY = AC.OWKEY
+		   AND IC.ACKEY = AC.ACKEY
+		  LEFT JOIN TORDER_MST_ICUTXTYPE IU
+		    ON IC.OWKEY = IU.OWKEY
+		   AND IC.ICKEY = IU.ICKEY
+		  LEFT JOIN (
+		    SELECT BA.*
+		         , ROW_NUMBER() OVER (
+		               PARTITION BY OWKEY, ICKEY, UOM
+		               ORDER BY DELYN ASC, UPDATEDATE DESC  -- N 우선
+		           ) RN
+		    FROM TORDER_MST_ICBACODE BA
+		  ) BA
+		  ON IC.OWKEY = BA.OWKEY
+		 AND IC.ICKEY = BA.ICKEY
+		 AND IU.ICUNITTYPE = BA.UOM
+		 AND BA.RN = 1
+          LEFT JOIN TORDER_MST_IC_ORG IO	-- ERP에서 송수신되는 모상품 (모상품 여부)
+		    ON IC.OWKEY = IO.OWKEY
+		   AND IC.ICKEY = IO.ICKEY
+    </select>
+    
+    <select id="selectOmsToWmsIcBarcodeList" resultType="com.daiso.oms.api.in.dto.ItemInfoInDTO$ItemInfoVO">
+        /* oms-item-icInfo-sql-oracle.xml - selectOmsToWmsIcBarcodeList */
+        SELECT CT.CTKEY
+		     , IC.OWKEY
+		     , IC.ICKEY
+		     , IC.ICNM AS ICNAME
+		     , IC.ICGRPKEY
+		     , IC.ICGRPKEY AS ICGRKEY 
+		     , IC.CTGKEY
+		     , IC.ICUNITKEY
+		     , IC.UOM
+		     , IC.EXPCKYN
+		     , IC.EXPCKTYPE AS EXPCKTYPECD
+		     , IC.UDF2 AS ICTMPRDIVCD
+		     , IC.SPEC
+		     , IC.ASRTREPKEY
+		     , IC.OLNICKEY
+		     , IC.OLNICTYPE AS OLNICTYPECD
+		     , IC.OFLNICTYPE AS OFLNICTYPECD
+		     , IC.B2BGRADE
+		     , IC.SEASON
+		     , IC.DNGMGMTYN
+		     , IC.CUSHNMEPCKGYN
+		     , IC.EACHPCKGYN
+		     , IC.ICORIGIN
+		     , IC.ICMGMTUSR
+		     , IC.PURPRC
+		     , IC.SLPRC
+		     , IC.ASRTYN
+		     , IC.DIRCDLVYICYN
+		     , IC.ICSTATUSDIV
+		     , IC.PKOTICYN
+		     , IC.ROBSORTERICYN
+		     , IC.MTR
+		     , IC.OBIMPSCRITRT
+		     , IC.COMPYN
+		     , IC.COMPCONT
+		     , IC.DSPYN
+		     , IC.DLVRYYN
+		     , IC.POLYBACKPCKGYN AS POLYBAGPCKGYN
+		     , IC.PCKGOVLPYN
+		     , IC.OVLPPCKGWIDTHVAL
+		     , IC.OVLPPCKGDEPTHVAL
+		     , IC.OVLPPCKGHEIGHTVAL
+		     , IC.PCKGOVLPYN AS PCKGFOLDYN
+		     , IC.DFSHPMTRYN
+		     , IC.FOODYN
+		     , IC.UNICYN
+		     , IC.EXPCKDAYS AS EXPCNVRSNDAYS
+		     , IC.BARCODEATTACHYN
+		     , IC.OLNICDIV
+		     , IC.OLNIPKOTICCONT
+		     , IC.SALESTATUS
+		     , IC.POABLEYN
+		     , IC.OLNPKOTYN
+		     , IC.OBLIMITYN
+		     , IC.HIGHFRQNCYDMGYN
+		     , IC.REPIMGURL
+		     , 'A' AS CHGDIVCD /*A : 전체 , M : 상품마스터 , U : 상품단위 , B : 바코드*/
+		     , BA.SEQ AS SEQNO
+		     , BA.BARCODE
+		     , IU.ICUNITTYPE
+		     , IU.ICUNITORDER
+		     , IU.ICUNITQTY
+		     , IU.PLTROW
+		     , IU.PLTCOL
+		     , IU.CPP
+		     , IU.DEPTH
+		     , IU.WIDTH
+		     , IU.HEIGHT
+		     , IU.SIZEUNIT
+		     , IU.WEIGHT
+		     , IU.WEIGHTUNIT
+		     , IU.VOL
+		     , IU.VOLUNIT
+        	 , CASE WHEN IO.ICKEY IS NULL THEN 'N' ELSE 'Y' END AS MASICYN -- 모상품여부
+        	 , IC.ACKEY
+        	 , COALESCE(IC.DELYN, 'N') AS ICDELYN
+        	 , COALESCE(IU.DELYN, 'N') AS IUDELYN
+        	 , COALESCE(BA.DELYN, 'N') AS BADELYN
+		  FROM (
+		        SELECT T.OWKEY
+		             , T.ICKEY
+		          FROM (
+		          	<if test='@com.kns.framework.util.StringUtil@isEmpty(channel)' >
+	          			/*방어로직*/
+	          			SELECT NULL AS OWKEY
+					         , NULL AS ICKEY
+          			</if>
+	          		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(channel) and "ERP".equals(channel)' >
+	          			/*IC 인터페이스 와 저장된 아소트 정보*/
+		                SELECT #{owkey} AS OWKEY
+		                     , IB.ICKEY
+		                  FROM TORDER_EAI_IC_BATCH IB
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 UNION ALL
+		                SELECT MB.OWKEY
+		                     , MB.ASRTKEY AS ICKEY
+		                  FROM TORDER_EAI_IC_BATCH IB
+		                  JOIN TORDER_MST_ASRT MB
+		                    ON MB.OWKEY = #{owkey}
+		                   AND IB.ICKEY = MB.ASRTREPKEY
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 UNION ALL
+		                /*아소트 인터페이스 와 모상품*/
+		                SELECT #{owkey} AS OWKEY
+		                     , IB.MASICICKEY AS ICKEY
+		                  FROM TORDER_EAI_ASRT_BATCH IB
+		                 WHERE IB.TRN_ID IN
+		                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+			                #{trnList}
+			            </foreach>
+		                 GROUP BY IB.MASICICKEY
+		                 UNION ALL
+		                SELECT MB.OWKEY
+		                     , MB.ASRTKEY AS ICKEY
+		                  FROM (SELECT MASICICKEY
+		                          FROM TORDER_EAI_ASRT_BATCH
+		                         WHERE TRN_ID IN
+				                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+					                #{trnList}
+					            </foreach>
+		                         GROUP BY MASICICKEY) IB
+		                  JOIN TORDER_MST_ASRT MB
+		                    ON MB.OWKEY = #{owkey}
+		                   AND IB.MASICICKEY = MB.ASRTREPKEY			   
+					</if>
+					<if test='@com.kns.framework.util.StringUtil@isNotEmpty(channel) and "MAL".equals(channel)' >
+	          			/*MAL 인터페이스 */
+	          			SELECT #{owkey}       AS OWKEY
+					         , ONLD_PD_NO     AS ICKEY
+					      FROM TORDER_INTF_MAL_IC
+					     WHERE IFID IN
+				                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+					                #{trnList}
+					            </foreach>
+          			</if>
+          			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(channel) and "OMS".equals(channel)' >
+	          			/*부자재등록*/
+	          			SELECT #{owkey}       AS OWKEY
+					         , ICKEY
+					      FROM TORDER_MST_IC
+					     WHERE OWKEY = #{owkey}
+					       AND ICKEY IN
+				                <foreach item="trnList" index="index" collection="trnList"  open="(" separator="," close=")">
+					                #{trnList}
+					            </foreach>
+          			</if>	
+		                ) T
+		          GROUP BY T.OWKEY, T.ICKEY
+		       ) M
+		  JOIN TORDER_MST_IC IC
+		    ON M.OWKEY = IC.OWKEY
+		   AND M.ICKEY = IC.ICKEY
+		  JOIN TORDER_MST_CT CT
+		    ON CT.MANAGEMENTYN = 'Y'
+		   AND CT.DELYN = 'N'
+		  LEFT JOIN TORDER_MST_AC AC
+		    ON IC.OWKEY = AC.OWKEY
+		   AND IC.ACKEY = AC.ACKEY
+		  LEFT JOIN TORDER_MST_ICUTXTYPE IU
+		    ON IC.OWKEY = IU.OWKEY
+		   AND IC.ICKEY = IU.ICKEY
+		  LEFT JOIN TORDER_MST_ICBACODE BA
+		    ON IC.OWKEY = BA.OWKEY
+		   AND IC.ICKEY = BA.ICKEY
+		   AND IU.ICUNITTYPE = BA.UOM
+          LEFT JOIN TORDER_MST_IC_ORG IO	-- ERP에서 송수신되는 모상품 (모상품 여부)
+		    ON IC.OWKEY = IO.OWKEY
+		   AND IC.ICKEY = IO.ICKEY
+    </select>
+    
+</mapper>	

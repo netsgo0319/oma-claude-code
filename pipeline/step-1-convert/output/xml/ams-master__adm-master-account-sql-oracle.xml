@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.AccountMapper">
+	
+	<select id="selectAccount" resultType="camelMap">
+	/* adm-master-account-sql-oracle.xml  selectAccount */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+         SELECT '0' AS CHK
+				,A.ACKEY
+				,(SELECT COUNT(1) FROM TADMIN_MST_ACXCT C WHERE C.ACKEY = A.ACKEY AND C.OWKEY = A.OWKEY) AS DTLCNT
+				,A.ACTYPE
+				,A.ACNM
+				,A.REGNO
+				,A.BIZTYPE
+				,A.BIZCTG
+				,A.TEL1
+				,A.TEL2
+				,A.FAX
+				,A.CONTACT
+				,A.CEO
+				,A.UDF1
+				,A.UDF2
+				,A.UDF3
+				,A.REPACKEY
+				, (SELECT ACNM FROM TADMIN_MST_AC AC WHERE AC.OWKEY = A.OWKEY AND AC.ACKEY = A.REP_ACKEY) AS REPACNM
+				,A.REPACTYPE
+				,A.ADDRID
+				,A.CLOSDATE
+				,A.INSERTURKEY
+				,A.UPDATEURKEY
+				,A.INSERTDATE
+				,A.UPDATEDATE
+				,A.DELYN
+				,'YESORNO' || ';' || COALESCE(A.DELYN, 'N') AS DELYN_DESC
+				,A.REGDATE
+				,A.EMAIL
+				,A.ASNUSEYN
+				,A.ADDR1
+				,A.ADDR2
+				,A.ZIPCD
+				,A.PLTMAXRT
+				,A.PNLTYALWNRT
+				,A.PNLTYAPLYYN
+				,A.STARTDATE AS ACSTARTDATE
+				,A.ENDDATE AS ACENDDATE
+				,A.SCMCK
+				,A.SCMURKEY
+				,A.OWKEY
+                ,A.IFYN
+				,C.OWNM
+         		,A.ACTYPE2
+          		,A.ACTYPEDT
+         		,A.ACGRADE
+			FROM TADMIN_MST_AC A
+				INNER JOIN TADMIN_MST_OW C
+						ON A.OWKEY = C.OWKEY
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   #{SEARCH_CONDITION}
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY A.UPDATEDATE DESC
+				</otherwise>
+			</choose> 			
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectPkCntMstAcxct" resultType="java.lang.Integer" >
+	/* ams-master-account-sql-oracle.xml  selectPkCntMstAcxct */
+		SELECT COUNT(1)  
+		  FROM TADMIN_MST_ACXCT
+		 WHERE CTKEY = #{ctkey}
+		   AND ACKEY = #{ackey}
+		   AND OWKEY = #{owkey}
+	</select>
+	<select id="selectAccountCount" resultType="java.lang.Integer" >
+	/* adm-master-account-sql-oracle.xml  selectAccountCount */
+			SELECT COUNT(1)  
+			  FROM TADMIN_MST_AC A
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   #{SEARCH_CONDITION}
+				</if>
+			</where>				
+	</select> 
+	
+	<insert id="insertTAdminMstAc">
+	/* adm-master-account-sql-oracle.xml  insertTAdminMstAc */
+		INSERT INTO TADMIN_MST_AC
+		(
+	        OWKEY
+	        ,ACKEY 
+	        ,ACTYPE 
+	        ,ACNM
+	        ,REGNO
+			,BIZTYPE
+			,BIZCTG
+	        ,CNTRYCD
+	        ,ADDR1
+	        ,ADDR2
+	        ,ZIPCD
+	        ,TEL1 
+	        ,TEL2 
+	        ,FAX 
+	        ,CONTACT 
+	        ,CEO 
+	       	,UDF1
+	        ,UDF2
+	        ,UDF3
+	        ,REPACKEY
+	        ,REPACTYPE
+	        ,ADDRID
+	        ,REGDATE
+	        ,EMAIL
+	        ,ASNUSEYN
+			,ACTYPE2
+			,ACTYPEDT
+	        ,CLOSDATE
+	        ,INSERTDATE 
+	        ,INSERTURKEY 
+	        ,UPDATEDATE 
+	        ,UPDATEURKEY
+		) VALUES (
+			 #{owkey}
+	        ,#{ackey}
+	        ,#{actype}
+	        ,#{acnm}
+	        ,#{regno}
+	        ,#{biztype}
+	        ,#{bizctg}
+			,'KOR'		       
+	        ,#{addr1}
+	        ,#{addr2}
+	        ,#{zipcd}
+	        ,#{tel1}
+	        ,#{tel2}
+	        ,#{fax}
+	        ,#{contact}
+	        ,#{ceo}
+	        ,#{udf1}
+	        ,#{udf2}
+	        ,#{udf3}
+	        ,#{repackey}
+	        ,#{repactype}
+	        ,#{addrid}
+	        ,#{regdate}
+	        ,#{email}
+	        ,#{asnuseyn}
+			,#{actype2}
+			,#{actypedt}
+	        ,#{closdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		) 	
+		
+	</insert>
+
+	<insert id="mergeTtShpgLocT">
+		/* adm-master-account-sql-oracle.xml  mergeTtShpgLocT */
+		/* Converted from: MERGE INTO TT_SHPG_LOC_T ON CONFLICT */
+		INSERT INTO TT_SHPG_LOC_T (
+	                  SHPGLOCID, SHPGLOCCD, SHPGLOCNM, SHPGLOCTYPCD
+	                  ,ADDRID, APPTNEEDYN, TELNO1, TELNO2
+	                  ,STTCD, DELYN, INSERTDATE, UPDATEDATE
+	                  ,INSERTURKEY, UPDATEURKEY)
+	          VALUES (nextval('seq_tt_shpg_loc_t'),
+	                  #{ackey}, #{acnm}, '1'
+	                  ,#{addrid}, 'N', #{tel1}, #{tel2}
+	                  ,'Y', #{delyn}, #{sysdate}, #{sysdate}
+	                  ,#{surkey}, #{surkey})
+		ON CONFLICT (SHPGLOCCD) DO UPDATE SET
+	                 SHPGLOCNM = #{acnm},
+	                 SHPGLOCTYPCD = '1',
+	                 ADDRID = #{addrid},
+	                 TELNO1 = #{tel1},
+	                 TELNO2 = #{tel2},
+	                 STTCD = #{delyn},
+	                 DELYN = #{delyn},
+	                 UPDATEDATE = #{sysdate},
+	                 UPDATEURKEY = #{surkey}
+	</insert>
+	
+	
+	
+	<select id="selectPkAccount" resultType="camelMap">
+	/* adm-master-account-sql-oracle.xml  selectPkAccount */
+		SELECT A.OWKEY
+			  ,TMOW.OWNM
+		      ,A.ACKEY
+		      ,A.ACTYPE
+		      ,A.ACNM
+		      ,A.REGNO
+		      ,A.BIZTYPE
+		      ,A.BIZCTG
+		      ,A.TEL1
+		      ,A.TEL2
+		      ,A.FAX
+		      ,A.CONTACT
+		      ,A.CEO
+		      ,A.UDF1
+		      ,A.UDF2
+		      ,A.UDF3
+		      ,A.REPACKEY
+		      ,TMAC.ACNM AS REPACNM
+		      ,A.REPACTYPE
+		      ,A.ADDRID
+		      ,A.CLOSDATE
+		      ,A.INSERTDATE
+		      ,A.INSERTURKEY
+		      ,A.UPDATEDATE
+		      ,A.UPDATEURKEY
+		      ,A.DELYN
+		      ,A.REGDATE
+		      ,A.EMAIL
+		      ,A.ASNUSEYN
+		      ,A.ZIPCD AS ZIPNO
+		      ,A.ZIPCD
+		      ,A.ADDR1 AS LNMADRES
+		      ,A.ADDR1
+		      ,A.ADDR2
+		      ,A.PLTMAXRT
+		      ,A.PNLTYALWNRT
+		      ,A.PNLTYAPLYYN
+		      ,A.SCMCK
+		      ,A.SCMURKEY
+		      , B.ADDNT, COALESCE(B.UNIT, '') UNIT
+	          , COALESCE(B.STNM, '') STNM
+	          , COALESCE(B.CTYNM, '') CTYNM
+	          , COALESCE(B.ZIPCD, '') ZIPCD
+	          , COALESCE(B.CNTRYCD, '') CNTRYCD
+	          , COALESCE(B.STACD, '') STACD
+	          , B.SHPGLOCNM
+	          , B.LAT
+	          , B.LON
+	          , B.ADDRSTTCD
+			  , CASE A.IFYN WHEN 'Y' THEN '' WHEN 'N' THEN '1' END AS ENABLE_VALUE
+			  , A.ACTYPE2
+			  , A.ACTYPEDT
+			  , A.IFYN
+		  FROM  TADMIN_MST_AC A
+		     LEFT OUTER JOIN TADMIN_MST_OW TMOW
+		      			  ON A.OWKEY = TMOW.OWKEY
+		     LEFT OUTER JOIN TADMIN_MST_ADDR_T B
+		     			  ON A.ADDRID = B.ADDRID
+			 LEFT OUTER JOIN TADMIN_MST_AC TMAC
+		  			 ON A.OWKEY = TMAC.OWKEY
+					AND TMAC.ACKEY = A.REPACKEY
+		  WHERE A.ACKEY = #{ackey}
+		    AND	A.OWKEY = #{owkey} 
+
+	</select>
+	
+	<update id="updateTAdminMstAc">
+	/* adm-master-account-sql-oracle.xml  updateTAdminMstAc */
+		UPDATE TADMIN_MST_AC
+		   SET   ADDR1       		= #{addr1}
+				,ADDR2       	= #{addr2}
+				,ZIPCD       	 	= #{zipcd}
+				<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ifyn) and "N".equals(ifyn)'>
+		        ,ACTYPE				= #{actype}
+		        ,ACNM         	= #{acnm}
+		        ,REGNO       		= #{regno}
+		        ,BIZTYPE   		= #{biztype}
+		        ,BIZCTG			= #{bizctg}
+		        ,CNTRYCD    	= #{cntrycd}
+		        ,TEL1           	= #{tel1}       
+		        ,TEL2           	= #{tel2}       
+		        ,FAX            	= #{fax}        
+		        ,CONTACT        	= #{contact}    
+		        ,CEO            	= #{ceo} 
+		        ,UDF1            	= #{udf1} 
+		        ,UDF2            	= #{udf2} 
+		        ,UDF3            	= #{udf3}
+		        ,REPACKEY			= #{repackey}
+		        ,REPACTYPE			= #{repactype}
+		        ,ADDRID				= #{addrid}
+		        ,REGDATE 		   	= #{regdate}
+		        ,EMAIL				= #{email}
+		        ,ASNUSEYN			= #{asnuseyn}
+		     	,ACTYPE2			= #{actype2}
+		     	,ACTYPEDT   		= #{actypedt}
+		        ,CLOSDATE    	= #{closdate}
+				,DELYN    			= #{delyn}
+				</if>
+		        ,UPDATEDATE     	= #{sysdate}
+		        ,UPDATEURKEY    	= #{surkey}
+		 WHERE ACKEY = #{ackey}
+		   AND OWKEY = #{owkey}
+	</update>
+	
+	<update id="deleteTAdminMstAc">
+	/* adm-master-account-sql-oracle.xml  deleteTAdminMstAc */
+		UPDATE
+			TADMIN_MST_AC
+		SET
+			DELYN = 'Y'
+		 	,CLOSDATE  = #{closdate}
+	        ,UPDATEDATE   = #{sysdate}
+	        ,UPDATEURKEY  = #{surkey}
+		WHERE 
+			ACKEY = #{ackey}
+		AND OWKEY = #{owkey}		 	
+	</update>
+	
+	<select id="selectTAdminMstCt" resultType="camelMap">
+	/* adm-master-account-sql-oracle.xml  selectTAdminMstCt */
+		SELECT '0' AS CHK
+		      ,CTKEY
+		      ,CTNM
+		      ,(
+		      	SELECT OWKEY FROM TADMIN_MST_OW WHERE OWKEY = #{owkey}
+		      ) AS OWKEY
+		  FROM TADMIN_MST_CT	
+		  WHERE DELYN = 'N'
+		    AND MANAGEMENTYN = 'Y'
+		 ORDER BY CTKEY
+	</select>
+	
+	<select id="selectTAdminMstAcxct" resultType="camelMap">
+	/* adm-master-account-sql-oracle.xml  selectTAdminMstAcxct */
+		SELECT '0' AS CHK
+		      ,A.ACKEY
+		      ,A.CTKEY
+		      ,B.CTNM
+              ,A.RNDKEY
+              ,A.SCMCK
+			  ,A.SCMURKEY
+              ,A.OWKEY
+		  FROM TADMIN_MST_ACXCT A 
+		  INNER JOIN TADMIN_MST_CT B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND B.DELYN ='N'
+		 WHERE  1 = 1 
+		    AND A.DELYN = 'N'
+			AND A.ACKEY = #{ackey}
+			AND A.OWKEY = #{owkey}
+	  GROUP BY  A.ACKEY
+			  ,A.OWKEY
+		      ,A.CTKEY
+		      ,B.CTNM
+		      ,A.RNDKEY
+		      ,A.SCMCK
+			  ,A.SCMURKEY
+	 ORDER BY CTKEY		  
+	</select>	
+	
+	<insert id="insertTAdminMstAcxct">
+	/* adm-master-account-sql-oracle.xml  insertTAdminMstAcxct */
+		INSERT INTO TADMIN_MST_ACXCT
+		(
+			  UPDATEURKEY
+			 ,UPDATEDATE
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,CTKEY
+			 ,ACKEY
+			 ,STOREORDTYPE
+			 ,ACICGRTYPE
+			 ,RNDKEY
+			 ,OWKEY
+			 ,DELYN
+		 )VALUES(
+			  #{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{ctkey}
+			 ,#{ackey}
+			 ,'0'
+			 ,'0'
+			 ,#{rndkey}
+			 ,#{owkey}
+			 ,'N'
+		 )	
+	</insert>
+
+	<update id="deleteTAdminMstAcxct">
+	/* adm-master-account-sql-oracle.xml  deleteTAdminMstAcxct */
+		UPDATE TADMIN_MST_ACXCT
+		 SET DELYN = #{delyn}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		 WHERE  
+			ACKEY = #{ackey}
+		AND OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+		AND CTKEY = #{ctkey}
+		</if>
+	</update>
+
+	<select id="selectRepAccountCount" resultType="java.lang.Integer" >
+	/* adm-master-account-sql-oracle.xml  selectRepAccountCount */
+			SELECT	COUNT(1)  
+			  FROM	TADMIN_MST_AC
+			  WHERE REPACTYPE = '1'
+			  AND	ACKEY = REPACKEY
+			   AND OWKEY = #{owkey} 
+		 	<if test='searchValue != null'>
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ACKEY = #{searchValue}
+			        </when>
+		        	<otherwise>
+			   			AND (ACKEY LIKE '%' || #{searchValue} || '%' OR ACNM LIKE '%' || #{searchValue} || '%')
+			   		</otherwise>
+			   	</choose>
+		 	</if>
+	</select> 
+	
+	<select id="selectRepAccount" resultType="camelMap">
+	/* adm-master-account-sql-oracle.xml  selectRepAccount */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT ACKEY 
+			      ,ACTYPE 
+	      		  ,'ACTYPE' ||';'|| ACTYPE AS ACTYPE_DESC
+			      ,ACNM
+				  ,REPACKEY
+				  ,REPACTYPE
+				  ,'REP_ACTYPE' ||';'|| REPACTYPE as REP_ACTYPE_DESC
+				  ,OWKEY
+			  FROM TADMIN_MST_AC
+			 WHERE REPACTYPE = '1'
+			   AND ACKEY = REPACKEY
+			   AND OWKEY = #{owkey}           
+		 	<if test='searchValue != null'>
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ACKEY = #{searchValue}
+			        </when>
+		        	<otherwise>
+			   			AND (ACKEY LIKE '%' || #{searchValue} || '%' OR ACNM LIKE '%' || #{searchValue} || '%')
+			   		</otherwise>
+			   	</choose>
+		 	</if>							
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose> 			
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+</mapper>	

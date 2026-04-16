@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.CntrMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectCntrMgmt">
+		  FROM TWORK_MST_CNTR CNTR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = CNTR.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectCntrMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectCntrMgmt"/>
+	</select>
+
+	<select id="selectCntrMgmtList" resultType="camelMap">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , CNTR.CTKEY
+		     , CT.CTNM
+			 , CNTR.CNTRCD
+			 , CNTR.CNTRBARCODE
+			 , CNTR.CNTRDIVCD
+			 , CNTR.CNTRWKDIVCD
+			 , CNTR.CNTRCOLOR
+			 , CNTR.WIDTH
+			 , CNTR.DEPTH
+			 , CNTR.HEIGHT
+			 , CNTR.CBMSTARTRNG
+			 , CNTR.CBMCLOSRNG
+			 , CNTR.USEYN
+			 , CNTR.INSERTDATE
+			 , CNTR.INSERTURKEY
+			 , CNTR.UPDATEDATE
+		  	 , CNTR.UPDATEURKEY
+		<include refid="sql_selectCntrMgmt"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectCntrMgmtExcelList" resultType="camelMap">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrMgmtExcelList */
+		  WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+
+				AND A.CTCDHDKEY IN ('CNTRDIVCD', 'CNTRWKDIVCD')
+			</where>
+		)
+		SELECT CNTR.CTKEY
+		     , CT.CTNM
+			 , CNTR.CNTRCD
+			 , CNTR.CNTRBARCODE
+			 , CD1.CTCDDTNM AS CNTRDIVCD
+			 , CD2.CTCDDTNM AS CNTRWKDIVCD
+			 , CNTR.CNTRCOLOR
+			 , COALESCE(CNTR.WIDTH, 0) AS WIDTH
+			 , COALESCE(CNTR.DEPTH, 0) AS DEPTH
+			 , COALESCE(CNTR.HEIGHT, 0) AS HEIGHT
+			 , COALESCE(CNTR.CBMSTARTRNG, 0) AS CBMSTARTRNG
+			 , COALESCE(CNTR.CBMCLOSRNG, 0) AS CBMCLOSRNG
+			 , CNTR.USEYN
+			 , CNTR.INSERTDATE
+			 , CNTR.INSERTURKEY
+			 , CNTR.UPDATEDATE
+		  	 , CNTR.UPDATEURKEY
+		  FROM TWORK_MST_CNTR CNTR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = CNTR.CTKEY
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = CNTR.CTKEY
+		   AND CD1.CTCDHDKEY = 'CNTRDIVCD'
+		   AND CD1.CTCDDTKEY = CNTR.CNTRDIVCD
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = CNTR.CTKEY
+		   AND CD2.CTCDHDKEY = 'CNTRWKDIVCD'
+		   AND CD2.CTCDDTKEY = CNTR.CNTRWKDIVCD::TEXT
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectCntrDupCount">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrDupCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_CNTR
+		 WHERE CTKEY = #{ctkey}
+		   AND CNTRCD = #{cntrcd}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<insert id="insertCntrMgmt">
+		/* wms-master-cntrmgmt-sql-oracle.xml - insertCntrMgmt */
+		INSERT INTO TWORK_MST_CNTR (
+			   CTKEY
+			 , CNTRCD
+			 , CNTRBARCODE
+			 , CNTRDIVCD
+			 , CNTRWKDIVCD
+			 , CNTRCOLOR
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		VALUES (
+			   #{ctkey}
+			 , #{cntrcd}
+-- 			 , {cntrcd} || TO_CHAR(CURRENT_TIMESTAMP,'YYMMDD') || LPAD(nextval('seq_twork_mst_cntr')::TEXT, 4, '0')
+			 , #{cntrbarcode}
+			 , #{cntrdivcd}
+			 , #{cntrwkdivcd}
+			 , #{cntrcolor}
+			 , COALESCE(#{width}, 0)
+			 , COALESCE(#{depth}, 0)
+			 , COALESCE(#{height}, 0)
+			 , COALESCE(#{cbmstartrng}, 0)
+			 , COALESCE(#{cbmclosrng}, 0)
+			 , #{useyn}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateCntrMgmt">
+		/* wms-master-cntrmgmt-sql-oracle.xml - updateCntrMgmt */
+		UPDATE TWORK_MST_CNTR
+		   SET CNTRCOLOR = #{cntrcolor}
+			 , WIDTH = COALESCE(#{width}, 0)
+			 , DEPTH = COALESCE(#{depth}, 0)
+			 , HEIGHT = COALESCE(#{height}, 0)
+			 , CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , USEYN = #{useyn}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND CNTRCD = #{cntrcd}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<delete id="deleteCntrMgmt">
+		/* wms-master-cntrmgmt-sql-oracle.xml - deleteCntrMgmt */
+		DELETE
+		  FROM TWORK_MST_CNTR
+		 WHERE CTKEY = #{ctkey}
+		   AND CNTRCD = #{cntrcd}
+		   AND CNTRBARCODE = #{cntrbarcode}
+	</delete>
+
+	<update id="updateVaildationCntrExcelUploadTempList">
+		/* wms-master-cntrmgmt-sql-oracle.xml - updateVaildationCntrExcelUploadTempList */
+		UPDATE TWORK_UPLOAD_CNTR TUM
+		   SET ERROR_CD = (
+			   SELECT T.ERROR_CD
+				 FROM (
+					  WITH T_CODE AS (
+						   SELECT DT.CTKEY
+								, DT.CTCDHDKEY
+								, DT.CTCDDTKEY
+								, DT.CTCDDTNM
+							 FROM TWORK_MST_CTCD_HD HD
+							INNER JOIN TWORK_MST_CTCD_DT DT
+							   ON DT.CTKEY = HD.CTKEY
+							  AND DT.CTCDHDKEY = HD.CTCDHDKEY
+
+							<where>
+								AND HD.CTKEY = #{ctkey}
+								AND DT.CTCDHDKEY IN (
+									'CNTRDIVCD', 'CNTRWKDIVCD', 'YESORNO'
+								)
+								AND DT.LAKEY = #{lakey}
+								AND HD.DELYN = 'N'
+								AND DT.DELYN = 'N'
+							</where>
+						 )
+
+					  SELECT ULHSKEY
+						   , SEQ
+						   , CASE WHEN TMP.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+								  WHEN CT.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_INVALID'
+								  WHEN TMP.CNTRDIVCD IS NULL THEN 'TXT_UPLOAD_VALID_CNTRDIVCD_NULL'
+						          WHEN CD1.CTCDDTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CNTRDIVCD_INVALID'
+								  WHEN TMP.CNTRWKDIVCD IS NULL THEN 'TXT_UPLOAD_VALID_CNTRWKDIVCD_NULL'
+								  WHEN CD2.CTCDDTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CNTRWKDIVCD_INVALID'
+								  WHEN TMP.CNTRCD IS NULL THEN 'TXT_UPLOAD_VALID_CNTRCD_NULL'
+								  --WHEN COUNT(1) OVER(PARTITION BY TMP.ULHSKEY, TMP.CTKEY, TMP.CNTRCD) > 1 THEN 'TXT_UPLOAD_VALID_CNTRCD_DUPLICATE'
+								  --WHEN (SELECT COUNT(1) FROM TWORK_MST_CNTR WHERE CTKEY = TMP.CTKEY AND CNTRCD = TMP.CNTRCD ) 0 THEN 'TXT_UPLOAD_VALID_CNTRCD_EXISTS'
+								  WHEN TMP.WIDTH IS NOT NULL AND TMP.WIDTH !~ <![CDATA[ '^[0-9]+(\.[0-9]{1,5}){0,1}$' ]]> THEN 'TXT_UPLOAD_VALID_WIDTH_VAL_NOT_NUMBER'
+								  WHEN TMP.DEPTH IS NOT NULL AND TMP.DEPTH !~ <![CDATA[ '^[0-9]+(\.[0-9]{1,5}){0,1}$' ]]> THEN 'TXT_UPLOAD_VALID_DEPTH_VAL_NOT_NUMBER'
+								  WHEN TMP.HEIGHT IS NOT NULL AND TMP.HEIGHT !~ <![CDATA[ '^[0-9]+(\.[0-9]{1,5}){0,1}$' ]]> THEN 'TXT_UPLOAD_VALID_HEIGHT_VAL_NOT_NUMBER'
+								  WHEN TMP.CBMSTARTRNG IS NOT NULL AND TMP.CBMSTARTRNG !~ <![CDATA[ '^[0-9]+(\.[0-9]{1,7}){0,1}$' ]]> THEN 'TXT_UPLOAD_VALID_CBMSTARTRNG_VAL_NOT_NUMBER'
+								  WHEN TMP.CBMCLOSRNG IS NOT NULL AND TMP.CBMCLOSRNG !~ <![CDATA[ '^[0-9]+(\.[0-9]{1,7}){0,1}$' ]]> THEN 'TXT_UPLOAD_VALID_CBMCLOSRNG_VAL_NOT_NUMBER'
+							   	  WHEN TMP.USEYN IS NOT NULL AND CD3.CTCDDTKEY IS NULL THEN 'TXT_UPLOAD_VALID_USEYN_INVALID'
+						          END AS ERROR_CD
+						FROM TWORK_UPLOAD_CNTR TMP
+						LEFT JOIN TWORK_MST_CT CT
+						  ON CT.CTKEY = TMP.CTKEY
+						LEFT JOIN T_CODE CD1
+						  ON CD1.CTKEY = TMP.CTKEY
+						 AND CD1.CTCDHDKEY = 'CNTRDIVCD'
+						 AND CD1.CTCDDTNM = TMP.CNTRDIVCD
+						LEFT JOIN T_CODE CD2
+						  ON CD2.CTKEY = TMP.CTKEY
+						 AND CD2.CTCDHDKEY = 'CNTRWKDIVCD'
+						 AND CD2.CTCDDTNM = TMP.CNTRWKDIVCD
+						LEFT JOIN T_CODE CD3
+						  ON CD3.CTKEY = TMP.CTKEY
+						 AND CD3.CTCDHDKEY = 'YESORNO'
+						 AND CD3.CTCDDTNM = TMP.USEYN
+					   WHERE TMP.ULHSKEY = #{upldkey}
+					) T
+				WHERE TUM.ULHSKEY = T.ULHSKEY
+				  AND TUM.SEQ = T.SEQ
+			 )
+		 WHERE TUM.ULHSKEY = #{upldkey}
+	</update>
+
+	<select id="selectCntrMgmtExcelUploadTempCount" resultType="java.lang.Integer">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrMgmtExcelUploadTempCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_CNTR
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter)'>
+			<choose>
+				<when test='"Y".equals(filter)'>
+					AND ERROR_CD IS NOT NULL
+				</when>
+				<when test='"N".equals(filter)'>
+					AND ERROR_CD IS NULL
+				</when>
+			</choose>
+		</if>
+	</select>
+
+	<select id="selectCntrMgmtExcelUploadTempList" resultType="camelMap">
+		/* wms-master-cntrmgmt-sql-oracle.xml - selectCntrMgmtExcelUploadTempList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+			 , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , CNTRCD
+			 , CNTRDIVCD
+			 , CNTRWKDIVCD
+			 , CNTRCOLOR
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_CNTR
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and "Y".equals(filter)'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		 ORDER BY SEQ
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<delete id="deleteCntrMgmtExcelUploadTemp">
+		/* wms-master-cntrmgmt-sql-oracle.xml - deleteCntrMgmtExcelUploadTemp */
+		DELETE
+		  FROM TWORK_UPLOAD_CNTR
+		 WHERE ULHSKEY = #{ulhskey}
+		  AND SEQ = #{seq}
+	</delete>
+
+	<insert id="insertCntrMgmtExcelUploadTempList">
+		/* wms-master-cntrmgmt-sql-oracle.xml - insertCntrMgmtExcelUploadTempList */
+		INSERT INTO TWORK_MST_CNTR (
+		       CTKEY
+			 , CNTRCD
+			 , CNTRBARCODE
+			 , CNTRDIVCD
+			 , CNTRWKDIVCD
+			 , CNTRCOLOR
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		  WITH T_CODE AS (
+			   SELECT DT.CTKEY
+					, DT.CTCDHDKEY
+					, DT.CTCDDTKEY
+					, DT.CTCDDTNM
+				 FROM TWORK_MST_CTCD_HD HD
+				INNER JOIN TWORK_MST_CTCD_DT DT
+				   ON DT.CTKEY = HD.CTKEY
+				  AND DT.CTCDHDKEY = HD.CTCDHDKEY
+
+				<where>
+					AND HD.CTKEY = #{ctkey}
+				    AND DT.CTCDHDKEY IN (
+				        'CNTRDIVCD', 'CNTRWKDIVCD', 'YESORNO'
+					)
+					AND DT.LAKEY = #{lakey}
+					AND HD.DELYN = 'N'
+					AND DT.DELYN = 'N'
+				</where>
+		     )
+		SELECT TMP.CTKEY
+			 , TMP.CNTRCD
+			 , TMP.CNTRCD || TO_CHAR(CURRENT_TIMESTAMP,'YYMMDD') || LPAD(nextval('seq_twork_mst_cntr')::TEXT, 4, '0')
+			 , CD1.CTCDDTKEY
+			 , CD2.CTCDDTKEY
+			 , TMP.CNTRCOLOR
+			 , COALESCE(TMP.WIDTH::NUMERIC, 0)
+			 , COALESCE(TMP.DEPTH::NUMERIC, 0)
+			 , COALESCE(TMP.HEIGHT::NUMERIC, 0)
+			 , COALESCE(TMP.CBMSTARTRNG::NUMERIC, 0)
+			 , COALESCE(TMP.CBMCLOSRNG::NUMERIC, 0)
+			 , COALESCE(CD3.CTCDDTKEY, 'Y')
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		  FROM TWORK_UPLOAD_CNTR TMP
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = TMP.CTKEY
+		   AND CD1.CTCDHDKEY = 'CNTRDIVCD'
+		   AND CD1.CTCDDTNM = TMP.CNTRDIVCD
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = TMP.CTKEY
+		   AND CD2.CTCDHDKEY = 'CNTRWKDIVCD'
+		   AND CD2.CTCDDTNM = TMP.CNTRWKDIVCD
+		  LEFT JOIN T_CODE CD3
+			ON CD3.CTKEY = TMP.CTKEY
+		   AND CD3.CTCDHDKEY = 'YESORNO'
+		   AND CD3.CTCDDTNM = TMP.USEYN
+		 WHERE TMP.ULHSKEY = #{upldkey}
+		   AND TMP.CTKEY = #{ctkey}
+		   AND TMP.ERROR_CD IS NULL
+	</insert>
+
+</mapper>

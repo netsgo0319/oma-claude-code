@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+		<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+		<mapper namespace="com.daiso.oms.report.mapper.InventoryStatusMapper">
+
+			<select id="selectInventoryItemList" resultType="camelMap">
+				/* oms-report-inventoryStatus-sql-oracle.xml selectInventoryItemList */
+				SELECT ICKEY
+				FROM (
+				SELECT IC.ICKEY
+				FROM TORDER_MST_IC IC
+				INNER JOIN TORDER_MST_ICXCT ICXCT
+				ON IC.OWKEY = ICXCT.OWKEY
+				AND IC.ICKEY = ICXCT.ICKEY
+				INNER JOIN TORDER_MST_CT CT
+				ON ICXCT.CTKEY = CT.CTKEY
+				INNER JOIN (
+				SELECT ICKEY
+				, OWKEY
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+				FROM TORDER_MST_ICUTXTYPE
+				WHERE OWKEY = #{OWKEY}
+				GROUP BY ICKEY, OWKEY
+				) S_ICUT
+				ON IC.OWKEY = S_ICUT.OWKEY
+				AND IC.ICKEY = S_ICUT.ICKEY
+				LEFT JOIN TORDER_MST_ASRT ASRT
+				ON IC.OWKEY = ASRT.OWKEY
+				AND IC.ICKEY = ASRT.ASRTREPKEY
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+				) T
+				LIMIT 100
+			</select>
+
+			<select id="selectInventoryStatusCount" resultType="java.lang.Integer">
+				/* oms-report-inventoryStatus-sql-oracle.xml selectInventoryStatusCount */
+				SELECT COUNT(*)
+				FROM (
+				SELECT IC.ICKEY
+				FROM TORDER_MST_IC IC
+				INNER JOIN TORDER_MST_ICXCT ICXCT
+				ON IC.OWKEY = ICXCT.OWKEY
+				AND IC.ICKEY = ICXCT.ICKEY
+				INNER JOIN TORDER_MST_CT CT
+				ON ICXCT.CTKEY = CT.CTKEY
+				INNER JOIN (
+				SELECT ICKEY
+				, OWKEY
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+				FROM TORDER_MST_ICUTXTYPE
+				WHERE OWKEY = #{OWKEY}
+				GROUP BY ICKEY, OWKEY
+				) S_ICUT
+				ON IC.OWKEY = S_ICUT.OWKEY
+				AND IC.ICKEY = S_ICUT.ICKEY
+				LEFT JOIN TORDER_MST_ASRT ASRT
+				ON IC.OWKEY = ASRT.OWKEY
+				AND IC.ICKEY = ASRT.ASRTREPKEY
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+				) T
+				LIMIT 100
+			</select>
+
+			<select id="selectInventoryStatusList" resultType="camelMap">
+				/* oms-order-inventoryStatus-sql-oracle.xml - selectInventoryStatusList */
+				SELECT CHK
+				, OWKEY
+				, CTKEY
+				, CTNM
+				, ICKEY
+				, ICNM
+				, ASRTKEY
+				, ASRTNM
+				, ASRTYN
+				, LV1CTGNM
+				, LV2CTGNM
+				, LV3CTGNM
+				, AVQTY
+				, UNUSEQTY
+				, TOTQTY
+				, INNAVQTY
+				, INNUNUSEQTY
+				, INNTOTQTY
+				, CTNAVQTY
+				, CTNUNUSEQTY
+				, CTNTOTQTY
+				, AVSLPRC
+				, UNUSESLPRC
+				, TOTSLPRC
+				FROM (
+				SELECT  '0' AS CHK
+				, IC.OWKEY                         /* 화주코드 */
+				, CT.CTKEY                         /* 센터코드 */
+				, CT.CTNM                          /* 센터명 */
+				, IC.ICKEY                         /* 모상품 */
+				, IC.ICNM                          /* 모상품명 */
+				, ASRT.ASRTKEY                     /* 자상품 */
+				, ASRT.ASRTNM                      /* 자상품명 */
+				, IC.ASRTYN                        /* 아소트여부 */
+				, CTG.LV1CTGNM                     /* 대 */
+				, CTG.LV2CTGNM                     /* 중 */
+				, CTG.LV3CTGNM                     /* 소 */
+				, COALESCE(IV.AVQTY, 0)                       AS AVQTY
+				, COALESCE(IV.UNUSEQTY, 0)                    AS UNUSEQTY
+				, COALESCE(IV.AVQTY, 0) + COALESCE(IV.UNUSEQTY, 0) AS TOTQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND(IV.AVQTY / IC_INN, 2)
+				END AS INNAVQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND(IV.UNUSEQTY / IC_INN, 2)
+				END AS INNUNUSEQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND((IV.AVQTY + IV.UNUSEQTY) / IC_INN, 2)
+				END AS INNTOTQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND(IV.AVQTY / IC_CTN, 2)
+				END AS CTNAVQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND(IV.UNUSEQTY / IC_CTN, 2)
+				END AS CTNUNUSEQTY
+				, CASE WHEN IV.AVQTY IS NULL OR IV.AVQTY = 0 THEN 0
+				ELSE ROUND((IV.AVQTY + IV.UNUSEQTY) / IC_CTN, 2)
+				END AS CTNTOTQTY
+				, IC.SLPRC * COALESCE(AVQTY, 0)                             AS AVSLPRC
+				, IC.SLPRC * COALESCE(UNUSEQTY, 0)                          AS UNUSESLPRC
+				, IC.SLPRC * (COALESCE(IV.AVQTY, 0) + COALESCE(IV.UNUSEQTY, 0))  AS TOTSLPRC
+				FROM TORDER_MST_IC IC
+				INNER JOIN TORDER_MST_ICXCT ICXCT
+				ON IC.OWKEY = ICXCT.OWKEY
+				AND IC.ICKEY = ICXCT.ICKEY
+				INNER JOIN TORDER_MST_CT CT
+				ON ICXCT.CTKEY = CT.CTKEY
+				INNER JOIN (
+				SELECT ICKEY
+				, OWKEY
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN
+				, COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+				FROM TORDER_MST_ICUTXTYPE
+				WHERE OWKEY = #{OWKEY}
+				GROUP BY ICKEY, OWKEY
+				) S_ICUT
+				ON IC.OWKEY = S_ICUT.OWKEY
+				AND IC.ICKEY = S_ICUT.ICKEY
+				LEFT JOIN TORDER_MST_ASRT ASRT
+				ON IC.OWKEY = ASRT.OWKEY
+				AND IC.ICKEY = ASRT.ASRTREPKEY
+				LEFT OUTER JOIN TORDER_INTF_WMS_REQORDERIV IV
+				ON ICXCT.OWKEY = IV.OWKEY
+				AND ICXCT.CTKEY = IV.CTKEY
+				AND ICXCT.ICKEY = IV.ICKEY
+				AND IFID = #{ifid}
+				LEFT JOIN (
+				(SELECT A.OWKEY
+				, A.CTGKEY AS LV1CTGKEY
+				, A.CTGNM  AS LV1CTGNM
+				, B.CTGKEY AS LV2CTGKEY
+				, B.CTGNM  AS LV2CTGNM
+				, C.CTGKEY AS LV3CTGKEY
+				, C.CTGNM  AS LV3CTGNM
+				FROM TORDER_MST_CTG A
+				INNER JOIN TORDER_MST_CTG B
+				ON A.OWKEY = B.OWKEY
+				AND A.CTGKEY  = B.UPPERCTGKEY
+				AND A.CTGLV + 1 = B.CTGLV
+				INNER JOIN TORDER_MST_CTG C
+				ON B.OWKEY = C.OWKEY
+				AND B.CTGKEY  = C.UPPERCTGKEY
+				AND B.CTGLV + 1 = C.CTGLV
+				)
+				) CTG
+				ON IC.OWKEY = CTG.OWKEY
+				AND IC.CTGKEY = CTG.LV3CTGKEY
+				WHERE IC.ICKEY IN
+				<foreach item="ickey" index="index" collection="ickey"  open="(" separator="," close=")">
+					#{ickey}
+				</foreach>
+				) T
+				LIMIT 100
+			</select>
+
+			<sql id="sql_pagingTop">
+				#{GRIDPAGING_ROWNUMTYPE_TOP}
+			</sql>
+
+			<sql id="sql_pagingBottom">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</sql>
+
+			<sql id="sql_inventoryInfo">
+				FROM TORDER_MST_IC IC
+				INNER JOIN TORDER_MST_ICXCT ICCT
+				ON ICCT.OWKEY = IC.OWKEY
+				AND ICCT.ICKEY = IC.ICKEY
+				INNER JOIN TORDER_MST_CT CT
+				ON CT.CTKEY = ICCT.CTKEY
+				LEFT JOIN TORDER_MST_ASRT ASRT
+				ON ASRT.OWKEY = IC.OWKEY
+				AND ASRT.ASRTREPKEY = IC.ICKEY
+				INNER JOIN (
+				SELECT CTGLV1.OWKEY
+				, CTGLV1.CTGKEY AS CTGKEYLV1
+				, CTGLV1.CTGNM  AS CTGNMLV1
+				, CTGLV2.CTGKEY AS CTGKEYLV2
+				, CTGLV2.CTGNM  AS CTGNMLV2
+				, CTGLV3.CTGKEY AS CTGKEYLV3
+				, CTGLV3.CTGNM  AS CTGNMLV3
+				FROM TORDER_MST_CTG CTGLV1
+				INNER JOIN TORDER_MST_CTG CTGLV2
+				ON CTGLV2.OWKEY = CTGLV1.OWKEY
+				AND CTGLV2.UPPERCTGKEY  = CTGLV1.CTGKEY
+				AND CTGLV2.CTGLV = 2
+				INNER JOIN TORDER_MST_CTG CTGLV3
+				ON CTGLV3.OWKEY = CTGLV2.OWKEY
+				AND CTGLV3.UPPERCTGKEY = CTGLV2.CTGKEY
+				AND CTGLV3.CTGLV = 3
+				) CTG
+				ON CTG.OWKEY = IC.OWKEY
+				AND CTG.CTGKEYLV3 = IC.CTGKEY
+				LEFT JOIN (
+				SELECT ICTP_EA.OWKEY
+				, ICTP_EA.ICKEY
+				, ICTP_EA.ICUNITQTY AS EAQTY
+				, ICTP_INN.ICUNITQTY AS INNQTY
+				, ICTP_CTN.ICUNITQTY AS CTNQTY
+				FROM TORDER_MST_ICUTXTYPE ICTP_EA
+				LEFT JOIN TORDER_MST_ICUTXTYPE ICTP_INN
+				ON ICTP_INN.OWKEY = ICTP_EA.OWKEY
+				AND ICTP_INN.ICKEY = ICTP_EA.ICKEY
+				AND ICTP_INN.ICUNITTYPE = 'INN'
+				LEFT JOIN TORDER_MST_ICUTXTYPE ICTP_CTN
+				ON ICTP_CTN.OWKEY = ICTP_EA.OWKEY
+				AND ICTP_CTN.ICKEY = ICTP_EA.ICKEY
+				AND ICTP_CTN.ICUNITTYPE = 'CTN'
+				WHERE ICTP_EA.ICUNITTYPE = 'EA'
+				) ICTP
+				ON ICTP.OWKEY = IC.OWKEY
+				AND ICTP.ICKEY = IC.ICKEY
+
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						AND	#{SEARCH_CONDITION}
+					</if>
+				</where>
+			</sql>
+
+			<select id="selectInventoryInfoCount" resultType="java.lang.Integer">
+				/* oms-order-inventoryStatus-sql-oracle.xml - selectInventoryInfoCount */
+				SELECT COUNT(1)
+				<include refid="sql_inventoryInfo"/>
+			</select>
+
+			<select id="selectInventoryInfoList" resultType="camelMap">
+				/* oms-order-inventoryStatus-sql-oracle.xml - selectInventoryInfoList */
+				<include refid="sql_pagingTop"/>
+				SELECT CT.CTKEY			/* 센터코드 */
+				, CT.CTNM			/* 선터명 */
+				, IC.OWKEY			/* 화주코드 */
+				, IC.ICKEY			/* (모)상품코드 */
+				, IC.ICNM			/* (모)상품명 */
+				, ASRT.ASRTKEY		/* (자)상품코드 */
+				, ASRT.ASRTNM		/* (자)상품명 */
+				, COALESCE(ASRT.ASRTKEY, IC.ICKEY) AS IFICKEY	/* 인터페이스용 상품코드 */
+				, CTG.CTGKEYLV1	/* 대분류 */
+				, CTG.CTGNMLV1		/* 대분류명 */
+				, CTG.CTGKEYLV2	/* 중분류 */
+				, CTG.CTGNMLV2		/* 증분류명 */
+				, CTG.CTGKEYLV3	/* 소분류 */
+				, CTG.CTGNMLV3		/* 소분류명 */
+				, ICTP.EAQTY		/* 낱개수량 */
+				, ICTP.INNQTY		/* 중포수량 */
+				, ICTP.CTNQTY		/* 카톤수량 */
+				, IC.SLPRC 		/* 판매금액 */
+				, 0 AS TOTQTY
+				 , 0 AS AVQTY
+				 , 0 AS NAVQTY
+				 , 0 AS INNTOTQTY
+				 , 0 AS INNAVQTY
+				 , 0 AS INNNAVQTY
+				 , 0 AS CTNTOTQTY
+				 , 0 AS CTNAVQTY
+				 , 0 AS CTNNAVQTY
+				 , 0 AS TOTSLPRC
+				 , 0 AS AVSLPRC
+				 , 0 AS NAVSLPRC
+		<include refid="sql_inventoryInfo"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+</mapper>

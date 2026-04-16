@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InventoryQtyApiMapper">
+
+    <!-- 가용재고 조회 -->
+    <select id="selectInventoryQty" resultType="Map">
+        /* wms-inventory-qty-sql-oracle.xml - selectInventoryQty - 가용재고 조회 SQL */
+        SELECT /* hint: LEADING(IC IVLC)
+                INDEX(IVLC IDX2_TWORK_INFO_IVATXLC)
+                USE_NL(IVLC)
+                OPT_PARAM('_optimizer_use_feedback' 'false') */
+               IVLC.ICKEY   /* 상품코드 */
+             , SUM(IVLC.TOTQTY) AS TOTQTY  /* 총수량 */
+            , SUM(CASE WHEN ZN.ZNTYPECD = '10' AND ( IC.EXPCKYN = 'N' OR (IC.EXPCKYN = 'Y' AND TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS  * (OBIMPSCRITRT/100)),0),'YYYYMMDD') <![CDATA[ >= ]]>  TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD'))) THEN IVLC.AVQTY ELSE 0 END) AS AVQTY  /* 가용수량 */
+            , SUM(CASE WHEN ZN.ZNTYPECD = '10' THEN
+                            IVLC.ALQTY + IVLC.HOLDQTY + (CASE WHEN IC.EXPCKYN = 'Y' AND TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS  * (OBIMPSCRITRT/100)),0),'YYYYMMDD') <![CDATA[ < ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN IVLC.TOTQTY ELSE 0 END)
+                       ELSE IVLC.TOTQTY
+                  END) AS NAVQTY  /* 불용수량 */
+          FROM TWORK_INFO_IVATXLC IVLC
+               INNER JOIN
+               TWORK_MST_LC LC
+                 ON IVLC.CTKEY = LC.CTKEY
+                AND IVLC.LCKEY = LC.LCKEY
+               INNER JOIN
+               TWORK_MST_ZN ZN
+                 ON LC.CTKEY = ZN.CTKEY
+                AND LC.ZNKEY = ZN.ZNKEY
+              INNER JOIN
+              TWORK_INFO_IVAT IVAT
+                 ON IVLC.CTKEY = IVAT.CTKEY
+                AND IVLC.OWKEY = IVAT.OWKEY
+                AND IVLC.IVATKEY = IVAT.IVATKEY
+              INNER JOIN
+              TWORK_MST_IC IC
+                 ON IVLC.CTKEY = IC.CTKEY
+                AND IVLC.OWKEY = IC.OWKEY
+                AND IVLC.ICKEY = IC.ICKEY
+        WHERE IVLC.CTKEY = #{ctkey, jdbcType=VARCHAR}
+          AND IVLC.OWKEY = #{owkey, jdbcType=VARCHAR}
+        <if test="iclist != null and iclist.size() > 0">
+            AND IVLC.ICKEY IN
+            <foreach item="ickey" collection="iclist" open="(" separator="," close=")">
+                #{ickey, jdbcType=VARCHAR}
+            </foreach>
+        </if>
+        GROUP BY
+              IVLC.ICKEY
+    </select>
+</mapper>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.master.mapper.AccountMapper">
+
+    <select id="selectAccountList" resultType="camelMap">
+		/* AccountMapper.xml selectAccountList */
+        SELECT TRN_ID
+             , ACKEY
+             , ACNM
+             , ACTYPE
+             , ACSTATUS
+             , CTKEY
+             , ADDRHD
+             , ADDRDT
+             , SALESPERSONNM
+             , TEL1
+        FROM TORDER_EAI_AC_BATCH
+        WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+          AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+        ORDER BY TRN_ID , SND_NO, SND_ROW
+    </select>    
+</mapper>

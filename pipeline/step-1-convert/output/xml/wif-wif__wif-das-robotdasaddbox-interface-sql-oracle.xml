@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.robotsorter.rsaddbox.mapper.AddBoxMapper">
+	<select id="getRobDasAddBoxWaveSeq" resultType="camelMap">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - getRobDasAddBoxWaveSeq - RobotDAS 박스추가 요청 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasAddBoxOrderSeq" resultType="camelMap">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - getRobDasAddBoxOrderSeq - RobotDAS 박스추가 요청 Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasAddBoxItemSeq" resultType="camelMap">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - getRobDasAddBoxItemSeq - RobotDAS 박스추가 요청 Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasAddBoxWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxWaveVO">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - insertRobDasAddBoxWave - RobotDAS 박스추가 요청 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_BOXADD_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertRobDasAddBoxOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxOrderVO">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - insertRobDasAddBoxOrder - RobotDAS 박스추가 요청 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_BOXADD_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,BFOBHDKEY
+			,BFWBLNO
+			,WKPRCSDATE
+			,BFPCKGBOXSIZE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{bfObHdKey}
+			,#{wblNo}
+			,#{wkPrcsDate}
+			,#{bfPckgBoxSize}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAddBoxItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxItemVO">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - insertRobDasAddBoxItem - RobotDAS 박스추가 요청 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_boxadd_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_BOXADD_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<update id="updateNewReleaseCodeInfo">
+		/* wif-das-robotdasaddbox-sql-oracle.xml - updateNewReleaseCodeInfo - Robot DAS 박스추가 신규 릴리즈코드,송장번호,박스사이즈 UPDATE SQL */
+		UPDATE TWIF_ROBDAS_BOXADD_ORDER
+		   SET OBHDKEY 		= #{obHdKey}
+			   ,WBLNO 		= #{wblNo}
+			   ,PCKGBOXSIZE = #{pckgBoxSize}
+   			   ,UPDATEDATE 	= #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+		   AND BFOBHDKEY 	= #{bfObHdKey}
+		   AND BFWBLNO 		= #{bfWblNo}
+	</update>
+
+</mapper>

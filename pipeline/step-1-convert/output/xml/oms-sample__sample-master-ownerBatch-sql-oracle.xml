@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.sample.in.mapper.OwnerBatchMapper">
+
+    <insert id="insertIntfTableOwnerList">
+        /* sample-master-ownerBatch-sql-oracle.xml  insertIntfTableOwnerList */
+        INSERT INTO TORDER_INTF_OW(
+                                    OWKEY
+                                  , OWNM
+                                  , REGNO
+                                  , BIZTYPE
+                                  , BIZCTG
+                                  , CITY
+                                  , STATE
+                                  , TEL1
+                                  , TEL2
+                                  , FAX
+                                  , CONTACT
+                                  , CEO
+                                  , CNTRYCD
+                                  , ADDR1
+                                  , ADDR2
+                                  , ZIPCD
+                                  , CLOSDATE
+                                  , INTERFACEKEY
+                                  , INSERTDATE
+                                  , INSERTURKEY
+                                  , UPDATEDATE
+                                  , UPDATEURKEY
+        )
+        VALUES (
+                 #{owkey}
+               , #{ownm}
+               , #{regno}
+               , #{biztype}
+               , #{bizcty}
+               , #{city}
+               , #{state}
+               , #{tel1}
+               , #{tel2}
+               , #{fax}
+               , #{contact}
+               , #{ceo}
+               , #{cntrycd}
+               , #{addr1}
+               , #{addr2}
+               , #{zipcd}
+               , #{closdate}
+               , #{interfaceId}
+               , #{sysdate}
+               , #{interfaceUrkey}
+               , #{sysdate}
+               , #{interfaceUrkey}
+               )
+    </insert>
+
+</mapper>

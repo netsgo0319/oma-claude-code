@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.common.mapper.ExcelMapper">
+    <insert id="insertJob">
+        /* adm-common-excel-sql-oracle.xml - insertJob */
+        INSERT INTO TADMIN_INFO_EXCEL_JOB (
+              JOBID
+            , MEKEY
+            , SEARCHCOND
+            , STATUS
+            , INSERTURKEY
+            , INSERTDATE
+        ) VALUES (
+              #{jobId}
+            , #{mekey}
+            , #{searchcond}
+            , #{status}
+            , #{surkey}
+            , #{sysdate}
+        )
+    </insert>
+
+    <select id="selectExcelJob" resultType="java.lang.Integer">
+        /* adm-common-excel-sql-oracle.xml - selectExcelJob */
+        SELECT COUNT(1)
+          FROM TADMIN_INFO_EXCEL_JOB
+         WHERE JOBID = #{jobId}
+           AND STATUS = #{status}
+    </select>
+
+    <update id="updateJob">
+        /* adm-common-excel-sql-oracle.xml - updateJob */
+        UPDATE TADMIN_INFO_EXCEL_JOB
+           SET STATUS      = #{status}
+             <if test="@com.kns.framework.util.StringUtil@isNotEmpty(filenm)">
+                 , FILENM = #{filenm}
+             </if>
+             <if test="@com.kns.framework.util.StringUtil@isNotEmpty(errmsg)">
+                , ERRMSG = #{errmsg}
+             </if>
+            ,  UPDATEDATE  = #{sysdate}
+            ,  UPDATEURKEY = #{updateurkey}
+         WHERE JOBID = #{jobId}
+    </update>
+</mapper>

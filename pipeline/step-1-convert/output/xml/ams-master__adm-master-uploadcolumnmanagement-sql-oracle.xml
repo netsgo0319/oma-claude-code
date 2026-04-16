@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.UploadColumnManagementMapper">
+	
+	<resultMap id="selectUploadColumnHeaderInfoMap" type="java.util.HashMap">
+		<result property="updfhdkey" 		column="UPDFHDKEY" />
+		<result property="updfhdname" 		column="UPDFHDNM" />
+		<result property="apkey" 			column="APKEY" />
+		<result property="apname" 			column="APNAME" />
+		<result property="owkey" 			column="OWKEY" />
+		<result property="owname" 			column="OWNAME" />
+		<result property="ultype" 			column="ULTYPE" />
+		<result property="insertdate" 		column="INSERTDATE"/>
+		<result property="inserturkey" 		column="INSERTURKEY" />
+		<result property="updatedate" 		column="UPDATEDATE"/>
+		<result property="updateurkey" 		column="UPDATEURKEY" />
+	</resultMap>
+	
+	<select id="selectUploadColumnHeaderInfo" resultMap="selectUploadColumnHeaderInfoMap">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - selectUploadColumnHeaderInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT *
+				FROM (
+						SELECT A.UPDFHDKEY
+						      ,A.UPDFHDNM
+						      ,A.APKEY
+						      ,B.APNM
+						      ,A.OWKEY
+						      ,C.OWNM
+						      ,A.ULTYPE
+						      ,A.INSERTDATE
+						      ,A.UPDATEDATE
+						      ,A.INSERTURKEY
+ 							  ,A.UPDATEURKEY
+						  FROM TADMIN_MST_UPDF_HD A
+						  LEFT OUTER JOIN TADMIN_MST_AP B
+						      		   ON A.APKEY = B.APKEY
+						  LEFT OUTER JOIN TADMIN_MST_OW C
+									   ON A.OWKEY = C.OWKEY
+			) AS sub_1
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   #{SEARCH_CONDITION}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(updfhdkey)" >
+				   AND UPDFHDKEY = #{updfhdkey}
+				</if>				
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose> 			
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<select id="selectUploadColumnHeaderInfoCount" resultType="java.lang.Integer" >
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - selectUploadColumnHeaderInfoCount */
+		SELECT COUNT(1)  
+		  FROM (
+	  			SELECT A.UPDFHDKEY
+				      ,A.UPDFHDNM
+				      ,A.APKEY
+				      ,B.APNM
+				      ,A.OWKEY
+				      ,C.OWNM
+				      ,A.ULTYPE
+				      ,'ULTYPE' ||';'|| A.ULTYPE AS ULTYPE_DESC
+				      ,A.INSERTDATE
+				      ,A.UPDATEDATE
+				      ,A.INSERTURKEY
+ 					  ,A.UPDATEURKEY
+				  FROM TADMIN_MST_UPDF_HD A
+				  LEFT OUTER JOIN TADMIN_MST_AP B
+				      		   ON A.APKEY = B.APKEY
+				  LEFT OUTER JOIN TADMIN_MST_OW C
+				  		   	   ON A.OWKEY = C.OWKEY
+		  ) AS sub_2
+		  <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(updfhdkey)" >
+			   AND UPDFHDKEY = #{updfhdkey}
+			</if>			
+		  </where>			
+	</select>
+
+	<resultMap id="selectUploadColumnDetailInfoMap" type="java.util.HashMap">
+		<result property="updfhdkey" 		column="UPDFHDKEY" />
+		<result property="updfdtkey" 		column="UPDFDTKEY" />
+		<result property="columnnm" 		column="COLUMNNM" />
+		<result property="columndesc" 		column="COLUMNDESC" />
+		<result property="columnorder" 		column="COLUMNORDER"/>
+		<result property="columntype" 		column="COLUMNTYPE" />
+		<result property="insertdate" 		column="INSERTDATE"/>
+		<result property="inserturkey" 		column="INSERTURKEY" />
+		<result property="updatedate" 		column="UPDATEDATE"/>
+		<result property="updateurkey" 		column="UPDATEURKEY" />
+	</resultMap>
+	
+	<select id="selectUploadColumnDetailInfo" resultMap="selectUploadColumnDetailInfoMap">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - selectUploadColumnDetailInfo */
+		SELECT UPDFHDKEY
+		      ,UPDFDTKEY
+		      ,COLUMNNM
+		      ,COLUMNDESC
+		      ,COLUMNORDER
+		      ,COLUMNTYPE
+		      ,'COLUMNTYPE' ||';'|| COLUMNTYPE AS COLUMNTYPE_DESC
+		      ,INSERTDATE
+		      ,UPDATEDATE
+		      ,INSERTURKEY
+ 			  ,UPDATEURKEY
+		  FROM TADMIN_MST_UPDF_DT
+		 WHERE UPDFHDKEY = #{updfhdkey}
+		ORDER BY COLUMNORDER, UPDATEDATE DESC
+	</select>	
+
+	<select id="selectUploadColumnHDForInsertDuplicateCheck" resultType="java.lang.Integer" >
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - selectUploadColumnHDForInsertDuplicateCheck */
+		SELECT COUNT(*)
+		  FROM TADMIN_MST_UPDF_HD
+		 WHERE ULTYPE = #{ultype}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		    AND OWKEY = #{owkey}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)" >
+		    AND APKEY = #{apkey}
+		   </if>		   			
+	</select>
+
+	<insert id="insertUploadColunmHD">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - insertUploadColunmHD */
+			INSERT INTO TADMIN_MST_UPDF_HD(
+			         UPDFHDKEY
+			        ,UPDFHDNM
+			        ,APKEY
+			        ,OWKEY
+			        ,ULTYPE
+			        ,INSERTDATE
+			        ,INSERTURKEY
+			        ,UPDATEDATE
+			        ,UPDATEURKEY
+			    ) VALUES (
+					 #{updfhdkey}
+					,#{updfhdnm}
+					,#{apkey}
+					,#{owkey}
+					,#{ultype}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+	
+	<insert id="insertUploadColunmDT">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - insertUploadColunmDT */
+			INSERT INTO TADMIN_MST_UPDF_DT(
+			         UPDFHDKEY
+			        ,UPDFDTKEY
+			        ,COLUMNNM
+			        ,COLUMNDESC
+			        ,COLUMNORDER
+			        ,COLUMNTYPE
+			        ,INSERTDATE
+			        ,INSERTURKEY
+			        ,UPDATEDATE
+			        ,UPDATEURKEY
+			    ) VALUES (
+					 #{updfhdkey}
+					,#{updfdtkey}
+					,#{columnnm}
+					,#{columndesc}
+					,#{columnorder}
+					,#{columntype}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>	
+
+	<select id="selectUploadColumnHDForUpdateDuplicateCheck" resultType="java.lang.Integer" >
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - selectUploadColumnHDForUpdateDuplicateCheck */
+		SELECT COUNT(*)
+		  FROM TADMIN_MST_UPDF_HD
+		 WHERE ULTYPE = #{ultypeChk}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkeyChk)" >
+		    AND OWKEY = #{owkeyChk}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkeyChk)" >
+		    AND APKEY = #{apkeyChk}
+		   </if>		   			
+	</select>
+
+	<update id="updateUploadColunmHD">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - updateUploadColunmHD */
+			UPDATE	TADMIN_MST_UPDF_HD 
+			  SET	UPDFHDNM = #{updfhdnm}
+			  	   ,OWKEY = #{owkey}
+			  	   ,ULTYPE = #{ultype}	
+			       ,UPDATEDATE = #{sysdate}
+			       ,UPDATEURKEY = #{surkey}
+			WHERE	UPDFHDKEY = #{updfhdkey}
+	</update>
+	
+	<update id="updateUploadColunmDT">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - updateUploadColunmDT */
+			UPDATE	TADMIN_MST_UPDF_DT 
+			  SET	COLUMNNM 	= #{columnnm}
+			  	   ,COLUMNDESC = #{columndesc}
+			  	   ,COLUMNORDER = #{columnorder}
+			  	   ,COLUMNTYPE = #{columntype}	
+			       ,UPDATEDATE = #{sysdate}
+			       ,UPDATEURKEY = #{surkey}
+			WHERE	UPDFHDKEY = #{updf_hdkey}
+			  AND   UPDFDTKEY = #{updf_dtkey}
+	</update>	
+	
+	<delete id="deleteUploadColunmHD">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - deleteUploadColunmHD */
+			DELETE 
+			  FROM	TADMIN_MST_UPDF_HD
+			 WHERE	UPDFHDKEY=#{updfhdkey}
+	</delete>
+	
+	<delete id="deleteUploadColunmDT">
+		/* adm-master-uploadcolumnmanagement-sql-oracle.xml - deleteUploadColunmDT */
+			DELETE 
+			  FROM	TADMIN_MST_UPDF_DT
+			 WHERE	UPDFHDKEY=#{updfhdkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(updfdtkey)" >
+				AND	UPDFDTKEY=#{updfdtkey}
+			</if>
+	</delete>		 
+</mapper>	

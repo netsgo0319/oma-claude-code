@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.CarrierMapper">
+
+    <select id="selectCarr" resultType="camelMap">
+        /* adm-master-carrier-sql-oracle.xml - selectCarr */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT A.*
+        	FROM (
+        		SELECT
+					CARR.CARRCD
+					,CARR.CARRNM
+					,CARR.CTKEY
+					,CT.CTNAME
+					,CARR.LOGGRPCD
+					,CARR.LAKEY
+					,REPLACE(CARR.REGNO, '-','') AS REGNO
+					,CARR.CARRTYPE
+					,CARR.CURRTYPE
+					,CARR.BRCDTYPE
+					,CARR.ADDRID
+					,REPLACE(CARR.TEL1,'-','') AS TEL1
+					,REPLACE(CARR.TEL2,'-','') AS TEL2
+					,REPLACE(CARR.FAXNO,'-','') AS FAXNO
+					,CARR.EMAIL
+					,CARR.WEBURL
+					,CARR.CEO
+					,CARR.UOMTYPE
+					,CARR.WGTUOM
+					,CARR.LENUOM
+					,CARR.TNDRRESPHRS
+					,CARR.INTCARRYN
+					,CARR.DISTUOM
+					,CARR.AUTOTNDRYN
+					,'YESORNO' ||';' || CARR.AUTOTNDRYN AS AUTOTNDRYN_DESC
+					,CARR.ALWSHPMTNDRYN
+					,CARR.EXTCD1
+					,CARR.EXTCD2
+					,CARR.MEMOID
+					,CARR.STTCD
+					,CARR.AT1
+					,CARR.AT2
+					,CARR.AT3
+					,CARR.AT4
+					,CARR.AT5
+					,CARR.AT6
+					,CARR.AT7
+					,CARR.AT8
+					,CARR.AT9
+					,CARR.AT10
+					,CARR.AT11
+					,CARR.AT12
+					,CARR.AT13
+					,CARR.AT14
+					,CARR.AT15
+					,CARR.AT16
+					,CARR.AT17
+					,CARR.AT18
+					,CARR.AT19
+					,CARR.AT20
+					,CARR.DELYN
+					,CARR.INSERTDATE
+					,CARR.UPDATEDATE
+					,CARR.INSERTURKEY
+					,CARR.UPDATEURKEY
+					,T0.CNTRYCD
+					,T0.STACD
+					,T0.CTYNM
+					,T0.STNM
+					,T0.UNIT
+					,T0.ZIPCD
+					,T0.LAT
+					,T0.LON
+					,MM.PRTBTXT
+					,MM.NONPRTBTXT
+					,T0.CTYNM AS ADDRESS1
+					,T0.STNM AS ADDRESS2
+        		FROM
+        			TT_ADDR_T T0
+				RIGHT OUTER JOIN TADMIN_MST_CARR CARR
+        		   			 ON CARR.ADDRID = T0.ADDRID
+				LEFT OUTER JOIN TT_MMO_T MM
+        		   			 ON CARR.MEMOID = MM.MEMOID
+				INNER JOIN TT_MST_CT CT
+        				ON CARR.CTKEY = CT.CTKEY
+        		WHERE 1 = 1
+					AND CARR.DELYN = 'N'
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+					AND #{SEARCH_CONDITION}
+				</if>
+        		) A
+        	WHERE 1=1
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY COALESCE(A.UPDATEDATE, A.INSERTDATE) DESC
+				</otherwise>
+			</choose>
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+
+    <select id="selectCarrCount" resultType="java.lang.Integer">
+        /* adm-master-carrier-sql-oracle.xml - selectCarrCount */
+         SELECT COUNT(1)
+		   FROM TT_ADDR_T T0
+		   RIGHT OUTER JOIN TADMIN_MST_CARR CARR
+		      			ON CARR.ADDRID = T0.ADDRID
+		   LEFT OUTER JOIN TT_MMO_T MM
+		      			ON CARR.MEMOID = MM.MEMOID
+		   INNER JOIN TT_MST_CT CT
+		   		   ON CARR.CTKEY = CT.CTKEY
+		  WHERE CARR.DELYN = 'N'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_DIVLOGGRPCD)">
+            AND #{SEARCH_DIVLOGGRPCD}
+        </if>
+    </select>
+
+</mapper>

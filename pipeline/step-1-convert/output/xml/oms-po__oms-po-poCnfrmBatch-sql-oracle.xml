@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.po.mapper.PoCnfrmBatchMapper">
+
+	<insert id="sendReqOrderErp">
+		/* oms-po-poCnfrm-sql-oracle.xml - sendReqOrderErp */
+			INSERT INTO TORDER_EAI_REQORDER_BATCH
+		(
+		     SND_NO
+		   , SND_ROW
+		   , SND_DATE
+		   , SND_DT
+		   , SND_TRSN_TYP
+		   , SND_PROC_TYP
+		   , REQORDERNO
+		   , REQCTKEY
+		   , GICTKEY
+		   , REQORDERDAY
+		   , REQORDERTYPE
+		   , URGENCYPOYN
+		   , ICKEY
+		   , DLVYREQORDERUNIT
+		   , CNFRMREQORDERQTY
+		   , ICTGT
+		   , REQORDERAR
+		) VALUES (
+	    	 #{interfaceId}
+		   , #{num}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+		   , CURRENT_TIMESTAMP
+		   , 'I'
+		   , 'N'
+		   , #{reqorderno}
+		   , #{reqctkey}
+		   , #{gictkey}
+		   , #{reqorderday}
+		   , #{reqordertype}
+		   , #{urgencyreqorderyn}
+		   , #{ickey}
+		   , #{dlvyreqorderunit}
+		   , #{reqorderqty}
+		   , #{ictgt}
+		   , #{reqorderar}
+		)
+	</insert>
+
+	<update id="updateReqOrderErpSndTotRow">
+		/* oms-po-poCnfrm-sql-oracle.xml - updateReqOrderErpSndTotRow */
+		UPDATE TORDER_EAI_REQORDER_BATCH A
+		   SET SND_TOT_ROW = (SELECT MAX(B.SND_ROW)
+							  FROM TORDER_EAI_REQORDER_BATCH B
+							  WHERE B.SND_NO = #{interfaceId}
+							 )
+		WHERE A.SND_NO = #{interfaceId}
+	</update>
+
+	<update id="updateCancelErpSnd">
+		/* oms-po-poCnfrm-sql-oracle.xml - updateReqOrderErpSndTotRow */
+		UPDATE TORDER_EAI_REQORDER_BATCH
+			SET DELYN = 'Y'
+		WHERE REQORDERNO = #{reqorderno}
+	</update>
+
+
+
+</mapper>
+	

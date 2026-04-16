@@ -1,0 +1,2165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.ItemCodeMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		ORDER BY UPDATEDATE DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectItemCode">
+		  WITH RECURSIVE ctg_tree AS (
+				SELECT CTGKEY, CTGNM, CTGLV, UPRCTGKEY, CTKEY, OWKEY,
+				       CTGKEY AS root_ctgkey, 1 AS lvl
+				  FROM TWORK_MST_CTG
+				 WHERE CTGLV = '1'
+				UNION ALL
+				SELECT c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY, c.CTKEY, c.OWKEY,
+				       t.root_ctgkey, t.lvl + 1
+				  FROM TWORK_MST_CTG c
+				 INNER JOIN ctg_tree t
+				    ON c.UPRCTGKEY = t.CTGKEY
+				   AND c.CTKEY = t.CTKEY
+				   AND c.OWKEY = t.OWKEY
+				 WHERE t.lvl <![CDATA[<]]> 3
+			 ), CTG AS (
+				SELECT h.CTKEY
+					 , h.OWKEY
+					 , h.root_ctgkey AS CTG1KEY
+					 , MAX(CASE WHEN h.CTGLV = '1' THEN h.CTGNM END) OVER (PARTITION BY h.root_ctgkey) AS CTG1NM
+					 , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGKEY END) OVER (PARTITION BY h.root_ctgkey) AS CTG2KEY
+					 , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGNM END) OVER (PARTITION BY h.root_ctgkey) AS CTG2NM
+					 , h.CTGKEY AS CTG3KEY
+					 , h.CTGNM  AS CTG3NM
+				  FROM ctg_tree h
+			 )
+		SELECT '0' AS CHK
+			 , IC.CTKEY											/* 센터코드 */
+			 , CT.CTNM											/* 센터명 */
+			 , IC.OWKEY											/* 화주코드 */
+			 , OW.OWNM											/* 화주명 */
+			 , IC.ICKEY											/* 상품코드 */
+			 , IC.ICNM 											/* 상품명 */
+			 , CASE WHEN IC.MASICYN = 'Y' THEN IC.ICKEY ELSE COALESCE(ASTMST.ICKEY, IC.ICKEY) END AS ASRTMASICKEY	/* (모)상품코드 */
+			 , CASE WHEN IC.MASICYN = 'Y' THEN IC.ICNM ELSE COALESCE(ASTMST.ICNM, IC.ICNM) END AS ASRTMASICNM		/* (모)상품명 */
+			 , ICGR.ICGRPKEY									/* 상품그룹코드 */
+			 , ICGR.ICGRPNM										/* 상품그룹명 */
+			 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN					/* 아소트여부 */
+			 , ICUT_INN.ICUNITQTY AS INNQTY						/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY						/* 카톤 입수 */
+			 , CTG.CTG1KEY										/* 대분류 */
+			 , CTG.CTG1NM										/* 대분류명 */
+			 , CTG.CTG2KEY										/* 중분류 */
+			 , CTG.CTG2NM										/* 중분류명 */
+			 , CTG.CTG3KEY										/* 소분류 */
+			 , CTG.CTG3NM										/* 소분류명 */
+			 , ICBC_EA.BARCODE AS EABARCODE						/* 낱개 바코드 */
+			 , ICBC_INN.BARCODE AS INNBARCODE					/* 중포 바코드 */
+			 , ICBC_CTN.BARCODE AS CTNBARCODE					/* 카톤 바코드 */
+			 , ICUT_EA.WIDTH AS EAWIDTH							/* 낱개 가로 */
+			 , ICUT_EA."DEPTH" AS EADEPTH						/* 낱개 세로 */
+			 , ICUT_EA.HEIGHT AS EAHEIGHT						/* 낱개 높이 */
+			 , ICUT_EA.VOL AS EAVOL								/* 낱개 CBM */
+			 , ICUT_EA.WEIGHT AS EAWEIGHT						/* 낱개 중량 */
+			 , ICUT_INN.WIDTH AS INNWIDTH						/* 중포 가로 */
+			 , ICUT_INN."DEPTH" AS INNDEPTH						/* 중포 세로 */
+			 , ICUT_INN.HEIGHT AS INNHEIGHT						/* 중포 높이 */
+			 , ICUT_INN.VOL AS INNVOL							/* 중포 CBM */
+			 , ICUT_INN.WEIGHT AS INNWEIGHT						/* 중포 중량 */
+			 , ICUT_CTN.WIDTH AS CTNWIDTH						/* 카톤 가로 */
+			 , ICUT_CTN."DEPTH" AS CTNDEPTH						/* 카톤 세로 */
+			 , ICUT_CTN.HEIGHT AS CTNHEIGHT						/* 카톤 높이 */
+			 , ICUT_CTN.VOL AS CTNVOL							/* 카톤 CBM */
+			 , ICUT_CTN.WEIGHT AS CTNWEIGHT						/* 카톤 중량 */
+			 , ICUT_CTN.PLTROW									/* PLT 단 */
+			 , ICUT_CTN.PLTCOL									/* PLT 열 */
+			 , ICUT_CTN.CPPQTY									/* PLT 수량 */
+			 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN				/* 덕용상품여부 */
+			 , COALESCE(IC.EXPCKYN, 'N') AS EXPCKYN					/* 유통 기한 체크 여부 */
+			 , IC.EXPCNVRSNDAYS									/* 유통기한전환일수 */
+			 , IC.OBIMPSCRITRT									/* 출고불가기준율 */
+			 , COALESCE(IC.DNGMGMTYN, 'N') AS DNGMGMTYN				/* 위험물관리여부 */
+			 , IC.ACKEY											/* 거래처 */
+			 , AC.ACNM											/* 거래처명 */
+			 , IC.SLPRC											/* 판매가격 */
+			 , COALESCE(IC.DIRCDLVYICYN, 'N') AS DIRCDLVYICYN		/* 직송상품여부 */
+			 , COALESCE(IC.ICSTATUSDIV, 'N') AS ICSTATUSDIV			/* 상품사용구분 */
+			 , IC.MTR											/* 재질 */
+			 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN		/* 로봇소터가능상품여부 */
+			 , COALESCE(IC.CUSHNMEPCKGYN, 'N') AS CUSHNMEPCKGYN		/* 완충재포장여부 */
+			 , COALESCE(IC.PCKGOVLPYN, 'N') AS PCKGOVLPYN			/* 포장겹침여부 */
+			 , IC.OVLPPCKGWIDTHVAL								/* 겹침포장가로증가값 */
+			 , IC.OVLPPCKGDEPTHVAL								/* 겹침포장세로증가값 */
+			 , IC.OVLPPCKGHEIGHTVAL								/* 겹침포장높이증가값 */
+			 , IC.COMPCONT										/* 구성품내용 */
+			 , COALESCE(IC.BARCODEATTACHYN, 'N') AS BARCODEATTACHYN	/* 상품바코드부착여부 */
+			 , COALESCE(IC.POLYBAGPCKGYN, 'N') AS POLYBAGPCKGYN		/* 폴리백포장여부 */
+			 , IC.OLNICDIV										/* 다이소몰등급코드 */
+			 , IC.OLNIPKOTICCONT								/* 판매특성내용 */
+			 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN				/* 발주가능 여부 */
+			 , IC.SALESTATUSCD									/* 판매상태코드 */
+			 , COALESCE(IC.DSPYN, 'N') AS DSPYN						/* 전시여부 */
+			 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN					/* 택배여부 */
+			 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN				/* 온라인덕용여부 */
+			 , COALESCE(IC.OBLIMITYN, 'N') AS OBLIMITYN				/* 출고제한여부 */
+			 , COALESCE(IC.UNICYN, 'N') AS UNICYN					/* 미취급여부 */
+			 , IC.INSERTDATE									/* 입력일시 */
+			 , IC.INSERTURKEY									/* 입력 사용자 ID */
+			 , IC.UPDATEDATE									/* 수정 일시 */
+			 , IC.UPDATEURKEY									/* 수정 사용자 ID */
+			 , IC.OLNICTYPECD 									/* 상품형태 */
+			 , IC.ICMGMTUSR										/* 상품 담당자 */
+			 , IC.ICOPERSTATUSCD								/* 상품운영 (판매상태) */
+			 , COALESCE(IC.PCKGFOLDYN, 'N') AS PCKGFOLDYN			/* 포장접기여부 */
+			 , COALESCE(IC.OLNIPKOTICYN, 'N') AS OLNIPKOTICYN		/* 판매특성여부(삭제예정) */
+			 , IC.DSBTGRADECD									/* 물류등급 */
+			 , COALESCE(IC.HIGHFRQNCYDMGYN, 'N') AS HIGHFRQNCYDMGYN 	/* 고빈도파손여부 */
+			 , COALESCE(IC.COMPYN, 'N') AS COMPYN					/* 구성품여부 */
+			 , IC.LCKEY											/* 상품 대표 로케이션코드 */
+			 , AR.ARKEY || LC.RACKNO AS LCZONE					/* 구역 + 랙번호 */
+				--	 , 		/* 추천로케이션 */
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IC.OWKEY
+		  LEFT JOIN TWORK_MST_ASRT ASTDTL
+			ON ASTDTL.CTKEY = IC.CTKEY
+		   AND ASTDTL.OWKEY = IC.OWKEY
+		   AND ASTDTL.ASRTDTICKEY = IC.ICKEY
+		  LEFT JOIN TWORK_MST_IC ASTMST
+			ON ASTMST.CTKEY = ASTDTL.CTKEY
+		   AND ASTMST.OWKEY = ASTDTL.OWKEY
+		   AND ASTMST.ICKEY = ASTDTL.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_ICGR ICGR
+			ON ICGR.CTKEY = IC.CTKEY
+		   AND ICGR.OWKEY = IC.OWKEY
+		   AND ICGR.ICGRPKEY = IC.ICGRPKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_EA
+			ON ICUT_EA.CTKEY = IC.CTKEY
+		   AND ICUT_EA.OWKEY = IC.OWKEY
+		   AND ICUT_EA.ICKEY = IC.ICKEY
+		   AND ICUT_EA.ICUNITTYPECD = 'EA'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_EA
+			ON ICBC_EA.CTKEY = IC.CTKEY
+		   AND ICBC_EA.OWKEY = IC.OWKEY
+		   AND ICBC_EA.ICKEY = IC.ICKEY
+		   AND ICBC_EA.UOM = 'EA'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_INN
+			ON ICUT_INN.CTKEY = IC.CTKEY
+		   AND ICUT_INN.OWKEY = IC.OWKEY
+		   AND ICUT_INN.ICKEY = IC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+			LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_CTN
+			ON ICUT_CTN.CTKEY = IC.CTKEY
+		   AND ICUT_CTN.OWKEY = IC.OWKEY
+		   AND ICUT_CTN.ICKEY = IC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		  LEFT JOIN CTG
+			ON CTG.CTKEY = IC.CTKEY
+		   AND CTG.OWKEY = IC.OWKEY
+		   AND CTG.CTG3KEY = IC.CTGKEY
+		  LEFT JOIN TWORK_MST_AC AC
+			ON AC.CTKEY = IC.CTKEY
+		   AND AC.ACKEY = IC.ACKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+
+		<where>
+			AND IC.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+
+			<if test="itemSearchList != null and itemSearchList.size > 0">
+				AND	(
+				    IC.ICKEY IN (
+						<foreach collection="itemSearchList" item="item" separator=",">
+							#{item}
+						</foreach>
+                    ) OR (
+                        IC.MASICYN = 'N'
+                        AND
+                        ASTDTL.ASRTMASICKEY IN (
+                        	<foreach collection="itemSearchList" item="item" separator=",">
+                            	#{item}
+                            </foreach>
+                        )
+					)
+				)
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectItemCodeCount" resultType="java.lang.Integer">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectItemCode"/>
+			 )
+	</select>
+
+	<select id="selectItemCode" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCode */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectItemCode"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectItemCodeExcelList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeExcelList */
+		  WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+
+				AND A.CTCDHDKEY IN ('YESORNO', 'ICTYPECD', 'CTDSBTGRADECD', 'CD_00203', 'GDSTS_DIV')
+			</where>
+		)
+		SELECT IC.CTKEY											/* 센터코드 */
+			 , CT.CTNM											/* 센터명 */
+			 , IC.OWKEY											/* 화주코드 */
+			 , OW.OWNM											/* 화주명 */
+			 , IC.ICKEY											/* 상품코드 */
+			 , IC.ICNM 											/* 상품명 */
+			 , COALESCE(AST.ASRTMASICKEY, IC.ICKEY) AS ASRTMASICKEY	/* 모상품코드 */
+			 , COALESCE(ASTIC.ICNM, IC.ICNM) AS ASRTMASICNM			/* 모상품명 */
+			 , ICGR.ICGRPKEY									/* 상품그룹코드 */
+			 , ICGR.ICGRPNM										/* 상품그룹명 */
+			 , CD1.CTCDDTNM AS ASRTYN							/* 아소트여부 */
+			 , ICUT_INN.ICUNITQTY AS INNQTY						/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY						/* 카톤 입수 */
+			 , CTG1.CTGKEY AS CTG1KEY							/* 대분류 */
+			 , CTG1.CTGNM AS CTG1NM								/* 대분류명 */
+			 , CTG2.CTGKEY AS CTG2KEY							/* 중분류 */
+			 , CTG2.CTGNM AS CTG2NM								/* 중분류명 */
+			 , CTG3.CTGKEY AS CTG3KEY							/* 소분류 */
+			 , CTG3.CTGNM AS CTG3NM								/* 소분류명 */
+			 , ICBC_EA.BARCODE AS EABARCODE						/* 낱개 바코드 */
+			 , ICBC_INN.BARCODE AS INNBARCODE					/* 중포 바코드 */
+			 , ICBC_CTN.BARCODE AS CTNBARCODE					/* 카톤 바코드 */
+			 , ICUT_EA.WIDTH AS EAWIDTH							/* 낱개 가로 */
+			 , ICUT_EA."DEPTH" AS EADEPTH						/* 낱개 세로 */
+			 , ICUT_EA.HEIGHT AS EAHEIGHT						/* 낱개 높이 */
+			 , ICUT_EA.VOL AS EAVOL								/* 낱개 CBM */
+			 , ICUT_EA.WEIGHT AS EAWEIGHT						/* 낱개 중량 */
+			 , ICUT_INN.WIDTH AS INNWIDTH						/* 중포 가로 */
+			 , ICUT_INN."DEPTH" AS INNDEPTH						/* 중포 세로 */
+			 , ICUT_INN.HEIGHT AS INNHEIGHT						/* 중포 높이 */
+			 , ICUT_INN.VOL AS INNVOL							/* 중포 CBM */
+			 , ICUT_INN.WEIGHT AS INNWEIGHT						/* 중포 중량 */
+			 , ICUT_CTN.WIDTH AS CTNWIDTH						/* 카톤 가로 */
+			 , ICUT_CTN."DEPTH" AS CTNDEPTH						/* 카톤 세로 */
+			 , ICUT_CTN.HEIGHT AS CTNHEIGHT						/* 카톤 높이 */
+			 , ICUT_CTN.VOL AS CTNVOL							/* 카톤 CBM */
+			 , ICUT_CTN.WEIGHT AS CTNWEIGHT						/* 카톤 중량 */
+			 , ICUT_CTN.PLTROW									/* PLT 단 */
+			 , ICUT_CTN.PLTCOL									/* PLT 열 */
+			 , ICUT_CTN.CPPQTY									/* PLT 수량 */
+			 , CD2.CTCDDTNM AS PKOTICYN					/* 덕용상품여부 */
+			 , CD3.CTCDDTNM AS EXPCKYN					/* 유통 기한 체크 여부 */
+			 , IC.EXPCNVRSNDAYS							/* 유통기한전환일수 */
+			 , IC.OBIMPSCRITRT							/* 출고불가기준율 */
+			 , CD4.CTCDDTNM AS DNGMGMTYN				/* 위험물관리여부 */
+			 , IC.ACKEY									/* 거래처 */
+			 , AC.ACNM									/* 거래처명 */
+			 , IC.SLPRC									/* 판매가격 */
+			 , CD5.CTCDDTNM AS DIRCDLVYICYN				/* 직송상품여부 */
+			 , COALESCE(IC.ICSTATUSDIV, 'N') AS ICSTATUSDIV	/* 상품사용구분 */
+			 , IC.MTR									/* 재질 */
+			 , CD7.CTCDDTNM AS ROBSORTERICYN			/* 로봇소터가능상품여부 */
+			 , CD8.CTCDDTNM AS CUSHNMEPCKGYN			/* 완충재포장여부 */
+			 , CD9.CTCDDTNM AS PCKGOVLPYN				/* 포장겹침여부 */
+			 , IC.OVLPPCKGWIDTHVAL						/* 겹침포장가로증가값 */
+			 , IC.OVLPPCKGDEPTHVAL						/* 겹침포장세로증가값 */
+			 , IC.OVLPPCKGHEIGHTVAL						/* 겹침포장높이증가값 */
+			 , IC.COMPCONT								/* 구성품내용 */
+			 , CD11.CTCDDTNM AS BARCODEATTACHYN			/* 상품바코드부착여부 */
+			 , CD12.CTCDDTNM AS POLYBAGPCKGYN			/* 폴리백포장여부 */
+			 , IC.OLNICDIV								/* 다이소몰등급코드 */
+			 , IC.OLNIPKOTICCONT						/* 판매특성내용 */
+			 , CD13.CTCDDTNM AS POABLEYN				/* 발주가능 여부 */
+			 , CD14.CTCDDTNM AS SALESTATUSCD			/* 판매상태코드 */
+			 , COALESCE(IC.DSPYN, 'N') AS DSPYN				/* 전시여부 */
+			 , CD15.CTCDDTNM AS DLVRYYN					/* 택배여부 */
+			 , CD16.CTCDDTNM AS OLNPKOTYN				/* 온라인덕용여부 */
+			 , CD17.CTCDDTNM AS OBLIMITYN				/* 출고제한여부 */
+			 , CD18.CTCDDTNM AS UNICYN					/* 미취급여부 */
+			 , IC.INSERTDATE							/* 입력일시 */
+			 , IC.INSERTURKEY							/* 입력 사용자 ID */
+			 , IC.UPDATEDATE							/* 수정 일시 */
+			 , IC.UPDATEURKEY							/* 수정 사용자 ID */
+			 , CD19.CTCDDTNM AS OLNICTYPECD 			/* 상품형태 */
+			 , IC.ICMGMTUSR								/* 상품 담당자 */
+			 , CD6.CTCDDTNM AS ICOPERSTATUSCD			/* 상품운영 (판매상태) */
+			 , CD20.CTCDDTNM AS PCKGFOLDYN				/* 포장접기여부 */
+			 , CD21.CTCDDTNM AS OLNIPKOTICYN			/* 판매특성여부(삭제예정) */
+			 , CD22.CTCDDTNM AS DSBTGRADECD				/* 물류등급 */
+			 , CD23.CTCDDTNM AS HIGHFRQNCYDMGYN 		/* 고빈도파손여부 */
+			 , CD10.CTCDDTNM AS COMPYN					/* 구성품여부 */
+			 , IC.LCKEY									/* 상품 대표 로케이션코드 */
+			 , AR.ARKEY || LC.RACKNO AS LCZONE			/* 구역 + 랙번호 */
+				--	 , 		/* 추천로케이션 */
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IC.OWKEY
+		  LEFT JOIN TWORK_MST_ASRT AST
+			ON AST.CTKEY = IC.CTKEY
+		   AND AST.OWKEY = IC.OWKEY
+		   AND AST.ASRTDTICKEY = IC.ICKEY
+		  LEFT JOIN TWORK_MST_IC ASTIC
+			ON ASTIC.CTKEY = AST.CTKEY
+		   AND ASTIC.OWKEY = AST.OWKEY
+		   AND ASTIC.ICKEY = AST.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_ICGR ICGR
+			ON ICGR.CTKEY = IC.CTKEY
+		   AND ICGR.OWKEY = IC.OWKEY
+		   AND ICGR.ICGRPKEY = IC.ICGRPKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_EA
+			ON ICUT_EA.CTKEY = IC.CTKEY
+		   AND ICUT_EA.OWKEY = IC.OWKEY
+		   AND ICUT_EA.ICKEY = IC.ICKEY
+		   AND ICUT_EA.ICUNITTYPECD = 'EA'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_EA
+			ON ICBC_EA.CTKEY = IC.CTKEY
+		   AND ICBC_EA.OWKEY = IC.OWKEY
+		   AND ICBC_EA.ICKEY = IC.ICKEY
+		   AND ICBC_EA.UOM = 'EA'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_INN
+			ON ICUT_INN.CTKEY = IC.CTKEY
+		   AND ICUT_INN.OWKEY = IC.OWKEY
+		   AND ICUT_INN.ICKEY = IC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+			LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT_CTN
+			ON ICUT_CTN.CTKEY = IC.CTKEY
+		   AND ICUT_CTN.OWKEY = IC.OWKEY
+		   AND ICUT_CTN.ICKEY = IC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		  LEFT JOIN TWORK_MST_CTG CTG3
+			ON CTG3.CTKEY = IC.CTKEY
+		   AND CTG3.OWKEY = IC.OWKEY
+		   AND CTG3.CTGKEY = IC.CTGKEY
+		   AND CTG3.CTGLV = '3'
+		  LEFT JOIN TWORK_MST_CTG CTG2
+			ON CTG2.CTKEY = CTG3.CTKEY
+		   AND CTG2.OWKEY = CTG3.OWKEY
+		   AND CTG2.CTGKEY = CTG3.UPRCTGKEY
+		   AND CTG2.CTGLV = '2'
+		  LEFT JOIN TWORK_MST_CTG CTG1
+			ON CTG1.CTKEY = CTG2.CTKEY
+		   AND CTG1.OWKEY = CTG2.OWKEY
+		   AND CTG1.CTGKEY = CTG2.UPRCTGKEY
+		   AND CTG1.CTGLV = '1'
+		  LEFT JOIN TWORK_MST_AC AC
+			ON AC.CTKEY = IC.CTKEY
+		   AND AC.ACKEY = IC.ACKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = IC.CTKEY
+		   AND CD1.CTCDHDKEY = 'YESORNO'
+		   AND CD1.CTCDDTKEY = COALESCE(IC.ASRTYN, 'N')
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = IC.CTKEY
+		   AND CD2.CTCDHDKEY = 'YESORNO'
+		   AND CD2.CTCDDTKEY = COALESCE(IC.PKOTICYN, 'N')
+		  LEFT JOIN T_CODE CD3
+			ON CD3.CTKEY = IC.CTKEY
+		   AND CD3.CTCDHDKEY = 'YESORNO'
+		   AND CD3.CTCDDTKEY = COALESCE(IC.EXPCKYN, 'N')
+		  LEFT JOIN T_CODE CD4
+			ON CD4.CTKEY = IC.CTKEY
+		   AND CD4.CTCDHDKEY = 'YESORNO'
+		   AND CD4.CTCDDTKEY = COALESCE(IC.DNGMGMTYN, 'N')
+		  LEFT JOIN T_CODE CD5
+			ON CD5.CTKEY = IC.CTKEY
+		   AND CD5.CTCDHDKEY = 'YESORNO'
+		   AND CD5.CTCDDTKEY = COALESCE(IC.DIRCDLVYICYN, 'N')
+		  LEFT JOIN T_CODE CD6
+			ON CD6.CTKEY = IC.CTKEY
+		   AND CD6.CTCDHDKEY = 'GDSTS_DIV'
+		   AND CD6.CTCDDTKEY = IC.ICOPERSTATUSCD
+		  LEFT JOIN T_CODE CD7
+			ON CD7.CTKEY = IC.CTKEY
+		   AND CD7.CTCDHDKEY = 'YESORNO'
+		   AND CD7.CTCDDTKEY = COALESCE(IC.ROBSORTERICYN, 'N')
+		  LEFT JOIN T_CODE CD8
+			ON CD8.CTKEY = IC.CTKEY
+		   AND CD8.CTCDHDKEY = 'YESORNO'
+		   AND CD8.CTCDDTKEY = COALESCE(IC.CUSHNMEPCKGYN, 'N')
+		  LEFT JOIN T_CODE CD9
+			ON CD9.CTKEY = IC.CTKEY
+		   AND CD9.CTCDHDKEY = 'YESORNO'
+		   AND CD9.CTCDDTKEY = COALESCE(IC.PCKGOVLPYN, 'N')
+		  LEFT JOIN T_CODE CD10
+			ON CD10.CTKEY = IC.CTKEY
+		   AND CD10.CTCDHDKEY = 'YESORNO'
+		   AND CD10.CTCDDTKEY = COALESCE(IC.COMPYN, 'N')
+		  LEFT JOIN T_CODE CD11
+			ON CD11.CTKEY = IC.CTKEY
+		   AND CD11.CTCDHDKEY = 'YESORNO'
+		   AND CD11.CTCDDTKEY = COALESCE(IC.BARCODEATTACHYN, 'N')
+		  LEFT JOIN T_CODE CD12
+			ON CD12.CTKEY = IC.CTKEY
+		   AND CD12.CTCDHDKEY = 'YESORNO'
+		   AND CD12.CTCDDTKEY = COALESCE(IC.POLYBAGPCKGYN, 'N')
+		  LEFT JOIN T_CODE CD13
+			ON CD13.CTKEY = IC.CTKEY
+		   AND CD13.CTCDHDKEY = 'YESORNO'
+		   AND CD13.CTCDDTKEY = COALESCE(IC.POABLEYN, 'N')
+		  LEFT JOIN T_CODE CD14
+			ON CD14.CTKEY = IC.CTKEY
+		   AND CD14.CTCDHDKEY = 'CD_00203'
+		   AND CD14.CTCDDTKEY = IC.SALESTATUSCD
+		  LEFT JOIN T_CODE CD15
+			ON CD15.CTKEY = IC.CTKEY
+		   AND CD15.CTCDHDKEY = 'YESORNO'
+		   AND CD15.CTCDDTKEY = COALESCE(IC.DLVRYYN, 'N')
+		  LEFT JOIN T_CODE CD16
+			ON CD16.CTKEY = IC.CTKEY
+		   AND CD16.CTCDHDKEY = 'YESORNO'
+		   AND CD16.CTCDDTKEY = COALESCE(IC.OLNPKOTYN, 'N')
+		  LEFT JOIN T_CODE CD17
+			ON CD17.CTKEY = IC.CTKEY
+		   AND CD17.CTCDHDKEY = 'YESORNO'
+		   AND CD17.CTCDDTKEY = COALESCE(IC.OBLIMITYN, 'N')
+		  LEFT JOIN T_CODE CD18
+			ON CD18.CTKEY = IC.CTKEY
+		   AND CD18.CTCDHDKEY = 'YESORNO'
+		   AND CD18.CTCDDTKEY = COALESCE(IC.UNICYN, 'N')
+		  LEFT JOIN T_CODE CD19
+			ON CD19.CTKEY = IC.CTKEY
+		   AND CD19.CTCDHDKEY = 'ICTYPECD'
+		   AND CD19.CTCDDTKEY = IC.OLNICTYPECD
+		  LEFT JOIN T_CODE CD20
+			ON CD20.CTKEY = IC.CTKEY
+		   AND CD20.CTCDHDKEY = 'YESORNO'
+		   AND CD20.CTCDDTKEY = COALESCE(IC.PCKGFOLDYN, 'N')
+		  LEFT JOIN T_CODE CD21
+			ON CD21.CTKEY = IC.CTKEY
+		   AND CD21.CTCDHDKEY = 'YESORNO'
+		   AND CD21.CTCDDTKEY = COALESCE(IC.OLNIPKOTICYN, 'N')
+		  LEFT JOIN T_CODE CD22
+			ON CD22.CTKEY = IC.CTKEY
+		   AND CD22.CTCDHDKEY = 'YESORNO'
+		   AND CD22.CTCDDTKEY = COALESCE(IC.DSBTGRADECD, 'N')
+		  LEFT JOIN T_CODE CD23
+			ON CD23.CTKEY = IC.CTKEY
+		   AND CD23.CTCDHDKEY = 'YESORNO'
+		   AND CD23.CTCDDTKEY = COALESCE(IC.HIGHFRQNCYDMGYN, 'N')
+
+		<where>
+			AND IC.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+
+			<if test="itemSearchList != null and itemSearchList.size > 0">
+				AND	(IC.ICKEY IN (
+                                <foreach collection="itemSearchList" item="item" separator=",">
+                                    #{item}
+                                </foreach>
+                                 )
+                OR (AST.ASRTMASICKEY IN (
+                                        <foreach collection="itemSearchList" item="item" separator=",">
+                                            #{item}
+                                        </foreach>
+                                         )
+					    AND AST.QTY <![CDATA[ > ]]> 0
+					 )
+				  )
+			</if>
+		</where>
+	</select>
+
+	<sql id="sql_selectItemCodeBatch">
+		/* wms-master-itemcode-sql-oracle.xml - sql_selectItemCodeBatch */
+		SELECT DISTINCT /* hint: LEADING(IC) */
+			   '0' AS CHK
+			   , IC.CTKEY                   				/* 센터코드 */
+			   , IC.OWKEY                   				/* 화주키 */
+			   , COALESCE(ICBRCD.ICKEY, IC.ICBRCD) AS ICKEY     /* 품번 */
+						, CASE IC.BOXTYPE        					/* 박스타입 */
+							WHEN 'INN' THEN '중포'
+							WHEN 'EA'  THEN '낱개'
+							WHEN 'CTN' THEN '카톤'
+						  END AS ICUNITTYPECD
+			   , IC.WIDTH                   				/* 가로 cm */
+			   , IC.DEPTH                   				/* 세로 cm */
+			   , IC.HEIGHT                  				/* 높이 cm */
+			   , IC.WEIGHT                  				/* 중량 kg */
+			   , IC.VOLUMN   								/* CBM 세제곱미터 단위 */
+			   , '일반' AS ICTYPECD 						/* 상품타입 */
+			   , IC.ONLPCKGBUFFYN           				/* 완충재 포장여부 */
+			   , IC.ONLPCKGROBYN            				/* 로봇소터 여부 */
+			   , IC.INSERTDATE                             /* 입력일시 */
+			   , IC.INSERTURKEY                            /* 입력 사용자 ID */
+			   , IC.UPDATEDATE                             /* 수정 일시 */
+			   , IC.UPDATEURKEY                            /* 수정 사용자 ID */
+			   , 'N' AS OBBOXYN
+			   , 'E' AS OBBOXTYPE
+			   , '0' AS INDV
+			   , '1000' AS MAXPACKING
+			   , IC.CREATEDATE
+		  FROM (
+				SELECT /* hint: NO_MERGE */
+					   T_RNK.*
+				FROM (
+					SELECT /* hint: INDEX(T IDX_TWIF_DWS_MEASMRSLT_ERPSEND_02) */ -- RNK 인덱스 힌트
+						   T.*,
+						   ROW_NUMBER () OVER (
+						   PARTITION BY T.CTKEY, T.OWKEY, T.ICBRCD
+						   ORDER BY T.UPDATEDATE DESC
+						   ) AS RNK
+					 FROM TWIF_DWS_MEASMRSLT_ERPSEND T
+					WHERE 1 = 1
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						AND #{SEARCH_CONDITION}
+					</if>
+				) T_RNK
+				WHERE T_RNK.RNK = 1
+			  ) IC
+		  LEFT OUTER JOIN (
+				SELECT ICKEY, CTKEY, BARCODE FROM (
+					SELECT ICKEY, CTKEY, BARCODE FROM TWORK_MST_ICBARCODE WHERE UOM = 'EA'
+					UNION ALL
+					SELECT ICKEY, CTKEY, ICKEY AS BARCODE FROM TWORK_MST_ICBARCODE WHERE UOM = 'EA'
+				)
+			   ) ICBRCD
+			ON IC.CTKEY = ICBRCD.CTKEY
+		   AND IC.ICBRCD = ICBRCD.BARCODE
+		 WHERE 1 = 1
+		 ORDER BY IC.UPDATEDATE DESC
+	</sql>
+
+	<select id="selectItemCodeBatchCount" resultType="java.lang.Integer" >
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeBatchCount */
+		SELECT COUNT(1)
+		FROM  (
+			<include refid="sql_selectItemCodeBatch"/>
+		)
+	</select>
+
+
+	<select id="selectItemCodeBatch" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectItemCodeBatch"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<update id="updateItemCodeInfo">
+		UPDATE TWORK_MST_IC
+		   SET ROBSORTERICYN = #{robsortericyn}
+		     , DFSHPMTRYN = CASE COALESCE(#{robsortericyn}, 'N') WHEN 'Y' THEN 'N' WHEN 'N' THEN 'Y' ELSE #{dfshpmtryn} END   	/* 이형물여부 dfshpmtryn 이형물이 Y면 N, N이면 Y */
+			 , CUSHNMEPCKGYN = #{cushnmepckgyn}
+			 , BARCODEATTACHYN = #{barcodeattachyn}
+			 , POLYBAGPCKGYN = #{polybagpckgyn}
+			 , PCKGOVLPYN = #{pckgovlpyn}
+			 , PCKGFOLDYN = #{pckgfoldyn}
+			 , HIGHFRQNCYDMGYN = #{highfrqncydmgyn}
+		     , COMPYN = #{compyn}
+			 , COMPCONT = #{compcont}
+			 , OVLPPCKGWIDTHVAL = COALESCE(#{ovlppckgwidthval}, 0)
+			 , OVLPPCKGDEPTHVAL = COALESCE(#{ovlppckgdepthval}, 0)
+			 , OVLPPCKGHEIGHTVAL = COALESCE(#{ovlppckgheightval}, 0)
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectTWorkMstIcResetLckey" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectTWorkMstIcResetLckey */
+		SELECT IC.CTKEY												/* 센터코드 */
+		     , IC.OWKEY												/* 화주코드 */
+			 , IC.ICKEY												/* 상품코드 */
+			 , IC.ICNM												/* 상품명 */
+			 , ICBC.BARCODE AS EABARCODE							/* 상품바코드(낱개) */
+			 , ICBC_INN.BARCODE AS INNBARCODE						/* 상품바코드(중포) */
+			 , ICBC_CTN.BARCODE AS CTNBARCODE						/* 상품바코드(카톤) */
+			 , IC.LCKEY												/* 상품 대표 로케이션코드 */
+			 , LC.ARKEY || LC.RACKNO AS LCZONE						/* 구역 + 랙번호 */
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.LCKEY = IC.LCKEY
+
+        <where>
+            AND IC.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+            AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+            AND IC.CTKEY = #{ctkey}
+            AND IC.OWKEY = #{owkey}
+
+
+			<choose>
+				<when test="locationList != null and locationList.size > 0" >
+					AND IC.LCKEY IN (
+						<foreach collection="locationList" item="item" separator=",">
+							#{item}
+						</foreach>
+					)
+				</when>
+				<otherwise>
+					AND 1 = 2
+				</otherwise>
+			</choose>
+
+			<if test="itemList != null and itemList.size > 0" >
+				AND IC.ICKEY NOT IN (
+					<foreach collection="itemList" item="item" separator=",">
+						#{item}
+					</foreach>
+				)
+			</if>
+
+		</where>
+	</select>
+
+	<update id="updateTWorkMstIcResetLckey">
+		/* wms-master-itemcode-sql-oracle.xml - updateTWorkMstIcResetLckey */
+		UPDATE TWORK_MST_IC
+		   SET LCKEY = null
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+
+		<choose>
+			<when test="locationList != null and locationList.size > 0" >
+				AND LCKEY IN (
+					<foreach collection="locationList" item="item" separator=",">
+						#{item}
+					</foreach>
+				)
+			</when>
+			<otherwise>
+				AND 1 = 2
+			</otherwise>
+		</choose>
+
+		<if test="itemList != null and itemList.size > 0" >
+			AND ICKEY NOT IN (
+				<foreach collection="itemList" item="item" separator=",">
+					#{item}
+				</foreach>
+			)
+		</if>
+	</update>
+
+	<update id="updateTWorkMstIcLckey">
+		/* wms-master-itemcode-sql-oracle.xml - updateTWorkMstIcLckey */
+		UPDATE TWORK_MST_IC
+		   SET LCKEY = #{recolckey}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectItemCodeDt" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeDt */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , C.OWNM
+			 , A.ICKEY
+			 , A.ICNM
+			 , A.SPEC
+			 , B.ICUNITTYPECD
+			 , B.ICUNITORDER
+			 , B.ICUNITQTY
+			 , B.WIDTH
+			 , B.DEPTH
+			 , B.HEIGHT
+			 , B.VOL
+			 , B.VOLUNIT
+			 , B.WEIGHT
+			 , B.WEIGHTUNIT
+		     , B.PLTROW
+			 , B.PLTCOL
+			 , B.CPPQTY
+			 , B.INSERTDATE
+			 , B.INSERTURKEY
+			 , B.UPDATEDATE
+			 , B.UPDATEURKEY
+		  FROM TWORK_MST_IC A
+			   INNER JOIN TWORK_MST_ICUTXTYPE B
+					ON A.CTKEY = B.CTKEY
+					AND A.OWKEY = B.OWKEY
+					AND A.ICKEY = B.ICKEY
+			   INNER JOIN TWORK_MST_OW C
+					ON A.OWKEY = C.OWKEY
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.ICKEY = #{ickey}
+		 ORDER BY B.ICUNITORDER ASC
+	</select>
+
+	<select id="selectItemDetailInfo" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemDetailInfo */
+		SELECT IC.CTKEY												/* 센터코드 */
+			 , CT.CTNM												/* 센터명 */
+		     , IC.OWKEY												/* 화주코드 */
+			 , IC.ICKEY												/* 상품코드 */
+			 , IC.ICNM												/* 상품명 */
+			 , ASRT.ASRTMASICKEY									/* 모상품코드 */
+			 , (SELECT ICNM FROM TWORK_MST_IC WHERE CTKEY = IC.CTKEY AND OWKEY = IC.OWKEY AND ICKEY = ASRT.ASRTMASICKEY) AS ASRTMASICNM	/* 모상품명 */
+			 , IC.ICGRPKEY											/* 상품그룹코드 */
+			 , ICGR.ICGRPNM											/* 상품그룹명 */
+ 			 , IC.ASRTYN											/* 아소트여부 */
+			 , IC.OLNICTYPECD 										/* 상품형태 */
+			 , ICBC.BARCODE AS EABARCODE							/* 상품바코드(낱개) */
+			 , ICBC_INN.BARCODE AS INNBARCODE						/* 상품바코드(중포) */
+			 , ICBC_CTN.BARCODE AS CTNBARCODE						/* 상품바코드(카톤) */
+			 , CTG3.CTGNM											/* 소분류 명 */
+			 , IC.PKOTICYN											/* 덕용상품여부 */
+			 , IC.DNGMGMTYN											/* 위험물관리여부 */
+			 , IC.ACKEY 											/* 업체코드 */
+			 , AC.ACNM												/* 업체명 */
+			 , IC.ICMGMTUSR											/* 상품 담당자 */
+			 , IC.SALESTATUSCD										/* 판매상태 */
+			 , IC.ICOPERSTATUSCD									/* 상품운영코드 */
+			 , IC.SLPRC												/* 판매금액 */
+			 , IC.DIRCDLVYICYN										/* 직송상품 여부 */
+			 , IC.ICSTATUSDIV										/* 상품 사용구분 */
+			 , IC.MTR												/* 재질 */
+			 , IC.ROBSORTERICYN										/* 로봇소터 가능상품 여부 */
+			 , IC.CUSHNMEPCKGYN										/* 완충재 포장여부 */
+			 , IC.BARCODEATTACHYN									/* 상품바코드부착여부 */
+			 , IC.POLYBAGPCKGYN									    /* 폴리백포장여부 */
+			 , IC.PCKGOVLPYN										/* 포장겹침여부 */
+			 , IC.OVLPPCKGWIDTHVAL									/* 겹침포장가로증가값 */
+			 , IC.OVLPPCKGDEPTHVAL									/* 겹침포장세로증가값 */
+			 , IC.OVLPPCKGHEIGHTVAL									/* 겹침포장높이증가값 */
+			 , IC.PCKGFOLDYN										/* 포장접기여부 */
+			 , IC.OLNIPKOTICYN										/* 판매특성여부 */
+			 , IC.POABLEYN											/* 발주가능 여부 */
+			 , IC.DSPYN												/* 전시여부 */
+			 , IC.DLVRYYN											/* 택배여부 */
+			 , IC.OLNPKOTYN											/* 온라인덕용여부 */
+			 , IC.OBLIMITYN											/* 출고제한여부 */
+			 , IC.UNICYN											/* 미취급여부 */
+			 , IC.LCKEY	AS RECOLCKEY								/* 상품 대표 로케이션코드 */
+			 , IC.LCKEY												/* 상품 대표 로케이션코드 (변경 확인용 -> 변경시 WCS I/F 송신) */
+			 , LC.ARKEY || LC.RACKNO AS LCZONE						/* 구역코드 + 랙번호 */
+			 , IC.OLNICDIV											/* 다이소몰등급코드 */
+			 , IC.DSBTGRADECD										/* 물류등급 */
+			 , IC.HIGHFRQNCYDMGYN 									/* 고빈도파손여부 */
+			 , IC.EXPCKYN											/* 유통 기한 체크 여부 */
+			 , IC.EXPCNVRSNDAYS										/* 유통기한전환일수( 생산일자 기준 유통기한 전환일수 ) */
+			 , IC.COMPYN											/* 구성품여부 */
+			 , IC.COMPCONT											/* 구성품내용 */
+			 , COALESCE(IC.IMGURL, IC.ERPIMGURL) AS IMGURL				/* 상품 이미지 URL */
+			 , COALESCE(IC.OBIMPSCRITRT, 0) AS OBIMPSCRITRT				/* 출고불가기준율 */
+			 , IMMT.IMMTIVCRITRT									/* 임박재고기준율 */
+			 , IC.INSERTDATE										/* 입력일시 */
+			 , IC.INSERTURKEY										/* 입력 사용자 ID */
+			 , IC.UPDATEDATE										/* 수정 일시 */
+			 , IC.UPDATEURKEY										/* 수정 사용자 ID */
+			 , IC.CUSHNMEPCKGYN AS ORGCUSHNMEPCKGYN					/* 완충재 포장여부 */
+			 , IC.ROBSORTERICYN AS ORGROBSORTERICYN					/* 로봇소터 가능상품 여부 */
+			 , IC.PCKGOVLPYN AS ORGPCKGOVLPYN						/* 포장겹침여부 */
+			 , IC.OVLPPCKGWIDTHVAL AS ORGOVLPPCKGWIDTHVAL			/* 겹침포장가로증가값 */
+			 , IC.OVLPPCKGDEPTHVAL AS ORGOVLPPCKGDEPTHVAL			/* 겹침포장세로증가값 */
+			 , IC.OVLPPCKGHEIGHTVAL AS ORGOVLPPCKGHEIGHTVAL			/* 겹침포장높이증가값 */
+			 , IC.COMPCONT AS ORGCOMPCONT							/* 구성품내용 */
+			 , IC.BARCODEATTACHYN AS ORGBARCODEATTACHYN				/* 상품바코드부착여부 */
+			 , IC.POLYBAGPCKGYN AS ORGPOLYBAGPCKGYN					/* 폴리백포장여부 */
+			 , IC.HIGHFRQNCYDMGYN AS ORGHIGHFRQNCYDMGYN 			/* 고빈도파손여부 */
+			 , IC.PCKGFOLDYN AS ORGPCKGFOLDYN						/* 포장접기여부 */
+		FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		  LEFT JOIN TWORK_MST_ASRT ASRT
+			ON ASRT.CTKEY = IC.CTKEY
+		   AND ASRT.OWKEY = IC.OWKEY
+		   AND ASRT.ASRTDTICKEY = IC.ICKEY
+		 INNER JOIN TWORK_MST_ICGR ICGR
+			ON ICGR.CTKEY = IC.CTKEY
+		   AND ICGR.OWKEY = IC.OWKEY
+		   AND ICGR.ICGRPKEY = IC.ICGRPKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		 INNER JOIN TWORK_MST_CTG CTG3
+			ON CTG3.CTKEY = IC.CTKEY
+		   AND CTG3.OWKEY = IC.OWKEY
+		   AND CTG3.CTGKEY = IC.CTGKEY
+		   AND CTG3.CTGLV = '3'
+		  LEFT JOIN TWORK_MST_AC AC
+			ON AC.CTKEY = IC.CTKEY
+		   AND AC.ACKEY = IC.ACKEY
+		 INNER JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+			ON IMMT.CTKEY = IC.CTKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.LCKEY = IC.LCKEY
+		 WHERE IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey}
+		   AND IC.ICKEY = #{ickey}
+	</select>
+
+	<update id="updateItemCodeExcelTempVaild">
+		/* wms-master-itemcode-sql-oracle.xml - updateItemCodeExcelTempVaild */
+		<![CDATA[
+		UPDATE TWORK_UPLOAD_IC TUM
+		   SET (TUM.ERROR_CD) = (
+								   SELECT T.ERROR_CD
+									 FROM (
+										  SELECT ULHSKEY
+											   , SEQ
+											   , CASE WHEN A.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+												  WHEN A.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_NULL'
+												  WHEN D.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_INVALID'
+										  		  WHEN (SELECT COUNT(1) FROM TWORK_UPLOAD_IC WHERE ULHSKEY = #{uploadKey} AND ICKEY = D.ICKEY) > 1 THEN 'TXT_UPLOAD_VALID_ICKEY_DUPLICATE'
+												  WHEN A.OVLPPCKGWIDTHVAL IS NOT NULL AND REGEXP_INSTR(A.OVLPPCKGWIDTHVAL,'[^0-9]') != 0 THEN 'TXT_UPLOAD_VALID_WIDTH_INCR_VAL_NOT_NUMBER'
+												  WHEN A.OVLPPCKGDEPTHVAL IS NOT NULL AND REGEXP_INSTR(A.OVLPPCKGDEPTHVAL,'[^0-9]') != 0 THEN 'TXT_UPLOAD_VALID_DEPTH_INCR_VAL_NOT_NUMBER'
+												  WHEN A.OVLPPCKGHEIGHTVAL IS NOT NULL AND REGEXP_INSTR(A.OVLPPCKGHEIGHTVAL,'[^0-9]') != 0 THEN 'TXT_UPLOAD_VALID_HEIGHT_INCR_VAL_NOT_NUMBER'
+												  WHEN A.PCKGOVLPYN = 'Y' AND COALESCE(TRIM(A.OVLPPCKGWIDTHVAL), 0) = 0 AND COALESCE(TRIM(A.OVLPPCKGDEPTHVAL), 0) = 0 AND COALESCE(TRIM(A.OVLPPCKGHEIGHTVAL), 0) = 0 THEN 'TXT_UPLOAD_VALID_INCR_VAL_GREATER_THAN_ZERO'
+											  END AS ERROR_CD
+											FROM TWORK_UPLOAD_IC A
+											LEFT OUTER JOIN TWORK_MST_CT B
+														 ON B.CTKEY = A.CTKEY
+											LEFT OUTER JOIN TWORK_MST_IC D
+														 ON D.CTKEY = A.CTKEY
+														AND D.OWKEY = A.OWKEY
+														AND D.ICKEY = A.ICKEY
+										   WHERE ULHSKEY = #{uploadKey}
+										) T
+									WHERE TUM.ULHSKEY = T.ULHSKEY
+									  AND TUM.SEQ = T.SEQ
+			 )
+		 WHERE TUM.ULHSKEY = #{uploadKey}
+		]]>
+	</update>
+
+	<select id="selectItemCodeExcelTempCount" resultType="java.lang.Integer">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeExcelTempCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_IC
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+	</select>
+
+	<select id="selectItemCodeExcelTempList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeExcelTempList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+		     , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , ICNM
+			 , CUSHNMEPCKGYN
+			 , ROBSORTERICYN
+			 , POLYBAGPCKGYN
+			 , PCKGOVLPYN
+		     , BARCODEATTACHYN
+			 , PCKGFOLDYN
+			 , HIGHFRQNCYDMGYN
+			 , OVLPPCKGWIDTHVAL
+			 , OVLPPCKGDEPTHVAL
+			 , OVLPPCKGHEIGHTVAL
+			 , COMPCONT
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_IC
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		 ORDER BY SEQ
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<delete id="deleteItemCodeExcelUploadTemp">
+		/* wms-master-itemcode-sql-oracle.xml - deleteItemCodeExcelUploadTemp */
+		DELETE
+		  FROM TWORK_UPLOAD_IC
+		 WHERE ULHSKEY = #{ulhskey}
+		   AND SEQ = #{seq}
+	</delete>
+
+	<insert id="updateItemCodeExcelUploadList">
+		/* wms-master-itemcode-sql-oracle.xml - updateItemCodeExcelUploadList */
+		<![CDATA[
+		UPDATE TWORK_MST_IC TUM
+		   SET (
+		       TUM.CUSHNMEPCKGYN
+			 , TUM.ROBSORTERICYN
+			 , TUM.DFSHPMTRYN
+			 , TUM.POLYBAGPCKGYN
+			 , TUM.PCKGOVLPYN
+		     , TUM.BARCODEATTACHYN
+		     , TUM.PCKGFOLDYN
+		     , TUM.HIGHFRQNCYDMGYN
+			 , TUM.OVLPPCKGWIDTHVAL
+			 , TUM.OVLPPCKGDEPTHVAL
+			 , TUM.OVLPPCKGHEIGHTVAL
+			 , TUM.COMPCONT
+		     , TUM.UPDATEDATE
+		     , TUM.UPDATEURKEY) = (
+								  SELECT COALESCE(A.CUSHNMEPCKGYN, 'N')
+									   , COALESCE(A.ROBSORTERICYN, 'N')
+									   , CASE COALESCE(A.ROBSORTERICYN, 'N') WHEN 'Y' THEN 'N' WHEN 'N' THEN 'Y' END
+									   , COALESCE(A.POLYBAGPCKGYN, 'N')
+									   , COALESCE(A.PCKGOVLPYN, 'N')
+									   , COALESCE(A.BARCODEATTACHYN, 'N')
+									   , COALESCE(A.PCKGFOLDYN, 'N')
+									   , COALESCE(A.HIGHFRQNCYDMGYN, 'N')
+								       , A.OVLPPCKGWIDTHVAL
+									   , A.OVLPPCKGDEPTHVAL
+									   , A.OVLPPCKGHEIGHTVAL
+									   , A.COMPCONT
+									   , #{sysdate} AS UPDATEDATE
+									   , #{surkey} AS UPDATEURKEY
+									FROM TWORK_UPLOAD_IC A
+								   WHERE A.ULHSKEY = #{uploadKey}
+									 AND A.ERROR_CD IS NULL
+									 AND TUM.CTKEY = A.CTKEY
+							  		 AND TUM.OWKEY = A.OWKEY
+							  		 AND TUM.ICKEY = A.ICKEY)
+		 WHERE EXISTS (
+					  SELECT 'X'
+					    FROM TWORK_UPLOAD_IC B
+					   WHERE B.ULHSKEY = #{uploadKey}
+					     AND B.CTKEY = TUM.CTKEY
+					     AND B.OWKEY = TUM.OWKEY
+					     AND B.ICKEY = TUM.ICKEY
+					)
+		]]>
+	</insert>
+
+	<select id="selectItemCodeExcelUploadList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemCodeExcelUploadList */
+		SELECT ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_IC
+		 WHERE ULHSKEY = #{uploadKey}
+		   AND ERROR_CD IS NULL
+		  ORDER BY SEQ
+	</select>
+
+
+
+	<sql id="sql_selectItemUnitByItemCode">
+		SELECT IC.CTKEY
+			 , CT.CTNAME
+			 , IC.OWKEY
+			 , OW.OWNAME
+			 , IC.ICKEY
+			 , IC.ICNAME
+			 , IC.SPEC
+			 , IC.ICTYPE
+			 , IC.LOGGRPCD
+			 , IC.ICGRKEY
+			 , ICGR.ICGRNAME
+			 , CTG_1.CTGNAME AS CTG_LEVEL_NM1
+			 , CTG_2.CTGNAME AS CTG_LEVEL_NM2
+			 , CTG_3.CTGNAME AS CTG_LEVEL_NM3
+			 , IC.DELYN
+			 , IC.FREQUENCY
+			 , IC.MSCSTORETYPE
+			 , IC.WRHOUS_SE
+			 , IC.BOL_WRHOUS_SE
+		     , IC.BOXDELIQTY
+		     , IC.BOLDELIQTY
+			 , IC.ACTUALSIZE_YN
+			 , IC.SAFE_INVQTY
+			 , IC.SHELFLIFEINDICATOR
+			 , IC.SHELFLIFECODETYPE
+			 , IC.SHELFDAY AS EXPIRED_PERIOD
+			 , '30' AS EXPIRED_PERIOD_UNIT
+			 , IC.SHELFDAY AS CONSUMPTION_PERIOD
+			 , '30' AS CONSUMPTION_PERIOD_UNIT
+			 , IC.SHELFLIFE
+			 , IC.SHELFDAY
+			 , IC.RELEASEDAYS
+			 , BACODE.BARCODE
+			 , ICUT_TYPE.ICUTTYPE
+			 , ICUT_TYPE.ICUTORDER
+			 , ICUT_TYPE.ICUTQTY
+			 , ICUT_TYPE."LENGTH" AS LGTH
+			 , ICUT_TYPE.WIDTH
+			 , ICUT_TYPE.HEIGHT
+			 , ICUT_TYPE.VOLUME
+			 , ICUT_TYPE.VOLUMEUNIT
+			 , ICUT_TYPE.WEIGHT
+			 , ICUT_TYPE.WEIGHTUNIT
+			 , ICUT_TYPE.LAYERPERPALLERT
+			 , ICUT_TYPE.QUANTYTYPERLAYESRS
+			 , ICUT_TYPE.PACKAGESTRENGTH
+			 , ICUT_TYPE.PACKAGETYPE
+			 , ICUT_TYPE.INBOUNDUSEYN
+			 , ICUT_TYPE.OUTBOUNDUSEYN
+			 , ICUT_TYPE.IVUSEYN
+			 , ICUT_TYPE.RETURNUSEYN
+			 , ICUT_TYPE.INSERTDATE
+			 , ICUT_TYPE.INSERTURKEY
+			 , ICUT_TYPE.UPDATEDATE
+			 , ICUT_TYPE.UPDATEURKEY
+		  FROM TWORK_MST_ICUTXTYPE ICUT_TYPE
+		 INNER JOIN TWORK_MST_CT CT
+				 ON CT.CTKEY = ICUT_TYPE.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+				 ON OW.OWKEY = ICUT_TYPE.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+				 ON IC.CTKEY = ICUT_TYPE.CTKEY
+				AND IC.OWKEY = ICUT_TYPE.OWKEY
+				AND IC.ICKEY = ICUT_TYPE.ICKEY
+		 INNER JOIN TWORK_MST_ICGR ICGR
+				 ON ICGR.CTKEY = IC.CTKEY
+				AND ICGR.OWKEY = IC.OWKEY
+				AND ICGR.ICGRKEY = IC.ICGRKEY
+		  LEFT OUTER JOIN TADMIN_MST_ICBACODE BACODE
+				 	   ON BACODE.OWKEY = IC.OWKEY
+					  AND BACODE.ICKEY = IC.ICKEY
+					  AND BACODE.UOM = ICUT_TYPE.ICUTTYPE
+		  LEFT OUTER JOIN TWORK_MST_CTG CTG_3
+					   ON CTG_3.CTKEY = IC.CTKEY
+					  AND CTG_3.OWKEY = IC.OWKEY
+					  AND CTG_3.CTGKEY = IC.CTGKEY
+					  AND CTG_3.CTGLEVEL = '3'
+		  LEFT OUTER JOIN TWORK_MST_CTG CTG_2
+					   ON CTG_2.CTKEY = IC.CTKEY
+					  AND CTG_2.OWKEY = IC.OWKEY
+					  AND CTG_2.CTGKEY = CTG_3.UPPERCTGKEY
+					  AND CTG_2.CTGLEVEL = '2'
+		  LEFT OUTER JOIN TWORK_MST_CTG CTG_1
+					   ON CTG_1.CTKEY = IC.CTKEY
+					  AND CTG_1.OWKEY = IC.OWKEY
+					  AND CTG_1.CTGKEY = CTG_2.UPPERCTGKEY
+					  AND CTG_1.CTGLEVEL = '1'
+		<where>
+			AND IC.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectItemUnitByItemCodeCount" resultType="java.lang.Integer" >
+		/* wms-master-itemcode-sql-oracle.xml - selectItemUnitByItemCodeCount - 상품 단위별 전체 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectItemUnitByItemCode"/>
+		)
+	</select>
+
+	<select id="selectItemUnitByItemCodeList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemUnitByItemCodeList - 상품 단위별 전체 조회 카운트 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+		SELECT  *
+		  FROM (
+				<include refid="sql_selectItemUnitByItemCode"/>
+			 )
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<resultMap id="itemCodeRefMap" type="java.util.HashMap" >
+		<result property="ctkey" column="CTKEY" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="owkey" column="OWKEY" />		
+		<result property="owname" column="OWNAME" />
+		<result property="ickey" column="ICKEY" />	
+		<result property="icname" column="ICNAME" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="icgrkey" column="ICGRKEY" />	
+		<result property="icgrname" column="ICGRNAME" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="uom" column="UOM" />	
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="ordtype" column="ORDTYPE" />	
+		<result property="ordtype_desc" column="ORDTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="width" column="WIDTH" />	
+		<result property="lengthcnt" column="LENGTH" />	
+		<result property="height" column="HEIGHT" />	
+		<result property="weight" column="WEIGHT" />	
+		<result property="volume" column="VOLUME" />
+		<result property="costprice" column="COSTPRICE" />	
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="po_leadtime" column="PO_LEADTIME"  />
+		<result property="shelflifeindicator" column="SHELFLIFEINDICATOR" />
+		<result property="shelflifeindicator_desc" column="SHELFLIFEINDICATOR_DESC" typeHandler="CodeDescTypeHandler"/>	
+		<result property="shelflife" column="SHELFLIFE" />
+		<result property="shelflifecodetype" column="SHELFLIFECODETYPE" />	
+		<result property="shelflifecodetype_desc" column="SHELFLIFECODETYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="serialinputtype" column="SERIALINPUTTYPE" />
+		<result property="serialinputtype_desc" column="SERIALINPUTTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="taxyn" column="TAXYN" />
+		<result property="taxyn_desc" column="TAXYN_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="boxprice" column="BOXPRICE" />
+		<result property="bottleprice" column="BOTTLEPRICE" />
+		<result property="returnor" column="RETURNOR" />
+		<result property="returnor_desc" column="RETURNOR_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ordstopdate" column="ORDSTOPDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="releasedays" column="RELEASEDAYS" />
+		<result property="lo_non_stock_type" column="LO_NON_STOCK_TYPE" />
+		<result property="lo_non_stock_type_desc" column="LO_NON_STOCK_TYPE_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="dispshelfname" column="DISPSHELFNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="ictype" column="ICTYPE" />
+		<result property="ictype_desc" column="ICTYPE_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="foodyn" column="FOODYN" />
+		<result property="foodyn_desc" column="FOODYN_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="udf1" column="UDF1" />
+		<result property="udf2" column="UDF2" />		
+		<result property="udf3" column="UDF3" />	
+		<result property="udf4" column="UDF4" />
+		<result property="udf5" column="UDF5" />	
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="to_arkey" column="TO_ARKEY" />
+		<result property="abc" column="ABC" />
+		<result property="abc_desc" column="ABC_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="safe_invqty" column="SAFE_INVQTY" />	
+		<result property="icgrtype" column="ICGRTYPE" />
+		<result property="voltype" column="VOLTYPE" />
+		<result property="voltype_desc" column="VOLTYPE_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ctg_level_nm1" column="CTG_LEVEL_NM1" />
+		<result property="ctg_level_nm2" column="CTG_LEVEL_NM2" />
+		<result property="ctg_level_nm3" column="CTG_LEVEL_NM3" />
+		<result property="ordttype" column="ORDTYPE" />
+		<result property="maxoverqty" column="MAXOVERQTY" />
+		<result property="pick_lckey" column="PICK_LCKEY" />
+		<result property="inserturkey" column="INSERTURKEY" />	
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="urkey" column="URKEY" />
+		<result property="urkey_desc" column="URKEY_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="shelfday" column="SHELFDAY" />
+		<result property="delyn" column="DELYN" />
+		<result property="delyn_desc" column="DELYN_DESC"  typeHandler="CodeDescTypeHandler" />
+		<result property="wgt_cf_yn" column="WGT_CF_YN" />
+	</resultMap>
+	
+	<resultMap id="itemCodeMap" type="java.util.HashMap" extends="itemCodeRefMap">
+		<result property="closdate" column="CLOSDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+	</resultMap> 
+	
+	<resultMap id="itemCodeDtMap" type="java.util.HashMap" >
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />		
+		<result property="owname" column="OWNAME" />
+		<result property="ickey" column="ICKEY" />	
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="icuttype" column="ICUTTYPE" />
+		<result property="icuttype_desc" column="ICUTTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="icutorder" column="ICGRKEY" />	
+		<result property="icutqty" column="ICUTQTY" />	
+		<result property="sbkey" column="SBKEY" />
+	</resultMap>
+	<resultMap id="privateOrderManagerListMap" type="java.util.HashMap">
+		<result property="sessionid" column="SESSIONID" />
+		<result property="ulhskey" column="ULHSKEY" />
+		<result property="seq" column="SEQ" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="to_arkey" column="TO_ARKEY" />
+		<result property="abc" column="ABC" />
+		<result property="voltype" column="VOLTYPE" />
+		<result property="maxoverqty" column="MAXOVERQTY" />
+		<result property="uom" column="UOM" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+  		<result property="ifstatus" column="IFSTATUS"  />
+  		<result property="ifstatus_desc" column="IFSTATUS_DESC" />
+  		<result property="ifmessage" column="IFMESSAGE" />
+  		<result property="insertdate" column="INSERTDATE"  />
+  		<result property="inserturkey" column="INSERTURKEY"  />
+  		<result property="updatedate" column="UPDATEDATE" />
+  		<result property="updateurkey" column="UPDATEURKEY"  />
+	</resultMap> 
+	
+	<sql id="selectItemCodeRefSql">
+   		SELECT 	*
+		  FROM 	(
+			SELECT 	A.CTKEY
+			        ,A.ORDTYPE
+			        ,A.CTKEY ||';'|| 'ORDTYPE' ||';'|| A.ORDTYPE AS ORDTYPE_DESC
+					,A.WIDTH
+					,A.WEIGHT
+					,A.VOLUME
+					,A.UPDATEURKEY
+					,A.UPDATEDATE
+					,A.UOM
+					,A.CTKEY ||';'|| 'ICUTTYPE' ||';'|| A.UOM AS UOM_DESC
+					,A.UDF5
+					,A.UDF4
+					,A.UDF3
+					,A.UDF2
+					,A.UDF1
+					,A.SHELFLIFEINDICATOR
+					,A.CTKEY  ||';'|| 'YESORNO' ||';'|| A.SHELFLIFEINDICATOR AS SHELFLIFEINDICATOR_DESC
+					,A.SHELFLIFECODETYPE
+					,A.CTKEY  ||';'|| 'SHELFLIFECODETYPE' ||';'|| A.SHELFLIFECODETYPE AS SHELFLIFECODETYPE_DESC
+					,A.SHELFLIFE
+					,A.OWKEY
+					,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+					,A.LENGTH
+					,A.INSERTURKEY
+					,A.INSERTDATE
+					,A.ICUTKEY
+					,A.ICNAME
+					,A.ICKEY
+					,A.ICGRTYPE
+					,A.ICGRKEY
+					,A.HEIGHT
+					,A.CLOSDATE
+					,A.BRANDCODE
+					,A.COSTPRICE
+					,A.SALEPRICE		
+					,A.TO_LCKEY 
+					,A.TO_ARKEY 
+					,A.ABC
+					,A.CTKEY  ||';'|| 'ABC' ||';'|| A.ABC AS ABC_DESC 
+					,A.SAFE_INVQTY				
+					,A.SERIALINPUTTYPE
+					,A.CTKEY  ||';'|| 'SERIALINPUTTYPE' ||';'|| A.SERIALINPUTTYPE AS SERIALINPUTTYPE_DESC
+					,A.ACKEY
+					,D.ACNAME
+					,A.PO_LEADTIME
+					,A.LOGGRPCD
+					,A.CTKEY  ||';'|| 'LOGGRPCD' ||';'|| A.LOGGRPCD AS LOGGRPCD_DESC
+					,A.TAXYN
+					,A.CTKEY  ||';'|| 'YESORNO' ||';'|| A.TAXYN AS TAXYN_DESC
+					,A.BOXPRICE
+					,A.BOTTLEPRICE
+					,A.RETURNOR
+					,A.CTKEY  ||';'|| 'RETURNOR' ||';'|| A.RETURNOR AS RETURNOR_DESC
+					,A.ORDSTOPDATE
+					,A.RELEASEDAYS
+					,A.LO_NON_STOCK_TYPE
+					,A.CTKEY  ||';'|| 'LO_NON_STOCK_TYPE' ||';'|| A.LO_NON_STOCK_TYPE AS LO_NON_STOCK_TYPE_DESC
+					,A.DISPSHELFKEY
+					,A.SPEC
+					,A.ICTYPE
+					,A.CTKEY  ||';'|| 'ICTYPE' ||';'|| A.ICTYPE AS ICTYPE_DESC
+					,A.FOODYN
+					,A.CTKEY  ||';'|| 'YESORNO' ||';'|| A.FOODYN AS FOODYN_DESC
+					,C.ICGRNAME
+					,A.VOLTYPE
+					,A.CTKEY  ||';'|| 'VOLTYPE' ||';'|| A.VOLTYPE AS  VOLTYPE_DESC
+                    ,(SELECT CTGNAME
+                      FROM  TWORK_MST_CTG
+                     WHERE  CTGLEVEL = '1'
+                       AND  CTKEY = A.CTKEY
+                       AND  OWKEY = A.OWKEY  
+                       AND  CTGKEY = 
+						(SELECT UPPERCTGKEY
+						  FROM  TWORK_MST_CTG 
+                         WHERE 	CTGLEVEL = '2'
+						   AND 	CTKEY = A.CTKEY
+                           AND 	OWKEY = A.OWKEY
+                           AND 	CTGKEY = 
+							(SELECT UPPERCTGKEY 
+							  FROM 	TWORK_MST_CTG
+							 WHERE  CTGLEVEL = '3' 
+							   AND  CTKEY = A.CTKEY
+							   AND  OWKEY = A.OWKEY
+							   AND  CTGKEY = A.CTGKEY
+							)
+                        )
+                      ) AS CTG_LEVEL_NM1
+					,(SELECT CTGNAME 
+					  FROM  TWORK_MST_CTG
+					 WHERE  CTGLEVEL = '2' 
+					   AND  CTKEY = A.CTKEY
+					   AND  OWKEY = A.OWKEY
+					   AND  CTGKEY = 
+						(SELECT UPPERCTGKEY 
+						  FROM 	TWORK_MST_CTG
+						 WHERE  CTGLEVEL = '3' 
+						   AND  CTKEY = A.CTKEY
+						   AND  OWKEY = A.OWKEY
+						   AND  CTGKEY = A.CTGKEY
+						)
+					) AS CTG_LEVEL_NM2 
+					,(SELECT CTGNAME
+					  FROM  TWORK_MST_CTG
+					 WHERE  CTGLEVEL = '3' 
+					   AND  CTKEY = A.CTKEY
+					   AND  OWKEY = A.OWKEY
+					   AND  CTGKEY = A.CTGKEY
+					) AS CTG_LEVEL_NM3 
+				   ,E.URKEY
+				   ,E.URKEY AS URKEY_DESC
+				   ,A.MAXOVERQTY AS MAXOVERQTY
+				   ,F.LCKEY AS PICK_LCKEY
+				   ,A.SHELFDAY
+				   ,A.DELYN
+				   ,A.CTKEY  ||';'|| 'YESORNO' ||';'|| A.DELYN AS DELYN_DESC
+				   ,A.WGT_CF_YN
+              FROM 	TWORK_MST_IC A
+              LEFT JOIN TWORK_MST_ICSB B ON A.CTKEY = B.CTKEY AND A.OWKEY = B.OWKEY AND A.ICKEY = B.ICKEY
+              LEFT JOIN TWORK_MST_ICGR C ON A.CTKEY = C.CTKEY AND A.OWKEY = C.OWKEY AND A.ICGRKEY = C.ICGRKEY
+              LEFT JOIN TWORK_MST_AC D ON A.CTKEY = D.CTKEY AND A.ACKEY = D.ACKEY AND A.OWKEY = D.OWKEY
+              LEFT JOIN TWORK_MST_ACXUR E ON A.CTKEY = E.CTKEY AND A.ACKEY = E.ACKEY AND A.LOGGRPCD = E.LOGGRPCD AND A.OWKEY = E.OWKEY
+              LEFT JOIN TWORK_MST_LCXIC F ON A.CTKEY = F.CTKEY AND A.OWKEY = F.OWKEY AND A.ICKEY = F.ICKEY
+             WHERE 1=1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   AND 	#{SEARCH_CONDITION}
+			</if>
+ 			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			   AND  A.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+			   AND  A.ICKEY = #{ickey}
+			</if>
+            )
+          GROUP BY 	CTKEY
+          			,WIDTH
+					,WEIGHT
+					,VOLUME
+					,UPDATEURKEY
+					,UPDATEDATE
+					,UOM
+					,UOM_DESC
+					,UDF5
+					,UDF4
+					,UDF3
+					,UDF2
+					,UDF1
+					,SHELFLIFEINDICATOR
+					,SHELFLIFEINDICATOR_DESC
+					,SHELFLIFECODETYPE
+					,SHELFLIFECODETYPE_DESC
+					,SHELFLIFE
+					,OWKEY
+					,OWNAME
+					,LENGTH
+					,INSERTURKEY
+					,INSERTDATE
+					,ICUTKEY
+					,ICNAME
+					,ICKEY
+					,ICGRTYPE
+					,ICGRKEY
+					,HEIGHT
+					,CLOSDATE
+					,BRANDCODE
+					,COSTPRICE
+					,SALEPRICE
+					,TO_LCKEY
+					,TO_ARKEY
+					,ABC
+					,ABC_DESC
+					,SAFE_INVQTY
+					,SERIALINPUTTYPE
+					,SERIALINPUTTYPE_DESC
+					,ACKEY
+					,ACNAME
+					,PO_LEADTIME
+					,LOGGRPCD
+					,LOGGRPCD_DESC
+					,TAXYN
+					,TAXYN_DESC
+					,BOXPRICE
+					,BOTTLEPRICE
+					,RETURNOR
+					,RETURNOR_DESC
+					,ORDSTOPDATE
+					,RELEASEDAYS
+					,LO_NON_STOCK_TYPE
+					,LO_NON_STOCK_TYPE_DESC
+					,DISPSHELFKEY
+					,SPEC
+					,ICTYPE
+					,ICTYPE_DESC
+					,FOODYN
+					,FOODYN_DESC
+					,ICGRNAME
+					,VOLTYPE
+					,VOLTYPE_DESC	
+					,CTG_LEVEL_NM1
+					,CTG_LEVEL_NM2
+					,CTG_LEVEL_NM3
+					,ORDTYPE
+					,ORDTYPE_DESC
+					,URKEY
+					,URKEY_DESC
+					,MAXOVERQTY
+					,PICK_LCKEY
+					,SHELFDAY
+					,DELYN
+					,DELYN_DESC
+					,WGT_CF_YN
+	</sql>
+	
+	<sql id="selectListItemCodeDtRefSql">
+		SELECT	A.CTKEY
+				,A.OWKEY
+				,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+				,A.ICKEY
+				,A.ICNAME
+				,A.SPEC
+				,B.ICUTKEY
+				,B.ICUTTYPE
+				,A.CTKEY  ||';'|| 'ICUTTYPE' ||';'|| B.ICUTTYPE AS ICUTTYPE_DESC
+				,B.ICUTQTY
+				,C.SBKEY
+				,B.ICUTORDER
+  	      FROM 	TWORK_MST_IC A
+  	      INNER JOIN TWORK_MST_ICUTXTYPE B ON A.CTKEY = B.CTKEY AND A.OWKEY = B.OWKEY AND A.ICUTKEY = B.ICUTKEY
+  	       LEFT JOIN TWORK_MST_ICSB C ON B.CTKEY = C.CTKEY AND B.OWKEY = C.OWKEY AND B.ICUTKEY = C.ICKEY AND B.ICUTTYPE = C.ICUTTYPE
+ 		 WHERE  A.CTKEY = #{ctkey}
+	       AND  A.OWKEY = #{owkey}
+	       AND  A.ICKEY = #{ickey}	
+	       
+	</sql>
+	
+
+	
+	<select id="selectPkItemCode" resultMap="itemCodeMap">
+		<include refid="selectItemCodeRefSql"/>
+	</select>
+	
+
+	
+ 	<update id="updateTWorkMstIc">
+ 		UPDATE 	TWORK_MST_IC
+ 		   SET	TO_LCKEY    = #{to_lckey}
+				,TO_ARKEY    = #{to_arkey}
+				,ABC         = #{abc}
+				,VOLTYPE     = #{voltype}
+				,MAXOVERQTY  = #{maxoverqty}
+				,UPDATEDATE  = #{sysdate}
+				,UPDATEURKEY = #{surkey}
+		 WHERE	
+		 		CTKEY = #{ctkey}
+		   AND  OWKEY = #{owkey}
+		   AND  ICKEY = #{ickey}
+ 	</update>	
+ 	
+ 	<update id="updateTWorkMstIcFromExcelupload">
+ 		UPDATE 	TWORK_MST_IC
+ 		   SET	UPDATEDATE  = #{sysdate}
+				,UPDATEURKEY = #{surkey}
+ 		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)" >
+   		   		,TO_LCKEY    = #{to_lckey}
+			</if>
+ 		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_arkey)" >
+   		   		,TO_ARKEY    = #{to_arkey}
+			</if>
+ 		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(abc)" >
+   		   		,ABC         = #{abc}
+			</if>
+ 		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(voltype)" >
+   		   		,VOLTYPE     = #{voltype}
+			</if>
+ 		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(maxoverqty)" >
+   		   		,MAXOVERQTY  = #{maxoverqty}
+			</if>		
+		 WHERE	
+		 		CTKEY = #{ctkey}
+		   AND  OWKEY = #{owkey}
+		   AND  ICKEY = #{ickey}
+ 	</update>
+
+	
+	<select id="selectItemCodeManageListCount" resultType="java.lang.Integer">
+	    		SELECT  COUNT(1)
+				FROM 	TWORK_TEMP_ICUP
+				WHERE 1 = 1
+				<choose>
+						<when test="ulhskey != null">
+							AND ULHSKEY = #{ulhskey}
+						</when>
+						<otherwise>
+				        	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   		 AND	#{SEARCH_CONDITION}
+							</if>
+						</otherwise>
+					</choose>
+  	</select>	
+	
+	<select id="selectItemCodeManageList" resultMap="privateOrderManagerListMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT   SESSIONID
+			        ,SEQ
+			        ,ULHSKEY
+			        ,CTKEY
+					,OWKEY
+					,ICKEY
+					,TO_LCKEY
+					,TO_ARKEY
+					,ABC
+					,VOLTYPE
+					,MAXOVERQTY
+					,UOM
+					,LOGGRPCD
+			        ,IFSTATUS
+			        ,'IFSTATUS' ||';'|| IFSTATUS AS IFSTATUS_DESC
+			        ,IFMESSAGE
+			        ,INSERTDATE
+			        ,INSERTURKEY
+			        ,UPDATEDATE
+			        ,UPDATEURKEY
+			   FROM TWORK_TEMP_ICUP
+				WHERE 1 = 1
+				<choose>
+						<when test="ulhskey != null">
+							AND ULHSKEY = #{ulhskey}
+						</when>
+						<otherwise>
+				        	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   		 AND	#{SEARCH_CONDITION}
+							</if>
+						</otherwise>
+					</choose>
+			     <choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<insert id="insertItemCodeTempCount">
+		INSERT INTO TWORK_TEMP_ICUP
+		(
+			 SESSIONID,
+			 ULHSKEY,
+			 SEQ,
+			 CTKEY,
+             OWKEY,
+             ICKEY,
+             TO_LCKEY,
+             TO_ARKEY,
+             ABC,
+             VOLTYPE,
+             MAXOVERQTY,
+             UOM,
+             LOGGRPCD,
+			 IFSTATUS,
+			 IFMESSAGE,
+			 INSERTDATE,
+			 INSERTURKEY,
+			 UPDATEDATE,
+			 UPDATEURKEY
+		)
+		VALUES 
+		( 
+			#{sessionid},
+			#{ulhskey},
+			#{seq},
+            #{ctkey},
+            #{owkey},
+            #{ickey},
+            #{to_lckey},
+            #{to_arkey},
+            #{abc},
+            #{voltype},
+            #{maxoverqty},
+            #{uom},
+            #{loggrpcd},
+			#{ifstatus},
+			#{ifmessage},
+			#{sysdate},
+			#{surkey},
+			#{sysdate},
+			#{surkey}
+		)	
+	</insert>	
+	
+	<insert id="insertItemCodeCountUlhs">
+		INSERT INTO TWORK_INFO_ULHS
+		(
+			 ULHSKEY
+			,CTKEY
+			,UPLOADFILENAME
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,ULHSTYPE
+		) VALUES (
+			 #{ulhskey}
+			,#{ctkey}                  
+			,#{uploadfilename}            
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		    ,#{ulhstype}                  
+		)
+	</insert>
+	
+	<update id="updateItemCodeTempCountUp">
+		UPDATE 	TWORK_TEMP_ICUP
+	   	SET 	IFSTATUS             = #{ifstatus}
+		   		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ifmessage)" >
+		   		,IFMESSAGE = #{ifmessage}
+				</if>
+		       	,UPDATEDATE         = #{sysdate}
+		       	,UPDATEURKEY        = #{surkey}
+	 	WHERE	ULHSKEY = #{ulhskey}
+	 	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(seq)" >
+		AND		SEQ = #{seq}
+		</if>
+	</update>
+
+	<select id="selectTworkMstIcInfo" resultType="com.daiso.wms.api.out.dto.ItemRequestDTO">
+		/* wms-master-itemcode-sql-oracle.xml - selectTworkMstIcInfo */
+		SELECT IC.CTKEY				/* 센터코드 */
+			 , IC.OWKEY				/* 화주코드 */
+			 , IC.ICKEY				/* 상품코드 */
+			 , ICTP.ICUNITTYPECD	/* 상품단위 */
+			 , ICTP.WIDTH			/* 가로 */
+			 , ICTP.DEPTH			/* 세로 */
+			 , ICTP.HEIGHT			/* 높이 */
+			 , ICTP.WEIGHT			/* 중량 */
+			 , ICTP.VOL				/* 볼륨 */
+			 , IC.DFSHPMTRYN		/* 이형물여부 */
+			 , IC.ROBSORTERICYN		/* 로봇소터 여부 */
+			 , IC.CUSHNMEPCKGYN		/* 완충재 포장여부 */
+			 , IC.PCKGOVLPYN		/* 포장 겹침여부 */
+			 , IC.OVLPPCKGWIDTHVAL	/* 포장 겹침 시 가로증가값 */
+			 , IC.OVLPPCKGDEPTHVAL	/* 포장 겹침 시 세로증가값 */
+			 , IC.OVLPPCKGHEIGHTVAL	/* 포장 겹침 시 높이증가값 */
+			 , IC.PCKGFOLDYN		/* 상품접기 여부 */
+			 , IC.BARCODEATTACHYN	/* 상품 QR 바코드 부착여부 */
+			 , IC.POLYBAGPCKGYN	    /* 폴리백포장여부 */
+			 , IC.HIGHFRQNCYDMGYN	/* 고빈도파손여부 */
+			 , IC.COMPYN			/* 구성품 여부 */
+			 , IC.COMPCONT			/* 구성품 정보 */
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IC.OWKEY
+		 INNER JOIN TWORK_MST_ICUTXTYPE ICTP
+			ON ICTP.CTKEY = IC.CTKEY
+		   AND ICTP.OWKEY = IC.OWKEY
+		   AND ICTP.ICKEY = IC.ICKEY
+		   AND ICTP.ICUNITTYPECD =  IC.UOM
+		 WHERE IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey}
+		   AND IC.ICKEY = #{ickey}
+	</select>
+
+	<select id="selectIfSendItemLocationList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectIfSendItemLocationList */
+		SELECT IC.LCKEY
+			 , LC.ARKEY || LC.RACKNO AS LCZONE
+			 , IC.ICKEY
+			 , ICBC_EA.BARCODE AS EABARCODE
+			 , ICBC_INN.BARCODE AS INNBARCODE
+			 , ICBC_CTN.BARCODE AS CTNBARCODE
+			 , IC.ICNM
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		 INNER JOIN TWORK_MST_AR AR
+		    ON AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_EA
+			ON ICBC_EA.CTKEY = IC.CTKEY
+		   AND ICBC_EA.OWKEY = IC.OWKEY
+		   AND ICBC_EA.ICKEY = IC.ICKEY
+		   AND ICBC_EA.UOM = 'EA'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		 WHERE IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey}
+
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(icList)">
+				AND IC.ICKEY IN (
+					<foreach collection="icList" item="item" separator=",">
+						#{item.ickey}
+					</foreach>
+				  )
+			</when>
+			<otherwise>
+				AND 1 = 2
+			</otherwise>
+		</choose>
+
+	</select>
+
+	<select id="selectItemList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemList (상품이 아소트일때 아소트 모상품 and 자상품까지 조회) */
+		  WITH T_ITEM AS (
+				SELECT IC.CTKEY
+					 , IC.OWKEY
+					 , IC.ICKEY
+				  FROM TWORK_MST_IC IC
+				  LEFT JOIN TWORK_MST_ASRT ASRT
+					ON ASRT.CTKEY = IC.CTKEY
+				   AND ASRT.OWKEY = IC.OWKEY
+				   AND ASRT.ASRTMASICKEY = IC.ICKEY
+				 WHERE IC.CTKEY = #{ctkey}
+				   AND IC.OWKEY = #{owkey}
+				   AND (
+						IC.ICKEY = #{ickey}
+						OR
+						ASRT.ASRTMASICKEY = #{ickey}
+						OR
+						ASRT.ASRTDTICKEY = #{ickey}
+					 )
+				 GROUP BY
+					   IC.CTKEY
+					 , IC.OWKEY
+					 , IC.ICKEY
+			 )
+		SELECT CTKEY
+			 , OWKEY
+			 , ICKEY
+		  FROM T_ITEM
+		 UNION
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , B.ASRTDTICKEY AS ICKEY
+		  FROM T_ITEM A
+		 INNER JOIN TWORK_MST_ASRT B
+			ON B.CTKEY = A.CTKEY
+		   AND B.OWKEY = A.OWKEY
+		   AND B.ASRTMASICKEY = A.ICKEY
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<update id="updateItemLocExcelTempVaild">
+		/* wms-master-itemcode-sql-oracle.xml - updateItemLocExcelTempVaild */
+		<![CDATA[
+		UPDATE TWORK_UPLOAD_ICLC TUM
+		   SET (TUM.ERROR_CD) = (
+				SELECT T.ERROR_CD
+				  FROM (
+						SELECT ULHSKEY
+							 , SEQ
+						    , CASE WHEN ICLC.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+								   WHEN CT.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_INVALID'
+								   WHEN ICLC.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_NULL'
+								   WHEN IC.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_INVALID'
+-- 								   WHEN ICLC.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_LCKEY_NULL'
+								   WHEN ICLC.LCKEY IS NOT NULL AND LC.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_LCKEY_INVALID'
+									END AS ERROR_CD
+						  FROM TWORK_UPLOAD_ICLC ICLC
+						  LEFT JOIN TWORK_MST_CT CT
+							ON CT.CTKEY = ICLC.CTKEY
+						  LEFT JOIN TWORK_MST_IC IC
+							ON IC.CTKEY = ICLC.CTKEY
+						   AND IC.OWKEY = ICLC.OWKEY
+						   AND IC.ICKEY = ICLC.ICKEY
+						  LEFT JOIN TWORK_MST_LC LC
+							ON LC.CTKEY = ICLC.CTKEY
+						   AND LC.LCKEY = ICLC.LCKEY
+						 WHERE ULHSKEY = #{uploadKey}
+					) T
+				WHERE TUM.ULHSKEY = T.ULHSKEY
+				  AND TUM.SEQ = T.SEQ
+			 )
+		 WHERE TUM.ULHSKEY = #{uploadKey}
+		]]>
+	</update>
+
+	<select id="selectItemLocExcelTempCount" resultType="java.lang.Integer">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemLocExcelTempCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_ICLC
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+	</select>
+
+	<select id="selectItemLocExcelTempList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemLocExcelTempList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+		     , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , ICNM
+			 , LCKEY
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_ICLC
+		 WHERE ULHSKEY = #{uploadKey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and filter=="Y"'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		 ORDER BY SEQ
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<delete id="deleteItemLocExcelUploadTemp">
+		/* wms-master-itemcode-sql-oracle.xml - deleteItemLocExcelUploadTemp */
+		DELETE
+		  FROM TWORK_UPLOAD_ICLC
+		 WHERE ULHSKEY = #{ulhskey}
+		   AND SEQ = #{seq}
+	</delete>
+
+	<update id="updateItemLocExcelUploadList">
+		/* wms-master-itemcode-sql-oracle.xml - updateItemLocExcelUploadList */
+		<![CDATA[
+		UPDATE TWORK_MST_IC TUM
+		   SET (
+		       TUM.LCKEY
+		     , TUM.UPDATEDATE
+		     , TUM.UPDATEURKEY) = (
+								  SELECT A.LCKEY
+									   , #{sysdate} AS UPDATEDATE
+									   , #{surkey} AS UPDATEURKEY
+									FROM TWORK_UPLOAD_ICLC A
+								   WHERE A.ULHSKEY = #{uploadKey}
+									 AND A.ERROR_CD IS NULL
+									 AND TUM.CTKEY = A.CTKEY
+							  		 AND TUM.OWKEY = A.OWKEY
+							  		 AND TUM.ICKEY = A.ICKEY)
+		 WHERE EXISTS (
+					  SELECT 'X'
+					    FROM TWORK_UPLOAD_ICLC B
+					   WHERE B.ULHSKEY = #{uploadKey}
+					     AND B.CTKEY = TUM.CTKEY
+					     AND B.OWKEY = TUM.OWKEY
+					     AND B.ICKEY = TUM.ICKEY
+					)
+		]]>
+	</update>
+
+	<select id="selectItemLocExcelUploadList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectItemLocExcelUploadList */
+		SELECT ICLC.CTKEY
+			 , ICLC.OWKEY
+			 , ICLC.ICKEY
+			 , ZN.ZNKEY AS RECOZNKEY
+			 , LC.LCKEY AS RECOLCKEY
+		  FROM TWORK_UPLOAD_ICLC ICLC
+		  JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ICLC.CTKEY
+		   AND IC.OWKEY = ICLC.OWKEY
+		   AND IC.ICKEY = ICLC.ICKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = ICLC.CTKEY
+		   AND LC.LCKEY = ICLC.LCKEY
+		  LEFT JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		WHERE ICLC.ULHSKEY = #{uploadKey}
+	</select>
+
+	<select id="selectTWorkMstIcResetLckeyExcelUpload" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectTWorkMstIcResetLckeyExcelUpload */
+		SELECT IC.CTKEY												/* 센터코드 */
+		     , IC.OWKEY												/* 화주코드 */
+			 , IC.ICKEY												/* 상품코드 */
+			 , IC.ICNM												/* 상품명 */
+			 , ICBC.BARCODE AS EABARCODE							/* 상품바코드(낱개) */
+			 , ICBC_INN.BARCODE AS INNBARCODE						/* 상품바코드(중포) */
+			 , ICBC_CTN.BARCODE AS CTNBARCODE						/* 상품바코드(카톤) */
+			 , IC.LCKEY												/* 상품 대표 로케이션코드 */
+			 , LC.ARKEY || LC.RACKNO AS LCZONE						/* 구역 + 랙번호 */
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.LCKEY = IC.LCKEY
+
+        <where>
+            AND IC.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+            AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+            AND IC.CTKEY = #{ctkey}
+            AND IC.OWKEY = #{owkey}
+
+			AND IC.LCKEY IN (
+					SELECT DISTINCT
+						   ICLC.LCKEY
+					  FROM TWORK_UPLOAD_ICLC ICLC
+					  JOIN TWORK_MST_LC LC
+						ON LC.CTKEY = ICLC.CTKEY
+					   AND LC.LCKEY = ICLC.LCKEY
+					 WHERE ICLC.ULHSKEY = #{uploadKey}
+					   AND ICLC.CTKEY = #{ctkey}
+					   AND ICLC.OWKEY = #{owkey}
+					   AND ICLC.ERROR_CD IS NULL
+					   AND LC.ZNKEY <![CDATA[ <> ]]> 'P'	/* PLT랙 보관존 */
+					   AND LC.ZNKEY <![CDATA[ <> ]]> 'SM'	/* 부자재 보관존 */
+			  )
+
+			AND IC.ICKEY NOT IN (
+					SELECT ICKEY
+					  FROM TWORK_UPLOAD_ICLC
+					 WHERE ULHSKEY = #{uploadKey}
+					   AND CTKEY = #{ctkey}
+					   AND OWKEY = #{owkey}
+					   AND ERROR_CD IS NULL
+			  )
+		</where>
+	</select>
+
+	<update id="updateTWorkMstIcResetLckeyExcelUpload">
+		/* wms-master-itemcode-sql-oracle.xml - updateTWorkMstIcResetLckeyExcelUpload */
+		UPDATE TWORK_MST_IC
+		   SET LCKEY = null
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND LCKEY IN (
+					SELECT DISTINCT
+						   ICLC.LCKEY
+					  FROM TWORK_UPLOAD_ICLC ICLC
+					  JOIN TWORK_MST_LC LC
+						ON LC.CTKEY = ICLC.CTKEY
+					   AND LC.LCKEY = ICLC.LCKEY
+					 WHERE ICLC.ULHSKEY = #{uploadKey}
+					   AND ICLC.CTKEY = #{ctkey}
+					   AND ICLC.OWKEY = #{owkey}
+					   AND ICLC.ERROR_CD IS NULL
+					   AND LC.ZNKEY <![CDATA[ <> ]]> 'P'	/* PLT랙 보관존 */
+					   AND LC.ZNKEY <![CDATA[ <> ]]> 'SM'	/* 부자재 보관존 */
+			  )
+
+			AND ICKEY NOT IN (
+					SELECT ICKEY
+					  FROM TWORK_UPLOAD_ICLC
+					 WHERE ULHSKEY = #{uploadKey}
+					   AND CTKEY = #{ctkey}
+					   AND OWKEY = #{owkey}
+					   AND ERROR_CD IS NULL
+			  )
+
+	</update>
+
+	<select id="selectIfSendItemLocationExcelUploadList" resultType="camelMap">
+		/* wms-master-itemcode-sql-oracle.xml - selectIfSendItemLocationExcelUploadList */
+		SELECT IC.LCKEY
+			 , LC.ARKEY || LC.RACKNO AS LCZONE
+			 , IC.ICKEY
+			 , ICBC_EA.BARCODE AS EABARCODE
+			 , ICBC_INN.BARCODE AS INNBARCODE
+			 , ICBC_CTN.BARCODE AS CTNBARCODE
+			 , IC.ICNM
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		 INNER JOIN TWORK_MST_AR AR
+		    ON AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_EA
+			ON ICBC_EA.CTKEY = IC.CTKEY
+		   AND ICBC_EA.OWKEY = IC.OWKEY
+		   AND ICBC_EA.ICKEY = IC.ICKEY
+		   AND ICBC_EA.UOM = 'EA'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_INN
+			ON ICBC_INN.CTKEY = IC.CTKEY
+		   AND ICBC_INN.OWKEY = IC.OWKEY
+		   AND ICBC_INN.ICKEY = IC.ICKEY
+		   AND ICBC_INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC_CTN
+			ON ICBC_CTN.CTKEY = IC.CTKEY
+		   AND ICBC_CTN.OWKEY = IC.OWKEY
+		   AND ICBC_CTN.ICKEY = IC.ICKEY
+		   AND ICBC_CTN.UOM = 'CTN'
+		 WHERE IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey}
+		   AND IC.ICKEY IN (
+					SELECT ICKEY
+					  FROM TWORK_UPLOAD_ICLC
+					 WHERE ULHSKEY = #{uploadKey}
+					   AND CTKEY = #{ctkey}
+					   AND OWKEY = #{owkey}
+					   AND ERROR_CD IS NULL
+			  )
+
+	</select>
+
+</mapper>	

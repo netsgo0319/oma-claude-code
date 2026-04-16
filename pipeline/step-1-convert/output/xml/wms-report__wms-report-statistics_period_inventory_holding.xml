@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.statistics_period_inventory_holdingMapper">
+
+	<sql id="selectIbOrdersql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrdersql - 입고현황 - 주문별 현황 - 입고 주문 조회  SQL */
+		WITH BASE AS (
+			    SELECT 
+			          B.IBEXPCTDATE        AS 입고예정일자
+			        , B.IBHDTYPECD         AS 입고유형
+			        , B.IBHDKEY
+			        , COALESCE(C.MASICYN, 'N')   AS 모자
+			        , COALESCE(A.EXPCTQTY, 0)    AS EXPCTQTY
+			        , COALESCE(A.IBQTY, 0)       AS IBQTY
+			        , COALESCE(A.CNFRMQTY, 0)    AS CNFRMQTY
+			        , COALESCE(A.CPAMT, 0)       AS UNIT_AMT
+			        , COALESCE(A.EXPCTQTY * A.CPAMT, 0) AS PLAN_AMT
+			        , COALESCE(A.IBQTY    * A.CPAMT, 0) AS IB_AMT
+			        , COALESCE(A.CNFRMQTY * A.CPAMT, 0) AS CNFM_AMT
+			        , COALESCE(A.UPDATEDATE, '00000000') AS UPDATEDATE
+			    FROM TWORK_INFO_IB_DT A
+			    JOIN TWORK_INFO_IB_HD B
+			      ON A.CTKEY = B.CTKEY
+			     AND A.OWKEY = B.OWKEY
+			     AND A.IBHDKEY = B.IBHDKEY
+			    JOIN TWORK_MST_IC C
+			      ON A.CTKEY = C.CTKEY
+			     AND A.OWKEY = C.OWKEY
+			     AND A.ICKEY = C.ICKEY
+		       WHERE A.CTKEY = #{ctkey}
+		         AND A.OWKEY = #{owkey}
+			)
+			SELECT 
+			      입고예정일자 ibexpctdate,
+			      (SELECT CTCDDTNM 
+			         FROM TWORK_MST_CTCD_DT 
+			        WHERE CTCDHDKEY='IBHDTYPECD' 
+			          AND CTCDDTVAL = 입고유형
+			      ) AS OB_CTNM,
+			      /* ===== 입고예정 PLAN ===== */
+			      COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN EXPCTQTY>0 THEN 1 END) END), 0) AS planSkuMother,
+			      COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN EXPCTQTY>0 THEN 1 END) END), 0) AS planSkuChild,
+			      COALESCE(SUM(EXPCTQTY), 0) AS planEa,
+			      COALESCE(SUM(PLAN_AMT), 0) AS planAmt,
+			      /* ===== 입하 IB ===== */
+			      COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN IBQTY>0 THEN 1 END) END), 0) AS inSkuMother,
+			      COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN IBQTY>0 THEN 1 END) END), 0) AS inSkuChild,
+			      COALESCE(SUM(IBQTY), 0) AS inEa,
+			      COALESCE(SUM(IB_AMT), 0) AS inAmt,
+			      COALESCE(CASE WHEN SUM(CASE WHEN EXPCTQTY>0 THEN 1 END)=0 
+			             THEN 0
+			             ELSE ROUND(
+			                  SUM(CASE WHEN IBQTY>0 THEN 1 END)
+			                  / SUM(CASE WHEN EXPCTQTY>0 THEN 1 END) * 100
+			             ,1) END, 0) AS inSkuRate,
+			      COALESCE(CASE WHEN SUM(EXPCTQTY)=0 
+			             THEN 0
+			             ELSE ROUND(SUM(IBQTY)/SUM(EXPCTQTY)*100,1)
+			        END, 0) AS inEaRate,
+			      /* ===== 적치 PUT ===== */
+			      COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN CNFRMQTY>0 THEN 1 END) END), 0) AS putSkuMother,
+			      COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN CNFRMQTY>0 THEN 1 END) END), 0) AS putSkuChild,
+			      COALESCE(SUM(CNFRMQTY), 0) AS putEa,
+			      COALESCE(SUM(CNFM_AMT), 0) AS putAmt,
+			      COALESCE(CASE WHEN SUM(CASE WHEN EXPCTQTY>0 THEN 1 END)=0 
+			             THEN 0
+			             ELSE ROUND(
+			                  SUM(CASE WHEN CNFRMQTY>0 THEN 1 END)
+			                  / SUM(CASE WHEN EXPCTQTY>0 THEN 1 END) * 100
+			             ,1) END, 0) AS putSkuRate,
+			      COALESCE(CASE WHEN SUM(EXPCTQTY)=0 
+			             THEN 0
+			             ELSE ROUND(SUM(CNFRMQTY)/SUM(EXPCTQTY)*100,1)
+			        END, 0) AS putEaRate,
+			      COALESCE(MAX(UPDATEDATE), '00000000') AS UPDATEDATE, 
+			      IBHDKEY
+			FROM BASE
+			GROUP BY 입고예정일자, 입고유형, IBHDKEY
+	</sql>
+
+	<sql id="selectIbOrderDetailsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderDetailsql - 입고현황 - 주문별 현황 - 입고 주문 상세 조회 SQL */
+		WITH BASE AS (
+                SELECT 
+                      B.IBEXPCTDATE        AS 입고예정일자
+                    , B.IBHDTYPECD         AS 입고유형
+                    , B.IBHDKEY              AS 입고번호 
+                    , A.IBDTKEY 
+                    , COALESCE(C.MASICYN, 'N')   AS 모자
+                    , COALESCE(A.EXPCTQTY, 0)    AS EXPCTQTY
+                    , COALESCE(A.IBQTY, 0)       AS IBQTY
+                    , COALESCE(A.CNFRMQTY, 0)    AS CNFRMQTY
+                    , COALESCE(A.CPAMT, 0)       AS UNIT_AMT
+                    , COALESCE(A.EXPCTQTY * A.CPAMT, 0) AS PLAN_AMT
+                    , COALESCE(A.IBQTY    * A.CPAMT, 0) AS IB_AMT
+                    , COALESCE(A.CNFRMQTY * A.CPAMT, 0) AS CNFM_AMT
+                    , COALESCE(A.UPDATEDATE, '00000000') AS UPDATEDATE
+                FROM TWORK_INFO_IB_DT A
+                JOIN TWORK_INFO_IB_HD B
+                  ON A.CTKEY = B.CTKEY
+                 AND A.OWKEY = B.OWKEY
+                 AND A.IBHDKEY = B.IBHDKEY
+                JOIN TWORK_MST_IC C
+                  ON A.CTKEY = C.CTKEY
+                 AND A.OWKEY = C.OWKEY
+                 AND A.ICKEY = C.ICKEY
+               WHERE A.CTKEY = #{ctkey}
+                 AND A.OWKEY = #{owkey}
+                 AND B.IBEXPCTDATE = #{ibexpctdate}
+            )
+            SELECT 
+                  MAX(입고예정일자) ibexpctdate,
+                  (SELECT CTCDDTNM 
+                     FROM TWORK_MST_CTCD_DT 
+                    WHERE CTCDHDKEY='IBHDTYPECD' 
+                      AND CTCDDTVAL = 입고유형
+                  ) AS OB_CTNM,
+                  /* ===== 입고예정 PLAN ===== */
+                  COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN EXPCTQTY>0 THEN 1 END) END), 0) AS planSkuMother,
+                  COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN EXPCTQTY>0 THEN 1 END) END), 0) AS planSkuChild,
+                  COALESCE(SUM(EXPCTQTY), 0) AS planEa,
+                  COALESCE(SUM(PLAN_AMT), 0) AS planAmt,
+                  /* ===== 입하 IB ===== */
+                  COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN IBQTY>0 THEN 1 END) END), 0) AS inSkuMother,
+                  COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN IBQTY>0 THEN 1 END) END), 0) AS inSkuChild,
+                  COALESCE(SUM(IBQTY), 0) AS inEa,
+                  COALESCE(SUM(IB_AMT), 0) AS inAmt,
+                  COALESCE(CASE WHEN SUM(CASE WHEN EXPCTQTY>0 THEN 1 END)=0 
+                         THEN 0
+                         ELSE ROUND(
+                              SUM(CASE WHEN IBQTY>0 THEN 1 END)
+                              / SUM(CASE WHEN EXPCTQTY>0 THEN 1 END) * 100
+                         ,1) END, 0) AS inSkuRate,
+                  COALESCE(CASE WHEN SUM(EXPCTQTY)=0 
+                         THEN 0
+                         ELSE ROUND(SUM(IBQTY)/SUM(EXPCTQTY)*100,1)
+                    END, 0) AS inEaRate,
+                  /* ===== 적치 PUT ===== */
+                  COALESCE(SUM(CASE WHEN 모자='Y' THEN (CASE WHEN CNFRMQTY>0 THEN 1 END) END), 0) AS putSkuMother,
+                  COALESCE(SUM(CASE WHEN 모자='N' THEN (CASE WHEN CNFRMQTY>0 THEN 1 END) END), 0) AS putSkuChild,
+                  COALESCE(SUM(CNFRMQTY), 0) AS putEa,
+                  COALESCE(SUM(CNFM_AMT), 0) AS putAmt,
+                  COALESCE(CASE WHEN SUM(CASE WHEN EXPCTQTY>0 THEN 1 END)=0 
+                         THEN 0
+                         ELSE ROUND(
+                              SUM(CASE WHEN CNFRMQTY>0 THEN 1 END)
+                              / SUM(CASE WHEN EXPCTQTY>0 THEN 1 END) * 100
+                         ,1) END, 0) AS putSkuRate,
+                  COALESCE(CASE WHEN SUM(EXPCTQTY)=0 
+                         THEN 0
+                         ELSE ROUND(SUM(CNFRMQTY)/SUM(EXPCTQTY)*100,1)
+                    END, 0) AS putEaRate,
+                  COALESCE(MAX(UPDATEDATE), '00000000') AS UPDATEDATE, 
+                  COALESCE(MAX(입고번호), '')  AS IBHDKEY,
+                  COALESCE(MAX(IBDTKEY), '')  AS IBDTKEY
+            FROM BASE
+		WHERE 1=1
+		  GROUP BY 입고번호, 입고유형
+
+		<if test="asrtmasickeyList != null and asrtmasickeyList.size > 0">
+			<foreach collection="asrtmasickeyList" item="item" open=" AND A.ASRTMASICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="asrtdtickeyList != null and asrtdtickeyList.size > 0">
+			<foreach collection="asrtdtickeyList" item="item" open=" AND A.ASRTDTICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtyn)">
+			AND A.ASRTYN = #{asrtyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(closeyn)">
+			AND A.CLOSEYN = #{closeyn}
+		</if>
+	</sql>
+
+	<select id="selectIbOrderCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderCount - 입고현황 - 주문별 현황 - 입고 주문 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrdersql"/>
+		)
+	</select>
+
+	<select id="selectIbOrder" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbHd - 입고현황 - 주문별 현황 - 입고 주문 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrdersql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectIbOrderDetailCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIborderDetailCount - 입고현황 - 주문별 현황 - 입고 주문 상세 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderDetailsql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderDetail" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderDetail - 입고현황 - 주문별 현황 - 입고 주문 상세 조회 */
+		<include refid="selectIbOrderDetailsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+	<sql id="selectIbDetailsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetailsql - 입고현황 - 상세현황 - 입고 상세 현황 조회 SQL */
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+					 , L.CTNM
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , A.IBDTKEY
+					 , B.IBHDTYPECD
+					 , B.IBEXPCTDATE
+					 , CASE WHEN B.IBHDTYPECD = '30' THEN B.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN B.IBHDTYPECD != '30' THEN B.ACNM
+							ELSE '' END AS ACNM
+					 , B.EXTORDERKEY
+					 , C.ACKEY AS IC_ACKEY
+					 , D.ACNM AS IC_ACNM
+					 , COALESCE(E.ASRTMASICKEY, A.ICKEY) AS ASRTMASICKEY
+					 , COALESCE(G.ICNM, C.ICNM) AS ASRTMASICNM
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL THEN A.ICKEY
+							 END AS ASRTDTICKEY
+					 , CASE WHEN E.ASRTDTICKEY IS NOT NULL THEN C.ICNM
+							 END AS ASRTDTICNM
+					 , CASE WHEN EXISTS (
+										SELECT 1
+										FROM TWORK_MST_ASRT
+										WHERE CTKEY = A.CTKEY
+										AND OWKEY = A.OWKEY
+										AND (A.ICKEY = ASRTMASICKEY OR A.ICKEY = ASRTDTICKEY)
+										) THEN 'Y'
+							ELSE 'N' END AS ASRTYN
+					 , CTG3.CTGNM AS LV1_CTGNM
+					 , CTG2.CTGNM AS LV2_CTGNM
+					 , CTG1.CTGNM AS LV3_CTGNM
+					 , A.UOM
+					 , COALESCE(A.INITQTY, 0) AS INITQTY
+					 , CASE WHEN I.ICUNITQTY IS NULL THEN 0
+							WHEN A.INITQTY > 0 THEN ROUND(A.INITQTY / COALESCE(I.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.INITQTY, 0) END AS INITQTY_INN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.INITQTY > 0 THEN ROUND(A.INITQTY / COALESCE(J.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.INITQTY, 0) END AS INITQTY_CTN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.INITQTY > 0 THEN ROUND(A.INITQTY / (COALESCE(J.ICUNITQTY, 1) * CASE COALESCE(J.CPPQTY, 0) WHEN 0 THEN 1 ELSE J.CPPQTY END), 2)
+							ELSE COALESCE(A.INITQTY, 0) END AS INITQTY_PLT
+					 , COALESCE(A.INITQTY * C.SLPRC, 0) AS INITQTY_SLPRC
+					 , COALESCE(A.EXPCTQTY, 0) AS  EXPCTQTY
+					 , CASE WHEN I.ICUNITQTY IS NULL THEN 0
+							WHEN A.EXPCTQTY > 0 THEN ROUND(A.EXPCTQTY / COALESCE(I.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.EXPCTQTY, 0) END AS EXPCTQTY_INN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.EXPCTQTY > 0 THEN ROUND(A.EXPCTQTY / COALESCE(J.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.EXPCTQTY, 0) END AS EXPCTQTY_CTN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.EXPCTQTY > 0 THEN ROUND(A.EXPCTQTY / (COALESCE(J.ICUNITQTY, 1) * CASE COALESCE(J.CPPQTY, 0) WHEN 0 THEN 1 ELSE J.CPPQTY END), 2)
+							ELSE COALESCE(A.EXPCTQTY, 0) END AS EXPCTQTY_PLT
+					 , COALESCE(A.EXPCTQTY * C.SLPRC, 0) AS EXPCTQTY_SLPRC
+					 , COALESCE(A.IBQTY, 0) AS IBQTY
+					 , CASE WHEN I.ICUNITQTY IS NULL THEN 0
+							WHEN A.IBQTY > 0 THEN ROUND(A.IBQTY / COALESCE(I.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.IBQTY, 0) END AS IBQTY_INN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.IBQTY > 0 THEN ROUND(A.IBQTY / COALESCE(J.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.IBQTY, 0) END AS IBQTY_CTN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.IBQTY > 0 THEN ROUND(A.IBQTY / (COALESCE(J.ICUNITQTY, 1) * CASE COALESCE(J.CPPQTY, 0) WHEN 0 THEN 1 ELSE J.CPPQTY END), 2)
+							ELSE COALESCE(A.IBQTY, 0) END AS IBQTY_PLT
+					 , COALESCE(A.IBQTY * C.SLPRC, 0) AS IBQTY_SLPRC
+					 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					 , CASE WHEN I.ICUNITQTY IS NULL THEN 0
+							WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / COALESCE(I.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.CNFRMQTY, 0) END AS CNFRMQTY_INN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / COALESCE(J.ICUNITQTY, 1), 2)
+							ELSE COALESCE(A.CNFRMQTY, 0) END AS CNFRMQTY_CTN
+					 , CASE WHEN J.ICUNITQTY IS NULL THEN 0
+							WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / (COALESCE(J.ICUNITQTY, 1) * CASE COALESCE(J.CPPQTY, 0) WHEN 0 THEN 1 ELSE J.CPPQTY END), 2)
+							ELSE COALESCE(A.CNFRMQTY, 0) END AS CNFRMQTY_PLT
+					 , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS CNFRMQTY_SLPRC
+					 , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y'
+							ELSE 'N' END AS CLOSEYN
+					 , A.IBDTSTATUSCD
+					 , B.ACKEY
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_IC C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.ICKEY = C.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_AC D
+					ON A.CTKEY = D.CTKEY
+				   AND C.ACKEY = D.ACKEY
+				  LEFT OUTER JOIN TWORK_MST_ASRT E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND A.ICKEY = E.ASRTDTICKEY
+				  LEFT OUTER JOIN TWORK_MST_IC G
+					ON A.CTKEY = G.CTKEY
+				   AND A.OWKEY = G.OWKEY
+				   AND E.ASRTMASICKEY = G.ICKEY
+				 INNER JOIN TWORK_MST_CTG CTG1
+					ON A.CTKEY = CTG1.CTKEY
+				   AND A.OWKEY = CTG1.OWKEY
+				   AND C.CTGKEY = CTG1.CTGKEY
+				   AND CTG1.CTGLV = '3'
+				 INNER JOIN TWORK_MST_CTG CTG2
+					ON CTG1.CTKEY = CTG2.CTKEY
+				   AND CTG1.OWKEY = CTG2.OWKEY
+				   AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+				   AND CTG2.CTGLV = '2'
+				 INNER JOIN TWORK_MST_CTG CTG3
+					ON CTG2.CTKEY = CTG3.CTKEY
+				   AND CTG2.OWKEY = CTG3.OWKEY
+				   AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+				   AND CTG3.CTGLV = '1'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+					ON A.CTKEY = I.CTKEY
+				   AND A.OWKEY = I.OWKEY
+				   AND C.ICUNITKEY = I.ICUNITKEY
+				   AND I.ICUNITTYPECD = 'INN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+					ON A.CTKEY = J.CTKEY
+				   AND A.OWKEY = J.OWKEY
+				   AND C.ICUNITKEY = J.ICUNITKEY
+				   AND J.ICUNITTYPECD = 'CTN'
+				 INNER JOIN TWORK_MST_CT L
+					ON A.CTKEY = L.CTKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+			) A
+		WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			AND A.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			AND A.IBHDTYPECD = #{ibhdtypecd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			AND A.IBDTSTATUSCD = #{ibstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(extorderkey)">
+			AND A.EXTORDERKEY = #{extorderkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+			AND A.ACKEY = #{ackey}
+		</if>
+		<if test="asrtmasickeyList != null and asrtmasickeyList.size > 0">
+			<foreach collection="asrtmasickeyList" item="item" open=" AND A.ASRTMASICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		<if test="asrtdtickeyList != null and asrtdtickeyList.size > 0">
+			<foreach collection="asrtdtickeyList" item="item" open=" AND A.ASRTDTICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtyn)">
+			AND A.ASRTYN = #{asrtyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(closeyn)">
+			AND A.CLOSEYN = #{closeyn}
+		</if>
+	</sql>
+
+	<select id="selectIbDetailCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetailCount - 입고현황 - 상세현황 - 입고 상세 현황 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbDetailsql"/>
+		)
+	</select>
+
+	<select id="selectIbDetail" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbDetail - 입고현황 - 상세현황 - 입고 상세 현황 조회 */
+		<include refid="selectIbDetailsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+</mapper>

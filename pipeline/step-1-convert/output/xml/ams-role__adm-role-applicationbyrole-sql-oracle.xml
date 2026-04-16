@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.ApplicationByRoleMapper">
+
+	<select id="selectTAdminMstAp" resultType="camelMap" >
+		/* adm-role-applicationbyrole-sql-oracle.xml - selectTAdminMstAp */
+			SELECT '0' AS CHK
+			       ,APKEY
+			       ,APNM
+			  FROM TADMIN_MST_AP
+			 WHERE ISOFFLINE = 'N'
+	</select>
+	
+	<select id="selectApplicationByRole" resultType="camelMap" >
+		/* adm-role-applicationbyrole-sql-oracle.xml - selectApplicationByRole */
+			SELECT '0' AS CHK
+			       ,B.APKEY
+			       ,A.APNM
+				   ,B.ROKEY
+			  FROM TADMIN_MST_AP A
+			  INNER JOIN TADMIN_MST_ROXAPGT B
+			  		  ON A.APKEY = B.APKEY
+			 WHERE B.ROKEY = #{rokey}
+	</select>
+	
+	<select id="selectTAdminMstRoxapgt" resultType="camelMap" >
+		/* adm-role-applicationbyrole-sql-oracle.xml - selectTAdminMstRoxapgt */
+			SELECT '0' AS CHK
+			       ,APKEY
+			       ,ROKEY
+			  FROM TADMIN_MST_ROXAPGT
+			 WHERE ROKEY = #{rokey}
+	</select>
+
+	<insert id="insertTAdminMstRoxapgt">
+		/* adm-role-applicationbyrole-sql-oracle.xml - insertTAdminMstRoxapgt */
+		INSERT INTO TADMIN_MST_ROXAPGT (
+			 ROKEY
+			 ,APKEY
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,UPDATEURKEY
+			 ,UPDATEDATE
+		) VALUES ( 
+			 #{rokey}
+			 ,#{apkey}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+	
+		)	
+	</insert>
+	
+	<delete id="deleteTAdminMstRoxapgt">
+		/* adm-role-applicationbyrole-sql-oracle.xml - deleteTAdminMstRoxapgt */
+		DELETE 
+		  FROM TADMIN_MST_ROXAPGT
+		 WHERE ROKEY = #{rokey}
+		   AND APKEY = #{apkey}
+	</delete>
+</mapper>	

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObPackingManagerMapper">
+	<!--출고상세 패킹처리-->
+	<update id="updateOutboundDetailByPacking">
+		/* wms-outbound-obPackingManager-sql-oracle.xml - updateOutboundDetailByPacking - 출고상세 패킹처리 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = CASE WHEN EXPCTQTY > (PAKQTY + #{topakqty}) THEN '45' /*45:부분패킹*/
+								WHEN EXPCTQTY = (PAKQTY + #{topakqty}) THEN '50' /*50:패킹완료*/
+								ELSE OBDTSTATUSCD END
+			,PAKQTY = PAKQTY + #{topakqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--출고헤더 패킹처리-->
+	<update id="updateOutboundHeaderByPacking">
+		/* wms-outbound-obPackingManager-sql-oracle.xml - updateOutboundHeaderByPacking - 출고헤더 패킹처리 */
+		UPDATE TWORK_INFO_OB_HD
+		SET PCKGSTNBARCODE = COALESCE(#{pakstnbarcode},PCKGSTNBARCODE)
+			,PCKGURKEY = #{surkey}
+			,PCKGDATE = #{sysdate}
+			,PCKGBOXBARCODE = COALESCE(#{pakboxbarcode},PCKGBOXBARCODE)
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<!-- 박스추가로 신규생성된 출고헤더 정보 조회 -->
+	<select id="selectOutboundHeaderByPreviousOutboundHeaderKey" resultType="camelMap">
+		/* wms-outbound-obPackingManager-sql-oracle.xml - selectOutboundHeaderByPreviousOutboundHeaderKey - 박스추가로 신규생성된 릴리즈헤더 정보 조회 */
+		SELECT
+			OH.CTKEY
+			, OH.OWKEY
+			, OH.WAHDKEY
+			, OH.OBHDKEY
+			, OH.RECOMBOXBARCODE
+			, OH.CLASSIFSPECCD
+			, OH.CBM AS VOL
+			, OH.WEIGHT
+			, COUNT(OD.ICKEY) AS TTICCNT
+			, SUM(OD.EXPCTQTY) AS TTICQTY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.PREOBHDKEY = #{obhdkey}
+		GROUP BY OH.CTKEY
+				, OH.OWKEY
+				, OH.WAHDKEY
+				, OH.OBHDKEY
+				, OH.RECOMBOXBARCODE
+				, OH.CLASSIFSPECCD
+				, OH.CBM
+				, OH.WEIGHT
+	</select>
+
+</mapper>	

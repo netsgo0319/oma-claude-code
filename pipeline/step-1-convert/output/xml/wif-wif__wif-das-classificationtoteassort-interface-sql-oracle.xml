@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.das.classiftoteassort.mapper.ClassifToteAssortMapper">
+	<select id="getDasAssortResultWaveSeq" resultType="camelMap">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - getDasAssortResultWaveSeq - DAS Assort Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getDasAssortResultOrderSeq" resultType="camelMap">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - getDasAssortResultOrderSeq - DAS Assort Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getDasAssortResultItemSeq" resultType="camelMap">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - getDasAssortResultItemSeq - DAS Assort Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertDasAssortResultWave" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultWaveVO">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - insertDasAssortResultWave - DAS Assort Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_PRCSRSLT_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,DASDIV
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{dasDiv}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertDasAssortResultOrder" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultOrderVO">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - insertDasAssortResultOrder - DAS Assort Result 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_PRCSRSLT_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasAssortResultItem" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultItemVO">
+		/* wif-das-classificationtoteassort-interface-sql-oracle.xml - insertDasAssortResultItem - DAS Assort Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_prcsrslt_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_PRCSRSLT_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,WKPRCSDATE1
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{wkPrcsDate1}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+</mapper>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.RenewalDirtiveApiMapper">
+
+	<insert id="insertHistAsrtRenewal">
+		/* oms-master-renewal-directive-sql-oracle.xml - insertHistAsrtRenewal */
+		INSERT INTO TORDER_HIST_ASRT
+		(
+			 OWKEY
+			,ASRTKEY
+			,ASRTREPKEY
+			,ASRTNM
+			,SMLCTG
+			,QTY
+			,ICIMGURL
+			,ICCOLOR
+			,ICDESIGN
+			,ICCHRT
+			,ASRTSTATUS
+			,CMT
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		SELECT OWKEY
+			,ASRTKEY
+			,ASRTREPKEY
+			,ASRTNM
+			,SMLCTG
+			,QTY
+			,ICIMGURL
+			,ICCOLOR
+			,ICDESIGN
+			,ICCHRT
+			,ASRTSTATUS
+			,CMT
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 입력 일시 */
+			,'BATCH'                         	/* 입력자 */
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 수정 일시 */
+			,'BATCH'                         	/* 수정자 */
+			FROM TORDER_MST_ASRT A
+			WHERE A.OWKEY = #{owkey}
+			  AND A.ASRTKEY =#{bfchgickey}
+	</insert>
+
+	<update id="updateMstAsrtRenewal">
+		/* oms-master-renewal-directive-sql-oracle.xml - updateMstAsrtRenewal */
+		UPDATE TORDER_MST_ASRT SET   CMT ='Renewal Directive'
+				,ASRTSTATUS = '02'
+				,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+				,UPDATEURKEY = 'MALI/F'
+		WHERE OWKEY = #{owkey}
+		  AND ASRTKEY =#{bfchgickey}
+	</update>
+
+	<update id="updateMstIcRenewal">
+		/* oms-master-renewal-directive-sql-oracle.xml - updateMstIcRenewal */
+		UPDATE TORDER_MST_IC M
+		SET   CHGBFIC  =#{bfchgickey}
+			 ,CHGAFIC  =#{afchgickey}
+			 ,UPDATEDATE =TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 ,UPDATEURKEY = 'MALI/F'
+		WHERE OWKEY =#{owkey}
+		  AND ICKEY =#{bfchgickey}
+	</update>
+</mapper>
+	

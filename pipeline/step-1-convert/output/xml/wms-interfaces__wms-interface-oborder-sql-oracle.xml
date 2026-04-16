@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfTmsObOrderMapper">
+
+	<select id="selectObAllocateQtyToTms" resultType="camelMap">
+		SELECT A.SHPMNO
+		      ,A.SHPMID
+		      ,B.SHPMDETLID
+		      ,B.ITEMCD
+		      ,C.ALQTY 
+		 FROM TT_SHPM_T A
+		    , TT_SHPM_DETL_T B
+		    , (
+		        SELECT CTKEY, ORDTKEY, ICKEY, SUM(ALQTY)+SUM(PIQTY)+SUM(CFQTY) AS ALQTY
+		         FROM TWORK_INFO_OB_DT 
+		        WHERE CTKEY=#{ctkey}
+		            AND OBHDKEY=#{obhdkey}
+		        GROUP BY CTKEY, ORDTKEY, ICKEY    
+		        ) C    
+		WHERE A.SHPMID=B.SHPMID
+			AND A.SHPMNO=B.SHPMNO
+		    AND A.SHPMNO=#{orhdkey}	
+		    AND A.DIVCD=#{ctkey}
+		    AND A.OWKEY=#{owkey}
+		    AND B.ATTRIBUTE2=C.ORDTKEY  		    
+		    AND B.ITEMCD=C.ICKEY	
+	</select>
+	
+</mapper>	

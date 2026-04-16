@@ -1,0 +1,1348 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.InbOrderMapper">
+	
+	<resultMap id="InboundOrderRefMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="fr_ctname" column="FR_CTNAME"/>
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="ibdtkey" column="IBDTKEY" />
+		<result property="ibhdtype" column="IBHDTYPE" />
+		<result property="ibhdtype_desc" column="IBHDTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="owkey" column="OWKEY" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="comments1" column="COMMENTS1" />
+		<result property="comments2" column="COMMENTS2" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="wkstatus_desc" column="WKSTATUS_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="orhdkey" column="ORHDKEY" />
+		<result property="ordtkey" column="ORDTKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="sbkey" column="SBKEY" />
+		<result property="icutkey" column="ICUTKEY" />		
+		<result property="initqty" column="INITQTY" />
+		<result property="labelqty" column="LABELQTY" />
+		
+		<result property="or_part_qty" column="OR_PART_QTY" />
+		<result property="orqty" column="ORQTY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="avqty" column="AVQTY" />
+		<result property="cfqty" column="CFQTY" />
+		<result property="rjqty" column="RJQTY" />
+		<result property="ibqty" column="IBQTY" />
+		<result property="net_wgt_in" column="NET_WGT_IN"/>
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="to_ulckey" column="TO_ULCKEY" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="attribute1" column="ATTRIBUTE1" />
+		<result property="attribute2" column="ATTRIBUTE2" />
+		<result property="attribute3" column="ATTRIBUTE3" />
+		<result property="attribute4" column="ATTRIBUTE4" />
+		<result property="attribute5" column="ATTRIBUTE5" />
+		<result property="attribute6" column="ATTRIBUTE6" />
+		<result property="attribute7" column="ATTRIBUTE7" />
+		<result property="attribute8" column="ATTRIBUTE8" />
+		<result property="attribute9" column="ATTRIBUTE9" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="udf1" column="UDF1" />
+		<result property="udf2" column="UDF2" />
+		<result property="udf3" column="UDF3" />
+		<result property="udf4" column="UDF4" />
+		<result property="udf5" column="UDF5" />
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="packageorderkey" column="PACKAGEORDERKEY" />
+		<result property="waybillno" column="WAYBILLNO" />
+		<result property="icname" column="ICNAME" />
+		<result property="ibhdtype" column="IBHDTYPE" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		<result property="to_ivatkey" column="TO_IVATKEY" />
+		<result property="wkstatus_create" column="WKSTATUS_CREATE" />
+		<result property="wkstatus_working" column="WKSTATUS_WORKING" />
+		<result property="wkstatus_confirm" column="WKSTATUS_CONFIRM" />
+		<result property="wkstatus_desc" column="WKSTATUS_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="item" column="ITEM" />
+		<result property="pohdkey" column="POHDKEY" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="store_name" column="STORE_NAME" />
+		<result property="store_key" column="STORE_KEY" />
+		<result property="imghdkey" column="IMGHDKEY" />
+		<result property="spec" column="SPEC" />
+		<result property="ponrcd" column="PONRCD" />
+		<result property="ponrcd_desc" column="PONRCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="dckey" column="DCKEY" />
+		<result property="dckey_desc" column="DCKEY_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="ibnrcd" column="IBNRCD" />
+		<result property="ibnrcd_desc" column="IBNRCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="reuseibqty" column="REUSEIBQTY" />
+		<result property="donationibqty" column="DONATIONIBQTY" />
+		<result property="disuseibqty" column="DISUSEIBQTY" />
+		<result property="ajqty" column="AJQTY" />
+		<result property="gapreasoncd" column="GAPREASONCD" />
+		<result property="gapreasoncd_desc" column="GAPREASONCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="shelflife" column="SHELFLIFE" />
+		<result property="temperature" column="TEMPERATURE" />
+		<result property="icgrkey" column="ICGRKEY" />
+		<result property="icgrname" column="ICGRNAME" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="externorderkey2" column="EXTERNORDERKEY2" />
+		<result property="plqty" column="PLQTY" />
+		<result property="shelflifeindicator" column="SHELFLIFEINDICATOR" />
+		<result property="shelflifecodetype" column="SHELFLIFECODETYPE" />
+		<result property="shelflifecodetype_desc" column="SHELFLIFECODETYPE_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="urkey" column="URKEY" />
+		<result property="urkey_desc" column="URKEY_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="chk_gaporder" column="CHK_GAPORDER" />
+		<result property="uom_ea" column="UOM_EA" />
+		<result property="uom_ea_desc" column="UOM_EA_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="icutkey_ea" column="ICUTKEY_EA" />
+		<result property="initqty_ea" column="INITQTY_EA" />
+		<result property="exqty_ea" column="EXQTY_EA" />
+		<result property="cfqty_ea" column="CFQTY_EA" />
+		<result property="ibqty_ea" column="IBQTY_EA" />
+		<result property="rjqty_ea" column="RJQTY_EA" />
+		<result property="pick_lckey" column="PICK_LCKEY" />
+		<result property="chitid" column="CHITID" />
+		<result property="chitid_desc" column="CHITID_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />		
+		<result property="maxcfqty" column="MAXCFQTY" />
+		<result property="fr_ctkey" column="FR_CTKEY" />
+		<result property="bottleprice" column="BOTTLEPRICE" />
+		<result property="bo_qty" column="BO_QTY" />
+		<result property="wgt" column="WGT" />
+		<result property="ta_dtkey" column="TA_DTKEY" />
+		<result property="itemrsntype" column="ITEMRSNTYPE" />
+		<result property="itemrsnmsg" column="ITEMRSNMSG" />
+		<result property="itemrsntype_desc" column="ITEMRSNTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="itemrsnmsg_desc" column="ITEMRSNMSG_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="instageqty" column="INSTAGEQTY" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" />
+		<result property="owname" column="OWNAME" />
+		<result property="ilbhskey" column="ILBHSKEY" />
+		<result property="wgt_cf_yn" column="WGT_CF_YN" />
+		<result property="sn_weight" column="SN_WEIGHT" />
+		<result property="sn_uom" column="SN_UOM" />
+		<result property="sn_ulckey" column="SN_ULCKEY" />
+		<result property="serial_no" column="SERIAL_NO" />
+		<result property="task_qty" column="TASK_QTY" />
+		<result property="sn" column="SN" />
+		<result property="inserturkey_name" column="INSERTURKEY_NAME" />
+		<result property="updateurkey_name" column="UPDATEURKEY_NAME" />
+		<result property="sum_orqty" column="SUM_ORQTY" />
+		<result property="sum_cfqty" column="SUM_CFQTY" />
+		<result property="wkstatus_kor" column="WKSTATUS_KOR" />
+		<result property="loggrpcd_kor" column="LOGGRPCD_KOR" />
+		<result property="net_wgt"		column="NET_WGT" />
+		<result property="sum_net_wgt"  column="SUM_NET_WGT" />
+	</resultMap>
+
+	<resultMap id="InboundOrderMap" type="java.util.HashMap" extends="InboundOrderRefMap" >
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibclosingdate" column="IBCLOSINGDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibhddate" column="IBHDDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ibexpectdate" column="IBEXPECTDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ribconfirmdate" column="RIBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="rexpiredate" column="REXPIREDATE" typeHandler="GmtDateTimeTypeHandler"/>			
+	</resultMap>
+	
+	<resultMap id="selectExcelListMap" type="java.util.HashMap" extends="InboundOrderRefMap" >
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>	
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="ibclosingdate" column="IBCLOSINGDATE" typeHandler="GmtDateTimeFormatTypeHandler"/>
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="ibhddate" column="IBHDDATE" typeHandler="GmtDateFormatTypeHandler" />
+		<result property="ibexpectdate" column="IBEXPECTDATE" typeHandler="GmtDateFormatTypeHandler" />
+		<result property="ribconfirmdate" column="RIBCONFIRMDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="rexpiredate" column="REXPIREDATE" typeHandler="GmtDateFormatTypeHandler"/>
+	</resultMap>
+	
+	<resultMap id="InboundOrderLabelMap" type="java.util.HashMap" extends="InboundOrderRefMap" >
+		<result property="owname" column="OWNAME" typeHandler="GmtDateTimeTypeHandler" />
+	</resultMap>
+
+	<!-- WMS > 입고관리 > 입고지시(일반) HD 쿼리 수정 2020.02.04 kej -->
+	<sql id="inboundOrderHdRefSql">
+		SELECT CASE X.WKSTATUS_A WHEN 0 THEN '작업생성' WHEN 50 THEN '입고중/부분입고' WHEN 90 THEN '입고완료' WHEN 91 THEN '입고마감' WHEN 99 THEN '작업취소' END WKSTATUS , X.*, 
+			   (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = X.INSERTURKEY) AS INSERTURKEY_NAME,
+			   (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = X.UPDATEURKEY) AS UPDATEURKEY_NAME
+		  FROM (SELECT CASE WHEN AVG(B.WKSTATUS)  = 0 THEN 0  
+			                WHEN AVG(B.WKSTATUS) <![CDATA[>]]> 0 AND AVG(B.WKSTATUS) <![CDATA[<]]> 90   THEN 50
+			                WHEN AVG(B.WKSTATUS) = 90   THEN 90
+			                WHEN AVG(B.WKSTATUS) = 91   THEN 91 
+			                WHEN AVG(B.WKSTATUS) =  99  THEN 99 END WKSTATUS_A , 
+			           A.CTKEY, A.IBHDTYPE , A.OWKEY , A.EXTERNORDERKEY , A.IBEXPECTDATE , (SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY = A.OWKEY) AS OWNAME, 
+				       MAX(A.INSERTDATE) AS INSERTDATE, MAX(A.INSERTURKEY) INSERTURKEY,MAX(A.UPDATEDATE) AS UPDATEDATE, MAX(A.UPDATEURKEY) UPDATEURKEY 
+				  FROM TWORK_INFO_IB_HD A , TWORK_INFO_IB_DT B   
+		         WHERE A.IBHDKEY = B.IBHDKEY
+			       AND B.WKSTATUS != '99' 
+			       AND B.ATTRIBUTE2 = '1'
+			       AND A.IBHDTYPE IN ('10', '50')
+		         GROUP BY A.CTKEY, A.IBHDTYPE , A.OWKEY , A.EXTERNORDERKEY, A.IBEXPECTDATE) X
+		 WHERE CTKEY = '100'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND  #{SEARCH_CONDITION}
+		</if>
+	             
+	</sql>
+	
+	<!-- WMS > 입고관리 > 입고지시(일반) 엑셀 다운 쿼리 추가 2020.02.04 kej -->
+	<sql id="selectHeaderExcelSql">	
+				SELECT (SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'IB_WKSTATUS' AND LAKEY = 'KOR' AND CTKEY = A.CTKEY  AND CTCD_DTKEY = A.WKSTATUS) 
+				       AS WKSTATUS_KOR , AAA.WKSTATUS_A , A.WKSTATUS , B.IBHDTYPE ,
+				       A.CTKEY , A.OWKEY ,B.EXTERNORDERKEY , A.EXTERNORDERLINENUM , TO_NUMBER(COALESCE(C.SN, 1)) AS SN , A.ICKEY , D.ICNAME , A.EXQTY , TO_NUMBER(COALESCE(C.CFQTY, 0)) CFQTY , 
+				       A.LOGGRPCD , D.SPEC , D.UOM , C.IBCONFIRMDATE , F.PRODUCTLOT , F.PRODUCTDATE , F.EXPIREDATE , B.IBEXPECTDATE, F.NET_WGT,
+				       (SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY = B.OWKEY) AS OWNAME , D.WGT_CF_YN, C.TO_IVATKEY,
+				       C.INSERTDATE , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = C.INSERTURKEY) AS INSERTURKEY_NAME ,
+				       C.UPDATEDATE , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = C.UPDATEURKEY) AS UPDATEURKEY_NAME ,
+					   (SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'LOGGRPCD' AND CTKEY = '100' AND LAKEY = 'KOR' AND CTCD_DTKEY = A.LOGGRPCD) AS LOGGRPCD_KOR
+				  FROM (SELECT  AA.*                                                  
+						  FROM (SELECT CASE WHEN AVG(BB.WKSTATUS)  = 0 THEN 0  
+						                    WHEN AVG(BB.WKSTATUS) <![CDATA[>]]> 0 AND AVG(BB.WKSTATUS) <![CDATA[<]]> 90   THEN 50
+						                    WHEN AVG(BB.WKSTATUS) <![CDATA[>=]]> 90 AND AVG(BB.WKSTATUS) <![CDATA[<]]> 91   THEN 90
+						                    WHEN AVG(BB.WKSTATUS) <![CDATA[>=]]> 91 AND AVG(BB.WKSTATUS) <![CDATA[<]]> 99  THEN 91 
+						                    WHEN AVG(BB.WKSTATUS) =  99  THEN 99 END WKSTATUS_A , 
+						               BA.CTKEY, BA.OWKEY , BA.EXTERNORDERKEY 
+						          FROM TWORK_INFO_IB_HD BA , TWORK_INFO_IB_DT BB   
+						         WHERE BA.IBHDKEY = BB.IBHDKEY
+						           and BB.WKSTATUS != '99' 
+						         GROUP BY BA.CTKEY, BA.IBHDTYPE , BA.OWKEY , BA.EXTERNORDERKEY, BA.IBEXPECTDATE ) AA ) AAA,   
+						TWORK_INFO_IB_DT A , TWORK_INFO_IB_HD B ,TWORK_INFO_IBCF_DT C  , TWORK_MST_IC D , TWORK_INFO_IVAT F
+				 WHERE AAA.CTKEY = A.CTKEY
+				   AND AAA.EXTERNORDERKEY  = B.EXTERNORDERKEY
+				   AND A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				   AND A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.ICKEY = D.ICKEY
+				   AND A.CTKEY = C.CTKEY(+)
+				   AND A.WKSTATUS != '99' 
+				   AND A.ATTRIBUTE2 = '1'
+				   AND B.EXTERNORDERKEY = C.EXTERNORDERKEY(+)
+				   AND A.EXTERNORDERLINENUM = C.EXTERNORDERLINENUM(+)
+				   AND A.CTKEY = F.CTKEY(+)
+				   AND A.ICKEY = F.ICKEY(+)
+				   AND C.TO_IVATKEY = F.IVATKEY(+)
+				   AND B.IBHDTYPE IN ('10', '50')
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   AND  #{SEARCH_CONDITION}
+			  </if>
+	</sql>
+	
+	
+	<!-- 기존 조회 쿼리임. <sql id="inboundOrderHdRefSql"> -->
+	<sql id="checkIbConfirmSlipSql">
+		SELECT A.*
+			 , (SELECT MAX(INSERTURKEY) FROM TWORK_INFO_IB_HD B WHERE A.CTKEY = B.CTKEY AND A.INSERTDATE = B.INSERTDATE) AS INSERTURKEY
+			 , (SELECT MAX(UPDATEURKEY) FROM TWORK_INFO_IB_HD B WHERE A.CTKEY = B.CTKEY AND A.UPDATEDATE = B.UPDATEDATE) AS UPDATEURKEY
+			 , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = (SELECT MAX(INSERTURKEY) FROM TWORK_INFO_IB_HD B WHERE A.CTKEY = B.CTKEY AND A.INSERTDATE = B.INSERTDATE)) AS INSERTURKEY_NAME
+			 , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = (SELECT MAX(UPDATEURKEY) FROM TWORK_INFO_IB_HD B WHERE A.CTKEY = B.CTKEY AND A.UPDATEDATE = B.UPDATEDATE)) AS UPDATEURKEY_NAME
+			FROM 
+			(SELECT  A.IBHDTYPE
+							,A.CTKEY ||';'|| 'IBHDTYPE' ||';'|| A.IBHDTYPE AS IBHDTYPE_DESC
+							,A.OWKEY
+							,A.ICGRKEY
+							,D.ICGRNAME
+							,A.ACKEY
+							,A.ACNAME
+							,MIN(A.IBCONFIRMDATE) AS IBCONFIRMDATE
+							,MIN(A.IBCLOSINGDATE) AS IBCLOSINGDATE
+							,A.COMMENTS1
+							,A.COMMENTS2
+							,MAX(A.WKSTATUS) AS WKSTATUS
+							,A.CTKEY ||';'|| 'IB_WKSTATUS' ||';'|| MAX(A.WKSTATUS) AS WKSTATUS_DESC
+							,A.UDF1
+							,A.UDF2
+							,A.UDF3
+							,MAX(A.INSERTDATE) AS INSERTDATE
+							,MAX(A.UPDATEDATE) AS UPDATEDATE
+							,A.IBHDDATE
+							,A.CTKEY
+							,A.IBEXPECTDATE
+							,A.PACKAGEORDERKEY
+							,A.WAYBILLNO
+							,A.POHDKEY
+							,A.STORE_KEY 
+							,B.STORE_NAME
+							,A.TEMPERATURE
+							,A.PLQTY
+							,A.EXTERNORDERKEY
+							,A.EXTERNORDERKEY2
+						    ,E.URKEY
+						    ,E.URKEY AS URKEY_DESC
+						    ,A.FR_CTKEY
+						    ,F.CTNAME AS FR_CTNAME
+						    ,G.OWNAME
+					  FROM 	TWORK_INFO_IB_HD A 
+							,TWORK_MST_STORE B 
+							,TWORK_MST_AC C
+							,TWORK_MST_ICGR D
+							,TWORK_MST_ACXUR E
+							,TWORK_MST_CT F 
+							,TWORK_MST_OW G
+					 WHERE 
+						    A.CTKEY = '100'
+					   AND  A.CTKEY = B.CTKEY(+)
+					   AND  A.STORE_KEY = B.STORE_KEY(+)
+					   AND  A.DCKEY = B.DCKEY(+)
+					   AND  A.CTKEY = C.CTKEY(+)
+					   AND  A.ACKEY = C.ACKEY(+)
+					   AND  A.OWKEY = C.OWKEY(+)
+					   AND  A.CTKEY = D.CTKEY(+)
+					   AND  A.OWKEY = D.OWKEY(+)
+					   AND  A.ICGRKEY = D.ICGRKEY(+)
+					   AND  A.CTKEY = E.CTKEY(+)
+					   AND  A.ACKEY = E.ACKEY(+)
+					   AND  A.LOGGRPCD = E.LOGGRPCD(+)		
+					   AND  A.OWKEY = E.OWKEY(+)
+					   AND  A.FR_CTKEY = F.CTKEY(+)
+					   AND  A.OWKEY = G.OWKEY
+					   AND  A.IBHDTYPE = '10'
+			           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND  #{SEARCH_CONDITION}
+					   </if>
+					   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+					   AND  A.IBHDKEY = #{ibhdkey}
+					   </if>
+					   <if test="ibhdkeyList != null and ibhdkeyList.size() > 0" >
+					   AND  A.IBHDKEY IN 
+						   <foreach item="ibhdkeyList" index="index" collection="ibhdkeyList" open="(" separator="," close=")">
+							#{ibhdkeyList}
+						   </foreach>
+					   </if>	
+			       GROUP BY 
+							A.IBHDTYPE
+							,A.OWKEY
+							,A.ICGRKEY
+							,D.ICGRNAME
+							,A.ACKEY
+							,A.ACNAME
+			--				,A.IBCONFIRMDATE
+			--				,A.IBCLOSINGDATE
+							,A.COMMENTS1
+							,A.COMMENTS2
+							,A.UDF1
+							,A.UDF2
+							,A.UDF3
+							,A.IBHDDATE
+							,A.CTKEY
+							,A.IBEXPECTDATE
+							,A.PACKAGEORDERKEY
+							,A.WAYBILLNO
+							,A.POHDKEY
+							,A.STORE_KEY 
+							,B.STORE_NAME
+							,A.TEMPERATURE
+							,A.PLQTY
+							,A.EXTERNORDERKEY
+							,A.EXTERNORDERKEY2
+						    ,E.URKEY
+						    ,E.URKEY
+						    ,A.FR_CTKEY
+						    ,F.CTNAME
+						    ,G.OWNAME
+			) A
+	 </sql>
+	
+	<sql id="inboundOrderDtRefSql">
+		SELECT  A.CTKEY
+				,A.IBHDKEY
+				,A.IBDTKEY
+				,A.OWKEY				
+				,A.ICKEY
+				,A.SBKEY
+				,A.ICUTKEY
+				,A.UOM
+				,A.CTKEY || ';' || 'ICUTTYPE' ||';'|| A.UOM AS UOM_DESC
+				,'EA' AS UOM_EA
+				,A.CTKEY || ';' || 'ICUTTYPE' ||';'|| 'EA' AS UOM_EA_DESC
+				,A.INITQTY AS INITQTY
+				,A.EXQTY AS ORQTY
+				,(A.EXQTY - A.CFQTY) AS OR_PART_QTY
+				,A.EXQTY AS EXQTY
+				,A.CFQTY AS CFQTY
+				,NVL(
+                    (
+                        SELECT COUNT(1) 
+                        FROM TWORK_INFO_ILBHS IL
+                            ,TWORK_INFO_IBSN_SCAN SC
+                        WHERE IL.CTKEY    = A.CTKEY
+                          AND IL.IBHDKEY  = A.IBHDKEY
+                          AND IL.IBDTKEY  = A.IBDTKEY
+                          AND IL.ILBHSKEY = A.ILBHSKEY
+                          AND IL.DEL_YN   = 'N'
+                          AND IL.ULCKEY   = SC.ULCKEY 
+                          AND IL.CRTYPE   = '2'
+                    ),A.CFQTY     <!-- 스캔한 ULCKEY에 BOXNUM 값들이 있다면 스캔된 값들이 확정되야 하기 때문에 카운트로 뽑아옴. 20190520YSS -->
+                )AS IBQTY
+                ,NVL(
+                	(SELECT SUM(CFQTY)
+                	FROM TWORK_INFO_IBCF_DT CF
+                	WHERE CF.CTKEY              = A.CTKEY
+                	  AND CF.EXTERNORDERKEY     = A.EXTERNORDERKEY
+                	  AND CF.EXTERNORDERLINENUM = A.EXTERNORDERLINENUM
+                    ), 0					   <!-- 분할입고때 토탈 수량을 보여주기 위해 추가 20190806YSS -->
+                ) AS TASK_QTY
+				,A.RJQTY
+				,G.ICUTKEY AS ICUTKEY_EA 
+				,A.INITQTY / G.ICUTQTY AS INITQTY_EA
+				,A.EXQTY / G.ICUTQTY AS EXQTY_EA
+				,A.CFQTY / G.ICUTQTY AS CFQTY_EA
+				,A.CFQTY / G.ICUTQTY AS IBQTY_EA
+				,A.RJQTY / G.ICUTQTY AS RJQTY_EA
+				,A.TO_ULCKEY
+				,A.COSTPRICE
+				,A.WKSTATUS
+				,A.CTKEY || ';' || 'IB_WKSTATUS' ||';'|| A.WKSTATUS AS WKSTATUS_DESC
+				,'' AS PRODUCTDATE
+				, CASE 
+					WHEN A.WKSTATUS = '00' THEN A.EXPIREDATE
+					ELSE ''
+				  END AS EXPIREDATE
+				,A.ATTRIBUTE1
+				,A.ATTRIBUTE2
+				,A.ATTRIBUTE3
+				,A.ATTRIBUTE4
+				,A.ATTRIBUTE5  
+				,A.ATTRIBUTE6  
+				,A.ATTRIBUTE7
+				,A.ATTRIBUTE8 
+				,A.ATTRIBUTE9  
+				,'' AS PRODUCTLOT
+				,'' AS NET_WGT_IN
+				,A.UDF1
+				,A.UDF2
+				,A.UDF3
+				,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.UPDATEURKEY
+				,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = A.UPDATEURKEY) AS UPDATEURKEY_NAME
+			    ,(SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = A.INSERTURKEY) AS INSERTURKEY_NAME
+				,A.ORHDKEY
+				,A.ORDTKEY
+				,C.ICUTQTY
+				,D.ICNAME
+				,E.IBHDTYPE
+				,A.TO_LCKEY||'_'|| (SELECT ZNKEY FROM TWORK_MST_LC LC, TWORK_MST_AR AR WHERE LC.CTKEY = AR.CTKEY AND LC.ARKEY = AR.ARKEY AND AR.ARKEY LIKE 'OTHER_I%' AND LC.CTKEY = A.CTKEY AND AR.LOGGRPCD = CASE WHEN A.LOGGRPCD = '4' THEN '3' ELSE A.LOGGRPCD END  GROUP BY ZNKEY) AS TO_LCKEY
+				,A.EXTERNORDERKEY 
+				,A.EXTERNORDERLINENUM
+				,A.IMGHDKEY
+				,A.IBNRCD
+				,A.UDF5
+				,A.CTKEY || ';' || 'PM012' ||';'|| A.IBNRCD AS IBNRCD_DESC
+				,A.PONRCD
+				,A.CTKEY || ';' || 'PONRCD' ||';'|| A.PONRCD AS PONRCD_DESC
+				,D.SPEC
+				,A.CTKEY || ';' || '23' ||';'|| A.GAPREASONCD AS GAPREASONCD_DESC
+				,D.SHELFLIFE
+				,D.SHELFLIFEINDICATOR
+				,D.SHELFLIFECODETYPE
+				,A.CTKEY || ';' || 'SHELFLIFECODETYPE' ||';'|| D.SHELFLIFECODETYPE AS SHELFLIFECODETYPE_DESC
+				,F.RIBCONFIRMDATE
+				,F.REXPIREDATE
+				,SUBSTR(COALESCE(H.LCKEY, '9999999'),0,2) || SUBSTR(COALESCE(H.LCKEY, '9999999'),5) AS PICK_LCKEY
+                ,A.CHITID
+       		    ,A.CTKEY || ';' || '70' || ';' || A.CHITID AS CHITID_DESC    
+       		    ,I.ACKEY
+       		    ,I.ACNAME           
+       		    ,CASE WHEN A.EXQTY > 0 THEN A.EXQTY * (#{overpercent} / 100) ELSE 1 * (#{overpercent} / 100) END AS MAXCFQTY
+       		    ,D.BOTTLEPRICE AS BOTTLEPRICE
+       		    ,A.BO_QTY
+       		    ,A.LOGGRPCD
+       		    ,A.CTKEY || ';' || 'LOGGRPCD' ||';'|| A.LOGGRPCD AS LOGGRPCD_DESC
+       		    ,A.ICGRKEY
+				, CASE 
+					WHEN A.WKSTATUS != '00' THEN A.WGT
+					ELSE A.INITQTY * D.WEIGHT
+				END AS WGT
+       		    ,A.ITEMRSNTYPE
+       		    ,A.CTKEY || ';' || 'RETURNREASON' ||';'|| A.ITEMRSNTYPE AS ITEMRSNTYPE_DESC
+       		    ,A.ITEMRSNMSG 
+       		    ,A.CTKEY || ';' || 'RETURNREASONTYPE' ||';'|| A.ITEMRSNMSG AS ITEMRSNMSG_DESC
+       		    ,'' AS IBCONFIRMDATE
+       		    ,A.ILBHSKEY
+       		    ,D.WGT_CF_YN
+       		    ,(SELECT OW.OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+		  FROM 	TWORK_INFO_IB_DT A
+				,TWORK_MST_ICUTXTYPE C
+				,TWORK_MST_IC D
+				,TWORK_INFO_IB_HD E 
+				,(
+				SELECT 	A.CTKEY
+				        ,A.OWKEY
+				        ,A.ICKEY
+				        ,A.IBCONFIRMDATE AS RIBCONFIRMDATE
+				        ,CASE WHEN A.SHELFLIFECODETYPE = 'PRODUCTDATE_NOTUSE' 
+					        THEN MAX(B.PRODUCTDATE)
+					        ELSE MAX(B.EXPIREDATE)
+				        END AS REXPIREDATE
+				  FROM  (
+					SELECT 	A.CTKEY
+							,A.OWKEY
+							,A.ICKEY
+							,'E' SHELFLIFECODETYPE
+							,MAX (B.IBCONFIRMDATE) AS IBCONFIRMDATE
+					  FROM 	TWORK_MST_IC A
+							,TWORK_INFO_IVAT B
+					 WHERE     
+							A.CTKEY = B.CTKEY
+					   AND 	A.OWKEY = B.OWKEY
+					   AND 	A.ICKEY = B.ICKEY
+					   AND 	A.CTKEY = #{ctkey}
+					 GROUP BY 
+						A.CTKEY
+				        ,A.OWKEY
+				        ,A.ICKEY
+				        ,A.SHELFLIFECODETYPE
+						) A
+						,TWORK_INFO_IVAT B
+				 WHERE 
+						A.CTKEY = B.CTKEY
+				   AND 	A.OWKEY = B.OWKEY
+				   AND 	A.ICKEY = B.ICKEY
+				   AND 	A.IBCONFIRMDATE = B.IBCONFIRMDATE
+				 GROUP BY 
+					A.CTKEY
+					,A.OWKEY
+					,A.ICKEY
+					,A.SHELFLIFECODETYPE
+					,A.IBCONFIRMDATE			
+				) F
+			  ,TWORK_MST_ICUTXTYPE G 
+			  ,TWORK_MST_LCXIC H
+			  ,TWORK_MST_AC I			  
+		 WHERE                                
+			   A.OWKEY = C.OWKEY(+)		               
+		   AND A.CTKEY = C.CTKEY(+)
+		   AND A.ICUTKEY = C.ICUTKEY(+)
+		   AND A.UOM = C.ICUTTYPE(+)
+		   AND A.OWKEY = G.OWKEY(+)		               
+		   AND A.CTKEY = G.CTKEY(+)
+		   AND A.ICUTKEY = G.ICUTKEY(+)
+		   AND 'EA' = G.ICUTTYPE(+)
+		   AND A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND A.ICKEY= D.ICKEY
+		   AND A.CTKEY = E.CTKEY
+		   AND A.IBHDKEY = E.IBHDKEY
+		   AND D.CTKEY = F.CTKEY(+)
+	       AND D.OWKEY = F.OWKEY(+)
+	       AND D.ICKEY = F.ICKEY(+)
+		   AND A.CTKEY = H.CTKEY(+)
+		   AND A.OWKEY = H.OWKEY(+)
+		   AND A.ICKEY = H.ICKEY(+) 
+		   AND A.CTKEY = I.CTKEY(+)
+		   AND A.ACKEY = I.ACKEY(+)
+		   AND A.OWKEY = I.OWKEY(+) 
+		   AND A.CTKEY = #{ctkey}
+		   AND A.EXTERNORDERKEY = #{externorderkey}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   AND A.LOGGRPCD = #{loggrpcd}
+		   </if>
+	</sql>
+		
+	<sql id="inboundOrderDtCfRefSql">
+		SELECT C.CTKEY
+			 , B.EXTERNORDERKEY
+			 , B.EXTERNORDERLINENUM
+			 , B.SN
+			 , B.CFQTY
+			 , B.IBNRCD
+			 , C.IBCONFIRMDATE 
+			 , C.PRODUCTLOT
+			 , B.NET_WGT
+			 , C.ATTRIBUTE3
+			 , C.EXPIREDATE
+			 , C.PRODUCTDATE
+			 , A.ICKEY
+			 , D.ICNAME
+			 , D.SPEC 
+			 , A.UOM
+			 , A.CTKEY || ';' || 'ICUTTYPE' ||';'|| A.UOM AS UOM_DESC
+			 , B.TO_IVATKEY			 
+			 , A.IBHDKEY
+			 , A.IBDTKEY			 
+			 , A.LOGGRPCD
+			 , A.OWKEY
+			 , A.TO_LCKEY
+			 , A.TO_ULCKEY
+			 , A.ICUTKEY
+			 , B.ILBHSKEY
+			 , B.INSERTDATE
+			 , B.INSERTURKEY
+			 , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = B.INSERTURKEY) AS INSERTURKEY_NAME
+			 , B.UPDATEDATE
+			 , B.UPDATEURKEY
+			 , (SELECT URNM FROM TADMIN_MST_UR WHERE URKEY = B.UPDATEURKEY) AS UPDATEURKEY_NAME
+  		FROM  TWORK_INFO_IB_DT A
+		    , TWORK_INFO_IBCF_DT B
+		    , TWORK_INFO_IVAT C
+		    , TWORK_MST_IC D
+		WHERE A.CTKEY = B.CTKEY
+		  AND A.EXTERNORDERKEY = B.EXTERNORDERKEY 
+		  AND A.EXTERNORDERLINENUM = B.EXTERNORDERLINENUM
+		  AND B.CTKEY = C.CTKEY
+		  AND B.TO_IVATKEY = C.IVATKEY
+		  AND A.CTKEY = D.CTKEY
+		  AND A.ICKEY = D.ICKEY
+		  AND A.OWKEY = D.OWKEY
+		  AND A.CTKEY = #{ctkey}
+		  AND A.EXTERNORDERKEY  = #{externorderkey}
+		  AND A.EXTERNORDERLINENUM  = #{externorderlinenum}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		  AND A.LOGGRPCD = #{loggrpcd}
+		  </if>
+		 ORDER BY B.SN
+	</sql>	
+	
+	<sql id="inboundLabelSql">
+		SELECT 	A.IBHDKEY 
+		        ,A.IBDTKEY 
+		        ,A.OWKEY 
+		        ,G.OWNAME
+		        ,A.ICKEY 
+		        ,A.ICUTKEY 
+		        ,1 AS LABELQTY
+		        ,I.TTQTY / E.ICUTQTY AS CFQTY
+		        ,A.UOM
+                ,A.CTKEY || ';' || 'ICUTTYPE' ||';'|| A.UOM AS UOM_DESC
+		        ,A.WKSTATUS 
+                ,A.CTKEY || ';' || 'TA_WKSTATUS' ||';'|| A.WKSTATUS AS WKSTATUS_DESC
+		        ,A.TO_LCKEY 
+		        ,A.TO_ULCKEY 
+		        ,A.TO_IVATKEY 
+		        ,B.PRODUCTDATE 
+		        ,B.EXPIREDATE 
+		        ,B.IBCONFIRMDATE
+		        ,C.COSTPRICE
+		        ,C.IBNRCD
+		        ,A.CTKEY || ';' || 'PM012' ||';'|| C.IBNRCD AS IBNRCD_DESC
+		        ,F.ICNAME
+		        ,F.SPEC
+		        ,A.INSERTDATE 
+		        ,A.INSERTURKEY 
+		        ,A.UPDATEDATE 
+		        ,A.UPDATEURKEY 
+		        ,H.IBEXPECTDATE
+		        ,C.EXQTY - C.CFQTY AS RJQTY
+		        ,A.CTKEY
+		        ,B.PRODUCTLOT
+		        ,(SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTKEY = I.CTKEY AND CTCD_HDKEY = 'LBNAME' AND LAKEY = 'KOR' AND CTCD_DTKEY = I.CTKEY) LBNM
+		  FROM TWORK_INFO_TA_DT A 
+		      ,TWORK_INFO_IVAT B 
+		      ,TWORK_INFO_IB_DT C
+              ,TWORK_MST_ICUT D
+              ,TWORK_MST_ICUTXTYPE E
+              ,TWORK_MST_IC F
+              ,TWORK_MST_OW G
+              ,TWORK_INFO_IB_HD H
+              ,TWORK_INFO_IVATXLCXULC I
+		 WHERE
+               A.CTKEY = B.CTKEY
+           AND A.OWKEY = H.OWKEY
+           AND A.CTKEY = H.CTKEY
+           AND A.IBHDKEY = H.IBHDKEY
+           AND A.OWKEY = B.OWKEY
+           AND A.CTKEY = C.CTKEY
+           AND A.OWKEY = C.OWKEY
+           AND A.IBHDKEY = C.IBHDKEY 
+           AND A.IBDTKEY = C.IBDTKEY
+           AND A.TO_IVATKEY = B.IVATKEY
+           AND A.TA_DTTYPE = '60'
+           AND A.CTKEY = D.CTKEY(+)
+           AND A.OWKEY = D.OWKEY(+)
+           AND A.OWKEY = E.OWKEY(+)  
+           AND A.ICUTKEY = D.ICUTKEY(+)
+           AND A.CTKEY = E.CTKEY(+)
+           AND A.ICUTKEY = E.ICUTKEY(+)
+           AND A.UOM = E.ICUTTYPE(+)
+           AND A.OWKEY = G.OWKEY(+)   
+           AND A.CTKEY = F.CTKEY
+           AND A.OWKEY = F.OWKEY
+           AND A.ICKEY = F.ICKEY
+           AND A.CTKEY = #{ctkey}
+           AND A.CTKEY = I.CTKEY
+		   AND A.OWKEY = I.OWKEY
+		   AND A.ICKEY = I.ICKEY
+		   AND A.TO_IVATKEY = I.IVATKEY
+		   AND I.ULCKEY = 'NA'
+ 	 	   <if test="ibhdkey != null">
+			AND A.IBHDKEY = #{ibhdkey}
+		   </if>
+		   <if test="ibdtkey != null">
+			AND A.IBDTKEY = #{ibdtkey}
+		   </if>
+		   	<if test="ibtadtkeyList != null and ibtadtkeyList.size() > 0" >
+		   	AND  A.IBDTKEY IN  
+				<foreach item="ibtadtkeyList" index="index" collection="ibtadtkeyList" open="(" separator="," close=")">
+					#{ibtadtkeyList}
+				</foreach>
+			</if>	
+			ORDER BY B.IVATKEY , B.PRODUCTLOT ,CFQTY DESC
+	</sql>
+	
+		<sql id="inboundLabelAutoSql">
+		SELECT 	A.IBHDKEY 
+		        ,A.IBDTKEY 
+		        ,A.OWKEY 
+		        ,G.OWNAME
+		        ,A.ICKEY 
+		        ,A.ICUTKEY 
+		        ,1 AS LABELQTY
+		        ,I.TTQTY / E.ICUTQTY AS CFQTY
+		        ,A.UOM
+                ,A.CTKEY || ';' || 'ICUTTYPE' ||';'|| A.UOM AS UOM_DESC
+		        ,A.WKSTATUS 
+                ,A.CTKEY || ';' || 'TA_WKSTATUS' ||';'|| A.WKSTATUS AS WKSTATUS_DESC
+		        ,A.TO_LCKEY 
+		        ,A.TO_ULCKEY 
+		        ,A.TO_IVATKEY 
+		        ,B.PRODUCTDATE 
+		        ,B.EXPIREDATE 
+		        ,B.IBCONFIRMDATE
+		        ,C.COSTPRICE
+		        ,C.IBNRCD
+		        ,C.ATTRIBUTE2
+		        ,A.CTKEY || ';' || 'PM012' ||';'|| C.IBNRCD AS IBNRCD_DESC
+		        ,F.ICNAME
+		        ,F.SPEC
+		        ,A.INSERTDATE 
+		        ,A.INSERTURKEY 
+		        ,A.UPDATEDATE 
+		        ,A.UPDATEURKEY 
+		        ,H.IBEXPECTDATE
+		        ,C.EXQTY - C.CFQTY AS RJQTY
+		        ,A.CTKEY
+		        ,B.PRODUCTLOT
+		  FROM TWORK_INFO_TA_DT A 
+		      ,TWORK_INFO_IVAT B 
+		      ,TWORK_INFO_IB_DT C
+              ,TWORK_MST_ICUT D
+              ,TWORK_MST_ICUTXTYPE E
+              ,TWORK_MST_IC F
+              ,TWORK_MST_OW G
+              ,TWORK_INFO_IB_HD H
+              ,TWORK_INFO_IVATXLCXULC I
+		 WHERE
+               A.CTKEY = B.CTKEY
+           AND A.OWKEY = H.OWKEY
+           AND A.CTKEY = H.CTKEY
+           AND A.IBHDKEY = H.IBHDKEY
+           AND A.OWKEY = B.OWKEY
+           AND A.CTKEY = C.CTKEY
+           AND A.OWKEY = C.OWKEY
+           AND A.IBHDKEY = C.IBHDKEY 
+           AND A.IBDTKEY = C.IBDTKEY
+           AND A.TO_IVATKEY = B.IVATKEY
+           AND A.TA_DTTYPE = '60'
+           AND A.CTKEY = D.CTKEY(+)
+           AND A.OWKEY = D.OWKEY(+)
+           AND A.OWKEY = E.OWKEY(+)  
+           AND A.ICUTKEY = D.ICUTKEY(+)
+           AND A.CTKEY = E.CTKEY(+)
+           AND A.ICUTKEY = E.ICUTKEY(+)
+           AND A.UOM = E.ICUTTYPE(+)
+           AND A.OWKEY = G.OWKEY(+)   
+           AND A.CTKEY = F.CTKEY
+           AND A.OWKEY = F.OWKEY
+           AND A.ICKEY = F.ICKEY
+           AND A.CTKEY = #{ctkey}
+           AND A.CTKEY = I.CTKEY
+		   AND A.OWKEY = I.OWKEY
+		   AND A.ICKEY = I.ICKEY
+		   AND A.TO_IVATKEY = I.IVATKEY
+		   AND I.ULCKEY = 'NA'
+		   AND I.LCKEY =
+		   		CASE 
+		   			WHEN C.ATTRIBUTE2 = '1' THEN
+		   				CASE F.LOGGRPCD WHEN '1' THEN 'STAGE_C' WHEN '2' THEN 'STAGE_B' ELSE 'STAGE_A' END
+		   			ELSE
+		   				CASE F.LOGGRPCD WHEN '1' THEN 'STAGE_C_BOND' WHEN '2' THEN 'STAGE_B_BOND' ELSE 'STAGE_A_BOND' END
+		   		END
+ 	 	   <if test="ibhdkey != null">
+			AND A.IBHDKEY = #{ibhdkey}
+		   </if>
+		   <if test="ibdtkey != null">
+			AND A.IBDTKEY = #{ibdtkey}
+		   </if>
+		   	<if test="ibtadtkeyList != null and ibtadtkeyList.size() > 0" >
+		   	AND  A.IBDTKEY IN  
+				<foreach item="ibtadtkeyList" index="index" collection="ibtadtkeyList" open="(" separator="," close=")">
+					#{ibtadtkeyList}
+				</foreach>
+			</if>	
+			ORDER BY B.IVATKEY , B.PRODUCTLOT ,CFQTY DESC
+	</sql>
+	
+	<select id="selectInboundOrderHdCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		  FROM	(
+		  	<include refid="inboundOrderHdRefSql"/>
+		)
+	</select>
+	
+	<select id="selectInboundOrderHd" resultMap="InboundOrderMap">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		  	<include refid="inboundOrderHdRefSql"/>
+		)
+		<choose>
+			<when test='sortValue !=null'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>		
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+
+	<select id="selectIbhdkeyList" resultMap="InboundOrderMap">
+		SELECT WKSTATUS
+		  FROM TWORK_INFO_IB_HD
+		 WHERE 
+		       CTKEY = #{ctkey}
+		   AND IBHDKEY IN	
+			<foreach item="IBHDKEY_LIST" index="index" collection="IBHDKEY_LIST" open="(" separator="," close=")">
+				#{IBHDKEY_LIST}
+			</foreach>
+	</select>
+
+
+
+
+
+
+
+	<select id="selectTWorkInfoIbHdPk"  resultMap="InboundOrderMap">
+		SELECT 
+		       CTKEY
+		      ,IBHDKEY
+		      ,IBHDTYPE
+		      ,IBHDDATE
+		      ,OWKEY
+		      ,LOGGRPCD
+		      ,ACKEY
+		      ,ACNAME
+		      ,IBCONFIRMDATE
+		      ,IBCLOSINGDATE
+		      ,WKSTATUS
+		      ,COMMENTS1
+		      ,COMMENTS2
+		      ,ORHDKEY
+		      ,PACKAGEORDERKEY
+		      ,ITIV_HDKEY
+		      ,EXTERNORDERKEY
+		      ,EXTERNORDERKEY2
+		      ,UDF1
+		      ,UDF2
+		      ,UDF3
+		      ,POHDKEY
+		      ,TEMPERATURE
+		      ,PLQTY
+		  FROM TWORK_INFO_IB_HD
+		 WHERE
+		 	   CTKEY = #{ctkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>	
+	
+
+	<select id="selectMobAccountList" resultMap="InboundOrderMap">
+		SELECT COALESCE(ACKEY, 'NONE') AS ACKEY
+		      ,COALESCE(ACNAME, 'DESCRIPTION IS NONE') AS ACNAME
+              ,SUM(CASE WHEN WKSTATUS = '00' THEN 1 ELSE 0 END) AS WKSTATUS_CREATE
+              ,SUM(CASE WHEN WKSTATUS = '50' THEN 1 ELSE 0 END) AS WKSTATUS_WORKING
+              ,SUM(CASE WHEN WKSTATUS = '90' THEN 1 ELSE 0 END) AS WKSTATUS_CONFIRM              
+		  FROM TWORK_INFO_IB_HD
+		 WHERE
+		       CTKEY = #{ctkey}
+		  AND IBHDDATE BETWEEN TO_CHAR(TO_DATE(#{sysdate}, 'YYYYMMDDHH24MISS') - #{ENABLEMAXBETWEENDAYS}, 'YYYYMMDDHH24MISS')
+		  				   AND TO_CHAR(TO_DATE(#{sysdate}, 'YYYYMMDDHH24MISS') + #{ENABLEMAXBETWEENDAYS}, 'YYYYMMDDHH24MISS')
+	      AND ACKEY IS NOT NULL
+		GROUP BY ACKEY , ACNAME
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(MOBILE_MULTI_SORING)" >
+			#{MOBILE_MULTI_SORING}
+		</if>
+	</select>
+
+
+	<select id="selectMobAccountDetailList" resultMap="InboundOrderMap">
+	    SELECT *
+	      FROM (
+				SELECT A.IBHDKEY 
+				      ,COUNT(1) AS ITEM
+				      ,SUBSTR(IBHDDATE,1,8) AS IBHDDATE
+				  FROM TWORK_INFO_IB_HD A 
+				      ,TWORK_INFO_IB_DT B
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.CTKEY = B.CTKEY
+				   AND A.IBHDKEY = B.IBHDKEY 
+				   AND B.WKSTATUS <![CDATA[ < ]]> '90'
+				   AND A.CTKEY = #{ctkey}
+				   AND A.IBHDDATE BETWEEN TO_CHAR(TO_DATE(#{sysdate}, 'YYYYMMDDHH24MISS') - #{ENABLEMAXBETWEENDAYS}, 'YYYYMMDDHH24MISS')
+				  				   AND TO_CHAR(TO_DATE(#{sysdate}, 'YYYYMMDDHH24MISS') + #{ENABLEMAXBETWEENDAYS}, 'YYYYMMDDHH24MISS')
+				   
+				   <if test="ackey == 'NONE'">
+				   	AND A.ACKEY IS NULL
+				   </if>
+				   <if test="ackey != 'NONE'">
+				   	AND A.ACKEY = #{ackey}
+				   </if>
+				GROUP BY A.IBHDKEY  
+				        ,SUBSTR(A.IBHDDATE,1,8) 
+	      )
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(MOBILE_MULTI_SORING)" >
+			#{MOBILE_MULTI_SORING}
+		</if>
+	</select>	
+	
+
+	<select id="selectMobAConfirmData" resultMap="InboundOrderMap">
+		SELECT A.EXQTY 
+		      ,A.CFQTY
+		      ,B.ICNAME 
+		      ,A.IBDTKEY
+		  FROM TWORK_INFO_IB_DT A 
+		      ,TWORK_MST_IC B 
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   <if test="ickey != null">
+			   AND B.ICKEY = #{ickey}
+		   </if>
+		   <if test="ibdtkey != null">
+			   AND A.IBDTKEY = #{ibdtkey}
+		   </if>
+		   AND A.ICKEY = B.ICKEY
+		   AND A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY	
+	</select>	
+
+	<resultMap id="selectInbReportHdMap" type="camelMap">
+		<result property="ibexpectdate" column="IBEXPECTDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="urname" column="URNAME" typeHandler="UrMstDescTypeHandler"/>
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+	</resultMap>
+	
+
+	<resultMap id="selectInbReportDtMap" type="camelMap">
+		<result property="icgrname" column="ICGRNAME" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="plicutqty" column="PLICUTQTY" />
+		<result property="csicutqty" column="CSICUTQTY" />
+		<result property="plqty" column="PLQTY" />
+		<result property="baesu" column="BAESU" />
+		<result property="exqty" column="EXQTY" />
+		<result property="shelflife" column="SHELFLIFE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="shelflife_type" column="SHELFLIFE_TYPE" />
+		<result property="lckey" column="LCKEY" />
+		<result property="ibstddate" column="IBSTDDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="pick_lckey" column="PICK_LCKEY" />
+	</resultMap>
+		
+
+	<resultMap id="AddByPoMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="pohdkey" column="POHDKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="pohddate" column="POHDDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="deliverydate" column="DELIVERYDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+	</resultMap>
+	
+
+
+	<select id="selectIbTaskInfoToLckey" resultMap="InboundOrderMap">
+		SELECT A.CTKEY 
+		      ,A.ICKEY
+		      ,A.TO_LCKEY
+		      ,SUM(A.QTY) AS CFQTY
+		      ,SUM(A.RJQTY) AS RJQTY
+		      ,A.TO_IVATKEY
+		  FROM TWORK_INFO_TA_DT A
+		      ,TWORK_INFO_IVAT B 
+		 WHERE 
+		       A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.TO_IVATKEY=  B.IVATKEY
+		   AND A.CTKEY = #{ctkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTKEY = #{ibdtkey}
+		   AND A.TO_LCKEY = #{to_lckey}
+		  	<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(productdate)'>
+					AND B.PRODUCTDATE = #{productdate,typeHandler=GmtDateTimeFormatTypeHandler}	
+				</when>	
+				<otherwise>
+					AND B.PRODUCTDATE IS NULL
+				</otherwise>
+			</choose>
+		  	<choose>
+		  		<when test='@com.kns.framework.util.StringUtil@isNotEmpty(expiredate)'>
+					AND B.EXPIREDATE = #{expiredate ,typeHandler=GmtDateTimeFormatTypeHandler}	
+				</when>	
+				<otherwise>
+					AND B.EXPIREDATE IS NULL
+				</otherwise>
+			</choose>	
+		GROUP BY A.CTKEY 
+		      ,A.ICKEY
+		      ,A.TO_LCKEY
+		      ,A.TO_IVATKEY
+	</select>	
+	
+	
+	<update id="updateInboundOrderDtAjQty">
+		UPDATE TWORK_INFO_IB_DT 
+		   SET AJQTY = #{ajqty}
+		      ,GAPREASONCD = #{gapreasoncd}
+			  ,UPDATEDATE  = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+        WHERE CTKEY = #{ctkey}
+          AND IBHDKEY = #{ibhdkey}
+	      AND IBDTKEY = #{ibdtkey}	
+	</update>
+	
+	<update id="updateInboundOrderIbnrcd">
+		UPDATE TWORK_INFO_IB_DT 
+		   SET IBNRCD = #{ibnrcd}
+		   	  ,UDF5 = #{udf5}
+			  ,UPDATEDATE  = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+        WHERE CTKEY = #{ctkey}
+          AND IBHDKEY = #{ibhdkey}
+	      AND IBDTKEY = #{ibdtkey}	
+	</update>
+	
+
+
+
+	<select id="checkIbConfirmSlip" resultType="java.lang.String">
+		SELECT IBHDKEY
+		  FROM (
+		  	<include refid="checkIbConfirmSlipSql"/>
+		  	
+		  )
+	</select>
+	
+	<resultMap id="reportIbConfirmSlipMap" type="camelMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctname" column="CTNAME" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibexpectdate" column="IBEXPECTDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibhdkey" column="IBHDKEY" />
+	</resultMap>
+	
+	<resultMap id="reportIbConfirmSlipDtMap" type="camelMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctname" column="CTNAME" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="cfqty" column="CFQTY" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="totqty" column="TOTQTY" />
+		<result property="rnum" column="RNUM" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="net_wgt" column="NET_WGT" />
+	</resultMap>
+	
+
+
+	
+
+
+	<resultMap id="reportIbConfirmSlipMapGita" type="camelMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctname" column="CTNAME" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="cfqty" column="CFQTY" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="costprice_sum" column="COSTPRICE_SUM" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler" />
+	</resultMap>
+
+
+	<resultMap id="checkInbOrderClosingDateMap" type="java.util.HashMap">
+		<result property="limit_updateorder" column="LIMIT_UPDATEORDER" />
+	</resultMap>	
+	
+	<!-- ㅎㅎㅎ -->
+	<select id="checkInbOrderClosingDate" resultMap="checkInbOrderClosingDateMap">
+		SELECT CASE WHEN 
+		                 TO_DATE(TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD'),'YYYYMMDD')
+		                 - TO_DATE(SUBSTR(IBCONFIRMDATE,1,8),'YYYYMMDD') > #{CLOSINGLIMITDATEORDER}
+		            THEN 'N' ELSE 'Y' 
+		        END AS LIMIT_UPDATEORDER
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+	
+	<resultMap id="selectInbReturnWkstatusCreateListMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="ibdtkey" column="IBDTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="sbkey" column="SBKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="initqty" column="INITQTY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="cfqty" column="CFQTY" />
+		<result property="uom" column="UOM" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="to_ivatkey" column="TO_IVATKEY" />
+		<result property="to_ulckey" column="TO_ULCKEY" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="productdate" column="PRODUCTDATE" />
+		<result property="expiredate" column="EXPIREDATE" />
+		<result property="attribute1" column="ATTRIBUTE1" />
+		<result property="attribute2" column="ATTRIBUTE2" />
+		<result property="attribute3" column="ATTRIBUTE3" />
+		<result property="attribute4" column="ATTRIBUTE4" />
+		<result property="attribute5" column="ATTRIBUTE5" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="net_wgt"	  column="NET_WGT" />
+		<result property="net_wgt_in" column="NET_WGT_IN" />
+		<result property="orhdkey" column="ORHDKEY" />
+		<result property="ordtkey" column="ORDTKEY" />
+		<result property="itiv_hdkey" column="ITIV_HDKEY" />
+		<result property="itiv_dtkey" column="ITIV_DTKEY" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		<result property="udf1" column="UDF1" />
+		<result property="udf2" column="UDF2" />
+		<result property="udf3" column="UDF3" />
+		<result property="udf4" column="UDF4" />
+		<result property="udf5" column="UDF5" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="ibnrcd" column="IBNRCD" />
+		<result property="imghdkey" column="IMGHDKEY" />
+		<result property="ponrcd" column="PONRCD" />
+		<result property="gapreasoncd" column="GAPREASONCD" />
+		<result property="chitid" column="CHITID" />
+		<result property="orgchitno" column="ORGCHITNO" />
+		<result property="orgchitseq" column="ORGCHITSEQ" />
+		<result property="orgchitymd" column="ORGCHITYMD" />
+		<result property="ajqty" column="AJQTY" />
+		<result property="orgchitid" column="ORGCHITID" />
+		<result property="gapseqno" column="GAPSEQNO" />
+		<result property="chitymd" column="CHITYMD" />
+		<result property="ackey" column="ACKEY" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="icgrkey" column="ICGRKEY" />
+		<result property="dckey" column="DCKEY" />
+		<result property="icgrtype" column="ICGRTYPE" />
+		<result property="bo_qty" column="BO_QTY" />
+		<result property="ibqty" column="IBQTY" />
+		<result property="rjqty" column="RJQTY" />
+		<result property="ibhdtype" column="IBHDTYPE" />
+		<result property="plqty" column="PLQTY" />
+	</resultMap>	
+	
+
+	
+
+
+	<resultMap id="selectInbLabelReportMap" type="camelMap">
+		<result property="owname" column="OWNAME" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />	
+		<result property="spec" column="SPEC" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="cfqty" column="CFQTY" />
+		<result property="avqty" column="AVQTY" />
+		<result property="qty_name" column="QTY_NAME" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeFormatTypeHandler" />
+		<result property="expiredate" column="EXPIREDATE" />
+		<result property="labelQty" column="LABELQTY" />
+		<result property="plid" column="PLID" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="lbnm" column="LBNM" />
+		<result property="net_wgt"	  column="NET_WGT" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="ivatkey" column="TO_IVATKEY" />
+		<result property="ulckey" column="TO_ULCKEY" />
+		<result property="ibdtkey" column="IBDTKEY" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="lbnm" column="LBNM" />
+	</resultMap>
+
+
+	<select id="selectCrTypeCheck" resultType="java.lang.String">
+		SELECT COALESCE(MAX(CRTYPE), 'N')
+		FROM TWORK_INFO_ILBHS
+		WHERE CTKEY = #{ctkey}
+		  AND ILBHSKEY = #{ilbhskey}
+	</select>
+	
+	<select id="selectScanCountCheck" resultType="java.lang.Integer" >
+		SELECT 	COUNT(*)
+		FROM TWORK_INFO_ILBHS A
+		    ,TWORK_INFO_IBSN_SCAN B
+		WHERE A.ULCKEY = B.ULCKEY
+		  AND A.ILBHSKEY = #{ilbhskey}
+	</select>
+	
+	<resultMap id="IlbhsCheckListMap" type="camelMap">
+		<result property="owname" column="OWNAME" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />	
+		<result property="spec" column="SPEC" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="cfqty" column="CFQTY" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" />
+		<result property="expiredate" column="EXPIREDATE" />
+		<result property="labelQty" column="LABELQTY" />
+		<result property="plid" column="PLID" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="net_wgt" column="NET_WGT" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="ivatkey" column="IVATKEY" />
+		<result property="ulckey" column="ULCKEY" />
+		<result property="ibdtkey" column="IBDTKEY" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="plkey" column="PLKEY" />
+		<result property="lbnm" column="LBNM" />
+	</resultMap>
+
+	<resultMap type="camelMap" id="printInboundOrderMap">
+		<result property="print_date" column="PRINT_DATE"/>
+		<result property="externorderkey" column="EXTERNORDERKEY"/>
+		<result property="ibexpectdate" column="IBEXPECTDATE"/>
+		<result property="owkey" column="OWKEY"/>
+		<result property="owname" column="OWNAME"/>
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM"/>
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="icgrname" column="ICGRNAME"/>
+		<result property="ickey" column="ICKEY"/>
+		<result property="icname" column="ICNAME"/>
+		<result property="spec" column="SPEC"/>
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="exqty" column="EXQTY"/>
+		<result property="scan_code" column="SCAN_CODE"/>
+		<result property="ctkey" column="CTKEY"/>
+		<result property="group_sum" column="GROUP_SUM"/>
+	</resultMap>
+	
+	<select id="printInboundOrder" resultMap="printInboundOrderMap">
+		SELECT X.*, Y.GROUP_SUM
+		FROM(
+		    SELECT
+		          TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS PRINT_DATE
+		        , A.EXTERNORDERKEY
+		        , A.IBEXPECTDATE
+		        , A.OWKEY
+		        , C.OWNAME
+		        , B.EXTERNORDERLINENUM
+		        , A.CTKEY || ';' || 'LOGGRPCD;' || D.LOGGRPCD AS LOGGRPCD_DESC
+		        , E.ICGRNAME
+		        , B.ICKEY
+		        , D.ICNAME
+		        , D.SPEC
+		        , A.CTKEY || ';' || 'ICUTTYPE;' || D.UOM AS UOM_DESC
+		        , B.EXQTY
+		        , A.EXTERNORDERKEY || B.EXTERNORDERLINENUM AS SCAN_CODE
+		        , A.CTKEY
+		    FROM 
+		          TWORK_INFO_IB_HD A
+		        , TWORK_INFO_IB_DT B
+		        , TWORK_MST_OW C
+		        , TWORK_MST_IC D
+		        , TWORK_MST_ICGR E
+		    WHERE A.OWKEY = B.OWKEY(+)
+		    AND   A.CTKEY = B.CTKEY(+)
+		    AND   A.IBHDKEY = B.IBHDKEY(+)
+		    AND   A.OWKEY = C.OWKEY(+)
+		    AND   B.OWKEY = D.OWKEY(+)
+		    AND   B.CTKEY = D.CTKEY(+)
+		    AND   B.ICKEY = D.ICKEY(+)
+		    AND   D.OWKEY = E.OWKEY(+)
+		    AND   D.CTKEY = E.CTKEY(+)
+		    AND   D.ICGRKEY = E.ICGRKEY(+)
+		    AND   D.ICGRTYPE = E.ICGRTYPE
+		    ) X,
+		    (
+		    SELECT A.EXTERNORDERKEY, A.OWKEY, A.CTKEY, SUM(B.EXQTY) AS GROUP_SUM
+		    FROM 
+		          TWORK_INFO_IB_HD A
+		        , TWORK_INFO_IB_DT B
+		    WHERE A.OWKEY = B.OWKEY(+)
+		    AND   A.CTKEY = B.CTKEY(+)
+		    AND   A.IBHDKEY = B.IBHDKEY(+)
+		    GROUP BY ROLLUP (A.EXTERNORDERKEY, A.OWKEY, A.CTKEY)
+		    ) Y
+		WHERE X.EXTERNORDERKEY = Y.EXTERNORDERKEY
+		AND   X.OWKEY = Y.OWKEY
+		AND   X.CTKEY = Y.CTKEY
+		AND   X.EXTERNORDERKEY IN 
+		<foreach collection="externorderkeyList" item="externorderkeyList" index="index" open="(" separator="," close=")">
+			#{externorderkeyList}
+		</foreach>
+		ORDER BY
+			  CAST(X.EXTERNORDERLINENUM AS NUMERIC)
+	</select>
+
+</mapper>

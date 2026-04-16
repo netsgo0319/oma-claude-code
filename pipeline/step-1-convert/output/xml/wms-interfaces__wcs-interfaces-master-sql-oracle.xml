@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfWcsMasterMapper">
+
+	<select id="selectIcWcsCnt">
+		/* IfWcsMasterMapper.selectIcWcsCnt - WCS상품 배치 데이터 여부 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INTF_ICWCS
+		 WHERE ICKEY = #{ickey}
+		   AND CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IF_YN = 'N'
+	</select>
+
+	<insert id="insertIcWcs">
+		/* IfWcsMasterMapper.insertIcWcs - WCS 상품데이터 생성  */
+		INSERT INTO TWORK_INTF_ICWCS
+		(
+		   CTKEY
+		 , OWKEY
+		 , ICKEY
+		 , INSERTDATE
+		 , INSERTURKEY
+		 , UPDATEDATE
+		 , UPDATEURKEY
+		) VALUES (
+		   #{ctkey}
+		 , #{owkey}
+		 , #{ickey}
+		 , #{sysdate}
+		 , #{surkey}
+		 , #{sysdate}
+		 , #{surkey}
+		)
+	</insert>
+</mapper>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.OlnCtItemIvApiMapper">
+
+	<insert id="insertIntfTableOlnCtItemIv">
+		/* oms-po-olnCtItemIvBatch-sql-oracle.xml - insertIntfTableOlnCtItemIv */
+		INSERT INTO TORDER_INTF_WMS_REQORDERIV (
+		     CTKEY
+           , OWKEY
+           , ICKEY
+           , AVQTY
+           , UNUSEQTY
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{ctkey}
+           , #{owkey}
+           , #{ickey}
+           , #{avqty}
+           , #{unuseqty}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeOlnCtItemIv">
+		/* oms-po-olnCtItemIvBatch-sql-oraclee.xml - mergeOlnCtItemIv */
+		INSERT INTO TORDER_INFO_REQORDERIV (
+			  OWKEY
+			, CTKEY
+			, ICKEY
+			, AVQTY
+			, UNUSEQTY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT DISTINCT
+			  OWKEY
+			, CTKEY
+			, ICKEY
+			, AVQTY
+			, UNUSEQTY
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		FROM TORDER_INTF_WMS_REQORDERIV
+		WHERE IFID = #{interfaceId}
+		ON CONFLICT (OWKEY, CTKEY, ICKEY)
+		DO UPDATE SET
+			  AVQTY       = EXCLUDED.AVQTY
+			, UNUSEQTY    = EXCLUDED.UNUSEQTY
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+	</insert>
+
+</mapper>
+	

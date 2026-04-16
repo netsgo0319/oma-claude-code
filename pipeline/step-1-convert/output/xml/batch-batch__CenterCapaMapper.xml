@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.CenterCapaMapper">
+
+    <select id="selectBatchCenterCapaList" resultType="camelMap">
+		/* CenterCapaMapper.xml selectBatchCenterCapaList */
+       WITH L_DATE AS (
+            SELECT
+                TO_CHAR(
+                    DATE_TRUNC('month', CURRENT_TIMESTAMP)::DATE + (gs.n - 1),
+                    'YYYYMMDD'
+                ) AS CRITDAY
+            FROM generate_series(1,
+                    CAST(TO_CHAR((DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '1 month - 1 day')::DATE, 'DD') AS INTEGER)
+                 ) AS gs(n)
+        )
+        SELECT
+            A.CRITDAY,
+            CT.CTKEY ,
+            COALESCE(DA.MAXPRCSQTY, BA.CRITMAXPRCSQTY) AS CTPRCSLIMITQTY
+        FROM L_DATE A
+        CROSS JOIN TORDER_MST_CT CT
+        LEFT JOIN TORDER_INFO_CAPA_CT DA
+          ON CT.CTKEY = DA.CTKEY
+         AND A.CRITDAY = DA.DSBTPRCSCRITDAY
+        LEFT JOIN  TORDER_MST_DDLN_CT BA
+         ON  BA.OWKEY = 'DAISO'
+         AND BA.CTKEY = CT.CTKEY
+         AND BA.IODEV= '02'
+         WHERE CT.MANAGEMENTYN = 'Y'
+          AND CT.DELYN = 'N'
+          AND  COALESCE(DA.MAXPRCSQTY, BA.CRITMAXPRCSQTY) IS NOT NULL
+    </select>
+
+
+</mapper>

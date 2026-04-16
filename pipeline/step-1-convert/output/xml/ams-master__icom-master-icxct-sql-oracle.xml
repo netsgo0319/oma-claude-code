@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.IcxctIcomMapper">
+
+	<insert id="insertTOrderMstIcxct">
+		/* icom-master-icxct-sql-oracle.xml - insertTOrderMstIcxct */
+		INSERT INTO TADMIN_MST_ICXCT	(
+			 OWKEY
+			,ICKEY
+			,CTKEY
+			,LOGGRPCD
+			,CP
+			,SLPRC
+			,VOLTYPE
+			,NEWYN
+			,USDCP
+			,USDSLPRC
+			,WIDTHUNIT
+			,LENGTHUNIT
+			,HEIGHTUNIT
+			,ACKEY
+			,ORDSTOPTYPE
+			,NONIBREASON
+			,ORDTYPE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )
+		VALUES	(
+			 #{owkey}
+			,#{ickey}
+			,#{ctkey}
+			,#{loggrpcd}
+			,#{cp}
+			,#{slprc}
+			,#{voltype}
+			,#{newyn}
+			,#{usdcp}
+			,#{usdslprc}
+			,#{widthunit}
+			,#{lengthunit}
+			,#{heightunit}
+			,#{ackey}
+			,#{ordstoptype}
+			,#{nonibreason}
+			,#{ordtype}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>	
+	
+	<update id="updateTOrderMstIcxct">
+		/* icom-master-icxct-sql-oracle.xml - updateTOrderMstIcxct */
+		UPDATE 	TADMIN_MST_ICXCT
+		    SET	 LOGGRPCD 		  	  	  = #{loggrpcd}
+				,VOLTYPE 				  = #{voltype}
+				,NEWYN 				  	  = #{newyn}
+				,WIDTHUNIT 			  	  = #{widthunit}
+				,LENGTHUNIT 			  = #{lengthunit}
+				,HEIGHTUNIT 			  = #{heightunit}
+				,ACKEY 				  	  = #{ackey}
+				,OBPTKEY  				  = #{obptkey}
+				,RNDKEY					  = #{rndkey}
+				,ICGRKEY				  = #{icgrkey}
+				,UPDATEDATE   		  	  = #{sysdate}
+				,UPDATEURKEY  		  	  = #{surkey}
+				,PKCTKEY                  = #{pkctkey}
+				,CDOCKYN                  = #{cdockyn}
+				,PKTYPE                   = #{pktype}
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</update>
+
+	<delete id="deleteTOrderMstIcxct">
+		/* icom-master-icxct-sql-oracle.xml - deleteTOrderMstIcxct */
+		DELETE 
+		FROM   TADMIN_MST_ICXCT
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</delete>	
+	 
+</mapper>	

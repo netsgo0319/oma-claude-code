@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.UserHistoryMapper">
+
+	<select id="selectUserHistory" resultType="camelMap">
+		/* adm-system-userhistory-sql-oracle.xml - selectUserHistory */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT	A.URLILOHKEY AS URLILOHKEY
+						,A.IPADDR AS IPADDRESS
+						,A.SESSIONID AS SESSIONID
+						,A.URKEY AS URKEY
+						,B.URNM
+						,A.LOGINDATE AS LOGINDATE
+						,A.LOGOUTDATE AS LOGOUTDATE
+						,A.INSERTDATE AS INSERTDATE
+				FROM 	TADMIN_INFO_URLILOH A
+				INNER JOIN TADMIN_MST_UR B
+						ON A.URKEY = B.URKEY
+				WHERE	1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY URLILOHKEY DESC
+					</otherwise>
+				</choose>		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectUserHistoryCount" resultType="java.lang.Integer" >
+		/* adm-system-userhistory-sql-oracle.xml - selectUserHistoryCount */
+		SELECT COUNT(1)  
+		  FROM TADMIN_INFO_URLILOH A
+		  INNER JOIN TADMIN_MST_UR B
+		  		  ON A.URKEY = B.URKEY
+		WHERE	1 = 1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>	
+	</select>
+	
+	<update id="updateTAdminInfoUrliloh">
+		/* adm-system-userhistory-sql-oracle.xml - updateTAdminInfoUrliloh */
+		UPDATE TADMIN_INFO_URLILOH
+		   SET LOGOUTDATE  = #{logoutdate}
+		 WHERE 
+		 	  URLILOHKEY = #{urlilohkey}
+	</update>
+
+	<insert id="insertTAdminUrliloh">
+		/* adm-system-userhistory-sql-oracle.xml - insertTAdmUrliloh	*/
+		INSERT INTO TADMIN_INFO_URLILOH (
+			  	URLILOHKEY
+			  , IPADDR
+			  , SESSIONID
+			  , URKEY
+			  , LOGINDATE
+			  , INSERTDATE
+		) VALUES (
+			   #{urlilohkey}
+			 , #{ipaddr}
+			 , #{sessionId}
+			 , #{urkey}
+			 , #{sysdate}
+			 , #{sysdate}
+		 )
+	</insert>
+
+	<update id="updateLastLoginDate">
+		/* adm-system-userhistory-sql-oracle.xml - updateLastLoginDate */
+		UPDATE TADMIN_MST_UR
+		   SET LASTLOGINDATE = #{sysdate}
+		 WHERE URKEY = #{urkey}
+	</update>
+		
+</mapper>	

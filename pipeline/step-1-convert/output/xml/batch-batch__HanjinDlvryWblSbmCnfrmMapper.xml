@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.HanjinDlvryWblSbmCnfrmMapper">
+	
+	<!-- 한진택배 운송장접수 확인 대상 조회  -->
+	<select id="selectHanjinDlvryWblSbmCnfrmTgtList">
+		/* HanjinDlvryWblSbmCnfrmMapper.selectHanjinDlvryWblSbmCnfrmTgtList 한진택배 접수 확인 대상 조회 */
+		SELECT
+			OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			,OH.WBLNO
+			,OH.WAHDKEY
+			,SBM.COLCTREQDAY
+			,SBM.EDICD
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_HANJIN_SBM SBM
+				ON OH.CTKEY = SBM.CTKEY
+				AND OH.OWKEY = SBM.OWKEY
+				AND OH.OBHDKEY = SBM.OBHDKEY
+				AND OH.WBLNO = SBM.WBLNO
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.DLVRYCORPCD = #{dlvryCorpCd} /*택배사코드*/
+		AND OH.DLVRYPRGRSTATUSCD = '20' /*접수중*/
+		ORDER BY OH.OBHDKEY, OH.WBLNO
+	</select>
+
+	<!-- 한진택배 TWORK_INFO_HANJIN_SBM_INFO 접수결과 UPDATE -->
+	<update id="updateHanjinDlvryWblSbmStatus">
+		/* HanjinDlvryWblSbmCnfrmMapper.updateHanjinDlvryWblSbmStatus 한진택배 TWORK_INFO_HANJIN_SBM_INFO 접수결과 UPDATE */
+		UPDATE TWORK_INFO_HANJIN_SBM
+		SET SBMSTATUSCD = #{SBMSTATUSCD}
+			,SBMERRCD = #{SBMERRCD}
+			,SBMSEQ = #{SBMSEQ}
+		WHERE CTKEY = #{CTKEY}
+		AND OWKEY = #{OWKEY}
+		AND OBHDKEY = #{OBHDKEY}
+		AND WBLNO = #{WBLNO}
+	</update>
+
+	<!-- TWORK_INFO_OB_HD 택배진행상태 UPDATE -->
+	<update id="updateOutboundHeaderDeliveryStatus">
+		/* HanjinDlvryWblSbmCnfrmMapper.updateOutboundHeaderDeliveryStatus TWORK_INFO_OB_HD 택배진행상태 UPDATE */
+		UPDATE TWORK_INFO_OB_HD
+		SET DLVRYPRGRSTATUSCD = CASE WHEN #{SBMSTATUSCD} = 'Y' THEN '30' ELSE '99' END
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{CTKEY}
+		AND OWKEY = #{OWKEY}
+		AND OBHDKEY = #{OBHDKEY}
+		AND WBLNO = #{WBLNO}
+	</update>
+
+	<!-- 한진택배 운송장접수 확인 대상 조회  -->
+	<select id="selectWaveWorkStatusByOutboundHeaderDeliveryStatus">
+		/* HanjinDlvryWblSbmCnfrmMapper.selectWaveWorkStatusByOutboundHeaderDeliveryStatus 한진택배 운송장접수 확인 대상 조회 */
+		SELECT
+			WH.CTKEY
+			,WH.OWKEY
+			, WH.WAHDKEY
+			,CASE WHEN SUM(CASE WHEN OH.DLVRYPRGRSTATUSCD = '99' THEN 1 ELSE 0 END) > 0 THEN '15'
+				WHEN COUNT(OH.OBHDKEY) = SUM(CASE WHEN OH.DLVRYPRGRSTATUSCD = '30' THEN 1 ELSE 0 END) THEN '20'
+				ELSE WH.WAWKSTATUSCD END AS WAWKSTATUSCD
+		FROM TWORK_INFO_WA_HD WH
+			INNER JOIN TWORK_INFO_WA_DT WD
+				ON WH.CTKEY = WD.CTKEY
+				AND WH.OWKEY = WD.OWKEY
+				AND WH.WAHDKEY = WD.WAHDKEY
+			INNER JOIN TWORK_INFO_OB_HD OH
+				ON WD.CTKEY = OH.CTKEY
+				AND WD.OWKEY = OH.OWKEY
+				AND WD.OBHDKEY = OH.OBHDKEY
+		WHERE WD.CTKEY = #{CTKEY}
+		AND WD.OWKEY = #{OWKEY}
+		AND WD.WAHDKEY = #{WAHDKEY}
+		AND WD.DELYN = 'N'
+		AND WH.WAWKSTATUSCD IN ('11', '15')
+		GROUP BY WH.CTKEY, WH.OWKEY, WH.WAHDKEY, WH.WAWKSTATUSCD
+	</select>
+
+	<!-- 웨이브작업상태 UPDATE BY OB_HD 택배진행상태 UPDATE -->
+	<update id="updateWaveWorkStatusByOutboundHeaderDeliveryStatus">
+		/* HanjinDlvryWblSbmCnfrmMapper.updateWaveWorkStatusByOutboundHeaderDeliveryStatus 웨이브작업상태 UPDATE BY OB_HD 택배진행상태 UPDATE */
+		UPDATE TWORK_INFO_WA_HD
+		SET WAWKSTATUSCD = #{WAWKSTATUSCD}
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{CTKEY}
+		AND OWKEY = #{OWKEY}
+		AND WAHDKEY = #{WAHDKEY}
+	</update>
+</mapper>

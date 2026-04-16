@@ -1,0 +1,760 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.parallel.mapper.ParallelManagerMapper">
+	<select id="selectAllocationTargetListCountByWave" resultType="camelMap">
+	   SELECT A.CTKEY
+	   		, COUNT(1) AS TOTALCNT
+	   		, COUNT(distinct C.ICKEY) AS ICKEYCNT
+	   		, MAX(C.INSPECTFLAG) AS INSPECTFLAG
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.WORKINGYN = 'N'
+		<![CDATA[ AND C.WKSTATUS < '49' ]]>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>
+		GROUP BY A.CTKEY
+	</select>
+
+	<select id="selectAllocationTargetListCount" resultType="camelMap">
+ 		 SELECT   A.CTKEY
+		   		, COUNT(1) AS TOTALCNT
+		   		, COUNT(distinct B.ICKEY) AS ICKEYCNT
+		   		, MAX(B.INSPECTFLAG) AS INSPECTFLAG
+			  FROM 	TWORK_INFO_OB_HD A 
+					,TWORK_INFO_OB_DT B
+					,TWORK_MST_IC C
+					,TWORK_MST_ICUT D
+					,TWORK_INFO_WA_DT E
+					,TWORK_MST_STORE G
+					,TWORK_MST_AC H
+					,TWORK_INFO_LOADPLAN I
+					,TWORK_MST_LCXIC J
+			 WHERE
+					A.CTKEY = B.CTKEY
+			   AND  A.OWKEY = B.OWKEY		
+			   AND  A.OBHDKEY = B.OBHDKEY
+			   AND  B.CTKEY = C.CTKEY
+			   AND  B.OWKEY = C.OWKEY
+			   AND  B.ICKEY = C.ICKEY
+			   AND  C.CTKEY = D.CTKEY(+)
+			   AND  C.OWKEY = D.OWKEY(+) 
+			   AND  C.ICUTKEY = D.ICUTKEY(+)                
+			   AND  A.CTKEY = E.CTKEY(+)
+			   AND  A.WAHDKEY = E.WAHDKEY(+)
+			   AND  A.OBHDKEY = E.OBHDKEY(+)
+			   AND  A.OWKEY = E.OWKEY(+)
+			   AND  A.CTKEY = G.CTKEY(+)
+			   AND  A.STORE_KEY = G.STORE_KEY(+) 
+			   AND  A.DCKEY = G.DCKEY(+)
+			   AND  C.CTKEY = H.CTKEY(+)
+			   AND  C.ACKEY = H.ACKEY(+)
+			   AND 	C.OWKEY = H.OWKEY(+)
+			   AND  A.CTKEY = I.CTKEY(+)
+			   AND  A.LOGGRPCD = I.LOGGRPCD(+)
+			   AND  A.OBHDKEY = I.OBHDKEY(+)
+			   AND  C.CTKEY = J.CTKEY(+)
+			   AND  C.OWKEY = J.OWKEY(+)
+			   AND  C.ICKEY = J.ICKEY(+)
+			   AND  A.CTKEY = #{ctkey}
+			   AND  B.WORKINGYN = 'N'
+			   AND  D.CLOSDATE >= #{closdate}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   AND  #{SEARCH_CONDITION}
+			</if>
+			GROUP BY A.CTKEY
+	</select>
+
+	<select id="selectUnAllocationTargetListCountByWave" resultType="camelMap">
+         SELECT A.CTKEY
+		   		, COUNT(1) AS TOTALCNT
+		   		, COUNT(distinct E.ICKEY) AS ICKEYCNT    
+           FROM TWORK_INFO_WA_HD A
+               ,TWORK_INFO_WA_DT B
+               ,TWORK_INFO_OB_HD C
+               ,TWORK_INFO_WKPRHS D 
+               ,TWORK_INFO_PI_DT E
+          WHERE    
+                A.CTKEY = B.CTKEY
+            <!-- AND A.OWKEY = B.OWKEY -->
+            AND A.WAHDKEY = B.WAHDKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.OWKEY = C.OWKEY
+            AND B.OBHDKEY = C.OBHDKEY
+            AND C.OBHDKEY = D.SOURCEKEY(+)
+            AND B.CTKEY = E.CTKEY
+            AND B.OWKEY = E.OWKEY 
+            AND B.OBHDKEY = E.OBHDKEY
+			AND A.CTKEY = #{ctkey}   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>			            
+		 GROUP BY A.CTKEY
+	</select>
+
+	<select id="selectUnAllocationTargetListCount" resultType="camelMap">
+		SELECT A.CTKEY
+		   		, COUNT(1) AS TOTALCNT
+		   		, COUNT(distinct B.ICKEY) AS ICKEYCNT 
+		  FROM 	TWORK_INFO_OB_HD A
+				,TWORK_INFO_PI_DT B 
+				,TWORK_MST_IC C
+				,TWORK_MST_ICUT D
+				,TWORK_MST_ICUTXTYPE F       
+				,TWORK_MST_STORE G 
+		 WHERE
+				A.CTKEY = B.CTKEY 
+		   AND  A.OBHDKEY = B.OBHDKEY
+		   AND  B.CTKEY = C.CTKEY
+		   AND  B.ICKEY = C.ICKEY
+		   AND  C.OWKEY = D.OWKEY(+)
+		   AND  C.OWKEY = F.OWKEY(+)
+		   AND  C.CTKEY = D.CTKEY(+) 
+		   AND  C.ICUTKEY = D.ICUTKEY(+)
+		   AND  C.CTKEY = F.CTKEY(+)
+		   AND  C.ICUTKEY = F.ICUTKEY(+)
+		   AND  C.UOM = F.ICUTTYPE(+)   	
+		   AND  A.CTKEY = G.CTKEY(+)
+		   AND  A.STORE_KEY = G.STORE_KEY(+)
+		   AND  A.DCKEY = G.DCKEY(+)        
+		   AND  A.CTKEY = #{ctkey}
+		   AND  D.CLOSDATE >= #{closdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+		</if>
+		 GROUP BY A.CTKEY
+	</select>
+
+	<select id="selectShippedConfirmTargetListCountByWave" resultType="camelMap">
+	   SELECT A.CTKEY
+		   		, COUNT(1) AS TOTALCNT
+		   		, COUNT(distinct C.ICKEY) AS ICKEYCNT 
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		WHERE
+		      A.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >   
+		   AND  B.OWKEY = #{owkey}
+	    </if>		      
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.WORKINGYN = 'N'
+		<![CDATA[ AND C.WKSTATUS >= '00' AND C.WKSTATUS < '81' ]]>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>	
+	  GROUP BY A.CTKEY
+	</select>
+
+	<select id="selectShippedConfirmTargetListCount" resultType="camelMap">
+		SELECT 	TB1.CTKEY
+		   		, COUNT(1) AS TOTALCNT
+		   		, COUNT(distinct TB2.ICKEY) AS ICKEYCNT 
+		  FROM 	TWORK_INFO_OB_HD TB1
+				,TWORK_INFO_OB_DT TB2
+				,TWORK_MST_IC TB3
+				,TWORK_MST_ICUTXTYPE TB4
+				,TWORK_INFO_PI_DT TB5
+				,TWORK_MST_STORE TB6
+				,TT_SHPM_LEG_T B1
+                ,TT_LOAD_T C1
+		 WHERE 
+				TB1.CTKEY = TB2.CTKEY
+		   AND  TB1.OBHDKEY = TB2.OBHDKEY
+		   AND  TB1.OWKEY = TB2.OWKEY
+		   AND  TB1.CTKEY = TB3.CTKEY
+		   AND  TB2.OWKEY = TB3.OWKEY
+		   AND  TB2.ICKEY = TB3.ICKEY
+		   AND  TB3.OWKEY = TB4.OWKEY(+)
+		   AND  TB3.CTKEY = TB4.CTKEY (+)
+		   AND  TB3.ICUTKEY = TB4.ICUTKEY (+)
+		   AND  TB3.UOM = TB4.ICUTTYPE (+)
+		   AND  TB2.CTKEY = TB5.CTKEY(+)
+		   AND  TB2.OWKEY = TB5.OWKEY(+)
+		   AND  TB2.OBHDKEY = TB5.OBHDKEY(+)
+		   AND  TB2.OBDTKEY = TB5.OBDTKEY(+)
+		   AND  TB1.CTKEY = TB6.CTKEY
+		   AND  TB1.STORE_KEY = TB6.STORE_KEY
+		   AND  TB1.DCKEY = TB6.DCKEY
+           AND  TB1.CTKEY = B1.CTKEY(+)
+           AND  TB1.OBHDKEY = B1.SHPMNO(+)
+           AND  B1.LDLEGID = C1.LDLEGID(+)
+           AND  B1.CUROPTLSTTID(+) >= '204'
+		   AND  TB1.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >   
+		   AND  TB1.OWKEY = #{owkey}
+	    </if>
+		   <![CDATA[ AND TB2.WKSTATUS >= '00' AND TB2.WKSTATUS < '81' ]]>   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+		GROUP BY TB1.CTKEY
+	</select>
+					
+	<select id="selectAllocationTargetListByWave" resultType="camelMap">
+	   SELECT A.CTKEY
+		     ,D.OBHDKEY
+		     ,D.OBDTKEY
+		     ,D.ICKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_HD C
+		     ,TWORK_INFO_OB_DT D
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.CTKEY = D.CTKEY
+		  AND C.OWKEY = D.OWKEY
+		  AND C.OBHDKEY = D.OBHDKEY		  
+		  AND D.WORKINGYN = 'N'
+		<![CDATA[ AND D.WKSTATUS < '49' ]]>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>
+	  ORDER BY D.ICKEY, C.OBPRIORITY ASC
+	</select>
+
+	<select id="selectAllocationTargetList" resultType="camelMap">
+		    SELECT B.CTKEY
+				  ,B.OBHDKEY
+				  ,B.OBDTKEY
+				  ,B.ICKEY
+              FROM TWORK_INFO_OB_HD A,
+                   TWORK_INFO_OB_DT B,
+                   TWORK_MST_IC C,
+                   TWORK_MST_ICUT D,
+                   TWORK_INFO_WA_DT E,
+                   TWORK_MST_STORE G,
+                   TWORK_MST_AC H,
+                   TWORK_INFO_LOADPLAN I,
+                   TWORK_MST_LCXIC J,
+                   TWORK_MST_ICGR L,
+                   TWORK_MST_OW N
+             WHERE     A.CTKEY = B.CTKEY
+                   AND A.OWKEY = B.OWKEY
+                   AND A.OBHDKEY = B.OBHDKEY
+                   AND B.CTKEY = C.CTKEY
+                   AND B.OWKEY = C.OWKEY
+                   AND B.ICKEY = C.ICKEY
+                   AND B.CTKEY = D.CTKEY(+)
+                   AND B.OWKEY = D.OWKEY(+)
+                   AND B.ICUTKEY = D.ICUTKEY(+)
+                   AND A.CTKEY = E.CTKEY(+)
+                   AND A.WAHDKEY = E.WAHDKEY(+)
+                   AND A.OBHDKEY = E.OBHDKEY(+)
+                   AND A.OWKEY = E.OWKEY(+)
+                   AND A.CTKEY = G.CTKEY(+)
+                   AND A.STORE_KEY = G.STORE_KEY(+)
+                   AND A.DCKEY = G.DCKEY(+)
+                   AND B.CTKEY = H.CTKEY(+)
+                   AND B.ACKEY = H.ACKEY(+)
+                   AND B.OWKEY = H.OWKEY(+)
+                   AND A.CTKEY = I.CTKEY(+)
+                   AND A.LOGGRPCD = I.LOGGRPCD(+)
+                   AND A.OBHDKEY = I.OBHDKEY(+)
+                   AND C.CTKEY = J.CTKEY(+)
+                   AND C.OWKEY = J.OWKEY(+)
+                   AND C.ICKEY = J.ICKEY(+)
+                   AND C.CTKEY = L.CTKEY
+                   AND C.OWKEY = L.OWKEY
+                   AND C.ICGRKEY = L.ICGRKEY
+                   AND C.ICGRTYPE = L.ICGRTYPE
+                   AND A.CTKEY = #{ctkey}
+                   AND A.OWKEY = N.OWKEY
+				   AND B.WORKINGYN = 'N'
+				   AND D.CLOSDATE >= #{closdate}
+				   AND #{SEARCH_CONDITION}
+			 ORDER BY B.ICKEY, A.OBPRIORITY ASC
+	</select>
+
+   	<select id="selectAllocateByWahdkeyList" resultType="String">
+	   SELECT A.WAHDKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  <![CDATA[ AND C.WKSTATUS < '40' ]]>    
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	  GROUP BY A.CTKEY, A.WAHDKEY
+   	</select>
+   	
+	<select id="selectPickingTargetListByWave" resultType="camelMap">
+       SELECT A.CTKEY
+             ,C.PIDTKEY
+             ,C.EXQTY - C.CFQTY AS QTY
+             ,C.EXQTY
+             ,1 AS ICUTQTY
+             ,C.OBHDKEY
+             ,C.OBDTKEY
+        FROM  TWORK_INFO_WA_HD A
+             ,TWORK_INFO_WA_DT B
+             ,TWORK_INFO_PI_DT C
+             ,TWORK_MST_LC D
+        WHERE
+              A.CTKEY = #{ctkey}
+          AND A.CTKEY = B.CTKEY
+          <!-- AND A.OWKEY = B.OWKEY -->
+          AND A.WAHDKEY = B.WAHDKEY
+          AND B.CTKEY = C.CTKEY
+          AND B.OWKEY = C.OWKEY
+          AND B.OBHDKEY = C.OBHDKEY
+          AND C.CTKEY = D.CTKEY
+          AND C.FR_LCKEY = D.LCKEY
+        <if test='dasdpspickconfirm != "YES"' > 
+          AND D.ARKEY NOT IN ('DPS', 'DAS')
+	    </if>
+		<![CDATA[ AND C.WKSTATUS < '90' ]]>
+		AND A.WAHDKEY IN
+			<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+				#{wahdkeyList}
+		  	</foreach>
+	  ORDER BY C.IVATKEY ASC, C.ICKEY ASC
+	</select>
+
+	<select id="selectPickingTargetList" resultType="camelMap">
+			      SELECT  
+					     B.CTKEY
+						,B.PIDTKEY 
+						,B.EXQTY - B.CFQTY AS QTY
+			            ,B.EXQTY
+			            ,1 AS ICUTQTY
+			            ,B.OBHDKEY
+			            ,B.OBDTKEY
+			          FROM TWORK_INFO_OB_HD A,
+			               TWORK_INFO_PI_DT B,
+			               TWORK_MST_ICUT C,
+			               TWORK_INFO_WA_DT E,
+			               TWORK_MST_IC F,
+			               TWORK_MST_STORE G,
+						   TWORK_MST_AC I, 
+			               TT_SHPM_LEG_T B1,
+			               TT_LOAD_T C1
+			         WHERE A.CTKEY = B.CTKEY
+			           AND A.OBHDKEY = B.OBHDKEY
+			           AND B.CTKEY = C.CTKEY(+)
+			           AND B.ICUTKEY = C.ICUTKEY(+)
+			           AND A.CTKEY = E.CTKEY(+)
+			           AND A.OWKEY = E.OWKEY(+)
+			           AND A.OBHDKEY = E.OBHDKEY(+)
+			           AND A.CTKEY = F.CTKEY
+			           AND A.OWKEY = F.OWKEY
+			           AND B.ICKEY = F.ICKEY
+			           AND A.CTKEY = G.CTKEY(+)
+			           AND A.STORE_KEY = G.STORE_KEY(+)
+			           AND A.DCKEY = G.DCKEY(+)
+					   AND A.CTKEY = I.CTKEY(+)
+					   AND A.OWKEY = I.OWKEY(+)
+					   AND A.ACKEY= I.ACKEY (+)
+			           and A.CTKEY = B1.CTKEY(+)
+			           AND A.OBHDKEY = B1.SHPMNO(+)
+			           AND B1.LDLEGID = C1.LDLEGID(+)
+			           AND B1.CUROPTLSTTID(+) >= '204'
+					   AND  A.CTKEY = #{ctkey}
+					   AND  C.CLOSDATE >= #{closdate}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND 	#{SEARCH_CONDITION}
+					</if>		  	
+				ORDER BY B.IVATKEY ASC, B.ICKEY ASC					
+	
+	</select>
+
+   	<select id="selectPickingByWahdkeyList" resultType="String">
+	   SELECT A.WAHDKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		     ,TWORK_INFO_PI_DT D
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.CTKEY = D.CTKEY
+          AND C.OBHDKEY = D.OBHDKEY
+          AND C.OBDTKEY = D.OBDTKEY
+		<![CDATA[ AND D.WKSTATUS < '90' ]]>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	  GROUP BY A.CTKEY, A.WAHDKEY
+   	</select>
+	
+	<resultMap id="unAllocationTargetMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="pidtkey" column="PIDTKEY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="ickey" column="ICKEY" />
+		<result property="obhdtype" column="OBHDTYPE" />
+		<result property="fr_lckey" column="FR_LCKEY" />
+		<result property="obhdkey" column="OBHDKEY" />
+		<result property="obdtkey" column="OBDTKEY" />
+	</resultMap>
+	
+	<select id="selectUnAllocationTargetListByWave" resultMap="unAllocationTargetMap">
+         SELECT E.CTKEY
+               ,E.PIDTKEY 
+               ,E.EXQTY
+               ,E.WKSTATUS     
+               ,E.ICKEY
+               ,C.OBHDTYPE
+               ,E.FR_LCKEY
+               ,E.OBHDKEY
+               ,E.OBDTKEY
+           FROM TWORK_INFO_WA_HD A
+               ,TWORK_INFO_WA_DT B
+               ,TWORK_INFO_OB_HD C
+               ,TWORK_INFO_WKPRHS D 
+               ,TWORK_INFO_PI_DT E
+          WHERE    
+                A.CTKEY = B.CTKEY
+            <!-- AND A.OWKEY = B.OWKEY -->
+            AND A.WAHDKEY = B.WAHDKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.OWKEY = C.OWKEY
+            AND B.OBHDKEY = C.OBHDKEY
+            AND C.OBHDKEY = D.SOURCEKEY(+)
+            AND B.CTKEY = E.CTKEY
+            AND B.OWKEY = E.OWKEY 
+            AND B.OBHDKEY = E.OBHDKEY
+			AND A.CTKEY = #{ctkey}   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>			            
+		 ORDER BY E.IVATKEY ASC , E.ICKEY ASC
+	</select>	
+	
+	<select id="selectUnAllocationTargetList" resultMap="unAllocationTargetMap">
+		SELECT 	A.CTKEY
+				,B.PIDTKEY 
+				,B.EXQTY
+				,B.WKSTATUS
+				,B.ICKEY
+				,A.OBHDTYPE
+                ,B.FR_LCKEY
+                ,B.OBHDKEY
+                ,B.OBDTKEY
+		  FROM 	TWORK_INFO_OB_HD A
+				,TWORK_INFO_PI_DT B 
+				,TWORK_MST_IC C
+				,TWORK_MST_ICUT D
+				,TWORK_MST_ICUTXTYPE F       
+				,TWORK_MST_STORE G 
+		 WHERE
+				A.CTKEY = B.CTKEY 
+		   AND  A.OBHDKEY = B.OBHDKEY
+		   AND  B.CTKEY = C.CTKEY
+		   AND  B.ICKEY = C.ICKEY
+		   AND  C.OWKEY = D.OWKEY(+)
+		   AND  C.OWKEY = F.OWKEY(+)
+		   AND  C.CTKEY = D.CTKEY(+) 
+		   AND  C.ICUTKEY = D.ICUTKEY(+)
+		   AND  C.CTKEY = F.CTKEY(+)
+		   AND  C.ICUTKEY = F.ICUTKEY(+)
+		   AND  C.UOM = F.ICUTTYPE(+)   	
+		   AND  A.CTKEY = G.CTKEY(+)
+		   AND  A.STORE_KEY = G.STORE_KEY(+)
+		   AND  A.DCKEY = G.DCKEY(+)        
+		   AND  A.CTKEY = #{ctkey}
+		   AND  D.CLOSDATE >= #{closdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY B.IVATKEY ASC , B.ICKEY ASC
+	</select>	
+
+   	<select id="selectUnAllocateByWahdkeyList" resultType="String">
+	   SELECT A.WAHDKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		     ,TWORK_INFO_PI_DT D
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.CTKEY = D.CTKEY
+          AND C.OBHDKEY = D.OBHDKEY
+          AND C.OBDTKEY = D.OBDTKEY
+		  AND D.WKSTATUS = '00'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	  GROUP BY A.CTKEY, A.WAHDKEY
+   	</select>
+   			
+	<select id="selectUnPickingTargetListByWave" resultType="camelMap">
+         SELECT E.CTKEY
+               ,E.PIDTKEY 
+               ,E.EXQTY
+               ,E.CFQTY AS QTY
+               ,1 AS ICUTQTY  
+               ,E.OBHDKEY
+               ,E.OBDTKEY
+           FROM TWORK_INFO_WA_HD A
+               ,TWORK_INFO_WA_DT B
+               ,TWORK_INFO_OB_HD C
+               ,TWORK_INFO_WKPRHS D 
+               ,TWORK_INFO_PI_DT E
+          WHERE    
+                A.CTKEY = B.CTKEY
+            <!-- AND A.OWKEY = B.OWKEY -->
+            AND A.WAHDKEY = B.WAHDKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.OWKEY = C.OWKEY
+            AND B.OBHDKEY = C.OBHDKEY
+            AND C.OBHDKEY = D.SOURCEKEY(+)
+            AND B.CTKEY = E.CTKEY
+            AND B.OWKEY = E.OWKEY 
+            AND B.OBHDKEY = E.OBHDKEY
+            AND E.WKSTATUS = '90'
+			AND A.CTKEY = #{ctkey}   
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		 ORDER BY E.IVATKEY ASC , E.ICKEY ASC
+	</select>		
+	
+	<select id="selectUnPickingTargetList" resultType="camelMap">
+		SELECT  B.CTKEY
+				,B.PIDTKEY 
+				,B.EXQTY / D.ICUTQTY AS EXQTY
+				,B.CFQTY / D.ICUTQTY AS QTY
+				,D.ICUTQTY
+				,B.OBHDKEY
+				,B.OBDTKEY
+		  FROM 	TWORK_INFO_OB_HD A  
+				,TWORK_INFO_PI_DT B
+				,TWORK_MST_ICUT C
+				,TWORK_MST_ICUTXTYPE D
+				,TWORK_INFO_WA_DT E
+				,TWORK_MST_IC F 
+				,TWORK_MST_STORE G
+				,TWORK_INFO_LOADPLAN H
+		 WHERE 
+			    A.CTKEY = B.CTKEY
+		   AND  A.OBHDKEY = B.OBHDKEY
+           AND A.OWKEY = B.OWKEY
+		   AND  B.CTKEY = C.CTKEY(+) 
+		   AND  B.ICUTKEY = C.ICUTKEY(+)
+		   AND  B.CTKEY = D.CTKEY(+)
+		   AND  B.ICUTKEY = D.ICUTKEY(+)
+		   AND  B.UOM = D.ICUTTYPE(+)
+		   AND  A.CTKEY = E.CTKEY(+)
+		   AND  A.OWKEY = E.OWKEY(+)
+		   AND  A.OBHDKEY = E.OBHDKEY(+)
+		   AND  A.CTKEY = F.CTKEY
+		   AND  A.OWKEY = F.OWKEY 
+		   AND  B.ICKEY = F.ICKEY 
+		   AND  A.CTKEY = G.CTKEY(+)
+		   AND  A.STORE_KEY = G.STORE_KEY(+)
+		   AND  A.DCKEY = G.DCKEY(+)
+		   AND A.CTKEY     = H.CTKEY(+)
+		   AND A.LOGGRPCD  = H.LOGGRPCD(+)
+		   AND A.OBHDKEY   = H.OBHDKEY(+)
+		   AND A.STORE_KEY = H.SHPGLOCCD(+)
+		   AND A.OBHDKEY   = H.OBHDKEY(+)
+		   AND  A.CTKEY = #{ctkey}
+		   AND  C.CLOSDATE >= #{closdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+		 ORDER BY B.IVATKEY ASC , B.ICKEY ASC
+	</select>	
+
+   	<select id="selectUnPickingByWahdkeyList" resultType="String">
+	   SELECT A.WAHDKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		     ,TWORK_INFO_PI_DT D
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.CTKEY = D.CTKEY
+          AND C.OBHDKEY = D.OBHDKEY
+          AND C.OBDTKEY = D.OBDTKEY
+		  AND D.WKSTATUS = '90'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	  GROUP BY A.CTKEY, A.WAHDKEY
+   	</select>
+
+  	<select id="selectShippedConfirmByWahdkeyList" resultType="String">
+	   SELECT A.WAHDKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		WHERE
+		      A.CTKEY = #{ctkey}
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  <![CDATA[ AND C.WKSTATUS < '90' ]]>    
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	  GROUP BY A.CTKEY, A.WAHDKEY
+   	</select>	
+
+	<select id="selectShippedConfirmTargetListByWave" resultType="camelMap">
+	   SELECT A.CTKEY
+		     ,C.OBHDKEY
+		     ,C.OBDTKEY
+		     ,C.ICKEY
+		FROM  TWORK_INFO_WA_HD A
+		     ,TWORK_INFO_WA_DT B
+		     ,TWORK_INFO_OB_DT C
+		WHERE
+		      B.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >   
+		   AND  A.OWKEY = #{owkey}
+	    </if>		      
+		  AND A.CTKEY = B.CTKEY
+		  <!-- AND A.OWKEY = B.OWKEY -->
+		  AND A.WAHDKEY = B.WAHDKEY
+		  AND B.CTKEY = C.CTKEY
+		  AND B.OWKEY = C.OWKEY
+		  AND B.OBHDKEY = C.OBHDKEY
+		  AND C.WORKINGYN = 'N'
+		<![CDATA[ AND C.WKSTATUS >= '00' AND C.WKSTATUS < '81' ]]>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+			AND A.WAHDKEY IN
+				<foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					#{wahdkeyList}
+			  	</foreach>
+		</if>	
+	  ORDER BY C.ICKEY ASC
+	</select>
+
+	<select id="selectShippedConfirmTargetList" resultType="camelMap">
+		SELECT 	TB1.CTKEY
+				,TB2.OBHDKEY
+				,TB2.OBDTKEY
+				,TB2.ICKEY
+		  FROM 	TWORK_INFO_OB_HD TB1
+				,TWORK_INFO_OB_DT TB2
+				,TWORK_MST_IC TB3
+				,TWORK_MST_ICUTXTYPE TB4
+				,TWORK_INFO_PI_DT TB5
+				,TWORK_MST_STORE TB6
+				,TT_SHPM_LEG_T B1
+                ,TT_LOAD_T C1
+		 WHERE 
+				TB1.CTKEY = TB2.CTKEY
+		   AND  TB1.OBHDKEY = TB2.OBHDKEY
+		   AND  TB1.OWKEY = TB2.OWKEY
+		   AND  TB1.CTKEY = TB3.CTKEY
+		   AND  TB2.OWKEY = TB3.OWKEY
+		   AND  TB2.ICKEY = TB3.ICKEY
+		   AND  TB3.OWKEY = TB4.OWKEY(+)
+		   AND  TB3.CTKEY = TB4.CTKEY (+)
+		   AND  TB3.ICUTKEY = TB4.ICUTKEY (+)
+		   AND  TB3.UOM = TB4.ICUTTYPE (+)
+		   AND  TB2.CTKEY = TB5.CTKEY(+)
+		   AND  TB2.OWKEY = TB5.OWKEY(+)
+		   AND  TB2.OBHDKEY = TB5.OBHDKEY(+)
+		   AND  TB2.OBDTKEY = TB5.OBDTKEY(+)
+		   AND  TB1.CTKEY = TB6.CTKEY
+		   AND  TB1.STORE_KEY = TB6.STORE_KEY
+		   AND  TB1.DCKEY = TB6.DCKEY
+           AND  TB1.CTKEY = B1.CTKEY(+)
+           AND  TB1.OBHDKEY = B1.SHPMNO(+)
+           AND  B1.LDLEGID = C1.LDLEGID(+)
+           AND  B1.CUROPTLSTTID(+) >= '204'
+		   AND  TB1.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >   
+		   AND  TB1.OWKEY = #{owkey}
+	    </if>
+		   <![CDATA[ AND TB2.WKSTATUS >= '00' AND TB2.WKSTATUS < '81' ]]>   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+		ORDER BY TB2.ICKEY
+	</select>
+	
+	<update id="updateObDtWorkingID">
+		UPDATE TWORK_INFO_OB_DT
+		   SET WORKINGID = #{workingid}
+		      ,UPDATEDATE  = #{sysdate}
+	          ,UPDATEURKEY = #{surkey}
+		 WHERE 
+		 	   CTKEY = #{ctkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<update id="updateInvnTempWorkingID">
+		UPDATE TWORK_TEMP_IVUP
+		   SET WORKINGID = #{workingid}
+		      ,UPDATEDATE  = #{sysdate}
+	          ,UPDATEURKEY = #{surkey}
+		 WHERE 
+		 	   CTKEY = #{ctkey}
+		   AND ULHSKEY = #{ulhskey}
+	</update>	
+			
+</mapper>	

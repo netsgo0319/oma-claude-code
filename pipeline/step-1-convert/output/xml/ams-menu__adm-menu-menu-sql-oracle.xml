@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.menu.mapper.MenuMapper">
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+-- 				ORDER BY
+-- 				UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		<include refid="sql_sort"/>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<sql id="sql_Tmsg">
+		WITH T_MSG AS (
+		SELECT
+		A.MULAAPMSGHDKEY
+		, B.MSGTYPE
+		, B.DISPLAYMSG
+		FROM
+		TADMIN_MST_MULAAPMSG_HD A
+		INNER JOIN
+		TADMIN_MST_MULAAPMSG_DT B ON B.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)" >
+				AND LAKEY = #{lakey}
+			</if>
+
+			AND A.CLOSDATE <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+		</where>
+		)
+	</sql>
+
+	<select id="selectMenuCount" resultType="java.lang.Integer">
+		/* adm-menu-menu-sql-oracle.xml - selectMenuCount */
+		<include refid="sql_Tmsg"/>
+		SELECT
+			COUNT(1)
+		FROM (
+			WITH RECURSIVE menu_tree_cnt AS (
+				SELECT ME.MEKEY, ME.MENM, ME.UPRMEKEY, ME.EQTYPE, ME.USEYN, ME.APKEY, ME.USKEY, ME.MEORDER,
+					   ARRAY[ME.MEORDER::TEXT, ME.MEKEY] AS sort_path, 1 AS depth
+				FROM TADMIN_MST_ME ME
+				WHERE ME.UPRMEKEY = '0'
+				UNION ALL
+				SELECT ME.MEKEY, ME.MENM, ME.UPRMEKEY, ME.EQTYPE, ME.USEYN, ME.APKEY, ME.USKEY, ME.MEORDER,
+					   p.sort_path || ME.MEORDER::TEXT || ME.MEKEY, p.depth + 1
+				FROM TADMIN_MST_ME ME
+				INNER JOIN menu_tree_cnt p ON ME.UPRMEKEY = p.MEKEY
+			)
+			SELECT * FROM menu_tree_cnt
+		) A
+		INNER JOIN TADMIN_MST_URSCR B
+			ON B.APKEY = A.APKEY AND B.USKEY = A.USKEY
+		LEFT OUTER JOIN TADMIN_MST_ME C
+			ON C.MEKEY = A.UPRMEKEY
+		LEFT OUTER JOIN T_MSG D
+			ON D.MULAAPMSGHDKEY = A.MENM AND D.MSGTYPE = 'MENU'
+		LEFT OUTER JOIN T_MSG E
+			ON E.MULAAPMSGHDKEY = C.MENM AND E.MSGTYPE = 'MENU'
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+		ORDER BY A.sort_path
+	</select>
+
+	<select id="selectMenuList" resultType="camelMap">
+		/* adm-menu-menu-sql-oracle.xml - selectMenuList */
+		<include refid="sql_Tmsg"/>
+
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      '0' AS CHK
+			, A.APKEY
+			, A.MEKEY
+			, A.MENM AS MENAME_TREE
+			, A.MENM
+			, D.DISPLAYMSG AS MELANG
+		    , A.depth - 1 AS MELVL
+			, A.MEORDER
+			, A.UPRMEKEY
+			, C.MENM AS UPPERMENAME
+			, E.DISPLAYMSG AS UPPERMELANG
+			, A.USKEY
+			, B.USNM
+			, A.EQTYPE
+			, A.DELYN
+			, A.INSERTDATE
+			, A.INSERTURKEY AS INSERTURNAME
+			, A.UPDATEDATE
+			, A.UPDATEURKEY AS UPDATEURNAME
+		FROM (
+			WITH RECURSIVE menu_tree AS (
+				SELECT ME.MEKEY, ME.MENM, ME.UPRMEKEY, ME.EQTYPE, ME.USEYN, ME.APKEY, ME.USKEY, ME.MEORDER,
+					   ME.DELYN, ME.INSERTDATE, ME.INSERTURKEY, ME.UPDATEDATE, ME.UPDATEURKEY,
+					   ARRAY[ME.MEORDER::TEXT, ME.MEKEY] AS sort_path, 1 AS depth
+				FROM TADMIN_MST_ME ME
+				WHERE ME.UPRMEKEY = '0'
+				UNION ALL
+				SELECT ME.MEKEY, ME.MENM, ME.UPRMEKEY, ME.EQTYPE, ME.USEYN, ME.APKEY, ME.USKEY, ME.MEORDER,
+					   ME.DELYN, ME.INSERTDATE, ME.INSERTURKEY, ME.UPDATEDATE, ME.UPDATEURKEY,
+					   p.sort_path || ME.MEORDER::TEXT || ME.MEKEY, p.depth + 1
+				FROM TADMIN_MST_ME ME
+				INNER JOIN menu_tree p ON ME.UPRMEKEY = p.MEKEY
+			)
+			SELECT * FROM menu_tree
+		) A
+		INNER JOIN TADMIN_MST_URSCR B
+			ON B.APKEY = A.APKEY AND B.USKEY = A.USKEY
+		LEFT OUTER JOIN TADMIN_MST_ME C
+			ON C.MEKEY = A.UPRMEKEY
+		LEFT OUTER JOIN T_MSG D
+			ON D.MULAAPMSGHDKEY = A.MENM AND D.MSGTYPE = 'MENU'
+		LEFT OUTER JOIN T_MSG E
+			ON E.MULAAPMSGHDKEY = C.MENM AND E.MSGTYPE = 'MENU'
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+		ORDER BY A.sort_path
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_selectMenuList">
+		FROM
+			TADMIN_MST_ME A
+		INNER JOIN TADMIN_MST_URSCR B
+			ON B.APKEY = A.APKEY AND B.USKEY = A.USKEY
+		LEFT OUTER JOIN TADMIN_MST_ME C
+			ON C.MEKEY = A.UPRMEKEY
+		LEFT OUTER JOIN T_MSG D
+			ON D.MULAAPMSGHDKEY = A.MENM AND D.MSGTYPE = 'MENU'
+		LEFT OUTER JOIN T_MSG E
+			ON E.MULAAPMSGHDKEY = C.MENM AND E.MSGTYPE = 'MENU'
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</sql>
+
+	<select id="selectMenuDupCount" resultType="java.lang.Integer">
+		/* adm-menu-menu-sql-oracle.xml - selectMenuDupCount */
+		SELECT
+			COUNT(1)
+		FROM
+			TADMIN_MST_ME
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(mekey)">
+				AND MEKEY != #{mekey}
+			</if>
+			AND DELYN = 'N'
+			AND MEORDER = #{meorder}
+			AND UPRMEKEY = #{uprmekey}
+			AND EQTYPE = #{eqtype}
+		</where>
+	</select>
+
+	<insert id="insertMenu">
+		/* adm-menu-menu-sql-oracle.xml - insertMenu */
+		INSERT INTO TADMIN_MST_ME (
+			  MEKEY
+			, MENM
+			, MEORDER
+			, APKEY
+			, USKEY
+			, UPRMEKEY
+			, EQTYPE
+			, USEYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{mekey}
+			, #{menm}
+			, #{meorder}
+			, #{apkey}
+			, #{uskey}
+			, #{uprmekey}
+			, #{eqtype}
+			, #{useyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateMenu">
+		/* adm-menu-menu-sql-oracle.xml - updateMenu */
+		UPDATE
+		    TADMIN_MST_ME
+		SET
+			  MENM = #{menm}
+			, MEORDER = #{meorder}
+			, APKEY = #{apkey}
+			, USKEY = #{uskey}
+			, UPRMEKEY = #{uprmekey}
+			, EQTYPE = #{eqtype}
+			, DELYN	= #{delyn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY  = #{surkey}
+		WHERE
+			MEKEY = #{mekey}
+	</update>
+
+	<delete id="deleteMenu">
+		/* adm-menu-menu-sql-oracle.xml - deleteMenu */
+		UPDATE TADMIN_MST_ME
+		   SET DELYN = 'Y'
+		 WHERE MEKEY IN (
+			WITH RECURSIVE del_tree AS (
+				SELECT MEKEY FROM TADMIN_MST_ME WHERE MEKEY = #{mekey} AND DELYN = 'N'
+				UNION ALL
+				SELECT m.MEKEY FROM TADMIN_MST_ME m INNER JOIN del_tree d ON m.UPRMEKEY = d.MEKEY
+			)
+			SELECT MEKEY FROM del_tree
+		 )
+	</delete>
+
+</mapper>

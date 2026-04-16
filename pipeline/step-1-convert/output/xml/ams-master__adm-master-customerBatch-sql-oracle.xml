@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.CustomerBatchMapper">
+
+	<insert id="insertInterfaceList">
+		/* adm-master-customerBatch-sql-oracle.xml  insertInterfaceList*/
+		INSERT INTO TADMIN_INTF_CUSTOMERS
+		(
+			  ACKEY    /*화주 거래처코드*/
+			, ACNAME    /*거래처명*/
+			, CUSTSUMMARYNM    /*거래처약명*/
+			, ACCOUNTGROUP    /*계정그룹*/
+			, CUST_TYPE    /*거래처구분분류*/
+			, CUST_TYPE_DETAIL /*거래처구분 중분류*/
+			, ZIPCODE    /*우편번호*/
+			, ADDRESS1    /*기본주소*/
+			, ADDRESS2    /*상세주소*/
+			, CEO    /*대표자명*/
+			, TEL1    /*거래처 전화번호*/
+			, SALESPERSONKEY    /*영업사원코드*/
+			, REP_ACKEY    /*대표고객코드*/
+			, SALEKEY    /*판매처코드*/
+			, BUSINESSTYPE    /*업태*/
+			, BUSINESSCATEGORY    /*업종*/
+			, REGNO    /*사업자번호*/
+			, SEL_ADDRESS1    /*주소1(판매처)*/
+			, SEL_ADDRESS2    /*주소2(판매처)*/
+			, DISTRIBUTIONCHINE    /*유통체인코드*/
+			, VACCOUNT1 /* 가상계좌번호1 */
+			, VACCOUNT2 /* 가상계좌번호2 */
+			, VACCOUNT3 /* 가상계좌번호3 */
+			, VACCOUNT4 /* 가상계좌번호4 */
+			, REQUESTDT    /*요청일자*/
+			, CUST_GRADE 
+			, POINT 
+			, EMPSAVEYN    /*직원저장여부*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자ID*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자ID*/
+		) 
+		VALUES (
+			  #{ackey} /*화주 거래처코드*/
+			, #{acname} /*거래처명*/
+			, #{custsummarynm}    /*거래처약명*/
+			, #{accountgroup}    /*계정그룹*/
+			, #{custType}    /*거래처구분분류*/
+			, #{custTypeDetail}    /*거래처구분 중분류*/
+			, TRIM(#{zipcode})    /*우편번호*/
+			, TRIM(#{address1})    /*기본주소*/
+			, TRIM(#{address2})    /*상세주소*/
+			, #{ceo}    /*대표자명*/
+			, regexp_replace(#{tel1}, '[^0-9]', '') /*거래처 전화번호*/
+			, #{salespersonkey}   /*영업사원코드*/
+			, #{repAckey}     /*대표고객코드*/
+			, #{salekey}     /*판매처코드*/
+			, #{businesstype}     /*업태*/
+			, #{businesscategory}     /*업종*/
+			, #{regno}     /*사업자번호*/
+			, TRIM(#{selAddress1})     /*주소1(판매처)*/
+			, TRIM(#{selAddress2})     /*주소2(판매처)*/
+			, #{distributionchine}     /*유통체인코드*/
+			, #{vaccount1} /* 가상계좌번호1 */
+		    , #{vaccount2} /* 가상계좌번호2 */
+		    , #{vaccount3} /* 가상계좌번호3 */
+		    , #{vaccount4} /* 가상계좌번호4 */
+			, #{requestDt}       /*요청일자*/
+			, #{custAmtGrade} /*거래처등급*/
+			, #{point}
+			, #{empsaveyn}	/*직원저장여부*/
+	        , #{interfaceId}       /*인터페이스 마스터 ID*/
+	        , #{interfaceDate}      /*입력 일시*/
+	        , #{interfaceUrkey}       /*입력 사용자 ID*/
+	        , #{interfaceDate}        /*수정 일시*/
+	        , #{interfaceUrkey}     /*수정 사용자 ID*/
+			   )
+		</insert>
+
+</mapper>

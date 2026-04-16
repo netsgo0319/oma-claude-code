@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnXLossMapper">
+	
+	<update id="actionLossClose" >
+        UPDATE TWORK_INFO_LOSS 
+           SET CLOSE_YN = 'Y' 
+         WHERE CTKEY = #{ctkey} 
+           AND LOGGRPCD = #{loggrpcd} 
+           AND CLOSE_YN = 'N'
+	</update>
+
+
+</mapper>	

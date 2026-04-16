@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.api.in.mapper.SequenceStrategyApiMapper">
+
+	<select id="getStrategyList"
+			parameterType="com.daiso.oms.api.in.dto.SequenceStrategyRequestDTO$SearchDTO"
+			resultType="com.daiso.oms.api.in.dto.SequenceStrategyResponseDTO$DataDTO">
+		/* oms-sequence-strategy-sql-oracle.xml - getStrategyList */
+		SELECT #{apkey} AS APKEY
+			,  STGNM
+			,  SEQNM
+			,  STARTNO
+			,  PREFIX
+		    ,  SUFFIX
+			,  LENGTH AS SEQLENGTH
+			,  DATEFORMAT
+		    ,  SEQINITUSEYN
+		    ,  SEQRESETCYCLE
+			,  SEQINITDATE
+			,  DELYN
+			,  PREFIX
+			       || TO_CHAR(CURRENT_TIMESTAMP, DATEFORMAT)
+			       || SUFFIX
+			       || LPAD(STARTNO::TEXT, LENGTH, '0') AS SEQRESULT
+			,  INSERTDATE
+			,  INSERTURKEY
+			,  UPDATEDATE
+			,  UPDATEURKEY
+		  FROM TORDER_MST_SEQ_STG
+		 WHERE 1 = 1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(delyn)">
+				AND DELYN = #{delyn}
+			</if>
+	</select>
+
+	<update id="deleteSequenceStrategy">
+		/* oms-sequence-strategy-sql-oracle.xml - deleteSequenceStrategy */
+		UPDATE TORDER_MST_SEQ_STG
+		   SET DELYN = 'Y'
+		 WHERE STGNM = #{stgnm}
+	</update>
+
+	<update id="updateSequenceStrategy">
+		/* oms-sequence-strategy-sql-oracle.xml - updateSequenceStrategy */
+		MERGE INTO TORDER_MST_SEQ_STG A
+			 USING DUAL
+				ON (STGNM = #{stgnm})
+		WHEN MATCHED THEN
+				UPDATE SET
+				      A.UPDATEURKEY = #{urkey}
+				    , A.UPDATEDATE = #{sysdate}
+				    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(delyn)">
+						, A.DELYN = #{delyn}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(startno)">
+						, A.STARTNO = #{startno}
+					</if>
+					, A.PREFIX = #{prefix}
+					, A.SUFFIX = #{suffix}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(seqlength)">
+						, A.LENGTH = #{seqlength}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(seqnm)">
+						, A.SEQNM = #{seqnm}
+					</if>
+				    , A.SEQINITUSEYN = #{seqinituseyn}
+				    , A.SEQRESETCYCLE = #{seqresetcycle}
+					, A.DATEFORMAT = #{dateformat}
+		WHEN NOT MATCHED THEN
+				INSERT (
+					  A.STGNM
+					, A.SEQNM
+					, A.STARTNO
+					, A.PREFIX
+					, A.SUFFIX
+					, A.LENGTH
+					, A.DATEFORMAT
+					, A.SEQINITUSEYN
+					, A.SEQRESETCYCLE
+					, A.DELYN
+					, A.INSERTDATE
+					, A.INSERTURKEY
+					, A.UPDATEDATE
+					, A.UPDATEURKEY
+				)
+				VALUES (
+					  #{stgnm}
+					, #{seqnm}
+					, #{startno}
+					, #{prefix}
+					, #{suffix}
+					, #{seqlength}
+					, #{dateformat}
+					, #{seqinituseyn}
+					, #{seqresetcycle}
+					, #{delyn}
+					, #{sysdate}
+					, #{urkey}
+					, #{sysdate}
+					, #{urkey}
+					)
+	</update>
+
+</mapper>

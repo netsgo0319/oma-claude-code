@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnXLocMapper">
+
+	<sql id="selectInvnXLoc">
+	/* wms-inventory-invnxloc-sql-oracle.xml - selectInvnXLoc - 로케이션별 재고 조회  SQL */
+	SELECT T.CTKEY
+		 , CT.CTNAME
+		 , T.LCKEY
+		 , T.LCTYPE
+		 , T.LCHOLDTYPE
+		 , T.OWKEY
+		 , OW.OWNAME
+		 , T.ICKEY
+		 , IC.ICNAME
+		 , T.UOM
+		 , SUM(T.TTQTY) AS TTQTY
+		 , SUM(T.AVQTY) AS AVQTY
+		 , SUM(T.ALQTY) AS ALQTY
+		 , SUM(T.PIQTY) AS PIQTY
+		 , SUM(T.HOQTY) AS HOQTY
+		 , SUM(T.TTQTY_UNIT) AS TTQTY_UNIT
+		 , SUM(T.AVQTY_UNIT) AS AVQTY_UNIT
+		 , SUM(T.ALQTY_UNIT) AS ALQTY_UNIT
+		 , SUM(T.PIQTY_UNIT) AS PIQTY_UNIT
+		 , SUM(T.HOQTY_UNIT) AS HOQTY_UNIT
+		 , MAX(IC.SPEC) AS SPEC
+		 , MAX(IC.LOGGRPCD) AS LOGGRPCD
+		 , MAX(T.PRODUCTLOT) AS PRODUCTLOT
+		 , MAX(IC.MSCSTORETYPE) AS MSCSTORETYPE
+		 , MAX(IC.WRHOUS_SE) AS WRHOUS_SE
+		 , MAX(IC.BOL_WRHOUS_SE) AS BOL_WRHOUS_SE
+		 , MAX(T.UOM_SORT) AS UOM_SORT
+	FROM (SELECT A.CTKEY
+			   , A.LCKEY
+			   , E.LCTYPE
+			   , E.LCHOLDTYPE
+			   , A.OWKEY
+			   , A.ICKEY
+			   , SUM(DATE_TRUNC('day', A.TTQTY/D.ICUTQTY)::DATE) * D.ICUTQTY AS TTQTY
+			   , SUM(DATE_TRUNC('day', A.AVQTY/D.ICUTQTY)::DATE) * D.ICUTQTY AS AVQTY
+			   , SUM(DATE_TRUNC('day', A.ALQTY/D.ICUTQTY)::DATE) * D.ICUTQTY AS ALQTY
+			   , SUM(DATE_TRUNC('day', A.PIQTY/D.ICUTQTY)::DATE) * D.ICUTQTY AS PIQTY
+			   , SUM(DATE_TRUNC('day', A.HOQTY/D.ICUTQTY)::DATE) * D.ICUTQTY AS HOQTY
+			   , COALESCE(SUM(DATE_TRUNC('day', A.TTQTY/ D.ICUTQTY)::DATE), 0) AS TTQTY_UNIT
+			   , COALESCE(SUM(DATE_TRUNC('day', A.AVQTY/ D.ICUTQTY)::DATE), 0) AS AVQTY_UNIT
+			   , COALESCE(SUM(DATE_TRUNC('day', A.ALQTY/ D.ICUTQTY)::DATE), 0) AS ALQTY_UNIT
+			   , COALESCE(SUM(DATE_TRUNC('day', A.PIQTY/ D.ICUTQTY)::DATE), 0) AS PIQTY_UNIT
+			   , COALESCE(SUM(DATE_TRUNC('day', A.HOQTY/ D.ICUTQTY)::DATE), 0) AS HOQTY_UNIT
+			   , H.UOM
+			   , H.PRODUCTLOT
+			   , CASE WHEN H.UOM = 'EA' THEN 1
+					  WHEN H.UOM = 'BOL' THEN 2
+					  WHEN H.UOM = 'BOX' THEN 3
+			END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+				   INNER JOIN TWORK_INFO_IVAT H
+							  ON A.CTKEY = H.CTKEY
+							      AND A.OWKEY = H.OWKEY
+							      AND A.ICKEY = H.ICKEY
+								  AND A.IVATKEY = H.IVATKEY
+			       INNER JOIN TWORK_MST_ICUTXTYPE D
+								   ON A.CTKEY = D.CTKEY
+									   AND A.OWKEY = D.OWKEY
+									   AND A.ICKEY = D.ICUTKEY
+									   AND H.UOM = D.ICUTTYPE
+				   INNER JOIN TWORK_MST_LC E
+								   ON A.CTKEY = E.CTKEY
+									   AND A.LCKEY = E.LCKEY
+		  WHERE A.TTQTY > 0
+		    AND D.ICUTTYPE = 'BOX'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		  GROUP BY
+			  A.CTKEY
+				 , A.LCKEY
+				 , A.OWKEY
+				 , A.ICKEY
+				 , H.UOM
+				 , E.LCTYPE
+				 , E.LCHOLDTYPE
+				 , H.PRODUCTLOT
+		  	     , D.ICUTQTY
+				 , A.IVATKEY
+		  UNION ALL
+		  SELECT A.CTKEY
+			   , A.LCKEY
+			   , E.LCTYPE
+			   , E.LCHOLDTYPE
+			   , A.OWKEY
+			   , A.ICKEY
+			   , CASE WHEN H.UOM = 'BOX' THEN SUM(A.TTQTY) - (SUM(DATE_TRUNC('day', A.TTQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY))  ELSE SUM(A.TTQTY) END AS TTQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN SUM(A.AVQTY) - (SUM(DATE_TRUNC('day', A.AVQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY))  ELSE SUM(A.AVQTY) END AS AVQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN SUM(A.ALQTY) - (SUM(DATE_TRUNC('day', A.ALQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY))  ELSE SUM(A.ALQTY) END AS ALQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN SUM(A.PIQTY) - (SUM(DATE_TRUNC('day', A.PIQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY))  ELSE SUM(A.PIQTY) END AS PIQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN SUM(A.HOQTY) - (SUM(DATE_TRUNC('day', A.HOQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY))  ELSE SUM(A.HOQTY) END AS HOQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN DATE_TRUNC('day', (SUM(A.TTQTY) - (SUM(TRUNC(A.TTQTY / D.ICUTQTY))) * MAX(D.ICUTQTY)) / MAX(I.ICUTQTY))::DATE ELSE SUM(A.TTQTY / D.ICUTQTY) END AS TTQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN DATE_TRUNC('day', (SUM(A.AVQTY) - (SUM(TRUNC(A.AVQTY / D.ICUTQTY))) * MAX(D.ICUTQTY)) / MAX(I.ICUTQTY))::DATE ELSE SUM(A.AVQTY / D.ICUTQTY) END AS AVQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN DATE_TRUNC('day', (SUM(A.ALQTY) - (SUM(TRUNC(A.ALQTY / D.ICUTQTY))) * MAX(D.ICUTQTY)) / MAX(I.ICUTQTY))::DATE ELSE SUM(A.ALQTY / D.ICUTQTY) END AS ALQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN DATE_TRUNC('day', (SUM(A.PIQTY) - (SUM(TRUNC(A.PIQTY / D.ICUTQTY))) * MAX(D.ICUTQTY)) / MAX(I.ICUTQTY))::DATE ELSE SUM(A.PIQTY / D.ICUTQTY) END AS PIQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN DATE_TRUNC('day', (SUM(A.HOQTY) - (SUM(TRUNC(A.HOQTY / D.ICUTQTY))) * MAX(D.ICUTQTY)) / MAX(I.ICUTQTY))::DATE ELSE SUM(A.HOQTY / D.ICUTQTY) END AS HOQTY_UNIT
+			   , I.ICUTTYPE
+			   , H.PRODUCTLOT
+			   , CASE WHEN I.ICUTTYPE = 'EA' THEN 1
+					  WHEN I.ICUTTYPE = 'BOL' THEN 2
+					  WHEN I.ICUTTYPE = 'BOX' THEN 3
+			  END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+				   INNER JOIN TWORK_INFO_IVAT H
+							  ON A.CTKEY = H.CTKEY
+								AND A.OWKEY = H.OWKEY
+								AND A.ICKEY = H.ICKEY
+								AND A.IVATKEY = H.IVATKEY
+			       INNER JOIN TWORK_MST_ICUTXTYPE D
+								   ON A.CTKEY = D.CTKEY
+									   AND A.OWKEY = D.OWKEY
+									   AND A.ICKEY = D.ICUTKEY
+									   AND H.UOM = D.ICUTTYPE
+				   INNER JOIN TWORK_MST_LC E
+								   ON A.CTKEY = E.CTKEY
+									   AND A.LCKEY = E.LCKEY
+				   INNER JOIN TWORK_MST_ICUTXTYPE I
+							  ON A.CTKEY = I.CTKEY
+								  AND A.OWKEY = I.OWKEY
+								  AND A.ICKEY = I.ICUTKEY
+								  AND I.ICUTTYPE = 'BOL'
+								  AND I.OUTBOUNDUSEYN = 'Y'
+		  WHERE A.TTQTY > 0
+		    AND MOD(A.TTQTY,I.ICUTQTY) = 0
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		  GROUP BY A.CTKEY
+				 , A.LCKEY
+				 , A.OWKEY
+				 , A.ICKEY
+				 , H.UOM
+				 , E.LCTYPE
+				 , I.ICUTTYPE
+				 , E.LCHOLDTYPE
+				 , H.PRODUCTLOT
+		  		 , D.ICUTQTY
+		  	     , I.ICUTQTY
+				 , A.IVATKEY
+		  UNION ALL
+		  SELECT A.CTKEY
+			   , A.LCKEY
+			   , E.LCTYPE
+			   , E.LCHOLDTYPE
+			   , A.OWKEY
+			   , A.ICKEY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.TTQTY) - SUM(DATE_TRUNC('day', A.TTQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY)) ELSE SUM(A.TTQTY) END AS TTQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.AVQTY) - SUM(DATE_TRUNC('day', A.AVQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY)) ELSE SUM(A.AVQTY) END AS AVQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.ALQTY) - SUM(DATE_TRUNC('day', A.ALQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY)) ELSE SUM(A.ALQTY) END AS ALQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.PIQTY) - SUM(DATE_TRUNC('day', A.PIQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY)) ELSE SUM(A.PIQTY) END AS PIQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.HOQTY) - SUM(DATE_TRUNC('day', A.HOQTY / D.ICUTQTY)::DATE) * MAX(D.ICUTQTY)) ELSE SUM(A.HOQTY) END AS HOQTY
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.TTQTY) - (DATE_TRUNC('day', SUM(A.TTQTY / D.ICUTQTY))::DATE) * MAX(D.ICUTQTY)) / MAX(J.ICUTQTY) ELSE SUM(A.TTQTY / D.ICUTQTY) END AS TTQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.AVQTY) - (DATE_TRUNC('day', SUM(A.AVQTY / D.ICUTQTY))::DATE) * MAX(D.ICUTQTY)) / MAX(J.ICUTQTY) ELSE SUM(A.AVQTY / D.ICUTQTY) END AS AVQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.ALQTY) - (DATE_TRUNC('day', SUM(A.ALQTY / D.ICUTQTY))::DATE) * MAX(D.ICUTQTY)) / MAX(J.ICUTQTY) ELSE SUM(A.ALQTY / D.ICUTQTY) END AS ALQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.PIQTY) - (DATE_TRUNC('day', SUM(A.PIQTY / D.ICUTQTY))::DATE) * MAX(D.ICUTQTY)) / MAX(J.ICUTQTY) ELSE SUM(A.PIQTY / D.ICUTQTY) END AS PIQTY_UNIT
+			   , CASE WHEN H.UOM = 'BOX' THEN (SUM(A.HOQTY) - (DATE_TRUNC('day', SUM(A.HOQTY / D.ICUTQTY))::DATE) * MAX(D.ICUTQTY)) / MAX(J.ICUTQTY) ELSE SUM(A.HOQTY / D.ICUTQTY) END AS HOQTY_UNIT
+			   , J.ICUTTYPE
+			   , H.PRODUCTLOT
+			   , CASE WHEN J.ICUTTYPE = 'EA' THEN 1
+					  WHEN J.ICUTTYPE = 'BOL' THEN 2
+					  WHEN J.ICUTTYPE = 'BOX' THEN 3
+			  END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+				   INNER JOIN TWORK_INFO_IVAT H
+							  ON A.CTKEY = H.CTKEY
+								AND A.OWKEY = H.OWKEY
+								AND A.ICKEY = H.ICKEY
+								AND A.IVATKEY = H.IVATKEY
+				   INNER JOIN TWORK_MST_ICUTXTYPE D
+								   ON A.CTKEY = D.CTKEY
+									   AND A.OWKEY = D.OWKEY
+									   AND A.ICKEY = D.ICUTKEY
+									   AND H.UOM = D.ICUTTYPE
+				   INNER JOIN TWORK_MST_LC E
+								   ON A.CTKEY = E.CTKEY
+									   AND A.LCKEY = E.LCKEY
+				   LEFT JOIN TWORK_MST_ICUTXTYPE I
+							 ON A.CTKEY = I.CTKEY
+								 AND A.OWKEY = I.OWKEY
+								 AND A.ICKEY = I.ICUTKEY
+								 AND I.ICUTTYPE = 'BOL'
+				   INNER JOIN TWORK_MST_ICUTXTYPE J
+							  ON A.CTKEY = J.CTKEY
+								  AND A.OWKEY = J.OWKEY
+								  AND A.ICKEY = J.ICUTKEY
+								  AND J.ICUTTYPE = 'EA'
+		  						  AND J.OUTBOUNDUSEYN = 'Y'
+		  WHERE A.TTQTY > 0
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+			AND (
+			  MOD(A.TTQTY - (DATE_TRUNC('day', A.TTQTY/D.ICUTQTY)::DATE * D.ICUTQTY),COALESCE(I.ICUTQTY, 1)) > 0
+				  OR
+			  COALESCE(I.ICUTQTY, 1) = 1
+			  )
+		  GROUP BY A.CTKEY
+				 , A.LCKEY
+				 , A.OWKEY
+				 , A.ICKEY
+				 , J.ICUTTYPE
+				 , E.LCTYPE
+		         , H.UOM
+				 , E.LCHOLDTYPE
+				 , H.PRODUCTLOT
+				 , A.IVATKEY
+		         , D.ICUTQTY
+				 , J.ICUTQTY ) T
+			 INNER JOIN TWORK_MST_IC IC
+						ON T.CTKEY = IC.CTKEY
+							AND T.OWKEY = IC.OWKEY
+							AND T.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_OW OW
+						ON T.OWKEY = OW.OWKEY
+			 INNER JOIN TWORK_MST_CT CT
+						ON T.CTKEY = CT.CTKEY
+	WHERE IC.CLOSDATE >= #{sysdate}
+	GROUP BY T.CTKEY, CT.CTNAME, T.LCKEY, T.LCTYPE, T.LCHOLDTYPE, T.OWKEY, OW.OWNAME, T.ICKEY, IC.ICNAME, T.UOM
+	HAVING SUM(T.TTQTY) > 0
+	</sql>
+	
+	<select id="selectListInvnXLoc" resultType="camelMap">
+   	#{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT	TB1.* 
+		  FROM	(	
+        	<include refid="selectInvnXLoc"/>
+   		) TB1
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				 ORDER BY TB1.OWKEY , TB1.LCKEY , TB1.ICKEY, TB1.UOM_SORT
+			</otherwise>
+		</choose>
+   	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnXLocCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+        	<include refid="selectInvnXLoc"/>
+		)
+	</select>
+	
+	
+	<select id="selectListInvnXUlc" resultType="camelMap">
+   	#{GRIDPAGING_ROWNUMTYPE_TOP}
+	        SELECT C.ARNAME , 
+			       A.LCKEY ,  
+			       A.ULCKEY ,           
+			       CASE D.ATTRIBUTE2 WHEN '1' THEN '일반' WHEN '2' THEN '보세' ELSE D.ATTRIBUTE2 END BOSE_GB , 
+			       D.ATTRIBUTE3 BL, 
+			       D.PRODUCTLOT,  
+			       A.OWKEY ,  
+			       (SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY = A.OWKEY) OWNAME,   
+			       A.TTQTY ,
+			       E.UOM ,
+			       E.UOM UOM_DESC ,
+			       E.ICNAME ,    
+			       A.ICKEY       
+			  FROM TWORK_INFO_IVATXLCXULC A,
+			       TWORK_INFO_IVAT D,
+			       TWORK_MST_LC B,
+			       TWORK_MST_AR C,
+			       TWORK_MST_IC E
+			 WHERE A.IVATKEY = D.IVATKEY
+			   AND A.CTKEY = B.CTKEY
+			   AND A.LCKEY = B.LCKEY
+			   AND A.CTKEY = C.CTKEY
+			   AND B.ARKEY = C.ARKEY
+			   AND E.CTKEY = A.CTKEY 
+			   AND E.OWKEY = A.OWKEY 
+			   AND E.ICKEY = A.ICKEY
+			   AND A.TTQTY > 0 
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   AND  #{SEARCH_CONDITION}
+			</if>       
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				 ORDER BY  C.ARNAME ,A.OWKEY
+			</otherwise>
+		</choose>
+   	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnXUlcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IVATXLCXULC A,
+		       TWORK_INFO_IVAT D,
+		       TWORK_MST_LC B,
+		       TWORK_MST_AR C,
+		       TWORK_MST_IC E
+		 WHERE A.IVATKEY = D.IVATKEY
+		   AND A.CTKEY = B.CTKEY
+		   AND A.LCKEY = B.LCKEY
+		   AND A.CTKEY = C.CTKEY
+		   AND B.ARKEY = C.ARKEY
+		   AND E.CTKEY = A.CTKEY 
+		   AND E.OWKEY = A.OWKEY 
+		   AND E.ICKEY = A.ICKEY
+		   AND A.TTQTY > 0 
+		   AND A.CTKEY = '100'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND  #{SEARCH_CONDITION}
+		</if>    
+	</select>
+	
+	<select id="selectInvnXLocSum" resultType="camelMap" >
+       SELECT  SUM(A.TTQTY) AS TTQTY
+               ,SUM(A.AVQTY) AS AVQTY
+               ,SUM(A.ALQTY) AS ALQTY
+               ,SUM(A.PIQTY) AS PIQTY
+               ,SUM(A.PAQTY) AS PAQTY
+               ,SUM(A.HOQTY) AS HOQTY                            
+         FROM  (
+        	<include refid="selectInvnXLoc"/>
+         ) A
+	</select>
+
+</mapper>	

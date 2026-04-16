@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.RobsorterMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectRobsorterMgmt">
+		  FROM TWORK_MST_ROBSORTER ROB
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ROB.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectRobsorterMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-robsortermgmt-sql-oracle.xml - selectRobsorterMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectRobsorterMgmt"/>
+	</select>
+
+	<select id="selectRobsorterMgmtList" resultType="camelMap">
+		/* wms-master-robsortermgmt-sql-oracle.xml - selectRobsorterMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , ROB.CTKEY
+		     , CT.CTNM
+			 , ROB.ROBSORTERBOXNM
+			 , ROB.WIDTH
+			 , ROB.DEPTH
+			 , ROB.HEIGHT
+			 , ROB.CBMSTARTRNG
+			 , ROB.CBMCLOSRNG
+			 , ROB.USEYN
+			 , ROB.INSERTDATE
+			 , ROB.INSERTURKEY
+			 , ROB.UPDATEDATE
+		  	 , ROB.UPDATEURKEY
+		<include refid="sql_selectRobsorterMgmt"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectRobsorterMgmtDuplicateCount" resultType="java.lang.Integer">
+		/* wms-master-robsortermgmt-sql-oracle.xml - selectRobsorterMgmtDuplicateCount */
+		SELECT COUNT(*)
+		  FROM TWORK_MST_ROBSORTER
+		 WHERE CTKEY = #{ctkey}
+		   AND ROBSORTERBOXNM = #{robsorterboxnm}
+	</select>
+
+	<insert id="insertRobsorterMgmt">
+		/* wms-master-robsortermgmt-sql-oracle.xml - insertRobsorterMgmt */
+		INSERT INTO TWORK_MST_ROBSORTER (
+			   CTKEY
+			 , ROBSORTERBOXNM
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		VALUES (
+			   #{ctkey}
+			 , #{robsorterboxnm}
+			 , COALESCE(#{width}, 0)
+			 , COALESCE(#{depth}, 0)
+			 , COALESCE(#{height}, 0)
+			 , COALESCE(#{cbmstartrng}, 0)
+			 , COALESCE(#{cbmclosrng}, 0)
+			 , #{useyn}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateRobsorterMgmt">
+		/* wms-master-robsortermgmt-sql-oracle.xml - updateRobsorterMgmt */
+		UPDATE TWORK_MST_ROBSORTER
+		   SET WIDTH = COALESCE(#{width}, 0)
+			 , DEPTH = COALESCE(#{depth}, 0)
+			 , HEIGHT = COALESCE(#{height}, 0)
+			 , CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , USEYN = #{useyn}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND ROBSORTERBOXNM = #{robsorterboxnm}
+	</update>
+
+	<delete id="deleteRobsorterMgmt">
+		/* wms-master-robsortermgmt-sql-oracle.xml - deleteRobsorterMgmt */
+		DELETE
+		  FROM TWORK_MST_ROBSORTER
+		 WHERE CTKEY = #{ctkey}
+		   AND ROBSORTERBOXNM = #{robsorterboxnm}
+	</delete>
+
+</mapper>

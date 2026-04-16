@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.item.mapper.ItemIcInfoMapper">
+
+    <select id="selectErpIcInfoList" resultType="camelMap">
+		/* ItemIcInfoMapper.xml selectErpIcInfoList */
+        SELECT TRN_ID
+			 , MIN(SND_ROW) OVER (PARTITION BY TRN_ID) AS MINROW
+			 , MAX(SND_ROW) OVER (PARTITION BY TRN_ID) AS MAXROW
+             , ICKEY -- TORDER_MST_IC
+			 , ICNM
+			 , ASRTREPKEY
+			 , OLNICKEY
+			 , ICIMGURL
+			 , SMLCTG
+			 , OLNICTYPE
+			 , ACKEY
+			 --,ACNM
+			 , ICMGMTUSR
+			 , SLPRC
+			 , ASRTYN
+			 , DIRCDLVYICYN
+			 , ICSTATUSDIV
+			 , PKOTICYN
+			 , ROBSORTERICYN
+			 , MTR
+			 , COALESCE(EXPUSEYN, 'N') AS EXPUSEYN
+			 , PCSBARCODE
+			 , IPCBARCODE
+			 , CARTBARCODE
+			 , IPCWIDTH
+			 , IPCDEPTH
+			 , IPCHEIGHT
+			 , IPCVOL
+			 , IPCWEIGHT
+			 , CARTWIDTH
+			 , CARTDEPTH
+			 , CARTHEIGHT
+			 , CARTVOL
+			 , CARTWEIGHT
+			 , PLTROW
+			 , PLTCOL
+			 , CPP
+			 , QTYPERIPC
+			 , QTYPERCARTON
+             , 'ERP' AS INSERTSYSTM
+             , 'SIF-ERP-002' AS INTERFACEID
+		FROM
+		(
+			SELECT *
+			FROM TORDER_EAI_IC_BATCH
+			WHERE SND_PROC_TYP IN ('N','E','R')
+			AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+			ORDER BY TRN_ID ,  SND_ROW
+		) AS sub_t
+		LIMIT #{sendCnt}
+
+    </select>    
+    
+    <select id="selectWmsIcBatchInfoList" resultType="camelMap">
+		/* ItemIcInfoMapper.xml selectWmsIcBatchInfoList */
+		SELECT #{owkey} AS OWKEY
+		     , '09' AS CTKEY
+		     , ICKEY
+		FROM TORDER_WMS_IC_BATCH
+		WHERE REQDATE = #{startDate}
+		AND SENDYN = 'N'
+		LIMIT #{sendCnt}
+    </select>
+    
+    <update id="updateTodayTarget">
+		/* ItemIcInfoMapper.xml - updateTodayTarget */
+		UPDATE  TORDER_WMS_IC_BATCH SET  
+		        SENDYN = 'Y'
+		     ,  UPDATEDATE =  TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') 
+		     ,  UPDATEURKEY =  'batch ic info'
+		WHERE   REQDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+		  AND   ICKEY =  #{ickey}
+	</update>
+    
+</mapper>

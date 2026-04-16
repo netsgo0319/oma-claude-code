@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.B2bObLblInfoMapper">
+
+    <select id="selectErpB2bObLblInfoList" resultType="camelMap">
+		/* B2bObOrderMapper.xml selectErpB2bObLblInfoList */
+        SELECT TRN_ID
+             , OBLABELSEQNO
+             , DLV_BOX_NO
+             , DLV_BOX_BCD
+             , WRK_DATE
+             , GI_DATE
+             , BATCH_NO
+             , SHOP_CD
+             , REC_WHS_COD
+             , WHS_COD
+             , EQMT_TYP_CD
+             , GI_ORD_NO
+             , ITM_CD
+             , LOAD_QTY
+             , ITM_PKG_UNIT_CD
+             , FLR_TBL_NO
+             , LOT_NO
+             , DLV_BOX_CTNR_NO
+             , DLV_PLT_CTNR_NO
+             , LCS_RT_FUL_RT_NO
+		FROM TORDER_EAI_B2B_OBLABEL_BATCH
+		WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+		AND SND_DATE BETWEEN #{startDate} AND #{endDate} 
+		GROUP BY TRN_ID
+               , OBLABELSEQNO
+               , DLV_BOX_NO
+               , DLV_BOX_BCD
+               , WRK_DATE
+               , GI_DATE
+               , BATCH_NO
+               , SHOP_CD
+               , REC_WHS_COD
+               , WHS_COD
+               , EQMT_TYP_CD
+               , GI_ORD_NO
+               , ITM_CD
+               , LOAD_QTY
+               , ITM_PKG_UNIT_CD
+               , FLR_TBL_NO
+               , LOT_NO
+               , DLV_BOX_CTNR_NO
+               , DLV_PLT_CTNR_NO
+               , LCS_RT_FUL_RT_NO
+        ORDER BY OBLABELSEQNO
+    </select>
+       
+</mapper>

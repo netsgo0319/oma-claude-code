@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.api.sample.in.mapper.SampleMapper">
+
+	<select id="getUserInfo" parameterType="com.daiso.api.sample.vo.UserVO" resultType="com.daiso.api.sample.vo.UserVO">
+		SELECT URKEY
+			,  URNM
+			,  URGRKEY
+			,  CTKEY
+			,  OWKEYM AS OWKEY
+		  FROM TADMIN_MST_UR
+		 WHERE DELYN = 'N'
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(urkey)">
+			   AND URKEY = #{urkey}
+		   </if>
+	</select>
+
+	<select id="idExistCheck" parameterType="com.daiso.api.sample.vo.UserVO" resultType="java.lang.Boolean">
+		SELECT COALESCE((SELECT 'true'
+		              FROM TADMIN_MST_UR
+		             WHERE DELYN = 'N'
+		               AND URKEY = #{urkey}), 'false')
+	</select>
+
+	<insert id="insertUser" parameterType="com.daiso.api.sample.vo.UserVO">
+		INSERT INTO TADMIN_MST_UR (
+		                          URKEY
+								, URNM
+								, URPW
+								, DELYN
+								, INSERTURKEY
+								, INSERTDATE
+								, UPDATEURKEY
+								, UPDATEDATE)
+		VALUES
+			( #{urkey}
+			, #{urnm}
+			, #{urpw}
+			, 'N'
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate})
+	</insert>
+
+	<update id="deleteUser" parameterType="com.daiso.api.sample.vo.UserVO">
+		UPDATE TADMIN_MST_UR
+		   SET DELYN = 'Y', UPDATEDATE = #{sysdate}, UPDATEURKEY = 'SAMPLE_TEST'
+		 WHERE URKEY = #{urkey}
+	</update>
+
+	<delete id="deleteTestData">
+		DELETE FROM TADMIN_MST_UR
+		 WHERE DELYN = 'Y' AND UPDATEURKEY = 'SAMPLE_TEST'
+	</delete>
+
+</mapper>

@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.BrandManagementMapper">
+	
+	<select id="selectBrandCodeCountInfo" resultType="java.lang.Integer" >
+		/* adm-item-brandmanagement-sql-oracle.xml - selectBrandCodeCountInfo */
+		SELECT COUNT(1)
+		FROM   TADMIN_MST_ICXBRAND	
+		WHERE  DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+   			AND #{SEARCH_CONDITION}
+		</if>
+	</select>	
+	
+	<select id="selectBrandCodeInfo" resultType="camelMap">
+		/* adm-item-brandmanagement-sql-oracle.xml - selectBrandCodeInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT '0' AS CHK
+			     , BRANDKEY
+				 , BRANDNM
+				 , BRCDLENGTH
+				 , CNTRYCD
+				 , (SELECT ADCDDTNM FROM TADMIN_MST_ADCD_DT
+                     WHERE ADCDHDKEY = 'COUNTRYCODE' AND LAKEY = #{slakey} AND ADCDDTKEY = CNTRYCD) AS COUNTRYNAME
+				 , ICLOC
+				 , UOMLOC
+				 , WEIGHTLOC
+				 , DCMLPOINTLOC
+				 , PRDCTDATELOC
+				 , EXPLOC
+				 , ICLENGTH
+				 , UOMLENGTH
+				 , WEIGHTLENGTH
+				 , DCMLPOINTLENGTH
+				 , PRDCTDATELENGTH
+				 , EXPLENGTH
+				 , DCMLPOINT
+				 , UOM
+				 , UOMNM
+				 , DELYN				
+				 , UOMUSEYN
+				 , DCMLPOINTUSEYN
+				 , ICUSEYN
+				 , WEIGHTUSEYN
+				 , PRDCTDATEUSEYN
+				 , EXPUSEYN
+				 , FRUOM
+     		     , INSERTDATE
+	   		  	 , UPDATEDATE
+	   		  	 , INSERTURKEY
+ 				 , UPDATEURKEY
+			  FROM TADMIN_MST_ICXBRAND	
+		    <where>
+		    	DELYN = 'N'
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				 	  AND #{SEARCH_CONDITION}
+				</if>
+			</where>	
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY BRANDKEY DESC
+				</otherwise>
+			</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectBrandCode" resultType="camelMap">
+		/* adm-item-brandmanagement-sql-oracle.xml - selectBrandCode */
+		SELECT 
+		       BRANDKEY
+             , BRANDNM
+             , BRCDLENGTH
+             , CNTRYCD
+             , (SELECT ADCDDTNM FROM TADMIN_MST_ADCD_DT
+                 WHERE ADCDHDKEY = 'COUNTRYCODE' AND LAKEY = #{slakey} AND ADCDDTKEY = CNTRYCD) AS COUNTRYNAME
+             , ICLOC
+             , ICLENGTH
+             , UOMLOC
+             , UOMLENGTH
+             , WEIGHTLOC
+             , WEIGHTLENGTH
+             , DCMLPOINTLOC
+             , DCMLPOINTLENGTH
+             , PRDCTDATELOC
+             , PRDCTDATELENGTH
+             , EXPLOC
+             , EXPLENGTH
+             , DCMLPOINT
+			 , UOM
+             , UOMNM
+             , DELYN
+             , UOMUSEYN
+             , DCMLPOINTUSEYN
+			 , ICUSEYN
+			 , WEIGHTUSEYN
+			 , PRDCTDATEUSEYN
+			 , EXPUSEYN
+			 , FRUOM
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+		FROM   TADMIN_MST_ICXBRAND
+		WHERE  1=1
+		AND    BRANDKEY = #{brandkey}
+	</select>
+	
+	<insert id="insertBrandCode">
+		/* adm-item-brandmanagement-sql-oracle.xml - insertBrandCode */
+		INSERT INTO TADMIN_MST_ICXBRAND	( 
+			  BRANDKEY
+			, BRANDNM
+			, BRCDLENGTH
+			, ICLOC
+			, ICLENGTH
+			, UOMLOC
+			, UOMLENGTH
+			, WEIGHTLOC
+			, WEIGHTLENGTH
+			, DCMLPOINTLOC
+			, DCMLPOINTLENGTH
+			, PRDCTDATELOC
+			, PRDCTDATELENGTH
+			, EXPLOC
+			, EXPLENGTH
+			, DCMLPOINT
+			, UOMNM
+			, UOM
+			, DELYN
+			, UOMUSEYN
+			, DCMLPOINTUSEYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			, ICUSEYN
+			, WEIGHTUSEYN
+			, PRDCTDATEUSEYN
+			, EXPUSEYN
+			, FRUOM
+		) 
+		VALUES	(
+			  CASE #{brandkey} WHEN '0' THEN '10001' ELSE (SELECT CAST(MAX(BRANDKEY) AS INTEGER) + 1 FROM TADMIN_MST_ICXBRAND) END
+			, #{brandnm}
+			, #{brcdlength}
+			, #{icloc}
+			, #{iclength}
+			, #{uomloc}
+			, #{uomlength}
+			, #{weightloc}
+			, #{weightlength}
+			, #{dcmlpointloc}
+			, #{dcmlpointlength}
+			, #{prdctdateloc}
+			, #{prdctdatelength}
+			, #{exploc}
+			, #{explength}
+			, #{dcmlpoint}
+			, #{uomnm}
+			, #{uom}
+			, COALESCE(#{delyn}, 'N')
+			, COALESCE(#{uomuseyn}, 'N')
+			, COALESCE(#{dcmlpointuseyn}, 'N')
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			, COALESCE(#{icuseyn}, 'N')
+			, COALESCE(#{weightuseyn}, 'N')
+			, COALESCE(#{prdctdateuseyn}, 'N')
+			, COALESCE(#{expuseyn}, 'N')
+			, #{fruom}
+		)			
+	</insert>
+	
+	<update id="updateBrandCode">
+		/* adm-item-brandmanagement-sql-oracle.xml - updateBrandCode */
+		UPDATE TADMIN_MST_ICXBRAND
+		   SET BRANDNM            = #{brandnm}
+		     , CNTRYCD            = #{orcountrycode}
+		     , ICLOC              = #{icloc}
+		     , UOMLOC             = #{uomloc}
+		     , WEIGHTLOC          = #{weightloc}
+		     , DCMLPOINTLOC       = #{dcmlpointloc}
+		     , PRDCTDATELOC    	  = #{prdctdateloc}
+		     , EXPLOC     		  = #{exploc}
+		     , ICLENGTH           = #{iclength}
+		     , UOMLENGTH          = #{uomlength}
+		     , WEIGHTLENGTH       = #{weightlength}
+		     , DCMLPOINTLENGTH    = #{dcmlpointlength}
+		     , PRDCTDATELENGTH 	  = #{prdctdatelength}
+		     , EXPLENGTH  		  = #{explength}
+		     , BRCDLENGTH         = #{brcdlength}
+		     , DCMLPOINT          = #{dcmlpoint}
+		     , UOMNM              = #{uomnm}
+		     , UOM				  = #{uom}
+		     , DELYN              = #{delyn}
+		     , UOMUSEYN           = COALESCE(#{uomuseyn}, 'Y')
+			 , DCMLPOINTUSEYN     = COALESCE(#{dcmlpointuseyn}, 'Y')
+		     , UPDATEURKEY        = #{surkey}
+             , UPDATEDATE         = #{sysdate}
+             , ICUSEYN		  	  = #{icuseyn}
+			 , WEIGHTUSEYN        = #{weightuseyn}
+			 , PRDCTDATEUSEYN 	  = #{prdctdateuseyn}
+			 , EXPUSEYN  		  = #{expuseyn}
+			 , FRUOM			  = #{fruom}
+         WHERE
+             BRANDKEY = #{brandkey}
+	</update>
+	
+	<delete id="deleteBrandCode">
+		/* adm-item-brandmanagement-sql-oracle.xml - deleteBrandCode */
+		DELETE FROM TADMIN_MST_ICXBRAND
+		WHERE  BRANDKEY = #{brandkey}
+	</delete>
+	
+	<select id="selectBrandCodeInfoExcelDown" resultType="camelMap">
+		/* adm-item-brandmanagement-sql-oracle.xml - selectBrandCodeInfoExcelDown */
+		SELECT BRANDKEY
+			 , BRANDNM
+			 , BRCDLENGTH
+			 , CNTRYCD
+			 , (SELECT ADCDDTNM FROM TADMIN_MST_ADCD_DT
+                WHERE ADCDHDKEY = 'COUNTRYCODE' AND LAKEY = #{slakey} AND ADCDDTKEY = CNTRYCD) AS COUNTRYNAME
+			 , ICLOC
+			 , UOMLOC
+			 , WEIGHTLOC
+			 , DCMLPOINTLOC
+			 , PRDCTDATELOC
+			 , EXPLOC
+			 , ICLENGTH
+			 , UOMLENGTH
+			 , WEIGHTLENGTH
+			 , DCMLPOINTLENGTH
+			 , PRDCTDATELENGTH
+			 , EXPLENGTH
+			 , DCMLPOINT
+			 , UOM
+			 , UOMNM
+			 , DELYN				
+			 , UOMUSEYN
+			 , DCMLPOINTUSEYN
+		     , ICUSEYN
+			 , WEIGHTUSEYN
+			 , PRDCTDATEUSEYN
+			 , EXPUSEYN
+			 , FRUOM
+			 , UOM
+   		     , INSERTDATE
+   		  	 , UPDATEDATE
+   		  	 , INSERTURKEY
+			 , UPDATEURKEY
+		  FROM TADMIN_MST_ICXBRAND	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+ 		     WHERE #{SEARCH_CONDITION}
+		</if>
+		ORDER BY UPDATEDATE DESC
+	</select>
+	
+</mapper>	

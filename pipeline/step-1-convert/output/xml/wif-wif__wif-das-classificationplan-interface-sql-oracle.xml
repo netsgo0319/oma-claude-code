@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.das.classifplan.mapper.ClassifPlanMapper">
+	<select id="getClassificationPlanWaveSeq" resultType="camelMap">
+		/* wif-das-classificationplan-interface-sql-oracle.xml - getClassificationPlanWaveSeq - 분류계획 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationPlanOrderSeq" resultType="camelMap">
+		/*  wif-das-classificationplan-interface-sql-oracle.xml - getClassificationPlanOrderSeq - 분류계획 Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getClassificationPlanItemSeq" resultType="camelMap">
+		/* wif-das-classificationplan-interface-sql-oracle.xml - getClassificationPlanItemSeq - 분류계획 Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertClassificationPlanWave" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanWaveVO">
+		/* wif-das-classificationplan-interface-sql-oracle.xml - insertClassificationPlanWave - 분류계획 WAVE INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_WA (
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,DASEQTYPE
+			,WKDATE
+			,WASNDEMP
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{dasEqType}
+			,#{wkDate}
+			,#{waSndEmp}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertClassificationPlanOrder" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanOrderVO">
+		/* wif-das-classificationplan-interface-sql-oracle.xml - insertClassificationPlanOrder - 분류계획 ORDER INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,MIDGRP
+			,PCKGBOXSIZE
+			,DFSHPICEXISTYN
+			,WBLNO
+			,DPRTSPOTTMNLNM
+			,DPRTSPOTTMNLCD
+			,DESTSPOTTMNLNM
+			,DESTSPOTTMNLCD
+			,POSTOFICCD
+			,POSTOFICNM
+			,RGONTYPE
+			,HUBCD
+			,MDLCD
+			,DLVYEMPTYPECD
+			,DLVYEMPCD
+			,DLVYEMPNM
+			,PAY
+			,MEMO
+			,RCVPRSNADDR
+			,RCVPRSNADDR1
+			,RCVPRSNADDRABBR
+			,RCVPRSNNM
+			,RCVPRSNTEL
+			,RCVPRSNHP
+			,SENDPRSNADDR
+			,SENDPRSNNM
+			,SENDPRSNTEL
+			,SENDPRSNHP
+			,WEIGHT
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{midGrp}
+			,#{pckgBoxSize}
+			,#{dfShipIcExistYn}
+			,#{wblNo}
+			,#{dprtSpotTmnlNm}
+			,#{dprtSpotTmnlCd}
+			,#{destSpotTmnlNm}
+			,#{destSpotTmnlCd}
+			,#{postOficCd}
+			,#{postOficNm}
+			,#{rgonType}
+			,#{hubCd}
+			,#{mdlCd}
+			,#{dlvyEmpTypeCd}
+			,#{dlvyEmpCd}
+			,#{dlvyEmpNm}
+			,#{pay}
+			,#{memo}
+			,#{rcvPrsnAddr}
+			,#{rcvPrsnAddr1}
+			,#{rcvPrsnAddrAbbr}
+			,#{rcvPrsnNm}
+			,#{rcvPrsnTel}
+			,#{rcvPrsnHp}
+			,#{sendPrsnAddr}
+			,#{sendPrsnNm}
+			,#{sendPrsnTel}
+			,#{sendPrsnhp}
+			,#{weight}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		)
+	</insert>
+
+	<insert id="insertClassificationPlanItem" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanItemVO">
+		/* wif-das-classificationplan-interface-sql-oracle.xml - insertClassificationPlanItem - 분류계획 ITEM INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_classifplan_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,ORDQTY
+			,LCKEY
+			,DFSHPICYN
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{ordQty}
+			,#{lcKey}
+			,#{dfShpIcYn}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		)
+	</insert>
+
+</mapper>

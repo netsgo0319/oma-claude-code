@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.ServiceOrTypeMapper">
+	
+	<select id="selectOrTypeCount" resultType="java.lang.Integer" >
+		/* oms-master-serviceOrType-sql-oracle.xml selectOrTypeCount */
+        SELECT COUNT(1)
+          FROM TORDER_MST_ORTYPE A
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="selectOrTypeList" resultType="camelMap" >
+		/* oms-master-serviceOrType-sql-oracle.xml selectOrTypeList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT '0' AS CHK
+				     , A.OWKEY
+				     , O.OWNM AS OWKEYNM
+				     , A.ORDERTYPECD AS SERVERORDERTYPECD
+				     , A.ORDERTYPECD
+				     , A.ORDERTYPENM
+				     , COALESCE(A.IBYN, 'N') AS IBYN
+				     , COALESCE(A.OBYN, 'N') AS OBYN
+				     , A.ORDERAT
+				     , A.WMSIBTYPE
+				     , A.WMSOBTYPE
+				     , A.TMSOBTYPE
+				     , COALESCE(A.SOYN, 'N') AS SOYN
+				     , COALESCE(A.STOCKYN, 'N') AS STOCKYN
+				     , COALESCE(A.WMSORDERCREATEYN, 'N') AS WMSORDERCREATEYN
+				     , COALESCE(A.TMSORDERCREATEYN, 'N') AS TMSORDERCREATEYN
+					 , COALESCE(A.WMSYN, 'N') AS WMSYN
+					 , COALESCE(A.TMSPERFMANSYN, 'N') AS TMSPERFMANSYN
+					 , COALESCE(A.WMSPERFMANSYN, 'N') AS WMSPERFMANSYN
+					 , A.PERFMANSTYPE
+					 , COALESCE(A.ORDERSEPYN, 'N') AS ORDERSEPYN
+					 , COALESCE(A.ICCOMBINATYN, 'N') AS ICCOMBINATYN
+				     , 'Y' AS IS_OWSPCVERIFICATION
+				     , COALESCE(A.DELYN, 'N') AS DELYN
+				     , A.INSERTDATE
+				     , A.INSERTURKEY
+				     , A.UPDATEDATE
+				     , A.UPDATEURKEY
+				     --, COALESCE(A.UNSETYN, 'N') AS UNSETYN
+					 --, COALESCE(A.ICUT_CHK_BY_CT_YN, 'N') AS ICUT_CHK_BY_CT_YN
+				     --, COALESCE(A.DLDAYYN, 'N') AS DLDAYYN
+				     --, A.OWSPCVERIFICATION
+				  FROM TORDER_MST_ORTYPE A
+				  LEFT JOIN TORDER_MST_OW O 
+				    ON A.OWKEY = O.OWKEY
+				 WHERE 1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				       AND #{SEARCH_CONDITION}
+				</if>
+				<if test="owkey != null">
+		    	  	   AND A.OWKEY = #{owkey}
+		    	</if>	
+		    	<if test="orTypeCd != null">
+		    	  	   AND A.ORDERTYPECD = #{orTypeCd}
+		    	</if>	
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY LPAD(A.ORDERTYPECD::TEXT, 20, '0')
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>		
+	
+	<select id="selectOrTypeDt" resultType="camelMap" >
+		/* oms-master-serviceOrType-sql-oracle.xml selectOrTypeDt */
+		SELECT '0' AS CHK
+		     , M.OWKEY
+		     , #{hddtdiv} AS HDDTDIV
+		     , M.ORDERTYPECD
+		     , M.ORDERTYPENM
+		     , A.COLUMN_NAME AS SOCOLUMN
+		     , COALESCE(B.COMMENTS, A.COLUMN_NAME) AS SOCOLUMNCOMMENT
+		     , COALESCE(C.REQRDYN, 'N') AS REQRDYN
+		     , C.DEFVAL
+		     , COALESCE(C.DELYN, 'N') AS DELYN
+		     , C.INSERTDATE
+		     , C.INSERTURKEY
+		     , C.UPDATEDATE
+		     , C.UPDATEURKEY
+		  FROM TORDER_MST_ORTYPE M
+		  JOIN USER_TAB_COLUMNS A
+		    ON A.TABLE_NAME = #{tableName}
+		  LEFT JOIN USER_COL_COMMENTS B
+		    ON A.TABLE_NAME = B.TABLE_NAME
+		   AND A.COLUMN_NAME = B.COLUMN_NAME
+		  LEFT JOIN TORDER_INFO_SO_CHK C
+		    ON M.OWKEY = C.OWKEY
+		   AND M.ORDERTYPECD = C.ORDERTYPECD
+		   AND C.HDDTDIV = #{hddtdiv}
+		   AND A.COLUMN_NAME = C.SOCOLUMN
+		 WHERE M.OWKEY = #{owkey}
+		   AND M.ORDERTYPECD = #{orTypeCd}
+		 ORDER BY A.COLUMN_ID
+	</select>
+
+	<select id="checkOrTypeInfo" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_MST_ORTYPE	
+    	 WHERE OWKEY = #{owkey}
+    	   AND ORDERTYPECD = #{ordertypecd}
+	</select>	
+	
+	<select id="checkOrTypeDt" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_INFO_SO_CHK
+    	 WHERE OWKEY = #{owkey}
+    	   AND ORDERTYPECD = #{ordertypecd}	
+    	   AND HDDTDIV = #{hddtdiv}
+    	   AND SOCOLUMN = #{socolumn}
+	</select>
+
+	<insert id="insertOrTypeDt">
+	/* oms-master-serviceOrType-sql-oracle.xml insertOrTypeDt */
+		INSERT INTO TORDER_INFO_SO_CHK
+		(
+		      OWKEY
+		    , ORDERTYPECD
+		    , HDDTDIV
+		    , SOCOLUMN
+		    , REQRDYN
+		    , DEFVAL
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		VALUES 
+		(
+		      #{owkey}
+		    , #{ordertypecd}
+		    , #{hddtdiv}
+		    , #{socolumn}
+		    , #{reqrdyn}
+		    , #{defval}
+		    , #{delyn}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+
+	<update id="updateOrTypeDt">
+	/* oms-master-serviceOrType-sql-oracle.xml updateOrTypeDt */
+		UPDATE TORDER_INFO_SO_CHK
+		   SET REQRDYN = #{reqrdyn}
+		     , DEFVAL = #{defval}
+		     , DELYN = #{delyn}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ORDERTYPECD = #{ordertypecd}
+		   AND HDDTDIV = #{hddtdiv}
+		   AND SOCOLUMN = #{socolumn}
+	</update>
+	
+</mapper>

@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.OwnerMapper">
+
+	<select id="selectOwnerCount" resultType="java.lang.Integer">
+		/* adm-master-owner-sql-oracle.xml - selectOwnerCount */
+		SELECT 	COUNT(1)  
+		FROM TADMIN_MST_OW
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</select>
+
+	<select id="selectOwner" resultType="camelMap">
+		/* adm-master-owner-sql-oracle.xml - selectOwner */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT
+			  '0' AS CHK
+			, OWKEY
+			, OWNM
+			, REGNO
+			, BIZTYPE
+			, BIZCTG
+			, ADDRID
+			, ZIPCD
+			, ADDR1
+			, ADDR2
+			, TEL1
+			, TEL2
+			, FAX
+			, CONTACT
+			, CEO
+			, UDF1
+			, UDF3
+			, MASTERUPDATEIMPOS
+			, CARTYPE
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		FROM TADMIN_MST_OW
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		ORDER BY
+			UPDATEDATE DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="checkOwnerCount" resultType="java.lang.Integer" >
+		/* adm-master-owner-sql-oracle.xml - checkOwnerCount */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_OW
+		WHERE OWKEY = UPPER(#{owkey})
+	</select>
+
+	<delete id="deleteTAdminMstOw">
+		/* adm-master-owner-sql-oracle.xml - deleteTAdminMstOw */
+		UPDATE TADMIN_MST_OW
+		SET
+			  DELYN = 'Y'
+			, CLOSDATE = #{closdate}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		WHERE	OWKEY = #{owkey}
+	</delete>
+	
+	<select id="selectPkOwner" resultType="camelMap">
+		/* adm-master-owner-sql-oracle.xml - selectPkOwner */
+        SELECT A.OWKEY
+             , A.OWNM
+             , A.REGNO
+          	 , A.BIZTYPE
+             , A.BIZCTG
+             , A.TEL1
+             , A.TEL2
+             , A.FAX
+             , A.CONTACT
+             , A.CEO
+             , A.DIMENSIONUOM
+             , A.WEIGHTUOM
+             , A.UDF1
+             , A.UDF2
+             , A.UDF3
+             , A.BOXTYPE
+             , A.LAKEY
+             , A.CURRTYPE
+             , A.BARCODETYPE
+             , A.DELSTTVRFTYPE
+             , A.ALWMXDYN
+             , A.DFTORISHPGLOCCD
+             , A.DFTDESTSHPGLOCCD
+             , A.BILLTOCUSTCD
+             , A.EMAIL
+             , A.WEBURL
+             , A.UOMTYPE
+             , A.MASTERUPDATEIMPOS
+             , A.CARTYPE
+             , A.LOGGRPCD
+             , A.DIVCD
+             , A.CORP1ID
+             , A.CORP2ID
+             , A.EXTCD1
+             , A.EXTCD2
+             , A.CUSTTYPE
+             , A.MEMOID
+             , A.ADDRID
+             , ADDR.LAT
+             , ADDR.LON
+             , A.STATUSCD
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+             , A.ZIPCD AS ZIPNO
+             , A.ADDR1 AS LNMADRES
+             , A.ZIPCD
+             , A.ADDR1
+             , A.ADDR2
+             , A.DELYN
+        FROM TADMIN_MST_OW A
+        	LEFT OUTER JOIN TADMIN_MST_ADDR_T ADDR
+        				 ON A.ADDRID = ADDR.ADDRID
+		WHERE OWKEY = #{owkey}
+	</select>
+	
+	<insert id="insertTAdminMstOw">
+		/* adm-master-owner-sql-oracle.xml - insertTAdminMstOw */
+		INSERT INTO TADMIN_MST_OW	(
+			UPDATEURKEY
+			,UPDATEDATE
+			,TEL2
+			,TEL1
+			,OWNM
+			,OWKEY
+			,REGNO
+			,BIZTYPE
+			,BIZCTG
+			,INSERTURKEY
+			,INSERTDATE
+			,FAX
+			,CONTACT
+			,CEO
+			,DIMENSIONUOM
+			,WEIGHTUOM
+			,UDF1
+			,UDF2
+			,UDF3
+			,BOXTYPE
+            ,LAKEY
+            ,CURRTYPE
+            ,BARCODETYPE
+            ,DELSTTVRFTYPE
+            ,ALWMXDYN
+            ,EMAIL
+            ,WEBURL
+            ,UOMTYPE
+            ,LOGGRPCD
+            ,CUSTTYPE
+            ,ADDRID
+            ,CLOSDATE
+            ,ZIPCD
+            ,ADDR1
+            ,ADDR2
+            ,MASTERUPDATEIMPOS
+            ,CARTYPE
+            ,BILLTOCUSTCD
+		 )
+		VALUES	(
+			#{surkey}
+			,#{sysdate}
+			,#{tel2}
+			,#{tel1}
+			,#{ownm}
+			,UPPER(#{owkey})
+			,#{regno}
+			,#{biztype}
+			,#{bizctg}
+			,#{surkey}
+			,#{sysdate}
+			,#{fax}
+			,#{contact}
+			,#{ceo}
+			,#{dimensionuom}
+			,#{weightuom}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{boxtype}
+			,#{lakey}
+            ,#{currtype}
+            ,#{barcodetype}
+            ,#{delsttvrftype}
+            ,#{alwmxdyn}
+            ,#{email}
+            ,#{weburl}
+            ,#{uomtype}
+            ,#{loggrpcd}
+            ,#{custtype}
+            ,#{addrid}
+            ,#{closdate}
+            ,#{zipcd}
+            ,#{addr1}
+            ,#{addr2}
+            ,#{masterupdateimpos}
+            ,#{cartype}
+            ,#{billtocustcd}
+		)	
+	</insert>	
+	
+	<update id="updateTAdminMstOw">
+		/* adm-master-owner-sql-oracle.xml - updateTAdminMstOw */
+		UPDATE 	TADMIN_MST_OW
+		   SET	UPDATEURKEY  		= #{surkey}
+				,UPDATEDATE   		= #{sysdate}
+				,TEL2         		= #{tel2}
+				,TEL1         		= #{tel1}
+				,OWNM       		= #{ownm}
+				,REGNO       		= #{regno}
+		        ,BIZTYPE   			= #{biztype}
+		        ,BIZCTG				= #{bizctg}
+				,FAX          		= #{fax}
+				,CONTACT      		= #{contact}
+				,CEO          		= #{ceo}
+				,DIMENSIONUOM		= #{dimensionuom}
+				,WEIGHTUOM			= #{weightuom}
+				,UDF1				= #{udf1}
+				,UDF2				= #{udf2}
+				,UDF3				= #{udf3}
+				,BOXTYPE			= #{boxtype}
+				,LAKEY				= #{lakey}
+	            ,CURRTYPE			= #{currtype}
+	            ,BARCODETYPE		= #{barcodetype}
+	            ,DELSTTVRFTYPE		= #{delsttvrftype}
+	            ,ALWMXDYN			= #{alwmxdyn}
+	            ,EMAIL				= #{email}
+	            ,WEBURL				= #{weburl}
+	            ,UOMTYPE			= #{uomtype}
+	            ,LOGGRPCD			= #{loggrpcd}
+	            ,CUSTTYPE			= #{custtype}	 
+	            ,ADDRID				= #{addrid}
+	            ,ZIPCD				= #{zipcd}
+            	,ADDR1				= #{addr1}
+            	,ADDR2				= #{addr2}
+            	,MASTERUPDATEIMPOS 	= #{masterupdateimpos}
+            	,CARTYPE			= #{cartype}
+            	,BILLTOCUSTCD 		=#{billtocustcd}
+		   	    ,DELYN				=#{delyn}
+		WHERE	OWKEY = #{owkey} 
+	</update>
+	
+
+</mapper>

@@ -1,0 +1,13 @@
+{
+  "current_step": 4,
+  "steps": {
+    "step-0": {"status": "success", "completed_at": "2026-04-16T07:30:00"},
+    "step-1": {"status": "success", "completed_at": "2026-04-16T07:45:00", "files": 431, "queries": 4990, "rules_applied": 8924, "llm_converted": 157},
+    "step-2": {"status": "success", "completed_at": "2026-04-16T08:45:00", "tc_total": 58708, "tc_llm": 56730, "tc_custom": 743},
+    "step-3": {"status": "success", "completed_at": "2026-04-16T09:55:00", "batches": 29, "fix_attempted": 299},
+    "step-4": {"status": "success", "completed_at": "2026-04-16T10:02:00"}
+  },
+  "total_xml_files": 431,
+  "pg_schema": "wmson",
+  "pipeline_status": "COMPLETE"
+}

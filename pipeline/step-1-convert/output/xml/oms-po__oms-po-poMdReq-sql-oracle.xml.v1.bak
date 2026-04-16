@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.PoMdRequstApiMapper">
+
+	<insert id="insertMdRequestOrderQty">
+		/* oms-po-poMdReq-sql-oracle.xml - insertMdRequestOrderQty */
+			INSERT INTO WMSON.TORDER_INFO_MD_RDEQODRDER (
+				OWKEY,
+				CTKEY,
+				ICKEY,
+				REQORDERDAY,
+				REQQTY,
+				CMT,
+				INSERTDATE,
+				INSERTURKEY,
+				UPDATEDATE,
+				UPDATEURKEY
+			)
+			VALUES (
+				#{owkey},
+				#{ctkey},
+				#{ickey},
+				#{reqOrderDay},
+				#{reqQty},
+				#{cmt},
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+				#{urkey},
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+				#{urkey}
+			)
+	</insert>
+
+	<update id="updateMdRequestOrderQty">
+		/* oms-po-poMdReq-sql-oracle.xml - updateMdRequestOrderQty */
+		UPDATE TORDER_INFO_MD_RDEQODRDER SET REQQTY =#{reqQty} ,
+											 CMT = #{cmt} ,
+											 UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+											 UPDATEURKEY = #{urkey}
+		WHERE  OWKEY =#{owkey}
+		  AND  CTKEY =#{ctkey}
+		  AND  ICKEY =#{ickey}
+		  AND  REQORDERDAY = #{reqOrderDay}
+	</update>
+
+
+	<select id="selectInvalidMdRequests" resultType="com.daiso.oms.api.in.vo.MdValidationResultVo">
+		/* oms-po-poMdReq-sql-oracle.xml - selectInvalidMdRequests */
+		SELECT LGCT_CNTR_CD, PD_NO, HAS_ITEM_MST, HAS_INSERTED
+		FROM (
+			SELECT
+				COALESCE(Y.LGCT_CNTR_CD, '05') AS LGCT_CNTR_CD,
+				Y.PD_NO,
+				CASE WHEN M.ICKEY IS NULL THEN 'N' ELSE 'Y' END AS HAS_ITEM_MST,
+				CASE WHEN X.ICKEY IS NULL THEN 'N' ELSE 'Y' END AS HAS_INSERTED
+			FROM TORDER_INTF_MAL_MDRDEQODRDER Y
+			LEFT JOIN TORDER_INFO_MD_RDEQODRDER X
+			ON X.OWKEY = #{owkey}
+			AND X.CTKEY = COALESCE(Y.LGCT_CNTR_CD, '05')
+			AND X.ICKEY = Y.PD_NO
+			AND X.REQORDERDAY = Y.SHPNG_DATE
+			LEFT JOIN TORDER_MST_IC M
+			ON M.OWKEY = #{owkey}
+			AND M.ICKEY = Y.PD_NO
+			WHERE Y.SHPNG_DATE = #{reqOrderDay}
+			AND Y.IFID = #{ifid}
+		)
+		WHERE HAS_ITEM_MST = 'N'
+		OR HAS_INSERTED = 'Y'
+	</select>
+
+
+</mapper>
+	

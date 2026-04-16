@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.VehicleMasterMapper">
+
+	<sql id="selectVehicleMasterRefSql">
+	SELECT
+		 VEHICLE.VEHICLEKEY
+		,VEHICLE.VEHICLENUM
+		,VEHICLE.CTKEY
+		,(SELECT CTNAME FROM TWORK_MST_CT WHERE CTKEY = VEHICLE.CTKEY) CTNAME
+		,VEHICLE.LOGGRPCD
+		,(SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'LOGGRPCD' AND CTCD_DTKEY = VEHICLE.LOGGRPCD AND CTKEY = VEHICLE.CTKEY) LOGGRPCDNAME
+		,VEHICLE.DCKEY
+		,(SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'DCKEY' AND CTCD_DTKEY = VEHICLE.DCKEY AND CTKEY = VEHICLE.CTKEY) DCNAME
+		,VEHICLE.CARRKEY
+		,(SELECT CARRNM FROM TT_CARR_T WHERE CARRCD = VEHICLE.CARRKEY) CARRNAME
+		,VEHICLE.VEHICLETYP
+		,(SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'EQUIPTYPCD' AND CTCD_DTKEY = VEHICLE.VEHICLETYP AND CTKEY = VEHICLE.CTKEY) VEHICLETYPNAME
+		,VEHICLE.ICGRKEY
+		,(SELECT CTCD_DTNAME FROM TWORK_MST_CTCD_DT WHERE CTCD_HDKEY = 'ICGRKEY' AND CTCD_DTKEY = VEHICLE.ICGRKEY AND CTKEY = VEHICLE.CTKEY) ICGRNAME
+		,VEHICLE.LENGTHS
+		,VEHICLE.WIDTH
+		,VEHICLE.HEIGHT
+		,VEHICLE.USABLLEN
+		,VEHICLE.USABLWDTH
+		,VEHICLE.USABLHGHT
+		,VEHICLE.MAXLDWGT
+		,VEHICLE.MAXLDVOL
+		,VEHICLE.VEHICLENETWGT
+		,VEHICLE.VEHICLEOPT
+		,VEHICLE.REGULATYP
+		,CASE VEHICLE.REGULATYP WHEN 'Y' THEN '정규' WHEN 'N' THEN '예비' END REGULATYPNAME 
+		,VEHICLE.INSERTDATE
+		,VEHICLE.INSERTURKEY
+		,VEHICLE.INSERTURKEY AS INSERTURNAME
+		,VEHICLE.UPDATEDATE
+		,VEHICLE.UPDATEURKEY
+		,VEHICLE.UPDATEURKEY AS UPDATEURNAME
+		,VEHICLE.DELYN
+	FROM TEST_VEHICLEMASTER VEHICLE
+	WHERE	1=1
+	  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+   	  AND #{SEARCH_CONDITION}
+	  </if>
+	</sql>
+	
+	<select id="selectVehicleMasterCount" resultType="java.lang.Integer" >
+       SELECT  COUNT(1)
+         FROM    (
+            <include refid="selectVehicleMasterRefSql"/>
+            AND DELYN = 'N'
+        ) 
+	</select>	
+	
+	<select id="selectVehicleMaster" resultType="camelMap" >
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectVehicleMasterRefSql"/>
+        AND DELYN = 'N'
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					<!--  ORDER BY A.TO_DAY, A.OWKEY, A.ICKEY, A.BONDTYPE, B.IBCONFIRMDATE  -->
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectVehicleMasterDt" resultType="camelMap" >
+		SELECT A.*
+		  FROM(
+			<include refid="selectVehicleMasterRefSql"/>
+			) A
+		 WHERE 1=1
+           AND DELYN = 'N'
+		   AND VEHICLEKEY = #{vehiclekey}
+		   AND VEHICLENUM = #{vehiclenum}
+	</select>
+	
+	<select id="selectVehicleMasterDtCount" resultType="java.lang.Integer" >
+       SELECT  COUNT(1)
+          FROM    (
+				<include refid="selectVehicleMasterRefSql"/>
+               AND DELYN = 'N'
+			   AND VEHICLEKEY = #{vehiclekey}
+			   AND VEHICLENUM = #{vehiclenum}
+				)
+        ) 
+	</select>
+	
+	<sql id="selectCarrRefSql">
+	SELECT DISTINCT
+		CARRCD
+		,CARRNM
+	FROM TT_CARR_T
+	WHERE	1=1
+	</sql>
+	
+	<select id="checkDup" resultType="camelMap" >
+       SELECT 
+       (SELECT  COUNT(1)
+          FROM    (
+				<include refid="selectVehicleMasterRefSql"/>
+				<if test="vehiclekey != null and vehiclekey != ''" >
+				   AND VEHICLEKEY = #{vehiclekey}
+				</if>
+				<if test="vehiclenum != null and vehiclenum != ''" >
+				   AND VEHICLENUM = #{vehiclenum}
+				</if>
+				AND DELYN = 'Y'
+        ) )Y
+        ,(SELECT  COUNT(1)
+          FROM    (
+				<include refid="selectVehicleMasterRefSql"/>
+				<if test="vehiclekey != null and vehiclekey != ''" >
+				   AND VEHICLEKEY = #{vehiclekey}
+				</if>
+				<if test="vehiclenum != null and vehiclenum != ''" >
+				   AND VEHICLENUM = #{vehiclenum}
+				</if>
+				AND DELYN = 'N'
+        ) )N
+	</select>
+</mapper>	

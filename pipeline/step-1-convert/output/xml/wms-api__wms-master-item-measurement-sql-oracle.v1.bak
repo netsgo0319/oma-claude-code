@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.ItemMeasurementApiMapper">
+
+	<select id="selectMeasurementItemList" resultType="camelMap">
+		/* wms-master-item-sql-oracle.xml - selectMeasurementItemList */
+		  WITH T_ITEM AS (
+				SELECT IC.ICKEY
+				  FROM TWORK_MST_IC IC
+				  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT
+					ON ICUT.CTKEY = IC.CTKEY
+				   AND ICUT.OWKEY = IC.OWKEY
+				   AND ICUT.ICKEY = IC.ICKEY
+				   AND ICUT.ICUNITTYPECD = #{icunittypecd}
+				  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+					ON ICBC.CTKEY = IC.CTKEY
+				   AND ICBC.OWKEY = IC.OWKEY
+				   AND ICBC.ICKEY = IC.ICKEY
+				   AND ICBC.UOM = ICUT.ICUNITTYPECD
+				 WHERE IC.CTKEY = #{ctkey}
+				   AND IC.OWKEY = #{owkey}
+				   AND (
+						IC.ICKEY = #{ickey}
+						OR
+						ICBC.BARCODE = #{ickey}
+					 )
+			 ), T_ASRT AS (
+				SELECT IC.CTKEY
+					 , IC.OWKEY
+					 , IC.ICKEY
+				  FROM TWORK_MST_IC IC
+				  LEFT JOIN TWORK_MST_ASRT ASRT
+					ON ASRT.CTKEY = IC.CTKEY
+				   AND ASRT.OWKEY = IC.OWKEY
+				   AND ASRT.ASRTMASICKEY = IC.ICKEY
+				 WHERE IC.CTKEY = #{ctkey}
+				   AND IC.OWKEY = #{owkey}
+		  		   AND (
+						IC.ICKEY = (SELECT ICKEY FROM T_ITEM)
+						OR
+						ASRT.ASRTMASICKEY = (SELECT ICKEY FROM T_ITEM)
+						OR
+						ASRT.ASRTDTICKEY = (SELECT ICKEY FROM T_ITEM)
+					 )
+				 GROUP BY
+					   IC.CTKEY
+					 , IC.OWKEY
+					 , IC.ICKEY
+			 )
+		SELECT CTKEY
+			 , OWKEY
+			 , ICKEY
+		  FROM T_ASRT
+		 UNION
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , B.ASRTDTICKEY AS ICKEY
+		  FROM T_ASRT A
+		 INNER JOIN TWORK_MST_ASRT B
+			ON B.CTKEY = A.CTKEY
+		   AND B.OWKEY = A.OWKEY
+		   AND B.ASRTMASICKEY = A.ICKEY
+	</select>
+
+	<update id="updateWifTworkMstIc" parameterType="com.daiso.wms.api.in.dto.ItemMeasurementDTO">
+		/* wms-master-item-sql-oracle.xml - updateWifTworkMstIc */
+		UPDATE TWORK_MST_IC
+		   SET DFSHPMTRYN = #{dfshpmtryn}					/* 이형물여부 */
+			 , ROBSORTERICYN = #{onlpkgrobyn}				/* 로봇소터 여부 */
+			 , CUSHNMEPCKGYN = #{onlpkgbuffyn}				/* 완충재 여부 */
+			 , PCKGOVLPYN = #{pkgovlpyn}					/* 포장 겹침여부 */
+			 , OVLPPCKGWIDTHVAL = #{pkgovlpwidth} * 10		/* 포장 겹침 시 가로증가값 */
+			 , OVLPPCKGDEPTHVAL = #{pkgovlpdepth} * 10		/* 포장 겹침 시 세로증가값 */
+			 , OVLPPCKGHEIGHTVAL = #{pkgovlpheight} * 10	/* 포장 겹침 시 높이증가값 */
+			 , COMPYN = #{compyn}							/* 구성품 여부 */
+			 , COMPCONT = #{compinfo}						/* 구성품 정보 */
+			 , PCKGFOLDYN = #{foldyn}						/* 상품접힘 여부 */
+			 , BARCODEATTACHYN = #{qrbrcdattachyn}			/* 상품 QR 바코드 부착여부 */
+			 , POLYBAGPCKGYN = #{polybagpckgyn}				/* 폴리백포장여부 */
+			 , HIGHFRQNCYDMGYN = #{highfrqncydmgyn}			/* 고빈도파손여부 */
+			 , UPDATEDATE = #{sysdate}						/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}						/* 수정자 */
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = (SELECT ICKEY
+		 				  FROM TWORK_MST_ICBARCODE
+		 				 WHERE CTKEY = #{ctkey}
+		   				   AND OWKEY = #{owkey}
+						   AND (ICKEY = #{barcode} OR BARCODE = #{barcode})
+                           
+LIMIT 1)
+	</update>
+
+	<update id="updateWifTworkMstIcutxtype" parameterType="com.daiso.wms.api.in.dto.ItemMeasurementDTO">
+		/* wms-master-item-sql-oracle.xml - updateInterfaceItemUnit */
+		UPDATE TWORK_MST_ICUTXTYPE
+		   SET WIDTH = #{length} * 10		/* 가로 */
+			 , DEPTH = #{width} * 10		/* 세로 */
+			 , HEIGHT = #{height} * 10		/* 높이 */
+			 , WEIGHT = #{weight} * 1000	/* 중량 */
+			 , VOL = ROUND(((#{length} * 10) * (#{width} * 10) * (#{height} * 10)) / 1000000000, 5) /* CBM */
+			 , UPDATEDATE = #{sysdate}		/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}		/* 수정자 */
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = (SELECT ICKEY
+		 				  FROM TWORK_MST_ICBARCODE
+		 				 WHERE CTKEY = #{ctkey}
+		   				   AND OWKEY = #{owkey}
+						   AND (ICKEY = #{barcode} OR BARCODE = #{barcode})
+                           
+LIMIT 1)
+		   AND ICUNITTYPECD = #{packing_type}
+	</update>
+	
+	<insert id="insertTemporaryInfoForMeasurement" parameterType="com.daiso.wms.api.in.dto.ItemMeasurementDTO">
+		/* wms-master-item-sql-oracle.xml - insertTemporaryInfoForMeasurement */
+		INSERT INTO TWIF_DWS_MEASMRSLT_ERPSEND
+		(
+			 CTKEY
+			,OWKEY
+			,SITEID
+			,ICBRCD
+			,BOXTYPE
+			,CMT
+			,WIDTH
+			,DEPTH
+			,HEIGHT
+			,WEIGHT
+			,VOLUMN
+			,DFSHPMTRYN
+			,ONLPCKGBUFFYN
+			,ONLPCKGROBYN
+			,PCKGOVLPYN
+			,PCKGOVLPWIDTH
+			,PCKGOVLPDEPTH
+			,PCKGOVLPHEIGHT
+			,COMPINFO
+			,CREATEDATE
+			,FOLDYN
+			,QRBRCDATTACHYN
+			,POLYBAGPCKGYN
+			,HIGHFRQNCYDMGYN
+			,UDC1
+			,UDC2
+			,UDC3
+			,UDC4
+			,UDC5
+			,UDC6
+			,UDC7
+			,UDC8
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			 #{ctkey}
+			,#{owkey}
+			,#{ctkey}
+			,#{barcode}
+			,COALESCE(#{packing_type}, 'EA')
+			,#{description}
+			,COALESCE(#{length}, 0)
+			,COALESCE(#{width}, 0)
+			,COALESCE(#{height}, 0)
+			,COALESCE(#{weight}, 0)
+			,COALESCE(#{volume}, 0)
+			,COALESCE(UPPER(#{dfshpmtryn}), 'N')
+			,COALESCE(UPPER(#{onlpkgbuffyn}), 'N')
+			,COALESCE(UPPER(#{onlpkgrobyn}), 'N')
+			,COALESCE(UPPER(#{pkgovlpyn}), 'N')
+			,COALESCE(regexp_replace(#{pkgovlpwidth}, '[^0-9.]', ''), 0)
+			,COALESCE(regexp_replace(#{pkgovlpdepth}, '[^0-9.]', ''), 0)
+			,COALESCE(regexp_replace(#{pkgovlpheight}, '[^0-9.]', ''), 0)
+			,#{compinfo}
+			,#{createdate}
+			,COALESCE(UPPER(#{foldyn}), 'N')
+			,COALESCE(UPPER(#{qrbrcdattachyn}), 'N')
+			,COALESCE(UPPER(#{polybagpckgyn}), 'N')
+			,COALESCE(UPPER(#{highfrqncydmgyn}), 'N')
+			,#{udc1}
+			,#{udc2}
+			,#{udc3}
+			,#{udc4}
+			,#{udc5}
+			,#{udc6}
+			,#{udc7}
+			,#{udc8}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+</mapper>

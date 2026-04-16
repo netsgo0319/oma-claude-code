@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.OlnCtItemIvApiMapper">
+
+	<insert id="insertIntfTableOlnCtItemIv">
+		/* oms-po-olnCtItemIvBatch-sql-oracle.xml - insertIntfTableOlnCtItemIv */
+		INSERT INTO TORDER_INTF_WMS_REQORDERIV (
+		     CTKEY
+           , OWKEY
+           , ICKEY
+           , AVQTY
+           , UNUSEQTY
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{ctkey}
+           , #{owkey}
+           , #{ickey}
+           , #{avqty}
+           , #{unuseqty}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeOlnCtItemIv">
+		/* oms-po-olnCtItemIvBatch-sql-oraclee.xml - mergeOlnCtItemIv */
+		MERGE INTO TORDER_INFO_REQORDERIV RIV
+			USING (
+				SELECT DISTINCT
+		               OWKEY
+		             , CTKEY
+		             , ICKEY
+		             , AVQTY
+                     , UNUSEQTY
+		        FROM TORDER_INTF_WMS_REQORDERIV
+		        WHERE IFID = #{interfaceId}
+		        ) IN_RIV
+			ON (
+				   RIV.OWKEY = IN_RIV.OWKEY
+		       AND RIV.CTKEY = IN_RIV.CTKEY
+		       AND RIV.ICKEY = IN_RIV.ICKEY
+		    )
+			WHEN MATCHED THEN
+				 UPDATE
+					SET RIV.AVQTY       = IN_RIV.AVQTY
+		              , RIV.UNUSEQTY    = IN_RIV.UNUSEQTY
+					  , RIV.UPDATEURKEY = #{surkey}
+					  , RIV.UPDATEDATE  = #{sysdate}
+			WHEN NOT MATCHED THEN
+				INSERT (
+					 RIV.OWKEY
+		           , RIV.CTKEY
+		           , RIV.ICKEY
+		           , RIV.AVQTY
+                   , RIV.UNUSEQTY
+		           , RIV.INSERTDATE
+		           , RIV.INSERTURKEY
+		           , RIV.UPDATEDATE
+		           , RIV.UPDATEURKEY
+					)
+		        VALUES	(
+				     IN_RIV.OWKEY
+		           , IN_RIV.CTKEY
+		           , IN_RIV.ICKEY
+		           , IN_RIV.AVQTY
+                   , IN_RIV.UNUSEQTY
+		           , #{sysdate}
+		           , #{surkey}
+		           , #{sysdate}
+		           , #{surkey}
+		        )
+	</insert>
+
+</mapper>
+	

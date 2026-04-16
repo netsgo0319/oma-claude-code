@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.mapper.DiffMissingItemMapper">
+	<select id="getRobDasIntegrationResultWaveSeq" resultType="camelMap">
+		/* wif-das-robotdasintegration-sql-oracle.xml - getRobDasIntegrationResultWaveSeq - RobotDAS 이형물/미출 Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasIntegrationResultOrderSeq" resultType="camelMap">
+		/* wif-das-robotdasintegration-sql-oracle.xml - getRobDasIntegrationResultOrderSeq - RobotDAS 이형물/미출 Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasIntegrationResultItemSeq" resultType="camelMap">
+		/* wif-das-robotdasintegration-sql-oracle.xml - getRobDasIntegrationResultItemSeq - RobotDAS 이형물/미출 Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasIntegrationResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultWaveVO">
+		/* wif-das-robotdasintegration-sql-oracle.xml - insertRobDasIntegrationResultWave - RobotDAS 이형물/미출 Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertRobDasIntegrationResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultOrderVO">
+		/* wif-das-robotdasintegration-sql-oracle.xml - insertRobDasIntegrationResultOrder - RobotDAS 이형물/미출 Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,BOXSIZE
+			,ROBDASRSLTTYPE
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{boxSize}
+			,#{robDasRsltType}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasIntegrationResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultItemVO">
+		/* wif-das-robotdasintegration-sql-oracle.xml - insertRobDasIntegrationResultItem - RobotDAS 이형물/미출 Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_rsltxnis_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+</mapper>

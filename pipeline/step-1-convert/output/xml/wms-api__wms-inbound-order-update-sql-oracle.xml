@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InboundOrderUpdateApiMapper">
+
+
+	<!--입고 예정 수량 변경 UPDATE-->
+	<update id="updaetInboundOrderDetail">
+        /* wms-inbound-order-update-sql-oracle.xml - updaetInboundOrderDetail 입고 예정 수량 변경 UPDATE */
+		UPDATE TWORK_INFO_IB_DT
+		   SET EXPCTQTY = #{expctqty}
+             , B2BOBCNFRMYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+           AND ICKEY = #{ickey}
+	</update>
+
+    <!--입고 헤더 B2B출고 확정여부 변경 UPDATE-->
+    <update id="updateInboundOrderHeader">
+        /* wms-inbound-order-update-sql-oracle.xml - updateInboundOrderHeader 입고 헤더 B2B출고 확정여부 변경 UPDATE */
+        UPDATE TWORK_INFO_IB_HD
+           SET B2BOBCNFRMYN = 'Y'
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+        WHERE CTKEY = #{ctkey}
+          AND OWKEY = #{owkey}
+          AND ORHDKEY = #{orhdkey}
+    </update>
+
+</mapper>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnHistoryManagerMapper">
+		
+	<insert id="insertInvnHistory" parameterType="invnHistoryVO">
+	/* wms-inventory-invnhistorymanager-sql-oracle.xml - insertInvnHistory - 재고 이력 등록  SQL */
+		INSERT INTO TWORK_INFO_IVHS (
+				CTKEY       
+				,IVHSKEY    
+				,IVHSTYPE   
+				,USKEY      
+				,OWKEY      
+				,ICKEY      
+				,IVATKEY    
+				,FR_LCKEY   
+				,FR_ULCKEY  
+				,TO_LCKEY   
+				,TO_ULCKEY  
+				,PRODUCTDATE
+				,EXPIREDATE 
+				,IBCONFIRMDATE
+				,ATTRIBUTE1 
+				,ATTRIBUTE2 
+				,ATTRIBUTE3 
+				,ATTRIBUTE4 
+				,ATTRIBUTE5 
+				,PRODUCTLOT 
+				,QTY        
+				,NET_WGT
+				,ICUTKEY    
+				,UOM        
+				,IBHDKEY    
+				,IBDTKEY    
+				,PIDTKEY    
+				,TA_DTKEY
+				,REASONTYPE 
+				,ULHSKEY
+				,COMMENTS    
+				,MV_REASONTYPE
+				,LOGGRPCD
+				,OBHDKEY
+				,OBDTKEY
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY				
+			) VALUES (
+				 #{ctkey}
+				,#{ivhskey}
+				,#{ivhstype}
+				,#{uskey}
+				,#{owkey}
+				,#{ickey}
+				,#{ivatkey}
+				,#{fr_lckey}
+				,#{fr_ulckey}
+				,#{to_lckey}
+				,#{to_ulckey}				
+				<if test = ' gmtApplyFlag == true ' >
+					,#{productdate, typeHandler=GmtDateTimeFormatTypeHandler}
+					,#{expiredate,typeHandler=GmtDateTimeFormatTypeHandler}
+					,#{ibconfirmdate}
+				</if>
+				<if test = ' gmtApplyFlag == false ' >
+					,#{productdate}
+					,#{expiredate}
+					,#{ibconfirmdate}
+				</if>							
+				,#{attribute1}
+				,#{attribute2}
+				,#{attribute3}
+				,#{attribute4}
+				,#{attribute5}
+				,#{productlot}
+				,#{qty}
+				,#{n_wgt}
+				,#{icutkey}
+				,COALESCE(#{uom}, 'EA')
+				,#{ibhdkey}
+				,#{ibdtkey}
+				,#{pidtkey}
+				,#{ta_dtkey}
+				,#{reasontype}
+				,#{ulhskey}	
+				,#{comments}	
+				,#{mv_reasontype}	
+				,#{loggrpcd}	
+				,#{obhdkey}
+				,#{obdtkey}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+			)		
+	</insert>
+	
+
+</mapper>	

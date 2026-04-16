@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.common.mapper.BatchMapper">
+
+	<insert id="insertItemCodeTemp">
+		/* wms-common-batch-sql-oracle.xml - insertItemCodeTemp */
+		INSERT INTO TWORK_UPLOAD_IC (
+			   ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , ICNM
+			 , CUSHNMEPCKGYN
+			 , ROBSORTERICYN
+			 , POLYBAGPCKGYN
+			 , PCKGOVLPYN
+             , BARCODEATTACHYN
+             , PCKGFOLDYN
+             , HIGHFRQNCYDMGYN
+			 , OVLPPCKGWIDTHVAL
+			 , OVLPPCKGDEPTHVAL
+			 , OVLPPCKGHEIGHTVAL
+			 , COMPCONT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+			   #{uplHsKey}
+             , #{idxSeq}
+             , #{ctkey}
+             , #{sowkey}
+             , #{ickey}
+             , #{icnm}
+             , CASE WHEN #{cushnmepckgyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{robsortericyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{polybagpckgyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{pckgovlpyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{barcodeattachyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{pckgfoldyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , CASE WHEN #{highfrqncydmgyn} IN ('예', 'Y') THEN 'Y' ELSE 'N' END
+             , #{ovlppckgwidthval}
+             , #{ovlppckgdepthval}
+             , #{ovlppckgheightval}
+             , #{compcont}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+    <insert id="insertItemLocTemp">
+		/* wms-common-batch-sql-oracle.xml - insertItemLocTemp */
+		INSERT INTO TWORK_UPLOAD_ICLC (
+			   ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , ICNM
+			 , LCKEY
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+			   #{uplHsKey}
+             , #{idxSeq}
+             , #{ctkey}
+             , #{sowkey}
+             , #{ickey}
+             , #{icnm}
+             , #{lckey}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+    <insert id="insertItemUnitTemp">
+        /* wms-common-batch-sql-oracle.xml - insertItemUnitTemp */
+        INSERT INTO TWORK_UPLOAD_ICUTXTYPE (
+               ULHSKEY
+             , SEQ
+             , CTKEY
+             , OWKEY
+             , ICKEY
+             , ICNM
+             , ICUNITTYPECD
+             , WIDTH
+             , DEPTH
+             , HEIGHT
+             , VOL
+             , WEIGHT
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY)
+        VALUES (
+               #{uplHsKey}
+              , #{idxSeq}
+             , #{ctkey}
+             , #{sowkey}
+             , #{ickey}
+             , #{icnm}
+             , #{icunittypecd}
+             , #{width}
+             , #{depth}
+             , #{height}
+             , #{vol}
+             , #{weight}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+               )
+    </insert>
+
+    <insert id="insertCntrExcelUploadTemp">
+        /* wms-common-batch-sql-oracle.xml - insertCntrExcelUploadTemp (용기관리 엑셀업로드) */
+        INSERT INTO TWORK_UPLOAD_CNTR (
+               ULHSKEY
+             , SEQ
+             , CTKEY
+             , CNTRCD
+             , CNTRDIVCD
+             , CNTRWKDIVCD
+             , CNTRCOLOR
+             , WIDTH
+             , DEPTH
+             , HEIGHT
+             , CBMSTARTRNG
+             , CBMCLOSRNG
+             , USEYN
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+             )
+        VALUES (
+               #{uplHsKey}
+             , #{idxSeq}
+             , #{ctkey}
+             , #{cntrcd}
+             , #{cntrdivcd}
+             , #{cntrwkdivcd}
+             , #{cntrcolor}
+             , #{width}
+             , #{depth}
+             , #{height}
+             , #{cbmstartrng}
+             , #{cbmclosrng}
+             , #{useyn}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+	<insert id="insertInvnAdMoveExcelUploadTemp">
+		/* wms-common-batch-sql-oracle.xml - insertInvnAdMoveExcelUploadTemp (관리자 재고이동 엑셀업로드) */
+        INSERT INTO TWORK_UPLOAD_IV_AD_MOVE (
+               ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , FRLCKEY
+			 , TOLCKEY
+			 , ICKEY
+			 , ICNM
+			 , EXPDATE
+			 , UOM
+			 , QTY
+			 , PLCMCNTRNO
+			 , IVMOVERSNCD
+			 , IVMOVEDTCONT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+             )
+        VALUES (
+               #{uplHsKey}
+             , #{idxSeq}
+			 , #{ctkey}
+			 , #{sowkey}
+			 , #{frlckey}
+			 , #{tolckey}
+			 , #{ickey}
+			 , #{icnm}
+			 , #{expdate}
+			 , #{uom}
+			 , #{qty}
+			 , #{plcmcntrno}
+			 , #{ivmoversncd}
+			 , #{ivmovedtcont}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+	<insert id="insertInvnMoveExcelUploadTemp">
+		/* wms-common-batch-sql-oracle.xml - insertInvnMoveExcelUploadTemp (재고이동 엑셀업로드) */
+        INSERT INTO TWORK_UPLOAD_IVAT_MOVE (
+               ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+             , TAHDKEY
+             , TADTKEY
+			 , FRLCKEY
+			 , TOLCKEY
+			 , ICKEY
+			 , ICNM
+			 , EXPDATE
+			 , UOM
+			 , QTY
+			 , CNTRNO
+			 , IVMOVERSNCD
+			 , IVMOVEDTCONT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+             )
+        VALUES (
+               #{uplHsKey}
+             , #{idxSeq}
+			 , #{ctkey}
+			 , #{sowkey}
+             , #{tahdkey}
+             , #{tadtkey}
+			 , #{frlckey}
+			 , #{tolckey}
+			 , #{ickey}
+			 , #{icnm}
+			 , #{expdate}
+			 , #{uom}
+			 , #{qty}
+			 , #{cntrno}
+			 , #{ivmoversncd}
+			 , #{ivmovedtcont}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+    <insert id="insertInvnInvsExcelUploadTemp">
+        /* wms-common-batch-sql-oracle.xml - insertInvnInvsExcelUploadTemp (재고조사 엑셀업로드) */
+        INSERT INTO TWORK_UPLOAD_IVAT_INVS (
+               ULHSKEY
+             , SEQ
+             , CTKEY
+             , OWKEY
+             , ZNNM
+             , ARNM
+             , LCKEY
+             , ICKEY
+             , ICNM
+             , BARCODE
+             , EXPDATE
+             , TOTQTY
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+             ) VALUES
+             ( #{uplHsKey}
+             , #{idxSeq}
+             , #{ctkey}
+             , #{sowkey}
+             , #{znnm}
+             , #{arnm}
+             , #{lckey}
+             , #{ickey}
+             , #{icnm}
+             , #{barcode}
+             , RPAD(REPLACE(#{expdate}, '-', ''), 14, '0')
+             , #{totqty}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+             )
+    </insert>
+
+    <insert id="insertRecallSndExcelUploadTemp">
+        /* wms-common-batch-sql-oracle.xml - insertInvnInvsExcelUploadTemp (반송처리 엑셀업로드) */
+        INSERT INTO TWORK_UPLOAD_RECALL_SEND (
+            ULHSKEY
+            , SEQ
+            , CTKEY
+            , OWKEY
+            , WBLNO
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+            ) VALUES
+            ( #{uplHsKey}
+            , #{idxSeq}
+            , #{ctkey}
+            , #{sowkey}
+            , #{wblno}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+</mapper>

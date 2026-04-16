@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.OutboundOrderReceiveMapper">
+
+	<!--출고주문 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceOutboundHeaderList" resultType="camelMap">
+		/* OutboundOrderReceiveMapper.xml - selectInterfaceOutboundHeaderList - 출고주문 수신 인터페이스 - 등록 대상 조회 */
+		SELECT
+			*
+		FROM (
+			SELECT
+				CTKEY
+				, OWKEY
+				, SOHDKEY AS ORHDKEY
+				, EXTERNORDERKEY
+				, CLAIMNO
+				, ORHDDATE AS OBHDDAY
+				, OBHDTYPECD
+				, OBREQDATE
+				, DLVYTYPECD
+				, TOCTKEY
+				, STOREKEY
+				, DLVYFORMCD
+				, NISCNLRNGCD
+				, ORDPRSNNM
+				, RCPPRSNNM
+				, RCPPRSNTELNO
+				, RCPPRSNTELNO2
+				, RCPPRSNZIPCD
+				, RCPPRSNADDR1
+				, RCPPRSNADDR2
+				, DLVYMSG
+				, CHNLID
+				, CMT
+				, PRCSYN
+				, PRCSDATE
+				, RCVDATE
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+				, ROW_NUMBER() OVER (ORDER BY INSERTDATE, SOHDKEY) AS RNO
+				, CNLRSNYN
+				, CNLRSNCD
+				, CNLRSN
+			FROM TWORK_INTF_OB_HD_RCV
+			WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND PRCSYN = 'N'
+		) WHERE RNO <![CDATA[ <= ]]> 300
+	</select>
+
+	<!--출고 상세 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceOutboundDetailList" resultType="camelMap">
+		/* OutboundOrderReceiveMapper - selectInterfaceOutboundDetailList - 출고 상세 수신 인터페이스 - 등록 대상 조회 */
+		SELECT
+			CTKEY
+			, OWKEY
+			, SOHDKEY AS ORHDKEY
+			, SODTKEY AS ORDTKEY
+			, EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+			, ICKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXQTY AS EXPCTQTY
+			, UOM
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		FROM TWORK_INTF_OB_DT_RCV
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+		ORDER BY SOHDKEY, CAST(SODTKEY AS NUMERIC)
+	</select>
+
+	<!--주문분리전략 조회-->
+	<select id="selectOrdSepStgCd" resultType="camelMap">
+		/* OutboundOrderReceiveMapper.xml - selectOrdSepStgCd - 주문분리 전략조회 */
+		SELECT
+			ORDSEPSTGCD AS ORDSEPTEMPCD
+			,'KOR' AS SLAKEY
+		FROM TWORK_INFO_ORD_SEP_STG_MSTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND USEYN = 'Y'
+	</select>
+
+	<!--출고 주문 정보 상세 등록-->
+	<insert id="insertOutboundOrderDetail">
+		/* OutboundOrderReceiveMapper.xml - insertOutboundOrderDetail - 출고 주문 정보 상세 등록 */
+		INSERT INTO TWORK_INFO_OB_ORD_DT
+		(
+			CTKEY
+			, OWKEY
+			, OBORDKEY
+			, OBORDDTKEY
+			, ICKEY
+			, ICUNITKEY
+			, UOM
+			, INITQTY
+			, EXPCTQTY
+			, CNFRMQTY
+			, OBCNFRMDATE
+			, OBCONFIRMURKEY
+			, ORHDKEY
+			, ORDTKEY
+			, EXTERNORDERKEY
+			, EXTERNORDERLINENUM
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{obordkey}
+			,#{ordtkey}
+			,#{ickey}
+			,#{icunitkey}
+			,#{uom}
+			,#{initqty}
+			,#{expctqty}
+			,0
+			,NULL
+			,NULL
+			,#{orhdkey}
+			,#{ordtkey}
+			,#{externorderkey}
+			,#{externorderlinenum}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--출고 주문 정보 헤더 등록-->
+	<insert id="insertOutboundOrderHeader">
+		/* OutboundOrderReceiveMapper.xml - insertOutboundOrderHeader - 출고 주문 정보 헤더 등록 */
+		INSERT INTO TWORK_INFO_OB_ORD_HD
+		(
+			CTKEY
+			, OWKEY
+			, OBORDKEY
+			, OBHDTYPECD
+			, OBHDDAY
+			, OBREQDATE
+			, OBCNFRMDATE
+			, DLVYTYPECD
+			, DLVYFORMCD
+			, NISCNLRNGCD
+			, ORDNM
+			, RCPPRSNNM
+			, RCPPRSNTELNO
+			, RCPPRSNTELNO2
+			, RCPPRSNZIPCD
+			, RCPPRSNADDR1
+			, RCPPRSNADDR2
+			, DLVYMSG
+			, CHNLID
+			, ACKEY
+			, ACNM
+			, CNTRYCD
+			, STATE
+			, CTY
+			, DLVRYCORPCD
+			, TOCTKEY
+			, STOREKEY
+			, IBHDKEY
+			, ORHDKEY
+			, EXTERNORDERKEY
+			, CLAIMNO
+			, CNLRSNCD
+			, CNLRSN
+			, CMT
+			, PRINFORCVPRGRYN
+			, MALPRGRSTATUSCD
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{obordkey}
+			,#{obhdtypecd}
+			,#{obhdday}
+			,#{obreqdate}
+			, NULL
+			,#{dlvytypecd}
+			,#{dlvyformcd}
+			,#{niscnlrngcd}
+			,#{ordprsnnm}
+			,#{rcpprsnnm}
+			,#{rcpprsntelno}
+			,#{rcpprsntelno2}
+			,#{rcpprsnzipcd}
+			,#{rcpprsnaddr1}
+			,#{rcpprsnaddr2}
+			,#{dlvymsg}
+			,#{chnlid}
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			,#{toctkey}
+			,#{storekey}
+			, NULL
+			,#{orhdkey}
+			,#{externorderkey}
+			,#{claimno}
+			,#{cnlrsncd}
+			,#{cnlrsn}
+			,#{cmt}
+			,'N'
+			,'01'
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<update id="updateObHdCnl">
+		/* OutboundOrderReceiveMapper.xml - updateObHdCnl - 주문헤더 취소 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = '99'
+			 , CNLRSNCD = #{cnlrsncd}
+		     , CNLRSN = #{cnlrsn}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = 'INTERFACE'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(externorderkey)'>
+		   AND EXTERNORDERKEY = #{externorderkey}
+		</if>
+	</update>
+
+	<insert id="updateObDtCnl">
+		/* OutboundOrderReceiveMapper.xml - updateObDtCnl - 주문상세 취소 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = '99'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = 'INTERFACE'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(externorderkey)'>
+		   AND EXTERNORDERKEY = #{externorderkey}
+		</if>
+	</insert>
+
+	<!--출고 헤더 수신 인터페이스 처리 UPDATE(BULK)-->
+	<update id="updateInterfaceOutboundHeaderReceivePrcs">
+		/* OutboundOrderReceiveMapper.xml - updateInterfaceOutboundHeaderReceivePrcs - 출고 헤더 수신 인터페이스 처리결과 UPDATE */
+		UPDATE TWORK_INTF_OB_HD_RCV
+		SET PRCSYN = #{prcsyn}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = 'INTERFACE'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY IN
+		<foreach collection="obOrdHdList" item="item" open=" (" separator="," close=")">
+			#{item.orhdkey}
+		</foreach>
+	</update>
+
+	<!--출고 상세 수신 인터페이스 처리결과 UPDATE(BULK)-->
+	<update id="updateInterfaceOutboundDetailReceivePrcs">
+		/* OutboundOrderReceiveMapper.xml - updateInterfaceOutboundDetailReceivePrcs - 출고 상세 수신 인터페이스 처리결과 UPDATE */
+		UPDATE TWORK_INTF_OB_DT_RCV
+		SET PRCSYN = #{prcsyn}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = 'INTERFACE'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY IN
+		<foreach collection="obOrdHdList" item="item" open=" (" separator="," close=")">
+			#{item.orhdkey}
+		</foreach>
+	</update>
+
+	<!--출고 헤더 수신 인터페이스 처리결과 UPDATE-->
+	<update id="updateInterfaceOutboundHeaderReceive">
+		/* OutboundOrderReceiveMapper.xml - updateInterfaceOutboundHeaderReceive - 출고 헤더 수신 인터페이스 처리결과 UPDATE */
+		UPDATE TWORK_INTF_OB_HD_RCV
+		SET PRCSYN = #{prcsyn}
+			,PRCSDATE = #{sysdate}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+	</update>
+
+	<!--출고 상세 수신 인터페이스 처리결과 UPDATE-->
+	<update id="updateInterfaceOutboundDetailReceive">
+		/* OutboundOrderReceiveMapper.xml - updateInterfaceOutboundDetailReceive - 출고 상세 수신 인터페이스 처리결과 UPDATE */
+		UPDATE TWORK_INTF_OB_DT_RCV
+		SET PRCSYN = #{prcsyn}
+			,PRCSDATE = #{sysdate}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+	</update>
+
+	<!--릴리즈 주문 헤더 생성을 위한 원 출고주문 헤더 정보 조회-->
+	<select id="selectObCreateProcObHd" resultType="camelMap">
+		/* OutboundOrderReceiveMapper.xml - selectObCreateProcObHd - 릴리즈 주문 헤더 생성을 위한 원 출고주문 헤더 정보 조회 */
+		SELECT ORH.CTKEY /*센터코드*/
+			 , ORH.OWKEY /*화주코드*/
+			 , '' AS OBHDKEY /*릴리즈코드*/
+			 , ORH.OBHDTYPECD /*출고헤더유형코드*/
+			 , ORH.OBHDDAY /*출고헤더일자*/
+			 , ORH.OBREQDATE /*출고요청일시*/
+			 , ORH.OBCNFRMDATE /*출고확정일시*/
+			 , '00' AS OBSTATUSCD /*출고상태코드*/
+			 , NULL AS WKTYPECD /*작업유형코드*/
+			 , ORH.DLVYTYPECD /*배송유형코드*/
+			 , ORH.DLVYFORMCD /*배송형태코드*/
+			 , ORH.NISCNLRNGCD /*결품취소범위코드*/
+			 , ORH.ORDNM /*주문자명*/
+			 , ORH.RCPPRSNNM /*수령인명*/
+			 , ORH.RCPPRSNTELNO /*수령인전화번호*/
+			 , ORH.RCPPRSNTELNO2 /*수령인전화번호2*/
+			 , ORH.RCPPRSNZIPCD /*수령인우편번호*/
+			 , ORH.RCPPRSNADDR1 /*수령인주소1*/
+			 , ORH.RCPPRSNADDR2 /*수령인주소2*/
+			 , ORH.DLVYMSG /*배송메시지*/
+			 , ORH.CHNLID /*채널아이디*/
+			 , ORH.ACKEY /*거래처코드*/
+			 , ORH.ACNM /*거래처명*/
+			 , ORH.CNTRYCD /*국가코드*/
+			 , ORH.STATE /*도*/
+			 , ORH.CTY /*도시*/
+			 , ORH.DLVRYCORPCD /*택배사코드*/
+			 , '' AS WBLNO /*운송장번호*/
+			 , '00' AS DLVRYPRGRSTATUSCD /*택배진행상태코드*/
+			 , NULL CBM /*체적*/
+			 , NULL WEIGHT /*중량*/
+			 , NULL AS ORDSEPTYPECD /*주문분리유형코드*/
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)'>
+			 , #{ordsepcritcd} AS ORDSEPCRITCD /*주문분리기준코드*/
+			</when>
+			<otherwise>
+			 , '' AS ORDSEPCRITCD /*주문분리기준코드*/
+			</otherwise>
+		</choose>
+			 , '' AS ORDSEPCRITVAL /*주문분리기준값*/
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)'>
+			 , #{surkey} AS ORDSEPURKEY /*주문분리자*/
+			 , #{sysdate} AS ORDSEPDATE /*주문분리일시*/
+			</when>
+			<otherwise>
+			 , '' AS ORDSEPURKEY /*주문분리자*/
+			 , '' AS ORDSEPDATE /*주문분리일시*/
+			</otherwise>
+		</choose>
+			 , '' AS ORDSEPSTRGCD /*주문분리전략코드*/
+			 , '' AS RECOMBOXBARCODE /*추천박스바코드*/
+			 , '' AS PCKGBOXBARCODE /*포장박스바코드*/
+			 , '' AS CLASSIFSPECCD /*분류규격코드*/
+			 , '' AS DASSTNBARCODE /*DAS스테이션바코드*/
+			 , '' AS DASCELLBARCODE  /*DAS셀바코드*/
+			 , '' AS CLASSIFCNTRBARCODE /*분류용기바코드*/
+			 , ORH.TOCTKEY /*TO센터코드*/
+			 , ORH.STOREKEY /*점포코드*/
+			 , ORH.IBHDKEY /*입고공통코드*/
+			 , ORH.OBORDKEY /*오더코드*/
+			 , ORH.ORHDKEY /*주문공통코드*/
+			 , ORH.EXTERNORDERKEY /*외부주문번호*/
+			 , '' AS ORGOBHDKEY /*원릴리즈코드*/
+			 , '' AS PKOBHDKEY /*피킹릴리즈코드*/
+			 , ORH.CMT /*비고*/
+			 , '' AS PCKGBOXTYPECD /*포장박스유형코드*/
+			 , '' AS PKCNTRDIVCD /*피킹용기구분*/
+			 , '' AS PKTOTEQTY /*피킹토트수량*/
+			 , '' AS PCKGFLRCD /*포장층코드*/
+			 , ORH.INSERTDATE /*입력일시*/
+			 , ORH.INSERTURKEY /*입력자*/
+			 , ORH.UPDATEDATE /*수정일시*/
+			 , ORH.UPDATEURKEY /*수정자*/
+			 , '' AS WAHDKEY /*웨이브공통코드*/
+			 , '' AS PREOBHDKEY /*이전릴리즈코드*/
+		  FROM TWORK_INFO_OB_ORD_HD ORH
+		 WHERE ORH.CTKEY = #{ctkey}
+		   AND ORH.OWKEY = #{owkey}
+		   AND ORH.OBORDKEY = #{obordkey}
+	</select>
+
+	<!--릴리즈 주문 상세 생성을 위한 출고주문 상세 정보 조회-->
+	<select id="selectObCreateProcObDt" resultType="camelMap">
+		/* OutboundOrderReceiveMapper.xml - selectObCreateProcObDt - 릴리즈 주문 상세 생성을 위한 출고주문 상세 정보 조회 */
+		SELECT ORD.CTKEY /*센터코드*/
+			 , ORD.OWKEY /*화주코드*/
+			 , '' AS OBHDKEY /*릴리즈코드*/
+			 , ORD.OBORDDTKEY AS OBDTKEY /*릴리즈상세코드*/
+			 , ORD.ICKEY /*상품코드*/
+			 , '00' AS OBDTSTATUSCD /*출고상세상태코드*/
+			 , ORD.ICUNITKEY /*물품단위코드*/
+			 , ORD.UOM /*상품단위유형*/
+			 , ORD.INITQTY /*초기수량*/
+			 , ORD.EXPCTQTY /*예정수량*/
+			 , 0 AS ALQTY /*할당수량*/
+			 , 0 AS PKISTQTY /*피킹지시수량*/
+			 , 0 AS PKQTY /*피킹수량*/
+			 , 0 AS CLASSIFSQTY /*분류수량*/
+			 , 0 AS PAKQTY /*패킹수량*/
+			 , 0 AS CNFRMQTY /*확정수량*/
+			 , '' AS OBCNFRMDATE /*출고확정일시*/
+			 , '' AS OBCONFIRMURKEY /*출고확정자*/
+			 , ORD.OBORDKEY /*오더코드*/
+			 , ORD.OBORDDTKEY /*오더상세코드*/
+			 , ORD.ORHDKEY /*주문공통코드*/
+			 , ORD.ORDTKEY /*주문상세코드*/
+			 , ORD.EXTERNORDERKEY /*외부주문번호*/
+			 , ORD.EXTERNORDERLINENUM /*외부주문상세코드*/
+			 , ORD.INSERTDATE /*입력일시*/
+			 , ORD.INSERTURKEY /*입력자*/
+			 , ORD.UPDATEDATE /*수정일시*/
+			 , ORD.UPDATEURKEY /*수정자*/
+		  FROM TWORK_INFO_OB_ORD_HD ORH
+		 INNER JOIN TWORK_INFO_OB_ORD_DT ORD
+		    ON ORH.CTKEY = ORD.CTKEY
+		   AND ORH.OWKEY = ORD.OWKEY
+		   AND ORH.OBORDKEY = ORD.OBORDKEY
+		 WHERE ORH.CTKEY = #{ctkey}
+		   AND ORH.OWKEY = #{owkey}
+		   AND ORH.OBORDKEY = #{obordkey}
+		 ORDER BY ORH.OBORDKEY, CAST(ORD.OBORDDTKEY AS NUMERIC)
+	</select>
+
+	<!--릴리즈 주문 상세 생성-->
+	<update id="callSpObDtInsert" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* OutboundOrderReceiveMapper.xml - callSpObDtInsert - 릴리즈 주문 상세 생성 */
+		{
+			CALL SP_OB_DT_INSERT(
+				#{ctkey,mode=IN,jdbcType=VARCHAR}
+				, #{owkey,mode=IN,jdbcType=VARCHAR}
+				, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+				, #{ickey,mode=IN,jdbcType=VARCHAR}
+				, #{obdtstatuscd,mode=IN,jdbcType=VARCHAR}
+				, #{icunitkey,mode=IN,jdbcType=VARCHAR}
+				, #{uom,mode=IN,jdbcType=VARCHAR}
+				, #{initqty,mode=IN,jdbcType=NUMERIC}
+				, #{expctqty,mode=IN,jdbcType=NUMERIC}
+				, #{alqty,mode=IN,jdbcType=NUMERIC} /*할당수량*/
+				, #{pkistqty,mode=IN,jdbcType=NUMERIC} /*피킹지시수량*/
+				, #{pkqty,mode=IN,jdbcType=NUMERIC} /*피킹수량*/
+				, #{classifsqty,mode=IN,jdbcType=NUMERIC} /*분류수량*/
+				, #{pakqty,mode=IN,jdbcType=NUMERIC} /*패킹수량*/
+				, #{cnfrmqty,mode=IN,jdbcType=NUMERIC} /*확정수량*/
+				, NULL /*출고확정일시*/
+				, NULL /*출고확정자*/
+				, #{obordkey,mode=IN,jdbcType=VARCHAR}
+				, #{oborddtkey,mode=IN,jdbcType=VARCHAR}
+				, #{orhdkey,mode=IN,jdbcType=VARCHAR}
+				, #{ordtkey,mode=IN,jdbcType=VARCHAR}
+				, #{externorderkey,mode=IN,jdbcType=VARCHAR}
+				, #{externorderlinenum,mode=IN,jdbcType=VARCHAR}
+				, #{sysdate,mode=IN,jdbcType=VARCHAR}
+				, #{surkey,mode=IN,jdbcType=VARCHAR}
+				, #{sysdate,mode=IN,jdbcType=VARCHAR}
+				, #{surkey,mode=IN,jdbcType=VARCHAR}
+				, #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+				, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+
+	<!--릴리즈 주문 헤더 생성-->
+	<update id="callSpObHdInsert" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* OutboundOrderReceiveMapper.xml - callSpObHdInsert - 릴리즈 주문 헤더 생성*/
+		{
+			CALL SP_OB_HD_INSERT(
+				#{ctkey,mode=IN,jdbcType=VARCHAR} /*센터코드*/
+				, #{owkey,mode=IN,jdbcType=VARCHAR} /*화주코드*/
+				, #{obhdkey,mode=IN,jdbcType=VARCHAR} /*릴리즈코드*/
+				, #{obhdtypecd,mode=IN,jdbcType=VARCHAR} /*출고헤더유형코드*/
+				, #{obhdday,mode=IN,jdbcType=VARCHAR} /*출고헤더일자*/
+				, #{obreqdate,mode=IN,jdbcType=VARCHAR} /*출고요청일시*/
+				, #{obcnfrmdate,mode=IN,jdbcType=VARCHAR} /*출고확정일시*/
+				, #{obstatuscd,mode=IN,jdbcType=VARCHAR} /*출고상태*/
+				, #{wktypecd,mode=IN,jdbcType=VARCHAR} /*작업유형*/
+				, #{dlvytypecd,mode=IN,jdbcType=VARCHAR} /*배송유형코드*/
+				, #{dlvyformcd,mode=IN,jdbcType=VARCHAR} /*배송형태코드*/
+				, #{niscnlrngcd,mode=IN,jdbcType=VARCHAR} /*결품취소범위코드*/
+				, #{ordnm,mode=IN,jdbcType=VARCHAR} /*주문자명*/
+				, #{rcpprsnnm,mode=IN,jdbcType=VARCHAR} /*수령인명*/
+				, #{rcpprsntelno,mode=IN,jdbcType=VARCHAR} /*수령인전화번호*/
+				, #{rcpprsntelno2,mode=IN,jdbcType=VARCHAR} /*수령인전화번호2*/
+				, #{rcpprsnzipcd,mode=IN,jdbcType=VARCHAR} /*수령인우편번호*/
+				, #{rcpprsnaddr1,mode=IN,jdbcType=VARCHAR} /*수령인주소1*/
+				, #{rcpprsnaddr2,mode=IN,jdbcType=VARCHAR} /*수령인주소2*/
+				, #{dlvymsg,mode=IN,jdbcType=VARCHAR} /*배송메시지*/
+				, #{chnlid,mode=IN,jdbcType=VARCHAR} /*채널아이디*/
+				, #{ackey,mode=IN,jdbcType=VARCHAR} /*거래처코드*/
+				, #{acnm,mode=IN,jdbcType=VARCHAR} /*거래처명*/
+				, #{cntrycd,mode=IN,jdbcType=VARCHAR} /*국가코드*/
+				, #{state,mode=IN,jdbcType=VARCHAR} /*도*/
+				, #{cty,mode=IN,jdbcType=VARCHAR} /*도시*/
+				, #{dlvrycorpcd,mode=IN,jdbcType=VARCHAR} /*택배사코드*/
+				, #{wblno,mode=IN,jdbcType=VARCHAR} /*운송장번호*/
+				, #{dlvryprgrstatuscd,mode=IN,jdbcType=VARCHAR} /*택배진행상태코드*/
+				, #{ordsepcritcd,mode=IN,jdbcType=VARCHAR} /*주문분리기준코드*/
+				, #{ordsepcritval,mode=IN,jdbcType=VARCHAR} /*주문분리기준값*/
+				, #{ordsepurkey,mode=IN,jdbcType=VARCHAR} /*주문분리자*/
+				, #{ordsepdate,mode=IN,jdbcType=VARCHAR} /*주문분리일시*/
+				, #{ordsepstrgcd,mode=IN,jdbcType=VARCHAR} /*주문분리전략코드*/
+				, #{pckgboxbarcode,mode=IN,jdbcType=VARCHAR} /*포장박스바코드*/
+				, #{dasstnbarcode,mode=IN,jdbcType=VARCHAR} /*DAS스테이션바코드*/
+				, #{dascellbarcode,mode=IN,jdbcType=VARCHAR}  /*DAS셀바코드*/
+				, #{classifcntrbarcode,mode=IN,jdbcType=VARCHAR} /*분류용기바코드*/
+				, #{toctkey,mode=IN,jdbcType=VARCHAR} /*TO센터코드*/
+				, #{storekey,mode=IN,jdbcType=VARCHAR} /*점포코드*/
+				, #{ibhdkey,mode=IN,jdbcType=VARCHAR} /*입고공통코드*/
+				, #{obordkey,mode=IN,jdbcType=VARCHAR} /*오더코드*/
+				, #{orhdkey,mode=IN,jdbcType=VARCHAR} /*주문공통코드*/
+				, #{externorderkey,mode=IN,jdbcType=VARCHAR} /*외부주문번호*/
+				, #{orgobhdkey,mode=IN,jdbcType=VARCHAR} /*원릴리즈코드*/
+				, #{pkobhdkey,mode=IN,jdbcType=VARCHAR} /*피킹릴리즈코드*/
+				, #{preobhdkey,mode=IN,jdbcType=VARCHAR} /*이전릴리즈코드*/
+				, #{cmt,mode=IN,jdbcType=VARCHAR} /*비고*/
+				, #{pckgboxtypecd,mode=IN,jdbcType=VARCHAR} /*포장박스유형코드*/
+				, #{pkcntrdivcd,mode=IN,jdbcType=VARCHAR} /*피킹용기구분*/
+				, #{pktoteqty,mode=IN,jdbcType=VARCHAR} /*피킹토트수량*/
+				, #{pckgflrcd,mode=IN,jdbcType=VARCHAR} /*포장층코드*/
+				, #{sysdate,mode=IN,jdbcType=VARCHAR} /*입력일시*/
+				, #{surkey,mode=IN,jdbcType=VARCHAR} /*입력자*/
+				, #{sysdate,mode=IN,jdbcType=VARCHAR} /*수정일시*/
+				, #{surkey,mode=IN,jdbcType=VARCHAR} /*수정자*/
+				, #{wahdkey,mode=IN,jdbcType=VARCHAR} /*웨이브공통코드*/
+				, 'Y'
+				, #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+				, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+
+	<!--자동분리 호출-->
+	<update id="callSpObSep" statementType="CALLABLE" parameterType="java.util.HashMap" timeout="600">
+		/* OutboundOrderReceiveMapper.xml - callSpObSep - 자동분리 호출 */
+		{
+			CALL SP_OB_SEP(
+				#{ctkey,mode=IN,jdbcType=VARCHAR}
+				, #{owkey,mode=IN,jdbcType=VARCHAR}
+				, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+				, #{ordseptempcd,mode=IN,jdbcType=VARCHAR}
+				, #{surkey,mode=IN,jdbcType=VARCHAR}
+				, #{slakey,mode=IN,jdbcType=VARCHAR}
+				, #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+				, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+</mapper>

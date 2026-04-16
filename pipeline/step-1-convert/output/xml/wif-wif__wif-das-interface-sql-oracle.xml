@@ -1,0 +1,1141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.mapper.DasMapper">
+
+	<select id="getClassificationToteMappingWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getClassificationToteMappingWaveSeq - 분류토트매핑웨이브 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_mapp_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationToteMappingOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getClassificationToteMappingOrderSeq - 분류토트매핑오더 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_mapp_order') AS ORDER_SEQ
+	</select>
+
+	<insert id="insertClassificationToteMappingWave" parameterType="com.daiso.wif.rest.in.das.classiftotemapping.vo.ClassifToteMappingWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertClassificationToteMappingWave - 분류토트매핑 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_MAPP_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteMappingOrder" parameterType="com.daiso.wif.rest.in.das.classiftotemapping.vo.ClassifToteMappingOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertClassificationToteMappingOrder - 분류토트매핑 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_MAPP_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,CLASSIFTOTEBRCD
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{classifToteBrcd}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getClassificationToteCloseWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getClassificationToteCloseWaveSeq - 분류토트마감 웨이브 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationToteCloseOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getClassificationToteCloseOrderSeq - 분류토트마감 오더 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getClassificationToteCloseItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getClassificationToteCloseItemSeq - 분류토트마감 아이템 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_item') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertClassificationToteCloseWave" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertClassificationToteCloseWave - 분류토트마감 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteCloseOrder" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertClassificationToteCloseOrder - 분류토트마감 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,CLASSIFTOTEBRCD
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{classifToteBrcd}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteCloseItem" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertClassificationToteCloseItem - 분류토트마감 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_classiftote_clos_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,WKPRCSDATE1
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{wkPrcsDate1}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getDasAssortResultWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getDasAssortResultWaveSeq - DAS Assort Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getDasAssortResultOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getDasAssortResultOrderSeq - DAS Assort Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getDasAssortResultItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getDasAssortResultItemSeq - DAS Assort Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_prcsrslt_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertDasAssortResultWave" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertDasAssortResultWave - DAS Assort Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_PRCSRSLT_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,DASDIV
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{dasDiv}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasAssortResultOrder" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertDasAssortResultOrder - DAS Assort Result 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_PRCSRSLT_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasAssortResultItem" parameterType="com.daiso.wif.rest.in.das.classiftoteassort.vo.AssortResultItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertDasAssortResultItem - DAS Assort Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_prcsrslt_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_PRCSRSLT_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getRobDasAssortResultWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAssortResultWaveSeq - RobotDAS Assort Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasAssortResultOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAssortResultOrderSeq - RobotDAS Assort Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasAssortResultItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAssortResultItemSeq - RobotDAS Assort Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasAssortResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAssortResultWave - RobotDAS Assort Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAssortResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAssortResultOrder - RobotDAS Assort Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAssortResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAssortResultItem - RobotDAS Assort Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_prcsrslt_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,SEEDWALL
+			,DASLOC
+			,ROBNO
+			,INDUCTNM
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{seedWall}
+			,#{dasLoc}
+			,#{robNo}
+			,#{inductNm}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getRobDasIntegrationResultWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasIntegrationResultWaveSeq - RobotDAS 이형물/미출 Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasIntegrationResultOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasIntegrationResultOrderSeq - RobotDAS 이형물/미출 Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasIntegrationResultItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasIntegrationResultItemSeq - RobotDAS 이형물/미출 Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_rsltxnis_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasIntegrationResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasIntegrationResultWave - RobotDAS 이형물/미출 Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasIntegrationResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasIntegrationResultOrder - RobotDAS 이형물/미출 Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,BOXSIZE
+			,ROBDASRSLTTYPE
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{boxSize}
+			,#{robDasRsltType}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasIntegrationResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsdiffmissingitem.vo.DiffMissingItemResultItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasIntegrationResultItem - RobotDAS 이형물/미출 Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_rsltxnis_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_RSLTXNIS_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getRobDasPackCompleteResultWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasPackCompleteResultWaveSeq - RobotDAS 포장완료 Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasPackCompleteResultOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasPackCompleteResultOrderSeq - RobotDAS 포장완료 Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasPackCompleteResultItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasPackCompleteResultItemSeq - RobotDAS 포장완료 Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasPackCompleteResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasIntegrationResultWave - RobotDAS 포장완료 Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasPackCompleteResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasIntegrationResultOrder - RobotDAS 포장완료 Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,BOXSIZE
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{boxSize}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasPackCompleteResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasPackCompleteResultItem - RobotDAS 포장완료 Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_pakcompl_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getRobDasAddBoxWaveSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAddBoxWaveSeq - RobotDAS 박스추가 요청 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasAddBoxOrderSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAddBoxOrderSeq - RobotDAS 박스추가 요청 Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasAddBoxItemSeq" resultType="camelMap">
+		/* wif-das-interface-sql-oracle.xml - getRobDasAddBoxItemSeq - RobotDAS 박스추가 요청 Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_boxadd_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasAddBoxWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxWaveVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAddBoxWave - RobotDAS 박스추가 요청 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_BOXADD_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAddBoxOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxOrderVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAddBoxOrder - RobotDAS 박스추가 요청 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_BOXADD_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,BFOBHDKEY
+			,BFWBLNO
+			,WKPRCSDATE
+			,BFPCKGBOXSIZE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{bfObHdKey}
+			,#{wblNo}
+			,#{wkPrcsDate}
+			,#{bfPckgBoxSize}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAddBoxItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsaddbox.vo.AddBoxItemVO">
+		/* wif-das-interface-sql-oracle.xml - insertRobDasAddBoxItem - RobotDAS 박스추가 요청 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_boxadd_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_BOXADD_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<update id="updateNewReleaseCodeInfo">
+		/* wif-das-interface-sql-oracle.xml - updateNewReleaseCodeInfo - Robot DAS 박스추가 신규 릴리즈코드,송장번호,박스사이즈 UPDATE SQL */
+		UPDATE TWIF_ROBDAS_BOXADD_ORDER
+		   SET OBHDKEY 		= #{obHdKey}
+			   ,WBLNO 		= #{wblNo}
+			   ,PCKGBOXSIZE = #{pckgBoxSize}
+   			   ,UPDATEDATE 	= #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+		   AND BFOBHDKEY 	= #{bfObHdKey}
+		   AND BFWBLNO 		= #{bfWblNo}
+	</update>
+
+	<update id="updateRobDasAddBoxWaveResponse">
+		/* wif-das-interface-sql-oracle.xml - updateRobDasAddBoxWaveResponse -  Robot DAS 박스추가 Wave I/F 항목 UPDATE SQL */
+		UPDATE TWIF_ROBDAS_BOXADD_WA
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+		   AND CTKEY        = #{ctKey}
+		   AND OWKEY        = #{owKey}
+	</update>
+
+	<update id="updateIfResult">
+		/* wif-das-interface-sql-oracle.xml - updateIfResult - I/F 처리결과 UPDATE WIF 공통 SQL */
+		UPDATE ${tableName}
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+		   AND WAHDKEY		= #{waHdKey}
+		   AND CTKEY        = #{ctKey}
+		   AND OWKEY        = #{owKey}
+	</update>
+
+	<update id="updateClassifToteBarcodeForWms">
+		/* wif-das-interface-sql-oracle.xml - updateClassifToteBarcodeForWms - WMS 토트마감 바코드 UPDATE SQL */
+		UPDATE TWORK_INFO_OB_HD A
+		   SET CLASSIFCNTRBARCODE = (SELECT DISTINCT C.CLASSIFTOTEBRCD
+										 FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA B
+										INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_ORDER C
+										   ON B.WASEQ = C.WASEQ
+									    WHERE B.WAHDKEY = #{waHdKey}
+										  AND A.OBHDKEY = C.OBHDKEY
+										  AND A.CTKEY 	= B.CTKEY
+										  AND A.OWKEY 	= B.OWKEY
+										  AND B.IFPRCSDATE IS NULL)
+			   ,UPDATEDATE 	= #{sysdate}
+			   ,UPDATEURKEY	= #{surkey}
+		 WHERE A.CTKEY = #{ctKey}
+		   AND A.OWKEY = #{owKey}
+		   AND EXISTS (SELECT 1
+					     FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA B
+					    INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_ORDER C
+						   ON B.WASEQ = C.WASEQ
+						WHERE B.WAHDKEY = #{waHdKey}
+						  AND A.OBHDKEY = C.OBHDKEY
+						  AND A.CTKEY 	= B.CTKEY
+						  AND A.OWKEY 	= B.OWKEY
+						  AND B.IFPRCSDATE IS NULL)
+	</update>
+
+	<update id="updateClassifToteQtyForWms">
+		/* wif-das-interface-sql-oracle.xml - updateClassifToteQtyForWms - WMS 토트마감 수량 UPDATE SQL */
+  		UPDATE TWORK_INFO_OB_DT A
+		   SET CLASSIFSQTY = (SELECT CLASSIFSQTY + QTY
+										 FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA B
+										INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_ORDER C
+										   ON B.WASEQ 		= C.WASEQ
+										INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_IC D
+										   ON C.WASEQ 		= D.WASEQ
+										  AND C.ORDERSEQ 	= D.ORDERSEQ
+									    WHERE B.WAHDKEY 	= #{waHdKey}
+										  AND A.CTKEY 		= B.CTKEY
+										  AND A.OWKEY 		= B.OWKEY
+										  AND A.OBHDKEY 	= C.OBHDKEY
+										  AND A.ICKEY 		= D.ICKEY
+										  AND B.IFPRCSDATE IS NULL)
+		 WHERE A.CTKEY = #{ctKey}
+		   AND A.OWKEY = #{owKey}
+		   AND EXISTS (SELECT 1
+					     FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA B1
+					    INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_ORDER C1
+						   ON B1.WASEQ 		= C1.WASEQ
+						INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_IC D1
+						   ON C1.WASEQ 		= D1.WASEQ
+						  AND C1.ORDERSEQ 	= D1.ORDERSEQ
+						WHERE B1.WAHDKEY 	= #{waHdKey}
+						  AND A.OBHDKEY 	= C1.OBHDKEY
+						  AND A.ICKEY 		= D1.ICKEY
+						  AND A.CTKEY 		= B1.CTKEY
+						  AND A.OWKEY 		= B1.OWKEY
+						  AND B1.IFPRCSDATE IS NULL)
+	</update>
+</mapper>

@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.wif.mapper.CmmIfMapper">
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<select id="selectIfList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-cmm-sql-oracle.xml - selectIfList 인터페이스 목록 조회 */
+		SELECT  '0' AS CHK
+			   ,TCEM.IFCD
+			   ,TCEM.IFNM
+			   ,TCEM.IFDESC
+			   ,TCEM.CTKEY
+			   ,TMC.CTNM
+			   ,TCEM.OWKEY
+			   ,TCEM.ORD
+			   ,TCEM.USEYN
+			   ,TCEM.INSERTDATE
+			   ,TCEM.INSERTURKEY
+			   ,TCEM.UPDATEDATE
+			   ,TCEM.UPDATEURKEY
+		  FROM TWIF_CMM_EQIF_MGMT TCEM
+		  LEFT OUTER JOIN TWORK_MST_CT TMC
+		    ON TCEM.CTKEY = TMC.CTKEY
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY ORD
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectIfListCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfListCount 인터페이스 목록 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_EQIF_MGMT TCEM
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectIfCdDupCheckCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfCdDupCheckCount 인터페이스 중복체크 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_EQIF_MGMT
+		 WHERE 1 		= 1
+		   AND CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+		   AND IFCD 	= #{ifcd}
+	</select>
+
+	<insert id="insertWifIfCd">
+		/* wms-wif-cmm-sql-oracle.xml - insertWifIfCd 인터페이스 코드 등록 */
+		INSERT INTO TWIF_CMM_EQIF_MGMT
+		(
+			 IFCD
+			,IFNM
+			,IFDESC
+			,CTKEY
+			,OWKEY
+			,ORD
+			,USEYN
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			 #{ifcd}
+			,#{ifnm}
+			,#{ifdesc}
+			,#{ctkey}
+			,#{owkey}
+			,#{ord}
+			,#{useyn}
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,#{surkey}
+			,TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,#{surkey}
+		)
+	</insert>
+
+	<update id="updateWifIfCd">
+		/* wms-wif-cmm-sql-oracle.xml - updateWifIfCd 인터페이스 코드 수정 */
+		UPDATE TWIF_CMM_EQIF_MGMT
+		   SET IFNM 	= #{ifnm}
+			   ,IFDESC 	= #{ifdesc}
+			   ,USEYN 	= #{useyn}
+			   ,ORD     = #{ord}
+		 WHERE CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+		   AND IFCD 	= #{ifcd}
+	</update>
+
+	<delete id="deleteWifIfCd">
+		/* wms-wif-cmm-sql-oracle.xml - deleteWifIfCd 인터페이스 코드 삭제 */
+		DELETE
+		  FROM TWIF_CMM_EQIF_MGMT
+		 WHERE CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+		   AND IFCD 	= #{ifcd}
+	</delete>
+
+	<select id="selectIfCdUseCheckCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfCdUseCheckCount 인터페이스 사용 체크 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_EQIF_MGMT
+		 WHERE 1 		= 1
+		   AND CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+		   AND IFCD 	= #{ifcd}
+	</select>
+
+	<select id="selectMaxOrd" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectMaxOrd 인터페이스 목록관리 MAX ORD 조회 */
+		SELECT MAX(ORD)+1 AS ORD
+		  FROM TWIF_CMM_EQIF_MGMT
+		 WHERE CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+	</select>
+
+	<resultMap id="wifInterfaceResult" type="camelMap">
+		<result property="REQDATA" column="REQDATA" javaType="java.lang.String" jdbcType="CLOB"/>
+		<result property="RESDATA" column="RESDATA" javaType="java.lang.String" jdbcType="CLOB"/>
+	</resultMap>
+
+	<select id="selectWifInterfaceResult" resultMap="wifInterfaceResult">
+		/* wms-wif-cmm-sql-oracle.xml - selectWifInterfaceResult */
+		SELECT
+		        REQDATA
+			   ,COALESCE(RESDATA, ERRMSG) AS RESDATA
+		  FROM TWIF_CMM_INTERFACE_LOG
+		<where>
+			AND IFID = #{ifid}
+		</where>
+	</select>
+
+	<select id="selectIfValidContCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfValidContCount 인터페이스 항목 검증 이력 조회 COUNT */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_IFVL_HIS TCIH
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectIfValidContList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-cmm-sql-oracle.xml - selectIfValidContList 인터페이스 항목 검증 이력 조회 LIST */
+		SELECT
+				TCIH.HISSEQ
+				, TCIH.CTKEY
+				, CT.CTNM
+				, TCIH.OWKEY
+				, OW.OWNM
+				, TCIH.IFCD
+				, EQIF.IFNM AS IFCDNM
+				, TCIH.IFID
+				, TCIH.IFREQDT
+				, TCIH.VALIDCONT
+				, TCIH.INSERTDATE
+				, TCIH.INSERTURKEY
+				, TCIH.UPDATEDATE
+				, TCIH.UPDATEURKEY
+		  FROM TWIF_CMM_IFVL_HIS TCIH
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON TCIH.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON TCIH.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON TCIH.CTKEY 		= EQIF.CTKEY
+		   AND TCIH.OWKEY 		= EQIF.OWKEY
+		   AND TCIH.IFCD 		= EQIF.IFCD
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY TCIH.HISSEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectIfApiSpecCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfApiSpecCount 인터페이스 API SPEC 조회 COUNT */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_API_SPEC TCAS
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectIfApiSpecList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-cmm-sql-oracle.xml - selectIfApiSpecList 인터페이스 API SPEC 조회 LIST */
+		SELECT  '0' AS CHK
+			    , APISEQ
+				, TCAS.CTKEY
+				, CT.CTNM
+				, TCAS.OWKEY
+				, OW.OWNM
+				, TCAS.APICD
+				, TCAS.APINM
+				, TCAS.APIDESC
+				, TCAS.APIKIND
+				, TCAS.APITYPE
+				, TCAS.APIMETHOD
+				, TCAS.APIDOMAIN
+				, TCAS.APIPORT
+				, TCAS.APIURI
+				, TCAS.SRCMODULE
+				, TCAS.TGTMODULE
+				, TCAS.ORD
+				, TCAS.USEYN
+				, TCAS.INSERTDATE
+				, TCAS.INSERTURKEY
+				, TCAS.UPDATEDATE
+				, TCAS.UPDATEURKEY
+		  FROM TWIF_CMM_API_SPEC TCAS
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON TCAS.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON TCAS.OWKEY 		= OW.OWKEY
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY TCAS.ORD
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectIfApiSpecDupCheckCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectIfApiSpecDupCheckCount 인터페이스 중복체크 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_API_SPEC
+		 WHERE 1 		= 1
+		   AND CTKEY 	= #{ctkey}
+		   AND OWKEY    = #{owkey}
+		   AND APICD 	= #{apicd}
+	</select>
+
+	<select id="selectApiSpecMaxOrd" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectApiSpecMaxOrd 인터페이스 Api Spec MAX ORD 조회 */
+		SELECT COALESCE(MAX(ORD), 0)+1 AS ORD
+		  FROM TWIF_CMM_API_SPEC
+		 WHERE CTKEY 	= #{ctkey}
+		   AND OWKEY    = #{owkey}
+	</select>
+
+	<insert id="insertIfApiSpec">
+		/* wms-wif-cmm-sql-oracle.xml - insertIfApiSpec 인터페이스 Api Spec INSERT 조회 */
+		<selectKey keyProperty="apiseq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_cmm_api_spec') AS APISEQ
+		</selectKey>
+		INSERT INTO TWIF_CMM_API_SPEC
+		(
+			APISEQ
+			, CTKEY
+			, OWKEY
+			, APICD
+			, APINM
+			, APIDESC
+			, APIKIND
+			, APITYPE
+			, APIMETHOD
+			, APIDOMAIN
+			, APIPORT
+			, APIURI
+			, SRCMODULE
+			, TGTMODULE
+			, ORD
+			, USEYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{apiseq}
+			, #{ctkey}
+			, #{owkey}
+			, #{apicd}
+			, #{apinm}
+			, #{apidesc}
+			, #{apikind}
+			, #{apitype}
+			, #{apimethod}
+			, #{apidomain}
+			, #{apiport}
+			, #{apiuri}
+			, #{srcmodule}
+			, #{tgtmodule}
+			, #{ord}
+			, #{useyn}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			, #{surkey}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateIfApiSpec">
+		/* wms-wif-cmm-sql-oracle.xml - updateIfApiSpec 인터페이스 Api Spec UPDATE 조회 */
+		UPDATE TWIF_CMM_API_SPEC
+		   SET APICD 		= #{apicd}
+			   , APINM 		= #{apinm}
+			   , APIDESC 	= #{apidesc}
+			   , APIKIND 	= #{apikind}
+			   , APITYPE 	= #{apitype}
+			   , APIMETHOD 	= #{apimethod}
+			   , APIDOMAIN 	= #{apidomain}
+			   , APIPORT 	= #{apiport}
+			   , APIURI 	= #{apiuri}
+			   , SRCMODULE 	= #{srcmodule}
+			   , TGTMODULE 	= #{tgtmodule}
+			   , ORD        = #{ord}
+			   , USEYN 		= #{useyn}
+		 WHERE 1 = 1
+		   AND CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND APISEQ = #{apiseq}
+	</update>
+
+	<delete id="deleteApiSpec">
+		/* wms-wif-cmm-sql-oracle.xml - deleteApiSpec 인터페이스 Api Spec Delete */
+		DELETE
+		  FROM TWIF_CMM_API_SPEC
+		 WHERE CTKEY 	= #{ctkey}
+		   AND OWKEY 	= #{owkey}
+		   AND APISEQ 	= #{apiseq}
+	</delete>
+
+
+	<select id="selectInterfaceLogCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectInterfaceLogCount */
+		SELECT COUNT(1)
+		  FROM TWIF_CMM_INTERFACE_LOG
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectInterfaceLogList" resultType="camelMap">
+		/* wms-wif-cmm-sql-oracle.xml - selectInterfaceLogList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+			SELECT IFID
+				,  IFNM
+				,  REQDT
+				,  IFTYPE
+				,  CASE STATUS WHEN 'S' THEN 'S' ELSE 'F' END AS STATUS
+				,  ISPROCESS
+				,  TO_CHAR(INSERTDATE, 'YYYYMMDDHH24MISS') AS INSERTDATE
+				,  TO_CHAR(UPDATEDATE, 'YYYYMMDDHH24MISS') AS UPDATEDATE
+			  FROM TWIF_CMM_INTERFACE_LOG
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+					AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+			 ORDER BY IFID DESC
+		) B
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<resultMap id="interfaceResult" type="camelMap">
+		<result property="REQDATA" column="REQDATA" javaType="java.lang.String" jdbcType="CLOB"/>
+		<result property="RESDATA" column="RESDATA" javaType="java.lang.String" jdbcType="CLOB"/>
+	</resultMap>
+
+	<select id="selectInterfaceLog" resultMap="interfaceResult">
+		/* wms-wif-cmm-sql-oracle.xml - selectInterfaceLog */
+		SELECT
+		      REQDATA
+			, COALESCE(RESDATA, ERRMSG) AS RESDATA
+		FROM TWIF_CMM_INTERFACE_LOG
+		<where>
+			AND IFID = #{ifid}
+		</where>
+	</select>
+
+</mapper>

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.OutboundOrderCancelApiMapper">
+	<!--S.O주문번호 / 고객주문번호에 해당하는 릴리즈코드 내역 조회-->
+	<select id="selectOutboundHeaderList" parameterType="com.daiso.wms.api.in.dto.OutboundOrderCancelRequestDTO" resultType="camelMap">
+		/* wms-outbound-order-cancel-sql-oracle.xml - selectOutboundHeaderList - S.O주문번호 / 고객주문번호에 해당하는 릴리즈코드 내역 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,#{cnlrsncd} AS CNLRSNCD
+			,#{cnlrsn} AS CNLRSN
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ORHDKEY = #{orhdkey}
+	<if test='@com.kns.framework.util.StringUtil@isNotEmpty(externorderkey)'>
+		AND EXTERNORDERKEY = #{externorderkey}
+	</if>
+	</select>
+
+	<!--릴리즈코드 정보 조회-->
+	<select id="selectOutboundHeaderInfo" resultType="camelMap">
+		/* wms-outbound-order-cancel-sql-oracle.xml - selectOutboundHeaderInfo - 릴리즈코드 정보 조회 */
+		SELECT
+			OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			,OH.OBSTATUSCD
+			,CASE WHEN COALESCE(WH.WAWKSTATUSCD, '00') IN ('30', '40', '50', '60') THEN 'N'
+				WHEN COALESCE(WH.CLASSIFPLANSNDYN, 'N') = 'Y' THEN 'N'
+				ELSE 'Y' END AS CNCLYN
+			,OH.WAHDKEY
+			,OH.OBHDTYPECD
+		FROM TWORK_INFO_OB_HD OH
+			LEFT OUTER JOIN TWORK_INFO_WA_HD WH
+				ON OH.CTKEY = WH.CTKEY
+				AND OH.OWKEY = WH.OWKEY
+				AND OH.WAHDKEY = WH.WAHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--릴리즈 상세 정보 조회-->
+	<select id="selectOutboundDetailList" resultType="camelMap">
+		/* wms-outbound-order-cancel-sql-oracle.xml - selectOutboundDetailList - 릴리즈 상세 정보 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBDTKEY
+			,ALQTY
+		FROM TWORK_INFO_OB_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--WAHDKEY 존재 시 WA_DT 제거-->
+	<delete id="deleteWaveDetailByOutboundHeaderKey">
+		/* wms-outbound-order-cancel-sql-oracle.xml - deleteWaveDetailByOutboundHeaderKey - WAHDKEY 존재 시 WA_DT 제거 */
+		DELETE FROM TWORK_INFO_WA_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND WAHDKEY = #{wahdkey}
+		AND OBHDKEY = #{obhdkey}
+	</delete>
+
+
+	<!--릴리즈 상세 정보 주문취소 처리-->
+	<update id="updateOutboundDetailCancel">
+		/* wms-outbound-order-cancel-sql-oracle.xml - updateOutboundDetailCancel - 릴리즈 상세 정보 주문취소 처리 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = '99'
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--릴리즈 헤더 정보 주문취소 처리-->
+	<update id="updateOutboundHeaderCancel">
+		/* wms-outbound-order-cancel-sql-oracle.xml - updateOutboundHeaderCancel - 릴리즈 헤더 정보 주문취소 처리 */
+		UPDATE TWORK_INFO_OB_HD
+		SET OBSTATUSCD = '99'
+			, WAHDKEY = NULL
+			, DASSTNBARCODE = NULL
+			, CNLRSNCD = #{cnlrsncd}
+			, CNLRSN = #{cnlrsn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<!--출고주문 헤더 정보 주문취소 처리-->
+	<update id="updateOutboundOrderHeaderCancel">
+		/* wms-outbound-order-cancel-sql-oracle.xml - updateOutboundOrderHeaderCancel - 출고주문 헤더 정보 주문취소 처리 */
+		UPDATE TWORK_INFO_OB_ORD_HD
+		SET CNLRSNCD = #{cnlrsncd}
+			, CNLRSN = #{cnlrsn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ORHDKEY = #{orhdkey}
+	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(externorderkey)">
+		AND EXTERNORDERKEY = #{externorderkey}
+	</if>
+	</update>
+
+	<update id="updateObHdRcv" parameterType="com.daiso.wms.api.in.dto.OutboundOrderCancelRequestDTO">
+		/* wms-outbound-order-cancel-sql-oracle.xml - updateObHdRcv - 주문취소 요청시 인터페이스 테이블에 취소정보 저장 */
+		UPDATE TWORK_INTF_OB_HD_RCV
+		   SET CNLRSNYN = 'Y' /*취소요청여부*/
+		   	 , CNLRSNCD = #{cnlrsncd} /*취소사유코드*/
+			 , CNLRSN = #{cnlrsn} /*취소사유*/
+			 , CNLRSNDATE = #{sysdate} /*취소요청시간*/
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND SOHDKEY = #{orhdkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(externorderkey)">
+		   AND EXTERNORDERKEY = #{externorderkey}
+		</if>
+	</update>
+</mapper>

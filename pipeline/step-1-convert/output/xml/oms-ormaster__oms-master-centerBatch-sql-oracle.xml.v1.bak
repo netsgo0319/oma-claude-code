@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.CenterApiMapper">
+
+	<insert id="insertCenterIntfInfo">
+    	/* oms-master-centerBatch-sql-oracle.xml - insertCenterIntfInfo */
+	   INSERT  INTO TORDER_INTF_WMS_CT
+	   (
+		    CTKEY
+		  , CTTYPE
+		  , CTNM
+		  , CLOSDATE
+		  , DELYN
+		  , CNTRYCD
+		  , ADDR1
+		  , ADDR2
+		  , ZIPCD
+		  , TEL
+		  , REGNO
+		  , IFYN
+		  , IFID
+          , MANAGEMENTYN
+		  , REQUESTDT
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+	   )
+	   VALUES
+	   (
+		    #{ctkey}
+		  , #{cttype}
+		  , #{ctnm}
+		  , #{closdate}
+		  , #{delyn}
+		  , #{cntrycd}
+		  , #{addr1}
+		  , #{addr2}
+		  , #{zipcd}
+		  , #{tel}
+		  , #{regno}
+		  , 'Y'
+		  , #{interfaceId}
+          , #{managementyn}
+		  , #{requestDt}
+		  , #{sysdate}
+		  , #{interfaceUrkey}
+		  , #{sysdate}
+		  , #{interfaceUrkey}
+		)
+	</insert>
+
+
+	<insert id="insertCenterInfo">
+		/* oms-master-centerBatch-sql-oracle.xml - insertCenterInfo */
+		MERGE INTO TORDER_MST_CT CT
+		USING
+		(
+		    SELECT  CTKEY
+		          , CTTYPE
+		          , CTNM
+		          , CLOSDATE
+		          , CNTRYCD
+		          , ADDR1
+		          , ADDR2
+		          , ZIPCD
+		          , TEL
+		          , MANAGEMENTYN
+		          , REGNO
+		          , DELYN
+		    FROM TORDER_INTF_WMS_CT
+		    WHERE IFID = #{interfaceId}
+		) IN_CT
+		ON
+		(
+		    IN_CT.CTKEY = CT.CTKEY
+		)
+		WHEN MATCHED THEN
+		  UPDATE SET
+		      CT.CTNM         = IN_CT.CTNM
+		    , CT.CTTYPE       = IN_CT.CTTYPE
+		    , CT.CLOSDATE     = IN_CT.CLOSDATE
+		    , CT.REGNO        = IN_CT.REGNO
+		    , CT.ZIPCD        = IN_CT.ZIPCD
+		    , CT.ADDR1        = IN_CT.ADDR1
+		    , CT.ADDR2        = IN_CT.ADDR2
+		    , CT.CNTRYCD      = IN_CT.CNTRYCD
+		    , CT.MANAGEMENTYN = IN_CT.MANAGEMENTYN
+		    , CT.DELYN        = IN_CT.DELYN
+		WHEN NOT MATCHED THEN
+		   INSERT
+		   (
+		         CT.CTKEY
+		       , CT.CTTYPE
+		       , CT.CTNM
+		       , CT.CLOSDATE
+		       , CT.CNTRYCD
+		       , CT.ADDR1
+		       , CT.ADDR2
+		       , CT.ZIPCD
+		       , CT.TEL
+		       , CT.REGNO
+		       , CT.DELYN
+		       , CT.IFYN
+		       , CT.MANAGEMENTYN
+		       , CT.INSERTDATE
+		       , CT.INSERTURKEY
+		       , CT.UPDATEDATE
+		       , CT.UPDATEURKEY
+		   )
+		   VALUES
+		   (
+		        IN_CT.CTKEY
+		      , IN_CT.CTTYPE
+		      , IN_CT.CTNM
+		      , IN_CT.CLOSDATE
+		      , IN_CT.CNTRYCD
+		      , IN_CT.ADDR1
+		      , IN_CT.ADDR2
+		      , IN_CT.ZIPCD
+		      , IN_CT.TEL
+		      , IN_CT.REGNO
+		      , IN_CT.DELYN
+		      , 'Y'
+              , IN_CT.MANAGEMENTYN
+		      , #{sysdate}
+		      , #{interfaceUrkey}
+		      , #{sysdate}
+		      , #{interfaceUrkey}
+		   )
+	</insert>
+
+	<insert id="insertCenterOwInfo">
+		/* oms-master-centerBatch-sql-oracle.xml - insertCenterOwInfo */
+		MERGE INTO TORDER_MST_CTXOW CTX
+		USING DUAL
+		ON (        OWKEY = #{owkey}
+				AND CTKEY = #{ctkey}
+		        )
+		WHEN MATCHED THEN
+		  UPDATE SET
+		         CTX.DELYN       = #{delyn}
+		       , CTX.UPDATEDATE  = #{sysdate}
+	           , CTX.UPDATEURKEY =  #{interfaceUrkey}
+		WHEN NOT MATCHED THEN
+		   INSERT
+		   (
+		         CTX.OWKEY
+		       , CTX.CTKEY
+		       , CTX.DELYN
+		       , CTX.INSERTDATE
+		       , CTX.INSERTURKEY
+		       , CTX.UPDATEDATE
+		       , CTX.UPDATEURKEY
+		   )
+		   VALUES
+		   (
+		        #{owkey}
+		      , #{ctkey}
+		      , #{delyn}
+		      , #{sysdate}
+		      , #{interfaceUrkey}
+		      , #{sysdate}
+		      , #{interfaceUrkey}
+		   )
+	</insert>
+
+</mapper>
+	

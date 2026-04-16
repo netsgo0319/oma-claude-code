@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.NisPeriodItemStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <sql id="sql_nisPeriodItemStatus">
+        <![CDATA[
+        WITH PARAM AS (
+            SELECT CASE WHEN #{monthOrDay} = '20' THEN 'DAY' ELSE 'MON' END AS GRP_UNIT,
+                   CASE WHEN #{fromDate} IS NOT NULL
+                         AND LENGTH(#{fromDate}) > 0
+                         AND #{fromDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS FR_DT,
+                   CASE WHEN #{toDate} IS NOT NULL
+                         AND LENGTH(#{toDate}) > 0
+                         AND #{toDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS TO_DT
+        ),
+        BASE AS (
+                 SELECT  B.SHIP_DT,
+                         CASE WHEN P.GRP_UNIT='MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END AS SHIP_GRP_DT,
+                         B.OWKEY,
+                         B.CTKEY,
+                         B.OBHDKEY,
+                         B.OBDTKEY,
+                         B.ICKEY,
+                         B.NIS_QTY,
+                         P.GRP_UNIT
+                   FROM (
+                          SELECT CASE WHEN LENGTH(OH.OBREQDATE)=14
+                                      THEN TO_DATE(SUBSTR(OH.OBREQDATE,1,8),'YYYYMMDD')
+                                 END AS SHIP_DT,
+                                 OH.OBHDKEY,
+                                 OH.OWKEY,
+                                 OH.CTKEY,
+                                 OD.OBDTKEY,
+                                 OD.ICKEY,
+                                 COALESCE(OD.NISQTY, NISDT.NISQTY) AS NIS_QTY
+                            FROM TWORK_INFO_OB_HD OH
+                            JOIN TWORK_INFO_OB_DT OD
+                              ON OH.CTKEY=OD.CTKEY
+                             AND OH.OWKEY=OD.OWKEY
+                             AND OH.OBHDKEY=OD.OBHDKEY
+                            LEFT JOIN TWORK_INFO_OB_NIS_HD NISHD
+                              ON OH.CTKEY=NISHD.CTKEY
+                             AND OH.OWKEY=NISHD.OWKEY
+                             AND OH.OBHDKEY=NISHD.OBHDKEY
+                            LEFT JOIN TWORK_INFO_OB_NIS_DT NISDT
+                              ON NISHD.CTKEY=NISDT.CTKEY
+                             AND NISHD.OWKEY=NISDT.OWKEY
+                             AND NISHD.OBNISNO=NISDT.OBNISNO
+                             AND OD.OBDTKEY=NISDT.OBDTKEY
+                            ) B
+                            JOIN PARAM P ON 1=1
+                           WHERE B.SHIP_DT IS NOT NULL
+                             AND (P.FR_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END) >= P.FR_DT)
+                             AND (P.TO_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END) <= P.TO_DT)
+        ),
+        AGG AS (
+                   SELECT B.OWKEY,
+                          B.CTKEY,
+                          GRP_UNIT,
+                          SHIP_GRP_DT AS GRP_DT,
+                          COALESCE(ASRT.ASRTMASICKEY, B.ICKEY) AS MAS_ICKEY,
+                          COALESCE(MAS.ICNM, CHD.ICNM)         AS MAS_ICNM,
+                          CHD.ICKEY                         AS CHD_ICKEY,
+                          CHD.ICNM                        AS CHD_ICNM,
+                          SUM(B.NIS_QTY)                  AS NIS_EA,
+                          SUM(B.NIS_QTY * COALESCE(CHD.SLPRC, 0)) AS NIS_AMT
+                    FROM BASE B
+                    LEFT JOIN TWORK_MST_ASRT ASRT
+                      ON B.ICKEY = ASRT.ASRTDTICKEY
+                    LEFT JOIN TWORK_MST_IC MAS
+                      ON ASRT.ASRTMASICKEY = MAS.ICKEY
+                    LEFT JOIN TWORK_MST_IC CHD
+                      ON B.ICKEY = CHD.ICKEY
+                   GROUP BY B.OWKEY, B.CTKEY, GRP_UNIT, SHIP_GRP_DT, COALESCE(ASRT.ASRTMASICKEY, B.ICKEY), COALESCE(MAS.ICNM, CHD.ICNM), CHD.ICKEY, CHD.ICNM
+        )
+         SELECT
+                TO_CHAR(GRP_DT,'YYYY') AS grpyear,
+                TO_CHAR(GRP_DT,'MM')   AS grpmonth,
+                CASE WHEN GRP_UNIT='DAY' THEN TO_CHAR(GRP_DT,'DD') ELSE '-' END AS grpdate,
+                MAS_ICKEY  AS masickey,
+                MAS_ICNM   AS masicnm,
+                CHD_ICKEY  AS chdickey,
+                CHD_ICNM   AS chdicnm,
+                NIS_EA     AS nisea,
+                NIS_AMT    AS nisamt
+          FROM   AGG
+         WHERE 1=1
+        ]]>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+        <![CDATA[
+           AND NIS_EA > 0
+        ]]>
+    </sql>
+
+    <select id="selectNisPeriodItemStatusInfoCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM (
+            <include refid="sql_nisPeriodItemStatus"/>
+        ) CNT
+    </select>
+
+    <select id="selectNisPeriodItemStatusInfoList" resultType="camelMap">
+        /* wms-report-nisPeriodItemStatus-sql-oracle.xml - selectNisPeriodItemStatusInfoList */
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        FROM (
+            <include refid="sql_nisPeriodItemStatus"/>
+        ) DATA
+        ORDER BY DATA.grpyear, DATA.grpmonth, DATA.grpdate, DATA.masickey, DATA.chdickey
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+</mapper>

@@ -1,0 +1,1181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.api.in.mapper.ItemApiMapper">
+
+	<sql id="repListSubQuery">
+		( SELECT 'repList empty guard dummy row' AS ASRTREPKEY
+		<foreach collection="repList" item="rep" separator=" union all "  open=" union all ">
+			SELECT #{rep} AS ASRTREPKEY
+		</foreach> )
+	</sql>
+
+	<select id="selectErpItemAsrtInfoIntfInfo" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - selectErpItemAsrtInfoIntfInfo */
+		SELECT CASE WHEN IC.ASRTKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS EXISTYN 
+		     , T.OWKEY
+			 , T.ASRTKEY
+			 , T.ASRTREPKEY
+			 , T.ASRTNM
+			 , T.SMLCTG
+			 , T.QTY
+			 , T.ICIMGURL
+			 , T.ICCOLOR
+			 , T.ICDESIGN
+			 , T.ICCHRT
+			 , T.ASRTSTATUS
+		  FROM (
+		  		SELECT #{owkey} AS OWKEY
+					 , ASSORTICKEY AS ASRTKEY
+					 , MASICICKEY AS ASRTREPKEY
+					 , ICNM AS ASRTNM
+					 , SMLCTG
+					 , QTY
+					 , ICIMGURL
+					 , ICCOLOR
+					 , ICDESIGN
+					 , ICCHRT
+					 , CASE WHEN QTY=0 THEN '01'
+					 	    WHEN ASSORTICKEY=MASICICKEY THEN '02'
+					    	ELSE NULL
+					   END AS ASRTSTATUS
+			      FROM TORDER_EAI_ASRT_BATCH
+			     WHERE TRN_ID = #{trnId}
+			       AND SND_PROC_TYP = 'N'
+			       AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+		       ) T
+		  LEFT JOIN TORDER_MST_ASRT IC 
+		    ON T.OWKEY = IC.OWKEY
+		   AND T.ASRTKEY = IC.ASRTKEY
+	</select>
+	
+	<select id="selectErpItemAsrtIcInfo" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - selectErpItemAsrtIcInfo */
+		SELECT CASE WHEN IC.ICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS EXISTYN 
+		     , T.OWKEY
+			 , T.ICKEY
+			 , T.ICNM
+             , T.ICGRPKEY
+		     , T.ASRTREPKEY
+		     , T.OLNICKEY
+		     , T.ICIMGURL
+		     , T.CTGKEY
+		     , T.OLNICTYPE
+		     , T.OFLNICTYPE
+		     , T.EXPCKYN
+		     , T.DNGMGMTYN
+		     , T.CUSHNMEPCKGYN
+		     , T.ICORIGIN
+		     , T.ACKEY
+		     , T.ICMGMTUSR
+		     , T.SLPRC
+		     , T.ASRTYN
+		     , T.DIRCDLVYICYN
+		     , T.ICSTATUSDIV
+		     , T.PKOTICYN
+		     , T.ROBSORTERICYN
+		     , T.MTR
+		  FROM (
+		  		SELECT IB.OWKEY
+					 , MB.ASSORTICKEY AS ICKEY
+					 , MB.ICNM
+		             , IB.ICGRPKEY
+				     , MB.MASICICKEY AS ASRTREPKEY
+				     , IB.OLNICKEY
+				     , MB.ICIMGURL
+				     , MB.SMLCTG AS CTGKEY
+				     , IB.OLNICTYPE
+				     , IB.OFLNICTYPE
+				     , COALESCE(IB.EXPCKYN, 'N') AS EXPCKYN
+				     , IB.DNGMGMTYN
+				     , IB.CUSHNMEPCKGYN
+				     , IB.ICORIGIN
+				     , IB.ACKEY
+				     , IB.ICMGMTUSR
+				     , IB.SLPRC
+				     , IB.ASRTYN
+				     , IB.DIRCDLVYICYN
+				     , IB.ICSTATUSDIV
+				     , IB.PKOTICYN
+				     , IB.ROBSORTERICYN
+				     , IB.MTR
+				FROM TORDER_EAI_ASRT_BATCH MB
+				JOIN TORDER_MST_IC IB
+		          ON IB.OWKEY = #{owkey}
+		         AND MB.MASICICKEY = IB.ICKEY
+			   WHERE MB.TRN_ID = #{trnId} 
+			   AND  MB.SND_PROC_TYP = 'N'
+		  	   ) T
+		  LEFT JOIN TORDER_MST_IC IC 
+		    ON T.OWKEY = IC.OWKEY
+		   AND T.ICKEY = IC.ICKEY
+	</select>
+	
+	<select id="selectErpItemAsrtIcutxtypeInfo" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - selectErpItemAsrtIcutxtypeInfo */
+		SELECT CASE WHEN IC.ICKEY IS NOT NULL THEN 'Y' ELSE 'N' END AS EXISTYN 
+		     , T.OWKEY
+             , T.ICKEY
+             , T.ICUNITTYPE
+             , T.ICUNITORDER
+             , T.ICUNITQTY 
+             , T.WIDTH
+             , T.DEPTH
+             , T.HEIGHT
+             , T.VOL
+             , T.WEIGHT
+             , T.PLTROW
+             , T.PLTCOL 
+             , T.CPP
+		  FROM (
+		  		SELECT IB.OWKEY
+		             , MB.ASSORTICKEY AS ICKEY
+		             , IB.ICUNITTYPE
+		             , IB.ICUNITORDER
+		             , IB.ICUNITQTY 
+		             , IB.WIDTH
+		             , IB.DEPTH
+		             , IB.HEIGHT
+		             , IB.VOL
+		             , IB.WEIGHT
+		             , IB.PLTROW
+		             , IB.PLTCOL 
+		             , IB.CPP
+				  FROM TORDER_EAI_ASRT_BATCH MB
+				  JOIN TORDER_MST_ICUTXTYPE IB
+			        ON IB.OWKEY = #{owkey}
+			       AND MB.MASICICKEY = IB.ICKEY
+				 WHERE MB.TRN_ID = #{trnId}
+				   AND MB.SND_PROC_TYP = 'N'
+		  	   ) T
+		  LEFT JOIN TORDER_MST_ICUTXTYPE IC 
+		    ON T.OWKEY = IC.OWKEY
+		   AND T.ICKEY = IC.ICKEY
+		   AND T.ICUNITORDER = IC.ICUNITORDER
+		   AND T.ICUNITTYPE = IC.ICUNITTYPE
+	</select>
+	
+	<select id="selectErpItemAsrtIcbarcodeInfo" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - selectErpItemAsrtIcbarcodeInfo */
+		SELECT OWKEY
+			 , ICKEY
+			 , BARCODE
+			 , SEQ
+			 , UOM
+		  FROM (
+		  		SELECT CASE WHEN IC.ICKEY IS NULL THEN 'Y' ELSE 'N' END AS NEWYN
+				     , T.OWKEY
+					 , T.ICKEY
+					 , T.BARCODE
+					 , T.SEQ
+					 , T.UOM
+				  FROM (
+				  		SELECT #{owkey} AS OWKEY
+							 , MB.ASSORTICKEY AS ICKEY
+							 , MB.ASSORTICKEY AS BARCODE
+							 , 1 AS SEQ
+							 , 'EA' AS UOM
+						  FROM TORDER_EAI_ASRT_BATCH MB
+						 WHERE MB.TRN_ID = #{trnId}
+						   AND MB.SND_PROC_TYP = 'N'
+				  	   ) T
+				  LEFT JOIN TORDER_MST_ICBACODE IC 
+				    ON T.OWKEY = IC.OWKEY
+				   AND T.ICKEY = IC.ICKEY
+				   AND T.SEQ = IC.SEQ
+				   AND T.BARCODE = IC.BARCODE
+				   AND T.UOM = IC.UOM
+		  	   ) TT
+		 WHERE NEWYN = 'Y'
+	</select>
+	
+	<select id="selectOmsToWmsAsrtBatchList" resultType="com.daiso.oms.api.in.dto.ItemAsrtInfoInDTO$ItemAsrtInfoVO">
+        /* oms-item-icInfo-sql-oracle.xml - selectOmsToWmsAsrtBatchList */
+        SELECT CT.CTKEY
+		     , ASRT.OWKEY
+		     , ASRT.ASRTREPKEY
+             , ASRT.ASRTKEY
+             , ASRT.ASRTNM
+             , ASRT.SMLCTG
+             , ASRT.QTY
+             , ASRT.ICIMGURL
+             , ASRT.ICCOLOR
+             , ASRT.ICDESIGN
+             , ASRT.ICCHRT
+		  FROM (
+		        SELECT T.OWKEY
+		             , T.ASRTREPKEY
+		          FROM (
+		          	<if test='@com.kns.framework.util.StringUtil@isEmpty(channel)' >
+	          			/*방어로직*/
+	          			SELECT NULL AS OWKEY
+					         , NULL AS ASRTREPKEY
+          			</if>
+	          		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(channel) and "OMS".equals(channel)' >
+	          			/*TORDER_WMS_ASRT_BATCH 정보*/
+		                SELECT #{owkey} AS OWKEY
+		                     , BATCH.ASRTREPKEY
+		                  FROM TORDER_WMS_ASRT_BATCH BATCH
+		                 WHERE BATCH.ASRTREPKEY IN
+		                <foreach item="asrtrepkey" index="index" collection="asrtrepkeyList"  open="(" separator="," close=")">
+			                #{asrtrepkey}
+			            </foreach>	
+			            AND REQDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') 		   
+					</if>
+		                ) T
+		          GROUP BY T.OWKEY, T.ASRTREPKEY
+		       ) M
+		  JOIN TORDER_MST_ASRT ASRT
+		    ON M.OWKEY = ASRT.OWKEY
+		   AND M.ASRTREPKEY = ASRT.ASRTREPKEY
+		  JOIN TORDER_MST_CT CT
+		    ON CT.MANAGEMENTYN = 'Y'
+		   AND CT.DELYN = 'N'
+    </select>
+
+	<update id="updateIntfItemAsrtErpStatus">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateIntfItemAsrtErpStatus */
+		UPDATE TORDER_EAI_ASRT_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+		   AND SND_ROW BETWEEN #{minrow} AND #{maxrow}
+	</update>
+
+	<select id="findAsrtBatchWList" parameterType="map" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - findAsrtBatchWList */
+		SELECT
+		  A.REQDATE
+		, A.ASRTREPKEY
+		, A.SEQ
+		, A.SENDSTATUS
+		FROM TORDER_WMS_ASRT_BATCH A
+		WHERE A.SENDSTATUS = 'W'
+		  AND A.REQDATE = #{reqdate}
+		  AND A.SEQ = (SELECT MAX(SEQ)
+					   FROM TORDER_WMS_ASRT_BATCH
+		               WHERE ASRTREPKEY = A.ASRTREPKEY
+		               AND REQDATE = A.REQDATE
+		               AND SENDSTATUS = 'W'
+		               )
+		 LIMIT 500
+	</select>
+
+
+	<select id="chkAsrtBatchWList" parameterType="map" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - chkAsrtBatchWList */
+		WITH BASE AS (
+				SELECT
+					ASRT.ASRTREPKEY,
+					ASRT.ASRTKEY,
+					CASE WHEN ORG.ICKEY IS NULL THEN  'N' ELSE 'Y' END AS  MASTERYN,
+					COALESCE(ASRT.ORGQTY, ASRT.QTY)  AS QTY,
+					SUM(CASE WHEN COALESCE(ASRT.ORGQTY, ASRT.QTY) > 0 THEN 1 ELSE 0 END)
+						OVER (PARTITION BY ASRT.ASRTREPKEY) AS CNTPOS,
+					SUM(CASE WHEN COALESCE(ASRT.ORGQTY, ASRT.QTY)  = 0 THEN 1 ELSE 0 END)
+						OVER (PARTITION BY ASRT.ASRTREPKEY) AS CNTZERO ,
+					COUNT(*) OVER (PARTITION BY ASRT.ASRTREPKEY) AS CNTALL
+				FROM TORDER_MST_ASRT ASRT
+				LEFT JOIN TORDER_MST_IC_ORG ORG
+				ON  ASRT.ASRTKEY = ORG.ICKEY
+				WHERE ASRT.ASRTREPKEY = #{asrtrepkey}
+			)
+			SELECT
+				ASRTREPKEY,
+				ASRTKEY,
+				QTY,
+				MASTERYN,
+				/* CASEA : 전체 0 */
+				CASE WHEN CNTPOS = 0 THEN 1   ELSE 0 END AS CASEA,
+				/* CASEB : 단품화 패턴 (양수 1개 + 나머지 0) 추후 이패턴은 사라져야 함.*/
+				CASE WHEN CNTPOS = 1 AND CNTZERO >= 1 THEN 1
+				WHEN CNTPOS = 1 AND CNTALL = 1 THEN 1
+				ELSE 0 END AS CASEB,
+				/* CASEC : 혼합형 (정수도 있고 0도 있음) */
+				CASE WHEN CNTPOS >= 2  THEN 1 ELSE 0 END AS CASEC
+		FROM BASE
+	</select>
+
+
+	<select id="selectAsrtMissingBatchTargetList" resultType="camelMap">
+		/* oms-item-asrtInfo-sql-oracle.xml - selectAsrtMissingBatchTargetList */
+		SELECT
+				0 AS  SEQ,
+				X.ASRTREPKEY AS ASRTREPKEY
+		  FROM  TORDER_MST_IC IC
+		  JOIN  TORDER_MST_ASRT X
+			ON  X.OWKEY = IC.OWKEY
+		   AND  X.ASRTREPKEY = IC.ICKEY
+		 WHERE (IC.OWKEY, IC.ICKEY) IN (
+				SELECT #{owkey} AS OWKEY,
+					   B.ICKEY
+				  FROM TORDER_EAI_IC_BATCH B
+				 WHERE B.TRN_ID       = #{trnId}
+		           AND B.SND_PROC_TYP = 'N'
+		           AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+				   AND NOT EXISTS (
+						SELECT 1
+						  FROM (
+								<include refid="repListSubQuery" />
+							   ) REP
+						 WHERE REP.ASRTREPKEY = B.ICKEY
+				   )
+		 )
+		 GROUP BY X.ASRTREPKEY
+
+	</select>
+
+	<insert id="insertMissingAsrtIc" parameterType="map">
+		/* oms-item-asrtInfo-sql-oracle.xml - insertMissingAsrtIc */
+		INSERT INTO TORDER_MST_IC (
+			 OWKEY, ICKEY, ICNM, ICGRPKEY, ICGRPTYPE, ICUNITKEY, UOM,
+			 EXPCKYN, SHELFLIFE, EXPCKTYPE, UDF2, UDF5, ACKEY, DELYN,
+			 ICTYPE, SPEC, CTGKEY, CLOSDATE, ORDSTARTDATE, FOODYN,
+			 SHELFDAY, MDTEAM, MDNM, ICIMGURL, ERPIMGURL,
+			 ASRTREPKEY, OLNICKEY, OLNICTYPE, OFLNICTYPE, B2BGRADE,
+			 SEASON, DNGMGMTYN, CUSHNMEPCKGYN, EACHPCKGYN, ICORIGIN,
+			 ICMGMTUSR, SLPRC, ASRTYN, DIRCDLVYICYN, ICSTATUSDIV,
+			 PKOTICYN, ROBSORTERICYN, MTR, OBIMPSCRITRT, RENEWISTYN,
+			 CHGBFIC, CHGAFIC, IFYN, UNICYN, DSPYN, DLVRYYN,
+			 SALESTATUS, POABLEYN, OLNICDIV, OBLIMITYN, OLNIPKOTICYN,
+			 OLNIPKOTICCONT, SALESCHARA, UNICCD, EXPCKDAYS,
+			 POLYBACKPCKGYN, OVLPPCKGWIDTHVAL, OVLPPCKGDEPTHVAL,
+			 OVLPPCKGHEIGHTVAL, COMPYN, COMPCONT, PURPRC, PCKGOVLPYN,
+			 OBIMPSCRITDAYS, PCKGFOLDYN, DFSHPMTRYN, BARCODEATTACHYN,
+			 EXPRATE, HIGHFRQNCYDMGYN, LEADTIME, CMT,
+			 INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY,
+			 OLNPKOTYN, REPIMGURL, EXPDAYS, ORGASRTYN
+		)
+		SELECT
+			REP_IC.OWKEY,
+			BASE.ASRTKEY AS ICKEY,
+			COALESCE(BASE.ASRTNM, REP_IC.ICNM)  AS ICNM,
+			REP_IC.ICGRPKEY,
+			REP_IC.ICGRPTYPE,
+			REP_IC.ICUNITKEY,
+			REP_IC.UOM,
+			COALESCE(REP_IC.EXPCKYN, 'N') AS EXPCKYN,
+			REP_IC.SHELFLIFE,
+			REP_IC.EXPCKTYPE,
+			REP_IC.UDF2,
+			REP_IC.UDF5,
+			REP_IC.ACKEY,
+			'N' AS DELYN,
+			REP_IC.ICTYPE,
+			REP_IC.SPEC,
+			REP_IC.CTGKEY,
+			REP_IC.CLOSDATE,
+			REP_IC.ORDSTARTDATE,
+			REP_IC.FOODYN,
+			REP_IC.SHELFDAY,
+			REP_IC.MDTEAM,
+			REP_IC.MDNM,
+			REP_IC.ICIMGURL,
+			REP_IC.ERPIMGURL,
+			BASE.ASRTREPKEY,
+			REP_IC.OLNICKEY,
+			REP_IC.OLNICTYPE,
+			REP_IC.OFLNICTYPE,
+			REP_IC.B2BGRADE,
+			REP_IC.SEASON,
+			REP_IC.DNGMGMTYN,
+			REP_IC.CUSHNMEPCKGYN,
+			REP_IC.EACHPCKGYN,
+			REP_IC.ICORIGIN,
+			REP_IC.ICMGMTUSR,
+			REP_IC.SLPRC,
+			REP_IC.ASRTYN,
+			REP_IC.DIRCDLVYICYN,
+			REP_IC.ICSTATUSDIV,
+			REP_IC.PKOTICYN,
+			REP_IC.ROBSORTERICYN,
+			REP_IC.MTR,
+			REP_IC.OBIMPSCRITRT,
+			REP_IC.RENEWISTYN,
+			REP_IC.CHGBFIC,
+			REP_IC.CHGAFIC,
+			REP_IC.IFYN,
+			REP_IC.UNICYN,
+			REP_IC.DSPYN,
+			REP_IC.DLVRYYN,
+			REP_IC.SALESTATUS,
+			REP_IC.POABLEYN,
+			REP_IC.OLNICDIV,
+			REP_IC.OBLIMITYN,
+			REP_IC.OLNIPKOTICYN,
+			REP_IC.OLNIPKOTICCONT,
+			REP_IC.SALESCHARA,
+			REP_IC.UNICCD,
+			REP_IC.EXPCKDAYS,
+			REP_IC.POLYBACKPCKGYN,
+			REP_IC.OVLPPCKGWIDTHVAL,
+			REP_IC.OVLPPCKGDEPTHVAL,
+			REP_IC.OVLPPCKGHEIGHTVAL,
+			REP_IC.COMPYN,
+			REP_IC.COMPCONT,
+			REP_IC.PURPRC,
+			REP_IC.PCKGOVLPYN,
+			REP_IC.OBIMPSCRITDAYS,
+			REP_IC.PCKGFOLDYN,
+			REP_IC.DFSHPMTRYN,
+			REP_IC.BARCODEATTACHYN,
+			REP_IC.EXPRATE,
+			REP_IC.HIGHFRQNCYDMGYN,
+			REP_IC.LEADTIME,
+			REP_IC.CMT,
+			#{sysdate},
+			#{interfaceUrkey},
+			#{sysdate},
+			#{interfaceUrkey},
+			REP_IC.OLNPKOTYN,
+			REP_IC.REPIMGURL,
+			REP_IC.EXPDAYS,
+			REP_IC.ORGASRTYN
+		FROM
+			<include refid="repListSubQuery"/> REP_LIST
+		JOIN TORDER_MST_ASRT BASE
+			ON BASE.ASRTREPKEY = REP_LIST.ASRTREPKEY
+		JOIN TORDER_MST_IC REP_IC
+			ON REP_IC.ICKEY = BASE.ASRTREPKEY
+		LEFT JOIN TORDER_MST_IC EXIST_IC
+			ON EXIST_IC.ICKEY = BASE.ASRTKEY
+		WHERE EXIST_IC.ICKEY IS NULL
+	</insert>
+
+	<insert id="insertMissingIcUnit" parameterType="map">
+		/* oms-item-asrtInfo-sql-oracle.xml - insertMissingIcUnit */
+		INSERT INTO TORDER_MST_ICUTXTYPE (
+			OWKEY, ICKEY, ICUNITTYPE, ICUNITORDER, ICUNITQTY,
+			DEPTH, WIDTH, HEIGHT, SIZEUNIT,
+			WEIGHT, WEIGHTUNIT, VOL, VOLUNIT,
+			MEASUREMENTYN, INSERTDATE, INSERTURKEY,
+			UPDATEDATE, UPDATEURKEY,
+			PLTROW, PLTCOL, CPP, DELYN
+		)
+		SELECT
+			REP.OWKEY,
+			BASE.ASRTKEY,
+			REP.ICUNITTYPE,
+			REP.ICUNITORDER,
+			REP.ICUNITQTY,
+			REP.DEPTH,
+			REP.WIDTH,
+			REP.HEIGHT,
+			REP.SIZEUNIT,
+			REP.WEIGHT,
+			REP.WEIGHTUNIT,
+			REP.VOL,
+			REP.VOLUNIT,
+			REP.MEASUREMENTYN,
+			#{sysdate},
+			#{interfaceUrkey},
+			#{sysdate},
+			#{interfaceUrkey},
+			REP.PLTROW,
+			REP.PLTCOL,
+			REP.CPP,
+			REP.DELYN
+		FROM
+			<include refid="repListSubQuery"/> REP_LIST
+		JOIN TORDER_MST_ASRT BASE
+			ON BASE.ASRTREPKEY = REP_LIST.ASRTREPKEY
+		JOIN TORDER_MST_ICUTXTYPE REP
+			ON REP.ICKEY = BASE.ASRTREPKEY
+		LEFT JOIN TORDER_MST_ICUTXTYPE EXIST
+			ON EXIST.ICKEY = BASE.ASRTKEY
+		   AND EXIST.ICUNITTYPE = REP.ICUNITTYPE
+		WHERE EXIST.ICKEY IS NULL
+	</insert>
+
+	<insert id="insertAsrtBarcodeBulk">
+		/* oms-item-asrtInfo-sql-oracle.xml - insertAsrtBarcodeBulk */
+		INSERT INTO TORDER_MST_ICBACODE (
+			OWKEY,
+			ICKEY,
+			BARCODE,
+			UOM,
+			DELYN,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+		SELECT
+			  #{owkey}           AS OWKEY
+			, A.ASRTKEY          AS ICKEY
+			, A.ASRTKEY          AS BARCODE    -- 자상품코드를 바코드로 사용
+			, 'EA'               AS UOM
+			, 'N'                AS DELYN
+			, #{sysdate}         AS INSERTDATE
+			, #{interfaceUrkey}           AS INSERTURKEY
+			, #{sysdate}         AS UPDATEDATE
+			, #{interfaceUrkey}           AS UPDATEURKEY
+		FROM (
+			SELECT ASRTREPKEY
+			FROM <include refid="repListSubQuery"/>
+		) R
+		JOIN TORDER_MST_ASRT A
+		  ON A.ASRTREPKEY = R.ASRTREPKEY
+		JOIN TORDER_MST_IC C
+		  ON R.ASRTREPKEY  = C.ICKEY
+		WHERE
+		(
+			/* ① QTY > 0 : ASRTKEY 바코드 강제 */
+			(
+				A.QTY > 0
+				AND NOT EXISTS (
+					SELECT 1
+					FROM TORDER_MST_ICBACODE B
+					WHERE B.OWKEY   = #{owkey}
+					  AND B.ICKEY   = A.ASRTKEY
+					  AND B.BARCODE = A.ASRTKEY   -- 여기서는 반드시 필요
+					  AND B.UOM     = 'EA'
+					  AND B.DELYN   = 'N'
+				)
+			)
+			OR
+			/* ② QTY = 0 : EA 바코드 자체가 없을 때만 */
+			(
+				A.QTY = 0
+				AND NOT EXISTS (
+					SELECT 1
+					FROM TORDER_MST_ICBACODE B
+					WHERE B.OWKEY = #{owkey}
+					  AND B.ICKEY = A.ASRTKEY
+					  AND B.UOM   = 'EA'
+					  AND B.DELYN = 'N'
+				)
+			)
+		)
+	</insert>
+
+
+	<insert id="insertOrgBarcodeBulk">
+		/* oms-item-asrtInfo-sql-oracle.xml - insertOrgBarcodeBulk */
+		INSERT INTO TORDER_MST_ICBACODE (
+			OWKEY, ICKEY, BARCODE, UOM, DELYN,
+			INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+		)
+		SELECT
+			X.OWKEY,
+			X.ICKEY,
+			X.BARCODE,
+			X.UOM,
+			'N',
+		    #{sysdate},
+			'OrgFix',
+		    #{sysdate},
+			'OrgFix'
+		FROM (
+			/* ORG 바코드를 행으로 확장 + UOM 매핑 */
+			SELECT O.OWKEY, O.ICKEY, O.PCSBARCODE  AS BARCODE, 'EA'  AS UOM
+			  FROM TORDER_MST_IC_ORG O
+			 WHERE O.PCSBARCODE IS NOT NULL
+
+			UNION ALL
+
+			SELECT O.OWKEY, O.ICKEY, O.CARTBARCODE AS BARCODE, 'CTN' AS UOM
+			  FROM TORDER_MST_IC_ORG O
+			 WHERE O.CARTBARCODE IS NOT NULL
+
+			UNION ALL
+
+			SELECT O.OWKEY, O.ICKEY, O.IPCBARCODE  AS BARCODE, 'INN' AS UOM
+			  FROM TORDER_MST_IC_ORG O
+			 WHERE O.IPCBARCODE IS NOT NULL
+		) X
+		WHERE X.OWKEY = #{owkey}
+
+		  /* 단품화(QTY=0) 자상품만 */
+		  AND EXISTS (
+				SELECT 1
+				FROM TORDER_MST_ASRT A
+				WHERE A.OWKEY   = X.OWKEY
+				  AND A.ASRTKEY = X.ICKEY
+				  AND A.QTY     = 0
+				  AND A.ASRTREPKEY IN (<include refid="repListSubQuery"/>)
+		  )
+
+		  /* 이미 활성 바코드 존재 시 제외 */
+		  AND NOT EXISTS (
+				SELECT 1
+				FROM TORDER_MST_ICBACODE B
+				WHERE B.OWKEY   = X.OWKEY
+				  AND B.ICKEY   = X.ICKEY
+				  AND B.BARCODE = X.BARCODE
+				  AND B.DELYN   = 'N'
+		  )
+	</insert>
+
+
+	<update id="updateAsrtBarcodeDelBulkFull">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateAsrtBarcodeDelBulkFull */
+		UPDATE TORDER_MST_ICBACODE B
+		   SET DELYN       = 'Y'
+			 , UPDATEDATE  = CURRENT_TIMESTAMP
+			 , UPDATEURKEY = 'DelBulkFull'
+		 WHERE B.OWKEY = #{owkey}
+		   AND B.DELYN = 'N'
+		   AND B.UOM   = 'EA'
+		   AND B.BARCODE != B.ICKEY           -- 자상품코드 외 바코드만 삭제
+		   /* 아소트(QTY > 0)인 경우만 적용 */
+		   AND EXISTS (
+				SELECT 1
+				  FROM (
+						SELECT ASRTREPKEY
+						  FROM <include refid="repListSubQuery"/>
+					   ) R
+				  JOIN TORDER_MST_ASRT A
+					ON A.ASRTREPKEY = R.ASRTREPKEY
+				 WHERE A.ASRTKEY = B.ICKEY
+				   AND A.QTY > 0
+		   )
+	</update>
+
+
+	<update id="updateOrgBarcodeDelBulkFull">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateOrgBarcodeDelBulkFull */
+		UPDATE TORDER_MST_ICBACODE B
+			SET DELYN       = 'Y',
+				UPDATEDATE  = CURRENT_TIMESTAMP,
+				UPDATEURKEY = 'OrgFixUp'
+			WHERE B.OWKEY = #{owkey}
+			  AND B.DELYN = 'N'
+			  AND EXISTS (
+					SELECT 1
+					FROM TORDER_MST_ASRT A
+					WHERE A.OWKEY   = B.OWKEY
+					  AND A.ASRTKEY = B.ICKEY
+					  AND A.QTY     = 0
+					  AND A.ASRTREPKEY IN (<include refid="repListSubQuery"/>)
+			  )
+			  AND EXISTS (
+					SELECT 1
+					FROM TORDER_MST_IC_ORG O
+					WHERE O.OWKEY = B.OWKEY
+					AND O.ICKEY = B.ICKEY
+				)
+			  AND NOT EXISTS (
+					SELECT 1
+					FROM TORDER_MST_IC_ORG O
+					WHERE O.OWKEY = B.OWKEY
+					  AND O.ICKEY = B.ICKEY
+					  AND (
+							B.BARCODE = O.PCSBARCODE
+						 OR B.BARCODE = O.CARTBARCODE
+						 OR B.BARCODE = O.IPCBARCODE
+					  )
+			  )
+	</update>
+
+
+
+
+
+	<update id="updateAsrtItemBulkFull">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateAsrtItemBulkFull */
+		UPDATE TORDER_MST_IC U
+   		SET (
+        /* 일반 */
+        ICGRPKEY,        ICGRPTYPE,       ICUNITKEY,       UOM,
+        EXPCKYN,           SHELFLIFE,       EXPCKTYPE,       UDF2,            UDF5,
+        ACKEY,             ICTYPE,          SPEC,            CTGKEY,
+        CLOSDATE,          ORDSTARTDATE,    FOODYN,          SHELFDAY,        MDTEAM,
+        MDNM,              ICIMGURL,        ERPIMGURL,       OLNICKEY,        OLNICTYPE,
+        OFLNICTYPE,        B2BGRADE,        SEASON,          DNGMGMTYN,
+        EACHPCKGYN,        ICORIGIN,        ICMGMTUSR,       SLPRC,           DIRCDLVYICYN,
+        ICSTATUSDIV,       MTR,             OBIMPSCRITRT,
+        RENEWISTYN,        CHGBFIC,         CHGAFIC,         UNICYN,
+        DSPYN,             DLVRYYN,         SALESTATUS,      POABLEYN,        OLNICDIV,
+        OBLIMITYN,         OLNIPKOTICYN,    OLNIPKOTICCONT,  SALESCHARA,      UNICCD,
+        EXPCKDAYS,         PURPRC,          OBIMPSCRITDAYS,
+        LEADTIME,          CMT,             OLNPKOTYN,       REPIMGURL,
+        
+        /* 측정 */
+        ROBSORTERICYN,
+        PKOTICYN,
+        CUSHNMEPCKGYN,
+        DFSHPMTRYN,
+        PCKGOVLPYN,
+        OVLPPCKGWIDTHVAL,
+        OVLPPCKGDEPTHVAL,
+        OVLPPCKGHEIGHTVAL,
+        PCKGFOLDYN,
+        BARCODEATTACHYN,
+        POLYBACKPCKGYN,
+        HIGHFRQNCYDMGYN,
+        COMPYN,
+        COMPCONT
+       )
+       =
+       (
+        SELECT
+            /* 일반 */
+            S.ICGRPKEY,        S.ICGRPTYPE,       S.ICUNITKEY,       S.UOM,
+            COALESCE(S.EXPCKYN, 'N'),  S.SHELFLIFE,       S.EXPCKTYPE,       S.UDF2,            S.UDF5,
+            S.ACKEY,             S.ICTYPE,          S.SPEC,            S.CTGKEY,
+            S.CLOSDATE,          S.ORDSTARTDATE,    S.FOODYN,          S.SHELFDAY,        S.MDTEAM,
+            S.MDNM,              S.ICIMGURL,        S.ERPIMGURL,       S.OLNICKEY,        S.OLNICTYPE,
+            S.OFLNICTYPE,        S.B2BGRADE,        S.SEASON,          S.DNGMGMTYN,
+            S.EACHPCKGYN,        S.ICORIGIN,        S.ICMGMTUSR,       S.SLPRC,           S.DIRCDLVYICYN,
+            S.ICSTATUSDIV,       S.MTR,             S.OBIMPSCRITRT,
+            S.RENEWISTYN,        S.CHGBFIC,         S.CHGAFIC,         S.UNICYN,
+            S.DSPYN,             S.DLVRYYN,         S.SALESTATUS,      S.POABLEYN,        S.OLNICDIV,
+            S.OBLIMITYN,         S.OLNIPKOTICYN,    S.OLNIPKOTICCONT,  S.SALESCHARA,      S.UNICCD,
+            S.EXPCKDAYS,         S.PURPRC,          S.OBIMPSCRITDAYS,
+            S.LEADTIME,          S.CMT,             S.OLNPKOTYN,       S.REPIMGURL,
+
+            /* 측정 */
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.ROBSORTERICYN     ELSE ROBSORTERICYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.PKOTICYN          ELSE PKOTICYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.CUSHNMEPCKGYN     ELSE CUSHNMEPCKGYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.DFSHPMTRYN        ELSE DFSHPMTRYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.PCKGOVLPYN        ELSE PCKGOVLPYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.OVLPPCKGWIDTHVAL  ELSE OVLPPCKGWIDTHVAL END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.OVLPPCKGDEPTHVAL  ELSE OVLPPCKGDEPTHVAL END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.OVLPPCKGHEIGHTVAL ELSE OVLPPCKGHEIGHTVAL END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.PCKGFOLDYN        ELSE PCKGFOLDYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.BARCODEATTACHYN   ELSE BARCODEATTACHYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.POLYBACKPCKGYN    ELSE POLYBACKPCKGYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.HIGHFRQNCYDMGYN   ELSE HIGHFRQNCYDMGYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.COMPYN            ELSE COMPYN END,
+            CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.COMPCONT          ELSE COMPCONT END
+          FROM TORDER_MST_IC S
+          INNER JOIN TORDER_MST_ICUTXTYPE EA
+            ON EA.ICKEY = U.ICKEY
+           AND EA.ICUNITTYPE = 'EA'
+         WHERE S.OWKEY = U.OWKEY
+           AND S.ICKEY = (
+                SELECT A.ASRTREPKEY
+                  FROM TORDER_MST_ASRT A
+                 WHERE A.ASRTKEY = U.ICKEY
+                   AND A.ASRTREPKEY IN
+                       <include refid="repListSubQuery"/>
+           )
+       ),
+       U.UPDATEDATE  = #{sysdate},
+       U.UPDATEURKEY = 'AsrtItemBulkFull'
+		 WHERE U.OWKEY = #{owkey}
+		   AND U.ICKEY IN (
+		        SELECT A.ASRTKEY
+		          FROM TORDER_MST_ASRT A
+		         WHERE A.QTY > 0
+		           AND A.ASRTREPKEY IN
+		               <include refid="repListSubQuery"/>
+		   )
+		   AND EXISTS (
+		        SELECT 1
+		          FROM TORDER_MST_ASRT A
+		          JOIN TORDER_MST_IC P
+		            ON P.OWKEY = U.OWKEY
+		           AND P.ICKEY = A.ASRTREPKEY
+		         WHERE A.ASRTKEY = U.ICKEY
+		           AND A.QTY > 0
+		           AND A.ASRTREPKEY IN
+		               <include refid="repListSubQuery"/>
+		   )
+	</update>
+
+
+	<update id="updateOrgQtyUnitBulk">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateOrgQtyUnitBulk */
+		UPDATE TORDER_MST_ICUTXTYPE U
+		   SET ICUNITQTY =
+			   CASE
+				   WHEN ICUNITTYPE = 'INN' THEN (
+					   SELECT O.QTYPERIPC
+					   FROM TORDER_MST_IC_ORG O
+					   WHERE O.OWKEY = U.OWKEY
+						 AND O.ICKEY = U.ICKEY
+				   )
+				   WHEN U.ICUNITTYPE = 'CTN' THEN (
+					   SELECT O.QTYPERCARTON
+					   FROM TORDER_MST_IC_ORG O
+					   WHERE O.OWKEY = U.OWKEY
+						 AND O.ICKEY = U.ICKEY
+				   )
+			   END,
+			   U.UPDATEDATE  = #{sysdate},
+			   U.UPDATEURKEY = #{interfaceUrkey}
+		 WHERE U.OWKEY = #{owkey}
+		   AND U.ICUNITTYPE IN ('INN','CTN')
+		   AND U.ICKEY IN (
+				SELECT A.ASRTKEY
+				FROM TORDER_MST_ASRT A
+				WHERE A.QTY = 0
+				  AND A.ASRTREPKEY IN (<include refid="repListSubQuery"/>)
+		   )
+		   AND (
+				(U.ICUNITTYPE = 'INN' AND COALESCE(U.ICUNITQTY, -1) != COALESCE((
+					SELECT O.QTYPERIPC
+					FROM TORDER_MST_IC_ORG O
+					WHERE O.OWKEY = U.OWKEY
+					  AND O.ICKEY = U.ICKEY
+				), -1))
+			 OR (U.ICUNITTYPE = 'CTN' AND COALESCE(U.ICUNITQTY, -1) != COALESCE((
+					SELECT O.QTYPERCARTON
+					FROM TORDER_MST_IC_ORG O
+					WHERE O.OWKEY = U.OWKEY
+					  AND O.ICKEY = U.ICKEY
+				), -1))
+		   )
+		AND EXISTS (
+			SELECT 1
+			FROM TORDER_MST_IC_ORG O
+			WHERE O.OWKEY = U.OWKEY
+			AND O.ICKEY = U.ICKEY
+		)
+
+	</update>
+
+	<update id="updateAsrtUnitBulk">
+		/* oms-item-asrtInfo-sql-oracle.xml - updateAsrtUnitBulk */
+		UPDATE TORDER_MST_ICUTXTYPE U
+		SET (
+		    ICUNITQTY,
+		    SIZEUNIT,
+		    WEIGHTUNIT,
+		    VOLUNIT,
+		    MEASUREMENTYN,
+		    PLTROW,
+		    PLTCOL,
+		    CPP,
+		    DELYN,
+		    DEPTH,
+		    WIDTH,
+		    HEIGHT,
+		    WEIGHT,
+		    VOL,
+		    UPDATEDATE,
+		    UPDATEURKEY
+		)
+		=
+		(
+		    SELECT
+		        S.ICUNITQTY,
+		        S.SIZEUNIT,
+		        S.WEIGHTUNIT,
+		        S.VOLUNIT,
+		        S.MEASUREMENTYN,
+		        S.PLTROW,
+		        S.PLTCOL,
+		        S.CPP,
+		        S.DELYN,
+		        CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.DEPTH  ELSE DEPTH  END,
+		        CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.WIDTH  ELSE WIDTH  END,
+		        CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.HEIGHT ELSE HEIGHT END,
+		        CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.WEIGHT ELSE WEIGHT END,
+		        CASE WHEN EA.MEASUREMENTYN = 'N' THEN S.VOL    ELSE VOL    END,
+		        #{sysdate},
+		        #{interfaceUrkey}
+		    FROM TORDER_MST_ICUTXTYPE S
+		    LEFT JOIN TORDER_MST_ICUTXTYPE EA
+		        ON EA.OWKEY = U.OWKEY
+		       AND EA.ICKEY = U.ICKEY
+		       AND EA.ICUNITTYPE = 'EA'
+		    WHERE S.OWKEY = U.OWKEY
+		      AND S.ICKEY = (
+		            SELECT A.ASRTREPKEY
+		              FROM TORDER_MST_ASRT A
+		             WHERE A.ASRTKEY = U.ICKEY
+		               AND A.ASRTREPKEY IN
+		                   <include refid="repListSubQuery"/>
+		      )
+		      AND S.ICUNITTYPE = U.ICUNITTYPE
+		)
+		WHERE U.OWKEY = #{owkey}
+		  AND U.ICKEY IN (
+				SELECT A.ASRTKEY
+				FROM TORDER_MST_ASRT A
+				WHERE A.ASRTREPKEY IN (<include refid="repListSubQuery"/>)
+				  AND (
+						A.QTY > 0
+					 OR (
+							A.QTY = 0
+						AND NOT EXISTS (
+								SELECT 1
+								FROM TORDER_MST_IC_ORG O
+								WHERE O.OWKEY = A.OWKEY
+								  AND O.ICKEY = A.ASRTKEY
+							)
+					 )
+				  )
+			)
+		  AND EXISTS (
+		        SELECT 1
+		          FROM TORDER_MST_ICUTXTYPE S
+		         WHERE S.OWKEY = U.OWKEY
+		           AND S.ICKEY = (
+		                SELECT A2.ASRTREPKEY
+		                  FROM TORDER_MST_ASRT A2
+		                 WHERE A2.ASRTKEY = U.ICKEY
+		           )
+		           AND S.ICUNITTYPE = U.ICUNITTYPE
+		  )
+	</update>
+
+	<update id="updateItemNotExistsArst">
+	/* oms-item-icInfoBatch-sql-oracle.xml - updateItemNotExistsArst */
+	UPDATE TORDER_MST_IC IC
+	   SET (
+			IC.OLNICKEY,    IC.ASRTREPKEY,  IC.ICIMGURL,    IC.CTGKEY,
+			IC.OLNICTYPE,   IC.OFLNICTYPE,  IC.EXPCKYN,     IC.DNGMGMTYN,
+			IC.ICORIGIN,    IC.ACKEY,       IC.ICMGMTUSR,   IC.SLPRC,       IC.DIRCDLVYICYN,
+			IC.ICSTATUSDIV, IC.MTR,         IC.EXPCKDAYS,
+			IC.B2BGRADE,    IC.ORGASRTYN,    
+			IC.ROBSORTERICYN, 
+			IC.PKOTICYN,
+		    IC.CUSHNMEPCKGYN,
+			IC.UPDATEDATE, IC.UPDATEURKEY
+		   )
+		   =
+		   (
+			SELECT
+				B.OLNICKEY,    B.ASRTREPKEY,  B.ICIMGURL,    B.SMLCTG,
+				B.OLNICTYPE,   B.OFLNICTYPE,  COALESCE(B.EXPUSEYN, 'N'),         B.DNGMGMTYN,
+				B.ICORIGIN,    B.ACKEY,       B.ICMGMTUSR,   B.SLPRC,       B.DIRCDLVYICYN,
+				B.ICSTATUSDIV, B.MTR,         B.EXPDAYS,
+				B.B2BGRADE,    B.ASRTYN, 
+				/* ROBSORTERICYN */
+				CASE
+				    WHEN (
+				         SELECT A.MEASUREMENTYN
+				           FROM TORDER_MST_ICUTXTYPE A
+				          WHERE A.ICKEY = IC.ICKEY
+				            AND A.ICUNITTYPE = 'EA'
+				    ) = 'N'
+				    THEN B.ROBSORTERICYN
+				    WHEN (
+				         SELECT A.MEASUREMENTYN
+				           FROM TORDER_MST_ICUTXTYPE A
+				          WHERE A.ICKEY = IC.ICKEY
+				            AND A.ICUNITTYPE = 'EA'
+				    ) = 'Y'
+				    THEN IC.ROBSORTERICYN
+				    ELSE B.ROBSORTERICYN
+				END,
+				B.PKOTICYN,
+				/* CUSHNMEPCKGYN */
+				CASE
+				    WHEN (
+				         SELECT A.MEASUREMENTYN
+				           FROM TORDER_MST_ICUTXTYPE A
+				          WHERE A.ICKEY = IC.ICKEY
+				            AND A.ICUNITTYPE = 'EA'
+				    ) = 'N'
+				    THEN B.CUSHNMEPCKGYN
+				    WHEN (
+				         SELECT A.MEASUREMENTYN
+				           FROM TORDER_MST_ICUTXTYPE A
+				          WHERE A.ICKEY = IC.ICKEY
+				            AND A.ICUNITTYPE = 'EA'
+				    ) = 'Y'
+				    THEN IC.CUSHNMEPCKGYN
+				    ELSE B.CUSHNMEPCKGYN
+				END,
+				#{sysdate},   'ItemNotExistsArst'
+			  FROM TORDER_EAI_IC_BATCH B
+			 WHERE B.TRN_ID = #{trnId}
+			   AND B.SND_PROC_TYP = 'N'
+               AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+			   AND B.ICKEY = (
+					SELECT C.ASRTREPKEY
+					  FROM TORDER_MST_ASRT C
+					 WHERE C.OWKEY   = IC.OWKEY
+					   AND C.ASRTKEY = IC.ICKEY
+			   )
+		   )
+	 WHERE (IC.OWKEY, IC.ICKEY) IN (
+			SELECT C.OWKEY, C.ASRTKEY
+			  FROM TORDER_EAI_IC_BATCH B
+			  JOIN TORDER_MST_ASRT C
+				ON B.ICKEY = C.ASRTREPKEY
+			   AND C.OWKEY = #{owkey}
+			   AND C.QTY > 0
+			 WHERE B.TRN_ID = #{trnId}
+			   AND B.SND_PROC_TYP = 'N'
+               AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+			   AND NOT EXISTS (
+					SELECT 1
+					  FROM <include refid="repListSubQuery"/> R
+					 WHERE R.ASRTREPKEY = B.ICKEY
+			   )
+	   )
+	 AND EXISTS( SELECT  1
+				 FROM TORDER_MST_ASRT C
+				 WHERE C.OWKEY   = IC.OWKEY
+				 AND C.ASRTREPKEY = IC.ICKEY
+			   )
+	</update>
+
+	<update id="updateMissingAsrtUnitBulk" parameterType="map">
+		/*oms-item-asrtInfo-sql-oracle.xml - updateMissingAsrtUnitBulk*/
+		UPDATE TORDER_MST_ICUTXTYPE U
+		   SET (
+				ICUNITQTY,    
+				SIZEUNIT,  
+				WEIGHTUNIT, 
+				VOLUNIT,   
+				MEASUREMENTYN,
+				PLTROW,      
+				PLTCOL,     
+				CPP,        
+				DELYN,      
+				WIDTH, 
+				DEPTH,      
+				HEIGHT,  
+				WEIGHT,  
+				VOL,           
+				UPDATEDATE,  
+				UPDATEURKEY
+			   )
+			 = (
+				SELECT
+					S.ICUNITQTY,   S.SIZEUNIT,
+					S.WEIGHTUNIT,  S.VOLUNIT,   S.MEASUREMENTYN,
+					S.PLTROW,      S.PLTCOL,    S.CPP,        S.DELYN,
+					CASE 
+					    WHEN  S.MEASUREMENTYN = 'N'
+					        THEN S.WIDTH
+					    WHEN  S.MEASUREMENTYN = 'Y'
+					        THEN WIDTH        -- EA이고 측정Y면 유지
+					    ELSE
+					        S.WIDTH            -- CTN/INN은 무조건 업데이트
+					END,
+					CASE 
+					    WHEN  S.MEASUREMENTYN = 'N'
+					        THEN S.DEPTH
+					    WHEN  S.MEASUREMENTYN = 'Y'
+					        THEN DEPTH        -- EA이고 측정Y면 유지
+					    ELSE
+					        S.DEPTH            -- CTN/INN은 무조건 업데이트
+					END,
+					CASE 
+					    WHEN  S.MEASUREMENTYN = 'N'
+					        THEN S.HEIGHT
+					    WHEN  S.MEASUREMENTYN = 'Y'
+					        THEN HEIGHT        -- EA이고 측정Y면 유지
+					    ELSE
+					        S.HEIGHT            -- CTN/INN은 무조건 업데이트
+					END,
+					CASE 
+					    WHEN  S.MEASUREMENTYN = 'N'
+					        THEN S.WEIGHT
+					    WHEN  S.MEASUREMENTYN = 'Y'
+					        THEN WEIGHT        -- EA이고 측정Y면 유지
+					    ELSE
+					        S.WEIGHT            -- CTN/INN은 무조건 업데이트
+					END,
+					CASE 
+					    WHEN  S.MEASUREMENTYN = 'N'
+					        THEN S.VOL
+					    WHEN  S.MEASUREMENTYN = 'Y'
+					        THEN VOL        -- EA이고 측정Y면 유지
+					    ELSE
+					        S.VOL            -- CTN/INN은 무조건 업데이트
+					END,
+					#{sysdate},    #{interfaceUrkey}
+				  FROM TORDER_MST_ICUTXTYPE S
+				 WHERE S.OWKEY = U.OWKEY
+				   AND S.ICKEY = (
+						SELECT C.ASRTREPKEY
+						  FROM TORDER_MST_ASRT C
+						 WHERE C.OWKEY   = U.OWKEY
+						   AND C.ASRTKEY = U.ICKEY
+				   )
+				   AND S.ICUNITTYPE = U.ICUNITTYPE
+			   )
+		 WHERE (U.OWKEY, U.ICKEY) IN (
+				SELECT C.OWKEY, C.ASRTKEY
+				  FROM TORDER_EAI_IC_BATCH B
+				  JOIN TORDER_MST_ASRT C
+					ON B.ICKEY = C.ASRTREPKEY
+				   AND C.OWKEY = #{owkey}
+				   AND C.QTY > 0
+		AND B.TRN_ID       = #{trnId}
+				   AND B.SND_PROC_TYP = 'N'
+		           AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+				   AND NOT EXISTS (
+						SELECT 1
+						  FROM <include refid="repListSubQuery"/> R
+						 WHERE R.ASRTREPKEY = B.ICKEY
+				   )
+		   )
+	</update>
+
+
+	<insert id="insertMissingAsrtBatch">
+		/* oms-item-asrtInfo-sql-oracle.xml - insertMissingAsrtBatch */
+		INSERT INTO TORDER_WMS_ASRT_BATCH (
+			  REQDATE
+			, ASRTREPKEY
+			, SENDSTATUS
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT
+			  #{reqdate}
+			, T.ASRTREPKEY
+			, 'N'
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM (
+				SELECT  IC.OWKEY,
+						IC.ICKEY,
+						IC.ICNM,
+						X.ASRTREPKEY
+				FROM  TORDER_MST_IC IC
+				JOIN  TORDER_MST_ASRT X
+				  ON  X.OWKEY   = IC.OWKEY
+				 AND  X.ASRTKEY = IC.ICKEY
+				WHERE (IC.OWKEY, IC.ICKEY) IN (
+						SELECT #{owkey} AS OWKEY,
+							   B.ICKEY
+						FROM TORDER_EAI_IC_BATCH B
+						WHERE B.TRN_ID = #{trnId}
+						  AND B.SND_PROC_TYP = 'N'
+						  AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+						  AND NOT EXISTS (
+								SELECT 1
+								FROM (<include refid="repListSubQuery"/>) REP
+								WHERE REP.ASRTREPKEY = B.ICKEY
+						  )
+				)
+				UNION ALL
+
+				SELECT  IC.OWKEY,
+						IC.ICKEY,
+						IC.ICNM,
+						X.ASRTREPKEY
+				FROM  TORDER_MST_IC IC
+				JOIN  TORDER_MST_ASRT X
+				  ON  X.OWKEY      = IC.OWKEY
+				 AND  X.ASRTREPKEY = IC.ICKEY
+				WHERE (IC.OWKEY, IC.ICKEY) IN (
+						SELECT #{owkey} AS OWKEY,
+							   B.ICKEY
+						FROM TORDER_EAI_IC_BATCH B
+						WHERE B.TRN_ID = #{trnId}
+						  AND B.SND_PROC_TYP = 'N'
+						  AND B.SND_ROW BETWEEN #{minrow} AND #{maxrow}
+						  AND NOT EXISTS (
+								SELECT 1
+								FROM (<include refid="repListSubQuery"/>) REP
+								WHERE REP.ASRTREPKEY = B.ICKEY
+						  )
+				)
+		) T
+		WHERE NOT EXISTS (
+				SELECT 1
+				FROM TORDER_WMS_ASRT_BATCH W
+				WHERE W.REQDATE    = #{reqdate}
+				  AND W.ASRTREPKEY = T.ASRTREPKEY
+				  AND W.SENDSTATUS = 'N'
+		)
+	</insert>
+</mapper>	

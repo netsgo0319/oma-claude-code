@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapReturnPreOrdersMapper">
+
+    <select id="retrunPreOrders" resultType="com.daiso.batch.biz.oms.vo.SapReturnPreOrdersVO">
+		/* SapReturnPreOrdersMapper.xml retrunPreOrders */
+        SELECT A.EXTERNORDERKEY AS ISS_NO
+		      ,A.EXTERNORDERDETAILKEY AS ISS_SEQ
+		      ,'RDC' || '_' || A.EXTERNORDERKEY || '_' || '001' AS SYSID
+		      ,A.CTKEY AS REPPART_CD
+		      ,A.PRE_OR_HD_DT AS REP_DATE
+		      ,A.EXTERN_OR_TYPE_CD AS PA_TYP
+		      ,A.ICKEY AS ITEM_CD
+		      ,A.EXQTY AS REP_QTY
+		      ,A.DELIVERY_KEY AS KUNNR
+		      ,A.STORE_KEY AS SCUST_CD
+		      ,A.OR_HDDATE AS ISS_DATE
+		      ,A.COMMENTS AS MRK
+		      ,CASE WHEN A.ORG_UNIT=#{boxuom} THEN #{boxexternuom} 
+		    		WHEN A.ORG_UNIT=#{boluom} THEN #{bolexternuom}
+		    		WHEN A.ORG_UNIT=#{eauom} THEN #{eaexternuom}
+		    		ELSE A.ORG_UNIT
+		       END AS USE_UNIT
+		      ,A.OWKEY
+		      ,A.PREKEY
+		      ,A.ORG_CUSTOMERORDERKEY
+		      ,A.ORG_CUSTOMERORDERDTKEY
+		FROM TORDER_INFO_PREORDERS A
+		WHERE OWKEY =#{owkey} 
+		AND OR_HDDATE BETWEEN #{startDate} AND #{endDate}
+		AND EXTERNORDERKEY IS NOT NULL 
+		AND COALESCE(SAPTRANSYN, 'N') = 'N'
+		ORDER BY A.EXTERNORDERKEY, A.EXTERNORDERDETAILKEY
+    </select>
+   
+</mapper>

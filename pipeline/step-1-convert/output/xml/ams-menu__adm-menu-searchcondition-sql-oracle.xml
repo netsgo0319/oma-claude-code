@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.menu.mapper.SearchConditionMgtMapper">
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+				ORDER BY
+					UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		<include refid="sql_sort"/>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<sql id="sql_Tmsg">
+		WITH T_MSG AS (
+			SELECT
+				  A.MULAAPMSGHDKEY
+				, B.MSGTYPE
+				, B.DISPLAYMSG
+			FROM
+				TADMIN_MST_MULAAPMSG_HD A
+			INNER JOIN
+				TADMIN_MST_MULAAPMSG_DT B ON B.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)" >
+					AND LAKEY = #{lakey}
+				</if>
+
+				AND A.CLOSDATE <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			</where>
+		)
+	</sql>
+
+	<select id="selectSearchConditionCount" resultType="java.lang.Integer" >
+		/* adm-menu-searchcondition-sql-oracle.xml - selectSearchConditionCount */
+		SELECT
+		    COUNT(1)
+		FROM
+		    TADMIN_MST_USSC_HD
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectSearchConditionList" resultType="camelMap">
+		/* adm-menu-searchcondition-sql-oracle.xml - selectSearchConditionList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      '0' AS CHK
+		    , USSCHDKEY
+			, USSCHDNM
+			, INSERTDATE
+			, INSERTURKEY AS INSERTURNAME
+			, UPDATEDATE
+			, UPDATEURKEY AS UPDATEURNAME
+		FROM
+		    TADMIN_MST_USSC_HD
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<insert id="insertSearchCondition">
+		/* adm-menu-searchcondition-sql-oracle.xml - insertSearchCondition */
+		INSERT INTO TADMIN_MST_USSC_HD (
+			  USSCHDKEY
+			, USSCHDNM
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			, CLOSDATE
+		) VALUES (
+			  #{usschdkey}
+			, #{usschdnm}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			, #{closdate}
+		)
+	</insert>
+
+	<update id="updateSearchCondition">
+		/* adm-menu-searchcondition-sql-oracle.xml - updateSearchCondition */
+		UPDATE
+		    TADMIN_MST_USSC_HD
+		SET
+		      USSCHDNM = #{usschdnm}
+			, UPDATEDATE = #{sysdate}
+		  	, UPDATEURKEY = #{surkey}
+		WHERE
+		    USSCHDKEY = #{usschdkey}
+	</update>
+
+	<delete id="deleteSearchCondition">
+		/* adm-menu-searchcondition-sql-oracle.xml - deleteSearchCondition */
+		DELETE
+		FROM
+		    TADMIN_MST_USSC_HD
+		WHERE
+		    USSCHDKEY = #{usschdkey}
+	</delete>
+
+	<select id="selectSearchConditionDetailList" resultType="camelMap">
+		/* adm-menu-searchcondition-sql-oracle.xml - selectSearchConditionDetailList */
+		<include refid="sql_Tmsg"/>
+
+		SELECT
+		      '0' AS CHK
+		    , A.USSCHDKEY
+			, A.USSCDTKEY
+			, A.USSCORDER
+			, A.USSCDTTYPE
+			, A.USSCLABEL
+			, B.DISPLAYMSG AS USSC_LABEL_LANG
+			, A.DBFIELDNM
+			, A.SEARCHID
+			, A.DEFAULTOPERATOR
+			, A.DEFAULTVALUE
+			, A.ISMANDATORY
+			, A.GMTAPPLYCHK
+			, A.DATEFORMAT AS YMDFORMAT
+			, A.FRDATEVALUE
+			, A.TODATEVALUE
+			, A.INSERTDATE
+			, A.INSERTURKEY AS INSERTURNAME
+			, A.UPDATEDATE
+			, A.UPDATEURKEY AS UPDATEURNAME
+		FROM
+		    TADMIN_MST_USSC_DT A
+		LEFT OUTER JOIN
+			T_MSG B ON B.MULAAPMSGHDKEY = A.USSCLABEL AND B.MSGTYPE = 'TEXT'
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(usschdkey)">
+			AND USSCHDKEY = #{usschdkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(usscdtkey)">
+			AND USSCDTKEY = #{usscdtkey}
+			</if>
+		</where>
+
+		ORDER BY USSCORDER ASC
+	</select>
+
+	<insert id="insertSearchConditionDetail">
+		/* adm-menu-searchcondition-sql-oracle.xml - insertSearchConditionDetail */
+		INSERT INTO TADMIN_MST_USSC_DT(
+			  USSCHDKEY
+			, USSCDTKEY
+			, USSCORDER
+			, USSCDTTYPE
+			, USSCLABEL
+			, DBFIELDNM
+			, SEARCHID
+			, DEFAULTOPERATOR
+			, DEFAULTVALUE
+			, GMTAPPLYCHK
+			, DATEFORMAT
+			, FRDATEVALUE
+			, TODATEVALUE
+			, ISMANDATORY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{usschdkey}
+			, #{usscdtkey}
+			, #{usscorder}
+			, #{usscdttype}
+			, #{ussclabel}
+			, #{dbfieldnm}
+			, #{searchid}
+			, #{defaultoperator}
+			, #{defaultvalue}
+			, #{gmtapplychk}
+			, #{ymdformat}
+			, #{frdatevalue}
+			, #{todatevalue}
+			, #{ismandatory}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateSearchConditionDetail">
+		/* adm-menu-searchcondition-sql-oracle.xml - updateSearchConditionDetail */
+		UPDATE
+		    TADMIN_MST_USSC_DT
+		SET
+			  USSCORDER = #{usscorder}
+			, USSCDTTYPE = #{usscdttype}
+			, USSCLABEL = #{ussclabel}
+			, DBFIELDNM = #{dbfieldnm}
+			, SEARCHID = #{searchid}
+			, DEFAULTOPERATOR = #{defaultoperator}
+			, DEFAULTVALUE = #{defaultvalue}
+			, GMTAPPLYCHK = #{gmtapplychk}
+			, DATEFORMAT = #{ymdformat}
+			, FRDATEVALUE = #{frdatevalue}
+			, TODATEVALUE = #{todatevalue}
+			, ISMANDATORY = #{ismandatory}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE USSCHDKEY = #{usschdkey}
+		AND USSCDTKEY = #{usscdtkey}
+	</update>
+
+	<delete id="deleteSearchConditionDetail">
+		/* adm-menu-searchcondition-sql-oracle.xml - deleteSearchConditionDetail */
+		DELETE
+		FROM
+		    TADMIN_MST_USSC_DT
+		WHERE USSCHDKEY = #{usschdkey}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(usscdtkey)">
+		AND	USSCDTKEY = #{usscdtkey}
+		</if>
+	</delete>
+
+</mapper>	

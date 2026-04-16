@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnAdminMoveMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectInvnAdMove">
+		SELECT '0' AS CHK
+			 , IVLC.CTKEY				/* 센터코드 */
+			 , CT.CTNM					/* 센터명 */
+			 , IVLC.OWKEY				/* 화주코드 */
+			 , OW.OWNM					/* 화주명 */
+			 , LC.ZNKEY					/* 존코드 */
+			 , ZN.ZNNM					/* 존명 */
+			 , LC.ARKEY					/* 구역코드 */
+			 , AR.ARNM					/* 구역명 */
+		     , REP_LC.ZNKEY AS REPZNKEY						/* 대표 로케이션 존코드 */
+			 , REP_LC.ZNNM AS REPZNNM						/* 대표 로케이션 존명 */
+			 , REP_LC.ARKEY AS REPARKEY						/* 대표 로케이션 구역코드 */
+			 , REP_LC.ARNM AS REPARNM						/* 대표 로케이션 구역명 */
+			 , IC.LCKEY AS REPLCKEY							/* 대표 로케이션 */
+		     , REP_LC.LCSTORGTYPECD AS REPLCSTORGTYPECD		/* 대표 로케이션 보관유형 */
+			 , REP_LC.SKUCOUNT AS REPSKUCOUNT				/* 대표 로케이션 적치 SKU */
+		     , REP_LC.IVCNTRMGMTYN AS REPIVCNTRMGMTYN		/* 대표로케이션 재고용기관리여부 */
+			 , IVLC.LCKEY				/* 로케이션코드 */
+			 , IVLC.LCKEY AS FRLCKEY	/* 로케이션코드 */
+			 , LC.LCSTORGTYPECD			/* 로케이션 보관유형 */
+			 , IVLC.IVSERIALNO			/* 용기번호 */
+			 , IVLC.IVSERIALNO AS FRIVSERIALNO			/* 용기번호 */
+			 , IVLC.ICKEY				/* 상품코드 */
+			 , IC.ICNM					/* 상품명 */
+			 , BC.BARCODE				/* 상품바코드 */
+			 , IVLC.IVATKEY				/* 재고속성 */
+			 , IV.EXPDATE				/* 유통기한 */
+			 , IVLC.TOTQTY				/* 총수량 */
+			 , IVLC.AVQTY				/* 가용수량 */
+			 , IVLC.INSERTDATE
+			 , IVLC.INSERTURKEY
+			 , IVLC.UPDATEDATE
+			 , IVLC.UPDATEURKEY
+			 , (
+			   SELECT STRING_AGG(ICUNITTYPECD, '_' ORDER BY ICUNITTYPECD)
+				 FROM TWORK_MST_ICUTXTYPE
+				WHERE CTKEY = IC.CTKEY
+				  AND OWKEY = IC.OWKEY
+				  AND ICKEY = IC.ICKEY
+			 ) AS ICUNITTYPE_LIST
+			 , (
+			   SELECT STRING_AGG(ICUNITTYPECD||'|'||ICUNITQTY, ',' ORDER BY ICUNITTYPECD)
+				 FROM TWORK_MST_ICUTXTYPE
+				WHERE CTKEY = IC.CTKEY
+				  AND OWKEY = IC.OWKEY
+				  AND ICKEY = IC.ICKEY
+			 ) AS ICUNITTYPE_QTY_ARR
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.ICKEY = IVLC.ICKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		  INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		  LEFT JOIN (
+			   SELECT LC.CTKEY
+					, ZN.ZNKEY
+					, ZN.ZNNM
+					, AR.ARKEY
+					, AR.ARNM
+					, LC.LCKEY
+			    	, LC.LCSTORGTYPECD
+			    	, LC.IVCNTRMGMTYN
+					, COUNT(DISTINCT IVLC.ICKEY) AS SKUCOUNT
+				 FROM TWORK_MST_LC LC
+				INNER JOIN TWORK_MST_AR AR
+				   ON AR.CTKEY = LC.CTKEY
+				  AND AR.ZNKEY = LC.ZNKEY
+				  AND AR.ARKEY = LC.ARKEY
+				INNER JOIN TWORK_MST_ZN ZN
+				   ON ZN.CTKEY = LC.CTKEY
+				  AND ZN.ZNKEY = LC.ZNKEY
+				 LEFT JOIN TWORK_INFO_IVATXLC IVLC
+				   ON IVLC.CTKEY = LC.CTKEY
+				  AND IVLC.OWKEY = COALESCE(NULL, 'DAISO')
+			   	  AND IVLC.LCKEY = LC.LCKEY
+				  AND IVLC.TOTQTY   >   0
+				GROUP BY
+					  LC.CTKEY
+					, ZN.ZNKEY
+					, ZN.ZNNM
+					, AR.ARKEY
+					, AR.ARNM
+					, LC.LCKEY
+			    	, LC.LCSTORGTYPECD
+			    	, LC.IVCNTRMGMTYN
+			 ) REP_LC
+			ON REP_LC.CTKEY = IC.CTKEY
+		   AND REP_LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE BC
+			ON BC.CTKEY = IC.CTKEY
+		   AND BC.OWKEY = IC.OWKEY
+		   AND BC.ICKEY = IC.ICKEY
+		   AND BC.UOM = IC.UOM
+		   AND BC.USEYN = 'Y'
+
+		<where>
+			AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+			AND IVLC.AVQTY <![CDATA[ > ]]> 0
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectInvnAdMoveCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectInvnAdMoveCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectInvnAdMove"/>
+			 )
+	</select>
+
+	<select id="selectInvnAdMoveList" resultType="camelMap">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectInvnAdMoveList */
+		<include refid="sql_pagingTop"/>
+
+		<include refid="sql_selectInvnAdMove"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectMoveZone" resultType="camelMap">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectMoveZone */
+		SELECT LC.LCKEY AS FIELD1
+			 , LC.LCTYPECD AS FIELD2
+			 , LC.LCSTORGTYPECD AS FIELD3
+			 , COUNT(DISTINCT IVLC.ICKEY) AS FIELD4
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' THEN MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)
+					ELSE '' END AS FIELD5
+			 , ZN.ZNNM AS FIELD6
+			 , AR.ARNM AS FIELD7
+			 , LC.CTKEY
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , LC.LCKEY
+			 , LC.LCTYPECD
+			 , LC.LCSTORGTYPECD
+			 , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+			 , LC.IVCNTRMGMTYN
+			 , COUNT(DISTINCT IVLC.ICKEY) AS SKUCOUNT
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' THEN MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)
+					ELSE '' END AS IVSERIALNO
+			 , MAX(IVLC.IVSERIALDIVCD) AS IVSERIALDIVCD
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' AND MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END) IS NOT NULL THEN LC.LCKEY||' ['||MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)||']'
+					ELSE LC.LCKEY END AS LCKEYNM
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		  LEFT JOIN TWORK_INFO_IVATXLC IVLC
+			ON IVLC.CTKEY = LC.CTKEY
+		   AND IVLC.OWKEY = COALESCE(NULL, 'DAISO')
+		   AND IVLC.LCKEY = LC.LCKEY
+		   AND IVLC.TOTQTY   >   0
+		  LEFT JOIN TWORK_MST_CTCD_DT LCTYP
+			ON LCTYP.CTKEY = LC.CTKEY
+		   AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+		   AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+		   AND LCTYP.LAKEY = 'KOR'
+
+		 WHERE LC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND ZN.ZNTYPECD = '60'
+
+		 GROUP BY
+		       LC.CTKEY
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , LC.LCKEY
+			 , LC.LCTYPECD
+			 , LC.LCSTORGTYPECD
+			 , LC.IVCNTRMGMTYN
+			 , LCTYP.CTCDDTNM
+	</select>
+
+
+	<select id="selectIvatkey" resultType="String">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectIvatkey */
+		SELECT IVATKEY
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND COALESCE(EXPDATE, 'NA') = COALESCE(#{expdate}, 'NA')
+	</select>
+
+	<select id="selectTworkInfoIvatLcMap" resultType="camelMap">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectTworkInfoIvatLcMap */
+		SELECT IVLC.CTKEY				/* 센터 코드 */
+			 , IVLC.OWKEY				/* 화주 코드 */
+		     , ZN.ZNKEY					/* 존 코드 */
+		     , AR.ARKEY					/* 구역코드 */
+			 , LC.LCKEY					/* 로케이션 코드 */
+			 , LC.LCSTORGTYPECD			/* 로케이션 보관유형 */
+		     , TOZN.ZNKEY AS TOZNKEY	/* 도착 존 코드 */
+		     , TOAR.ARKEY AS TOARKEY	/* 도착 구역코드 */
+		     , TOLC.LCKEY AS TOLCKEY	/* 도착 로케이션 코드 */
+		     , COALESCE(TOLC.IVCNTRMGMTYN, 'N') AS IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , IVLC.IVSERIALNO			/* 재고시리얼번호 */
+			 , IVLC.IVSERIALDIVCD		/* 재고시리얼구분코드 */
+			 , IVLC.ICKEY				/* 상품코드 */
+		     , IC.ICUNITKEY				/* 상품 단위 코드 */
+			 , IVLC.IVATKEY				/* 재고 속성 코드 */
+			 , IV.TCDCDIVCD				/* TCDC구분코드 */
+			 , IV.PRDCTDATE				/* 생산일시 */
+			 , IV.EXPDATE				/* 유통기한 */
+			 , IV.ICTMPRDIVCD			/* 상품온도구분코드 */
+			 , IVLC.TOTQTY				/* 총 수량 */
+			 , IVLC.AVQTY				/* 가용 수량 */
+			 , IVLC.ALQTY				/* 할당 수량 */
+			 , IVLC.HOLDQTY				/* 보류 수량 */
+		     , ICTP.ICUNITTYPECD		/* 상품 단위 유형 */
+		     , ICTP.ICUNITQTY			/* 단위 수량 */
+		     , ICTP.WEIGHT				/* 무게 */
+			 , IVLC.IBHDKEY				/* 입고주문번호 */
+			 , IVLC.IBDTKEY				/* 입고주문상세번호 */
+			 , IVLC.IBCFSEQNO			/* 입고확정일련번호 */
+			 , IVLC.IVINVSTGTYN			/* 재고조사대상여부 */
+			 , IVLC.HOLDRSNCD			/* 보류사유코드 */
+			 , IVLC.HOLDDTCONT			/* 보류상세내용 */
+			 , IVLC.IVSTATUSCD			/* 재고상태코드 */
+			 , IVLC.INSERTDATE			/* 입력 일시 */
+			 , IVLC.INSERTURKEY			/* 입력 사용자 ID */
+			 , IVLC.UPDATEDATE			/* 수정 일시 */
+			 , IVLC.UPDATEURKEY			/* 수정 사용자 ID */
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.ICKEY = IVLC.ICKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		  LEFT JOIN TWORK_MST_LC TOLC
+			ON TOLC.CTKEY = IVLC.CTKEY
+		   AND TOLC.LCKEY = #{tolckey}
+		  LEFT JOIN TWORK_MST_AR TOAR
+			ON TOAR.CTKEY = TOLC.CTKEY
+		   AND TOAR.ZNKEY = TOLC.ZNKEY
+		   AND TOAR.ARKEY = TOLC.ARKEY
+		  LEFT JOIN TWORK_MST_ZN TOZN
+			ON TOZN.CTKEY = TOLC.CTKEY
+		   AND TOZN.ZNKEY = TOLC.ZNKEY
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		 INNER JOIN TWORK_MST_ICUTXTYPE ICTP
+			ON ICTP.CTKEY = IC.CTKEY
+		   AND ICTP.OWKEY = IC.OWKEY
+		   AND ICTP.ICKEY = IC.ICKEY
+		   AND ICTP.ICUNITTYPECD = COALESCE(#{uom}, 'EA')
+
+		<where>
+			AND IVLC.CTKEY = #{ctkey}
+			AND IVLC.OWKEY = #{owkey}
+			AND IVLC.LCKEY = #{lckey}
+			AND IVLC.IVATKEY = #{ivatkey}
+			AND IVLC.IVSERIALNO = #{ivserialno}
+		</where>
+
+	</select>
+
+	<insert id="insertTworkInfoIvMove">
+		/* wms-inventory-invnmove-sql-oracle.xml - insertTworkInfoIvMove */
+		INSERT INTO TWORK_INFO_IV_MOVE (
+			   CTKEY
+			 , OWKEY
+			 , IVMOVESTARTDATE
+			 , IVMOVECLOSDATE
+			 , IVMOVEDIVCD
+			 , ICKEY
+			 , QTY
+			 , UOM
+			 , FRLCKEY
+			 , TOLCKEY
+			 , IVATKEY
+			 , MOVECNTRNO
+			 , MOVECNTRDIVCD
+			 , IVMOVERSNCD
+			 , IVMOVERSNDTCONT
+			 , IVMOVESTATUSCD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , COALESCE(#{ivmovestartdate}, #{sysdate})
+			 , COALESCE(#{ivmoveclosdate}, #{sysdate})
+			 , #{ivmovedivcd}
+			 , #{ickey}
+			 , COALESCE(#{qty}, 0)
+			 , #{uom}
+			 , #{frlckey}
+			 , #{tolckey}
+			 , #{ivatkey}
+			 , #{movecntrno}
+			 , #{movecntrdivcd}
+			 , #{ivmoversncd}
+			 , #{ivmoversndtcont}
+			 , #{ivmovestatuscd}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<insert id="insertTworkInfoIvAdMove">
+		/* wms-inventory-invnmove-sql-oracle.xml - insertTworkInfoIvAdMove */
+		INSERT INTO TWORK_INFO_IV_AD_MOVE (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , IVMOVESTARTDATE	/* 재고이동시작일시 */
+			 , IVMOVECLOSDATE	/* 재고이동완료일시 */
+			 , IVMOVEDIVCD		/* 재고이동구분코드 */
+			 , ICKEY			/* 상품코드 */
+			 , QTY				/* 수량 */
+			 , EXPTQTY			/* 반출수량 */
+			 , UOM				/* 단위 */
+			 , FRZNKEY			/* FROM존코드 */
+			 , FRARKEY			/* FROM구역코드 */
+			 , FRLCKEY			/* FROM로케이션코드 */
+			 , TOZNKEY			/* TO존코드 */
+			 , TOARKEY			/* TO구역코드 */
+			 , TOLCKEY			/* TO로케이션코드 */
+			 , IVATKEY			/* 재고속성코드 */
+			 , MOVECNTRNO		/* 이동용기번호 */
+			 , MOVECNTRDIVCD	/* 이동용기구분코드 */
+			 , PLCMCNTRNO		/* 적치용기번호 */
+			 , IVMOVERSNCD		/* 재고이동사유코드 */
+			 , IVMOVEDTCONT		/* 재고이동상세내용 */
+			 , EXPTRSNCD		/* 반출사유코드 */
+			 , EXPTRSNDTCONT	/* 반출사유상세내용 */
+			 , IVMOVESTATUSCD	/* 재고이동상태코드 */
+			 , INSERTDATE		/* 입력일자 */
+			 , INSERTURKEY		/* 입력사용자 */
+			 , UPDATEDATE		/* 수정일자 */
+			 , UPDATEURKEY		/* 수정사용자 */
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , COALESCE(#{ivmovestartdate}, #{sysdate})
+			 , COALESCE(#{ivmoveclosdate}, #{sysdate})
+			 , #{ivmovedivcd}
+			 , #{ickey}
+			 , COALESCE(#{qty}, 0)
+			 , COALESCE(#{exptqty}, 0)
+			 , #{uom}
+			 , #{frznkey}
+			 , #{frarkey}
+			 , #{frlckey}
+			 , #{toznkey}
+			 , #{toarkey}
+			 , #{tolckey}
+			 , #{ivatkey}
+			 , #{movecntrno}
+			 , #{movecntrdivcd}
+			 , #{plcmcntrno}
+			 , #{ivmoversncd}
+			 , #{ivmovedtcont}
+			 , #{exptrsncd}
+			 , #{exptrsndtcont}
+			 , #{ivmovestatuscd}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<insert id="insertTworkInfoIvatLc">
+		/* wms-inventory-invnmove-sql-oracle.xml - insertTworkInfoIvatLc */
+		INSERT INTO TWORK_INFO_IVATXLC (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+			 , IVATKEY			/* 재고 속성 코드 */
+			 , LCKEY			/* 로케이션 코드 */
+			 , ICKEY			/* 상품코드 */
+			 , IVSERIALNO		/* 재고시리얼번호 */
+			 , IVSERIALDIVCD	/* 재고시리얼구분코드 */
+			 , TOTQTY			/* 총 수량 */
+			 , AVQTY			/* 가용 수량 */
+			 , ALQTY			/* 할당 수량 */
+			 , HOLDQTY			/* 보류 수량 */
+			 , IBHDKEY			/* 입고주문번호 */
+			 , IBDTKEY			/* 입고주문상세번호 */
+			 , IBCFSEQNO		/* 입고확정일련번호 */
+			 , IVINVSTGTYN		/* 재고조사대상여부 */
+			 , HOLDRSNCD		/* 보류사유코드 */
+			 , HOLDDTCONT		/* 보류상세내용 */
+			 , IVSTATUSCD		/* 재고상태코드 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+		       #{ctkey}
+			 , #{owkey}
+			 , #{ivatkey}
+			 , #{lckey}
+			 , #{ickey}
+			 , #{ivserialno}
+			 , #{ivserialdivcd}
+			 , COALESCE(#{totqty}, 0)
+			 , COALESCE(#{avqty}, 0)
+			 , COALESCE(#{alqty}, 0)
+			 , COALESCE(#{holdqty}, 0)
+			 , #{ibhdkey}
+			 , #{ibdtkey}
+			 , #{ibcfseqno}
+			 , #{ivinvstgtyn}
+			 , #{holdrsncd}
+			 , #{holddtcont}
+			 , #{ivstatuscd}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkInfoIvatLc">
+		/* wms-inventory-invnmove-sql-oracle.xml - updateTworkInfoIvatLc */
+		UPDATE TWORK_INFO_IVATXLC
+		   SET UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(totqty)">
+			, TOTQTY = #{totqty}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(avqty)">
+			, AVQTY = #{avqty}
+		</if>
+
+		<where>
+			AND CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND LCKEY = #{lckey}
+			AND IVATKEY = #{ivatkey}
+			AND IVSERIALNO = #{ivserialno}
+		</where>
+
+	</update>
+
+	<insert id="insertTworkInfoIvhs">
+		/* wms-inventory-invnmove-sql-oracle.xml - insertTworkInfoIvhs */
+		INSERT INTO TWORK_INFO_IVHS (
+			   CTKEY				/* 센터 코드 */
+			 , OWKEY				/* 화주 코드 */
+			 , IVHSKEY				/* 재고 이력 코드 */
+			 , IVHSTYPECD			/* 재고 이력 유형 코드 */
+			 , ICKEY				/* 상품 코드 */
+			 , IVATKEY				/* 재고 속성 코드 */
+			 , FRLCKEY				/* FROM 로케이션 코드 */
+			 , FRIVSERIALNO			/* FROM 재고시리얼번호 */
+			 , FRIVSERIALDIVCD		/* FROM재고시리얼구분코드 */
+			 , FRBFCHGQTY			/* FROM변경전수량 */
+			 , TOLCKEY				/* TO 로케이션 코드 */
+			 , TOIVSERIALNO			/* TO재고시리얼번호 */
+			 , TOIVSERIALDIVCD		/* TO재고시리얼구분코드 */
+			 , TOBFCHGQTY			/* TO변경전수량 */
+			 , PRDCTDATE			/* 생산일시 */
+			 , EXPDATE				/* 유통기한일시 */
+			 , TCDCDIVCD			/* TCDC구분코드 */
+			 , QTY					/* 수량 */
+			 , WEIGHT				/* 무게 */
+			 , ICUNITKEY			/* 물품 단위 코드 */
+			 , UOM					/* 단위(UOM) */
+			 , IBCNFRMDATE			/* 입고 확정 일시 */
+			 , ICTMPRDIVCD			/* 상품온도구분코드 */
+			 , IVMOVERSNCD			/* 재고이동사유코드 */
+			 , IVMOVEDTCONT			/* 재고이동상세내용 */
+			 , EXPTRSNCD			/* 반출사유코드 */
+			 , EXPTRSNDTCONT		/* 반출사유상세내용 */
+			 , IBHDKEY				/* 입고주문번호 */
+			 , IBDTKEY				/* 입고주문상세번호 */
+			 , OBHDKEY				/* 릴리즈코드 */
+			 , OBDTKEY				/* 릴리즈상세코드 */
+			 , TAHDKEY				/* TASK 헤더 번호 */
+			 , TADTKEY				/* TASK 상세 번호 */
+			 , PIHDKEY				/* 피킹헤더번호 */
+			 , PIDTKEY				/* 피킹상세번호 */
+			 , CMT					/* 비고 */
+			 , INSERTDATE			/* 입력 일시 */
+			 , INSERTURKEY			/* 입력 사용자 ID */
+			 , UPDATEDATE			/* 수정 일시 */
+			 , UPDATEURKEY			/* 수정 사용자 ID */
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ivhskey}
+			 , #{ivhstypecd}
+			 , #{ickey}
+			 , #{ivatkey}
+			 , #{frlckey}
+			 , #{frivserialno}
+			 , #{frivserialdivcd}
+			 , #{frbfchgqty}
+			 , #{tolckey}
+			 , #{toivserialno}
+			 , #{toivserialdivcd}
+			 , #{tobfchgqty}
+			 , #{prdctdate}
+			 , #{expdate}
+			 , #{tcdcdivcd}
+			 , #{qty}
+			 , #{weight}
+			 , #{icunitkey}
+			 , COALESCE(#{uom}, 'EA')
+			 , #{ibcnfrmdate}
+			 , #{ictmprdivcd}
+			 , #{ivmoversncd}
+			 , #{ivmovedtcont}
+			 , #{exptrsncd}
+			 , #{exptrsndtcont}
+			 , #{ibhdkey}
+			 , #{ibdtkey}
+			 , #{obhdkey}
+			 , #{obdtkey}
+			 , #{tahdkey}
+			 , #{tadtkey}
+			 , #{pihdkey}
+			 , #{pidtkey}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateVaildInvnAdMoveExcelUploadList">
+		/* wms-inventory-invnmove-sql-oracle.xml - updateVaildInvnAdMoveExcelUploadList */
+		UPDATE TWORK_UPLOAD_IV_AD_MOVE TUM
+		   SET (TUM.ERROR_CD) = (
+			   SELECT T.ERROR_CD
+				 FROM (
+					  WITH T_CODE AS (
+						   SELECT DT.CTKEY
+								, DT.CTCDHDKEY
+								, DT.CTCDDTKEY
+								, DT.CTCDDTNM
+							 FROM TWORK_MST_CTCD_HD HD
+							INNER JOIN TWORK_MST_CTCD_DT DT
+							   ON DT.CTKEY = HD.CTKEY
+							  AND DT.CTCDHDKEY = HD.CTCDHDKEY
+
+							<where>
+								AND HD.CTKEY = #{ctkey}
+								AND DT.CTCDHDKEY IN (
+									'ICUNITTYPECD', 'IVMOVERSNCD'
+								)
+								AND DT.LAKEY = #{lakey}
+								AND HD.DELYN = 'N'
+								AND DT.DELYN = 'N'
+							</where>
+						 )
+
+					  SELECT ULHSKEY
+						   , SEQ
+						   , CASE WHEN TMP.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+								  WHEN CT.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_INVALID'
+						          WHEN TMP.FRLCKEY IS NULL THEN 'TXT_UPLOAD_VALID_FRLCKEY_NULL'
+						          WHEN FRLC.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_FRLCKEY_INVALID'
+						          WHEN TMP.TOLCKEY IS NULL THEN 'TXT_UPLOAD_VALID_TOLCKEY_NULL'
+						          WHEN TOLC.LCKEY IS NULL THEN 'TXT_UPLOAD_VALID_TOLCKEY_INVALID'
+						          WHEN TMP.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_NULL'
+						          WHEN IC.ICKEY IS NULL THEN 'TXT_UPLOAD_VALID_ICKEY_INVALID'
+								  WHEN IVAT.IVATKEY IS NULL THEN 'TXT_UPLOAD_VALID_IVATKEY_INVALID'
+								  WHEN TMP.UOM IS NULL THEN 'TXT_UPLOAD_VALID_MOVE_UOM_NULL'
+								  WHEN CD1.CTCDDTKEY IS NULL THEN 'TXT_UPLOAD_VALID_MOVE_UOM_INVALID'
+								  WHEN TMP.QTY IS NULL THEN 'TXT_UPLOAD_VALID_MOVE_QTY_NULL'
+								  WHEN REGEXP_INSTR(TMP.QTY::TEXT,<![CDATA[ '^[0-9]+$' ]]>) <![CDATA[ <> ]]> 1 THEN 'TXT_UPLOAD_VALID_MOVE_QTY_NOT_NUMBER'
+								  WHEN TMP.QTY <![CDATA[ <= ]]> 0 THEN 'TXT_UPLOAD_VALID_MOVE_QTY_CHECK'
+								  WHEN TOLC.LCSTORGTYPECD = '20' THEN CASE WHEN TMP.PLCMCNTRNO IS NULL THEN 'TXT_UPLOAD_VALID_PLCMCNTRNO_NULL'
+								  										 WHEN (SELECT COALESCE(MAX(CASE IVSERIALNO WHEN 'NA' THEN '' ELSE IVSERIALNO END), TMP.PLCMCNTRNO)
+								  										         FROM TWORK_INFO_IVATXLC
+								  										        WHERE CTKEY = TMP.CTKEY
+								  										          AND OWKEY = TMP.OWKEY
+								  										          AND LCKEY = TMP.TOLCKEY
+								  										          AND IVATKEY = IVAT.IVATKEY
+								  										         GROUP BY CTKEY, OWKEY, LCKEY, IVATKEY
+								  										    ) <![CDATA[ <> ]]> TMP.PLCMCNTRNO THEN 'TXT_UPLOAD_VALID_PLCMCNTRNO_CHECK' END
+								  WHEN TMP.IVMOVERSNCD IS NULL THEN 'TXT_UPLOAD_VALID_IVMOVERSNCD_NULL'
+								  WHEN CD2.CTCDDTKEY IS NULL THEN 'TXT_UPLOAD_VALID_IVMOVERSNCD_INVALID'
+						          END AS ERROR_CD
+						FROM TWORK_UPLOAD_IV_AD_MOVE TMP
+						LEFT JOIN TWORK_MST_CT CT
+						  ON CT.CTKEY = TMP.CTKEY
+						LEFT JOIN TWORK_MST_LC FRLC
+						  ON FRLC.CTKEY = TMP.CTKEY
+						 AND FRLC.LCKEY = TMP.FRLCKEY
+						LEFT JOIN TWORK_MST_LC TOLC
+						  ON TOLC.CTKEY = TMP.CTKEY
+						 AND TOLC.LCKEY = TMP.TOLCKEY
+						LEFT JOIN TWORK_MST_IC IC
+						  ON IC.CTKEY = TMP.CTKEY
+						 AND IC.OWKEY = TMP.OWKEY
+						 AND IC.ICKEY = TMP.ICKEY
+						LEFT JOIN TWORK_INFO_IVAT IVAT
+						  ON IVAT.CTKEY = TMP.CTKEY
+						 AND IVAT.OWKEY = TMP.OWKEY
+						 AND IVAT.ICKEY = TMP.ICKEY
+						 AND COALESCE(IVAT.EXPDATE, 'NA') = COALESCE(TMP.EXPDATE, 'NA')
+						LEFT JOIN T_CODE CD1
+						  ON CD1.CTKEY = TMP.CTKEY
+						 AND CD1.CTCDHDKEY = 'ICUNITTYPECD'
+						 AND CD1.CTCDDTNM = TMP.UOM
+						LEFT JOIN T_CODE CD2
+						  ON CD2.CTKEY = TMP.CTKEY
+						 AND CD2.CTCDHDKEY = 'IVMOVERSNCD'
+						 AND CD2.CTCDDTNM = TMP.IVMOVERSNCD
+					   WHERE TMP.ULHSKEY = #{upldkey}
+					) T
+				WHERE TUM.ULHSKEY = T.ULHSKEY
+				  AND TUM.SEQ = T.SEQ
+			 )
+		 WHERE TUM.ULHSKEY = #{upldkey}
+	</update>
+
+	<select id="selectInvnAdMoveExcelUploadCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectInvnAdMoveExcelUploadCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_IV_AD_MOVE
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter)'>
+			<choose>
+				<when test='"Y".equals(filter)'>
+					AND ERROR_CD IS NOT NULL
+				</when>
+				<when test='"N".equals(filter)'>
+					AND ERROR_CD IS NULL
+				</when>
+			</choose>
+		</if>
+	</select>
+
+	<select id="selectInvnAdMoveExcelUploadList" resultType="camelMap">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectInvnAdMoveExcelUploadList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+			 , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , FRLCKEY
+			 , TOLCKEY
+			 , ICKEY
+			 , ICNM
+			 , EXPDATE
+			 , UOM
+			 , QTY
+			 , PLCMCNTRNO
+			 , IVMOVERSNCD
+			 , IVMOVEDTCONT
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_IV_AD_MOVE
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and "Y".equals(filter)'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		 ORDER BY SEQ
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<delete id="deleteInvnAdMoveExcelUpload">
+		/* wms-inventory-invnmove-sql-oracle.xml - deleteInvnAdMoveExcelUpload */
+		DELETE
+		  FROM TWORK_UPLOAD_IV_AD_MOVE
+		 WHERE ULHSKEY = #{ulhskey}
+		   AND SEQ = #{seq}
+	</delete>
+
+	<select id="selectInvnAdMoveExcelInsertList" resultType="camelMap">
+		/* wms-inventory-invnmove-sql-oracle.xml - selectInvnAdMoveExcelInsertList */
+		WITH T_CODE AS (
+			   SELECT DT.CTKEY
+					, DT.CTCDHDKEY
+					, DT.CTCDDTKEY
+					, DT.CTCDDTNM
+				 FROM TWORK_MST_CTCD_HD HD
+				INNER JOIN TWORK_MST_CTCD_DT DT
+				   ON DT.CTKEY = HD.CTKEY
+				  AND DT.CTCDHDKEY = HD.CTCDHDKEY
+
+				<where>
+					AND HD.CTKEY = #{ctkey}
+					AND DT.CTCDHDKEY IN (
+						'ICUNITTYPECD', 'IVMOVERSNCD'
+					)
+					AND DT.LAKEY = #{lakey}
+					AND HD.DELYN = 'N'
+					AND DT.DELYN = 'N'
+				</where>
+			 )
+		SELECT TMP.CTKEY
+		     , TMP.OWKEY
+		     , TMP.ICKEY
+		     , TMP.FRLCKEY AS LCKEY
+			 , TMP.FRLCKEY
+			 , TMP.TOLCKEY
+			 , IVAT.IVATKEY
+			 , CD1.CTCDDTKEY AS UOM
+		     , TMP.QTY AS UOMQTY
+		     , TMP.PLCMCNTRNO
+			 , CD2.CTCDDTKEY AS IVMOVERSNCD
+			 , TMP.IVMOVEDTCONT
+		  FROM TWORK_UPLOAD_IV_AD_MOVE TMP
+		  LEFT JOIN TWORK_INFO_IVAT IVAT
+			ON IVAT.CTKEY = TMP.CTKEY
+		   AND IVAT.OWKEY = TMP.OWKEY
+		   AND IVAT.ICKEY = TMP.ICKEY
+		   AND COALESCE(IVAT.EXPDATE, 'NA') = COALESCE(TMP.EXPDATE, 'NA')
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = TMP.CTKEY
+		   AND CD1.CTCDHDKEY = 'ICUNITTYPECD'
+		   AND CD1.CTCDDTNM = TMP.UOM
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = TMP.CTKEY
+		   AND CD2.CTCDHDKEY = 'IVMOVERSNCD'
+		   AND CD2.CTCDDTNM = TMP.IVMOVERSNCD
+		 WHERE TMP.ULHSKEY = #{upldkey}
+		   AND TMP.CTKEY = #{ctkey}
+		   AND TMP.ERROR_CD IS NULL
+	</select>
+
+</mapper>	

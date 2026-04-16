@@ -1,0 +1,4112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.common.mapper.CommonWmsMapper">
+
+	<resultMap id="selectCommonCode" type="java.util.HashMap">
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+		<result property="field7" column="FIELD7" />
+		<result property="field8" column="FIELD8" />
+		<result property="field9" column="FIELD9" />
+		<result property="field10" column="FIELD10" />
+		<result property="field11" column="FIELD11" />
+		<result property="field12" column="FIELD12" />
+		<result property="field13" column="FIELD13" />
+		<result property="field14" column="FIELD14" />
+		<result property="field15" column="FIELD15" />
+		<result property="field16" column="FIELD16" />
+		<result property="field17" column="FIELD17" />
+		<result property="field18" column="FIELD18" />
+		<result property="field19" column="FIELD19" />
+		<result property="field20" column="FIELD20" />
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field2_desc" column="FIELD2_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field3_desc" column="FIELD3_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field4_desc" column="FIELD4_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field5_desc" column="FIELD5_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field6_desc" column="FIELD6_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field7_desc" column="FIELD7_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field8_desc" column="FIELD8_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field9_desc" column="FIELD9_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field10_desc" column="FIELD10_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field11_desc" column="FIELD11_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field12_desc" column="FIELD12_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field13_desc" column="FIELD13_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field14_desc" column="FIELD14_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field15_desc" column="FIELD15_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field16_desc" column="FIELD16_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field17_desc" column="FIELD17_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field18_desc" column="FIELD18_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field19_desc" column="FIELD19_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field20_desc" column="FIELD20_DESC" typeHandler="WmsCodeDescTypeHandler"/>
+	</resultMap>
+	
+	<resultMap id="selectAppMessageMap" type="java.util.HashMap" >
+		<result property="mulaapmsg_hdkey" column="MULAAPMSG_HDKEY" />
+		<result property="displaymessage" column="DISPLAYMESSAGE" />
+	</resultMap>
+
+	<resultMap id="selectSystemConfigListMap" type="java.util.HashMap" >
+		<result property="key" 			column="CTCSKEY" />
+		<result property="name" 		column="CTCSNAME" />
+		<result property="value1"		column="VALUE1" />
+		<result property="value2"		column="VALUE2" />
+		<result property="defaultvalue" column="DEFAULTVALUE" />
+	</resultMap>
+
+	<select id="selectWmsConfigList" resultMap="selectSystemConfigListMap">
+		 SELECT 
+		       CTCSKEY 
+		      ,CTCSNAME
+		      ,VALUE1
+		      ,VALUE2
+		      ,DEFAULTVALUE 
+		   FROM TWORK_SET_CTCS	
+		  WHERE
+		  		CTKEY = #{ctkey}
+	</select>		
+
+	<select id="selectTWorkMstCtcdDtCount" resultType="java.lang.Integer">
+		SELECT
+				COUNT(1) 
+		  FROM TWORK_MST_CTCD_HD A 
+		  INNER JOIN TWORK_MST_CTCD_DT B
+		  		  ON A.CTKEY = B.CTKEY
+		  		 AND A.CTCD_HDKEY = B.CTCD_HDKEY
+		 WHERE A.CTKEY = #{ctkey}
+		  AND B.LAKEY = #{lakey}
+		  AND A.CTCD_HDKEY = #{ctcd_hdkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND B.CTCD_DTKEY = #{value}
+		        </when>
+	        	<otherwise>
+		   			AND (B.CTCD_DTVALUE LIKE '%' || #{value} || '%' OR B.CTCD_DTNAME LIKE '%' || #{value} || '%' OR B.CTCD_DTKEY LIKE '%' || #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		  </if>
+		  
+	</select>
+	
+	<select id="selectTWorkMstCtcdDt" resultMap="selectCommonCode">
+					<if test="type != 'combo'">
+						#{GRIDPAGING_ROWNUMTYPE_TOP}
+				    </if>			
+	                      SELECT B.* 
+							FROM(
+								SELECT 
+								     B.CTCD_DTKEY AS FIELD1 
+								    ,B.CTCD_DTNAME AS FIELD2 
+								    ,B.CTCD_DTVALUE AS FIELD3
+								    ,B.COMMENTS AS FIELD4
+								    ,B.CTCD_DTORDER AS CTCD_DTORDER      
+								  FROM TWORK_MST_CTCD_HD A 
+								  INNER JOIN TWORK_MST_CTCD_DT B
+								  		  ON A.CTKEY = B.CTKEY
+								  		 AND A.CTCD_HDKEY = B.CTCD_HDKEY
+								 WHERE A.CTKEY = #{ctkey}
+								  AND B.LAKEY = #{lakey}
+								  AND A.CTCD_HDKEY = #{ctcd_hdkey}
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND B.CTCD_DTKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (B.CTCD_DTVALUE LIKE '%' || #{value} || '%' OR B.CTCD_DTNAME LIKE '%' || #{value} || '%' OR B.CTCD_DTKEY LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								  </if>
+				      			)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY CTCD_DTORDER ASC
+								</otherwise>
+							</choose>				      
+				      						  
+					<if test="type != 'combo'">
+						#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+				    </if>
+	</select>
+	
+	<select id="selectTWorkMstCtcdDtMobileCount" resultType="java.lang.Integer">
+		SELECT  COUNT(1) 
+		  FROM  TWORK_MST_CTCD_HD A 
+		  INNER JOIN TWORK_MST_CTCD_DT B
+		  		  ON A.CTKEY = B.CTKEY
+		  		 AND A.CTCD_HDKEY = B.CTCD_HDKEY
+		 WHERE  A.CTKEY = #{ctkey}
+		   AND 	A.CTCD_HDKEY = #{ctcd_hdkey}
+		   AND 	B.LAKEY = #{lakey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND	(B.CTCD_DTNAME LIKE '%' || #{value} || '%' OR B.CTCD_DTKEY LIKE '%' || #{value} || '%')
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstCtcdDtMobile" resultMap="selectCommonCode">
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_TOP} </if>
+	    				SELECT	B.* 
+						  FROM(						  
+								SELECT 
+								     B.CTCD_DTKEY AS FIELD1 
+								    ,B.CTCD_DTNAME AS FIELD2 
+								    ,B.COMMENTS AS FIELD3      
+								  FROM TWORK_MST_CTCD_HD A 
+								  INNER JOIN TWORK_MST_CTCD_DT B
+								  		  ON A.CTKEY = B.CTKEY
+		  		 						 AND A.CTCD_HDKEY = B.CTCD_HDKEY
+								 WHERE A.CTKEY = #{ctkey}
+								  AND A.CTCD_HDKEY = #{ctcd_hdkey}
+								  AND B.LAKEY = #{lakey}
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								  	AND (B.CTCD_DTNAME LIKE '%' || #{value} || '%' OR B.CTCD_DTKEY LIKE '%' || #{value} || '%')
+								  </if>
+								)B
+					 		<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_BOTTOM} </if>
+	</select>
+	
+	<select id="selectTWorkMstCtcdCstDtCount" resultType="java.lang.Integer">	
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_CTCD_DT
+		 WHERE
+		      LAKEY = #{lakey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		  	AND (CTCD_HDKEY LIKE '%' || #{value} || '%' OR CTCD_DTVALUE LIKE '%' || #{value} || '%' OR CTCD_DTNAME LIKE '%' || #{value} || '%' OR CTCD_DTKEY LIKE '%' || #{value} || '%')
+		  </if>
+		  <if test='ctkey != null'>
+		  	AND CTKEY = #{ctkey}
+		  </if>
+		  <if test='ctcd_hdkey != null'>
+		  	AND CTCD_HDKEY = #{ctcd_hdkey}
+		  </if>
+	</select>
+	
+	<select id="selectTWorkMstCtcdCstDt" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+	    </if>
+						SELECT B.* 
+						  FROM(	
+								SELECT
+									CTCD_HDKEY AS FIELD1 
+								   ,CTCD_DTKEY AS FIELD2 
+								   ,CTCD_DTNAME AS FIELD3 
+								   ,CTCD_DTVALUE AS FIELD4      
+								  FROM  
+								      TWORK_MST_CTCD_DT
+								  WHERE
+									  LAKEY = #{lakey}
+									  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									  	AND (CTCD_HDKEY LIKE '%' || #{value} || '%' OR CTCD_DTKEY LIKE '%' || #{value} || '%' OR CTCD_DTNAME LIKE '%' || #{value} || '%' OR CTCD_DTVALUE LIKE '%' || #{value} || '%')
+									  </if>
+									  <if test='ctkey != null'>
+									  	AND CTKEY = #{ctkey}
+									  </if>
+									  <if test='ctcd_hdkey != null'>
+									  	AND CTCD_HDKEY = #{ctcd_hdkey}
+									  </if>
+								)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD2 ASC
+									</otherwise>
+								</choose>
+		<if test="type != 'combo'">             
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    </if>
+	</select>
+	
+	<select id="selectTWorkMstAcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_AC
+		 WHERE
+		 	   CTKEY = #{ctkey}
+           AND CLOSDATE >= #{sysdate}
+           AND DELYN = 'N'		 	   
+	  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND ACKEY = #{value}
+		        </when>
+	        	<otherwise>
+				   AND (ACKEY LIKE '%' || #{value} || '%' 
+				    OR ACTYPE LIKE '%' || #{value} || '%'
+				    OR ACNAME LIKE '%' || #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		   AND  OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   AND  LOGGRPCD = #{loggrpcd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)" >
+		   AND  DCKEY = #{dckey}
+		</if>
+		<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+			AND LOGGRPCD IN 
+			<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+				#{LOGGRPCD_SELECTION_VALUE}
+			</foreach>
+		</if>	   	
+	</select>	
+
+	<select id="selectTWorkMstAc" resultMap="selectCommonCode">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* 
+			  FROM (					
+				SELECT ACKEY AS FIELD1
+				       ,ACNAME AS FIELD2
+				       ,ACTYPE AS FIELD3
+				       ,LOGGRPCD AS FIELD4
+				       ,DCKEY AS FIELD5
+				       ,CTKEY ||';'|| 'ACTYPE' || ';' || ACTYPE AS FIELD3_DESC
+				       ,CTKEY ||';'|| 'LOGGRPCD' || ';' || LOGGRPCD  AS FIELD4_DESC
+				       ,CTKEY ||';'|| 'DCKEY' || ';' || DCKEY  AS FIELD5_DESC
+				  FROM TWORK_MST_AC
+				 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+				   AND CTKEY = #{ctkey}
+				</if>
+	               AND CLOSDATE >= #{sysdate}
+	               AND DELYN = 'N'
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+				   AND  OWKEY = #{owkey}
+				</if>	               			 	   
+			  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+					<choose>
+				        <when test='opval !=null and opval.equals("eq")'>
+				            AND ACKEY = #{value}
+				        </when>
+			        	<otherwise>
+						   AND (ACKEY LIKE '%' || #{value} || '%' 
+						    OR ACTYPE LIKE '%' || #{value} || '%'
+						    OR ACNAME LIKE '%' || #{value} || '%')
+				   		</otherwise>
+				   	</choose>
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+				   AND  LOGGRPCD = #{loggrpcd}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)" >
+				   AND  DCKEY = #{dckey}
+				</if>
+				<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+					AND LOGGRPCD IN 
+					<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+						#{LOGGRPCD_SELECTION_VALUE}
+					</foreach>
+				</if>	   	
+			)B
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>         
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstOwCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_OW
+		 WHERE DELYN = 'N'
+		   AND CLOSDATE >= #{sysdate}
+		  <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+		     AND OWKEY IN 
+			  <foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+			  	#{OWKEY_SELECTION_VALUE}
+			  </foreach>
+		  </if>					    	
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND OWKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (OWKEY LIKE '%' || #{value} || '%' OR OWNAME LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			</if>
+	</select>	
+	
+	<select id="selectTWorkMstOw" resultMap="selectCommonCode">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+					SELECT B.* 
+					  FROM(
+							SELECT OWKEY AS FIELD1 
+							     , OWNAME AS FIELD2
+							  FROM TWORK_MST_OW
+							 WHERE DELYN = 'N'
+							   AND CLOSDATE >= #{sysdate}
+							  <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+							     AND OWKEY IN 
+								  <foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+								  	#{OWKEY_SELECTION_VALUE}
+								  </foreach>
+							  </if>					    	
+							  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND OWKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (OWKEY LIKE '%' || #{value} || '%' OR OWNAME LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								</if>
+	                         		)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+                           
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+
+	<select id="selectTWorkMstCtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TWORK_MST_CT
+	  	 WHERE 
+	  	       CLOSDATE >= #{sysdate}
+	  	   AND DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (CTKEY LIKE '%' || #{value} || '%' OR CTKEY LIKE '%' || #{value} || '%')
+			</if>
+		    <if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+		    	AND CTKEY IN 
+				<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{CTKEY_SELECTION_VALUE}
+				</foreach>
+		    </if>			       
+	</select>	
+	
+
+	<select id="selectTWorkMstCt" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+  
+					SELECT	B.* 
+					  FROM(	
+		
+						SELECT CTKEY AS FIELD1
+						      ,CTNAME AS FIELD2
+						      ,CTTYPE AS FIELD3
+						      ,#{ctkey} ||';'|| 'CTTYPE' ||';'|| CTTYPE AS FIELD3_DESC
+					  	  FROM TWORK_MST_CT
+					  	 WHERE 
+					  	       CLOSDATE >= #{sysdate}
+					  	   AND DELYN = 'N' 
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								AND (CTKEY LIKE '%' || #{value} || '%' 
+								OR CTKEY LIKE '%' || #{value} || '%'
+								OR CTTYPE LIKE '%' || #{value} || '%'
+								)
+							</if>
+						    <if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+						    	AND CTKEY IN 
+								<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+									#{CTKEY_SELECTION_VALUE}
+								</foreach>
+						    </if>	
+						)B
+			 		<choose>
+						<when test='sortValue !=null and sortValue != ""'>	
+							<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+							</if>
+							<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+							</if>	
+						</when>	
+						<otherwise>
+							ORDER BY FIELD1 ASC
+						</otherwise>
+					</choose> 					  
+		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstToCtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TWORK_MST_CT
+	  	 WHERE 
+	  	       CLOSDATE >= #{sysdate}
+	  	   AND DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (CTKEY LIKE '%' || #{value} || '%' OR CTKEY LIKE '%' || #{value} || '%')
+			</if>	       
+	</select>	
+	
+
+	<select id="selectTWorkMstToCt" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+  
+					SELECT	B.* 
+					  FROM(	
+		
+						SELECT CTKEY AS FIELD1
+						      ,CTNAME AS FIELD2
+						      ,CTTYPE AS FIELD3
+						      ,#{ctkey} ||';'|| 'CTTYPE' ||';'|| CTTYPE AS FIELD3_DESC
+					  	  FROM TWORK_MST_CT
+					  	 WHERE 
+					  	       CLOSDATE >= #{sysdate}
+					  	   AND DELYN = 'N' 
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								AND (CTKEY LIKE '%' || #{value} || '%' 
+								OR CTKEY LIKE '%' || #{value} || '%'
+								OR CTTYPE LIKE '%' || #{value} || '%'
+								)
+							</if>
+						)B
+			 		<choose>
+						<when test='sortValue !=null and sortValue != ""'>	
+							<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+							</if>
+							<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+							</if>	
+						</when>	
+						<otherwise>
+							ORDER BY FIELD1 ASC
+						</otherwise>
+					</choose> 					  
+		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectTWorkMstIcgrCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TWORK_MST_ICGR
+		  <where>
+		  		CTKEY = #{ctkey}
+			   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+				  AND OWKEY IN 
+					<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+						#{OWKEY_SELECTION_VALUE}
+					</foreach>
+			   </if>			
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			  AND OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>
+            AND CLOSDATE >= #{sysdate}
+			  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+					<choose>
+				        <when test='opval !=null and opval.equals("eq")'>
+				            AND ICGRKEY = #{value}
+				        </when>
+			        	<otherwise>
+				   			AND (ICGRKEY LIKE '%' || #{value} || '%' OR ICGRNAME LIKE '%' || #{value} || '%')
+				   		</otherwise>
+				   	</choose>
+				</if>
+		  </where>
+	</select>	
+
+	<select id="selectTWorkMstIcgr" resultMap="selectCommonCode">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+        
+                    SELECT	B.* 
+					  FROM(                    
+		                    SELECT ICGRKEY AS FIELD1
+		                          ,ICGRNAME AS FIELD2 
+		                          ,ICGRTYPE AS FIELD3
+								  ,'ICGRTYPE' || ';' || ICGRTYPE AS FIELD3_DESC
+								  ,OWKEY AS FIELD4
+		                        FROM TWORK_MST_ICGR					
+							  <where>
+							  		CTKEY = #{ctkey}
+							   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+								  AND OWKEY IN 
+									<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+										#{OWKEY_SELECTION_VALUE}
+									</foreach>
+							   </if>							  		
+								<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+								  AND OWKEY IN 
+									<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+										open="(" separator="," close=")">
+										#{OWKEY_AUTH_LIST}
+									</foreach>
+								</if>
+					            AND CLOSDATE >= #{sysdate}
+								  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+										<choose>
+									        <when test='opval !=null and opval.equals("eq")'>
+									            AND ICGRKEY = #{value}
+									        </when>
+								        	<otherwise>
+									   			AND (ICGRKEY LIKE '%' || #{value} || '%' OR ICGRNAME LIKE '%' || #{value} || '%')
+									   		</otherwise>
+									   	</choose>
+									</if>
+							  </where>
+					  		)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+							
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstIcutCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+	  	  FROM TWORK_MST_ICUT A
+	  	  INNER JOIN TWORK_MST_ICUTXTYPE B
+	  	  		  ON A.CTKEY = B.CTKEY
+				 AND A.OWKEY = B.OWKEY
+				 AND A.ICUTKEY = B.ICUTKEY
+		 WHERE 
+		       A.CTKEY = #{ctkey}
+		   AND A.CLOSDATE >= #{sysdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		   AND A.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND (A.ICUTKEY LIKE '%' || #{value} || '%' OR A.CLOSDATE LIKE '%' || #{value} || '%')
+		</if>
+	</select>
+
+	<select id="selectTWorkMstIcut" resultMap="selectCommonCode">
+    	#{GRIDPAGING_ROWNUMTYPE_TOP}
+    	
+			SELECT B.* 
+	   		  FROM (
+				SELECT A.ICUTKEY AS FIELD1
+					   ,B.ICUTTYPE AS FIELD2
+					   ,A.CTKEY ||  ';' ||'ICUTTYPE' || ';' || B.ICUTTYPE AS FIELD2_DESC
+					   ,B.ICUTQTY AS FIELD3
+					   ,A.OWKEY AS FIELD4
+			  	  FROM TWORK_MST_ICUT A
+			      INNER JOIN TWORK_MST_ICUTXTYPE B
+			  	  		  ON A.CTKEY = B.CTKEY
+						 AND A.ICUTKEY = B.ICUTKEY
+						 AND A.OWKEY = B.OWKEY
+				WHERE
+			       	   A.CTKEY = #{ctkey}
+			       AND A.CLOSDATE >= #{sysdate}
+			  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			       AND A.OWKEY = #{owkey}
+			    </if>
+			    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				   AND (A.ICUTKEY LIKE '%' || #{value} || '%' OR A.CLOSDATE LIKE '%' || #{value} || '%')
+			    </if>
+			)B
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY FIELD1 ASC
+				</otherwise>
+			</choose>       
+			
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+ 
+	<select id="selectTWorkMstIcCount" resultType="java.lang.Integer" >
+		SELECT  COUNT(1)
+		  FROM  TWORK_MST_IC
+		 WHERE
+		 	    CTKEY = #{ctkey}
+		   AND  CLOSDATE >= #{sysdate}
+		   AND  DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		   AND  OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+		   AND  ACKEY = #{ackey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   AND  LOGGRPCD = #{loggrpcd}
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+		   AND 	OWKEY IN 
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+		   AND 	OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST" open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>	
+		<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+		   AND  LOGGRPCD IN 
+			<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+				#{LOGGRPCD_SELECTION_VALUE}
+			</foreach>
+		</if>		   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND ICKEY = #{value}
+		        </when>
+	        	<otherwise>
+		   			AND  (ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstIc" resultMap="selectCommonCode">
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</if>			
+		SELECT	* 
+		  FROM	(
+			 SELECT  A.ICKEY AS FIELD1
+					 ,(A.ICNAME || ' [' || (
+									SELECT CTCD_DTNAME
+									  FROM TWORK_MST_CTCD_DT 
+									 WHERE 
+									       CTCD_HDKEY = 'ORDTYPE'
+									   AND LAKEY = 'KOR'
+									   AND CTKEY = #{ctkey}
+									   AND CTCD_DTKEY = A.ORDTYPE					
+					) || ']' ) 	AS FIELD2 		
+					,A.OWKEY 		AS FIELD3
+					,A.ICUTKEY 	AS FIELD4
+					,A.UOM 		AS FIELD5
+					,COALESCE(A.COSTPRICE, 0) 	AS FIELD6
+					,COALESCE(A.SALEPRICE, 0) 	AS FIELD7
+					,A.LOGGRPCD 	AS FIELD8
+					,A.SPEC	 	AS FIELD9
+					,A.ICGRKEY    AS FIELD10
+					,A.CTKEY ||';'|| 'ICUTTYPE' ||';'|| A.UOM AS FIELD5_DESC
+					,A.CTKEY ||';'|| 'LOGGRPCD' ||';'|| A.LOGGRPCD AS FIELD8_DESC
+					,(SELECT ICGRNAME FROM TWORK_MST_ICGR WHERE CTKEY = #{ctkey} AND OWKEY = A.OWKEY AND ICGRKEY = A.ICGRKEY AND ICGRTYPE = A.ICGRTYPE) AS FIELD11
+			  FROM 	TWORK_MST_IC A
+			 WHERE
+					CTKEY = #{ctkey}
+			   AND 	CLOSDATE >= #{sysdate}
+			   AND 	DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			   AND 	OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+			   AND  ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   	   AND  LOGGRPCD = #{loggrpcd}
+		    </if>
+			<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			   AND 	OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			   AND 	OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+			   AND 	LOGGRPCD IN 
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="ickey != null ">
+			   AND 	ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ICKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND	(ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			</if>     
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</if>						  
+	</select>
+	
+	<select id="selectTWorkMstIcCount2" resultType="java.lang.Integer" >
+		SELECT  COUNT(1)
+		  FROM  TWORK_MST_IC
+		 WHERE
+		 	    CTKEY = #{ctkey}
+		   AND  CLOSDATE >= #{sysdate}
+		   AND  DELYN = 'N'	   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND  (ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstIc2" resultMap="selectCommonCode">
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</if>			
+		SELECT	* 
+		  FROM	(
+			 SELECT  ICKEY AS FIELD1
+					 ,(ICNAME || ' [' || (
+									SELECT CTCD_DTNAME
+									  FROM TWORK_MST_CTCD_DT 
+									 WHERE 
+									       CTCD_HDKEY = 'ORDTYPE'
+									   AND LAKEY = 'KOR'
+									   AND CTKEY = #{ctkey}
+									   AND CTCD_DTKEY = ORDTYPE					
+					) || ']' ) 	AS FIELD2 		
+					,OWKEY 		AS FIELD3
+					,ICUTKEY 	AS FIELD4
+					,UOM 		AS FIELD5
+					,COSTPRICE 	AS FIELD6
+					,SALEPRICE 	AS FIELD7
+					,LOGGRPCD 	AS FIELD8
+					,SPEC	 	AS FIELD9
+					,ICGRKEY    AS FIELD10
+					,CTKEY ||';'|| 'ICUTTYPE' ||';'|| UOM AS FIELD5_DESC
+					,CTKEY ||';'|| 'LOGGRPCD' ||';'|| LOGGRPCD AS FIELD8_DESC
+					,CTKEY ||';'|| 'ICGRKEY' ||';'|| ICGRKEY AS FIELD10_DESC
+			  FROM 	TWORK_MST_IC
+			 WHERE
+					CTKEY = #{ctkey}
+			   AND 	CLOSDATE >= #{sysdate}
+			   AND 	DELYN = 'N'
+			<if test="ickey != null ">
+			   AND 	ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			   AND	(ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+			</if>     
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</if>						  
+	</select>
+	
+	<select id="selectTWorkMstIcMobileCount" resultType="java.lang.Integer" >
+		SELECT  COUNT(1)
+		  FROM  TWORK_MST_IC
+		 WHERE
+		 	    CTKEY = #{ctkey}
+		   AND  CLOSDATE >= #{sysdate}
+		   AND  DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		   AND  OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+		   AND  ACKEY = #{ackey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   AND  LOGGRPCD = #{loggrpcd}
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+		   AND 	OWKEY IN 
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+		   AND 	OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST" open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>	
+		<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+		   AND  LOGGRPCD IN 
+			<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+				#{LOGGRPCD_SELECTION_VALUE}
+			</foreach>
+		</if>		   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND  (ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstIcMobile" resultMap="selectCommonCode">
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</if>			
+		SELECT	* 
+		  FROM	(
+			 SELECT  ICKEY AS FIELD1
+					 ,(ICNAME || ' [' || (
+									SELECT CTCD_DTNAME
+									  FROM TWORK_MST_CTCD_DT 
+									 WHERE 
+									       CTCD_HDKEY = 'ORDTYPE'
+									   AND LAKEY = 'KOR'
+									   AND CTKEY = #{ctkey}
+									   AND CTCD_DTKEY = ORDTYPE					
+					) || ']') 	AS FIELD2		
+					,ICUTKEY 	AS FIELD3
+					,UOM 		AS FIELD4
+					,SPEC	 	AS FIELD5
+					,ICGRKEY    AS FIELD6
+					,LOGGRPCD   AS FIELD7
+					,CTKEY ||';'|| 'ICUTTYPE' ||';'|| UOM AS FIELD4_DESC
+					,CTKEY ||';'|| 'ICGRKEY' ||';'|| ICGRKEY AS FIELD6_DESC
+					,CTKEY ||';'|| 'LOGGRPCD' ||';'|| LOGGRPCD AS FIELD7_DESC
+			  FROM 	TWORK_MST_IC
+			 WHERE
+					CTKEY = #{ctkey}
+			   AND 	CLOSDATE >= #{sysdate}
+			   AND 	DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			   AND 	OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+			   AND  ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+		   	   AND  LOGGRPCD = #{loggrpcd}
+		    </if>
+			<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			   AND 	OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			   AND 	OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+			   AND 	LOGGRPCD IN 
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="ickey != null ">
+			   AND 	ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			   AND	(ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+			</if>     
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+	<if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</if>						  
+	</select>
+	
+	<select id="selectTWorkMstIcutxtypeCount" resultType="java.lang.Integer">
+		SELECT count(1)
+		  FROM TWORK_MST_ICUTXTYPE
+		 WHERE CTKEY = #{ctkey}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			    AND OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icutkey)" >
+			    AND ICUTKEY = #{icutkey}
+			</if> 
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ICUTTYPE = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (ICUTTYPE LIKE '%' || #{value} || '%' OR ICUTQTY LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			</if>     
+	</select>	
+
+	
+	<select id="selectTWorkMstIcutxtype" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			
+		                SELECT B.* 
+						  FROM(
+								SELECT ICUTTYPE AS FIELD1, 
+								       ICUTQTY  AS FIELD2,
+								       #{ctkey} ||';'|| 'ICUTTYPE' ||';'|| ICUTTYPE AS FIELD1_DESC,
+								       ICUTORDER
+								  FROM TWORK_MST_ICUTXTYPE
+								 WHERE CTKEY = #{ctkey}
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+								    AND OWKEY = #{owkey}
+								</if>
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icutkey)" >
+								    AND ICUTKEY = #{icutkey}
+								</if> 
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND ICUTTYPE = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (ICUTTYPE LIKE '%' || #{value} || '%' OR ICUTQTY LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								</if>
+								)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY ICUTORDER ASC
+								</otherwise>
+							</choose>
+							
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		</if>								     
+	</select>	
+
+	<select id="selcetTWorkMstIcsbCount" resultType="java.lang.Integer">
+		SELECT COUNT(1) 
+	  	  FROM TWORK_MST_ICSB
+	  	 WHERE 
+		 	  CTKEY = #{ctkey}
+          AND CLOSDATE >= #{sysdate}
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+		  AND OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>
+		<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+			AND LOGGRPCD IN 
+			<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+				#{LOGGRPCD_SELECTION_VALUE}
+			</foreach>
+		</if>		
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  AND (
+				  OWKEY LIKE '%' || #{value} || '%' 
+				  OR ICKEY LIKE '%' || #{value} || '%' 
+				  OR SBKEY LIKE '%' || #{value} || '%' 
+				  OR ICUTTYPE LIKE '%' || #{value} || '%' 
+			  )
+		 </if>	
+	</select>
+
+	<select id="selcetTWorkMstIcsb" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+					SELECT	B.* 
+					  FROM(	
+						
+							SELECT 
+									 SBKEY AS FIELD1
+									,ICKEY AS FIELD2
+									,OWKEY AS FIELD3
+									,ICUTTYPE AS FIELD4
+					                ,#{ctkey} ||';'|| 'ICUTTYPE' ||';'|| ICUTTYPE AS FIELD4_DESC
+						  	  FROM TWORK_MST_ICSB
+						  	 WHERE 
+							 	   CTKEY = #{ctkey}
+					           AND CLOSDATE >= #{sysdate}
+							<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+							  AND OWKEY IN 
+								<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+									open="(" separator="," close=")">
+									#{OWKEY_AUTH_LIST}
+								</foreach>
+							</if>
+							<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+								AND LOGGRPCD IN 
+								<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+									#{LOGGRPCD_SELECTION_VALUE}
+								</foreach>
+							</if>
+							  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								  AND (
+									  OWKEY LIKE '%' || #{value} || '%' 
+									  OR ICKEY LIKE '%' || #{value} || '%' 
+									  OR SBKEY LIKE '%' || #{value} || '%' 
+									  OR ICUTTYPE LIKE '%' || #{value} || '%' 
+								  )
+							 </if>
+	 				 )B
+			 		<choose>
+						<when test='sortValue !=null and sortValue != ""'>	
+							<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+							</if>
+							<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+							</if>	
+						</when>	
+						<otherwise>
+							ORDER BY FIELD1 ASC
+						</otherwise>
+					</choose>
+                        
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkSetCtcsCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_SET_CTCS
+		 WHERE
+		 	  CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  AND (CTCSKEY LIKE '%' || #{value} || '%' OR CTCSNAME LIKE '%' || #{value} || '%' OR VALUE1 LIKE '%' || #{value} || '%' OR VALUE2 LIKE '%' || #{value} || '%' OR DEFAULTVALUE LIKE '%' || #{value} || '%')
+		 </if>
+	</select>
+	
+	<select id="selectTWorkSetCtcs" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+	    </if>			
+	    				 SELECT B.* 
+							FROM(
+								SELECT CTCSKEY FIELD1,
+								       CTCSNAME FIELD2,
+								       DEFAULTVALUE FIELD3
+							  	  FROM TWORK_SET_CTCS
+								 WHERE CTKEY = #{ctkey}
+						   		  <if test="ctcskey != null">
+						   		  	 AND CTCSKEY = #{ctcskey}
+						   		  </if>
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									  AND (CTCSKEY LIKE '%' || #{value} || '%' OR CTCSNAME LIKE '%' || #{value} || '%' OR VALUE1 LIKE '%' || #{value} || '%' OR VALUE2 LIKE '%' || #{value} || '%' OR DEFAULTVALUE LIKE '%' || #{value} || '%')
+								 </if>
+								)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD1 ASC
+									</otherwise>
+								</choose>
+								
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    </if>
+	</select>
+
+	<select id="selectTWorkMstLcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC
+		 WHERE 
+		       	CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND LCKEY = #{value}
+		        </when>
+	        	<otherwise>
+				   AND 	(LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE LIKE '%' || #{value} || '%' 
+						OR ARKEY LIKE '%' || #{value} || '%' 
+						OR ERPSTLC LIKE '%' || #{value} || '%'
+						)
+		   		</otherwise>
+		   	</choose>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+		   AND ARKEY = #{arkey}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+		   AND ERPSTLC = #{erpstlc}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		   AND LCSTORTYPE = #{lcstortype}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autoflag)">
+			<choose>
+				<when test="autoflag == 'auto'">
+				AND LCSTORTYPE IN ('40', '50')
+				</when>
+				<otherwise>
+				AND LCSTORTYPE NOT IN ('40', '50')
+				</otherwise>
+			</choose>
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstLc" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM	(
+			SELECT	A.LCKEY AS FIELD1 
+			     	,A.LCTYPE AS FIELD2
+			     	,A.LCHOLDTYPE AS FIELD3
+			     	,A.ERPSTLC AS FIELD4
+			     	,A.ARKEY AS FIELD5
+			     	,B.EMPTYLOCATION_YN AS FIELD6
+			     	,A.CTKEY ||';'|| 'LCTYPE' ||';'|| A.LCTYPE AS FIELD2_DESC
+			     	,A.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| A.LCHOLDTYPE AS FIELD3_DESC
+			     	,A.CTKEY || ';' || 'ERPSTLC' ||';'|| A.ERPSTLC AS FIELD4_DESC	
+			     	,A.CTKEY || ';' || 'YESORNO' ||';'|| B.EMPTYLOCATION_YN AS FIELD6_DESC
+			  FROM 	TWORK_MST_LC A
+			  INNER JOIN (
+		                SELECT
+		                    A.CTKEY,
+		                    A.LCKEY,
+		                    CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N'
+		                        ELSE 'Y'
+		                    END AS EMPTYLOCATION_YN
+		                FROM
+		                    TWORK_MST_LC A
+		                LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+		                			 ON A.CTKEY = B.CTKEY
+									AND   A.LCKEY = B.LCKEY
+		                WHERE A.CTKEY = #{ctkey}
+		                GROUP BY
+		                    A.CTKEY,
+		                    A.LCKEY
+		             ) B ON A.CTKEY = B.CTKEY
+			  			AND A.LCKEY = B.LCKEY
+			 WHERE 
+			       	A.CTKEY = #{ctkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND A.LCKEY = #{value}
+			        </when>
+		        	<otherwise>
+					   AND 	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+							OR A.ARKEY LIKE '%' || #{value} || '%' 
+							OR A.ERPSTLC LIKE '%' || #{value} || '%'
+							)
+			   		</otherwise>
+			   	</choose>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+			   AND A.ARKEY = #{arkey}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+			   AND A.ERPSTLC = #{erpstlc}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		   		AND A.LCSTORTYPE = #{lcstortype}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autoflag)">
+				<choose>
+					<when test="autoflag == 'auto'">
+					AND A.LCSTORTYPE IN ('40', '50')
+					</when>
+					<otherwise>
+					AND A.LCSTORTYPE NOT IN ('40', '50')
+					</otherwise>
+				</choose>
+			</if>
+        )
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstLcNonAutoCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC
+		 WHERE 
+		       	CTKEY = #{ctkey}
+		       	AND LCSTORTYPE NOT IN('40', '50')
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND LCKEY = #{value}
+		        </when>
+	        	<otherwise>
+				   AND 	(LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE LIKE '%' || #{value} || '%' 
+						OR ARKEY LIKE '%' || #{value} || '%' 
+						OR ERPSTLC LIKE '%' || #{value} || '%'
+						)
+		   		</otherwise>
+		   	</choose>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+		   AND ARKEY = #{arkey}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+		   AND ERPSTLC = #{erpstlc}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		   AND LCSTORTYPE = #{lcstortype}       
+		</if>
+	</select>
+	
+	<select id="selectTWorkMstLcNonAuto" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM	(
+			SELECT	A.LCKEY AS FIELD1 
+			     	,A.LCTYPE AS FIELD2
+			     	,A.LCHOLDTYPE AS FIELD3
+			     	,A.ERPSTLC AS FIELD4
+			     	,A.ARKEY AS FIELD5
+			     	,B.EMPTYLOCATION_YN AS FIELD6
+			     	,A.CTKEY ||';'|| 'LCTYPE' ||';'|| A.LCTYPE AS FIELD2_DESC
+			     	,A.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| A.LCHOLDTYPE AS FIELD3_DESC
+			     	,A.CTKEY || ';' || 'ERPSTLC' ||';'|| A.ERPSTLC AS FIELD4_DESC	
+			     	,A.CTKEY || ';' || 'YESORNO' ||';'|| B.EMPTYLOCATION_YN AS FIELD6_DESC
+			  FROM 	TWORK_MST_LC A
+			  INNER JOIN (
+		                SELECT
+		                    A.CTKEY,
+		                    A.LCKEY,
+		                    CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N'
+		                        ELSE 'Y'
+		                    END AS EMPTYLOCATION_YN
+		                FROM
+		                    TWORK_MST_LC A
+		                LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+		                			 ON  A.CTKEY = B.CTKEY
+									AND   A.LCKEY = B.LCKEY
+		                WHERE A.CTKEY = #{ctkey}
+		                GROUP BY
+		                    A.CTKEY,
+		                    A.LCKEY
+		             ) B ON A.CTKEY = B.CTKEY
+			  			AND A.LCKEY = B.LCKEY
+			 WHERE 
+			       	A.CTKEY = #{ctkey}
+			       	AND A.LCSTORTYPE NOT IN('40', '50')
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND A.LCKEY = #{value}
+			        </when>
+		        	<otherwise>
+					   AND 	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+							OR A.ARKEY LIKE '%' || #{value} || '%' 
+							OR A.ERPSTLC LIKE '%' || #{value} || '%'
+							)
+			   		</otherwise>
+			   	</choose>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+			   AND A.ARKEY = #{arkey}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+			   AND A.ERPSTLC = #{erpstlc}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		   		AND A.LCSTORTYPE = #{lcstortype}       
+			</if>
+        )
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	
+	<select id="selectTWorkMstLcNonAutoNormalCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC A
+		  INNER JOIN TWORK_MST_AR B
+		  		  ON A.CTKEY  = B.CTKEY
+				 AND A.ARKEY  = B.ARKEY
+		 WHERE A.CTKEY = #{ctkey}
+           AND A.LCSTORTYPE NOT IN('40', '50')
+           AND A.LCHOLDTYPE = '10' 
+           AND B.BONDTYPE = '1'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+            <choose>
+                <when test='opval !=null and opval.equals("eq")'>
+                    AND A.LCKEY = #{value}
+                </when>
+                <otherwise>
+                    AND	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+                        OR A.ARKEY LIKE '%' || #{value} || '%' 
+                        OR A.ERPSTLC LIKE '%' || #{value} || '%'
+                        )
+                </otherwise>
+            </choose>
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+           AND A.ARKEY = #{arkey}       
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+           AND A.ERPSTLC = #{erpstlc}       
+        </if>
+	</select>
+	
+	
+	<select id="selectTWorkMstLcNonAutoNormal" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM(
+		        SELECT A.LCKEY AS FIELD1 
+		              ,A.LCTYPE AS FIELD2
+		              ,A.LCHOLDTYPE AS FIELD3
+		              ,A.ERPSTLC AS FIELD4
+		              ,A.ARKEY AS FIELD5
+		              ,B.EMPTYLOCATION_YN AS FIELD6
+		              ,A.CTKEY ||';'|| 'LCTYPE' ||';'|| A.LCTYPE AS FIELD2_DESC
+		              ,A.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| A.LCHOLDTYPE AS FIELD3_DESC
+		              ,A.CTKEY || ';' || 'ERPSTLC' ||';'|| A.ERPSTLC AS FIELD4_DESC	
+		              ,A.CTKEY || ';' || 'YESORNO' ||';'|| B.EMPTYLOCATION_YN AS FIELD6_DESC
+		          FROM TWORK_MST_LC A
+		          INNER JOIN (SELECT A.CTKEY,
+		                       A.LCKEY,
+		                       CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N'
+		                                                         ELSE 'Y'
+		                             END AS EMPTYLOCATION_YN
+		                  FROM TWORK_MST_LC A
+		                  LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+		                  			   ON A.CTKEY = B.CTKEY
+									  AND A.LCKEY = B.LCKEY
+		                 WHERE A.CTKEY = #{ctkey}
+		                 GROUP BY A.CTKEY, A.LCKEY
+		               ) B ON A.CTKEY = B.CTKEY
+						  AND A.LCKEY = B.LCKEY
+				 INNER JOIN TWORK_MST_AR C
+		          		 ON A.CTKEY = C.CTKEY
+						AND A.ARKEY = C.ARKEY
+		         WHERE A.CTKEY = #{ctkey}
+		           AND A.LCSTORTYPE NOT IN('40', '50')
+		           AND A.LCHOLDTYPE = '10'
+                   AND C.BONDTYPE = '1'
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		        <choose>
+		            <when test='opval !=null and opval.equals("eq")'>
+		                AND A.LCKEY = #{value}
+		            </when>
+		            <otherwise>
+		               AND 	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+		                    OR A.ARKEY LIKE '%' || #{value} || '%' 
+		                    OR A.ERPSTLC LIKE '%' || #{value} || '%'
+		                    )
+		            </otherwise>
+		        </choose>
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+		       AND A.ARKEY = #{arkey}       
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+		       AND A.ERPSTLC = #{erpstlc}       
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		        AND A.LCSTORTYPE = #{lcstortype}       
+		    </if>
+		       )
+		    <choose>
+		        <when test='sortValue !=null and sortValue != ""'>	
+		            <if test='sortValue == "DESC" and colName !=null'>
+		            ORDER BY #{colName} DESC
+		            </if>
+		            <if test='sortValue == "ASC" and colName !=null'>
+		            ORDER BY #{colName} ASC
+		            </if>	
+		        </when>	
+		        <otherwise>
+		            ORDER BY FIELD1 ASC
+		        </otherwise>
+		    </choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectTWorkMstLcNonAutoBondedCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC A
+		  INNER JOIN TWORK_MST_AR B
+		  		  ON A.CTKEY  = B.CTKEY
+				 AND A.ARKEY  = B.ARKEY
+		 WHERE A.CTKEY = #{ctkey}
+           AND A.LCSTORTYPE NOT IN('40', '50')
+           AND A.LCHOLDTYPE = '10' 
+           AND B.BONDTYPE = '2'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+            <choose>
+                <when test='opval !=null and opval.equals("eq")'>
+                    AND A.LCKEY = #{value}
+                </when>
+                <otherwise>
+                    AND	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+                        OR A.ARKEY LIKE '%' || #{value} || '%' 
+                        OR A.ERPSTLC LIKE '%' || #{value} || '%'
+                        )
+                </otherwise>
+            </choose>
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+           AND A.ARKEY = #{arkey}       
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+           AND A.ERPSTLC = #{erpstlc}       
+        </if>
+	</select>
+	
+	
+	<select id="selectTWorkMstLcNonAutoBonded" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM(
+		        SELECT A.LCKEY AS FIELD1 
+		              ,A.LCTYPE AS FIELD2
+		              ,A.LCHOLDTYPE AS FIELD3
+		              ,A.ERPSTLC AS FIELD4
+		              ,A.ARKEY AS FIELD5
+		              ,B.EMPTYLOCATION_YN AS FIELD6
+		              ,A.CTKEY ||';'|| 'LCTYPE' ||';'|| A.LCTYPE AS FIELD2_DESC
+		              ,A.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| A.LCHOLDTYPE AS FIELD3_DESC
+		              ,A.CTKEY || ';' || 'ERPSTLC' ||';'|| A.ERPSTLC AS FIELD4_DESC	
+		              ,A.CTKEY || ';' || 'YESORNO' ||';'|| B.EMPTYLOCATION_YN AS FIELD6_DESC
+		          FROM TWORK_MST_LC A
+		          INNER JOIN (SELECT A.CTKEY,
+		                       A.LCKEY,
+		                       CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N'
+		                                                         ELSE 'Y'
+		                             END AS EMPTYLOCATION_YN
+		                  FROM TWORK_MST_LC A
+		                  LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+		                  			   ON A.CTKEY = B.CTKEY
+									  AND A.LCKEY = B.LCKEY
+		                 WHERE A.CTKEY = #{ctkey}
+		                 GROUP BY A.CTKEY, A.LCKEY
+		               ) B ON A.CTKEY = B.CTKEY
+						  AND A.LCKEY = B.LCKEY
+				 INNER JOIN TWORK_MST_AR C
+		          		 ON A.CTKEY = C.CTKEY
+						AND A.ARKEY = C.ARKEY
+		         WHERE A.CTKEY = #{ctkey}
+		           AND A.LCSTORTYPE NOT IN('40', '50')
+		           AND A.LCHOLDTYPE = '10'
+                   AND C.BONDTYPE = '2'
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		        <choose>
+		            <when test='opval !=null and opval.equals("eq")'>
+		                AND A.LCKEY = #{value}
+		            </when>
+		            <otherwise>
+		               AND 	(A.LCKEY LIKE '%' || #{value} || '%' OR A.LCTYPE LIKE '%' || #{value} || '%' OR A.LCHOLDTYPE LIKE '%' || #{value} || '%' 
+		                    OR A.ARKEY LIKE '%' || #{value} || '%' 
+		                    OR A.ERPSTLC LIKE '%' || #{value} || '%'
+		                    )
+		            </otherwise>
+		        </choose>
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+		       AND A.ARKEY = #{arkey}       
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+		       AND A.ERPSTLC = #{erpstlc}       
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+		        AND A.LCSTORTYPE = #{lcstortype}       
+		    </if>
+		       )
+		    <choose>
+		        <when test='sortValue !=null and sortValue != ""'>	
+		            <if test='sortValue == "DESC" and colName !=null'>
+		            ORDER BY #{colName} DESC
+		            </if>
+		            <if test='sortValue == "ASC" and colName !=null'>
+		            ORDER BY #{colName} ASC
+		            </if>	
+		        </when>	
+		        <otherwise>
+		            ORDER BY FIELD1 ASC
+		        </otherwise>
+		    </choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstLcMobCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC A 
+		  LEFT OUTER JOIN TWORK_MST_AR B
+		  			   ON  A.CTKEY = B.CTKEY
+					  AND  A.ARKEY = B.ARKEY
+		 WHERE A.CTKEY = #{ctkey}
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+ 		   AND (B.OWKEY IN 
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		    OR (A.ARKEY IN ('OTHER') OR A.ARKEY IS NULL) )
+ 		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+		   AND A.ARKEY = #{arkey}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+		   AND ERPSTLC = #{erpstlc}       
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND LCKEY = #{value}
+		        </when>
+	        	<otherwise>
+		   			AND (LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE LIKE '%' || #{value} || '%' 
+					OR A.ARKEY LIKE '%' || #{value} || '%'
+					OR ERPSTLC LIKE '%' || #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		</if>
+	</select>
+	
+	
+	<resultMap id="selectCommonMobCode" type="java.util.HashMap">
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field3" column="FIELD3" typeHandler="WmsCodeDescTypeHandler"/>
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" typeHandler="WmsCodeDescTypeHandler"/>
+	</resultMap>
+	
+	<select id="selectTWorkMstLcMob" resultMap="selectCommonMobCode">
+    	#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT	B.* 
+				  FROM(
+						SELECT LCKEY AS FIELD1, 
+                               CTKEY || ';' || 'LCTYPE' || ';' || LCTYPE AS FIELD2,
+                               CTKEY || ';' || 'LCHOLDTYPE' || ';' || LCHOLDTYPE AS FIELD3,
+                               ERPSTLC AS FIELD4,
+                               ARKEY AS FIELD5,
+						  FROM TWORK_MST_LC
+						 WHERE CTKEY = #{ctkey}
+						  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  				AND (LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE LIKE '%' || #{value} || '%' OR ARKEY LIKE '%' || #{value} || '%')
+						 </if>      
+                       		)B
+		 		<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY FIELD1 ASC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTWorkMstErpLoc" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM	(
+			SELECT	LCKEY AS FIELD1 ,
+	                        CTKEY || ';' || 'LCTYPE' || ';' || LCTYPE AS FIELD2,
+                                CTKEY || ';' || 'LCHOLDTYPE' || ';' || LCHOLDTYPE AS FIELD3,
+                                ERPSTLC AS FIELD4,
+                                ARKEY AS FIELD5,
+			  FROM 	TWORK_MST_LC 
+			 WHERE 
+			       	CTKEY = #{ctkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND LCKEY = #{value}
+			        </when>
+		        	<otherwise>
+					   AND 	(LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE LIKE '%' || #{value} || '%' 
+							OR ARKEY LIKE '%' || #{value} || '%' 
+							OR ERPSTLC LIKE '%' || #{value} || '%'
+							)
+			   		</otherwise>
+			   	</choose>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+			   AND ARKEY = #{arkey}       
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+			   AND ERPSTLC = #{erpstlc}       
+			</if>
+        )
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+	
+	
+	
+	<select id="selectTWorkMstUlcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ULC
+		 WHERE
+		 	  CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  AND (ULCKEY LIKE '%' || #{value} || '%' OR ULCTYPE LIKE '%' || #{value} || '%')
+		 </if>	
+	</select>
+	
+	<select id="selectTWorkMstUlc" resultMap="selectCommonCode">
+	
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	
+						SELECT B.* 
+						  FROM(
+								SELECT ULCKEY AS FIELD1 
+								     , ULCTYPE AS FIELD2
+								     , #{ctkey} ||';'|| 'ULCTYPE' ||';'|| ULCTYPE AS FIELD2_DESC
+								  FROM TWORK_MST_ULC
+								 WHERE CTKEY = #{ctkey}
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+					  				AND (ULCKEY LIKE '%' || #{value} || '%' OR ULCTYPE LIKE '%' || #{value} || '%')
+								 </if>
+                       	)B
+						<choose>
+							<when test='sortValue !=null and sortValue != ""'>	
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>	
+							</when>	
+							<otherwise>
+								ORDER BY FIELD1 ASC
+							</otherwise>
+						</choose>
+						
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+ 						 
+	</select>
+	
+	<select id="selectTWorkInfoIvatCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+	   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+		  AND OWKEY IN 
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+	   </if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+		   AND OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>				    	
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (
+					IVATKEY LIKE '%' || #{value} || '%' 
+					OR OWKEY LIKE '%' || #{value} || '%'
+					OR ICKEY LIKE '%' || #{value} || '%'
+					OR PRODUCTLOT LIKE '%' || #{value} || '%'
+					OR IVATSTATUS LIKE '%' || #{value} || '%'
+				)
+		 </if>
+	</select>
+	
+	<select id="selectTWorkInfoIvat" resultMap="selectCommonCode">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+						SELECT B.*
+							FROM(
+								SELECT  IVATKEY  AS FIELD1 
+									   ,OWKEY  AS FIELD2 
+									   ,ICKEY   AS FIELD3 
+									   ,PRODUCTDATE AS FIELD4
+									   ,EXPIREDATE AS FIELD5
+									   ,IBCONFIRMDATE AS FIELD6
+									   ,PRODUCTLOT  AS FIELD7
+									   ,IVATSTATUS AS FIELD8
+								       ,#{ctkey} ||';'|| 'IVATSTATUS' ||';'|| IVATSTATUS AS FIELD8_DESC
+								  FROM TWORK_INFO_IVAT
+								 WHERE CTKEY = #{ctkey}
+								   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+									  AND OWKEY IN 
+										<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+											#{OWKEY_SELECTION_VALUE}
+										</foreach>
+								   </if>
+									<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+									   AND OWKEY IN 
+										<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+											open="(" separator="," close=")">
+											#{OWKEY_AUTH_LIST}
+										</foreach>
+									</if>
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+										AND OWKEY = #{owkey}
+									</if>
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+										AND ICKEY = #{ickey}
+									</if>
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+										AND (
+											IVATKEY LIKE '%' || #{value} || '%' 
+											OR OWKEY LIKE '%' || #{value} || '%'
+											OR ICKEY LIKE '%' || #{value} || '%'
+											OR PRODUCTLOT LIKE '%' || #{value} || '%'
+											OR IVATSTATUS LIKE '%' || #{value} || '%'
+										)
+								 </if> 
+								 )B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD1 ASC
+									</otherwise>
+								</choose>     
+                           
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+	
+	<select id="selectTWorkMstArCount" resultType="java.lang.Integer">
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_AR
+			  WHERE CTKEY = #{ctkey}
+		   	  <if test="ctcd_hdkey != null">
+			    AND ARKEY = #{ctcd_hdkey}
+			  </if>
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ARKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (ARKEY LIKE '%' || #{value} || '%' OR ARNAME LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			  </if>
+			   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+				  AND (OWKEY IN 
+					<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+						#{OWKEY_SELECTION_VALUE}
+					</foreach>
+					OR OWKEY IS NULL)
+			   </if>
+				<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+					AND LOGGRPCD IN 
+					<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+						#{LOGGRPCD_SELECTION_VALUE}
+					</foreach>
+				</if>			   
+	</select>
+	
+	<select id="selectTWorkMstZnCount" resultType="java.lang.Integer">
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_ZN
+			  WHERE CTKEY = #{ctkey}
+		   	  <if test="ctcd_hdkey != null">
+			    AND ZNKEY = #{ctcd_hdkey}
+			  </if>
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND ZNKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (ZNKEY LIKE '%' || #{value} || '%' OR ZNNAME LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			  </if>
+	</select>
+	
+	<select id="selectTWorkMstAr" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+	    </if>
+	    				SELECT B.* 
+							FROM(
+								SELECT ARKEY  FIELD1
+									  ,ARNAME FIELD2
+									  ,LOGGRPCD FIELD3
+									  ,#{ctkey} || ';' || 'LOGGRPCD' || ';' || LOGGRPCD AS FIELD3_DESC
+							  	  FROM TWORK_MST_AR
+								  WHERE CTKEY = #{ctkey}
+							   	  <if test="ctcd_hdkey != null">
+								    AND ARKEY = #{ctcd_hdkey}
+								  </if>
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND ARKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (ARKEY LIKE '%' || #{value} || '%' OR ARNAME LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								  </if>
+								   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+									  AND (OWKEY IN 
+										<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+											#{OWKEY_SELECTION_VALUE}
+										</foreach>
+										OR OWKEY IS NULL)
+								   </if>
+									<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+										AND LOGGRPCD IN 
+										<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+											#{LOGGRPCD_SELECTION_VALUE}
+										</foreach>
+									</if>
+								)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD1 ASC
+									</otherwise>
+								</choose>
+		<if test="type != 'combo'">                 
+	               #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    </if>
+	</select>
+	
+	
+	<select id="selectTWorkMstArMob" resultMap="selectCommonCode">
+		SELECT ARKEY     AS FIELD1,
+			   ARNAME    AS FIELD2
+	  	FROM   TWORK_MST_AR
+	  	WHERE  1=1
+	  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (DONG LIKE '%' || #{value} || '%')
+	    </if>
+	    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(floor)" >
+			AND (FLOOR LIKE '%' || #{floor} || '%')
+	    </if>
+	    ORDER BY ARKEY
+	</select>
+	
+	
+	
+	<select id="selectTWorkMstZn" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+	    </if>
+	    				SELECT B.* 
+							FROM(
+								SELECT ZNKEY  FIELD1
+									  ,ZNNAME FIELD2
+							  	  FROM TWORK_MST_ZN
+								  WHERE CTKEY = #{ctkey}
+							   	  <if test="ctcd_hdkey != null">
+								    AND ZNKEY = #{ctcd_hdkey}
+								  </if>
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND ZNKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (ZNKEY LIKE '%' || #{value} || '%' OR ZNNAME LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								  </if>
+								)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD1 ASC
+									</otherwise>
+								</choose>
+		<if test="type != 'combo'">                 
+	               #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    </if>
+	</select>
+	
+	<select id="selectTWorkMstPiznCount" resultType="java.lang.Integer">	
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_PIZN
+		 WHERE
+		      CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		  	AND (PIZNKEY LIKE '%' || #{value} || '%' OR PIZNNAME LIKE '%' || #{value} || '%')
+		  </if>
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+				AND LOGGRPCD IN 
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>
+	</select>
+	
+	<select id="selectTWorkMstPizn" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			SELECT B.* 
+						  FROM(
+								SELECT
+									   PIZNKEY  AS FIELD1 
+								      ,PIZNNAME AS FIELD2 
+								  FROM  
+								      TWORK_MST_PIZN
+								  WHERE
+				      				    CTKEY = #{ctkey}
+									  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								  	AND (PIZNKEY LIKE '%' || #{value} || '%' OR PIZNNAME LIKE '%' || #{value} || '%')
+									  </if>
+									<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+										AND LOGGRPCD IN 
+										<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+											#{LOGGRPCD_SELECTION_VALUE}
+										</foreach>
+									</if>
+								)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+								
+			<if test="type != 'combo'">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    	</if>
+	</select>
+	
+	<select id="selectTWorkInfoWaHdCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			 AND OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>				    	
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (
+					WAHDKEY LIKE '%' || #{value} || '%' 
+					OR OWKEY LIKE '%' || #{value} || '%'
+					OR WAHDNAME LIKE '%' || #{value} || '%'
+					OR WKSTATUS LIKE '%' || #{value} || '%'
+				)
+		 </if>
+		 
+	</select>
+	
+	<select id="selectTWorkInfoWaHd" resultMap="selectCommonCode">
+	
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+          
+						SELECT B.* 
+							FROM(
+								SELECT  WAHDKEY  AS FIELD1 
+									   ,OWKEY  AS FIELD2 
+									   ,WAHDNAME   AS FIELD3 
+									   ,WKSTATUS  AS FIELD4
+								       ,#{ctkey} ||';'|| 'WA_WKSTATUS' || ';' || WKSTATUS AS FIELD4_DESC
+								       ,WAHDDATE AS FIELD5 		
+								  FROM TWORK_INFO_WA_HD
+								 WHERE CTKEY = #{ctkey}
+									<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+										 AND OWKEY IN 
+										<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+											open="(" separator="," close=")">
+											#{OWKEY_AUTH_LIST}
+										</foreach>
+									</if>				    	
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+										AND (
+											WAHDKEY LIKE '%' || #{value} || '%' 
+											OR OWKEY LIKE '%' || #{value} || '%'
+											OR WAHDNAME LIKE '%' || #{value} || '%'
+											OR WKSTATUS LIKE '%' || #{value} || '%'
+										)
+								 </if>
+      							)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD5 DESC , FIELD1 ASC
+									</otherwise>
+								</choose>
+		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+	
+	<select id="selectTWorkInfoReqCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_REQ_HD
+		 WHERE CTKEY = #{ctkey}
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			 AND OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>				    	
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (
+					A.REQHDKEY LIKE '%' || #{value} || '%' 
+			   	 OR A.OWKEY LIKE '%' || #{value} || '%'
+				 OR A.ACKEY LIKE '%' || #{value} || '%'
+				 OR B.ACNAME LIKE '%' || #{value} || '%'
+				 OR A.STORE_KEY LIKE '%' || #{value} || '%'
+				 OR C.STORE_NAME LIKE '%' || #{value} || '%'
+				)
+		 </if>
+		 
+	</select>
+	
+	<select id="selectTWorkInfoReqHd" resultMap="selectCommonCode">
+	
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+          
+						SELECT B.* 
+							FROM(
+								SELECT  A.REQHDKEY  AS FIELD1 
+								       ,A.OWKEY AS FIELD2
+									   ,A.REQUESTDATE  AS FIELD3 
+									   ,A.REQHDTYPE AS FIELD4
+									   ,#{ctkey} ||';'||'REQHDTYPE'||';'||A.REQHDTYPE AS FIELD4_DESC
+									   ,A.ACKEY AS FIELD5
+									   ,B.ACNAME AS FIELD6
+									   ,A.STORE_KEY AS FIELD7
+									   ,C.STORE_NAME AS FIELD8
+								 FROM TWORK_INFO_REQ_HD A
+								 LEFT OUTER JOIN TWORK_MST_AC B
+											  ON A.CTKEY = B.CTKEY
+											 AND A.OWKEY = B.OWKEY
+											 AND A.ACKEY = B.ACKEY
+											 AND A.DCKEY = B.DCKEY
+								 LEFT OUTER JOIN TWORK_MST_STORE C
+								 			  ON A.CTKEY = C.CTKEY
+											 AND A.OWKEY = C.OWKEY
+											 AND A.STORE_KEY = C.STORE_KEY
+											 AND A.DCKEY = C.DCKEY
+								 WHERE A.CTKEY = #{ctkey}
+									<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+										 AND A.OWKEY IN 
+										<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+											open="(" separator="," close=")">
+											#{OWKEY_AUTH_LIST}
+										</foreach>
+									</if>				    	
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+										AND (
+											A.REQHDKEY LIKE '%' || #{value} || '%' 
+				                     	 OR A.OWKEY LIKE '%' || #{value} || '%'
+				                     	 OR A.ACKEY LIKE '%' || #{value} || '%'
+				                     	 OR B.ACNAME LIKE '%' || #{value} || '%'
+				                     	 OR A.STORE_KEY LIKE '%' || #{value} || '%'
+				                     	 OR C.STORE_NAME LIKE '%' || #{value} || '%'
+										)
+								 </if>
+      							)B
+								<choose>
+									<when test='sortValue !=null and sortValue != ""'>	
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>	
+									</when>	
+									<otherwise>
+										ORDER BY FIELD1 DESC , FIELD2 ASC
+									</otherwise>
+								</choose>
+		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+	
+
+	<select id="selectPutawayLocationCount" resultType="java.lang.Integer" >
+			SELECT COUNT(1)
+			  FROM (
+						SELECT FIELD1
+						      ,FIELD2
+						      ,FIELD2_DESC
+						      ,CASE WHEN SUBSTR(FIELD3,2) = 'SAME' THEN '동일 재고 존재'
+						            WHEN SUBSTR(FIELD3,2) = 'EMPTY' THEN '재고 없음' 
+						            ELSE SUBSTR(FIELD3,2)
+						        END  AS FIELD3
+						      ,FIELD4
+						      ,#{ctkey} ||';'|| ''|| ';'|| COALESCE(B.ARNAME, FIELD4) AS FIELD4_DESC
+						      ,COALESCE(FIELD5, 0) AS FIELD5
+						  FROM (
+									SELECT A.LCKEY   AS FIELD1
+									      ,A.LCTYPE  AS FIELD2
+										  ,A.CTKEY ||';'|| 'LCTYPE' || ';' || A.LCTYPE AS FIELD2_DESC
+									      ,B.STATUS  AS FIELD3
+									      ,A.LCSEQ AS LCSEQ
+									      ,A.ARKEY AS FIELD4
+									      ,B.STATUS  AS STATUS
+									      ,B.TTQTY AS FIELD5
+									  FROM TWORK_MST_LC A
+									  LEFT OUTER JOIN (
+											SELECT B.TO_LCKEY AS LCKEY
+											    ,'1' AS STATUS
+											    ,B.CTKEY
+											    ,COALESCE((
+		                                                SELECT SUM(TTQTY)
+		                                                  FROM TWORK_INFO_IVATXLCXULC A 
+		                                                 WHERE A.CTKEY =  B.CTKEY
+		                                                   AND A.OWKEY = B.OWKEY
+		                                                   AND A.ICKEY = B.ICKEY
+		                                                   AND A.LCKEY = B.TO_LCKEY
+	                                         	 ), 0) AS TTQTY
+											 FROM TWORK_MST_IC B
+											WHERE B.CTKEY = #{ctkey}
+											    AND B.OWKEY = #{owkey}
+											    AND B.ICKEY = #{ickey}
+											UNION ALL
+												SELECT LCKEY 
+												      ,'3SAME' AS STATUS
+												      , CTKEY
+												      ,SUM(TTQTY) AS TTQTY
+												  FROM TWORK_INFO_IVATXLCXULC
+												 WHERE
+												       CTKEY = #{ctkey}
+												   AND OWKEY = #{owkey}
+												   AND ICKEY = #{ickey}
+												   AND TTQTY > 0 
+												   AND LCKEY NOT IN (
+												        SELECT COALESCE(TO_LCKEY, ' ')
+												         FROM TWORK_MST_IC
+												        WHERE CTKEY = #{ctkey}
+												            AND OWKEY = #{owkey}
+												            AND ICKEY = #{ickey}                           
+												        )   
+												GROUP BY LCKEY , CTKEY										
+											UNION ALL
+											SELECT LCKEY
+											      ,'2EMPTY' AS STATUS
+											      , CTKEY
+											      ,0 AS TTQTY  
+											  FROM (
+											         SELECT B.LCKEY 
+											               ,B.CTKEY 
+											               ,SUM(A.TTQTY) AS TTQTY
+											           FROM TWORK_INFO_IVATXLCXULC A 
+											           RIGHT OUTER JOIN TWORK_MST_LC B
+											           				 ON A.CTKEY = B.CTKEY
+																	AND A.LCKEY = B.LCKEY
+											          WHERE
+											                B.CTKEY = #{ctkey}
+											          GROUP BY B.LCKEY 
+											                  ,B.CTKEY                  
+											        )
+											 WHERE
+											       (TTQTY = 0 OR TTQTY IS NULL)
+											       AND LCKEY NOT IN (
+											            SELECT COALESCE(TO_LCKEY, ' ')
+											             FROM TWORK_MST_IC
+											            WHERE CTKEY = #{ctkey}
+											                AND OWKEY = #{owkey}
+											                AND ICKEY = #{ickey}                            
+											            )										
+											UNION ALL
+		                                    SELECT B.LCKEY,
+		                                           B.CTKEY,
+		                                          '4' AS STAUS,
+		                                           COALESCE(SUM (A.TTQTY), 0) AS TTQTY
+		                                    FROM TWORK_INFO_IVATXLCXULC A
+		                                    RIGHT OUTER JOIN TWORK_MST_LC B
+		                                    			  ON A.CTKEY = B.CTKEY
+														 AND A.LCKEY = B.LCKEY
+		                                   WHERE 
+		                                         B.CTKEY = #{ctkey}
+											     AND B.LCKEY NOT IN (
+												            SELECT COALESCE(TO_LCKEY, ' ') AS LCKEY
+												             FROM TWORK_MST_IC
+												            WHERE CTKEY = #{ctkey}
+												                AND OWKEY = #{owkey}
+												                AND ICKEY = #{ickey}
+												            UNION ALL
+												            SELECT LCKEY
+												              FROM (
+												                     SELECT B.LCKEY 
+												                           ,B.CTKEY 
+												                           ,SUM(A.TTQTY) AS TTQTY
+												                       FROM TWORK_INFO_IVATXLCXULC A 
+												                       RIGHT OUTER JOIN TWORK_MST_LC B
+												                       				 ON A.CTKEY = B.CTKEY
+																					AND A.LCKEY = B.LCKEY
+												                      WHERE
+												                            B.CTKEY = #{ctkey}
+												                      GROUP BY B.LCKEY 
+												                              ,B.CTKEY                  
+												                    )
+												             WHERE
+												                   (TTQTY = 0 OR TTQTY IS NULL)
+												            UNION ALL
+												            SELECT LCKEY 
+												              FROM TWORK_INFO_IVATXLCXULC
+												             WHERE
+												                   CTKEY = #{ctkey}
+												               AND OWKEY = #{owkey}
+												               AND ICKEY = #{ickey}
+												               AND TTQTY > 0     
+												    	)
+											  GROUP BY B.LCKEY, B.CTKEY
+									     ) B ON A.CTKEY = B.CTKEY
+											AND A.LCKEY = B.LCKEY
+									WHERE A.CTKEY = #{ctkey}
+									  <if test="lcholdtype != 'NOTHING' ">
+									  AND A.LCHOLDTYPE = '10'
+									  </if>
+									  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+										AND (
+											   A.LCKEY LIKE '%' || #{value} || '%' 
+											OR A.LCTYPE LIKE '%' || #{value} || '%'
+											OR B.STATUS LIKE '%' || #{value} || '%'
+										)
+									  </if>
+							     
+						  		) A
+						  INNER JOIN TWORK_MST_AR B
+						  		  ON A.FIELD4 = B.ARKEY
+						 WHERE B.CTKEY = #{ctkey}
+					 		<choose>
+								<when test='arkey !=null'>
+									<if test="arkey2 != null">
+										AND ARKEY IN (#{arkey} , #{arkey2})
+									</if>
+									<if test="arkey2 == null">
+										AND ARKEY = #{arkey}
+									</if>
+								</when>	
+							</choose>
+						  AND (B.OWKEY = #{owkey} OR B.OWKEY IS NULL)
+			  )
+	</select>
+	
+	<select id="selectPutawayLocation" resultMap="selectCommonCode">
+			<if test="device != 'MOBILE'">
+				#{GRIDPAGING_ROWNUMTYPE_TOP}
+			</if>
+					SELECT FIELD1
+					      ,FIELD2
+					      ,FIELD2_DESC
+					      ,CASE WHEN SUBSTR(FIELD3,2) = 'SAME' THEN '동일 재고 존재'
+					            WHEN SUBSTR(FIELD3,2) = 'EMPTY' THEN '재고 없음' 
+					            ELSE SUBSTR(FIELD3,2)
+					        END  AS FIELD3
+					      ,FIELD4
+					      ,#{ctkey} ||';'|| ''|| ';'|| COALESCE(B.ARNAME, FIELD4) AS FIELD4_DESC
+					      ,COALESCE(FIELD5, 0) AS FIELD5
+					  FROM (
+								SELECT A.LCKEY   AS FIELD1
+								      ,A.LCTYPE  AS FIELD2
+									  ,A.CTKEY ||';'|| 'LCTYPE' || ';' || A.LCTYPE AS FIELD2_DESC
+								      ,B.STATUS  AS FIELD3
+								      ,A.LCSEQ AS LCSEQ
+								      ,A.ARKEY AS FIELD4
+								      ,B.STATUS  AS STATUS
+								      ,B.TTQTY AS FIELD5
+								  FROM TWORK_MST_LC A
+								  LEFT OUTER JOIN (
+										SELECT B.TO_LCKEY AS LCKEY
+										    ,'1' AS STATUS
+										    ,B.CTKEY
+										    ,COALESCE((
+	                                                SELECT SUM(TTQTY)
+	                                                  FROM TWORK_INFO_IVATXLCXULC A 
+	                                                 WHERE A.CTKEY =  B.CTKEY
+	                                                   AND A.OWKEY = B.OWKEY
+	                                                   AND A.ICKEY = B.ICKEY
+	                                                   AND A.LCKEY = B.TO_LCKEY
+                                         	 ), 0) AS TTQTY
+										 FROM TWORK_MST_IC B
+										WHERE B.CTKEY = #{ctkey}
+										    AND B.OWKEY = #{owkey}
+										    AND B.ICKEY = #{ickey}
+										UNION ALL
+											SELECT LCKEY 
+											      ,'3SAME' AS STATUS
+											      , CTKEY
+											      ,SUM(TTQTY) AS TTQTY
+											  FROM TWORK_INFO_IVATXLCXULC
+											 WHERE
+											       CTKEY = #{ctkey}
+											   AND OWKEY = #{owkey}
+											   AND ICKEY = #{ickey}
+											   AND TTQTY > 0 
+											   AND LCKEY NOT IN (
+											        SELECT COALESCE(TO_LCKEY, ' ')
+											         FROM TWORK_MST_IC
+											        WHERE CTKEY = #{ctkey}
+											            AND OWKEY = #{owkey}
+											            AND ICKEY = #{ickey}                           
+											        )   
+											GROUP BY LCKEY , CTKEY										
+										UNION ALL
+										SELECT LCKEY
+										      ,'2EMPTY' AS STATUS
+										      , CTKEY
+										      ,0 AS TTQTY  
+										  FROM (
+										         SELECT B.LCKEY 
+										               ,B.CTKEY 
+										               ,SUM(A.TTQTY) AS TTQTY
+										           FROM TWORK_INFO_IVATXLCXULC A 
+										           RIGHT OUTER JOIN TWORK_MST_LC B
+										           				ON A.CTKEY = B.CTKEY
+										           			   AND A.LCKEY = B.LCKEY
+										          WHERE
+										                B.CTKEY = #{ctkey}
+										          GROUP BY B.LCKEY 
+										                  ,B.CTKEY                  
+										        )
+										 WHERE
+										       (TTQTY = 0 OR TTQTY IS NULL)
+										       AND LCKEY NOT IN (
+										            SELECT COALESCE(TO_LCKEY, ' ')
+										             FROM TWORK_MST_IC
+										            WHERE CTKEY = #{ctkey}
+										                AND OWKEY = #{owkey}
+										                AND ICKEY = #{ickey}                            
+										            )										
+										UNION ALL
+	                                    SELECT B.LCKEY,
+	                                           B.CTKEY,
+	                                          '4' AS STAUS,
+	                                           COALESCE(SUM (A.TTQTY), 0) AS TTQTY
+	                                    FROM TWORK_INFO_IVATXLCXULC A
+	                                    RIGHT OUTER JOIN TWORK_MST_LC B
+	                                    			  ON A.CTKEY = B.CTKEY
+	                                    			 AND A.LCKEY = B.LCKEY
+	                                   WHERE 
+	                                         B.CTKEY = #{ctkey}
+										     AND B.LCKEY NOT IN (
+											            SELECT COALESCE(TO_LCKEY, ' ') AS LCKEY
+											             FROM TWORK_MST_IC
+											            WHERE CTKEY = #{ctkey}
+											                AND OWKEY = #{owkey}
+											                AND ICKEY = #{ickey}
+											            UNION ALL
+											            SELECT LCKEY
+											              FROM (
+											                     SELECT B.LCKEY 
+											                           ,B.CTKEY 
+											                           ,SUM(A.TTQTY) AS TTQTY
+											                       FROM TWORK_INFO_IVATXLCXULC A 
+											                       RIGHT OUTER JOIN TWORK_MST_LC B
+											                       				 ON A.CTKEY = B.CTKEY
+											                       				AND A.LCKEY = B.LCKEY
+											                      WHERE
+											                            B.CTKEY = #{ctkey}
+											                      GROUP BY B.LCKEY 
+											                              ,B.CTKEY                  
+											                    )
+											             WHERE
+											                   (TTQTY = 0 OR TTQTY IS NULL)
+											            UNION ALL
+											            SELECT LCKEY 
+											              FROM TWORK_INFO_IVATXLCXULC
+											             WHERE
+											                   CTKEY = #{ctkey}
+											               AND OWKEY = #{owkey}
+											               AND ICKEY = #{ickey}
+											               AND TTQTY > 0     
+											    	)
+										  GROUP BY B.LCKEY, B.CTKEY
+								     ) B ON A.CTKEY = B.CTKEY
+										AND A.LCKEY = B.LCKEY
+								WHERE A.CTKEY = #{ctkey}
+								  <if test="lcholdtype != 'NOTHING' ">
+								  AND A.LCHOLDTYPE = '10'
+								  </if>
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									AND (
+										   A.LCKEY LIKE '%' || #{value} || '%' 
+										OR A.LCTYPE LIKE '%' || #{value} || '%'
+										OR B.STATUS LIKE '%' || #{value} || '%'
+									)
+								  </if>
+						     
+					  		) A
+					      ,TWORK_MST_AR B
+					 WHERE 
+					 	  A.FIELD4 = B.ARKEY
+				 		<choose>
+							<when test='arkey !=null'>
+								<if test="arkey2 != null">
+									AND ARKEY IN (#{arkey} , #{arkey2})
+								</if>
+								<if test="arkey2 == null">
+									AND ARKEY = #{arkey}
+								</if>
+							</when>	
+						</choose>
+					  AND B.CTKEY = #{ctkey}
+					  AND (B.OWKEY = #{owkey} OR B.OWKEY IS NULL)
+				 		<choose>
+							<when test='sortValue !=null and sortValue != ""'>	
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>	
+							</when>	
+							<otherwise>
+								ORDER BY STATUS, LCSEQ ASC
+							</otherwise>
+						</choose>
+
+			<if test="device != 'MOBILE'">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</if>
+	</select>		
+	
+	
+	<!-- Equipment -->
+	<select id="selectTWorkMstEqCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_EQ
+		 WHERE 
+		       CLOSDATE >= #{sysdate}
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		 		AND (EQKEY LIKE '%' || #{value} || '%')
+		 	</if>
+		 	<if test="ctkey != null">
+	 			AND CTKEY = #{ctkey}
+	 		</if>
+	</select>
+	
+	<select id="selectTWorkMstEq" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+					
+						 SELECT B.* 
+						   FROM(	
+								SELECT EQKEY AS FIELD1
+								      ,EQTYPE AS FIELD2
+								      ,#{ctkey} ||';'|| 'EQTYPE' ||';'|| EQTYPE AS FIELD2_DESC					      
+								  FROM TWORK_MST_EQ
+								 WHERE 
+								       CLOSDATE >= #{sysdate}
+								  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								 		AND (EQKEY LIKE '%' || #{value} || '%')
+								 	</if>
+								 	<if test="ctkey != null">
+							 			AND CTKEY = #{ctkey}
+							 		</if>
+						  	)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+		
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<!-- WAYBILLNO -->
+	<select id="selectWaybillnoCount" resultType="java.lang.Integer" >
+     	SELECT COUNT(1) 
+          FROM (
+		      SELECT 
+				     C.WAYBILLNO AS FIRSTWAYBILLNO
+			        ,A.UDF1
+			        ,A.OWKEY
+			        ,A.WAYBILLNO
+			        ,A.ULCKEY		      
+				FROM TWORK_INFO_ULCXWB A
+				INNER JOIN TWORK_INFO_OBXULC B
+				   		ON A.ULCKEY = B.ULCKEY
+					   AND A.CTKEY = B.CTKEY
+					   AND A.OWKEY = B.OWKEY
+				INNER JOIN TWORK_INFO_OB_HD C
+						ON A.CTKEY = C.CTKEY
+					   AND A.OWKEY = C.OWKEY
+					   AND B.OBHDKEY = C.OBHDKEY
+				WHERE A.CTKEY = #{ctkey}
+				<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+					 AND A.OWKEY IN 
+					<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+						open="(" separator="," close=")">
+						#{OWKEY_AUTH_LIST}
+					</foreach>
+				</if>				    	
+               ) A 
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		 		WHERE (FIRSTWAYBILLNO LIKE '%' || #{value} || '%' 
+		 		OR UDF1 LIKE '%' || #{value} || '%'
+		 		OR OWKEY LIKE '%' || #{value} || '%'
+		 		OR WAYBILLNO LIKE '%' || #{value} || '%'
+		 		OR ULCKEY LIKE '%' || #{value} || '%'
+		 		)
+		 	</if>
+	</select>
+	
+	<select id="selectWaybillno" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		
+                  		SELECT B.* 
+						  FROM(                  	
+			                  	SELECT 
+										 A.FIRSTWAYBILLNO AS FIELD1
+										,A.UDF1           AS FIELD2
+										,A.OWKEY          AS FIELD3
+										,A.WAYBILLNO      AS FIELD4
+										,A.ULCKEY         AS FIELD5
+										,A.INSERTDATE     AS FIELD6
+										,A.INSERTURKEY    AS FIELD7                  	
+			                  	  FROM (
+										SELECT C.WAYBILLNO FIRSTWAYBILLNO
+										      ,A.UDF1
+										      ,A.OWKEY
+										      ,A.WAYBILLNO
+										      ,A.ULCKEY
+										      ,A.INSERTDATE
+										      ,A.INSERTURKEY 
+										FROM TWORK_INFO_ULCXWB A
+										INNER JOIN TWORK_INFO_OBXULC B
+										    	ON A.CTKEY = B.CTKEY
+											   AND A.OWKEY = B.OWKEY
+											   AND A.ULCKEY = B.ULCKEY
+										INNER JOIN TWORK_INFO_OB_HD C
+												ON A.CTKEY = C.CTKEY
+											   AND A.OWKEY = C.OWKEY
+											   AND B.OBHDKEY = C.OBHDKEY
+										WHERE A.CTKEY = #{ctkey}
+											<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+												 AND A.OWKEY IN 
+												<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+													open="(" separator="," close=")">
+													#{OWKEY_AUTH_LIST}
+												</foreach>
+											</if>				    	
+										  
+			                  	  		) A 
+								  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								 		WHERE (FIRSTWAYBILLNO LIKE '%' || #{value} || '%' 
+								 		OR UDF1 LIKE '%' || #{value} || '%'
+								 		OR OWKEY LIKE '%' || #{value} || '%'
+								 		OR WAYBILLNO LIKE '%' || #{value} || '%'
+								 		OR ULCKEY LIKE '%' || #{value} || '%'
+								 		)
+								 	</if>
+					 		)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+					 	
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectTworkInfoPoHdCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_PO_HD
+		 WHERE CTKEY = #{ctkey}			    	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND (
+				POHDKEY LIKE '%' || #{value} || '%' 
+				OR POHDDATE LIKE '%' || #{value} || '%'
+				OR ACKEY LIKE '%' || #{value} || '%'
+				OR ACNAME LIKE '%' || #{value} || '%'
+		   )
+		</if>
+		 
+	</select>
+	
+	<select id="selectTworkInfoPoHd" resultMap="selectCommonCode">
+	
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+            	SELECT POHDKEY  AS FIELD1 
+					   ,POHDDATE  AS FIELD2 
+					   ,DELIVERYDATE AS FIELD3
+					   ,OWKEY AS FIELD4
+					   ,ACKEY   AS FIELD5 
+					   ,ACNAME  AS FIELD6 
+				  FROM TWORK_INFO_PO_HD
+			     WHERE CTKEY = #{ctkey}			
+			    <if test="type == 'inboundorder' " >
+				   AND WKSTATUS != '90'  
+				</if> 	    	
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				   AND (
+						POHDKEY LIKE '%' || #{value} || '%' 
+						OR POHDDATE LIKE '%' || #{value} || '%'
+						OR ACKEY LIKE '%' || #{value} || '%'
+						OR ACNAME LIKE '%' || #{value} || '%'
+				   )
+				</if>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY FIELD1 ASC
+					</otherwise>
+				</choose> 
+				
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+										 
+	</select>	
+
+	<resultMap id="staticManagerMap" type="java.util.HashMap" >
+		<result property="ctkey" 		column="CTKEY" />
+		<result property="ctcd_hdkey" 	column="CTCD_HDKEY" />
+		<result property="ctcd_dtkey" 	column="CTCD_DTKEY" />
+		<result property="ctcd_dtorder"	column="CTCD_DTORDER" />
+		<result property="ctcd_dtname"	column="CTCD_DTNAME" />
+		<result property="lakey" 		column="LAKEY" />
+	</resultMap>
+	
+	<select id="selectTWorkMstCtcdDtList" resultMap="staticManagerMap">
+		<![CDATA[
+		SELECT CTKEY, CTCD_HDKEY, CTCD_DTKEY, CTCD_DTNAME, LAKEY
+		  FROM TWORK_MST_CTCD_DT 
+		 ]]>    		
+	</select>	
+	
+	<resultMap id="selectTWorkMstCtcdDtCtkeyListMap" type="java.util.HashMap" >
+		<result property="hdkey" 	column="CTCD_HDKEY" />
+		<result property="field1" 	column="CTCD_DTKEY" />
+		<result property="field2"	column="CTCD_DTNAME" />
+	</resultMap>
+
+	<select id="selectTWorkMstCtcdDtCtkeyList" fetchSize="1000" resultMap="selectTWorkMstCtcdDtCtkeyListMap">
+		SELECT CTCD_HDKEY
+		      ,CTCD_DTKEY
+		      ,CTCD_DTNAME
+		 FROM TWORK_MST_CTCD_DT
+		WHERE
+			  CTKEY = #{ctkey}
+	      AND LAKEY = #{lakey}
+     ORDER BY CTCD_HDKEY , CTCD_DTORDER	      
+	</select>
+
+	<resultMap id="selectEquipmentListMap" type="java.util.HashMap">
+		<result property="eqkey" column="EQKEY" />
+		<result property="prtype" column="PRTYPE" />
+		<result property="eqtype" column="EQTYPE" />
+		<result property="eqname" column="EQNAME" />
+		<result property="dlcompany" column="DLCOMPANY" />
+		<result property="ipaddress" column="IPADDRESS" />
+	</resultMap>
+	
+	<select id="selectEquipmentList" resultMap="selectEquipmentListMap">
+        SELECT EQKEY 
+              ,PRTYPE 
+              ,EQTYPE 
+              ,EQNAME 
+              ,IPADDRESS
+          FROM TWORK_MST_EQ
+        WHERE
+              CTKEY = #{ctkey}	
+	</select>
+	
+	
+	<select id="selectTWorkMstStgCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_STG
+		<where>
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND STGKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (STGDESC LIKE '%' || #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+		 	</if>
+		 	<if test="stgkey != null and stgkey != ''">
+	 			AND STGKEY = #{stgkey}
+	 		</if>
+			<if test="stgtype != null and stgtype != ''">
+				AND STGTYPE = #{stgtype}
+			</if>
+	 	</where>
+	</select>
+	
+	<select id="selectTWorkMstStg" resultMap="selectCommonCode">
+	
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+	
+			
+						 SELECT B.* 
+						   FROM(	
+								SELECT STGKEY AS FIELD1
+								      ,STGDESC AS FIELD2		      
+								  FROM TWORK_MST_STG
+								<where>
+							  		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND STGKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (STGDESC LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+							 		</if>
+							 		<if test="stgkey != null and stgkey != ''">
+										AND STGKEY = #{stgkey}
+									</if>
+									<if test="stgtype != null and stgtype != ''">
+										AND STGTYPE = #{stgtype}
+									</if>
+								</where>
+						  	)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+                           
+	</select>
+
+	<select id="selectTWorkMstStoreCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+			FROM TWORK_MST_STORE
+	         WHERE CLOSDATE >= #{sysdate}
+	           AND DELYN = 'N'
+	           AND STORE_TYPE = '0'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+				AND CTKEY = #{ctkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)" >
+			   AND  DCKEY = #{dckey}
+			</if>
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		       AND (
+		            STORE_KEY LIKE '%' || #{value} || '%' OR 
+		            STORE_NAME LIKE '%'|| #{value} || '%' OR
+		            DCKEY LIKE '%'|| #{value} || '%' 
+		       )			 
+			 </if>
+	</select>
+	
+	<select id="selectTWorkMstStore" resultMap="selectCommonCode">		
+	    #{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* 
+			  FROM (			
+					SELECT STORE_KEY	FIELD1
+					      ,STORE_NAME	FIELD2
+						  ,DCKEY AS FIELD3
+					      ,CTKEY ||  ';' || 'DCKEY' || ';' || DCKEY AS FIELD3_DESC
+					FROM TWORK_MST_STORE
+			       WHERE CLOSDATE >= #{sysdate}
+			         AND DELYN = 'N'
+			         AND STORE_TYPE = '0'
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+						AND CTKEY = #{ctkey}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)" >
+					   AND  DCKEY = #{dckey}
+					</if>
+					 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				       AND (
+				            STORE_KEY LIKE '%' || #{value} || '%' OR 
+				            STORE_NAME LIKE '%'|| #{value} || '%' OR
+				            DCKEY LIKE '%'|| #{value} || '%' 
+				            )
+					 </if>
+			)B
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY FIELD1 ASC
+				</otherwise>
+			</choose>						               
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectCountTworkMstSeIcHd" resultType="java.lang.Integer">
+		SELECT 	COUNT (1)
+		  FROM 	TWORK_MST_SEIC_HD A
+		  INNER JOIN TWORK_MST_IC B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND A.OWKEY = B.OWKEY
+				 AND A.ICKEY = B.ICKEY
+		 WHERE 	
+		 		A.CTKEY = #{ctkey}
+		   AND 	A.CLOSDATE >= #{sysdate}
+	   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND A.SEICKEY = #{value}
+		        </when>
+	        	<otherwise>
+		   			AND (A.SEICKEY LIKE '%' || #{value} || '%' OR A.ICKEY LIKE '%'|| #{value} || '%' OR A.ICUTKEY LIKE '%'|| #{value} || '%' OR B.ICNAME LIKE '%'|| #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >				
+		   AND 	A.OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>			
+	</select>
+
+
+	<select id="selectListTworkMstSeIcHd" resultMap="selectCommonCode">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	* 
+		  FROM	(	
+			SELECT 	A.SEICKEY		AS FIELD1
+			       	,A.ICKEY		AS FIELD2
+			      	,B.ICNAME		AS FIELD3
+				   	,A.ICUTKEY		AS FIELD4
+			       	,A.CLOSDATE	AS FIELD5
+			       	,A.OWKEY			AS FIELD6
+		  	  FROM 	TWORK_MST_SEIC_HD A
+		      INNER JOIN TWORK_MST_IC B
+		  	  		  ON A.CTKEY = B.CTKEY
+					 AND A.OWKEY = B.OWKEY
+					 AND A.ICKEY = B.ICKEY
+		 	 WHERE 	
+		 	 		A.CTKEY = #{ctkey}
+		   	   AND 	A.CLOSDATE >= #{sysdate}
+		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND A.SEICKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (A.SEICKEY LIKE '%' || #{value} || '%' OR A.ICKEY LIKE '%'|| #{value} || '%' OR A.ICUTKEY LIKE '%'|| #{value} || '%' OR B.ICNAME LIKE '%'|| #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			</if>
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >				
+			   AND 	A.OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>	
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC	
+			</otherwise>
+		</choose>						
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectCountTworkMstSeIcXLoggHd" resultType="java.lang.Integer">
+		SELECT 	COUNT (1)
+		  FROM 	TWORK_MST_SEIC_HD A
+		  INNER JOIN TWORK_MST_IC B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND A.OWKEY = B.OWKEY
+				 AND A.ICKEY = B.ICKEY
+		 WHERE 	
+		 		A.CTKEY = #{ctkey}
+		   AND 	A.CLOSDATE >= #{sysdate}
+	   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+		        <when test='opval !=null and opval.equals("eq")'>
+		            AND A.SEICKEY = #{value}
+		        </when>
+	        	<otherwise>
+		   			AND (A.SEICKEY LIKE '%' || #{value} || '%' OR A.ICKEY LIKE '%'|| #{value} || '%' OR A.ICUTKEY LIKE '%'|| #{value} || '%' OR B.ICNAME LIKE '%'|| #{value} || '%')
+		   		</otherwise>
+		   	</choose>
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >				
+		   AND 	A.OWKEY IN 
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+				open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>				 	    	
+	</select>
+
+
+	<select id="selectListTworkMstSeIcXLoggHd" resultMap="selectCommonCode">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	* 
+		  FROM	(	
+			SELECT 	A.SEICKEY		AS FIELD1
+			       	,A.ICKEY		AS FIELD2
+			      	,B.ICNAME		AS FIELD3
+				   	,A.ICUTKEY		AS FIELD4
+			       	,A.OWKEY			AS FIELD5
+		  	  FROM 	TWORK_MST_SEIC_HD A
+		      INNER JOIN TWORK_MST_IC B
+		  	  		  ON A.CTKEY = B.CTKEY
+					 AND A.OWKEY = B.OWKEY
+					 AND A.ICKEY = B.ICKEY
+		 	 WHERE 	
+		 	 		A.CTKEY = #{ctkey}
+		   	   AND 	A.CLOSDATE >= #{sysdate}
+		   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+			        <when test='opval !=null and opval.equals("eq")'>
+			            AND A.SEICKEY = #{value}
+			        </when>
+		        	<otherwise>
+			   			AND (A.SEICKEY LIKE '%' || #{value} || '%' OR A.ICKEY LIKE '%'|| #{value} || '%' OR A.ICUTKEY LIKE '%'|| #{value} || '%' OR B.ICNAME LIKE '%'|| #{value} || '%')
+			   		</otherwise>
+			   	</choose>
+			</if>
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >				
+			   AND 	A.OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>		   
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC	
+			</otherwise>
+		</choose>						
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectIcXIcuttypeXQtyCount" resultType="java.lang.Integer" >
+		SELECT 	/* hint: ORDERED */
+				COUNT(1)
+		  FROM 	TWORK_MST_IC A
+		  INNER JOIN TWORK_MST_ICUT B
+		      	  ON A.CTKEY = B.CTKEY
+				 AND A.OWKEY = B.OWKEY
+				 AND A.ICUTKEY = B.ICUTKEY
+		  INNER JOIN TWORK_MST_ICUTXTYPE C
+				  ON B.CTKEY = C.CTKEY
+				 AND B.OWKEY = C.OWKEY
+				 AND B.ICUTKEY = C.ICUTKEY
+		 WHERE 
+				A.CTKEY = #{ctkey}
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		   AND 	A.OWKEY = #{owkey}
+		 </if>
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+			   AND 	A.ACKEY = #{ackey}
+			 </if>
+		   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			  AND A.OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+		   </if>
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+				AND A.LOGGRPCD IN 
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>		   
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+				AND A.OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST" open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>				    	
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND 	(
+			A.ICKEY LIKE '%' || #{value} || '%' 
+			OR A.ICNAME  LIKE '%'|| #{value} || '%'
+			OR C.ICUTKEY  LIKE '%'|| #{value} || '%'
+			OR C.ICUTTYPE   LIKE '%'|| #{value} || '%'
+			OR C.ICUTQTY  LIKE '%'|| #{value} || '%'
+			OR A.LOGGRPCD  LIKE '%'|| #{value} || '%'
+			OR A.OWKEY  LIKE '%'|| #{value} || '%'
+		   )
+		 </if>
+	</select>
+	
+	<select id="selectIcXIcuttypeXQty" resultMap="selectCommonCode">		
+    #{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM 	(
+			SELECT 	/* hint: ORDERED */
+					A.ICKEY AS FIELD1
+					,A.ICNAME AS FIELD2
+					,C.ICUTKEY AS FIELD3
+					,C.ICUTTYPE  AS FIELD4
+					,A.CTKEY ||  ';' ||'ICUTTYPE' || ';' || C.ICUTTYPE AS FIELD4_DESC
+					,C.ICUTQTY AS FIELD5
+					,A.LOGGRPCD  AS FIELD6
+					,A.CTKEY ||  ';' ||'LOGGRPCD' || ';' || A.LOGGRPCD AS FIELD6_DESC
+					,A.OWKEY    AS FIELD7
+					,A.ACKEY    AS FIELD8
+					,A.ICGRKEY  AS FIELD9
+					,A.ICGRTYPE AS FIELD10
+			  FROM 	TWORK_MST_IC A
+			  INNER JOIN TWORK_MST_ICUT B
+			      	  ON A.CTKEY = B.CTKEY
+					 AND A.OWKEY = B.OWKEY
+					 AND A.ICUTKEY = B.ICUTKEY
+			  INNER JOIN TWORK_MST_ICUTXTYPE C
+			  	  	  ON B.CTKEY = C.CTKEY
+					 AND B.OWKEY = C.OWKEY
+					 AND B.ICUTKEY = C.ICUTKEY
+			 WHERE 
+					A.CTKEY = #{ctkey}
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			   AND 	A.OWKEY = #{owkey}
+			 </if>
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)" >
+			   AND 	A.ACKEY = #{ackey}
+			 </if>
+		   <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			  AND A.OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+		   </if>
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+				AND A.LOGGRPCD IN 
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>		   
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+				AND A.OWKEY IN 
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST" open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>				    	
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			   AND 	(
+				A.ICKEY LIKE '%' || #{value} || '%' 
+				OR A.ICNAME  LIKE '%'|| #{value} || '%'
+				OR C.ICUTKEY  LIKE '%'|| #{value} || '%'
+				OR C.ICUTTYPE   LIKE '%'|| #{value} || '%'
+				OR C.ICUTQTY  LIKE '%'|| #{value} || '%'
+				OR A.LOGGRPCD  LIKE '%'|| #{value} || '%'
+				OR A.OWKEY  LIKE '%'|| #{value} || '%'
+			   )
+			 </if>
+		)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>						               
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<resultMap id="selectCommonCodeAcxUr" type="java.util.HashMap">
+		<result property="field1" column="FIELD1"/>
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+		<result property="field7" column="FIELD7" />
+	</resultMap>
+
+	<sql id="selectTWorkMstAcXUrCommonCdRefSql">
+		SELECT 	A.URKEY AS FIELD1
+		 		,A.URKEY AS FIELD1_DESC                  
+				,A.ACKEY AS FIELD2
+				,B.ACNAME AS FIELD3
+				,A.ICGRKEY AS FIELD4
+				,A.ICGRTYPE AS FIELD5
+				,C.ICGRNAME AS FIELD6
+          FROM 	TWORK_MST_ACXUR A 
+          INNER JOIN TWORK_MST_AC B
+             	  ON A.CTKEY = B.CTKEY
+				 AND A.ACKEY = B.ACKEY
+				 AND A.OWKEY = B.OWKEY
+        LEFT OUTER JOIN TWORK_MST_ICGR C
+             		 ON A.CTKEY = C.CTKEY
+					AND A.OWKEY = C.OWKEY
+					AND A.ICGRKEY = C.ICGRKEY
+					AND A.ICGRTYPE = C.ICGRTYPE
+         INNER JOIN TADMIN_MST_UR D
+          		 ON A.URKEY = D.URKEY
+         WHERE A.CTKEY = #{ctkey}
+		<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+			AND A.LOGGRPCD IN 
+			<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+				#{LOGGRPCD_SELECTION_VALUE}
+			</foreach>
+		</if>	   	
+	 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+	   	   AND 	(
+			A.URKEY LIKE '%' || #{value} || '%'
+		    OR A.ACKEY LIKE '%'|| #{value} || '%'    
+			OR B.ACNAME LIKE '%'|| #{value} || '%'
+			OR A.ICGRKEY LIKE '%'|| #{value} || '%'
+			OR A.ICGRTYPE  LIKE '%'|| #{value} || '%'
+			OR C.ICGRNAME  LIKE '%'|| #{value} || '%'
+			OR D.URNM  LIKE '%'|| #{value} || '%'
+	   		)
+	 </if>
+	</sql>
+
+	<select id="selectTWorkMstAcXUrCommonCdCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTWorkMstAcXUrCommonCdRefSql"/>
+		  )
+	</select>
+
+
+	<select id="selectTWorkMstAcXUrCommonCd" resultMap="selectCommonCodeAcxUr">
+	    #{GRIDPAGING_ROWNUMTYPE_TOP}
+	    	SELECT *
+	    	  FROM (	
+	    	  	<include refid="selectTWorkMstAcXUrCommonCdRefSql"/>
+	    	  )
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>						               
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+
+	<resultMap id="selectMyMenuSetupMap" type="java.util.HashMap">
+		<result property="mekey" column="MEKEY" />
+		<result property="mename" column="MENAME" />
+		<result property="meorder" column="MEORDER" />
+		<result property="eqtype" column="EQTYPE" />
+		<result property="uskey" column="USKEY" />
+		<result property="uppermekey" column="UPPERMEKEY" />
+		<result property="uppermename" column="UPPERMENAME" />
+		<result property="isseparator" column="ISSEPARATOR" />
+		<result property="isleaf" column="ISLEAF" />		
+		<result property="leaf" column="LEAF" />
+		<result property="comments" column="COMMENTS" />
+		<result property="melvl" column="MELVL" />
+		<result property="checked" column="CHECKED" javaType="boolean"/>
+		
+	</resultMap>
+	<select id="selectMyMenuGrouping" fetchSize="1000" resultMap="selectMyMenuSetupMap">
+	
+	    SELECT URKEY
+           	  ,MEKEY
+           	  ,MENAME
+           	  ,MEORDER
+           	  ,EQTYPE
+           	  ,USKEY
+           	  ,UPPERMEKEY
+           	  ,ISSEPARATOR
+           	  ,ISLEAF
+           	  ,COMMENTS
+      		  ,LEVEL - 1 AS MELVL
+		FROM TWORK_MST_URDFME
+	    WHERE URKEY = #{surkey}
+	    CONNECT BY PRIOR MEKEY=UPPERMEKEY
+	    START WITH UPPERMEKEY = '0'
+	    ORDER SIBLINGS BY UPPERMEKEY, MEORDER
+	
+	
+	</select>
+	
+	<select id="selectMyMenuGroupingWithLevel" fetchSize="1000" resultMap="selectMyMenuSetupMap">
+       
+        SELECT URKEY
+           	  ,MEKEY
+           	  ,MENAME
+           	  ,MEORDER
+           	  ,EQTYPE
+           	  ,USKEY
+           	  ,UPPERMEKEY
+           	  ,ISSEPARATOR
+           	  ,ISLEAF
+           	  ,COMMENTS
+      		  ,LEVEL - 1 AS MELVL
+		FROM TWORK_MST_URDFME
+	    WHERE URKEY = #{surkey}
+	    CONNECT BY PRIOR MEKEY=UPPERMEKEY
+	    START WITH UPPERMEKEY = '0'
+	    ORDER SIBLINGS BY UPPERMEKEY, MEORDER
+       
+       
+       
+	</select>
+	
+	
+	<resultMap id="selectTWorkMstUrdfusMap" type="java.util.HashMap">
+		<result property="urkey" column="URKEY" />
+		<result property="uskey" column="USKEY" />
+		<result property="usgridId" column="USGRID_ID" />
+		<result property="urdfusInfo" column="URDFUS_INFO"  javaType="java.lang.String" jdbcType="CLOB" typeHandler="org.apache.ibatis.type.ClobTypeHandler"/>	
+		<result property="urdfusInfoInit" column="URDFUS_INFO_INIT"  javaType="java.lang.String" jdbcType="CLOB" typeHandler="org.apache.ibatis.type.ClobTypeHandler"/>		
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+	</resultMap>
+	
+	<select id="selectTWorkMstUrdfus" resultMap="selectTWorkMstUrdfusMap">
+		SELECT	
+				URKEY
+				,USKEY
+				,USGRID_ID
+				,URDFUS_INFO
+				,URDFUS_INFO_INIT
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+		FROM	TWORK_MST_URDFUS		
+       WHERE	URKEY = #{surkey}
+       <if test="uskey != null">
+         AND	USKEY = #{uskey}
+       </if>
+       <if test="usgridId != null">
+         AND	USGRID_ID = #{usgridId}
+       </if>
+       
+	</select>
+
+   <sql id="selectTWorkMstCtXStCommonCdRefSql">
+        SELECT   STKEY AS FIELD1
+                 ,STNAME AS FIELD2             
+          FROM  TWORK_MST_CTXST 
+         WHERE   CTKEY = #{sctkey}
+           AND   STKEY != #{sstkey}           
+         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+            <choose>
+                <when test='opval !=null and opval.equals("eq")'>
+                    AND STKEY = #{value}
+                </when>
+                <otherwise>
+                    AND (STKEY LIKE '%' || #{value} || '%' OR STNAME LIKE '%' || #{value}
+                    || '%')
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+    
+	<select id="selectTworkMstCtxStCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTWorkMstCtXStCommonCdRefSql"/>
+		  )
+	</select>
+
+	<select id="selectTworkMstCtxSt" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+            #{GRIDPAGING_ROWNUMTYPE_TOP}
+        </if>
+		SELECT *
+			FROM(
+				<include refid="selectTWorkMstCtXStCommonCdRefSql"/>
+			)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+        <if test="type != 'combo'">                 
+                   #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+        </if>    
+	</select>
+	
+<!-- TWORK_MST_LEGEND_HD -->	
+   <sql id="selectTWorkMstLegendRefSql">
+        SELECT   LGHDKEY AS FIELD1
+                 ,LGHDNAME AS FIELD2             
+          FROM  TWORK_MST_LEGEND_HD 
+         WHERE   CTKEY = #{ctkey}      
+    </sql>
+    
+	<select id="selectTWorkMstLegendCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTWorkMstLegendRefSql"/>
+		  )
+	</select>
+
+	<select id="selectTWorkMstLegend" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+            #{GRIDPAGING_ROWNUMTYPE_TOP}
+        </if>
+		SELECT *
+			FROM(
+				<include refid="selectTWorkMstLegendRefSql"/>
+			)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+        <if test="type != 'combo'">                 
+                   #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+        </if>    
+	</select>
+	
+<!-- TWORK_INFO_ANALY_HD -->	
+   <sql id="selectTworkInfoAnalyRefSql">
+        SELECT   ANALY_HDKEY AS FIELD1
+                 ,ANALY_TITLE AS FIELD2             
+          FROM  TWORK_INFO_ANALY_HD 
+         WHERE   CTKEY = #{ctkey}      
+    </sql>
+    
+	<select id="selectTworkInfoAnalyCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTworkInfoAnalyRefSql"/>
+		  )
+	</select>
+
+	<select id="selectTworkInfoAnaly" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+            #{GRIDPAGING_ROWNUMTYPE_TOP}
+        </if>
+		SELECT *
+			FROM(
+				<include refid="selectTworkInfoAnalyRefSql"/>
+			)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+        <if test="type != 'combo'">                 
+                   #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+        </if>    
+	</select>
+	
+<!-- TWORK_INFO_STATUS_HD -->	
+   <sql id="selectTworkInfoStatusRefSql">
+        SELECT   STATUS_HDKEY AS FIELD1
+                 ,DESCRIPTION AS FIELD2             
+          FROM  TWORK_INFO_STATUS_HD 
+         WHERE   CTKEY = #{ctkey}      
+    </sql>
+    
+	<select id="selectTworkInfoStatusCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTworkInfoStatusRefSql"/>
+		  )
+	</select>
+
+	<select id="selectTworkInfoStatus" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+            #{GRIDPAGING_ROWNUMTYPE_TOP}
+        </if>
+		SELECT *
+			FROM(
+				<include refid="selectTworkInfoStatusRefSql"/>
+			)
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+        <if test="type != 'combo'">                 
+                   #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+        </if>    
+	</select>	
+	
+	<select id="selectTWorkMstAcForRepCount" resultType="java.lang.Integer" >
+		SELECT  COUNT(1)
+		FROM  ( 
+				      SELECT B.* 
+		  FROM (
+			SELECT  B.ACKEY AS FIELD1 
+			       ,B.ACNAME AS FIELD2
+			       ,B.ACTYPE AS FIELD3
+			       ,#{ctkey} || ';' || 'ACTYPE' || ';' || B.ACTYPE AS FIELD3_DESC
+			 FROM  ( 
+				      SELECT REP_ACKEY AS ACKEY
+				      		,OWKEY 
+				      		,CTKEY 
+		                FROM TWORK_MST_AC
+		            GROUP BY REP_ACKEY
+		            		,OWKEY
+		            		,CTKEY
+	               ) A
+	         INNER JOIN  TWORK_MST_AC B
+			 		 ON A.CTKEY = B.CTKEY
+					AND A.OWKEY = B.OWKEY
+					AND A.ACKEY = B.ACKEY
+        	 WHERE A.CTKEY = #{ctkey}
+			   AND DELYN = 'N' 
+			   AND CLOSDATE >= #{sysdate}
+			 <if test="owkey != null">
+			   AND A.OWKEY = #{owkey}
+		  	</if> 
+			<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			   AND A.OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+			</if>		  	
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  	AND (B.ACKEY LIKE '%' || #{value} || '%' OR B.ACNAME LIKE '%' || #{value} || '%')
+			</if>
+			)B
+		)
+	</select>
+	
+	<select id="selectTworkMstAcForRep" resultMap="selectCommonCode">
+    <if test="type != 'combo'">
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+    </if>
+		SELECT B.* 
+		  FROM (
+			SELECT  B.ACKEY AS FIELD1 
+			       ,B.ACNAME AS FIELD2
+			       ,B.ACTYPE AS FIELD3
+			       ,#{ctkey} || ';' || 'ACTYPE' || ';' || B.ACTYPE AS FIELD3_DESC
+			 FROM  ( 
+				      SELECT REP_ACKEY AS ACKEY
+				      		,OWKEY  
+				      		,CTKEY
+		                FROM TWORK_MST_AC
+		            GROUP BY REP_ACKEY
+		            		,OWKEY
+		            		,CTKEY
+	               ) A
+	          INNER JOIN TWORK_MST_AC B
+			 		  ON A.CTKEY = B.CTKEY
+					 AND A.OWKEY = B.OWKEY
+					 AND A.ACKEY = B.ACKEY
+        	 WHERE  A.CTKEY = #{ctkey}
+			   AND CLOSDATE >= #{sysdate}
+			   AND DELYN = 'N'
+			 <if test="owkey != null">
+			   AND A.OWKEY = #{owkey}
+		  	</if> 
+			<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			   AND A.OWKEY IN 
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+			</if>		  	
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  	AND (B.ACKEY LIKE '%' || #{value} || '%' OR B.ACNAME LIKE '%' || #{value} || '%')
+			</if>
+		)B
+	     <choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+    <if test="type != 'combo'">            
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </if>				 
+	</select>
+	
+	
+	<select id="selectTWorkMstToLcCount" resultType="java.lang.Integer">	
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_AR A
+		  INNER JOIN TWORK_MST_LC B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND A.ARKEY = B.ARKEY
+		 WHERE    A.WRHOUS_SE = 'GNRL'
+ 			  AND A.BONDTYPE = '1'
+ 			  AND B.LCKEY NOT LIKE 'PICK%'		 	  
+		      AND A.CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		  	AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+		  </if>
+	</select>
+	
+	<select id="selectTWorkMstToLc" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			SELECT B.* 
+						  FROM(
+								SELECT
+									   B.LCKEY AS FIELD1 
+								      ,B.LCTYPE AS FIELD2
+								      ,B.LCHOLDTYPE AS FIELD3
+								  FROM TWORK_MST_AR A
+								  INNER JOIN TWORK_MST_LC B
+								  		  ON A.CTKEY = B.CTKEY
+										 AND A.ARKEY = B.ARKEY
+								 WHERE    A.WRHOUS_SE = 'GNRL'
+						 			  AND A.BONDTYPE = '1'	
+						 			  AND B.LCKEY NOT LIKE 'PICK%'	 	  
+								      AND A.CTKEY = #{ctkey}
+									  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									  	AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+									  </if>
+								)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+								
+			<if test="type != 'combo'">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    	</if>
+	</select>
+	
+	
+	<select id="selectTWorkMstToLcMoveNormalCount" resultType="java.lang.Integer">	
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_AR A
+		  INNER JOIN TWORK_MST_LC B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND A.ARKEY = B.ARKEY
+		WHERE A.WRHOUS_SE = 'GNRL'
+ 		   AND B.LCKEY NOT LIKE 'PICK%'		 	  
+		   AND A.CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		  	AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+		  </if>
+	</select>
+	
+	<select id="selectTWorkMstToLcMoveNormal" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			
+				SELECT * 
+				  FROM(
+						SELECT
+							   B.LCKEY AS FIELD1
+						      ,B.LCTYPE AS FIELD2
+						      ,B.LCHOLDTYPE AS FIELD3
+						      ,B.CTKEY ||';'|| 'LCTYPE' ||';'|| B.LCTYPE AS FIELD2_DESC
+                              ,B.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| B.LCHOLDTYPE AS FIELD3_DESC
+						  FROM TWORK_MST_AR A
+						  INNER JOIN TWORK_MST_LC B
+						  		  ON A.CTKEY = B.CTKEY
+								 AND A.ARKEY = B.ARKEY
+						WHERE A.CTKEY = #{ctkey}
+				 		   AND A.WRHOUS_SE = 'GNRL'
+				 		   AND B.LCKEY NOT LIKE 'PICK%'
+						  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+						   AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+						  </if>
+						)B
+					<choose>
+						<when test='sortValue !=null and sortValue != ""'>	
+							<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+							</if>
+							<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+							</if>	
+						</when>	
+						<otherwise>
+							ORDER BY FIELD1 ASC
+						</otherwise>
+					</choose>
+								
+			<if test="type != 'combo'">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    	</if>
+	</select>
+
+	
+	<select id="selectTWorkMstToLcBonCount" resultType="java.lang.Integer">	
+		
+		SELECT COUNT(*) FROM
+	   (
+		SELECT LCKEY 
+		FROM TWORK_MST_AR A
+		INNER JOIN TWORK_MST_LC B
+				ON A.CTKEY = B.CTKEY
+			   AND A.ARKEY = B.ARKEY
+		 WHERE  A.CTKEY = #{ctkey}
+ 			AND A.WRHOUS_SE = 'GNRL'
+ 			AND A.BONDTYPE = '2'		
+ 			AND B.LCKEY NOT LIKE 'PICK%'
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		  	AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+		  </if>
+		 UNION ALL
+		 SELECT LCKEY
+		 FROM TWORK_MST_LC
+		 WHERE LCKEY IN ('STAGE_A','STAGE_B','STAGE_C')
+		   AND CTKEY = #{ctkey} 
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND (LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE  LIKE '%' || #{value} || '%')
+		  </if>
+		 )
+	</select>
+	
+	<select id="selectTWorkMstToLcBon" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			SELECT B.* 
+						  FROM(
+								SELECT
+									   B.LCKEY AS FIELD1 
+								      ,B.LCTYPE AS FIELD2
+								      ,B.LCHOLDTYPE AS FIELD3
+								  FROM TWORK_MST_AR A
+								  INNER JOIN TWORK_MST_LC B
+								  		  ON A.CTKEY = B.CTKEY
+										 AND A.ARKEY = B.ARKEY
+								WHERE  A.CTKEY = #{ctkey}
+						 			AND A.WRHOUS_SE = 'GNRL'
+						 			AND A.BONDTYPE = '2'	
+						 			AND B.LCKEY NOT LIKE 'PICK%'
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+									</if>
+									  
+								 UNION ALL
+								 
+ 								 SELECT LCKEY
+								       ,LCTYPE
+								       ,LCHOLDTYPE
+								 FROM  TWORK_MST_LC
+								 WHERE LCKEY IN ('STAGE_A','STAGE_B','STAGE_C')
+								   AND CTKEY = #{ctkey}
+								   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								   AND (LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE  LIKE '%' || #{value} || '%')
+								   </if>
+								)B
+							<choose>
+								<when test='sortValue !=null and sortValue != ""'>	
+									<if test='sortValue == "DESC" and colName !=null'>
+									ORDER BY #{colName} DESC
+									</if>
+									<if test='sortValue == "ASC" and colName !=null'>
+									ORDER BY #{colName} ASC
+									</if>	
+								</when>	
+								<otherwise>
+									ORDER BY FIELD1 ASC
+								</otherwise>
+							</choose>
+								
+			<if test="type != 'combo'">
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	    	</if>
+	</select>
+	
+	<select id="selectTWorkMstToLcMoveBonCount" resultType="java.lang.Integer">	
+		
+		SELECT COUNT(1) 
+		  FROM TWORK_MST_AR A
+		  INNER JOIN TWORK_MST_LC B
+		  		  ON A.CTKEY = B.CTKEY
+				 AND A.ARKEY = B.ARKEY
+		WHERE  A.CTKEY = #{ctkey}
+ 		   AND A.WRHOUS_SE = 'GNRL' 
+ 		   AND A.BONDTYPE = '2'				  
+ 		   AND B.LCKEY NOT LIKE 'PICK%'
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		   AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+		 </if>	
+		  
+	</select>
+	
+	<select id="selectTWorkMstToLcMoveBon" resultMap="selectCommonCode">
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>			
+				SELECT * 
+				  FROM(
+				        SELECT
+				               B.LCKEY AS FIELD1
+				              ,B.LCTYPE AS FIELD2
+				              ,B.LCHOLDTYPE AS FIELD3
+				              ,B.CTKEY ||';'|| 'LCTYPE' ||';'|| B.LCTYPE AS FIELD2_DESC
+				              ,B.CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| B.LCHOLDTYPE AS FIELD3_DESC
+				          FROM TWORK_MST_AR A
+				          INNER JOIN TWORK_MST_LC B
+				          		  ON A.CTKEY = B.CTKEY
+								 AND A.ARKEY = B.ARKEY
+						WHERE  A.CTKEY = #{ctkey}
+				           AND A.WRHOUS_SE = 'GNRL'
+				           AND A.BONDTYPE = '2'
+				           AND B.LCKEY NOT LIKE 'PICK%'
+				          <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				           AND (B.LCKEY LIKE '%' || #{value} || '%' OR B.LCTYPE LIKE '%' || #{value} || '%' OR B.LCHOLDTYPE  LIKE '%' || #{value} || '%')
+				          </if>
+				         UNION ALL
+						SELECT LCKEY
+						      ,LCTYPE
+							  ,LCHOLDTYPE
+							  ,CTKEY ||';'|| 'LCTYPE' ||';'|| LCTYPE AS FIELD2_DESC
+				              ,CTKEY ||';'|| 'LCHOLDTYPE' ||';'|| LCHOLDTYPE AS FIELD3_DESC
+						  FROM TWORK_MST_LC
+						 WHERE LCKEY IN ('STAGE_A','STAGE_B','STAGE_C')
+						   AND CTKEY = #{ctkey}
+						   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+						   AND (LCKEY LIKE '%' || #{value} || '%' OR LCTYPE LIKE '%' || #{value} || '%' OR LCHOLDTYPE  LIKE '%' || #{value} || '%')
+						   </if>
+				        )B
+				    <choose>
+				        <when test='sortValue !=null and sortValue != ""'>	
+				            <if test='sortValue == "DESC" and colName !=null'>
+				            ORDER BY #{colName} DESC
+				            </if>
+				            <if test='sortValue == "ASC" and colName !=null'>
+				            ORDER BY #{colName} ASC
+				            </if>	
+				        </when>	
+				        <otherwise>
+				            ORDER BY FIELD1 ASC
+				        </otherwise>
+				    </choose>
+								
+		<if test="type != 'combo'">
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    	</if>
+	</select>
+	
+	<select id="selectTWorkMstOwIcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TWORK_MST_IC
+		 WHERE
+		 	  CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		  	  AND OWKEY = #{owkey}
+		  </if>
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			  AND (ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+		 </if>
+	</select>
+	
+	<select id="selectTWorkMstOwIc" resultMap="selectCommonCode">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+						SELECT	B.* 
+						  FROM(
+								SELECT ICKEY AS FIELD1
+								     , ICNAME AS FIELD2
+								     , OWKEY AS FIELD3
+								     , ICUTKEY AS FIELD4
+								     , UOM AS FIELD5
+								  FROM TWORK_MST_IC
+								 WHERE
+								 	  CTKEY = #{ctkey}
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+								  	AND OWKEY = #{owkey}
+								  </if>	   
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+								    AND (ICKEY LIKE '%' || #{value} || '%' OR ICNAME LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%')
+								 </if>      
+                          		)B
+				 		<choose>
+							<when test='sortValue !=null and sortValue != ""'>	
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>	
+							</when>	
+							<otherwise>
+								ORDER BY FIELD1 ASC
+							</otherwise>
+						</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectFactorUnit" resultMap="selectCommonCode">
+		SELECT
+		     CTCD_DTKEY  AS FIELD1
+		   , CTCD_DTNAME AS FIELD2
+		   , COMMENTS    AS FIELD3
+		FROM
+		    TWORK_MST_CTCD_DT
+		WHERE LAKEY = #{lakey} 
+	  	  AND CTCD_HDKEY = #{ctcd_hdkey} 
+ 		  AND CTKEY = #{ctkey} 
+		ORDER BY CTCD_DTORDER							
+	</select>
+
+	<select id="selectTworkMstLegend" resultMap="selectCommonCode">
+		SELECT LGHDKEY AS FIELD1
+			 ,LGHDNAME AS FIELD2
+		FROM TWORK_MST_LEGEND_HD
+		WHERE CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTworkMstLegendCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		FROM TWORK_MST_LEGEND_HD
+		WHERE CTKEY = #{ctkey}
+	</select>
+</mapper>	

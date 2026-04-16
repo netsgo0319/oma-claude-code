@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.InvnXSearchPropertyMapper">
+		
+	<sql id="sql_selectInvnXSearchProperty">
+		  FROM (
+			   SELECT TT.CTKEY
+					, TT.CTNAME
+					, TT.OWKEY
+					, TT.OWNAME
+					, TT.ICKEY
+					, TT.ICNAME
+					, TT.SPEC
+					, TT.IVATKEY
+					, TT.ATTRIBUTE2
+					, TT.ATTRIBUTE3
+					, TT.PRODUCTLOT
+					, SUM(TT.QTY) AS QTY
+					, (CASE WHEN WGT_CF_YN = 'Y' AND COALESCE(SUM(SN_WGT), 0) > 0 THEN COALESCE(SUM(SN_WGT), 0)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT > 0 AND TT.AVG_WGT > 0 THEN (SUM(TT.QTY) * TT.SPEC_WGT)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT > 0 AND TT.AVG_WGT = 0 THEN (SUM(TT.QTY) * TT.SPEC_WGT)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT = 0 AND TT.AVG_WGT > 0 THEN (SUM(TT.QTY) * TT.AVG_WGT)
+							ELSE 0 END) AS WGT
+					, (SUM(TT.QTY) * TT.AVG_WGT) AS NET_WGT
+					, (SUM(TT.QTY) * TT.SPEC_WGT) AS SPEC_SUM_WGT
+					, COALESCE(SUM(SN_WGT), 0) AS WGTING
+					, COALESCE(CASE TT.PLTQTY WHEN 0 THEN 0 ELSE (SUM(TT.QTY) / TT.PLTQTY) END, 0) AS PLT_SUM_QTY
+					, COALESCE(TT.PLTQTY, 0) AS PLTQTY
+					, SUM(TT.AVQTY) AS AVQTY
+					, (CASE WHEN WGT_CF_YN = 'Y' AND COALESCE(SUM(SN_WGT), 0) > 0 THEN COALESCE(SUM(SN_WGT), 0)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT > 0 AND TT.AVG_WGT > 0 THEN (SUM(TT.AVQTY) * TT.SPEC_WGT)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT > 0 AND TT.AVG_WGT = 0 THEN (SUM(TT.AVQTY) * TT.SPEC_WGT)
+							WHEN WGT_CF_YN = 'N' AND TT.SPEC_WGT = 0 AND TT.AVG_WGT > 0 THEN (SUM(TT.AVQTY) * TT.AVG_WGT)
+							ELSE 0 END) AS AVWGT
+					, (SUM(TT.AVQTY) * TT.AVG_WGT) AS AV_NET_WGT
+					, (SUM(TT.AVQTY) * TT.SPEC_WGT) AS AV_SPEC_SUM_WGT
+					, TT.UOM
+					, TT.SPEC_WGT
+					, TT.AVG_WGT
+					, TT.WGT_UOM
+					, TT.IBCONFIRMDATE
+					, TT.PRODUCTDATE
+					, TT.EXPIREDATE
+					, TT.UDF2 AS LOGGRPCD
+					, TT.WGT_CF_YN
+					, TT.ZNKEY
+					, TT.ZNNAME
+				 FROM (SELECT A.CTKEY
+							, I.CTNAME
+							, C.OWNAME
+							, A.OWKEY
+							, D.ICNAME
+							, A.ICKEY
+							, D.SPEC
+							, A.IVATKEY
+							, A.ATTRIBUTE2
+							, A.ATTRIBUTE3
+							, A.PRODUCTLOT
+							, SUM(B.TTQTY) AS QTY
+							, SUM(B.AVQTY) AS AVQTY
+							, D.UOM
+							, B.ULCKEY
+		--             , (SELECT SUM(AMEUGDEV.FN_GET_BACODE_PARS (E.BRANDKEY, SERIAL_NO))
+		--                  FROM TWORK_INFO_IVATXLCXULCXBOX
+		--                 WHERE OWKEY = A.OWKEY
+		--                   AND CTKEY = A.CTKEY
+		--                   AND IVATKEY = A.IVATKEY
+		--                   AND ICKEY = A.ICKEY
+		--                   AND ULCKEY = B.ULCKEY) AS SN_WGT
+							, 0 AS SN_WGT
+							, D.PLTQTY
+							, (D.WEIGHT / 1000) AS SPEC_WGT
+							, CASE A.NET_WGT WHEN 0 THEN 0 ELSE (CASE A.CFQTY WHEN 0 THEN 0 ELSE (A.NET_WGT / A.CFQTY) END) END AS AVG_WGT
+							, 'KG' AS WGT_UOM
+							, RPAD(SUBSTR(A.IBCONFIRMDATE, 1, 8), 14, 0) AS IBCONFIRMDATE
+							, RPAD(SUBSTR (A.PRODUCTDATE, 1, 8), 14, 0) AS PRODUCTDATE
+							, RPAD(SUBSTR (A.EXPIREDATE, 1, 8), 14, 0) AS EXPIREDATE
+							, D.UDF2
+							, D.WGT_CF_YN
+							, G.ZNKEY
+							, H.ZNNAME
+						 FROM TWORK_INFO_IVAT A
+							, TWORK_INFO_IVATXLCXULC B
+							, TWORK_MST_LC F
+							, TWORK_MST_AR G
+							, TWORK_MST_ZN H
+							, TWORK_MST_OW C
+							, TWORK_MST_IC D
+							, TWORK_MST_ICXBRAND E
+							, TWORK_MST_CT I
+						WHERE A.OWKEY = B.OWKEY
+						  AND A.CTKEY = B.CTKEY
+						  AND A.ICKEY = B.ICKEY
+						  AND A.IVATKEY = B.IVATKEY
+						  AND A.CTKEY = F.CTKEY
+						  AND B.LCKEY = F.LCKEY
+						  AND A.CTKEY = G.CTKEY
+						  AND F.ARKEY = G.ARKEY
+						  AND A.CTKEY = H.CTKEY
+						  AND G.ZNKEY = H.ZNKEY
+						  AND A.OWKEY = C.OWKEY
+						  AND A.CTKEY = D.CTKEY
+						  AND A.OWKEY = D.OWKEY
+						  AND A.ICKEY = D.ICKEY
+						  AND A.CTKEY = I.CTKEY
+						  AND D.BRANDKEY = E.BRANDKEY(+)
+						  AND B.TTQTY > 0
+					 	GROUP BY A.CTKEY
+							, I.CTNAME
+							, A.OWKEY
+							, C.OWNAME
+							, A.CTKEY
+							, D.ICNAME
+							, A.ICKEY
+							, D.SPEC
+							, A.IVATKEY
+							, A.ATTRIBUTE2
+							, A.ATTRIBUTE3
+							, A.PRODUCTLOT
+							, B.ULCKEY
+							, D.UOM
+							, D.PLTQTY
+							, D.WEIGHT
+							, A.NET_WGT
+							, A.CFQTY
+							, SUBSTR(A.IBCONFIRMDATE, 1, 8)
+							, SUBSTR(A.PRODUCTDATE, 1, 8)
+							, SUBSTR(A.EXPIREDATE, 1, 8)
+							, D.UDF2
+							, D.WGT_CF_YN
+							, E.BRANDKEY
+							, G.ZNKEY
+							, H.ZNNAME) TT
+				GROUP BY TT.CTKEY
+					   , TT.CTNAME
+					   , TT.OWNAME
+					   , TT.OWKEY
+					   , TT.ICNAME
+					   , TT.ICKEY
+					   , TT.SPEC
+					   , TT.IVATKEY
+					   , TT.ATTRIBUTE2
+					   , TT.ATTRIBUTE3
+					   , TT.PRODUCTLOT
+					   , TT.UOM
+					   , TT.SPEC_WGT
+					   , TT.AVG_WGT
+					   , TT.WGT_UOM
+					   , TT.IBCONFIRMDATE
+					   , TT.PRODUCTDATE
+					   , TT.EXPIREDATE
+					   , TT.UDF2
+					   , TT.PLTQTY
+					   , TT.WGT_CF_YN
+					   , TT.ZNKEY
+					   , TT.ZNNAME
+		     ) A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectInvnXSearchPropertyCount" resultType="java.lang.Integer">
+		/* wms-report-invnxsearchproperty-sql-oracle.xml - selectInvnXSearchPropertyCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectInvnXSearchProperty"/>
+	</select>
+
+	<select id="selectInvnXSearchPropertyList" resultType="camelMap">
+		/* wms-report-invnxsearchproperty-sql-oracle.xml - selectInvnXSearchPropertyList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.CTKEY
+			 , A.CTNAME
+			 , A.OWKEY
+			 , A.OWNAME
+			 , A.ICKEY
+			 , A.ICNAME
+			 , A.SPEC
+			 , A.IVATKEY
+			 , A.ATTRIBUTE2
+			 , A.ATTRIBUTE3
+			 , A.PRODUCTLOT
+			 , A.QTY
+			 , A.WGT
+			 , A.NET_WGT
+			 , A.SPEC_SUM_WGT
+			 , A.WGTING
+			 , A.PLT_SUM_QTY
+			 , A.PLTQTY
+			 , A.AVQTY
+			 , A.AVWGT
+			 , A.AV_NET_WGT
+			 , A.AV_SPEC_SUM_WGT
+			 , A.UOM
+			 , A.SPEC_WGT
+			 , A.AVG_WGT
+			 , A.WGT_UOM
+			 , A.IBCONFIRMDATE
+			 , A.PRODUCTDATE
+			 , A.EXPIREDATE
+			 , A.LOGGRPCD
+			 , A.WGT_CF_YN
+			 , A.ZNKEY
+			 , A.ZNNAME
+			<include refid="sql_selectInvnXSearchProperty"/>
+		ORDER BY A.CTKEY
+			   , A.OWKEY
+			   , A.ICKEY
+			   , A.IBCONFIRMDATE
+			   , A.ATTRIBUTE3
+			   , A.PRODUCTLOT
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+</mapper>

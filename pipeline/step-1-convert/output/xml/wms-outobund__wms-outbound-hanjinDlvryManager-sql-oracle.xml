@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.HanjinDlvryManagerMapper">
+
+	<!-- 한진택배 주소정제 대상 조회 -->
+	<select id="selectHanjinDlvryAddrRefndTgtList" resultType="com.daiso.wms.api.dlvrysbm.dto.HanjinDlvryAddrRefndAddrDTO">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectHanjinDlvryAddrRefndTgtList 한진택배 주소정제 대상 조회 */
+		SELECT REFND_TGT.CNTRCTNO AS csr_num
+			 , REFND_TGT.SVCDIV AS svc_div
+			 , REFND_TGT.OBORDKEY AS msg_key
+			 , REFND_TGT.ADDR AS address
+			 , REFND_TGT.CTZIPCD AS snd_zip
+			 , REFND_TGT.RCPPRSNZIPCD AS rcv_zip
+		  FROM (
+				SELECT DL.CNTRCTNO
+					 , 'GN' AS SVCDIV
+					 , OH.OBORDKEY
+					 , TRIM(pkg_crypto$decrypt(OH.RCPPRSNADDR1, #{encKey}))||' '||TRIM(pkg_crypto$decrypt(OH.RCPPRSNADDR2, #{encKey})) ADDR
+					 , CT.ZIPCD AS CTZIPCD
+					 , OH.RCPPRSNZIPCD
+					 , ROW_NUMBER() OVER (ORDER BY OH.OBORDKEY) AS RN
+				  FROM TWORK_INFO_OB_ORD_HD OH
+				 INNER JOIN TWORK_INFO_OB_HD OBH
+					ON OH.CTKEY = OBH.CTKEY
+				   AND OH.OWKEY = OBH.OWKEY
+				   AND OH.OBORDKEY = OBH.OBORDKEY
+				  LEFT OUTER JOIN TWORK_INFO_HANJIN_PR HPI
+					ON OH.CTKEY = HPI.CTKEY
+				   AND OH.OWKEY = HPI.OWKEY
+				   AND OH.OBORDKEY = HPI.OBORDKEY
+				 INNER JOIN TWORK_MST_DLVRYCORP DL
+					ON OH.CTKEY = DL.CTKEY
+				   AND OH.OWKEY = DL.OWKEY
+				   AND DL.DLVRYCORPCD = #{dlvryCorpCd}
+				   AND DL.DELYN = 'N'
+				 INNER JOIN TWORK_MST_CT CT
+					ON OH.CTKEY = CT.CTKEY
+				 WHERE OH.CTKEY = #{ctkey}
+				   AND OH.OWKEY = #{owkey}
+				   AND OH.PRINFORCVPRGRYN = 'N'
+				   AND DL.CNTRCTNO IS NOT NULL
+				   AND (HPI.RSLTCD IS NULL OR HPI.RSLTCD != 'OK')
+				   AND OBH.OBHDKEY IN
+		<foreach collection="subList" item="item" open=" (" separator="," close=")">
+					   #{item.obhdkey}
+		</foreach>
+				 GROUP BY
+					   DL.CNTRCTNO
+					 , OH.OBORDKEY
+					 , OH.RCPPRSNADDR1
+					 , OH.RCPPRSNADDR2
+					 , CT.ZIPCD
+					 , OH.RCPPRSNZIPCD
+			   ) REFND_TGT
+		 ORDER BY RN
+	</select>
+
+	<!-- 택배사 계약코드(한진택배-EDI_CD) 조회 -->
+	<select id="selectDlvryCorpCntrctCd" resultType="String">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectDlvryCorpCntrctCd 택배사 계약코드(한진택배-EDI_CD) 조회 */
+		SELECT CNTRCTCD
+		FROM TWORK_MST_DLVRYCORP
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND DLVRYCORPCD = #{dlvryCorpCd}
+		AND DELYN = 'N'
+	</select>
+
+	<!--택배사 주소정보 기등록 데이터 API 결과코드 조회(한진택배)-->
+	<select id="selectHanjinDlvryPrInfoRsltCd" resultType="String">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectHanjinDlvryPrInfoRsltCd 택배사 주소정보 기등록 데이터 API 결과코드 조회(한진택배) */
+		SELECT
+			RSLTCD
+		FROM TWORK_INFO_HANJIN_PR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{msg_key}
+	</select>
+
+	<!-- 한진택배 택배사 운송장번호 등록가능대상 출고건 조회 -->
+	<select id="selectHanjinDlvryWblNoAssignTgtList" resultType="camelMap">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectHanjinDlvryWblNoAssignTgtList 한진택배 택배사 운송장번호 등록가능대상 출고건 조회 */
+		SELECT OH.CTKEY					/*센터 코드*/
+			 , OH.OWKEY					/*화주 코드*/
+			 , OH.OBHDKEY AS OB_HD_KEY	/*릴리즈 코드*/
+			 , HPI.RSLTCD AS RSLT_CD	/*결과 코드*/
+		  FROM TWORK_INFO_OB_HD OH /*출고 공통 정보*/
+		 INNER JOIN TWORK_INFO_HANJIN_PR HPI /*한진 택배 출력 정보*/
+			ON OH.CTKEY = HPI.CTKEY
+		   AND OH.OWKEY = HPI.OWKEY
+		   AND OH.OBORDKEY = HPI.OBORDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY IN
+		<foreach collection="subList" item="item" open=" (" separator="," close=")">
+			   #{item.obhdkey}
+		</foreach>
+		   AND HPI.RSLTCD IS NOT NULL
+		   AND OH.WBLNO IS NULL
+	</select>
+
+	<!--출고헤더 운송장부여 (한진택배)-->
+	<update id="updateHanjinDlvryWblNoAssign">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.updateHanjinDlvryWblNoAssign 출고헤더 운송장부여 */
+		UPDATE TWORK_INFO_OB_HD /*출고공통정보*/
+		   SET DLVRYCORPCD = #{dlvryCorpCd} 									  /*택배사코드*/
+			 , DLVRYPRGRSTATUSCD = #{dlvryPrgrStatusCd}							  /*택배진행상태*/
+		<if test="wblNo != null">
+			 , WBLNO = SUBSTR(#{wblNo}, 1, 11) || MOD(SUBSTR(#{wblNo}, 1, 11), 7) /*운송장번호*/
+		</if>
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obHdKey}
+	</update>
+
+	<!--택배사 운송장번호 대역 정보 조회-->
+	<select id="selectHanjinDlvrySbmInfo" resultType="map">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectHanjinDlvrySbmInfo 택배접수 대상 조회 */
+		SELECT
+			OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isEmpty(wblno)'>
+					,OH.WBLNO
+				</when>
+				<otherwise>
+					,#{wblno} AS WBLNO
+				</otherwise>
+			</choose>
+			,'EDI' AS SBMTYPECD
+			,DL.CNTRCTCD AS EDICD /* EDI코드 */
+			,'GN' AS SVCDIV /* 서비스구분 */
+			,'S'AS DLVYDIV /* 배송구분 */
+			,DL.CNTRCTNO   /* 계약번호 */
+			,TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS COLCTREQDAY   /* 집하요청일자 */
+			,CT.ZIPCD AS SNDPRSNZIPCD /* 발송인 우편번호 */
+			,CT.ADDR1 AS SNDPRSNADDR1 /* 발송인 주소1 */
+			,CT.ADDR2 AS SNDPRSNADDR2 /* 발송인 주소2 */
+			,CT.CTNM AS SNDPRSNNM /* 발송인 명 */
+			,CT.TELNO AS SNDPRSNTELNO /* 발송인 전화번호1 */
+			,NULL AS SNDPRSNTELNO2 /* 발송인 전화번호2 */
+			,NULL AS SNDPRSNPICHNM /* 발송인 담당자명 */
+			,OH.RCPPRSNZIPCD AS RCPPRSNZIPCD /* 수령인 우편번호 */
+			,pkg_crypto$decrypt(OH.RCPPRSNADDR1, #{encKey}) AS RCPPRSNADDR1 /* 수령인 주소1 */
+			,pkg_crypto$decrypt(OH.RCPPRSNADDR2, #{encKey}) AS RCPPRSNADDR2 /* 수령인 주소2 */
+			,pkg_crypto$decrypt(OH.RCPPRSNNM, #{encKey}) AS RCPPRSNNM /* 수령인 명 */
+			,pkg_crypto$decrypt(OH.RCPPRSNTELNO, #{encKey}) AS RCPPRSNTELNO /* 수령인 전화번호1 */
+			,pkg_crypto$decrypt(OH.RCPPRSNTELNO2, #{encKey}) AS RCPPRSNTELNO2 /* 수령인 전화번호2 */
+			,NULL AS RCPPRSNPICHNM /* 수령인 담당자명 */
+			,OH.DLVYMSG /* 배송메세지 */
+			,OD.ICNM AS REPICNM /* 대표상품명 */
+			,1 AS BOXQTY /* 박스수량(1고정) */
+			,'CD' AS PAYMTTYPE /* 지불유형(발지신용) */
+			,'S' AS BOXTYPE /* 박스유형 S(~60cm), A(~80cm), B(~100cm), C(~120cm), D(~140cm), E(~160cm) */
+			,NULL AS MEMO1 /* 메모1 */
+			,NULL AS MEMO2 /* 메모2 */
+			,NULL AS MEMO3 /* 메모3 */
+			,NULL AS MEMO4 /* 메모4 */
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_MST_DLVRYCORP DL
+				ON OH.CTKEY = DL.CTKEY
+				AND OH.OWKEY = DL.OWKEY
+				AND OH.DLVRYCORPCD = DL.DLVRYCORPCD
+				AND DL.DELYN = 'N'
+			INNER JOIN TWORK_INFO_HANJIN_PR HPI
+				ON OH.CTKEY = HPI.CTKEY
+				AND OH.OWKEY = HPI.OWKEY
+				AND OH.OBORDKEY = HPI.OBORDKEY
+				AND HPI.RSLTCD = 'OK'
+			INNER JOIN TWORK_MST_CT CT
+				ON OH.CTKEY = CT.CTKEY
+			INNER JOIN (SELECT DISTINCT ON (DT.CTKEY, DT.OWKEY, DT.OBHDKEY)
+							DT.CTKEY
+							,DT.OWKEY
+							,DT.OBHDKEY
+							,IC.ICNM
+						FROM TWORK_INFO_OB_DT DT
+							INNER JOIN TWORK_MST_IC IC
+								ON DT.CTKEY = IC.CTKEY
+								AND DT.OWKEY = IC.OWKEY
+								AND DT.ICKEY = IC.ICKEY
+						WHERE DT.CTKEY = #{ctkey}
+						AND DT.OWKEY = #{owkey}
+						AND DT.OBHDKEY = #{obhdkey}
+						ORDER BY DT.CTKEY, DT.OWKEY, DT.OBHDKEY, DT.OBDTKEY) OD
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+		<if test="@com.kns.framework.util.StringUtil@isEmpty(wblno)">
+			AND OH.DLVRYPRGRSTATUSCD = '10' /* 택배진행상태 운송장등록 */
+		</if>
+	</select>
+
+	<!--한진택배 택배사 택배접수정보 데이터등록 확인-->
+	<select id="selectHanjinDlvrySbmCnt" resultType="int">
+		SELECT COUNT(*)
+		FROM TWORK_INFO_HANJIN_SBM
+		WHERE CTKEY = #{CTKEY}
+		AND OWKEY = #{OWKEY}
+		AND OBHDKEY = #{OBHDKEY}
+		AND WBLNO = #{WBLNO}
+	</select>
+
+	<insert id="insertHanjinDlvrySbmInfo">
+		INSERT INTO TWORK_INFO_HANJIN_SBM
+		( CTKEY
+		, OWKEY
+		, OBHDKEY
+		, WBLNO
+		, SBMTYPECD
+		, EDICD
+		, DLVYDIV
+		, CNTRCTNO
+		, COLCTREQDAY
+		, SNDPRSNZIPCD
+		, SNDPRSNADDR1
+		, SNDPRSNADDR2
+		, SNDPRSNNM
+		, SNDPRSNTELNO
+		, SNDPRSNTELNO2
+		, SNDPRSNPICHNM
+		, RCPPRSNZIPCD
+		, RCPPRSNADDR1
+		, RCPPRSNADDR2
+		, RCPPRSNNM
+		, RCPPRSNTELNO
+		, RCPPRSNTELNO2
+		, RCPPRSNPICHNM
+		, DLVYMSG
+		, REPICNM
+		, BOXQTY
+		, PAYMTTYPE
+		, BOXTYPE
+		, MEMO1
+		, MEMO2
+		, MEMO3
+		, MEMO4
+		, SBMSUCCYN
+		, ERRCD
+		, ERRMSG
+		, SBMSTATUSCD
+		, SBMERRCD
+		, SBMSEQ
+		, CBMDATE
+		, CBMURKEY
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY )
+		VALUES
+		( #{CTKEY}
+		, #{OWKEY}
+		, #{OBHDKEY}
+		, #{WBLNO}
+		, #{SBMTYPECD}
+		, #{EDICD}
+		, #{DLVYDIV}
+		, #{CNTRCTNO}
+		, #{COLCTREQDAY}
+		, #{SNDPRSNZIPCD}
+		, #{SNDPRSNADDR1}
+		, #{SNDPRSNADDR2}
+		, #{SNDPRSNNM}
+		, #{SNDPRSNTELNO}
+		, #{SNDPRSNTELNO2}
+		, #{SNDPRSNPICHNM}
+		, #{RCPPRSNZIPCD}
+		, pkg_crypto$encrypt(#{RCPPRSNADDR1}, #{encKey})
+		, pkg_crypto$encrypt(#{RCPPRSNADDR2}, #{encKey})
+		, pkg_crypto$encrypt(#{RCPPRSNNM}, #{encKey})
+		, pkg_crypto$encrypt(#{RCPPRSNTELNO}, #{encKey})
+		, pkg_crypto$encrypt(#{RCPPRSNTELNO2}, #{encKey})
+		, #{RCPPRSNPICHNM}
+		, #{DLVYMSG}
+		, #{REPICNM}
+		, #{BOXQTY}
+		, #{PAYMTTYPE}
+		, #{BOXTYPE}
+		, #{MEMO1}
+		, #{MEMO2}
+		, #{MEMO3}
+		, #{MEMO4}
+		, NULL
+		, NULL
+		, NULL
+		, NULL
+		, NULL
+		, NULL
+		, TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+		, #{SURKEY}
+		, TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+		, #{SURKEY}
+		, TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+		, #{SURKEY} )
+	</insert>
+
+	<update id="updateHanjinDlvrySbmInfo">
+		UPDATE TWORK_INFO_HANJIN_SBM
+		   SET SBMSUCCYN = #{O_YN}
+			 , SBMSEQ = #{SBMSEQ}
+			 , ERRCD = #{O_SQLCODE}
+		     , ERRMSG = #{O_SQLERRM}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{SURKEY}
+		 WHERE CTKEY = #{CTKEY}
+		   AND OWKEY = #{OWKEY}
+		   AND OBHDKEY = #{OBHDKEY}
+		   AND WBLNO = #{WBLNO}
+	</update>
+
+	<update id="updateObHdDlvryPrgrStatus">
+		UPDATE TWORK_INFO_OB_HD
+		<choose>
+			<when test="SBMTYPECD == 'EDI'">
+				SET DLVRYPRGRSTATUSCD = (CASE WHEN #{O_YN} = 'Y' THEN '20' ELSE '98' END)
+			</when>
+			<otherwise>
+				SET DLVRYPRGRSTATUSCD = (CASE WHEN #{O_YN} = 'Y' THEN '30' ELSE '98' END)
+			</otherwise>
+		</choose>
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{SURKEY}
+		 WHERE CTKEY = #{CTKEY}
+		   AND OWKEY = #{OWKEY}
+		   AND OBHDKEY = #{OBHDKEY}
+	</update>
+
+	<!--한진택배 택배사 택배접수정보 데이터 조회 for API-->
+	<select id="selectHanjinDlvrySbmInfoForApiCall" resultType="hanjinDlvrOrderInsertReqDTO">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml - selectHanjinDlvrySbmInfoForApiCall - 한진택배 택배사 택배접수정보 데이터 조회 for API */
+		SELECT
+			DLVYDIV AS SVC_CAT_CD
+			,OBHDKEY AS CUST_ORD_NO
+			,WBLNO AS WBLNO
+			,CNTRCTNO AS CNTRACT_NO
+			,COLCTREQDAY AS PICKUP_ASK_DT
+			,SNDPRSNZIPCD AS SNDR_ZIP
+			,SNDPRSNADDR1 AS SNDR_BASE_ADDR
+			,SNDPRSNADDR2 AS SNDR_DTL_ADDR
+			,SNDPRSNNM AS SNDR_NM
+			,SNDPRSNTELNO AS SNDR_TEL_NO
+			,SNDPRSNTELNO2 AS SNDR_MOBILE_NO
+			,NULL AS SNDR_ASK_CNTENT
+			,SNDPRSNPICHNM AS SNDR_REF_CNTENT
+			,RCPPRSNZIPCD AS  RCVR_ZIP
+			,pkg_crypto$decrypt(RCPPRSNADDR1, #{encKey}) AS RCVR_BASE_ADDR
+			,pkg_crypto$decrypt(RCPPRSNADDR2, #{encKey}) AS RCVR_DTL_ADDR
+			,pkg_crypto$decrypt(RCPPRSNNM, #{encKey}) AS RCVR_NM
+			,pkg_crypto$decrypt(RCPPRSNTELNO, #{encKey}) AS RCVR_TEL_NO
+			,pkg_crypto$decrypt(RCPPRSNTELNO2, #{encKey}) AS RCVR_MOBILE_NO
+			,DLVYMSG AS RCVR_ASK_CNTENT
+			,RCPPRSNPICHNM AS RCVR_REF_CNTENT
+			,PAYMTTYPE AS PAY_TYP_CD
+			,BOXTYPE AS BOX_TYP_CD
+			,MEMO1 AS PRINT_MEMO1
+			,MEMO2 AS PRINT_MEMO2
+			,MEMO3 AS PRINT_MEMO3
+			,MEMO4 AS PRINT_MEMO4
+			,REPICNM AS COMODITY_NM
+		FROM TWORK_INFO_HANJIN_SBM
+		WHERE CTKEY = #{CTKEY}
+		AND OWKEY = #{OWKEY}
+		AND OBHDKEY = #{OBHDKEY}
+		AND WBLNO = #{WBLNO}
+	</select>
+
+	<!--택배사 주소정보 기등록 데이터 API 결과코드 조회(한진택배)-->
+	<select id="selectHanjinDlvryRiPrInfoRsltCd" resultType="String">
+		/* wms-outbound-hanjinDlvryManager-sql-oracle.xml.selectHanjinDlvryRiPrInfoRsltCd 택배사 주소정보 기등록 데이터 API 결과코드 조회(한진택배) */
+		SELECT RSLTCD
+		  FROM TWORK_INFO_HANJIN_RI_PR
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{msg_key}
+	</select>
+</mapper>

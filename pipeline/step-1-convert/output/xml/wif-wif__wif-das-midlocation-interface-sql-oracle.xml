@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.das.midlocation.mapper.MidLocationMapper">
+	<insert id="insertDasMidLocDsnWave" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnWaveVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnWave - DAS 중분류DAS 로케이션 지정 Wave INSERT SQL */
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,DASEQTYPE
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,IFRETRYYN
+			,IFRETRYIFID
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{dasEqType}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{ifretryyn}
+			,#{ifretryifid}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasMidLocDsnSmlStn" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnSmlStnVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnSmlStn - DAS 중분류DAS 로케이션 지정 Small Station INSERT SQL */
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_SMLSTN
+		(
+			WASEQ
+			,SMLSTNSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,SMLSTN
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{smlStnSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{smlStn}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasMidLocDsnMidCell" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnMidCellVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnMidCell - DAS 중분류DAS 로케이션 지정 Middle Cell INSERT SQL */
+		<selectKey keyProperty="midCellSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_midloc_dsn_midcell') AS MID_CELL_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_MIDCELL
+		(
+			WASEQ
+			,SMLSTNSEQ
+			,MIDCELLSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,SMLSTN
+			,MIDCELLBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{smlStnSeq}
+			,#{midCellSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{smlStn}
+			,#{midCellBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getDasMidLocDsnWaveSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnWaveSeq - DAS 중분류DAS 로케이션 지정 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getDasMidLocDsnSmlStnSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnSmlStnSeq - DAS 중분류DAS 로케이션 지정 Small Station Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_smlstn') AS SML_STN_SEQ
+	</select>
+
+	<select id="getDasMidLocDsnMidCellSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnMidCellSeq - DAS 중분류DAS 로케이션 지정 Middle Cell Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_midcell') AS MID_CELL_SEQ
+	</select>
+</mapper>

@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.ctmaster.mapper.CenterCodeMapper">
+
+	<select id="selectCenterCodeHdCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeHdCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_CTCD_HD A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectCenterCodeHdList" resultType="camelMap">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeHdList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT
+		      '0' AS CHK
+		    , A.CTKEY
+		    , B.CTNM
+		    , A.CTCDHDKEY
+			, A.CTCDHDNM
+		    , A.DELYN
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		FROM
+		      TWORK_MST_CTCD_HD A
+			, TWORK_MST_CT B
+
+		<where>
+			AND A.CTKEY = B.CTKEY
+			AND A.DELYN = 'N'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		ORDER BY UPDATEDATE DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectCenterCodeDtList" resultType="camelMap">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeDtList */
+		SELECT '0' AS CHK
+			 , CH.CTKEY
+			 , CT.CTNM
+			 , CD.CTCDHDKEY
+			 , CD.CTCDDTKEY
+			 , CD.LAKEY
+			 , CD.CTCDDTORD
+			 , CD.CTCDDTNM
+			 , CD.CTCDDTVAL
+			 , CD.CMT
+			 , CD.DELYN
+
+			<if test='"IBHDTYPE".equals(ctcdHdkey) or "OBHDTYPE".equals(ctcdHdkey)'>
+			 , CASE WHEN NO_TYPE.ORDER_TYPE IS NULL THEN 'N'
+				    ELSE 'Y'
+			   END ORDER_TYPE_YN
+		     , CASE WHEN CD.CTCDHDKEY = 'IBHDTYPE' THEN 'IN'
+		            WHEN CD.CTCDHDKEY = 'OBHDTYPE' THEN 'OUT'
+					ELSE null
+			   END ORDER_TYPE
+			</if>
+
+			 , CD.INSERTDATE
+			 , CD.INSERTURKEY
+			 , CD.UPDATEDATE
+			 , CD.UPDATEURKEY
+		  FROM TWORK_MST_CTCD_HD CH
+		 INNER JOIN TWORK_MST_CTCD_DT CD
+				 ON CD.CTKEY = CH.CTKEY
+				AND CD.CTCDHDKEY = CH.CTCDHDKEY
+		 INNER JOIN TWORK_MST_CT CT
+				 ON CT.CTKEY = CD.CTKEY
+
+		<if test='"IBHDTYPE".equals(ctcdHdkey) or "OBHDTYPE".equals(ctcdHdkey)'>
+		 LEFT OUTER JOIN TWORK_MST_NORMAL_ORDER NO_TYPE
+					  ON NO_TYPE.CTKEY = CD.CTKEY
+					 AND NO_TYPE.ORDER_TYPE = CD.CTCDDTKEY
+					 AND NO_TYPE.DELYN = 'N'
+				<choose>
+					<when test='"IBHDTYPE".equals(ctcdHdkey)'>
+					 AND NO_TYPE.IN_OUT_TYPE = 'IN'
+					</when>
+					<otherwise>
+					 AND NO_TYPE.IN_OUT_TYPE = 'OUT'
+					</otherwise>
+				</choose>
+		</if>
+
+		 WHERE CH.CTKEY = #{ctkey}
+		   AND CD.CTCDHDKEY = #{ctcdhdkey}
+		   AND CH.DELYN = 'N'
+		   AND CD.DELYN = 'N'
+		 ORDER BY CD.CTCDDTORD ASC
+	</select>
+
+	<select id="selectCenterCodeHd" resultType="camelMap">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeHd */
+		SELECT
+			  CTKEY
+			, CTCDHDKEY
+			, CTCDHDNM
+			, DELYN
+		FROM TWORK_MST_CTCD_HD
+		WHERE CTKEY = #{ctkey}
+		AND CTCDHDKEY = #{ctcdhdkey}
+	</select>
+
+	<select id="selectCenterCodeHdDupCheck" resultType="java.lang.Integer">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeHdDupCheck */
+		SELECT COUNT(1)
+		FROM TWORK_MST_CTCD_HD
+		WHERE CTKEY = #{ctkey}
+		AND CTCDHDKEY = #{ctcdhdkey}
+	</select>
+
+	<insert id="insertCenterCodeHd">
+		/* wms-ctmaster-centercode-sql-oracle.xml - insertCenterCodeHd */
+		INSERT INTO TWORK_MST_CTCD_HD (
+			  CTKEY
+			, CTCDHDKEY
+			, CTCDHDNM
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{ctkey}
+			, #{ctcdhdkey}
+			, #{ctcdhdnm}
+			, #{delyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateCenterCodeHd">
+		/* wms-ctmaster-centercode-sql-oracle.xml - updateCenterCodeHd */
+		UPDATE TWORK_MST_CTCD_HD
+		SET
+		    CTCDHDNM = #{ctcdhdnm}
+		  , DELYN = #{delyn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND CTCDHDKEY = #{ctcdhdkey}
+	</update>
+
+	<update id="deleteCenterCodeHd">
+		/* wms-ctmaster-centercode-sql-oracle.xml - deleteCenterCodeHd */
+		UPDATE TWORK_MST_CTCD_HD
+		   SET DELYN = 'Y'
+		 WHERE CTKEY = #{ctkey}
+	 	   AND CTCDHDKEY = #{ctcdhdkey}
+	</update>
+
+	<select id="selectCenterCodeDt" resultType="camelMap">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeDt */
+		SELECT
+			  A.CTKEY
+			, A.CTCDHDKEY
+			, A.LAKEY
+			, B.CTCDDTNM AS LANAME
+			, A.CTCDDTKEY
+			, A.CTCDDTNM
+			, A.CTCDDTORD
+			, A.CTCDDTVAL
+			, A.CMT
+			, A.DELYN
+		FROM TWORK_MST_CTCD_DT A
+		LEFT OUTER JOIN TWORK_MST_CTCD_DT B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'LAKEY' AND B.CTCDDTKEY = A.LAKEY AND B.LAKEY = #{slakey}
+ 		WHERE A.CTKEY = #{ctkey}
+		AND A.CTCDHDKEY = #{ctcdhdkey}
+		AND A.CTCDDTKEY = #{ctcddtkey}
+		AND A.LAKEY = #{lakey}
+	</select>
+
+	<select id="selectCenterCodeDtDupCheck" resultType="java.lang.Integer">
+		/* wms-ctmaster-centercode-sql-oracle.xml - selectCenterCodeDtDupCheck */
+		SELECT COUNT(1)
+		FROM TWORK_MST_CTCD_DT
+		WHERE CTKEY = #{ctkey}
+		AND CTCDHDKEY = #{ctcdhdkey}
+		AND CTCDDTKEY = #{ctcddtkey}
+		AND LAKEY = #{lakey}
+	</select>
+
+	<insert id="insertCenterCodeDt">
+		/* wms-ctmaster-centercode-sql-oracle.xml - insertCenterCodeDt */
+		INSERT INTO TWORK_MST_CTCD_DT (
+			  CTKEY
+			, CTCDHDKEY
+			, LAKEY
+			, CTCDDTKEY
+			, CTCDDTNM
+			, CTCDDTORD
+			, CTCDDTVAL
+			, CMT
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{ctkey}
+			, #{ctcdhdkey}
+			, #{lakey}
+			, #{ctcddtkey}
+			, #{ctcddtnm}
+			, #{ctcddtord}
+			, #{ctcddtval}
+			, #{cmt}
+			, #{delyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		 )
+	</insert>
+
+	<update id="updateCenterCodeDt">
+		/* wms-ctmaster-centercode-sql-oracle.xml - updateCenterCodeDt */
+		UPDATE TWORK_MST_CTCD_DT
+		SET
+			  CTCDDTNM = #{ctcddtnm}
+			, CTCDDTORD = #{ctcddtord}
+			, CTCDDTVAL = #{ctcddtval}
+			, CMT = #{cmt}
+			, DELYN = #{delyn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND CTCDHDKEY = #{ctcdhdkey}
+		AND CTCDDTKEY = #{ctcddtkey}
+		AND LAKEY = #{lakey}
+	</update>
+
+
+
+
+
+
+	<update id="deleteCenterCodeDt">
+		/* wms-ctmaster-centercode-sql-oracle.xml - deleteCenterCodeDt */
+		UPDATE TWORK_MST_CTCD_DT
+		   SET DELYN = 'Y'
+		 WHERE CTKEY = #{ctkey}
+		   AND CTCDHDKEY = #{ctcdhdkey}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctcddtkey)">
+			AND CTCDDTKEY = #{ctcddtkey}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+			AND LAKEY = #{lakey}
+		</if>
+	</update>
+
+
+
+
+
+
+
+
+	<resultMap id="selectCenterCodeMap" type="java.util.HashMap">
+	    <result property="ctkey" column="CTKEY" />
+		<result property="ctcd_hdkey" column="CTCD_HDKEY" />
+		<result property="ctcd_hdname" column="CTCD_HDNAME" />
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+	</resultMap>
+	
+	<resultMap id="selectCenterCodeDtlMap" type="java.util.HashMap">
+	    <result property="ctkey" column="CTKEY" />
+		<result property="ctcd_hdkey" column="CTCD_HDKEY" />
+		<result property="ctcd_dtkey" column="CTCD_DTKEY" />
+		<result property="lakey" column="LAKEY" />
+		<result property="ctcd_dtorder" column="CTCD_DTORDER" />
+		<result property="ctcd_dtname" column="CTCD_DTNAME" />
+		<result property="ctcd_dtvalue" column="CTCD_DTVALUE" />
+		<result property="comments" column="COMMENTS" />
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+	</resultMap>
+
+
+	
+
+  
+
+	
+
+	
+
+	
+	<select id="checkCenterCodeContinentDtl" resultType="java.lang.Integer" >
+			SELECT COUNT(1)
+			  FROM TWORK_MST_CTCD_DT
+			  WHERE CTCD_HDKEY = #{ctcd_hdkey}
+    	   		AND CTKEY = #{ctkey}	
+ 	    	 <if test="ctcd_hdkey != null">
+	    	 	AND CTCD_HDKEY = #{ctcd_hdkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkCenterCodeCountryDtl" resultType="java.lang.Integer" >
+			SELECT COUNT(1)
+			  FROM TWORK_MST_CTCD_DT
+			  WHERE CTCD_HDKEY = #{ctcd_hdkey}
+				AND CTKEY = #{ctkey}			  
+ 	    	 <if test="ctcd_hdkey != null">
+	    	 	AND CTCD_HDKEY = #{ctcd_hdkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkCenterCodeCityDtl" resultType="java.lang.Integer" >
+			SELECT COUNT(1)
+			  FROM TWORK_MST_CTCD_DT
+			  WHERE CTCD_HDKEY = #{ctcd_hdkey}
+			    AND CTKEY = #{ctkey}
+ 	    	 <if test="ctcd_hdkey != null">
+	    	 	AND CTCD_HDKEY = #{ctcd_hdkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkCenterCodeInfoDtl" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		  FROM 	TWORK_MST_CTCD_DT
+	  	 WHERE 	CTKEY = #{ctkey}
+		   AND 	CTCD_HDKEY = #{ctcd_hdkey}
+		<if test="ctcd_dtkey != null">
+		   AND 	CTCD_DTKEY = #{ctcd_dtkey}
+		</if>
+		<if test="lakey != null">
+		   AND  LAKEY = #{lakey}
+		</if>			 
+	</select>	
+	
+
+	
+	<insert id="insertCenterCodeInfoDtl">
+		INSERT INTO TWORK_MST_CTCD_DT
+		(
+			CTKEY
+			, CTCD_HDKEY
+		    , CTCD_DTKEY
+		    , LAKEY
+		    , CTCD_DTORDER
+		    , CTCD_DTNAME
+		    , CTCD_DTVALUE
+		    , COMMENTS
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+		    ,#{ctcd_hdkey}
+		    ,#{ctcd_dtkey}
+		    ,#{lakey}
+		    ,#{ctcd_dtorder}
+		    ,#{ctcd_dtname}
+		    ,#{ctcd_dtvalue}
+		    ,#{comments}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+
+	<update id="updateCenterCodeInfoDtl">
+		UPDATE TWORK_MST_CTCD_DT
+		   SET CTCD_DTORDER  = #{ctcd_dtorder}
+			  ,CTCD_DTNAME   = #{ctcd_dtname}
+		   	  ,CTCD_DTVALUE  = #{ctcd_dtvalue}
+		   	  ,COMMENTS 	 = #{comments}
+			  ,UPDATEDATE    = #{sysdate}
+			  ,UPDATEURKEY   = #{surkey}
+		 WHERE CTCD_HDKEY    = #{ctcd_hdkey}
+		    AND CTKEY   	 = #{ctkey}
+		 	AND CTCD_DTKEY   = #{ctcd_dtkey}
+		 	AND LAKEY        = #{lakey}
+	</update>
+	
+	<delete id="deleteCenterCodeInfoHd">
+		DELETE 
+		  FROM 	TWORK_MST_CTCD_HD
+		 WHERE 	CTKEY = #{ctkey}
+		   AND	CTCD_HDKEY = #{ctcd_hdkey}
+	</delete>
+		
+	<delete id="deleteCenterCodeInfoDtl">
+		DELETE 
+		  FROM 	TWORK_MST_CTCD_DT
+		 WHERE 	CTKEY = #{ctkey}
+		   AND	CTCD_HDKEY = #{ctcd_hdkey}
+		<if test="ctcd_dtkey != null">
+		   AND 	CTCD_DTKEY = #{ctcd_dtkey}
+		</if>
+		<if test="lakey != null">
+	  	   AND 	LAKEY = #{lakey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTCD_DTNAME)">
+		   AND 	CTCD_DTNAME = #{ctcd_dtname}
+		</if>				 
+	</delete>
+		
+</mapper>
+	

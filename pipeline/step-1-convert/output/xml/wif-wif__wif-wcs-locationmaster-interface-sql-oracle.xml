@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.wcs.locationmaster.mapper.LocationMasterMapper">
+	<select id="getWcsLocMstSyncSeq" resultType="camelMap">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - getWcsLocMstSyncSeq - 로케이션마스터 I/F Sequence 조회 SQL */
+		SELECT nextval('seq_twif_wcs_locmst_sync') AS WCS_SEQ
+	</select>
+
+	<insert id="insertLocationMaster">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - insertLocationMaster - 로케이션마스터 등록 SQL */
+		INSERT INTO TWIF_WCS_LOCMST_SYNC
+		(
+			WCSSEQ
+			, IFCD
+			, CTKEY
+			, OWKEY
+			, TOTLOCDELYN
+			, LCKEY
+			, ARKEY
+			, ICKEY
+			, ICBRCD
+			, PAKBRCD
+			, CTNBRCD
+			, ICNM
+			, DELYN
+			, WIFIFID
+			, IFID
+			, IFREQDT
+			, IFTYPE
+			, IFSRCMODULE
+			, IFTGTMODULE
+			, IFSTATUS
+			, IFERRCD
+			, IFERRMSG
+			, IFPRCSDATE
+			, ORD
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES(
+			#{wcsSeq}
+			,#{ifCd}
+			,#{ctKey}
+			,#{owKey}
+			,#{totLocDelYn}
+			,#{lcKey}
+			,#{arKey}
+			,#{icKey}
+			,#{icBrcd}
+			,#{pakBrcd}
+			,#{ctnBrcd}
+			,#{icNm}
+			,#{delYn}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<update id="updateInterfaceStatusWcsResult" parameterType="map">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - updateInterfaceStatusWcsResult - WCS Interface Result UPDATE SQL */
+		UPDATE ${tableName}
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WCSSEQ 		= #{wcsSeq}
+	</update>
+
+</mapper>

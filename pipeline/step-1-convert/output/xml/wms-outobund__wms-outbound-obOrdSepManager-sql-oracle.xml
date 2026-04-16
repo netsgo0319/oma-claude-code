@@ -1,0 +1,1021 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObOrdSepManagerMapper">
+
+	<update id="updateObSepWorkTypeChg">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateObSepWorkTypeChg - WMS > 출고 관리 > 출고편집 > 작업유형 변경 처리 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WKTYPECD = (CASE #{towktypecd} WHEN 'RESET' THEN NULL ELSE #{towktypecd} END)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<insert id="insertObSepStg">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - insertObSepStg - WMS > 출고 관리 > 출고편집 > 자동분리 - 화면에서 설정한 주문 분리 전략 저장 */
+		INSERT INTO TWORK_INFO_ORD_SEP_TEMP
+		(
+			CTKEY
+			 , OWKEY
+			 , ORDSEPTEMPCD
+			 , ORDSEPCRITCD
+			 , ORDSEPPRI
+			 , QTY
+			 , QTYRNGCD
+			 , VOL
+			 , VOLRNGCD
+			 , WEIGHT
+			 , WEIGHTRNGCD
+			 , USEYN
+			 , ICKEY
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ordseptempcd}
+			, #{ordsepcritcd}
+			, #{ordseppri}
+			, #{qty}
+			, #{qtyrngcd}
+			, #{vol}
+			, #{volrngcd}
+			, #{weight}
+			, #{weightrngcd}
+			, 'Y'
+			, #{ickey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="callSpOrdSep" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - callSpOrdSep - WMS > 출고 관리 > 출고편집 > 자동분리 */
+		{
+			  CALL SP_OB_SEP(
+					#{ctkey,mode=IN,jdbcType=VARCHAR}
+					, #{owkey,mode=IN,jdbcType=VARCHAR}
+					, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+					, #{ordseptempcd,mode=IN,jdbcType=VARCHAR}
+					, #{surkey,mode=IN,jdbcType=VARCHAR}
+					, #{slakey,mode=IN,jdbcType=VARCHAR}
+					, #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+					, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+				)
+		}
+	</update>
+
+	<select id="selectObAbsSepUpProc" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObAbsSepUpProc - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 병합 처리 - 업데이트할 대상 조회 */
+		WITH OB_DT AS (
+			SELECT OD.CTKEY /*센터코드*/
+				 , OD.OWKEY /*화주코드*/
+				 , OD.OBHDKEY /*릴리즈코드*/
+				 , OD.OBDTKEY /*릴리즈상세코드*/
+				 , OD.ICKEY /*상품코드*/
+				 , OD.OBDTSTATUSCD /*출고상세상태코드*/
+				 , OD.ICUNITKEY /*물품단위코드*/
+				 , OD.UOM /*상품단위유형*/
+				 , OD.INITQTY /*초기수량*/
+				 , OD.EXPCTQTY /*예정수량*/
+				 , OD.ALQTY /*할당수량*/
+				 , OD.PKISTQTY /*피킹지시수량*/
+				 , OD.PKQTY /*피킹수량*/
+				 , OD.CLASSIFSQTY /*분류수량*/
+				 , OD.PAKQTY /*패킹수량*/
+				 , OD.CNFRMQTY /*확정수량*/
+				 , OD.OBCNFRMDATE /*출고확정일시*/
+				 , OD.OBCONFIRMURKEY /*출고확정자*/
+				 , OD.OBORDKEY /*오더코드*/
+				 , OD.OBORDDTKEY /*오더상세코드*/
+				 , OD.ORHDKEY /*주문공통코드*/
+				 , OD.ORDTKEY /*주문상세코드*/
+				 , OD.EXTERNORDERKEY /*외부주문번호*/
+				 , OD.EXTERNORDERLINENUM /*외부주문상세코드*/
+			  FROM TWORK_INFO_OB_HD OH
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 WHERE
+		<choose>
+			<when test="list != null and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+					( OH.CTKEY = #{item.ctkey}
+						AND OH.OWKEY = #{item.owkey}
+						AND	OH.OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+				   1 = 2
+		   </otherwise>
+		</choose>
+			   AND OH.OBSTATUSCD = '00'
+			   AND OH.WAHDKEY IS NULL
+		), OBHDKEY AS (
+			SELECT CTKEY
+				 , OWKEY
+				 , MIN(OBHDKEY) AS OBHDKEY
+			  FROM OB_DT
+			 GROUP BY
+			 	   CTKEY
+				 , OWKEY
+		), OBDTKEY AS (
+			SELECT DT.CTKEY
+				 , DT.OWKEY
+				 , CAST(MAX(DT.OBDTKEY) AS INTEGER) + 10 AS OBDTKEY
+			  FROM OBHDKEY HD
+			 INNER JOIN TWORK_INFO_OB_DT DT
+			    ON HD.CTKEY = DT.CTKEY
+			   AND HD.OWKEY = DT.OWKEY
+			   AND HD.OBHDKEY = DT.OBHDKEY
+			 GROUP BY
+			 	   DT.CTKEY
+				 , DT.OWKEY
+		)
+		SELECT OD.CTKEY /*센터코드*/
+			   , OD.OWKEY /*화주코드*/
+			   , HDKEY.OBHDKEY /*릴리즈코드*/
+			   , DTKEY.OBDTKEY /*릴리즈상세코드*/
+			   , OD.ICKEY /*상품코드*/
+			   , OD.OBDTSTATUSCD /*출고상세상태코드*/
+			   , OD.ICUNITKEY /*물품단위코드*/
+			   , OD.UOM /*상품단위유형*/
+			   , SUM(OD.INITQTY) AS INITQTY /*초기수량*/
+			   , SUM(OD.EXPCTQTY) AS EXPCTQTY /*예정수량*/
+			   , OD.ALQTY /*할당수량*/
+			   , OD.PKISTQTY /*피킹지시수량*/
+			   , OD.PKQTY /*피킹수량*/
+			   , OD.CLASSIFSQTY /*분류수량*/
+			   , OD.PAKQTY /*패킹수량*/
+			   , OD.CNFRMQTY /*확정수량*/
+			   , OD.OBCNFRMDATE /*출고확정일시*/
+			   , OD.OBCONFIRMURKEY /*출고확정자*/
+			   , OD.OBORDKEY /*오더코드*/
+			   , OD.OBORDDTKEY /*오더상세코드*/
+			   , OD.ORHDKEY /*주문공통코드*/
+			   , OD.ORDTKEY /*주문상세코드*/
+			   , OD.EXTERNORDERKEY /*외부주문번호*/
+			   , OD.EXTERNORDERLINENUM /*외부주문상세코드*/
+		  FROM OB_DT OD
+		 INNER JOIN OBHDKEY HDKEY
+		    ON OD.CTKEY = HDKEY.CTKEY
+		   AND OD.OWKEY = HDKEY.OWKEY
+		 INNER JOIN OBDTKEY DTKEY
+		    ON OD.CTKEY = DTKEY.CTKEY
+		   AND OD.OWKEY = DTKEY.OWKEY
+		 GROUP BY
+		 	   OD.CTKEY /*센터코드*/
+			   , OD.OWKEY /*화주코드*/
+			   , HDKEY.OBHDKEY /*릴리즈코드*/
+			   , DTKEY.OBDTKEY /*릴리즈상세코드*/
+			   , OD.ICKEY /*상품코드*/
+			   , OD.OBDTSTATUSCD /*출고상세상태코드*/
+			   , OD.ICUNITKEY /*물품단위코드*/
+			   , OD.UOM /*상품단위유형*/
+			   , OD.ALQTY /*할당수량*/
+			   , OD.PKISTQTY /*피킹지시수량*/
+			   , OD.PKQTY /*피킹수량*/
+			   , OD.CLASSIFSQTY /*분류수량*/
+			   , OD.PAKQTY /*패킹수량*/
+			   , OD.CNFRMQTY /*확정수량*/
+			   , OD.OBCNFRMDATE /*출고확정일시*/
+			   , OD.OBCONFIRMURKEY /*출고확정자*/
+			   , OD.OBORDKEY /*오더코드*/
+			   , OD.OBORDDTKEY /*오더상세코드*/
+			   , OD.ORHDKEY /*주문공통코드*/
+			   , OD.ORDTKEY /*주문상세코드*/
+			   , OD.EXTERNORDERKEY /*외부주문번호*/
+			   , OD.EXTERNORDERLINENUM /*외부주문상세코드*/
+	</select>
+
+	<update id="updateObAbsSepObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateObAbsSepObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 병합 처리 - 출고 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET INITQTY = #{expctqty}
+			 , EXPCTQTY = #{expctqty}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND ICKEY = #{ickey}
+	</update>
+
+	<delete id="deleteObAbsSepObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObAbsSepObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 병합 처리 - 출고 상세 삭제 */
+			DELETE FROM TWORK_INFO_OB_DT
+			 WHERE
+		<choose>
+			<when test="list != null and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+					( CTKEY = #{item.ctkey}
+						AND OWKEY = #{item.owkey}
+						AND	OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+				   1 = 2
+		   </otherwise>
+		</choose>
+			   AND OBDTSTATUSCD = '00'
+			   AND OBHDKEY NOT IN (#{obhdkey})
+	</delete>
+
+	<delete id="deleteObAbsSepObHd">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObAbsSepObHd - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 병합 처리 - 삭제한 릴리즈 상세의 헤더 삭제 */
+			DELETE FROM TWORK_INFO_OB_HD
+			 WHERE
+		<choose>
+			<when test="list != null and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+					( CTKEY = #{item.ctkey}
+						AND OWKEY = #{item.owkey}
+						AND	OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+				   1 = 2
+		   </otherwise>
+		</choose>
+			   AND OBSTATUSCD = '00'
+			   AND OBHDKEY NOT IN (#{obhdkey})
+	</delete>
+
+	<select id="selectObManualSepProcObDt" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObManualSepProcObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 신규 릴리즈 주문 상세 생성을 위한 릴리즈 주문 상세 정보 조회 */
+		SELECT CTKEY /*센터코드*/
+			 , OWKEY /*화주코드*/
+			 , '' AS OBHDKEY /*릴리즈코드*/
+			 , '' AS OBDTKEY /*릴리즈상세코드*/
+			 , ICKEY /*상품코드*/
+			 , OBDTSTATUSCD /*출고상세상태코드*/
+			 , ICUNITKEY /*물품단위코드*/
+			 , UOM /*상품단위유형*/
+			 , (CASE WHEN EXPCTQTY = #{sepqty} THEN INITQTY ELSE CAST(#{sepqty} AS NUMERIC) END) AS INITQTY /*초기수량*/
+			 , #{sepqty} AS EXPCTQTY /*예정수량*/
+			 , (CASE ALQTY WHEN 0 THEN 0 ELSE CAST(#{sepqty} AS NUMERIC) END) AS ALQTY /*할당수량*/
+			 , (CASE PKISTQTY WHEN 0 THEN 0 ELSE CAST(#{sepqty} AS NUMERIC) END) AS PKISTQTY /*피킹지시수량*/
+		     , (CASE WHEN PKQTY = 0 THEN 0
+                        WHEN (EXPCTQTY - #{sepqty}) >= PKQTY THEN 0
+                        ELSE PKQTY - (EXPCTQTY - #{sepqty})
+                        END) AS PKQTY /*피킹수량*/
+			 , (CASE WHEN CLASSIFSQTY = 0 THEN 0
+						WHEN (EXPCTQTY - #{sepqty}) >= CLASSIFSQTY THEN 0
+						ELSE CLASSIFSQTY - (EXPCTQTY - #{sepqty})
+						END) AS CLASSIFSQTY /*분류수량*/
+			 , 0 AS PAKQTY /*패킹수량*/
+			 , 0 AS CNFRMQTY /*확정수량*/
+<!--			 , (CASE PAKQTY WHEN 0 THEN 0 ELSE TO_NUMBER(#{sepqty}) END) AS PAKQTY /*패킹수량*/-->
+<!--			 , (CASE CNFRMQTY WHEN 0 THEN 0 ELSE TO_NUMBER(#{sepqty}) END) AS CNFRMQTY /*확정수량*/-->
+			 , '' AS OBCNFRMDATE /*출고확정일시*/
+			 , '' AS OBCONFIRMURKEY /*출고확정자*/
+			 , OBORDKEY /*오더코드*/
+			 , OBORDDTKEY /*오더상세코드*/
+			 , ORHDKEY /*주문공통코드*/
+			 , ORDTKEY /*주문상세코드*/
+			 , EXTERNORDERKEY /*외부주문번호*/
+			 , EXTERNORDERLINENUM /*외부주문상세코드*/
+			 , INSERTDATE /*입력일시*/
+			 , INSERTURKEY /*입력자*/
+			 , UPDATEDATE /*수정일시*/
+			 , UPDATEURKEY /*수정자*/
+			 , EXPCTQTY AS OLD_EXPCTQTY
+			 , OBHDKEY AS OLD_OBHDKEY
+		  FROM TWORK_INFO_OB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</select>
+
+	<update id="updateObManualSepOrgObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateObManualSepOrgObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 기존 릴리즈 상세 수량 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET INITQTY = INITQTY - #{sepqty}
+			 , EXPCTQTY = EXPCTQTY - #{sepqty}
+			 , ALQTY = (CASE ALQTY WHEN 0 THEN 0 ELSE ALQTY - #{sepqty} END)
+			 , PKISTQTY = (CASE PKISTQTY WHEN 0 THEN 0 ELSE PKISTQTY - #{sepqty} END)
+			 , PKQTY = (CASE WHEN PKQTY = 0 THEN 0
+							 WHEN (EXPCTQTY - #{sepqty}) >= PKQTY THEN PKQTY
+							 ELSE EXPCTQTY - #{sepqty}
+						END)
+			 , CLASSIFSQTY = (CASE WHEN CLASSIFSQTY = 0 THEN 0
+									WHEN (EXPCTQTY - #{sepqty}) >= CLASSIFSQTY THEN CLASSIFSQTY
+									ELSE EXPCTQTY - #{sepqty}
+								END)
+<!--			 , PAKQTY = (CASE PAKQTY WHEN 0 THEN 0 ELSE PAKQTY - #{sepqty} END)-->
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<delete id="deleteObManualSepOrgObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObManualSepOrgObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 기존 릴리즈 상세 삭제 */
+		DELETE FROM TWORK_INFO_OB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</delete>
+
+	<select id="selectObManualSepProcObHd" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObManualSepProcObHd - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 신규 릴리즈 주문 헤더 생성을 위한 릴리즈 주문 헤더 정보 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , #{obhdkey} AS OBHDKEY /*릴리즈코드*/
+			 , OH.OBHDTYPECD /*출고헤더유형코드*/
+			 , OH.OBHDDAY /*출고헤더일자*/
+			 , OH.OBREQDATE /*출고요청일시*/
+			 , '' AS OBCNFRMDATE /*출고확정일시*/
+			 , OH.OBWKDATE /*출고 작업 일시*/
+			 , OH.OBSTATUSCD /*출고상태코드*/
+			 , (CASE OH.OBSTATUSCD WHEN '00' THEN NULL ELSE OH.WKTYPECD END) AS WKTYPECD /*작업유형코드*/
+			 , OH.DLVYTYPECD /*배송유형코드*/
+			 , OH.DLVYFORMCD /*배송형태코드*/
+			 , OH.NISCNLRNGCD /*결품취소범위코드*/
+			 , OH.ORDNM /*주문자명*/
+			 , OH.RCPPRSNNM /*수령인명*/
+			 , OH.RCPPRSNTELNO /*수령인전화번호*/
+			 , OH.RCPPRSNTELNO2 /*수령인전화번호2*/
+			 , OH.RCPPRSNZIPCD /*수령인우편번호*/
+			 , OH.RCPPRSNADDR1 /*수령인주소1*/
+			 , OH.RCPPRSNADDR2 /*수령인주소2*/
+			 , OH.DLVYMSG /*배송메시지*/
+			 , OH.CHNLID /*채널아이디*/
+			 , OH.ACKEY /*거래처코드*/
+			 , OH.ACNM /*거래처명*/
+			 , OH.CNTRYCD /*국가코드*/
+			 , OH.STATE /*도*/
+			 , OH.CTY /*도시*/
+			 , '' AS DLVRYCORPCD /*택배사코드*/
+			 , '' AS WBLNO /*운송장번호*/
+			 , '00' AS DLVRYPRGRSTATUSCD /*택배진행상태코드*/
+			 , NULL AS CBM /*체적*/
+			 , NULL AS WEIGHT /*중량*/
+			 , NULL AS ORDSEPTYPECD /*주문분리유형코드*/
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)'>
+			 , #{ordsepcritcd} AS ORDSEPCRITCD /*주문분리기준코드*/
+			</when>
+			<otherwise>
+			 , OH.ORDSEPCRITCD /*주문분리기준코드*/
+			</otherwise>
+		</choose>
+			 , OH.ORDSEPCRITVAL /*주문분리기준값*/
+			 , OH.ORDSEPURKEY /*주문분리자*/
+			 , OH.ORDSEPDATE /*주문분리일시*/
+			 , OH.ORDSEPSTRGCD /*주문분리전략코드*/
+			 , OH.RECOMBOXBARCODE /*추천박스바코드*/
+			 , OH.PCKGBOXBARCODE /*포장박스바코드*/
+			 , OH.CLASSIFSPECCD /*분류규격코드*/
+			 , OH.DASSTNBARCODE /*DAS스테이션바코드*/
+			 , OH.DASCELLBARCODE  /*DAS셀바코드*/
+			 , OH.CLASSIFCNTRBARCODE /*분류용기바코드*/
+			 , OH.TOCTKEY /*TO센터코드*/
+			 , OH.STOREKEY /*점포코드*/
+			 , OH.IBHDKEY /*입고공통코드*/
+			 , OH.OBORDKEY /*오더코드*/
+			 , OH.ORHDKEY /*주문공통코드*/
+			 , OH.EXTERNORDERKEY /*외부주문번호*/
+			 , (CASE OH.OBSTATUSCD WHEN '00' THEN #{orgobhdkey} ELSE '' END) /*원릴리즈코드*/ AS ORGOBHDKEY /*원릴리즈코드*/
+			 , OH.PKOBHDKEY /*피킹릴리즈코드*/
+			 , OH.CMT /*비고*/
+			 , OH.PCKGBOXTYPECD /*포장박스유형코드*/
+			 , OH.PKCNTRDIVCD /*피킹용기구분*/
+			 , OH.PKTOTEQTY /*피킹토트수량*/
+			 , OH.PCKGFLRCD /*포장층코드*/
+			 , OH.INSERTDATE /*입력일시*/
+			 , OH.INSERTURKEY /*입력자*/
+			 , OH.UPDATEDATE /*수정일시*/
+			 , OH.UPDATEURKEY /*수정자*/
+			 , OH.WAHDKEY /*웨이브공통코드*/
+			 , '' AS PIHDKEY /*피킹헤더코드*/
+			 , (CASE OH.OBSTATUSCD WHEN '00' THEN '' ELSE #{preobhdkey} END) AS PREOBHDKEY
+		  FROM TWORK_INFO_OB_HD OH
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{orgobhdkey}
+	</select>
+
+	<select id="selectObManualSepProcObDtCnt" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObManualSepProcObDtCnt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 신규 릴리즈 주문 상세 생성을 위한 릴리즈 주문 헤더 정보 조회 */
+		SELECT COUNT(*) AS CNT
+		  FROM TWORK_INFO_OB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{orgobhdkey}
+	</select>
+
+	<delete id="deleteObManualSepOrgObHd">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObManualSepOrgObHd - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 처리 - 기존 릴리즈 헤더 삭제 */
+		DELETE FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{orgobhdkey}
+	</delete>
+
+	<select id="selectObCreateProcObHd" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObCreateProcObHd - WMS > 출고 관리 > 원 출고주문 기반으로 릴리즈 주문 생성 - 릴리즈 주문 헤더 생성을 위한 원 출고주문 헤더 정보 조회 */
+		SELECT ORH.CTKEY /*센터코드*/
+			 , ORH.OWKEY /*화주코드*/
+			 , '' AS OBHDKEY /*릴리즈코드*/
+			 , ORH.OBHDTYPECD /*출고헤더유형코드*/
+			 , ORH.OBHDDAY /*출고헤더일자*/
+			 , ORH.OBREQDATE /*출고요청일시*/
+			 , ORH.OBCNFRMDATE /*출고확정일시*/
+			 , '00' AS OBSTATUSCD /*출고상태코드*/
+			 , NULL AS WKTYPECD /*작업유형코드*/
+			 , ORH.DLVYTYPECD /*배송유형코드*/
+			 , ORH.DLVYFORMCD /*배송형태코드*/
+			 , ORH.NISCNLRNGCD /*결품취소범위코드*/
+			 , ORH.ORDNM /*주문자명*/
+			 , ORH.RCPPRSNNM /*수령인명*/
+			 , ORH.RCPPRSNTELNO /*수령인전화번호*/
+			 , ORH.RCPPRSNTELNO2 /*수령인전화번호2*/
+			 , ORH.RCPPRSNZIPCD /*수령인우편번호*/
+			 , ORH.RCPPRSNADDR1 /*수령인주소1*/
+			 , ORH.RCPPRSNADDR2 /*수령인주소2*/
+			 , ORH.DLVYMSG /*배송메시지*/
+			 , ORH.CHNLID /*채널아이디*/
+			 , ORH.ACKEY /*거래처코드*/
+			 , ORH.ACNM /*거래처명*/
+			 , ORH.CNTRYCD /*국가코드*/
+			 , ORH.STATE /*도*/
+			 , ORH.CTY /*도시*/
+			 , ORH.DLVRYCORPCD /*택배사코드*/
+			 , '' AS WBLNO /*운송장번호*/
+			 , '00' AS DLVRYPRGRSTATUSCD /*택배진행상태코드*/
+			 , NULL CBM /*체적*/
+			 , NULL WEIGHT /*중량*/
+			 , NULL AS ORDSEPTYPECD /*주문분리유형코드*/
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)'>
+			 , #{ordsepcritcd} AS ORDSEPCRITCD /*주문분리기준코드*/
+			</when>
+			<otherwise>
+			 , '' AS ORDSEPCRITCD /*주문분리기준코드*/
+			</otherwise>
+		</choose>
+			 , '' AS ORDSEPCRITVAL /*주문분리기준값*/
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)'>
+			 , #{surkey} AS ORDSEPURKEY /*주문분리자*/
+			 , #{sysdate} AS ORDSEPDATE /*주문분리일시*/
+			</when>
+			<otherwise>
+			 , '' AS ORDSEPURKEY /*주문분리자*/
+			 , '' AS ORDSEPDATE /*주문분리일시*/
+			</otherwise>
+		</choose>
+			 , '' AS ORDSEPSTRGCD /*주문분리전략코드*/
+			 , '' AS RECOMBOXBARCODE /*추천박스바코드*/
+			 , '' AS PCKGBOXBARCODE /*포장박스바코드*/
+			 , '' AS CLASSIFSPECCD /*분류규격코드*/
+			 , '' AS DASSTNBARCODE /*DAS스테이션바코드*/
+			 , '' AS DASCELLBARCODE  /*DAS셀바코드*/
+			 , '' AS CLASSIFCNTRBARCODE /*분류용기바코드*/
+			 , ORH.TOCTKEY /*TO센터코드*/
+			 , ORH.STOREKEY /*점포코드*/
+			 , ORH.IBHDKEY /*입고공통코드*/
+			 , ORH.OBORDKEY /*오더코드*/
+			 , ORH.ORHDKEY /*주문공통코드*/
+			 , ORH.EXTERNORDERKEY /*외부주문번호*/
+			 , '' AS ORGOBHDKEY /*원릴리즈코드*/
+			 , '' AS PKOBHDKEY /*피킹릴리즈코드*/
+			 , ORH.CMT /*비고*/
+			 , '' AS PCKGBOXTYPECD /*포장박스유형코드*/
+			 , '' AS PKCNTRDIVCD /*피킹용기구분*/
+			 , '' AS PKTOTEQTY /*피킹토트수량*/
+			 , '' AS PCKGFLRCD /*포장층코드*/
+			 , ORH.INSERTDATE /*입력일시*/
+			 , ORH.INSERTURKEY /*입력자*/
+			 , ORH.UPDATEDATE /*수정일시*/
+			 , ORH.UPDATEURKEY /*수정자*/
+			 , '' AS WAHDKEY /*웨이브공통코드*/
+			 , '' AS PREOBHDKEY /*이전릴리즈코드*/
+		  FROM TWORK_INFO_OB_ORD_HD ORH
+		 WHERE ORH.CTKEY = #{ctkey}
+		   AND ORH.OWKEY = #{owkey}
+		   AND ORH.OBORDKEY = #{obordkey}
+	</select>
+
+	<select id="selectObCreateProcObDt" resultType="camelMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObCreateProcObDt - WMS > 출고 관리 > 원 출고주문 기반으로 릴리즈 주문 생성 - 릴리즈 주문 상세 생성을 위한 출고주문 상세 정보 조회 */
+		SELECT ORD.CTKEY /*센터코드*/
+			 , ORD.OWKEY /*화주코드*/
+			 , '' AS OBHDKEY /*릴리즈코드*/
+			 , ORD.OBORDDTKEY AS OBDTKEY /*릴리즈상세코드*/
+			 , ORD.ICKEY /*상품코드*/
+			 , '00' AS OBDTSTATUSCD /*출고상세상태코드*/
+			 , ORD.ICUNITKEY /*물품단위코드*/
+			 , ORD.UOM /*상품단위유형*/
+			 , ORD.INITQTY /*초기수량*/
+			 , ORD.EXPCTQTY /*예정수량*/
+			 , 0 AS ALQTY /*할당수량*/
+			 , 0 AS PKISTQTY /*피킹지시수량*/
+			 , 0 AS PKQTY /*피킹수량*/
+			 , 0 AS CLASSIFSQTY /*분류수량*/
+			 , 0 AS PAKQTY /*패킹수량*/
+			 , 0 AS CNFRMQTY /*확정수량*/
+			 , '' AS OBCNFRMDATE /*출고확정일시*/
+			 , '' AS OBCONFIRMURKEY /*출고확정자*/
+			 , ORD.OBORDKEY /*오더코드*/
+			 , ORD.OBORDDTKEY /*오더상세코드*/
+			 , ORD.ORHDKEY /*주문공통코드*/
+			 , ORD.ORDTKEY /*주문상세코드*/
+			 , ORD.EXTERNORDERKEY /*외부주문번호*/
+			 , ORD.EXTERNORDERLINENUM /*외부주문상세코드*/
+			 , ORD.INSERTDATE /*입력일시*/
+			 , ORD.INSERTURKEY /*입력자*/
+			 , ORD.UPDATEDATE /*수정일시*/
+			 , ORD.UPDATEURKEY /*수정자*/
+		  FROM TWORK_INFO_OB_ORD_HD ORH
+		 INNER JOIN TWORK_INFO_OB_ORD_DT ORD
+		    ON ORH.CTKEY = ORD.CTKEY
+		   AND ORH.OWKEY = ORD.OWKEY
+		   AND ORH.OBORDKEY = ORD.OBORDKEY
+		 WHERE ORH.CTKEY = #{ctkey}
+		   AND ORH.OWKEY = #{owkey}
+		   AND ORH.OBORDKEY = #{obordkey}
+		 ORDER BY ORH.OBORDKEY, CAST(ORD.OBORDDTKEY AS NUMERIC)
+	</select>
+
+	<insert id="insertObCreateProcObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - insertObCreateProcObDt - WMS > 출고 관리 > 원 출고주문 기반으로 릴리즈 주문 생성 - 릴리즈 주문 상세 생성 */
+		INSERT INTO TWORK_INFO_OB_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, OBDTKEY /*릴리즈상세코드*/
+			, ICKEY /*상품코드*/
+			, OBDTSTATUSCD /*출고상세상태코드*/
+			, ICUNITKEY /*물품단위코드*/
+			, UOM /*상품단위유형*/
+			, INITQTY /*초기수량*/
+			, EXPCTQTY /*예정수량*/
+			, ALQTY /*할당수량*/
+			, PKISTQTY /*피킹지시수량*/
+			, PKQTY /*피킹수량*/
+			, CLASSIFSQTY /*분류수량*/
+			, PAKQTY /*패킹수량*/
+			, CNFRMQTY /*확정수량*/
+			, OBCNFRMDATE /*출고확정일시*/
+			, OBCONFIRMURKEY /*출고확정자*/
+			, OBORDKEY /*오더코드*/
+			, OBORDDTKEY /*오더상세코드*/
+			, ORHDKEY /*주문공통코드*/
+			, ORDTKEY /*주문상세코드*/
+			, EXTERNORDERKEY /*외부주문번호*/
+			, EXTERNORDERLINENUM /*외부주문상세코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{obdtkey} /*릴리즈상세코드*/
+			, #{ickey} /*상품코드*/
+			, #{obdtstatuscd} /*출고상세상태코드*/
+			, #{icunitkey} /*물품단위코드*/
+			, #{uom} /*상품단위유형*/
+			, #{initqty} /*초기수량*/
+			, #{expctqty} /*예정수량*/
+			, #{alqty} /*할당수량*/
+			, #{pkistqty} /*피킹지시수량*/
+			, #{pkqty} /*피킹수량*/
+			, #{classifsqty} /*분류수량*/
+			, #{pakqty} /*패킹수량*/
+			, #{cnfrmqty} /*확정수량*/
+			, #{obcnfrmdate} /*출고확정일시*/
+			, #{obconfirmurkey} /*출고확정자*/
+			, #{obordkey} /*오더코드*/
+			, #{oborddtkey} /*오더상세코드*/
+			, #{orhdkey} /*주문공통코드*/
+			, #{ordtkey} /*주문상세코드*/
+			, #{externorderkey} /*외부주문번호*/
+			, #{externorderlinenum} /*외부주문상세코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<insert id="insertCreateProcObHd">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - insertCreateProcObHd - WMS > 출고 관리 > 원 출고주문 기반으로 릴리즈 주문 생성 - 릴리즈 주문 헤더 생성 */
+		INSERT INTO TWORK_INFO_OB_HD
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, OBHDTYPECD /*출고헤더유형코드*/
+			, OBHDDAY /*출고헤더일자*/
+			, OBREQDATE /*출고요청일시*/
+			, OBCNFRMDATE /*출고확정일시*/
+			, OBWKDATE /*출고작업일시*/
+			, OBSTATUSCD /*출고상태코드*/
+			, WKTYPECD /*작업유형코드*/
+			, DLVYTYPECD /*배송유형코드*/
+			, DLVYFORMCD /*배송형태코드*/
+			, NISCNLRNGCD /*결품취소범위코드*/
+			, ORDNM /*주문자명*/
+			, RCPPRSNNM /*수령인명*/
+			, RCPPRSNTELNO /*수령인전화번호*/
+			, RCPPRSNTELNO2 /*수령인전화번호2*/
+			, RCPPRSNZIPCD /*수령인우편번호*/
+			, RCPPRSNADDR1 /*수령인주소1*/
+			, RCPPRSNADDR2 /*수령인주소2*/
+			, DLVYMSG /*배송메시지*/
+			, CHNLID /*채널아이디*/
+			, ACKEY /*거래처코드*/
+			, ACNM /*거래처명*/
+			, CNTRYCD /*국가코드*/
+			, STATE /*도*/
+			, CTY /*도시*/
+			, DLVRYCORPCD /*택배사코드*/
+			, WBLNO /*운송장번호*/
+			, DLVRYPRGRSTATUSCD /*택배진행상태코드*/
+			, CBM /*체적*/
+			, WEIGHT /*중량*/
+			, ORDSEPTYPECD /*주문분리유형코드*/
+			, ORDSEPCRITCD /*주문분리기준코드*/
+			, ORDSEPCRITVAL /*주문분리기준값*/
+			, ORDSEPURKEY /*주문분리자*/
+			, ORDSEPDATE /*주문분리일시*/
+			, ORDSEPSTRGCD /*주문분리전략코드*/
+			, RECOMBOXBARCODE /*추천박스바코드*/
+			, PCKGBOXBARCODE /*포장박스바코드*/
+			, CLASSIFSPECCD /*분류규격코드*/
+			, DASSTNBARCODE /*DAS스테이션바코드*/
+			, DASCELLBARCODE  /*DAS셀바코드*/
+			, CLASSIFCNTRBARCODE /*분류용기바코드*/
+			, TOCTKEY /*TO센터코드*/
+			, STOREKEY /*점포코드*/
+			, IBHDKEY /*입고공통코드*/
+			, OBORDKEY /*오더코드*/
+			, ORHDKEY /*주문공통코드*/
+			, EXTERNORDERKEY /*외부주문번호*/
+			, ORGOBHDKEY /*원릴리즈코드*/
+			, CMT /*비고*/
+			, PCKGBOXTYPECD /*포장박스유형코드*/
+			, PKCNTRDIVCD /*피킹용기구분*/
+			, PKTOTEQTY /*피킹토트수량*/
+			, PCKGFLRCD /*포장층코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+			, WAHDKEY /*웨이브공통코드*/
+			, PIHDKEY /*피킹헤더코드*/
+			, PREOBHDKEY /*이전릴리즈코드*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{obhdtypecd} /*출고헤더유형코드*/
+			, #{obhdday} /*출고헤더일자*/
+			, #{obreqdate} /*출고요청일시*/
+			, #{obcnfrmdate} /*출고확정일시*/
+			, #{obwkdate} /*출고작업일시*/
+			, #{obstatuscd} /*출고상태코드*/
+			, #{wktypecd} /*작업유형코드*/
+			, #{dlvytypecd} /*배송유형코드*/
+			, #{dlvyformcd} /*배송형태코드*/
+			, #{niscnlrngcd} /*결품취소범위코드*/
+			, #{ordnm} /*주문자명*/
+			, #{rcpprsnnm} /*수령인명*/
+			, #{rcpprsntelno} /*수령인전화번호*/
+			, #{rcpprsntelno2} /*수령인전화번호2*/
+			, #{rcpprsnzipcd} /*수령인우편번호*/
+			, #{rcpprsnaddr1} /*수령인주소1*/
+			, #{rcpprsnaddr2} /*수령인주소2*/
+			, #{dlvymsg} /*배송메시지*/
+			, #{chnlid} /*채널아이디*/
+			, #{ackey} /*거래처코드*/
+			, #{acnm} /*거래처명*/
+			, #{cntrycd} /*국가코드*/
+			, #{state} /*도*/
+			, #{cty} /*도시*/
+			, '' /*택배사코드*/
+			, '' /*운송장번호*/
+			, '00' /*택배진행상태코드*/
+			, #{cbm} /*체적*/
+			, #{weight} /*중량*/
+			, #{ordseptypecd} /*주문분리유형코드*/
+			, #{ordsepcritcd} /*주문분리기준코드*/
+			, #{ordsepcritval} /*주문분리기준값*/
+			, #{ordsepurkey} /*주문분리자*/
+			, #{ordsepdate} /*주문분리일시*/
+			, #{ordsepstrgcd} /*주문분리전략코드*/
+			, #{recomboxbarcode} /*추천박스바코드*/
+			, #{pckgboxbarcode} /*포장박스바코드*/
+			, #{classifspeccd} /*분류규격코드*/
+			, #{dasstnbarcode} /*DAS스테이션바코드*/
+			, #{dascellbarcode}  /*DAS셀바코드*/
+			, #{classifcntrbarcode} /*분류용기바코드*/
+			, #{toctkey} /*TO센터코드*/
+			, #{storekey} /*점포코드*/
+			, #{ibhdkey} /*입고공통코드*/
+			, #{obordkey} /*오더코드*/
+			, #{orhdkey} /*주문공통코드*/
+			, #{externorderkey} /*외부주문번호*/
+			, (CASE #{obstatuscd} WHEN '00' THEN #{orgobhdkey} ELSE '' END) /*원릴리즈코드*/
+			, #{cmt} /*비고*/
+			, #{pckgboxtypecd} /*포장박스유형코드*/
+			, #{pkcntrdivcd} /*피킹용기구분*/
+			, #{pktoteqty} /*피킹토트수량*/
+			, #{pckgflrcd} /*포장층코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+			, #{wahdkey} /*웨이브공통코드*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, (CASE #{obstatuscd} WHEN '00' THEN '' ELSE #{preobhdkey} END) /*이전릴리즈코드*/
+		)
+	</insert>
+
+	<update id="callObRecomBoxBarcode" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - callObRecomBoxBarcode - WMS > 출고 관리 > 출고편집 > 추천 박스바코드 */
+		{
+			  CALL SP_GET_RECOM_BOX_BARCODE(
+					#{ctkey,mode=IN,jdbcType=VARCHAR}
+					, #{owkey,mode=IN,jdbcType=VARCHAR}
+					, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+					, #{recomboxbarcode,mode=OUT,jdbcType=VARCHAR}
+				)
+		}
+	</update>
+
+	<update id="updateRecomBoxbarCode">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateRecomBoxbarCode - WMS > 출고 관리 > 출고편집 > 릴리즈 헤더에 추천박스 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET RECOMBOXBARCODE = #{recomboxbarcode} /*추천 박스 바코드*/
+		     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') /*수정일시*/
+		     , UPDATEURKEY = #{surkey} /*수정자*/
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="callSpObDtInsert" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - callSpObDtInsert */
+		{
+			CALL SP_OB_DT_INSERT(
+				#{ctkey,mode=IN,jdbcType=VARCHAR}
+				, #{owkey,mode=IN,jdbcType=VARCHAR}
+				, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+				, #{ickey,mode=IN,jdbcType=VARCHAR}
+				, #{obdtstatuscd,mode=IN,jdbcType=VARCHAR}
+				, #{icunitkey,mode=IN,jdbcType=VARCHAR}
+				, #{uom,mode=IN,jdbcType=VARCHAR}
+				, #{initqty,mode=IN,jdbcType=NUMERIC}
+				, #{expctqty,mode=IN,jdbcType=NUMERIC}
+				, #{alqty,mode=IN,jdbcType=NUMERIC} /*할당수량*/
+				, #{pkistqty,mode=IN,jdbcType=NUMERIC} /*피킹지시수량*/
+				, #{pkqty,mode=IN,jdbcType=NUMERIC} /*피킹수량*/
+				, #{classifsqty,mode=IN,jdbcType=NUMERIC} /*분류수량*/
+				, #{pakqty,mode=IN,jdbcType=NUMERIC} /*패킹수량*/
+				, #{cnfrmqty,mode=IN,jdbcType=NUMERIC} /*확정수량*/
+				, NULL /*출고확정일시*/
+				, NULL /*출고확정자*/
+				, #{obordkey,mode=IN,jdbcType=VARCHAR}
+				, #{oborddtkey,mode=IN,jdbcType=VARCHAR}
+				, #{orhdkey,mode=IN,jdbcType=VARCHAR}
+				, #{ordtkey,mode=IN,jdbcType=VARCHAR}
+				, #{externorderkey,mode=IN,jdbcType=VARCHAR}
+				, #{externorderlinenum,mode=IN,jdbcType=VARCHAR}
+				, #{sysdate,mode=IN,jdbcType=VARCHAR}
+				, #{surkey,mode=IN,jdbcType=VARCHAR}
+				, #{sysdate,mode=IN,jdbcType=VARCHAR}
+				, #{surkey,mode=IN,jdbcType=VARCHAR}
+				, #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+				, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+
+	<update id="callSpObHdInsert" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - callSpObHdInsert */
+		{
+			CALL SP_OB_HD_INSERT(
+				#{ctkey,mode=IN,jdbcType=VARCHAR} /*센터코드*/
+				, #{owkey,mode=IN,jdbcType=VARCHAR} /*화주코드*/
+				, #{obhdkey,mode=IN,jdbcType=VARCHAR} /*릴리즈코드*/
+				, #{obhdtypecd,mode=IN,jdbcType=VARCHAR} /*출고헤더유형코드*/
+				, #{obhdday,mode=IN,jdbcType=VARCHAR} /*출고헤더일자*/
+				, #{obreqdate,mode=IN,jdbcType=VARCHAR} /*출고요청일시*/
+				, #{obcnfrmdate,mode=IN,jdbcType=VARCHAR} /*출고확정일시*/
+				, #{obstatuscd,mode=IN,jdbcType=VARCHAR} /*출고상태*/
+				, #{wktypecd,mode=IN,jdbcType=VARCHAR} /*작업유형*/
+				, #{dlvytypecd,mode=IN,jdbcType=VARCHAR} /*배송유형코드*/
+				, #{dlvyformcd,mode=IN,jdbcType=VARCHAR} /*배송형태코드*/
+				, #{niscnlrngcd,mode=IN,jdbcType=VARCHAR} /*결품취소범위코드*/
+				, #{ordnm,mode=IN,jdbcType=VARCHAR} /*주문자명*/
+				, #{rcpprsnnm,mode=IN,jdbcType=VARCHAR} /*수령인명*/
+				, #{rcpprsntelno,mode=IN,jdbcType=VARCHAR} /*수령인전화번호*/
+				, #{rcpprsntelno2,mode=IN,jdbcType=VARCHAR} /*수령인전화번호2*/
+				, #{rcpprsnzipcd,mode=IN,jdbcType=VARCHAR} /*수령인우편번호*/
+				, #{rcpprsnaddr1,mode=IN,jdbcType=VARCHAR} /*수령인주소1*/
+				, #{rcpprsnaddr2,mode=IN,jdbcType=VARCHAR} /*수령인주소2*/
+				, #{dlvymsg,mode=IN,jdbcType=VARCHAR} /*배송메시지*/
+				, #{chnlid,mode=IN,jdbcType=VARCHAR} /*채널아이디*/
+				, #{ackey,mode=IN,jdbcType=VARCHAR} /*거래처코드*/
+				, #{acnm,mode=IN,jdbcType=VARCHAR} /*거래처명*/
+				, #{cntrycd,mode=IN,jdbcType=VARCHAR} /*국가코드*/
+				, #{state,mode=IN,jdbcType=VARCHAR} /*도*/
+				, #{cty,mode=IN,jdbcType=VARCHAR} /*도시*/
+				, #{dlvrycorpcd,mode=IN,jdbcType=VARCHAR} /*택배사코드*/
+				, #{wblno,mode=IN,jdbcType=VARCHAR} /*운송장번호*/
+				, #{dlvryprgrstatuscd,mode=IN,jdbcType=VARCHAR} /*택배진행상태코드*/
+				, #{ordsepcritcd,mode=IN,jdbcType=VARCHAR} /*주문분리기준코드*/
+				, #{ordsepcritval,mode=IN,jdbcType=VARCHAR} /*주문분리기준값*/
+				, #{ordsepurkey,mode=IN,jdbcType=VARCHAR} /*주문분리자*/
+				, #{ordsepdate,mode=IN,jdbcType=VARCHAR} /*주문분리일시*/
+				, #{ordsepstrgcd,mode=IN,jdbcType=VARCHAR} /*주문분리전략코드*/
+				, #{pckgboxbarcode,mode=IN,jdbcType=VARCHAR} /*포장박스바코드*/
+				, #{dasstnbarcode,mode=IN,jdbcType=VARCHAR} /*DAS스테이션바코드*/
+				, #{dascellbarcode,mode=IN,jdbcType=VARCHAR}  /*DAS셀바코드*/
+				, #{classifcntrbarcode,mode=IN,jdbcType=VARCHAR} /*분류용기바코드*/
+				, #{toctkey,mode=IN,jdbcType=VARCHAR} /*TO센터코드*/
+				, #{storekey,mode=IN,jdbcType=VARCHAR} /*점포코드*/
+				, #{ibhdkey,mode=IN,jdbcType=VARCHAR} /*입고공통코드*/
+				, #{obordkey,mode=IN,jdbcType=VARCHAR} /*오더코드*/
+				, #{orhdkey,mode=IN,jdbcType=VARCHAR} /*주문공통코드*/
+				, #{externorderkey,mode=IN,jdbcType=VARCHAR} /*외부주문번호*/
+				, #{orgobhdkey,mode=IN,jdbcType=VARCHAR} /*원릴리즈코드*/
+				, #{pkobhdkey,mode=IN,jdbcType=VARCHAR} /*피킹릴리즈코드*/
+				, #{preobhdkey,mode=IN,jdbcType=VARCHAR} /*이전릴리즈코드*/
+				, #{cmt,mode=IN,jdbcType=VARCHAR} /*비고*/
+				, #{pckgboxtypecd,mode=IN,jdbcType=VARCHAR} /*포장박스유형코드*/
+				, #{pkcntrdivcd,mode=IN,jdbcType=VARCHAR} /*피킹용기구분*/
+				, #{pktoteqty,mode=IN,jdbcType=VARCHAR} /*피킹토트수량*/
+				, #{pckgflrcd,mode=IN,jdbcType=VARCHAR} /*포장층코드*/
+				, #{sysdate,mode=IN,jdbcType=VARCHAR} /*입력일시*/
+				, #{surkey,mode=IN,jdbcType=VARCHAR} /*입력자*/
+				, #{sysdate,mode=IN,jdbcType=VARCHAR} /*수정일시*/
+				, #{surkey,mode=IN,jdbcType=VARCHAR} /*수정자*/
+				, #{wahdkey,mode=IN,jdbcType=VARCHAR} /*웨이브공통코드*/
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(recomboxyn)'>
+						, #{recomboxyn,mode=IN,jdbcType=VARCHAR}
+					</when>
+					<otherwise>
+						, 'N'
+					</otherwise>
+				</choose>
+				 , #{O_CODE,mode=OUT,jdbcType=VARCHAR}
+				 , #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+
+	<update id="callObDtSummry" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - callObDtSummry - WMS > 출고 관리 > 릴리즈 상세 SUMMARY */
+		{
+			  CALL SP_GET_OB_DT_SUMMARY(
+					#{ctkey,mode=IN,jdbcType=VARCHAR}
+					, #{owkey,mode=IN,jdbcType=VARCHAR}
+					, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+					, #{vol,mode=OUT,jdbcType=VARCHAR}
+					, #{weight,mode=OUT,jdbcType=VARCHAR}
+					, #{ordseptypecd,mode=OUT,jdbcType=VARCHAR}
+					, #{wktypecd,mode=OUT,jdbcType=VARCHAR}
+					, #{classifspeccd,mode=OUT,jdbcType=VARCHAR}
+				)
+		}
+	</update>
+
+	<update id="updateObSepObHdSummary">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateObSepObHdSummary - WMS > 출고 관리 > 릴리즈 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET ORDSEPTYPECD = #{ordseptypecd}
+			 , ORDSEPCRITCD = #{ordsepcritcd}
+			 , CLASSIFSPECCD = #{classifspeccd}
+			 , WKTYPECD = (CASE OBSTATUSCD WHEN '00' THEN NULL ELSE WKTYPECD END)
+			 , CBM = #{cbm}
+			 , WEIGHT = #{weight}
+			 , ORDSEPURKEY = #{surkey}
+			 , ORDSEPDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectObWkChgValidate" resultType="java.lang.Integer">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObWkChgValidate - WMS > 출고 관리 > 출고편집 > 작업유형변경 Validate */
+		SELECT
+			COUNT(1)
+		FROM TWORK_INFO_OB_HD OH
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+		AND OH.OBSTATUSCD = '00'
+		AND OH.WAHDKEY IS NULL
+		AND ( /*작업유형 변경불가*/
+				   (OH.ORDSEPTYPECD = '10' /*단포*/ AND #{towktypecd} = 'UW') /*UW:단포*/
+					OR (OH.ORDSEPTYPECD = '10' /*단포*/ AND #{towktypecd} = 'PW' AND
+									   (SELECT SUM(EXPCTQTY) AS EXPCTQTY
+										  FROM TWORK_INFO_OB_DT OD
+										 WHERE OD.CTKEY = OH.CTKEY
+										   AND OD.OWKEY = OH.OWKEY
+										   AND OD.OBHDKEY = OH.OBHDKEY)
+							<![CDATA[ >= ]]>
+									   (SELECT MAX(ICUTXCTN.ICUNITQTY) AS ICUNITQTY
+										  FROM TWORK_INFO_OB_DT OD
+										 INNER JOIN TWORK_MST_ICUTXTYPE ICUTXCTN
+											ON OD.CTKEY = ICUTXCTN.CTKEY
+										   AND OD.OWKEY = ICUTXCTN.OWKEY
+										   AND OD.ICKEY = ICUTXCTN.ICKEY
+										   AND OD.ICUNITKEY = ICUTXCTN.ICUNITKEY
+										   AND ICUTXCTN.ICUNITTYPECD = 'CTN'
+										 WHERE OD.CTKEY = OH.CTKEY
+										   AND OD.OWKEY = OH.OWKEY
+										   AND OD.OBHDKEY = OH.OBHDKEY) /*PW:덕용*/)
+					OR (OH.ORDSEPTYPECD = '20' /*DAS합포*/ AND #{towktypecd} = 'DW') /*DW:DAS작업*/
+					OR (OH.ORDSEPTYPECD = '30' /*로봇합포*/ AND #{towktypecd} = 'RW') /*RW:로봇작업*/
+					OR (OH.ORDSEPTYPECD = '30' /*로봇합포*/ AND #{towktypecd} = 'DW') /*DW:DAS작업*/
+					OR (OH.ORDSEPTYPECD = '40' /*혼합합포*/ AND (#{towktypecd} = 'RW' OR #{towktypecd} = 'DW'))
+					OR #{towktypecd} = 'RESET'
+					OR #{towktypecd} = 'TW1'
+					OR #{towktypecd} = 'TW2'
+					OR #{towktypecd} = 'TW3'
+					OR #{towktypecd} = 'TW4'/*RW:로봇작업, DW:DAS작업*/ /*RW:로봇작업, DW:DAS작업*/
+				    OR #{towktypecd} = 'TW5'
+				    OR #{towktypecd} = 'TW6'
+				    OR #{towktypecd} = 'TW7'
+				    OR #{towktypecd} = 'TW8'
+				    OR #{towktypecd} = 'TW9'
+				    OR #{towktypecd} = 'TW10'
+			)
+	</select>
+
+	<select id="selectObSepAutoValidate" resultType="java.lang.Integer">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObSepAutoValidate - WMS > 출고 관리 > 출고편집 > 자동분리 Validate */
+		SELECT
+			COUNT(1)
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBSTATUSCD = '00'
+		AND WAHDKEY IS NULL
+	</select>
+
+	<select id="selectObSepAbsValidate" resultType="java.lang.Integer">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - selectObSepAbsValidate - WMS > 출고 관리 > 출고편집 > 병합 Validate */
+		SELECT
+			COUNT(1)
+		FROM TWORK_INFO_OB_HD
+		WHERE
+		<choose>
+			<when test="list != null and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+					( CTKEY = #{item.ctkey}
+					AND OWKEY = #{item.owkey}
+					AND	OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+				   1 = 2
+		   </otherwise>
+		</choose>
+		AND OBSTATUSCD = '00'
+		AND WAHDKEY IS NULL
+	</select>
+
+	<update id="updateObWkDate">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - updateObWkDate - 작업일시 update */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBWKDATE = #{obwkdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+</mapper>

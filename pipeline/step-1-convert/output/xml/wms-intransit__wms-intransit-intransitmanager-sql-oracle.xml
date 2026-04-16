@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.intransit.mapper.IntransitManagerMapper">
+		
+	<select id="selectItIvHd" parameterType="intransitInvnHdVO" resultType="intransitInvnHdVO">
+		SELECT ITIV_HDKEY
+		    ,OWKEY
+		    ,FR_CTKEY
+		    ,TO_CTKEY
+		    ,WKSTATUS	
+		    ,ITIV_HDDATE
+		    ,LOGGRPCD
+		    ,OBHDTYPE	     
+		 FROM TWORK_INFO_ITIV_HD
+		WHERE ITIV_HDKEY=#{itiv_hdkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_ctkey)" >
+			AND FR_CTKEY = #{fr_ctkey}
+		</if>			
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_ctkey)" >
+			AND TO_CTKEY = #{to_ctkey}
+		</if>	
+	</select>
+	
+	<select id="selectItIvDtCheckList" parameterType="intransitInvnHdVO" resultType="intransitInvnDtVO">		
+		SELECT ITIV_HDKEY
+		    ,EXQTY
+		    ,CFQTY
+		    ,WKSTATUS
+		 FROM TWORK_INFO_ITIV_DT
+		WHERE CTKEY=#{fr_ctkey}
+			AND ITIV_HDKEY=#{itiv_hdkey}
+	</select>	
+
+	<update id="updateItIvHdWorkStatus" parameterType="intransitInvnHdVO">
+		UPDATE TWORK_INFO_ITIV_HD SET
+			WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE ITIV_HDKEY=#{itiv_hdkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_ctkey)" >
+			AND FR_CTKEY = #{fr_ctkey}
+		</if>			
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_ctkey)" >
+			AND TO_CTKEY = #{to_ctkey}
+		</if>			
+	</update>
+	
+	<insert id="insertItIvHd" parameterType="intransitInvnHdVO">
+		<![CDATA[
+		INSERT INTO TWORK_INFO_ITIV_HD (
+				ITIV_HDKEY        
+				,OWKEY      
+				,ITIV_HDDATE      
+				,FR_CTKEY
+				,TO_CTKEY   
+				,WKSTATUS 
+				,LOGGRPCD   
+				,OBHDTYPE
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY
+				,STORE_KEY
+				,ACKEY
+				,DCKEY
+				,ICGRKEY				
+			) VALUES (
+				 #{itiv_hdkey}
+				,#{owkey}
+				,#{itiv_hddate}
+				,#{fr_ctkey}
+				,#{to_ctkey}
+				,#{wkstatus}
+				,#{loggrpcd}
+				,#{obhdtype}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+		      	,#{store_key}
+		      	,#{ackey}
+		      	,#{dckey}
+		      	,#{icgrkey}		
+			)
+		]]>	
+	</insert>
+
+	<select id="selectExpectedItIvDt" parameterType="obPickDtVO" resultType="intransitInvnDtVO">		
+        SELECT A.CTKEY, A.OWKEY, A.OBDTKEY, A.ICKEY, A.ICUTKEY, A.TO_ULCKEY AS ULCKEY
+            , CASE SUM(A.CFQTY) WHEN 0 THEN 0 ELSE SUM(A.EXQTY) END AS EXQTY
+            , A.UOM, B.PRODUCTDATE, B.EXPIREDATE
+            , B.ATTRIBUTE1, B.ATTRIBUTE2, B.ATTRIBUTE3, B.ATTRIBUTE4, B.ATTRIBUTE5
+            , C.EXTERNORDERKEY, C.EXTERNORDERLINENUM, C.COSTPRICE       
+            , C.ACKEY, C.LOGGRPCD, C.ICGRKEY, C.ICGRTYPE, C.DCKEY, C.STORE_KEY
+         FROM TWORK_INFO_PI_DT A
+            , TWORK_INFO_IVAT B
+            , TWORK_INFO_OB_DT C
+		WHERE A.CTKEY = #{ctkey}
+			AND A.OBHDKEY = #{obhdkey}
+		    AND A.WKSTATUS = #{wkstatus}
+            AND A.CTKEY = B.CTKEY
+            AND A.IVATKEY=B.IVATKEY
+            AND A.CTKEY = C.CTKEY
+            AND A.OBHDKEY = C.OBHDKEY
+            AND A.OBDTKEY = C.OBDTKEY
+        GROUP BY A.CTKEY, A.OWKEY, A.OBDTKEY, A.ICKEY, A.ICUTKEY, A.TO_ULCKEY, A.UOM
+            , B.PRODUCTDATE, B.EXPIREDATE
+            , B.ATTRIBUTE1, B.ATTRIBUTE2, B.ATTRIBUTE3, B.ATTRIBUTE4, B.ATTRIBUTE5
+            , C.EXTERNORDERKEY, C.EXTERNORDERLINENUM, C.COSTPRICE       
+            , C.ACKEY, C.LOGGRPCD, C.ICGRKEY, C.DCKEY, C.ICGRTYPE, C.STORE_KEY
+	</select>	
+
+	<insert id="insertItIvDt" parameterType="intransitInvnDtVO">
+		<![CDATA[
+		INSERT INTO TWORK_INFO_ITIV_DT (				
+				ITIV_HDKEY
+				,ITIV_DTKEY        
+				,CTKEY
+				,OWKEY
+				,ICKEY
+				,ICUTKEY
+				,ULCKEY
+				,EXQTY
+				,CFQTY
+				,UOM      
+				,PRODUCTDATE
+				,EXPIREDATE
+				,ATTRIBUTE1
+				,ATTRIBUTE2
+				,ATTRIBUTE3
+				,ATTRIBUTE4
+				,ATTRIBUTE5
+				,PRODUCTLOT         
+				,WKSTATUS    
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY		
+				,LOGGRPCD
+				,DCKEY
+				,ACKEY
+				,STORE_KEY
+				,ICGRKEY		
+			) VALUES (
+				 #{itiv_hdkey}
+				,#{itiv_dtkey}
+				,#{ctkey}
+				,#{owkey}
+				,#{ickey}
+				,#{icutkey}
+				,#{ulckey}
+				,#{exqty}
+				,#{cfqty}
+				,#{uom}
+				,#{productdate}
+				,#{expiredate}
+				,#{attribute1}
+				,#{attribute2}
+				,#{attribute3}
+				,#{attribute4}
+				,#{attribute5}
+				,#{productlot}
+				,#{wkstatus}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+				,#{loggrpcd}
+				,#{dckey}
+				,#{ackey}
+				,#{store_key}
+				,#{icgrkey}
+			)
+		]]>	
+	</insert>
+	
+</mapper>	

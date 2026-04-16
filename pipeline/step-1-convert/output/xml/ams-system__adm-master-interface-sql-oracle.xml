@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.InterfaceLogMapper">
+
+	<select id="selectInterfaceLogCount" resultType="java.lang.Integer">
+		/* adm-master-interface-sql-oracle.xml - selectInterfaceLogCount */
+		SELECT COUNT(1)
+		  FROM INTERFACE_LOG
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectInterfaceLogList" resultType="camelMap">
+		/* adm-master-interface-sql-oracle.xml - selectInterfaceLogList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+			SELECT IFID
+				,  IFNM
+				,  REQDT
+				,  IFTYPE
+				,  STATUS
+				,  ISPROCESS
+				,  BATEXECID
+				,  TO_CHAR(INSERTDATE, 'YYYYMMDDHH24MISS') AS INSERTDATE
+				,  TO_CHAR(UPDATEDATE, 'YYYYMMDDHH24MISS') AS UPDATEDATE
+			  FROM INTERFACE_LOG
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+					AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+			 ORDER BY IFID DESC
+		) B
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<resultMap id="interfaceResult" type="camelMap">
+		<result property="REQDATA" column="REQDATA" javaType="java.lang.String" jdbcType="VARCHAR"/>
+		<result property="RESDATA" column="RESDATA" javaType="java.lang.String" jdbcType="VARCHAR"/>
+	</resultMap>
+
+	<select id="selectInterfaceLog" resultMap="interfaceResult">
+		/* adm-master-interface-sql-oracle.xml - selectInterfaceLog */
+		SELECT
+		      REQDATA
+			, COALESCE(RESDATA, ERRMSG) AS RESDATA
+		FROM INTERFACE_LOG
+		<where>
+			AND IFID = #{ifid}
+		</where>
+	</select>
+
+</mapper>

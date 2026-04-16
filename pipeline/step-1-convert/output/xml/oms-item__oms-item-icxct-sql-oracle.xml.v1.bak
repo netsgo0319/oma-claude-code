@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.item.mapper.IcxctMapper">
+
+	<select id="selectIcxctCount" resultType="java.lang.Integer" >
+		/* oms-item-icxct-sql-oracle.xml - selectIcxctCount */
+		SELECT COUNT(1)
+		FROM TORDER_MST_ICXCT A
+		 INNER JOIN TORDER_MST_OW OW
+		    ON A.OWKEY = OW.OWKEY
+		 INNER JOIN TORDER_MST_CT CT
+		    ON A.CTKEY = CT.CTKEY
+		 INNER JOIN TORDER_MST_IC IC
+		    ON A.OWKEY = IC.OWKEY
+		   AND A.ICKEY = IC.ICKEY
+		   AND IC.DELYN = 'N'
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+	</select>
+	
+	<update id="updateChkIcxct" parameterType="hashmap">
+		/* oms-item-icxct-sql-oracle.xml - updateChkIcxct */
+		UPDATE TADMIN_MST_ICXCT A
+		SET
+		            UPDATEDATE   		  	  = #{sysdate}
+				   ,UPDATEURKEY  		  	  = #{surkey}
+			   <if test="chk_cdock != null and chk_cdock.equalsIgnoreCase('true')">
+			        ,A.CDOCKYN 		  = #{cdock}
+			   </if>
+			   <if test="chk_pkctkey != null and chk_pkctkey.equalsIgnoreCase('true')">
+			        ,A.PKCTKEY 		  = #{pkctkey}
+			   </if>
+			   <if test="chk_pktype != null and chk_pktype.equalsIgnoreCase('true')">
+			        ,A.PKTYPE 		  = #{pktype}
+			   </if>		
+		WHERE  
+				  ORDTYPE||ICKEY||OWKEY||CTKEY||NEWYN IN 
+				  <foreach item="chk" index="index" collection="chkArray"
+					open="(" separator="," close=")">
+					#{chk}
+				</foreach>
+	</update>
+	<select id="selectIcxct" resultType="camelMap">
+		/* oms-item-icxct-sql-oracle.xml - selectIcxct */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , A.OWKEY
+		     , OW.OWNM
+		     , A.CTKEY      /* 센터코드*/
+		     , CT.CTNM      /* 센터명 */
+		     , IC.ICKEY      /*(모)상품코드*/
+		     , IC.ICNM      /*(모)상품명*/
+			 , COALESCE(ASRT.ASRTKEY, IC.ICKEY)  AS ASRTKEY
+			 , COALESCE(ASRT.ASRTNM, IC.ICNM)  AS   ASRTNM
+		     , ICGR.ICGRPNM
+		     , IC.UOM
+		     , IC.ASRTYN      /*아소트여부*/
+		     , IC.CTGKEY      /*대/중/소분류*/
+		     , CTG.CTGNM_LV1
+		     , CTG.CTGNM_LV2
+		     , CTG.CTGNM_LV3
+		     , ICB.BARCODE_E      /*낱개 바코드*/
+		     , ICB.BARCODE_M      /*중포 바코드*/
+		     , ICB.BARCODE_C      /*카톤 바코드*/
+		     , EA.WIDTH   AS WIDTH_E     /*낱개 가로(mm)*/
+		     , EA.DEPTH   AS DEPTH_E     /*낱개 세로(mm)*/
+		     , EA.HEIGHT  AS HEIGHT_E     /*낱개 높이(mm)*/
+		     , EA.VOL     AS VOL_E       /*낱개 CBM*/
+		     , EA.WEIGHT  AS WEIGHT_E     /*낱개 순중량(g)*/
+		     , INN.WIDTH  AS WIDTH_C      /*중포 가로(mm)*/
+		     , INN.DEPTH  AS DEPTH_C      /*중포 세로(mm)*/
+		     , INN.HEIGHT AS HEIGHT_C      /*중포 높이(mm)*/
+		     , INN.VOL    AS VOL_C        /*중포 CBM*/
+		     , INN.WEIGHT AS WEIGHT_C      /*중포 순중량(g)*/
+		     , CTN.WIDTH  AS WIDTH_M      /*카톤 가로(mm)*/
+		     , CTN.DEPTH  AS DEPTH_M      /*카톤 세로(mm)*/
+		     , CTN.HEIGHT AS HEIGHT_M      /*카톤 높이(mm)*/
+		     , CTN.VOL    AS VOL_M        /*카톤 CBM*/
+		     , CTN.WEIGHT AS WEIGHT_M      /*카톤 순중량(g)*/
+		     , CTN.PLTROW      /*PLT 단*/
+		     , CTN.PLTCOL      /*PLT 열 (한단 수량)*/
+		     , CTN.CPP         /*PLT 구성(CPP)*/
+		     , INN.ICUNITQTY AS ICUNITQTY_M      /*중포입수*/
+		     , CTN.ICUNITQTY AS ICUNITQTY_C      /*카톤입수*/
+		     , IC.OLNICTYPE      /*상품형태*/
+		     , IC.PKOTICYN      /*덕용여부*/
+		     , IC.EXPCKYN      /*유통기한 사용여부*/
+		     , IC.EXPCKDAYS      /*유통기한 일수*/
+		     , IC.OBIMPSCRITDAYS      /*출고불가 기준일*/
+		     , IC.DNGMGMTYN      /*위험물관리여부*/
+		     , IC.ACKEY      /*업체코드*/
+		     , AC.ACNM      /*업체명*/
+		     , IC.ICMGMTUSR      /*상품담당자*/
+		     , IC.SLPRC      /*판매가격*/
+		     , IC.DIRCDLVYICYN      /*직송 상품 여부 */
+		     , IC.ICSTATUSDIV      /*상품 사용구분*/
+		     , IC.MTR      /*재질*/
+		     , A.DSBTGRADE	
+			 , A.DFSHPMTRYN
+		     , A.ROBSORTERICYN AS ROBSORTERICYN      /*온라인_포장속성_로봇소터 여부*/
+		     , IC.CUSHNMEPCKGYN      /*온라인_포장속성_완충재 여부*/
+		     , IC.PCKGOVLPYN      /*포장 겹침여부*/
+		     , IC.OVLPPCKGWIDTHVAL      /*포장 겹침 시 가로증가값*/
+		     , IC.OVLPPCKGDEPTHVAL      /*포장 겹침 시 세로증가값*/
+		     , IC.OVLPPCKGHEIGHTVAL      /*포장 겹침 시 높이증가값*/
+		     , IC.COMPCONT      /*구성품 정보*/
+		     , IC.BARCODEATTACHYN      /*상품바코드 부착 여부*/
+		     , IC.POLYBACKPCKGYN      /*폴리백 인입 가능여부*/
+		     , IC.OLNICDIV      /*다이소몰 등급*/
+		     , IC.OLNIPKOTICYN      /*판매특성*/
+		     , IC.POABLEYN      /*발주가능여부*/
+		     , IC.SALESTATUS      /*판매상태코드*/
+		     , IC.DSPYN      /*전시여부*/
+		     , IC.DLVRYYN      /*택배여부*/
+		     , IC.OBLIMITYN      /*다이소몰 출고제한여부*/
+		     , IC.UNICYN      /*미취급여부*/
+		     , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+		  FROM TORDER_MST_ICXCT A
+		 INNER JOIN TORDER_MST_OW OW
+		    ON A.OWKEY = OW.OWKEY
+		 INNER JOIN TORDER_MST_CT CT
+		    ON A.CTKEY = CT.CTKEY
+		 INNER JOIN TORDER_MST_IC IC
+		    ON A.OWKEY = IC.OWKEY
+		   AND A.ICKEY = IC.ICKEY
+		   AND IC.DELYN = 'N'
+		  LEFT JOIN TORDER_MST_ASRT ASRT
+		    ON A.OWKEY = ASRT.OWKEY
+		   AND A.ICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			ON ASRT.OWKEY = REP.OWKEY
+			AND ASRT.ASRTREPKEY = REP.ICKEY
+		LEFT JOIN TORDER_MST_ICUTXTYPE CTN
+		    ON IC.OWKEY = CTN.OWKEY
+		   AND IC.ICKEY = CTN.ICKEY
+		   AND CTN.ICUNITTYPE = 'CTN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE INN
+		    ON IC.OWKEY = INN.OWKEY
+		   AND IC.ICKEY = INN.ICKEY
+		   AND INN.ICUNITTYPE = 'INN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE EA
+		    ON IC.OWKEY = EA.OWKEY
+		   AND IC.ICKEY = EA.ICKEY
+		   AND EA.ICUNITTYPE = 'EA'
+		  LEFT JOIN TORDER_MST_AC AC
+		    ON IC.OWKEY = AC.OWKEY
+		   AND IC.ACKEY = AC.ACKEY
+		  LEFT JOIN (SELECT ICKEY
+		                  , MAX(CASE WHEN UOM='CTN' THEN BARCODE ELSE NULL END) AS BARCODE_C
+		                  , MAX(CASE WHEN UOM='INN' THEN BARCODE ELSE NULL END) AS BARCODE_M
+		                  , MAX(CASE WHEN UOM='EA' THEN BARCODE ELSE NULL END) AS BARCODE_E
+		               FROM TORDER_MST_ICBACODE
+		              WHERE OWKEY = 'DAISO'
+		              GROUP BY ICKEY
+		            ) ICB
+		    ON A.ICKEY = ICB.ICKEY
+		  LEFT JOIN (
+		           SELECT A.CTGKEY AS B_LEV_CTGKEY
+		                , A.CTGNM AS CTGNM_LV3
+		                , A.UPPERCTGKEY AS M_LEV_CTGKEY
+		                , B.CTGNM AS CTGNM_LV2
+		                , C.CTGKEY AS H_LEV_CTGKEY
+		                , C.CTGNM AS CTGNM_LV1
+		             FROM TORDER_MST_CTG A
+		             LEFT OUTER JOIN TORDER_MST_CTG B
+		               ON A.UPPERCTGKEY = B.CTGKEY
+		             LEFT OUTER JOIN TORDER_MST_CTG C
+		               ON B.UPPERCTGKEY = C.CTGKEY
+		            WHERE A.DELYN = 'N' ) CTG
+		    ON IC.CTGKEY = CTG.B_LEV_CTGKEY
+		  LEFT JOIN TORDER_MST_ICGR ICGR
+		    ON IC.OWKEY = ICGR.OWKEY
+		   AND IC.ICGRPKEY = ICGR.ICGRPKEY
+		   AND ICGR.ICGRPTYPE ='CATEGORY'
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY A.UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkIcxct" resultType="camelMap">
+		/* oms-item-icxct-sql-oracle.xml - selectPkIcxct */
+		SELECT	 A.OWKEY
+				        ,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNM
+						,'OWKEY' || ';' || A.OWKEY AS OWKEY_DESC
+						,A.ICKEY
+						,IC.ICNM
+						,A.CTKEY
+						,CT1.CTNM
+						,LOGGRPCD
+						,'LOGGRPCD' || ';' || LOGGRPCD AS LOGGRPCD_DESC
+						,CP
+						,SLPRC
+						,VOLTYPE
+						,'VOLTYPE' || ';' || VOLTYPE AS VOLTYPE_DESC
+						,NEWYN
+						,'YESORNO' ||';'|| NEWYN AS NEWYN_DESC
+						,USDCP
+						,USDSLPRC
+						,WIDTHUNIT
+						,LENGTHUNIT
+						,HEIGHTUNIT
+						,A.ACKEY
+						,'ACKEY' || ';' || A.ACKEY AS ACKEY_DESC
+						,ORDSTOPTYPE
+						,'ORDSTOPTYPE' || ';' || ORDSTOPTYPE AS ORDSTOPTYPE_DESC
+						,ORDTYPE
+						,'ORDTYPE' || ';' || ORDTYPE AS ORDTYPE_DESC
+						,OBPTKEY
+						,'OBPTKEY' || ';' || OBPTKEY AS OBPTKEY_DESC
+						,DCKEY
+						,A.ICGRPKEY
+						,(SELECT I.ICGRPNM FROM TADMIN_MST_ICGR I WHERE  I.OWKEY = A.OWKEY AND I.ICGRPTYPE= 'CATEGORY' AND I.ICGRPKEY = A.ICGRPKEY) AS ICGRKEYNAME
+						,CDOCKYN
+                        ,PKCTKEY
+                        ,CT2.CTNM AS PKCTNAME
+                        ,PKTYPE
+                        ,'PKTYPE' || ';' || PKTYPE AS PKTYPE_DESC 
+                        ,IC.CTGKEY
+						,CTG.H_LEV_CTGNAME
+						,CTG.H_LEV_CTGKEY
+						,CTG.M_LEV_CTGNAME
+						,CTG.M_LEV_CTGKEY
+						,CTG.B_LEV_CTGNAME
+						,CTG.B_LEV_CTGKEY						
+						,A.INSERTDATE
+						,A.INSERTURKEY
+						,A.UPDATEDATE
+						,A.UPDATEURKEY
+						,A.SCMCK
+						,'YESORNO' ||';'|| A.SCMCK AS SCMCHECK_DESC
+						,A.CDCPOYN
+						,'YESORNO' ||';'|| A.CDCPOYN AS CDCPOYN_DESC
+						,A.SCMURKEY
+						,A.STCAPPLYGRADETYPE
+						,'STC_APPLY_GRADE_TYPE' ||';'|| A.STCAPPLYGRADETYPE AS STC_APPLY_GRADE_TYPE_DESC
+						,A.STCAPPLYGRADENM
+				FROM 	TADMIN_MST_ICXCT A
+				INNER JOIN TADMIN_MST_CT CT1
+				   		ON A.CTKEY = CT1.CTKEY
+				LEFT OUTER JOIN TADMIN_MST_CT CT2
+				   			 ON A.PKCTKEY = CT2.CTKEY
+				INNER JOIN TADMIN_MST_IC IC
+				   		ON A.OWKEY = IC.OWKEY
+					   AND A.ICKEY = IC.ICKEY
+				LEFT OUTER JOIN (SELECT A.CTGKEY AS H_LEV_CTGKEY
+					                  , A.CTGLV AS H_LEV_CTGLEVEL
+					                  , A.CTGNM AS H_LEV_CTGNAME
+					                  , B.CTGKEY AS M_LEV_CTGKEY
+					                  , B.CTGLV AS M_LEV_CTGLEVEL
+					                  , B.CTGNM AS M_LEV_CTGNAME
+					                  , C.CTGKEY AS B_LEV_CTGKEY
+					                  , C.CTGLV AS B_LEV_CTGLEVEL
+					                  , C.CTGNM AS B_LEV_CTGNAME
+					                  , A.OWKEY
+					          FROM (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 1
+					          ) A
+					          INNER JOIN (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 2
+					          ) B ON A.CTGKEY = B.UPPERCTGKEY
+								  AND A.OWKEY = B.OWKEY
+							  INNER JOIN (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 3
+					          ) C ON B.CTGKEY = C.UPPERCTGKEY
+							     AND B.OWKEY = C.OWKEY
+					) CTG ON IC.OWKEY  = CTG.OWKEY
+						 AND IC.CTGKEY = CTG.B_LEV_CTGKEY
+				  WHERE A.OWKEY = #{owkey}
+					AND A.CTKEY = #{ctkey}
+					AND A.ICKEY = #{ickey}
+	</select>
+	
+	 
+	
+	<insert id="insertTAdminMstIcxct">
+		/* oms-item-icxct-sql-oracle.xml - insertTAdminMstIcxct */
+		INSERT INTO TADMIN_MST_ICXCT	(
+			 OWKEY
+			,ICKEY
+			,CTKEY
+			,LOGGRPCD
+			,CP
+			,SLPRC
+			,VOLTYPE
+			,NEWYN
+			,USDCP
+			,USDSLPRC
+			,WIDTHUNIT
+			,LENGTHUNIT
+			,HEIGHTUNIT
+			,ACKEY
+			,ORDSTOPTYPE
+			,ORDTYPE
+			,RNDKEY
+			,ICGRPKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )
+		VALUES	(
+			 #{owkey}
+			,#{ickey}
+			,#{ctkey}
+			,#{loggrpcd}
+			,#{cp}
+			,#{slprc}
+			,#{voltype}
+			,#{newyn}
+			,#{usdcp}
+			,#{usdslprc}
+			,#{widthunit}
+			,#{lengthunit}
+			,#{heightunit}
+			,#{ackey}
+			,#{ordstoptype}
+			,#{ordtype}
+			,#{rndkey}
+			,#{icgrpkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>	
+	
+	
+	<update id="updateTAdminMstIcxct">
+		/* oms-item-icxct-sql-oracle.xml - updateTAdminMstIcxct */
+		UPDATE 	TADMIN_MST_ICXCT
+		   SET	 LOGGRPCD 		  	  	  = #{loggrpcd}
+				,VOLTYPE 				  = #{voltype}
+				,NEWYN 				  	  = #{newyn}
+				,WIDTHUNIT 			  	  = #{widthunit}
+				,LENGTHUNIT 			  = #{lengthunit}
+				,HEIGHTUNIT 			  = #{heightunit}
+				,ACKEY 				  	  = #{ackey}
+				,OBPTKEY  				  = #{obptkey}
+				,RNDKEY					  = #{rndkey}
+				,ICGRPKEY				  = #{icgrpkey}
+				,UPDATEDATE   		  	  = #{sysdate}
+				,UPDATEURKEY  		  	  = #{surkey}
+				,PKCTKEY                  = #{pkctkey}
+				,CDOCKYN                  = #{cdockyn}
+				,PKTYPE                   = #{pktype}
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</update>
+	
+	<delete id="deleteTAdminMstIcxct">
+		/* oms-item-icxct-sql-oracle.xml - deleteTAdminMstIcxct */
+		DELETE 
+		FROM   TADMIN_MST_ICXCT
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</delete>
+</mapper>	

@@ -1,0 +1,1043 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.ObOrderWorkerProdStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <!-- ==================== 1. 피킹-경량랙 ==================== -->
+    <sql id="sql_pickingLight">
+        <![CDATA[
+        WITH WAVE_AVG AS (
+            SELECT WH.CTKEY,
+                   WH.OWKEY,
+                   WH.WAHDKEY,
+                   SUM(PD.CNFRMQTY) / NULLIF(COUNT(DISTINCT WD.OBHDKEY), 0) AS AVG_QTY_PER_DETAIL
+              FROM TWORK_INFO_WA_HD WH
+              JOIN TWORK_INFO_WA_DT WD
+                ON WH.CTKEY = WD.CTKEY
+               AND WH.OWKEY = WD.OWKEY
+               AND WH.WAHDKEY = WD.WAHDKEY
+              JOIN TWORK_INFO_OB_HD OH
+                ON WD.CTKEY = OH.CTKEY
+               AND WD.OWKEY = OH.OWKEY
+               AND WD.OBHDKEY = OH.OBHDKEY
+              JOIN TWORK_INFO_PI_HD PH
+                ON OH.CTKEY = PH.CTKEY
+               AND OH.OWKEY = PH.OWKEY
+               AND OH.PIHDKEY = PH.PIHDKEY
+              JOIN TWORK_INFO_PI_DT PD
+                ON PH.CTKEY = PD.CTKEY
+               AND PH.OWKEY = PD.OWKEY
+               AND PH.PIHDKEY = PD.PIHDKEY
+             GROUP BY WH.CTKEY, WH.OWKEY, WH.WAHDKEY
+        ),
+        WAV_RATIO AS (
+            SELECT PD.CTKEY,
+                   PD.OWKEY,
+                   PD.PIHDKEY,
+                   PD.PKCNFRMURKEY,
+                   TO_DATE(PD.PKCNFRMDATE, 'YYYYMMDDHH24MISS') AS PKCNFRM_DTM,
+                   PD.ICKEY,
+                   PD.CELLKEY,
+                   PD.CNFRMQTY,
+                   WH.WAHDDAY,
+                   WH.WARND,
+                   MU.DEPTNM,
+                   MU.URNM,
+                   PD.CNFRMQTY / NULLIF(WA.AVG_QTY_PER_DETAIL, 0) AS WAV_CNT
+              FROM TWORK_INFO_PI_HD PH
+              JOIN TWORK_INFO_PI_DT PD
+                ON PH.CTKEY = PD.CTKEY
+               AND PH.OWKEY = PD.OWKEY
+               AND PH.PIHDKEY = PD.PIHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON PH.CTKEY = WH.CTKEY
+               AND PH.OWKEY = WH.OWKEY
+               AND PH.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN WAVE_AVG WA
+                ON WH.CTKEY = WA.CTKEY
+               AND WH.OWKEY = WA.OWKEY
+               AND WH.WAHDKEY = WA.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON PD.PKCNFRMURKEY = MU.URKEY
+             WHERE WH.WAHDDAY IS NOT NULL
+               AND SUBSTR(PD.LCKEY, 0, 1) = 'H'
+               AND PD.PKCNFRMURKEY IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND WH.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND WH.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND WH.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND WH.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            SUBSTR(X.WAHDDAY, 1, 4) || '-' || SUBSTR(X.WAHDDAY, 5, 2) || '-' || SUBSTR(X.WAHDDAY, 7, 2) AS wahdday,
+            X.WARND                                     AS warnd,
+            X.DEPTNM                                    AS deptnm,
+            X.PKCNFRMURKEY                              AS urkey,
+            X.URNM                                      AS urnm,
+            X.WORK_CELL                                 AS workcell,
+            X.WORK_SKU                                  AS worksku,
+            X.WORK_EA                                   AS workea,
+            X.WORK_CNT                                  AS workcnt,
+            TO_CHAR(X.START_TIME, 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(X.END_TIME, 'YYYY-MM-DD HH24:MI')   AS endtime,
+            CASE WHEN X.RAW_TIME >= 1 THEN 1 ELSE 0 END AS excltime,
+            X.WORK_TIME                                 AS worktime,
+            TRUNC(X.WORK_CELL/NULLIF(X.WORK_TIME,0),1)  AS kpicell,
+            TRUNC(X.WORK_SKU/NULLIF(X.WORK_TIME,0),1)   AS kpisku,
+            TRUNC(X.WORK_EA/NULLIF(X.WORK_TIME,0),1)    AS kpiea,
+            TRUNC(X.WORK_CNT/NULLIF(X.WORK_TIME,0),1)   AS kpicnt
+        FROM (
+            SELECT
+                WAHDDAY,
+                WARND,
+                DEPTNM,
+                PKCNFRMURKEY,
+                URNM,
+                COUNT(DISTINCT CELLKEY)          AS WORK_CELL,
+                COUNT(DISTINCT ICKEY)            AS WORK_SKU,
+                SUM(CNFRMQTY)                    AS WORK_EA,
+                TRUNC(SUM(WAV_CNT),2)            AS WORK_CNT,
+                MIN(PKCNFRM_DTM)                 AS START_TIME,
+                MAX(PKCNFRM_DTM)                 AS END_TIME,
+                (MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 AS RAW_TIME,
+                CASE WHEN (MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 >= 1
+                     THEN TRUNC((MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 - 1::INTEGER, 2)
+                     ELSE TRUNC((MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24, 2)
+                END AS WORK_TIME
+            FROM WAV_RATIO
+            GROUP BY WAHDDAY, WARND, DEPTNM, PKCNFRMURKEY, URNM
+        ) X
+        ORDER BY X.WAHDDAY, X.WARND, X.PKCNFRMURKEY
+        ]]>
+    </sql>
+
+    <select id="selectPickingLightCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_pickingLight"/>
+        ) CNT
+    </select>
+
+    <select id="selectPickingLightList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_pickingLight"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 2. 피킹-PLT랙 ==================== -->
+    <sql id="sql_pickingPlt">
+        <![CDATA[
+        WITH WAVE_AVG AS (
+            SELECT WH.CTKEY,
+                   WH.OWKEY,
+                   WH.WAHDKEY,
+                   SUM(PD.CNFRMQTY) / NULLIF(COUNT(DISTINCT WD.OBHDKEY), 0) AS AVG_QTY_PER_DETAIL
+              FROM TWORK_INFO_WA_HD WH
+              JOIN TWORK_INFO_WA_DT WD
+                ON WH.CTKEY = WD.CTKEY
+               AND WH.OWKEY = WD.OWKEY
+               AND WH.WAHDKEY = WD.WAHDKEY
+              JOIN TWORK_INFO_OB_HD OH
+                ON WD.CTKEY = OH.CTKEY
+               AND WD.OWKEY = OH.OWKEY
+               AND WD.OBHDKEY = OH.OBHDKEY
+              JOIN TWORK_INFO_PI_HD PH
+                ON OH.CTKEY = PH.CTKEY
+               AND OH.OWKEY = PH.OWKEY
+               AND OH.PIHDKEY = PH.PIHDKEY
+              JOIN TWORK_INFO_PI_DT PD
+                ON PH.CTKEY = PD.CTKEY
+               AND PH.OWKEY = PD.OWKEY
+               AND PH.PIHDKEY = PD.PIHDKEY
+             GROUP BY WH.CTKEY, WH.OWKEY, WH.WAHDKEY
+        ),
+        WAV_RATIO AS (
+            SELECT PD.CTKEY,
+                   PD.OWKEY,
+                   PD.PIHDKEY,
+                   PD.PKCNFRMURKEY,
+                   TO_DATE(PD.PKCNFRMDATE, 'YYYYMMDDHH24MISS') AS PKCNFRM_DTM,
+                   PD.ICKEY,
+                   PD.CELLKEY,
+                   PD.CNFRMQTY,
+                   WH.WAHDDAY,
+                   WH.WARND,
+                   MU.DEPTNM,
+                   MU.URNM,
+                   PD.CNFRMQTY / NULLIF(WA.AVG_QTY_PER_DETAIL, 0) AS WAV_CNT
+              FROM TWORK_INFO_PI_HD PH
+              JOIN TWORK_INFO_PI_DT PD
+                ON PH.CTKEY = PD.CTKEY
+               AND PH.OWKEY = PD.OWKEY
+               AND PH.PIHDKEY = PD.PIHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON PH.CTKEY = WH.CTKEY
+               AND PH.OWKEY = WH.OWKEY
+               AND PH.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN WAVE_AVG WA
+                ON WH.CTKEY = WA.CTKEY
+               AND WH.OWKEY = WA.OWKEY
+               AND WH.WAHDKEY = WA.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON PD.PKCNFRMURKEY = MU.URKEY
+             WHERE WH.WAHDDAY IS NOT NULL
+               AND SUBSTR(PD.LCKEY, 0, 1) = 'P'
+               AND PD.PKCNFRMURKEY IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND WH.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND WH.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND WH.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND WH.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            SUBSTR(X.WAHDDAY, 1, 4) || '-' || SUBSTR(X.WAHDDAY, 5, 2) || '-' || SUBSTR(X.WAHDDAY, 7, 2) AS wahdday,
+            X.WARND                                     AS warnd,
+            X.DEPTNM                                    AS deptnm,
+            X.PKCNFRMURKEY                              AS urkey,
+            X.URNM                                      AS urnm,
+            X.WORK_CELL                                 AS workcell,
+            X.WORK_SKU                                  AS worksku,
+            X.WORK_EA                                   AS workea,
+            X.WORK_CNT                                  AS workcnt,
+            TO_CHAR(X.START_TIME, 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(X.END_TIME, 'YYYY-MM-DD HH24:MI')   AS endtime,
+            CASE WHEN X.RAW_TIME >= 1 THEN 1 ELSE 0 END AS excltime,
+            X.WORK_TIME                                 AS worktime,
+            TRUNC(X.WORK_CELL/NULLIF(X.WORK_TIME,0),1)  AS kpicell,
+            TRUNC(X.WORK_SKU/NULLIF(X.WORK_TIME,0),1)   AS kpisku,
+            TRUNC(X.WORK_EA/NULLIF(X.WORK_TIME,0),1)    AS kpiea,
+            TRUNC(X.WORK_CNT/NULLIF(X.WORK_TIME,0),1)   AS kpicnt
+        FROM (
+            SELECT
+                WAHDDAY,
+                WARND,
+                DEPTNM,
+                PKCNFRMURKEY,
+                URNM,
+                COUNT(DISTINCT CELLKEY)          AS WORK_CELL,
+                COUNT(DISTINCT ICKEY)            AS WORK_SKU,
+                SUM(CNFRMQTY)                    AS WORK_EA,
+                TRUNC(SUM(WAV_CNT),2)            AS WORK_CNT,
+                MIN(PKCNFRM_DTM)                 AS START_TIME,
+                MAX(PKCNFRM_DTM)                 AS END_TIME,
+                (MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 AS RAW_TIME,
+                CASE WHEN (MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 >= 1
+                     THEN TRUNC((MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24 - 1::INTEGER, 2)
+                     ELSE TRUNC((MAX(PKCNFRM_DTM) - MIN(PKCNFRM_DTM)) * 24, 2)
+                END AS WORK_TIME
+            FROM WAV_RATIO
+            GROUP BY WAHDDAY, WARND, DEPTNM, PKCNFRMURKEY, URNM
+        ) X
+        ORDER BY X.WAHDDAY, X.WARND, X.PKCNFRMURKEY
+        ]]>
+    </sql>
+
+    <select id="selectPickingPltCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_pickingPlt"/>
+        ) CNT
+    </select>
+
+    <select id="selectPickingPltList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_pickingPlt"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 3. 중분류 ==================== -->
+    <sql id="sql_midClass">
+        <![CDATA[
+        WITH WAVE_AVG AS (
+            SELECT DW.CTKEY,
+                   DW.OWKEY,
+                   DW.WAHDKEY,
+                   DW.DASDIV,
+                   SUM(DI.QTY) / NULLIF(COUNT(DISTINCT DI.OBHDKEY), 0) AS AVG_QTY_PER_DETAIL
+              FROM TWIF_DAS_PRCSRSLT_WA DW
+              JOIN TWIF_DAS_PRCSRSLT_ORDER DOR
+                ON DW.WASEQ = DOR.WASEQ
+               AND DW.CTKEY = DOR.CTKEY
+               AND DW.OWKEY = DOR.OWKEY
+               AND DW.WAHDKEY = DOR.WAHDKEY
+              JOIN TWIF_DAS_PRCSRSLT_IC DI
+                ON DOR.WASEQ = DI.WASEQ
+               AND DOR.ORDERSEQ = DI.ORDERSEQ
+               AND DOR.CTKEY = DI.CTKEY
+               AND DOR.OWKEY = DI.OWKEY
+               AND DOR.WAHDKEY = DI.WAHDKEY
+               AND DOR.OBHDKEY = DI.OBHDKEY
+             GROUP BY DW.CTKEY, DW.OWKEY, DW.WAHDKEY, DW.DASDIV
+        ),
+        WAV_RATIO AS (
+            SELECT DW.CTKEY,
+                   DW.OWKEY,
+                   DW.WAHDKEY,
+                   DW.DASDIV,
+                   WH.WARND,
+                   TO_DATE(DOR.WKPRCSDATE, 'YYYYMMDDHH24MISS') AS WKPRCSDATE,
+                   DI.ICKEY,
+                   DOR.DASCELLBRCD,
+                   DI.QTY,
+                   TO_DATE(DW.IFREQDT, 'YYYYMMDDHH24MISS') AS IFREQDT,
+                   CASE WHEN DI.EMPNOBRCD IS NOT NULL THEN 'AD'||DI.EMPNOBRCD ELSE DI.EMPNOBRCD END AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM,
+                   DI.QTY / NULLIF(WV.AVG_QTY_PER_DETAIL, 0) AS WAV_CNT
+              FROM TWIF_DAS_PRCSRSLT_WA DW
+              JOIN TWIF_DAS_PRCSRSLT_ORDER DOR
+                ON DW.WASEQ = DOR.WASEQ
+               AND DW.CTKEY = DOR.CTKEY
+               AND DW.OWKEY = DOR.OWKEY
+               AND DW.WAHDKEY = DOR.WAHDKEY
+              JOIN TWIF_DAS_PRCSRSLT_IC DI
+                ON DOR.WASEQ = DI.WASEQ
+               AND DOR.ORDERSEQ = DI.ORDERSEQ
+               AND DOR.CTKEY = DI.CTKEY
+               AND DOR.OWKEY = DI.OWKEY
+               AND DOR.WAHDKEY = DI.WAHDKEY
+               AND DOR.OBHDKEY = DI.OBHDKEY
+              LEFT JOIN WAVE_AVG WV
+                ON DI.CTKEY = WV.CTKEY
+               AND DI.OWKEY = WV.OWKEY
+               AND DI.WAHDKEY = WV.WAHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON DW.CTKEY = WH.CTKEY
+               AND DW.OWKEY = WH.OWKEY
+               AND DW.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON CASE WHEN DI.EMPNOBRCD IS NOT NULL THEN 'AD'||DI.EMPNOBRCD ELSE DI.EMPNOBRCD END = MU.URKEY
+             WHERE DW.DASDIV = 2
+               AND DI.EMPNOBRCD IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND DW.IFREQDT >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND DW.IFREQDT &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND DW.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND DW.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(IFREQDT, 'YYYY-MM-DD') AS wahdday,
+            WARND                          AS warnd,
+            DEPTNM                         AS deptnm,
+            URKEY                          AS urkey,
+            URNM                           AS urnm,
+            COUNT(DISTINCT ICKEY)          AS worksku,
+            SUM(QTY)                       AS workea,
+            TRUNC(SUM(WAV_CNT), 2)         AS workcnt,
+            TO_CHAR(MIN(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(MAX(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS endtime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(QTY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpiea,
+            TRUNC(TRUNC(SUM(WAV_CNT), 2)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpicnt
+        FROM WAV_RATIO
+        GROUP BY IFREQDT, WARND, DEPTNM, URKEY, URNM
+        ORDER BY IFREQDT, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectMidClassCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_midClass"/>
+        ) CNT
+    </select>
+
+    <select id="selectMidClassList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_midClass"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 4. 소분류 ==================== -->
+    <sql id="sql_smallClass">
+        <![CDATA[
+        WITH WAVE_AVG AS (
+            SELECT DW.CTKEY,
+                   DW.OWKEY,
+                   DW.WAHDKEY,
+                   DW.DASDIV,
+                   SUM(DI.QTY) / NULLIF(COUNT(DISTINCT DI.OBHDKEY), 0) AS AVG_QTY_PER_DETAIL
+              FROM TWIF_DAS_PRCSRSLT_WA DW
+              JOIN TWIF_DAS_PRCSRSLT_ORDER DOR
+                ON DW.WASEQ = DOR.WASEQ
+               AND DW.CTKEY = DOR.CTKEY
+               AND DW.OWKEY = DOR.OWKEY
+               AND DW.WAHDKEY = DOR.WAHDKEY
+              JOIN TWIF_DAS_PRCSRSLT_IC DI
+                ON DOR.WASEQ = DI.WASEQ
+               AND DOR.ORDERSEQ = DI.ORDERSEQ
+               AND DOR.CTKEY = DI.CTKEY
+               AND DOR.OWKEY = DI.OWKEY
+               AND DOR.WAHDKEY = DI.WAHDKEY
+               AND DOR.OBHDKEY = DI.OBHDKEY
+             GROUP BY DW.CTKEY, DW.OWKEY, DW.WAHDKEY, DW.DASDIV
+        ),
+        WAV_RATIO AS (
+            SELECT DW.CTKEY,
+                   DW.OWKEY,
+                   DW.WAHDKEY,
+                   DW.DASDIV,
+                   WH.WARND,
+                   TO_DATE(DOR.WKPRCSDATE, 'YYYYMMDDHH24MISS') AS WKPRCSDATE,
+                   DI.ICKEY,
+                   DOR.DASCELLBRCD,
+                   DI.QTY,
+                   TO_DATE(DW.IFREQDT, 'YYYYMMDDHH24MISS') AS IFREQDT,
+                   CASE WHEN DI.EMPNOBRCD IS NOT NULL THEN 'AD'||DI.EMPNOBRCD ELSE DI.EMPNOBRCD END AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM,
+                   DI.QTY / NULLIF(WV.AVG_QTY_PER_DETAIL, 0) AS WAV_CNT
+              FROM TWIF_DAS_PRCSRSLT_WA DW
+              JOIN TWIF_DAS_PRCSRSLT_ORDER DOR
+                ON DW.WASEQ = DOR.WASEQ
+               AND DW.CTKEY = DOR.CTKEY
+               AND DW.OWKEY = DOR.OWKEY
+               AND DW.WAHDKEY = DOR.WAHDKEY
+              JOIN TWIF_DAS_PRCSRSLT_IC DI
+                ON DOR.WASEQ = DI.WASEQ
+               AND DOR.ORDERSEQ = DI.ORDERSEQ
+               AND DOR.CTKEY = DI.CTKEY
+               AND DOR.OWKEY = DI.OWKEY
+               AND DOR.WAHDKEY = DI.WAHDKEY
+               AND DOR.OBHDKEY = DI.OBHDKEY
+              LEFT JOIN WAVE_AVG WV
+                ON DI.CTKEY = WV.CTKEY
+               AND DI.OWKEY = WV.OWKEY
+               AND DI.WAHDKEY = WV.WAHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON DW.CTKEY = WH.CTKEY
+               AND DW.OWKEY = WH.OWKEY
+               AND DW.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON CASE WHEN DI.EMPNOBRCD IS NOT NULL THEN 'AD'||DI.EMPNOBRCD ELSE DI.EMPNOBRCD END = MU.URKEY
+             WHERE DW.DASDIV = 3
+               AND DI.EMPNOBRCD IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND DW.IFREQDT >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND DW.IFREQDT &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND DW.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND DW.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(IFREQDT, 'YYYY-MM-DD') AS wahdday,
+            WARND                          AS warnd,
+            DEPTNM                         AS deptnm,
+            URKEY                          AS urkey,
+            URNM                           AS urnm,
+            COUNT(DISTINCT ICKEY)          AS worksku,
+            SUM(QTY)                       AS workea,
+            TRUNC(SUM(WAV_CNT), 2)         AS workcnt,
+            TO_CHAR(MIN(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(MAX(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS endtime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(QTY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpiea,
+            TRUNC(TRUNC(SUM(WAV_CNT), 2)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpicnt
+        FROM WAV_RATIO
+        GROUP BY IFREQDT, WARND, DEPTNM, URKEY, URNM
+        ORDER BY IFREQDT, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectSmallClassCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_smallClass"/>
+        ) CNT
+    </select>
+
+    <select id="selectSmallClassList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_smallClass"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 5. 포장 ==================== -->
+    <sql id="sql_packing">
+        <![CDATA[
+        WITH WAV_RATIO AS (
+            SELECT WH.CTKEY,
+                   WH.OWKEY,
+                   WH.WAHDKEY,
+                   TO_DATE(WH.WAHDDAY, 'YYYYMMDDHH24MISS') AS WAHDDAY,
+                   WH.WARND,
+                   OD.ICKEY,
+                   OD.PAKQTY,
+                   OD.OBHDKEY,
+                   TO_DATE(OD.OBCNFRMDATE, 'YYYYMMDDHH24MISS') AS OBCNFRMDATE,
+                   OD.OBCONFIRMURKEY AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM
+              FROM TWORK_INFO_WA_HD WH
+              JOIN TWORK_INFO_WA_DT WD
+                ON WH.CTKEY = WD.CTKEY
+               AND WH.OWKEY = WD.OWKEY
+               AND WH.WAHDKEY = WD.WAHDKEY
+              JOIN TWORK_INFO_OB_HD OH
+                ON WD.CTKEY = OH.CTKEY
+               AND WD.OWKEY = OH.OWKEY
+               AND WD.WAHDKEY = OH.WAHDKEY
+               AND WD.OBHDKEY = OH.OBHDKEY
+              JOIN TWORK_INFO_OB_DT OD
+                ON OH.CTKEY = OD.CTKEY
+               AND OH.OWKEY = OD.OWKEY
+               AND OH.OBHDKEY = OD.OBHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON OD.OBCONFIRMURKEY = MU.URKEY
+             WHERE WH.WAHDDAY IS NOT NULL
+               AND OD.OBCONFIRMURKEY IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND WH.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND WH.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND WH.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND WH.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(WAHDDAY, 'YYYY-MM-DD')              AS wahdday,
+            WARND                                       AS warnd,
+            DEPTNM                                      AS deptnm,
+            URKEY                                       AS urkey,
+            URNM                                        AS urnm,
+            COUNT(DISTINCT ICKEY)                       AS worksku,
+            SUM(PAKQTY)                                 AS workea,
+            COUNT(DISTINCT OBHDKEY)                     AS packcnt,
+            TO_CHAR(MIN(OBCNFRMDATE), 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(MAX(OBCNFRMDATE), 'YYYY-MM-DD HH24:MI') AS endtime,
+            CASE WHEN (MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(PAKQTY)
+                  / NULLIF(CASE WHEN (MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24, 2)
+                           END, 0), 1) AS kpiea,
+            TRUNC(COUNT(DISTINCT OBHDKEY)
+                  / NULLIF(CASE WHEN (MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(OBCNFRMDATE) - MIN(OBCNFRMDATE)) * 24, 2)
+                           END, 0), 1) AS kpipack
+        FROM WAV_RATIO
+        GROUP BY WAHDDAY, WARND, DEPTNM, URKEY, URNM
+        ORDER BY WAHDDAY, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectPackingCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_packing"/>
+        ) CNT
+    </select>
+
+    <select id="selectPackingList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_packing"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 6. 로봇투입 ==================== -->
+    <sql id="sql_robotInput">
+        <![CDATA[
+        WITH WAVE_AVG AS (
+            SELECT PI.CTKEY,
+                   PI.OWKEY,
+                   PI.WAHDKEY,
+                   SUM(PI.QTY) / NULLIF(COUNT(DISTINCT PI.OBHDKEY), 0) AS AVG_QTY_PER_DETAIL
+              FROM TWIF_ROBDAS_PRCSRSLT_WA PW
+              JOIN TWIF_ROBDAS_PRCSRSLT_ORDER PO
+                ON PW.WASEQ = PO.WASEQ
+               AND PW.CTKEY = PO.CTKEY
+               AND PW.OWKEY = PO.OWKEY
+               AND PW.WAHDKEY = PO.WAHDKEY
+              JOIN TWIF_ROBDAS_PRCSRSLT_IC PI
+                ON PO.WASEQ = PI.WASEQ
+               AND PO.ORDERSEQ = PI.ORDERSEQ
+               AND PO.CTKEY = PI.CTKEY
+               AND PO.OWKEY = PI.OWKEY
+               AND PO.WAHDKEY = PI.WAHDKEY
+               AND PO.OBHDKEY = PI.OBHDKEY
+             GROUP BY PI.CTKEY, PI.OWKEY, PI.WAHDKEY
+        ),
+        WAV_RATIO AS (
+            SELECT PI.CTKEY,
+                   PI.OWKEY,
+                   PI.WAHDKEY,
+                   TO_DATE(PW.WAHDDAY, 'YYYYMMDDHH24MISS') AS WAHDDAY,
+                   WH.WARND,
+                   PI.ICKEY,
+                   PI.QTY,
+                   PI.OBHDKEY,
+                   TO_DATE(PO.WKPRCSDATE, 'YYYYMMDDHH24MISS') AS WKPRCSDATE,
+                   CASE WHEN PI.EMPNOBRCD IS NOT NULL THEN 'AD'||PI.EMPNOBRCD ELSE PI.EMPNOBRCD END AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM,
+                   PI.QTY/NULLIF(WV.AVG_QTY_PER_DETAIL,0) AS WAV_CNT
+              FROM TWIF_ROBDAS_PRCSRSLT_WA PW
+              JOIN TWIF_ROBDAS_PRCSRSLT_ORDER PO
+                ON PW.WASEQ = PO.WASEQ
+               AND PW.CTKEY = PO.CTKEY
+               AND PW.OWKEY = PO.OWKEY
+               AND PW.WAHDKEY = PO.WAHDKEY
+              JOIN TWIF_ROBDAS_PRCSRSLT_IC PI
+                ON PO.WASEQ = PI.WASEQ
+               AND PO.ORDERSEQ = PI.ORDERSEQ
+               AND PO.CTKEY = PI.CTKEY
+               AND PO.OWKEY = PI.OWKEY
+               AND PO.WAHDKEY = PI.WAHDKEY
+               AND PO.OBHDKEY = PI.OBHDKEY
+              LEFT JOIN WAVE_AVG WV
+                ON PI.CTKEY = WV.CTKEY
+               AND PI.OWKEY = WV.OWKEY
+               AND PI.WAHDKEY = WV.WAHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON PW.CTKEY = WH.CTKEY
+               AND PW.OWKEY = WH.OWKEY
+               AND PW.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON CASE WHEN PI.EMPNOBRCD IS NOT NULL THEN 'AD'||PI.EMPNOBRCD ELSE PI.EMPNOBRCD END = MU.URKEY
+             WHERE PW.WAHDDAY IS NOT NULL
+               AND PI.EMPNOBRCD IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND PW.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND PW.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND PW.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND PW.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(WAHDDAY, 'YYYY-MM-DD')                  AS wahdday,
+            WARND                                           AS warnd,
+            DEPTNM                                          AS deptnm,
+            URKEY                                           AS urkey,
+            URNM                                            AS urnm,
+            COUNT(DISTINCT ICKEY)                           AS worksku,
+            SUM(QTY)                                        AS workpcs,
+            COUNT(DISTINCT OBHDKEY)                         AS inputcnt,
+            TRUNC(SUM(WAV_CNT), 2)                          AS workcnt,
+            TO_CHAR(MIN(WKPRCSDATE), 'YYYY-MM-DD HH24:MI')  AS starttime,
+            TO_CHAR(MAX(WKPRCSDATE), 'YYYY-MM-DD HH24:MI')  AS endtime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(QTY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpipcs,
+            TRUNC(COUNT(DISTINCT OBHDKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpiinput,
+            TRUNC(TRUNC(SUM(WAV_CNT), 2)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpicnt
+        FROM WAV_RATIO
+        GROUP BY WAHDDAY, WARND, DEPTNM, URKEY, URNM
+        ORDER BY WAHDDAY, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectRobotInputCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_robotInput"/>
+        ) CNT
+    </select>
+
+    <select id="selectRobotInputList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_robotInput"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 7. 로봇이형물 ==================== -->
+    <sql id="sql_robotIrregular">
+        <![CDATA[
+        WITH WAV_RATIO AS (
+            SELECT RW.CTKEY,
+                   RW.OWKEY,
+                   RW.WAHDKEY,
+                   TO_DATE(RW.WAHDDAY, 'YYYYMMDDHH24MISS') AS WAHDDAY,
+                   WH.WARND,
+                   RI.ICKEY,
+                   RI.QTY,
+                   TO_DATE(RO.WKPRCSDATE, 'YYYYMMDDHH24MISS') AS WKPRCSDATE,
+                   CASE WHEN RI.EMPNOBRCD IS NOT NULL THEN 'AD'||RI.EMPNOBRCD ELSE RI.EMPNOBRCD END AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM
+              FROM TWIF_ROBDAS_RSLTXNIS_WA RW
+              JOIN TWIF_ROBDAS_RSLTXNIS_ORDER RO
+                ON RW.WASEQ = RO.WASEQ
+               AND RW.CTKEY = RO.CTKEY
+               AND RW.OWKEY = RO.OWKEY
+               AND RW.WAHDKEY = RO.WAHDKEY
+              JOIN TWIF_ROBDAS_RSLTXNIS_IC RI
+                ON RO.WASEQ = RI.WASEQ
+               AND RO.ORDERSEQ = RI.ORDERSEQ
+               AND RO.CTKEY = RI.CTKEY
+               AND RO.OWKEY = RI.OWKEY
+               AND RO.WAHDKEY = RI.WAHDKEY
+               AND RO.OBHDKEY = RI.OBHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON RW.CTKEY = WH.CTKEY
+               AND RW.OWKEY = WH.OWKEY
+               AND RW.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON CASE WHEN RI.EMPNOBRCD IS NOT NULL THEN 'AD'||RI.EMPNOBRCD ELSE RI.EMPNOBRCD END = MU.URKEY
+             WHERE RW.WAHDDAY IS NOT NULL
+               AND RI.EMPNOBRCD IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND RW.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND RW.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND RW.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND RW.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(WAHDDAY, 'YYYY-MM-DD')                AS wahdday,
+            WARND                                         AS warnd,
+            DEPTNM                                        AS deptnm,
+            URKEY                                         AS urkey,
+            URNM                                          AS urnm,
+            COUNT(DISTINCT ICKEY)                         AS worksku,
+            SUM(QTY)                                      AS workea,
+            TO_CHAR(MIN(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(MAX(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS endtime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(QTY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpiea
+        FROM WAV_RATIO
+        GROUP BY WAHDDAY, WARND, DEPTNM, URKEY, URNM
+        ORDER BY WAHDDAY, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectRobotIrregularCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_robotIrregular"/>
+        ) CNT
+    </select>
+
+    <select id="selectRobotIrregularList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_robotIrregular"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <!-- ==================== 8. 로봇포장 ==================== -->
+    <sql id="sql_robotPacking">
+        <![CDATA[
+        WITH WAV_RATIO AS (
+            SELECT RW.CTKEY,
+                   RW.OWKEY,
+                   RW.WAHDKEY,
+                   TO_DATE(RW.WAHDDAY, 'YYYYMMDDHH24MISS') AS WAHDDAY,
+                   WH.WARND,
+                   RI.ICKEY,
+                   RI.QTY,
+                   RI.OBHDKEY,
+                   TO_DATE(RO.WKPRCSDATE, 'YYYYMMDDHH24MISS') AS WKPRCSDATE,
+                   CASE WHEN RI.EMPNOBRCD IS NOT NULL THEN 'AD'||RI.EMPNOBRCD ELSE RI.EMPNOBRCD END AS URKEY,
+                   MU.DEPTNM,
+                   MU.URNM
+              FROM TWIF_ROBDAS_PAKCOMPL_WA RW
+              JOIN TWIF_ROBDAS_PAKCOMPL_ORDER RO
+                ON RW.WASEQ = RO.WASEQ
+               AND RW.CTKEY = RO.CTKEY
+               AND RW.OWKEY = RO.OWKEY
+               AND RW.WAHDKEY = RO.WAHDKEY
+              JOIN TWIF_ROBDAS_PAKCOMPL_IC RI
+                ON RO.WASEQ = RI.WASEQ
+               AND RO.ORDERSEQ = RI.ORDERSEQ
+               AND RO.CTKEY = RI.CTKEY
+               AND RO.OWKEY = RI.OWKEY
+               AND RO.WAHDKEY = RI.WAHDKEY
+               AND RO.OBHDKEY = RI.OBHDKEY
+              LEFT JOIN TWORK_INFO_WA_HD WH
+                ON RW.CTKEY = WH.CTKEY
+               AND RW.OWKEY = WH.OWKEY
+               AND RW.WAHDKEY = WH.WAHDKEY
+              LEFT JOIN TADMIN_MST_UR MU
+                ON CASE WHEN RI.EMPNOBRCD IS NOT NULL THEN 'AD'||RI.EMPNOBRCD ELSE RI.EMPNOBRCD END = MU.URKEY
+             WHERE RW.WAHDDAY IS NOT NULL
+               AND RI.EMPNOBRCD IS NOT NULL
+        ]]>
+        <if test="fromDate != null and fromDate != ''">
+            AND RW.WAHDDAY >= REPLACE(#{fromDate}, '-', '') || '000000'
+        </if>
+        <if test="toDate != null and toDate != ''">
+            AND RW.WAHDDAY &lt;= REPLACE(#{toDate}, '-', '') || '235959'
+        </if>
+        <if test="urnm != null and urnm != ''">
+            AND MU.URNM LIKE '%' || #{urnm} || '%'
+        </if>
+        <if test="deptnm != null and deptnm != ''">
+            AND MU.DEPTNM LIKE '%' || #{deptnm} || '%'
+        </if>
+        <if test="ctkey != null and ctkey != ''">
+            AND RW.CTKEY = #{ctkey}
+        </if>
+        <if test="owkey != null and owkey != ''">
+            AND RW.OWKEY = #{owkey}
+        </if>
+        <if test="warnd != null and warnd != ''">
+            AND WH.WARND = #{warnd}
+        </if>
+        <![CDATA[
+        )
+        SELECT
+            TO_CHAR(WAHDDAY, 'YYYY-MM-DD')                AS wahdday,
+            WARND                                         AS warnd,
+            DEPTNM                                        AS deptnm,
+            URKEY                                         AS urkey,
+            URNM                                          AS urnm,
+            COUNT(DISTINCT ICKEY)                         AS worksku,
+            SUM(QTY)                                      AS workea,
+            COUNT(DISTINCT OBHDKEY)                       AS packcnt,
+            TO_CHAR(MIN(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS starttime,
+            TO_CHAR(MAX(WKPRCSDATE), 'YYYY-MM-DD HH24:MI') AS endtime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1 THEN 1 ELSE 0 END AS excltime,
+            CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                 THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                 ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+            END AS worktime,
+            TRUNC(COUNT(DISTINCT ICKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpisku,
+            TRUNC(SUM(QTY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpiea,
+            TRUNC(COUNT(DISTINCT OBHDKEY)
+                  / NULLIF(CASE WHEN (MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 >= 1
+                                THEN TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24 - 1::INTEGER, 2)
+                                ELSE TRUNC((MAX(WKPRCSDATE) - MIN(WKPRCSDATE)) * 24, 2)
+                           END, 0), 1) AS kpipack
+        FROM WAV_RATIO
+        GROUP BY WAHDDAY, WARND, DEPTNM, URKEY, URNM
+        ORDER BY WAHDDAY, WARND, URKEY
+        ]]>
+    </sql>
+
+    <select id="selectRobotPackingCount" parameterType="map" resultType="int">
+        SELECT COUNT(1) FROM (
+            <include refid="sql_robotPacking"/>
+        ) CNT
+    </select>
+
+    <select id="selectRobotPackingList" parameterType="map" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="sql_robotPacking"/>
+        ) DATA
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+</mapper>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.wcs.pickingtotecomplete.mapper.PickingToteMapper">
+	<select id="getWcsPickCompleteSeq" resultType="camelMap">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - getWcsPickCompleteSeq - 피킹토트 WCS I/F Sequence 조회 SQL */
+		SELECT nextval('seq_twif_wcs_pkcompl') AS WCS_SEQ
+	</select>
+
+	<insert id="insertPickingToteComplete">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - insertPickingToteComplete - 피킹토트 WCS I/F Sequence 조회 SQL */
+		INSERT INTO TWIF_WCS_PKCOMPL
+		(
+			WCSSEQ
+			,CTKEY
+			,OWKEY
+			,TOTEBRCD
+			,DASBRLOC
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES(
+			#{wcsSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{toteBrcd}
+			,#{dasBrLoc}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<update id="updateInterfaceStatusWcsResult" parameterType="map">
+		/* wif-wcs-locationmaster-interface-sql-oracle.xml - updateInterfaceStatusWcsResult - WCS Interface Result UPDATE SQL */
+		UPDATE ${tableName}
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WCSSEQ 		= #{wcsSeq}
+	</update>
+
+</mapper>

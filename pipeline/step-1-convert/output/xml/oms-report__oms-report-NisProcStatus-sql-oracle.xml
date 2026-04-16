@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.NisProcStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <sql id="sql_nisProcStatusBase">
+        FROM TORDER_INFO_SO_HD SO
+        INNER JOIN TORDER_INFO_SO_DT SD
+                ON SO.OWKEY = SD.OWKEY
+               AND SO.SOHDKEY = SD.SOHDKEY
+        INNER JOIN TORDER_INFO_CO_HD CO
+                ON SO.OWKEY = CO.OWKEY
+               AND SO.COHDKEY = CO.COHDKEY
+        LEFT JOIN TORDER_MST_CT CT
+               ON SO.CTKEY = CT.CTKEY
+        LEFT JOIN TORDER_MST_IC IC
+               ON SD.OWKEY = IC.OWKEY
+              AND SD.ICKEY = IC.ICKEY
+        LEFT JOIN TADMIN_MST_UR UR
+               ON SD.UPDATEURKEY = UR.URKEY
+        WHERE COALESCE(SO.NISYN, 'N') = 'Y'
+          AND COALESCE(SD.NISYN, 'N') = 'Y'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </sql>
+
+    <sql id="sql_nisProcStatusSelect">
+        SELECT COALESCE(SO.ORDERISTDAY, '-') AS obinstrdt
+             , SO.CTKEY                 AS ctkey
+             , COALESCE(CT.CTNM, '-')        AS ctnm
+             , COALESCE(SO.ORGORDERKEY, '-') AS custordno
+             , COALESCE(SO.SOHDKEY, '-')     AS soordno
+             , COALESCE(SO.COHDKEY, '-')     AS coordno
+             , COALESCE(SD.ICKEY, '-')       AS ickey
+             , COALESCE(IC.ICNM, '-')        AS icnm
+             , COALESCE(SD.NISQTY, 0)        AS nisqty
+             , COALESCE(UR.URNM, COALESCE(SD.UPDATEURKEY, '-')) AS procusernm
+             , COALESCE(SD.UPDATEDATE, '-')               AS procdttm
+        <include refid="sql_nisProcStatusBase"/>
+    </sql>
+
+    <select id="selectNisProcStatusInfoCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        <include refid="sql_nisProcStatusBase"/>
+    </select>
+
+    <select id="selectNisProcStatusInfoList" resultType="camelMap">
+        /* oms-report-nisProcStatusInfoList-sql-oracle.xml - selectNisProcStatusInfoList */
+        <include refid="sql_pagingTop"/>
+        <include refid="sql_nisProcStatusSelect"/>
+        ORDER BY SO.ORDERISTDAY DESC, SO.SOHDKEY DESC, SD.SODTKEY DESC
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <select id="selectNisProcStatusList" resultType="camelMap">
+        /* oms-report-nisProcStatus-sql-oracle.xml - selectNisProcStatusList */
+        <include refid="sql_nisProcStatusSelect"/>
+        ORDER BY SO.ORDERISTDAY DESC, SO.SOHDKEY DESC, SD.SODTKEY DESC
+    </select>
+
+</mapper>

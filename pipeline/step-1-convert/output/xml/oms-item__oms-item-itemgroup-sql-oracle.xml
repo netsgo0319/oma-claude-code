@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.item.mapper.ItemGroupMapper">
+	
+	<select id="selectItemGroupCode" resultType="camelMap">
+		/* oms-item-itemgroup-sql-oracle.xml - selectItemGroupCode */
+		SELECT 	ICGRPNM
+			   ,ICGRPKEY
+		FROM 	TORDER_MST_ICGR
+		WHERE   OWKEY = #{owkey}
+	</select>
+	
+	<select id="selectItemGroup" resultType="camelMap">
+		/* oms-item-itemgroup-sql-oracle.xml - selectItemGroup */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT'0' AS CHK
+				, OWKEY
+				, (SELECT OWNM FROM TORDER_MST_OW OW WHERE OW.OWKEY = TORDER_MST_ICGR.OWKEY) AS OWNM
+				, UPDATEDATE
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEURKEY
+				, ICGRPTYPE
+				, ICGRPNM
+				, ICGRPKEY
+				, CLOSDATE
+				, IFYN
+			FROM TORDER_MST_ICGR
+			<where><if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+			</where>
+			  <choose>
+				<when test='sortValue != null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<select id="selectItemGroupCount" resultType="java.lang.Integer" >
+		/* oms-item-itemgroup-sql-oracle.xml - selectItemGroupCount */
+		SELECT 	COUNT(1)  
+  		FROM 	TORDER_MST_ICGR 
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   		#{SEARCH_CONDITION}
+			</if>
+		</where>						 
+	</select>
+	
+	<select id="selectCountTOmsinMstIcgrXCt" resultType="java.lang.Integer" >
+		/* oms-item-itemgroup-sql-oracle.xml - selectCountTOmsinMstIcgrXCt */
+		SELECT 	COUNT(1)  
+  		FROM 	TORDER_MST_ICGRXCT
+	    WHERE	1 = 1
+	    AND     OWKEY = #{owkey}
+	    AND     ICGRPKEY = #{icgrpkey}
+	    AND     ICGRPTYPE = #{icgrptype}
+	</select>
+	
+	<select id="selectTOmsinMstIcgrxct" resultType="camelMap">
+		/* oms-item-itemgroup-sql-oracle.xml - selectTOmsinMstIcgrxct */
+		SELECT '0' AS CHK
+		    , A.INSERTDATE
+		    , A.UPDATEDATE
+		    , A.INSERTURKEY
+ 			, A.UPDATEURKEY
+		    , C.CLOSDATE
+		    , A.ICGRPKEY
+		    , C.ICGRPNM
+		    , B.CTKEY
+		    , B.CTNM
+		    , A.OWKEY
+		    , A.ICGRPTYPE
+		    , C.IFYN
+		FROM TORDER_MST_ICGRXCT A
+		INNER JOIN TORDER_MST_CT B
+		        ON A.CTKEY = B.CTKEY
+		       AND B.DELYN = 'N'
+		INNER JOIN TORDER_MST_ICGR C
+				ON A.ICGRPKEY = C.ICGRPKEY
+			   AND   A.OWKEY = C.OWKEY
+		WHERE A.ICGRPKEY = #{icgrpkey}
+		AND	  A.OWKEY = #{owkey}	
+	</select>
+	
+	<select id="selectTOmsinMstCt" resultType="camelMap">
+		/* oms-item-itemgroup-sql-oracle.xml - selectTOmsinMstCt */
+		SELECT '0' AS CHK
+		      ,CTKEY
+		      ,CTNM
+	  	FROM TORDER_MST_CT
+	  	WHERE DELYN = 'N'
+		  AND MANAGEMENTYN = 'Y'
+
+	</select>
+
+	<insert id="insertTOmsinMstIcgr">
+		/* oms-item-itemgroup-sql-oracle.xml - insertTOmsinMstIcgr */
+		INSERT INTO TORDER_MST_ICGR	(
+			UPDATEURKEY
+			,UPDATEDATE
+			,INSERTURKEY
+			,INSERTDATE
+			,ICGRPTYPE
+			,ICGRPNM
+			,ICGRPKEY
+			,CLOSDATE
+			,OWKEY
+		)
+		VALUES (
+			#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{icgrptype}
+			,#{icgrpnm}
+			,#{icgrpkey}
+			,SUBSTR(#{closdate}, 0, 14)
+			,#{owkey}
+		) 	
+	</insert>	
+	
+	<update id="updateTOmsinMstIcgr" >
+		/* oms-item-itemgroup-sql-oracle.xml - updateTOmsinMstIcgr */
+		UPDATE 	TORDER_MST_ICGR 
+		SET		UPDATEURKEY = #{surkey}
+				,UPDATEDATE  = #{sysdate}
+				,ICGRPNM    = #{icgrpnm}
+				,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+	    WHERE 	OWKEY = #{owkey}
+    	AND 	ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+	</update>
+	
+	<insert id="insertTOmsinMstIcgrxct">
+		/* oms-item-itemgroup-sql-oracle.xml - insertTOmsinMstIcgrxct */
+	   INSERT INTO TORDER_MST_ICGRXCT (
+				 UPDATEURKEY
+				,UPDATEDATE
+				,INSERTURKEY
+				,INSERTDATE
+				,ICGRPTYPE
+				,ICGRPKEY
+				,CTKEY
+				,OWKEY
+			  ) VALUES (
+				 #{surkey}
+				,#{sysdate}
+				,#{surkey}
+				,#{sysdate}
+				,#{icgrptype}
+				,#{icgrpkey}
+				,#{ctkey}
+				,#{owkey}
+			  )
+			  ON CONFLICT (OWKEY, ICGRPKEY, ICGRPTYPE, CTKEY) DO UPDATE SET
+				 UPDATEURKEY = #{surkey}
+				,UPDATEDATE = #{sysdate}  
+	</insert>		
+
+	<select id="selectPkItemGroup" resultType="camelMap">
+		/* oms-item-itemgroup-sql-oracle.xml - selectPkItemGroup */
+		SELECT 	A.UPDATEURKEY
+				,A.UPDATEDATE
+				,A.INSERTURKEY
+				,A.INSERTDATE
+				,A.ICGRPTYPE
+				,A.ICGRPNM
+				,A.ICGRPKEY
+				,A.CLOSDATE
+				,A.OWKEY
+				--,B.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+				--,A.SAMFILENM
+		FROM 	TORDER_MST_ICGR A
+		INNER JOIN TORDER_MST_OW B
+				ON A.OWKEY = B.OWKEY
+	    WHERE 	A.OWKEY = #{owkey}
+	    AND		A.ICGRPKEY = #{icgrpkey}
+        AND 	A.ICGRPTYPE = #{icgrptype}
+	</select>
+	
+	<delete id="deleteTOmsinMstIcgrxct">
+		/* oms-item-itemgroup-sql-oracle.xml - deleteTOmsinMstIcgrxct */
+		DELETE
+	  	FROM 	TORDER_MST_ICGRXCT	
+     	WHERE 	OWKEY = #{owkey}
+     	AND		ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+	
+	<delete id="deleteTOmsinMstIcgr">
+		/* oms-item-itemgroup-sql-oracle.xml - deleteTOmsinMstIcgr */
+		DELETE
+		FROM 	TORDER_MST_ICGR	
+ 	    WHERE 	OWKEY = #{owkey}
+	    AND  	ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+	</delete>
+	
+	<delete id="deleteTWorkMstIcgr" >
+		/* oms-item-itemgroup-sql-oracle.xml - deleteTWorkMstIcgr */
+		DELETE
+		FROM 	TWORK_MST_ICGR	
+ 	    WHERE 	OWKEY = #{owkey}
+	    AND  	ICGRKEY = #{icgrpkey}
+        AND 	ICGRTYPE = #{icgrptype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+	
+	<update id="deleteTAWorkMstIcctg">
+		/* wms-item-itemgroup-sql-oracle.xml - deleteTAWorkMstIcctg */
+		UPDATE TWORK_MST_CTG
+		   SET DELYN = 'Y'
+		     , UPDATEURKEY = #{surkey} 
+             , UPDATEDATE = #{sysdate}
+     	 WHERE OWKEY = #{owkey}
+     	   AND ICGRKEY IS NOT NULL
+     	   AND ICGRKEY = #{icgrpkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</update>
+	
+	<insert id="insertTWorkMstIcgr">
+		/* wms-item-itemgroup-sql-oracle.xml - insertTWorkMstIcgr */
+	   INSERT INTO TWORK_MST_ICGR (
+					 UPDATEURKEY
+					,UPDATEDATE
+					,INSERTURKEY
+					,INSERTDATE
+					,ICGRTYPE
+					,ICGRNAME
+					,ICGRKEY
+					,CTKEY
+					,CLOSDATE
+					,OWKEY
+					,SAMFILENAME
+			  ) VALUES (
+					 #{surkey}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{icgrptype}
+					,#{icgrpnm}
+					,#{icgrpkey}
+					,#{ctkey}
+					,SUBSTR(#{closdate}, 0, 14)
+					,#{owkey}
+					,#{samfilename}
+			  )
+			  ON CONFLICT (CTKEY, OWKEY, ICGRKEY, ICGRTYPE) DO UPDATE SET
+	                 UPDATEURKEY = #{surkey}
+	                 ,UPDATEDATE = #{sysdate}
+	                 ,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+	                 ,SAMFILENAME = #{samfilename}
+	                 ,ICGRNAME = #{icgrpnm}  
+	</insert>
+	
+	<update id="updateTWorkMstIcgr" >
+		/* wms-item-itemgroup-sql-oracle.xml - updateTWorkMstIcgr */
+		UPDATE 	TWORK_MST_ICGR 
+		SET		UPDATEURKEY = #{surkey}
+				,UPDATEDATE  = #{sysdate}
+				,ICGRNAME    = #{icgrpnm}
+				,SAMFILENAME = #{samfilename}
+				,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+	    WHERE 	OWKEY = #{owkey}
+    	AND 	ICGRKEY = #{icgrpkey}
+        AND 	ICGRTYPE = #{icgrptype}
+	</update>
+	
+	<update id="updateTAWorkMstIcctg" >
+		/* wms-item-itemgroup-sql-oracle.xml - updateTAWorkMstIcctg */
+		UPDATE TWORK_MST_CTG M 
+		   SET (  CTGNAME    /*상품대/중/소명*/
+				, UPPERCTGKEY    /*상위상품분류*/
+				, ICGRKEY /*상품그룹코드*/
+				, DELYN
+				, UPDATEDATE    /*수정일시*/
+				, UPDATEURKEY    /*수정사용자*/
+			    )
+			 = (
+			 	SELECT CG.CTGNM    /*상품대/중/소명*/
+					 , CG.UPPERCTGKEY    /*상위상품분류*/
+					 , CG.ICGRPKEY
+					 , 'N' AS DELYN
+					 , #{sysdate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{surkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+				<foreach collection="icgrs" item="item" separator="UNION ALL">
+					SELECT #{item.owkey} AS OWKEY   
+						 , #{item.icgrptype} AS ICGRTYPE
+						 , #{item.icgrpkey} AS ICGRKEY
+						 , #{item.ctkey} AS CTKEY
+				</foreach>			      			
+			      	   ) T
+				  JOIN TADMIN_MST_CTG CG
+				    ON T.OWKEY = CG.OWKEY
+				   AND T.ICGRKEY = CG.ICGRPKEY
+                 WHERE T.OWKEY = M.OWKEY
+                   AND T.CTKEY = M.CTKEY	
+                   AND CG.CTGKEY = M.CTGKEY
+			   )
+		 WHERE EXISTS (
+		   				SELECT 1
+					      FROM (
+						<foreach collection="icgrs" item="item" separator="UNION ALL">
+							SELECT #{item.owkey} AS OWKEY   
+								 , #{item.icgrptype} AS ICGRTYPE
+								 , #{item.icgrpkey} AS ICGRKEY
+								 , #{item.ctkey} AS CTKEY
+						</foreach>			      			
+					      	   ) T
+						  JOIN TADMIN_MST_CTG CG
+						    ON T.OWKEY = CG.OWKEY
+						   AND T.ICGRKEY = CG.ICGRPKEY
+		                 WHERE T.OWKEY = M.OWKEY
+		                   AND T.CTKEY = M.CTKEY	
+		                   AND CG.CTGKEY = M.CTGKEY
+		   			  )
+	</update>
+	
+	<insert id="insertTAWorkMstIcctg" >
+		/* wms-item-itemgroup-sql-oracle.xml - insertTAWorkMstIcctg */
+		INSERT INTO TWORK_MST_CTG
+		(
+			  CTKEY    /*센터코드*/
+			, CTGKEY    /*상품대/중/소코드*/
+			, CTGLEVEL    /*상품대/중/소구분*/
+			, OWKEY    /*화주*/
+			, CTGNAME    /*상품대/중/소명*/
+			, UPPERCTGKEY    /*상위상품분류*/
+			, URKEY    /*담당MD사번*/
+			, CLOSDATE    /*종료일시*/
+			, DELYN    /*삭제여부*/
+			, ICGRKEY    /*상품그룹코드*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자*/
+		) 
+	 	SELECT TT.CTKEY 		/*센터코드*/
+	 	     , TT.CTGKEY    /*상품대/중/소코드*/
+			 , TT.CTGLV    /*상품대/중/소구분*/
+			 , TT.OWKEY
+			 , TT.CTGNM    /*상품대/중/소명*/
+			 , TT.UPPERCTGKEY    /*상위상품분류*/
+			 , NULL AS URKEY
+		 	 , #{closdate} AS CLOSDATE
+		 	 , 'N' AS DELYN
+			 , TT.ICGRPKEY
+		     , #{sysdate} AS INSERTDATE    /*입력일시*/
+		     , #{surkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{sysdate} AS UPDATEDATE    /*수정일시*/
+		     , #{surkey} AS UPDATEURKEY    /*수정사용자 ID*/
+	      FROM (
+	      		SELECT LI.CTGKEY    /*상품대/중/소코드*/
+					 , LI.CTGLV    /*상품대/중/소구분*/
+					 , LI.OWKEY
+					 , T.CTKEY
+					 , LI.CTGNM    /*상품대/중/소명*/
+					 , LI.UPPERCTGKEY    /*상위상품분류*/
+					 , LI.ICGRPKEY
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+				<foreach collection="icgrs" item="item" separator="UNION ALL">
+					SELECT #{item.owkey} AS OWKEY   
+						 , #{item.icgrptype} AS ICGRTYPE
+						 , #{item.icgrpkey} AS ICGRKEY
+						 , #{item.ctkey} AS CTKEY
+				</foreach>			      			
+			      	   ) T
+				  JOIN TADMIN_MST_CTG LI
+				    ON T.OWKEY = LI.OWKEY
+				   AND T.ICGRKEY = LI.ICGRPKEY
+				  LEFT JOIN TWORK_MST_CTG M
+				    ON LI.OWKEY = M.OWKEY
+           		   AND LI.CTGKEY = M.CTGKEY
+           		   AND T.CTKEY = M.CTKEY
+	      	   ) TT
+         WHERE TT.SAVEYN = 'Y'
+	</insert>
+	
+</mapper>	

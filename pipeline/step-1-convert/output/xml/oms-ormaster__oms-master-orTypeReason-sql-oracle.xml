@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OrTypeReasonMapper">
+	
+	<select id="selectOrTypeReasonDt" resultType="camelMap" >
+		/* oms-master-orTypeReason-sql-oracle.xml selectOrTypeReasonDt */
+        SELECT '0' AS CHK
+             , A.OWKEY
+             , A.ORDERTYPECD
+             , B.ORDERTYPENM 
+             , A.ORDERRSNCD 
+             , A.ORDERRSNNM
+             , COALESCE(A.DELYN, 'N') AS DELYN
+          	 , A.INSERTDATE
+          	 , A.INSERTURKEY
+          	 , A.UPDATEDATE
+          	 , A.UPDATEURKEY      	
+          FROM TORDER_MST_ORTYPEREASON A
+          JOIN TORDER_MST_ORTYPE B
+            ON A.OWKEY = B.OWKEY
+           AND A.ORDERTYPECD = B.ORDERTYPECD
+         WHERE A.OWKEY = #{owkey}
+           AND A.ORDERTYPECD = #{ordertypecd}
+		<if test="delyn != null">
+			AND A.DELYN = #{delyn}
+    	</if>           
+         ORDER BY A.ORDERRSNCD, A.UPDATEDATE DESC	
+	</select>	
+	
+	<select id="checkOrTypeReasonDt" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  FROM TORDER_MST_ORTYPEREASON
+		 WHERE OWKEY = #{owkey}
+		   AND ORDERTYPECD = #{ordertypecd}
+		   AND ORDERRSNCD = #{orderrsncd}
+	</select>
+	
+	<insert id="insertOrTypeReasonDt">
+		/* oms-master-orTypeReason-sql-oracle.xml insertOrTypeReason */
+		INSERT INTO TORDER_MST_ORTYPEREASON 
+		(
+		  OWKEY
+		, ORDERTYPECD
+		, ORDERRSNCD
+		, ORDERRSNNM
+		, DELYN
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, #{ordertypecd}
+		, #{orderrsncd}
+		, #{orderrsnnm}
+	    , #{delyn}
+	    , #{sysdate}
+	    , #{surkey}
+	    , #{sysdate}
+	    , #{surkey}
+	    )			
+	</insert>
+	
+	<update id="updateOrTypeReasonDt">
+		/* oms-master-orTypeReason-sql-oracle.xml updateOrTypeReasonDt */
+		UPDATE TORDER_MST_ORTYPEREASON
+		   SET ORDERRSNNM = #{orderrsnnm}
+		     , DELYN = #{delyn}
+		   	 , UPDATEDATE = #{sysdate}
+		   	 , UPDATEURKEY = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ORDERTYPECD = #{ordertypecd}
+		   AND ORDERRSNCD = #{orderrsncd}
+	</update>
+	
+</mapper>

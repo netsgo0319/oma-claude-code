@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.AccountApiMapper">
+
+	<insert id="insertErpAccountIntfInfo">
+		/* oms-master-accountBatch-sql-oracle.xml - insertErpAccountIntfInfo */
+		INSERT INTO TORDER_MST_AC
+		(	  OWKEY
+			, ACKEY
+			, ACNM
+			, ACGRP
+			, ACSTATUS
+			, ADDR1
+			, ADDR2
+			, SALESPERSONNM
+			, TEL1
+			, IFYN
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT
+			  #{owkey}
+			, B.ACKEY
+			, MAX(B.ACNM) AS ACNM
+			, MAX(B.ACTYPE) AS ACTYPE
+			, MAX(B.ACSTATUS) AS ACSTATUS
+			, MAX(B.ADDRHD) AS ADDRHD
+			, MAX(B.ADDRDT) AS ADDRDT
+			, MAX(B.SALESPERSONNM) AS SALESPERSONNM
+			, MAX(B.TEL1) AS TEL1
+			, 'Y' AS IFYN
+			, 'N' AS DELYN
+			, #{sysdate} AS INSERTDATE
+			, #{interfaceUrkey} AS INSERTURKEY
+			, #{sysdate} AS UPDATEDATE
+			, #{interfaceUrkey} AS UPDATEURKE
+		FROM TORDER_EAI_AC_BATCH B
+		LEFT JOIN TORDER_MST_AC M
+		       ON B.ACKEY = M.ACKEY
+		WHERE B.TRN_ID = #{trnId}
+		  AND M.ACKEY IS NULL
+		GROUP BY B.ACKEY
+	</insert>
+
+	<update id="updateErpAccountIntfInfo">
+		/* oms-master-accountBatch-sql-oracle.xml - updateErpAccountIntfInfo */
+		UPDATE TORDER_MST_AC M
+		SET (
+			  ACNM
+			, ACGRP
+			, ACSTATUS
+			, ADDR1
+			, ADDR2
+			, SALESPERSONNM
+			, TEL1
+		) = (
+		SELECT
+			  MAX(B.ACNM)
+			, MAX(B.ACTYPE)
+			, MAX(B.ACSTATUS)
+			, MAX(B.ADDRHD)
+			, MAX(B.ADDRDT)
+			, MAX(B.SALESPERSONNM)
+			, MAX(B.TEL1)
+		FROM TORDER_EAI_AC_BATCH B
+		WHERE B.TRN_ID = #{trnId}
+		  AND B.ACKEY = M.ACKEY
+		GROUP BY B.ACKEY
+		)
+		WHERE EXISTS (
+			SELECT 1
+			FROM TORDER_EAI_AC_BATCH B
+			WHERE B.TRN_ID = #{trnId}
+			  AND B.ACKEY = M.ACKEY
+		)
+	</update>
+
+
+	<insert id="insertErpAccountCtIntinfo">
+		 /* oms-master-accountBatch-sql-oracle.xml - insertErpAccountCtIntinfo */
+			INSERT INTO  TORDER_MST_ACXCT
+			(
+				  OWKEY
+				, ACKEY
+				, CTKEY
+				, IFYN
+				, DELYN
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+			)
+			SELECT #{owkey}
+				 , B.ACKEY
+				 , B.CTKEY
+				 , 'Y'
+				 , 'N'
+				 , #{sysdate}
+				 , #{interfaceUrkey}
+				 , #{sysdate}
+				 , #{interfaceUrkey}
+			FROM TORDER_EAI_AC_BATCH B
+			LEFT JOIN TORDER_MST_ACXCT M
+			       ON B.ACKEY = M.ACKEY
+			      AND B.CTKEY = M.CTKEY
+			WHERE B.TRN_ID = #{trnId}
+			  AND M.ACKEY IS NULL
+		      AND B.CTKEY IS NOT NULL
+		    GROUP BY B.ACKEY,
+		             B.CTKEY
+	</insert>
+
+	<insert id="insertWmsAccountIntfInfo">
+		 /* oms-master-accountBatch-sql-oracle.xml - insertWmsAccountIntfInfo */
+			INSERT INTO TORDER_INTF_WMS_AC
+			(
+				 INSERTSYSTM
+               , CTKEY
+               , ACKEY
+               , ACNAME
+               , ACTYPE
+               , ACSTATUS
+               , ADDRESS1
+               , ADDRESS2
+               , TEL1
+               , CONTACT
+               , REQUESTDT
+               , IFID
+               , INSERTDATE
+               , INSERTURKEY
+               , UPDATEDATE
+               , UPDATEURKEY
+			) VALUES (
+				 #{insertsystm}
+               , #{ctkey}
+               , #{ackey}
+               , #{acnm}
+               , #{actype}
+               , #{acstatus}
+               , #{addrhd}
+               , #{addrdt}
+               , #{tel1}
+               , #{salespersonnm}
+               , #{requestDt}
+               , #{interfaceId}
+               , #{sysdate}
+               , #{interfaceUrkey}
+               , #{sysdate}
+               , #{interfaceUrkey}
+
+
+			)
+	</insert>
+
+	<update id="updateIntfErpStatus">
+		/* oms-master-accountBatch-sql-oracle.xml - updateIntfErpStatus */
+		UPDATE TORDER_EAI_AC_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+</mapper>
+	

@@ -1,0 +1,1012 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObPckgPrcsMapper">
+	<select id="selectCntrWkDivCd" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCntrWkDivCd - 포장처리 - 피킹용기 작업구분코드 조회 */
+		SELECT CNTR.CNTRWKDIVCD
+		  FROM TWORK_MST_CNTR CNTR
+		 WHERE CNTR.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND CNTR.CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<select id="selectObHdByPkCntrBarcode" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectObHdByPkCntrBarcode - 릴리즈정보 조회 BY 피킹용기 */
+		SELECT
+			CNTR.PIHDKEY
+			,CNTR.CNTRBARCODE
+			,CNTR.WKTYPECD
+		FROM (
+			   SELECT PC.PIHDKEY
+					, PC.CNTRBARCODE
+					, WAHD.WKTYPECD
+					, ROW_NUMBER () OVER(ORDER BY PC.INSERTDATE DESC) AS RN
+				 FROM TWORK_INFO_PK_CNTR PC
+				INNER JOIN TWORK_MST_CNTR CNTR
+				   ON PC.CTKEY = CNTR.CTKEY
+				  AND PC.CNTRBARCODE = CNTR.CNTRBARCODE
+				INNER JOIN TWORK_INFO_PI_HD PIHD
+				   ON PC.CTKEY = PIHD.CTKEY
+				  AND PC.OWKEY = PIHD.OWKEY
+				  AND PC.PIHDKEY = PIHD.PIHDKEY
+				INNER JOIN TWORK_INFO_WA_HD WAHD
+				   ON PIHD.CTKEY = WAHD.CTKEY
+				  AND PIHD.OWKEY = WAHD.OWKEY
+				  AND PIHD.PIHDKEY = WAHD.PIHDKEY
+				WHERE PC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				  AND PC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				  AND PC.CNTRBARCODE = #{cntrbarcode}
+		<if test="pihdkey != null and pihdkey != ''">
+				  AND PC.PIHDKEY = #{pihdkey}
+		</if>
+				  AND PC.CNTRDDLNYN = 'Y'
+				  AND WAHD.WAWKSTATUSCD IN ('50','60') /*50: 작업중. 60:작업완료 웨이브 내에서 사용중인 분류토트 */
+				  AND WAHD.WKTYPECD IN ('PW', 'UW')	/*덕용,단포*/
+				  AND CNTR.CNTRDIVCD IN ('10', '20', '60') /*10:PLT 20:TOTE 60:롤테이너*/
+				  AND CNTR.CNTRWKDIVCD = 10 /*10: 피킹용*/
+		) CNTR WHERE RN = 1
+	</select>
+
+	<select id="selectObHdByClassifCntrBarcode" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectObHdByClassifCntrBarcode - 릴리즈정보 조회 BY 분류토트 */
+		SELECT
+			   OB.CTKEY
+		     , OB.OWKEY
+			 , OB.OBHDKEY
+			 , OB.WKTYPECD
+		  FROM (
+				 SELECT
+						OBHD.CTKEY
+					  , OBHD.OWKEY
+					  , OBHD.OBHDKEY
+					  , OBHD.WKTYPECD
+					  , ROW_NUMBER () OVER(ORDER BY COALESCE(OBHD.CLASSIFWKDATE, '20260131235959') DESC) AS RN
+				   FROM TWORK_INFO_OB_HD OBHD
+				  INNER JOIN TWORK_MST_CNTR CNTR
+				 	 ON OBHD.CTKEY = CNTR.CTKEY
+				    AND OBHD.CLASSIFCNTRBARCODE = CNTR.CNTRBARCODE
+				  INNER JOIN TWORK_INFO_WA_HD WAHD
+				 	 ON OBHD.CTKEY = WAHD.CTKEY
+				    AND OBHD.OWKEY = WAHD.OWKEY
+				    AND OBHD.WAHDKEY = WAHD.WAHDKEY
+				  WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				    AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				    AND OBHD.CLASSIFCNTRBARCODE = #{cntrbarcode}
+				    AND OBHD.OBWKDATE IS NOT NULL
+				    AND WAHD.WAWKSTATUSCD IN ('50', '60') /*50 : 작업중, 작업완료 */
+				    AND WAHD.WKTYPECD IN ('DW')
+				    AND OBHD.OBSTATUSCD IN ('40','60','65','70','85') /*40: 미패킹, 60: 미출고, 65: 부분출고, 70: 출고완료,85: 결품처리확정 (헤더만사용) */
+				    AND CNTR.CNTRDIVCD IN ('30', '40', '50') /*30: 분류TOTE(소) 40: 분류TOTE(중) 50: 분류TOTE(대) */
+				    AND CNTR.CNTRWKDIVCD = 20 /*20: 분류용*/
+			   ) OB
+		 WHERE RN = 1
+	</select>
+
+	<select id="selectObHdByObhdkeyOrWblno" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectObHdByObhdkeyOrWblno - 릴리즈정보 조회 BY 릴리즈코드OR운송장번호 */
+		SELECT
+			OBHD.OBHDKEY
+			,OBHD.WKTYPECD
+		FROM
+			(
+				SELECT
+					OH.CTKEY
+					,OH.OWKEY
+					,OH.OBHDKEY
+					,OH.OBSTATUSCD
+					,CASE WHEN OH.WKTYPECD IS NULL
+							THEN (CASE WHEN OH.ORDSEPTYPECD = '10' THEN 'UW' ELSE 'DW' END)
+							ELSE OH.WKTYPECD END AS WKTYPECD
+					,(CASE WHEN OH.PIHDKEY IS NULL
+							THEN
+								(SELECT PIHDKEY
+								FROM TWORK_INFO_OB_HD
+								WHERE CTKEY = OH.CTKEY
+								AND OWKEY = OH.OWKEY
+								AND OBHDKEY = OH.PKOBHDKEY)
+							ELSE OH.PIHDKEY END) AS  PIHDKEY
+				FROM TWORK_INFO_OB_HD OH
+				LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NISHD
+					ON OH.CTKEY = NISHD.CTKEY
+				   AND OH.OWKEY = NISHD.OWKEY
+				   AND OH.OBHDKEY = NISHD.OBHDKEY
+				WHERE OH.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				AND OH.OWKEY = COALESCE(#{owkey}, #{sowkey})
+                <choose>
+                    <when test='obhdkey !=null and obhdkey != ""'>
+						AND OH.OBHDKEY = #{obhdkey}
+                    </when>
+                    <otherwise>
+						AND (OH.OBHDKEY = #{obhdkeywblno} OR OH.WBLNO = #{obhdkeywblno} OR NISHD.OBNISNO = #{obhdkeywblno})
+                    </otherwise>
+                </choose>
+			) OBHD INNER JOIN TWORK_INFO_PI_HD PIHD
+					ON OBHD.CTKEY = PIHD.CTKEY
+					AND OBHD.OWKEY = PIHD.OWKEY
+					AND OBHD.PIHDKEY = PIHD.PIHDKEY
+		WHERE
+			(
+				(PIHD.PKDIVCD = '10' AND OBHD.OBSTATUSCD IN ('25','30','85')) /*오더별피킹 - 25: 부분피킹 30 : 피킹확정 ,85: 결품처리확정 (헤더만사용) */
+				OR
+				(PIHD.PKDIVCD IN ('20','30') AND OBHD.WKTYPECD = 'RW' AND OBHD.OBSTATUSCD IN ('20', '85')) /*총량피킹,통합피킹/로봇작업 - 20: 피킹지시, 85: 결품처리확정 */
+				OR
+				(PIHD.PKDIVCD IN ('20','30') AND OBHD.WKTYPECD = 'DW' AND OBHD.OBSTATUSCD IN ('40','85')) /*총량피킹,통합피킹/DAS작업 - 40: 미패킹, 85: 결품처리확정 */
+				OR
+				(PIHD.PKDIVCD = '20' AND OBHD.WKTYPECD IN ('UW','PW') AND OBHD.OBSTATUSCD IN ('25','30','85')) /*총량피킹/단포,덕용작업 - 25: 부분피킹, 30:피킹화정, 85: 결품처리확정 */
+			)
+	</select>
+
+	<sql id="selectCombnPckgObInfoSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgObInfoSql - 포장처리 - 합포 출고정보 조회 SQL */
+		SELECT OBHD.CTKEY
+		     , OBHD.OWKEY
+			 , OBHD.OBHDKEY
+			 , COALESCE(WAHD.WAHDDAY,PREWAHD.WAHDDAY) AS WAHDDAY
+			 , COALESCE(WAHD.WARND, PREWAHD.WARND) AS WARND
+			 , TO_CHAR(TO_DATE(OBHD.OBHDDAY, 'YYYYMMDDHH24MISS'),'YYYY-MM-DD') AS OBHDDAY
+			 , TO_CHAR(TO_DATE(OBHD.OBREQDATE, 'YYYYMMDDHH24MISS'),'YYYY-MM-DD') AS OBREQDATE
+			 , DLV.DLVRYCORPCD
+			 , DLV.DLVRYCORPNM
+			 , OBHD.OBORDKEY
+			 , OBHD.WBLNO
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNNM, #{encKey}) AS RCPPRSNNM /*수령인명*/
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNTELNO, #{encKey}) AS RCPPRSNTELNO /*전화번호*/
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNADDR1, #{encKey}) AS RCPPRSNADDR1 /*주소1*/
+			 , OBHD.DLVYMSG /* 배송메세지 */
+			 , OBHD.OBSTATUSCD
+			 , OBHD.PREOBHDKEY
+			 , OBHD.PKOBHDKEY
+			 , OBHD.WKCNLREQYN					/*작업취소요청여부*/
+			 , RBOX.BOXNM AS RECOMBOXNM			/*추천박스*/
+			 , COALESCE(NISHD.OBNISNO,'') AS OBNISNO /*출고 결품 번호*/
+			 , COUNT(OBDT.OBDTKEY) AS ICTYPECNT
+			 , SUM(OBDT.EXPCTQTY) AS TOTALQTY
+		  FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+		 INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세 정보*/
+			ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+		  LEFT OUTER JOIN TWORK_MST_BOX RBOX /*박스마스터(추천)*/
+			ON OBHD.CTKEY = RBOX.CTKEY
+		   AND OBHD.RECOMBOXBARCODE = RBOX.BOXBARCODE
+		  LEFT OUTER JOIN TWORK_INFO_WA_HD WAHD /*웨이브 공통 정보*/
+			ON OBHD.CTKEY = WAHD.CTKEY
+		   AND OBHD.OWKEY = WAHD.OWKEY
+		   AND OBHD.WAHDKEY = WAHD.WAHDKEY
+		  LEFT OUTER JOIN TWORK_INFO_OB_HD PREOBHD /*이전 출고 공통 정보*/
+		  	ON OBHD.CTKEY = PREOBHD.CTKEY
+		   AND OBHD.OWKEY = PREOBHD.OWKEY
+		   AND OBHD.PREOBHDKEY = PREOBHD.OBHDKEY
+		  LEFT OUTER JOIN TWORK_INFO_WA_HD PREWAHD /*이전 웨이브 공통 정보*/
+			ON PREOBHD.CTKEY = PREWAHD.CTKEY
+		   AND PREOBHD.OWKEY = PREWAHD.OWKEY
+		   AND PREOBHD.WAHDKEY = PREWAHD.WAHDKEY
+		  LEFT OUTER JOIN TWORK_MST_CNTR CNTR /*용기마스터*/
+			ON WAHD.CTKEY = CNTR.CTKEY
+		   AND OBHD.CLASSIFCNTRBARCODE = CNTR.CNTRBARCODE
+		  LEFT OUTER JOIN TWORK_MST_DLVRYCORP DLV /*택배사 마스터*/
+			ON OBHD.CTKEY = DLV.CTKEY
+		   AND OBHD.OWKEY = DLV.OWKEY
+		   AND OBHD.DLVRYCORPCD = DLV.DLVRYCORPCD
+		   AND DLV.DELYN = 'N'
+		  LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+			ON OBHD.CTKEY = NISHD.CTKEY
+		   AND OBHD.OWKEY = NISHD.OWKEY
+		   AND OBHD.OBHDKEY = NISHD.OBHDKEY
+		   AND NISHD.CNFRMYN = 'Y'
+		 WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OBHD.OBHDKEY = #{obhdkey}
+		 GROUP BY
+			   OBHD.CTKEY
+			 , OBHD.OWKEY
+			 , OBHD.OBHDKEY
+			 , WAHD.WAHDDAY
+			 , WAHD.WARND
+			 , PREWAHD.WAHDDAY
+			 , PREWAHD.WARND
+			 , OBHD.OBHDDAY
+			 , OBHD.OBREQDATE
+			 , OBHD.RCPPRSNNM
+			 , DLV.DLVRYCORPCD
+			 , DLV.DLVRYCORPNM
+			 , OBHD.OBORDKEY
+			 , OBHD.WBLNO
+			 , OBHD.RCPPRSNNM
+			 , OBHD.RCPPRSNTELNO
+			 , OBHD.RCPPRSNADDR1
+			 , OBHD.DLVYMSG
+			 , OBHD.OBSTATUSCD
+			 , OBHD.PREOBHDKEY
+			 , OBHD.WKCNLREQYN
+			 , RBOX.BOXNM
+			 , NISHD.OBNISNO
+			 , OBHD.PKOBHDKEY
+	</sql>
+
+	<select id="selectCombnPckgObInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgObInfo - 포장처리 - 합포 출고정보 조회 */
+		<include refid="selectCombnPckgObInfoSql"/>
+	</select>
+
+	<sql id="selectCombnPckgIcSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgIcSql - 포장처리 - 합포 상품정보 SQL */
+		SELECT IC.IMGURL 								/*상품이미지 URL*/
+			 , IC.ICKEY 								/*상품코드*/
+			 , IC.ICNM									/*상품명*/
+			 , IC.CUSHNMEPCKGYN							/*완충재포장여부*/
+			 , IC.DNGMGMTYN								/*위험물관리여부*/
+			 , ICB.BARCODE								/*바코드*/
+			 , OBDT.OBDTKEY
+			 , OBDT.OBDTSTATUSCD
+			 , OBDT.INITQTY								/*초기수량*/
+			 , OBDT.EXPCTQTY 							/*예정수량*/
+			 , OBDT.CLASSIFSQTY 						/*분류수량*/
+			 , OBDT.CNFRMQTY 							/*확정수량*/
+			 , OBDT.PAKQTY 								/*패킹수량(완료수량)*/
+			 , NISDT.NISQTY 							/*결품수량*/
+			 , CASE WHEN NISHD.OBNISNO IS NOT NULL
+					THEN NISDT.CNFRMQTY
+					ELSE 0
+				END AS TOPAKQTY							/*검수수량(출고수량화면입력값)*/
+			 , 0 AS SEPQTY								/*분리수량(박스추가시 사용)*/
+			 , OBHD.CTKEY								/*센터코드*/
+			 , OBHD.OWKEY								/*화주코드*/
+			 , OBHD.PIHDKEY								/*피킹헤더코드*/
+			 , OBHD.OBHDKEY								/*릴리즈코드*/
+			 , OBHD.PREOBHDKEY							/*이전릴리즈코드*/
+		  FROM TWORK_INFO_OB_HD OBHD
+		 INNER JOIN TWORK_INFO_OB_DT OBDT
+			ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON OBDT.CTKEY = IC.CTKEY
+		   AND OBDT.OWKEY = IC.OWKEY
+		   AND OBDT.ICKEY = IC.ICKEY
+		 LEFT OUTER JOIN TWORK_MST_ICBARCODE ICB
+			ON IC.CTKEY = ICB.CTKEY
+		   AND IC.OWKEY = ICB.OWKEY
+		   AND IC.ICKEY = ICB.ICKEY
+		   AND OBDT.UOM = ICB.UOM
+		 LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+			ON OBHD.CTKEY = NISHD.CTKEY
+		   AND OBHD.OWKEY = NISHD.OWKEY
+		   AND OBHD.OBHDKEY = NISHD.OBHDKEY
+		   AND NISHD.CNFRMYN = 'Y'
+		 LEFT OUTER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+			ON NISHD.CTKEY = NISDT.CTKEY
+		   AND NISHD.OWKEY = NISDT.OWKEY
+		   AND NISHD.OBNISNO = NISDT.OBNISNO
+		   AND OBDT.OBDTKEY = NISDT.OBDTKEY
+		 WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OBHD.OBHDKEY = #{obhdkey}
+		   AND OBDT.OBDTSTATUSCD NOT IN ('01') /* 상세 '미할당' 건 제외 */
+		 ORDER BY
+		       OBHD.OBHDKEY
+			 , OBDT.ICKEY
+	</sql>
+
+	<select id="selectCombnPckgIcCount" resultType="java.lang.Integer">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgIcCount - 포장처리 - 합포 상품정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectCombnPckgIcSql"/>
+		)
+	</select>
+
+	<select id="selectCombnPckgIcInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgIcInfo - 포장처리 - 합포 상품정보 조회 */
+		<include refid="selectCombnPckgIcSql"/>
+	</select>
+
+	<sql id="selectPckgStatusSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectPckgStatusSql - 포장처리 - 합포 상태정보 SQL */
+		SELECT OBHD.CTKEY /*센터 코드*/
+		     , OBHD.OWKEY /*화주 코드*/
+		     , OBHD.OBHDKEY /*릴리즈코드*/
+			 , OBHD.PREOBHDKEY /*이전 릴리즈코드*/
+			 , OBHD.DLVRYCORPCD /*택배사코드*/
+			 , DLV.DLVRYCORPNM /*택배사명*/
+			 , OBHD.WBLNO /*운송장번호*/
+			 , OBHD.OBSTATUSCD /*출고상태코드*/
+			 , CASE WHEN OBHD.OBSTATUSCD IN ('60', '65', '70') THEN 'N'
+		            ELSE 'Y'
+				END AS SELECTYN /*ROW선택가능여부*/
+			 , OBHD.WKCNLREQYN /*작업취소요청여부*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+		 LEFT OUTER JOIN TWORK_MST_DLVRYCORP DLV /*택배사 마스터*/
+	        ON OBHD.CTKEY = DLV.CTKEY
+	       AND OBHD.OWKEY = DLV.OWKEY
+	       AND OBHD.DLVRYCORPCD = DLV.DLVRYCORPCD
+		   AND DLV.DELYN = 'N'
+	     WHERE OBHD.CTKEY = #{sctkey}
+	       AND OBHD.OWKEY = #{sowkey}
+		   AND (OBHD.OBHDKEY = #{obhdkey} OR OBHD.PKOBHDKEY = #{pkobhdkey})
+	  ORDER BY COALESCE(OBHD.PREOBHDKEY, OBHD.OBHDKEY), OBHD.OBHDKEY
+	</sql>
+
+	<select id="selectPckgStatusCount" resultType="java.lang.Integer">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectPckgStatusCount - 포장처리 - 합포 상태정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectPckgStatusSql"/>
+		)
+	</select>
+
+	<select id="selectPckgStatusInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectPckgStatusInfo - 포장처리 - 합포 상태정보 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectPckgStatusSql"/>
+		)
+	</select>
+
+	<sql id="selectSinglePckgIcSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgIcSql - 포장처리 - 단포 상품정보 SQL */
+		WITH OBHD AS (
+			SELECT
+				OBHD.CTKEY
+				, OBHD.OWKEY
+				, OBHD.OBHDKEY
+				, OBHD.WKTYPECD
+				, OBHD.PIHDKEY
+			FROM TWORK_INFO_OB_HD OBHD
+				INNER JOIN TWORK_INFO_OB_DT OBDT
+					ON OBHD.CTKEY = OBDT.CTKEY
+					AND OBHD.OWKEY = OBDT.OWKEY
+					AND OBHD.OBHDKEY = OBDT.OBHDKEY
+			<if test="obhdkey == null or obhdkey == ''">
+				INNER JOIN TWORK_INFO_PI_DT PIDT
+					ON OBDT.CTKEY = PIDT.CTKEY
+					AND OBDT.OWKEY = PIDT.OWKEY
+					AND OBDT.OBHDKEY = PIDT.OBHDKEY
+					AND OBDT.OBDTKEY = PIDT.OBDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT PCDT
+					ON PIDT.CTKEY = PCDT.CTKEY
+					AND PIDT.OWKEY = PCDT.OWKEY
+					AND PIDT.PIHDKEY = PCDT.PIHDKEY
+					AND PIDT.PIDTKEY = PCDT.PIDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR PC
+					ON PCDT.CTKEY = PC.CTKEY
+					AND PCDT.OWKEY = PC.OWKEY
+					AND PCDT.PIHDKEY = PC.PIHDKEY
+					AND PCDT.CNTRBARCODE = PC.CNTRBARCODE
+			</if>
+			WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			<choose>
+				<when test="obhdkey != null and obhdkey != ''">
+					AND OBHD.OBHDKEY = #{obhdkey}
+				</when>
+				<otherwise>
+					AND PC.CNTRDDLNYN = 'Y'
+					AND PC.PIHDKEY = #{pihdkey}
+					AND PC.CNTRBARCODE = #{cntrbarcode}
+				</otherwise>
+			</choose>
+			GROUP BY
+				OBHD.CTKEY
+				, OBHD.OWKEY
+				, OBHD.OBHDKEY
+				, OBHD.WKTYPECD
+				, OBHD.PIHDKEY
+		), NEWOBHD AS (
+			SELECT
+				NEWOBHD.CTKEY
+				,NEWOBHD.OWKEY
+				,NEWOBHD.OBHDKEY
+				,NEWOBHD.WKTYPECD
+				,NEWOBHD.PIHDKEY
+			FROM OBHD
+				INNER JOIN TWORK_INFO_OB_HD NEWOBHD
+				ON OBHD.CTKEY = NEWOBHD.CTKEY
+				AND OBHD.OWKEY = NEWOBHD.OWKEY
+				AND OBHD.OBHDKEY = NEWOBHD.PKOBHDKEY
+		)
+		SELECT
+			IC.ICKEY
+			, ICB.BARCODE
+			, IC.ICNM /*상품명*/
+			, IC.CUSHNMEPCKGYN /*완충재포장여부*/
+			, IC.DNGMGMTYN /*위험물관리여부*/
+			, IC.IMGURL /*상품이미지URL*/
+			, MAX(OBINFO.PIHDKEY) AS PIHDKEY
+			, OBINFO.CTKEY
+			, OBINFO.OWKEY
+			, SUM(OBDT.EXPCTQTY) AS EXPCTQTY /*예정수량 총합*/
+			, SUM(OBDT.INITQTY) - SUM(OBDT.CNFRMQTY) - SUM(OBDT.NISQTY) - SUM(CASE OBDT.OBDTSTATUSCD WHEN '97' THEN OBDT.EXPCTQTY ELSE 0 END) AS NONCNFRMQTY /*잔여수량 총합*/
+		FROM (
+				SELECT CTKEY, OWKEY, OBHDKEY, WKTYPECD, PIHDKEY
+				FROM OBHD
+				UNION
+				SELECT CTKEY, OWKEY, OBHDKEY, WKTYPECD, PIHDKEY
+				FROM NEWOBHD
+			) OBINFO
+			INNER JOIN TWORK_INFO_OB_DT OBDT
+				ON OBINFO.CTKEY = OBDT.CTKEY
+				AND OBINFO.OWKEY = OBDT.OWKEY
+				AND OBINFO.OBHDKEY = OBDT.OBHDKEY
+			INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+				ON OBDT.CTKEY = IC.CTKEY
+				AND OBDT.OWKEY = IC.OWKEY
+				AND OBDT.ICKEY = IC.ICKEY
+			LEFT OUTER JOIN TWORK_MST_ICBARCODE ICB /*상품바코드 마스터*/
+				ON IC.CTKEY = ICB.CTKEY
+				AND IC.OWKEY = ICB.OWKEY
+				AND IC.ICKEY = ICB.ICKEY
+				AND ICB.UOM = (CASE WHEN OBINFO.WKTYPECD = 'PW' THEN 'CTN' ELSE 'EA' END)
+		GROUP BY
+			IC.ICKEY /*상품코드*/
+			, ICB.BARCODE /*바코드*/
+			, IC.ICNM /*상품명*/
+			, IC.CUSHNMEPCKGYN /*완충재포장여부*/
+			, IC.DNGMGMTYN /*위험물관리여부*/
+			, IC.IMGURL /*상품이미지URL*/
+			, OBINFO.CTKEY
+			, OBINFO.OWKEY
+		ORDER BY IC.ICKEY /*상품코드*/
+	</sql>
+
+	<select id="selectSinglePckgIcCount" resultType="java.lang.Integer">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgIcCount - 포장처리 - 단포 상품정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectSinglePckgIcSql"/>
+		)
+	</select>
+
+	<select id="selectSinglePckgIcInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgIcInfo - 포장처리 - 단포 상품정보 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectSinglePckgIcSql"/>
+		)
+	</select>
+
+	<sql id="selectSinglePckgObSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgObSql - 포장처리 - 단포 출고정보 SQL */
+		WITH OBHD AS (
+			SELECT
+				OBHD.CTKEY
+				,OBHD.OWKEY
+				,OBHD.OBHDKEY
+			FROM TWORK_INFO_OB_HD OBHD /*출고 공통정보*/
+				INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세정보*/
+					ON OBHD.CTKEY = OBDT.CTKEY
+					AND OBHD.OWKEY = OBDT.OWKEY
+					AND OBHD.OBHDKEY = OBDT.OBHDKEY
+			<if test="obhdkey == null or obhdkey == ''">
+				INNER JOIN TWORK_INFO_PI_DT PIDT
+					ON OBDT.CTKEY = PIDT.CTKEY
+					AND OBDT.OWKEY = PIDT.OWKEY
+					AND OBDT.OBHDKEY = PIDT.OBHDKEY
+					AND OBDT.OBDTKEY = PIDT.OBDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT PCDT
+					ON PIDT.CTKEY = PCDT.CTKEY
+					AND PIDT.OWKEY = PCDT.OWKEY
+					AND PIDT.PIHDKEY = PCDT.PIHDKEY
+					AND PIDT.PIDTKEY = PCDT.PIDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR PC
+					ON PCDT.CTKEY = PC.CTKEY
+					AND PCDT.OWKEY = PC.OWKEY
+					AND PCDT.PIHDKEY = PC.PIHDKEY
+					AND PCDT.CNTRBARCODE = PC.CNTRBARCODE
+			</if>
+			WHERE OBHD.CTKEY = #{ctkey}
+				AND OBHD.OWKEY = #{owkey}
+				AND OBDT.ICKEY = #{ickey}
+				AND OBHD.OBSTATUSCD IN ('25', '30', '65', '70', '80', '85', '97') /* 부분피킹, 피킹확정, 부분출고, 출고완료, 결품보류, 결품보류확정, 작업취소 */
+				<choose>
+					<when test="obhdkey != null and obhdkey != ''">
+						AND OBHD.OBHDKEY = #{obhdkey}
+					</when>
+					<otherwise>
+						AND PC.CNTRDDLNYN = 'Y'
+						AND PC.PIHDKEY = #{pihdkey}
+						AND PC.CNTRBARCODE = #{cntrbarcode}
+					</otherwise>
+				</choose>
+			GROUP BY OBHD.CTKEY
+					,OBHD.OWKEY
+					,OBHD.OBHDKEY
+		),
+		NEWOBHD AS (
+			SELECT
+				NEWOBHD.CTKEY
+				,NEWOBHD.OWKEY
+				,NEWOBHD.OBHDKEY
+			FROM OBHD
+				INNER JOIN TWORK_INFO_OB_HD NEWOBHD
+				ON OBHD.CTKEY = NEWOBHD.CTKEY
+				AND OBHD.OWKEY = NEWOBHD.OWKEY
+				AND OBHD.OBHDKEY = NEWOBHD.PKOBHDKEY
+		)
+		SELECT
+			OBHD.CTKEY /*센터코드*/
+			 , OBHD.OWKEY /*화주코드*/
+			 , OBHD.OBHDKEY /*릴리즈코드*/
+			 , OBHD.PREOBHDKEY /*이전 릴리즈코드*/
+			 , OBHD.WBLNO /*운송장번호*/
+			 , OBHD.OBSTATUSCD /*출고상태*/
+			 , OBDT.OBDTKEY /*릴리즈상세코드*/
+			 , OBDT.OBDTSTATUSCD /*출고상세 상태코드*/
+			 , OBDT.ICKEY /*상품코드*/
+			 , OBDT.INITQTY /*초기수량*/
+			 , OBDT.EXPCTQTY /*예정수량*/
+			 , OBDT.PKQTY /*피킹수량*/
+			 , OBDT.PAKQTY /*패킹완료수량*/
+			 , OBDT.CNFRMQTY /*확정수량*/
+			 , COALESCE(NISDT.NISQTY, 0) AS NISQTY		/*결품수량*/
+			 , CASE WHEN OBHD.OBSTATUSCD = '50' THEN OBDT.PAKQTY
+					WHEN OBHD.OBSTATUSCD IN ('60', '65', '70') THEN OBDT.CNFRMQTY
+					ELSE COALESCE(NISDT.CNFRMQTY, OBDT.PKQTY) END AS TOPAKQTY	/*검수수량(출고수량화면입력값)*/
+			 , 0 AS SEPQTY								/*분리수량(박스추가시 사용)*/
+			 , OBHD.DLVRYCORPCD
+			 , DLV.DLVRYCORPNM /*택배사*/
+			 , RBOX.BOXNM AS RECOMBOXNM /*추천박스*/
+			 , OBHD.PCKGBOXBARCODE AS PAKBOXBARCODE /*포장박스*/
+			 , CASE WHEN OBHD.OBSTATUSCD IN ('25', '30', '40', '85') THEN 'Y' ELSE 'N' END EDTBOXBARCODEYN
+			 , CASE WHEN MAX(PRHS.PRSEQ) <![CDATA[>]]> 0 THEN 'Y' ELSE 'N' END PRSEQYN
+			 , CASE WHEN OBHD.OBSTATUSCD IN ('25', '30', '40') THEN 'Y' ELSE 'N' END TOPAKEDITYN /*출고수량 편집가능여부 20:피킹지시, 25: 부분피킹, 30: 피킹확정, 40: 미패킹*/
+			 , OBHD.WKCNLREQYN /*작업취소요청여부*/
+			 , CASE WHEN MIN(PIDT.PKDTWKSTATUSCD) = '00' THEN 'Y' ELSE 'N' END NONPICKINGYN
+		FROM
+			(
+				SELECT
+					CTKEY
+					,OWKEY
+					,OBHDKEY
+				FROM OBHD
+				UNION
+				SELECT
+					CTKEY
+					,OWKEY
+					,OBHDKEY
+				FROM NEWOBHD
+			) OBINFO
+			INNER JOIN TWORK_INFO_OB_HD OBHD
+				ON OBINFO.CTKEY = OBHD.CTKEY
+				AND OBINFO.OWKEY = OBHD.OWKEY
+				AND OBINFO.OBHDKEY = OBHD.OBHDKEY
+			INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세정보*/
+				ON OBHD.CTKEY = OBDT.CTKEY
+				AND OBHD.OWKEY = OBDT.OWKEY
+				AND OBHD.OBHDKEY = OBDT.OBHDKEY
+			LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+				ON OBDT.CTKEY = PIDT.CTKEY
+				AND OBDT.OWKEY = PIDT.OWKEY
+				AND OBDT.OBHDKEY = PIDT.OBHDKEY
+				AND OBDT.OBDTKEY = PIDT.OBDTKEY
+			INNER JOIN TWORK_MST_DLVRYCORP DLV /*택배사 마스터*/
+				ON OBHD.CTKEY = DLV.CTKEY
+				AND OBHD.OWKEY = DLV.OWKEY
+				AND OBHD.DLVRYCORPCD = DLV.DLVRYCORPCD
+				AND DLV.DELYN = 'N'
+			LEFT OUTER JOIN TWORK_MST_BOX RBOX /*박스마스터(추천)*/
+				ON OBHD.CTKEY = RBOX.CTKEY
+				AND OBHD.RECOMBOXBARCODE = RBOX.BOXBARCODE
+			LEFT OUTER JOIN TWORK_MST_BOX PBOX /*박스마스터(포장)*/
+				ON OBHD.CTKEY = PBOX.CTKEY
+				AND OBHD.PCKGBOXBARCODE = PBOX.BOXBARCODE
+			LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+				ON OBHD.CTKEY = NISHD.CTKEY
+			   AND OBHD.OWKEY = NISHD.OWKEY
+			   AND OBHD.OBHDKEY = NISHD.OBHDKEY
+			LEFT OUTER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+				ON NISHD.CTKEY = NISDT.CTKEY
+			   AND NISHD.OWKEY = NISDT.OWKEY
+			   AND NISHD.OBNISNO = NISDT.OBNISNO
+			   AND OBDT.OBDTKEY = NISDT.OBDTKEY
+			LEFT OUTER JOIN TWORK_INFO_WBL_PRHS PRHS /*운송장 출력 이력 정보*/
+				    ON OBHD.CTKEY = PRHS.CTKEY
+				   AND OBHD.OWKEY = PRHS.OWKEY
+				   AND OBHD.DLVRYCORPCD = PRHS.DLVRYCORPCD
+				   AND OBHD.WBLNO = PRHS.WBLNO
+				   AND OBHD.OBHDKEY = PRHS.OBHDKEY
+			GROUP BY OBHD.CTKEY /*센터코드*/
+					 , OBHD.OWKEY /*화주코드*/
+					 , OBHD.OBHDKEY /*릴리즈코드*/
+					 , OBHD.PREOBHDKEY /*이전 릴리즈코드*/
+					 , OBHD.WBLNO /*운송장번호*/
+					 , OBHD.OBSTATUSCD /*출고상태*/
+					 , OBDT.OBDTKEY /*릴리즈상세코드*/
+					 , OBDT.OBDTSTATUSCD /*출고상세 상태코드*/
+					 , OBDT.ICKEY /*상품코드*/
+					 , OBDT.INITQTY /*초기수량*/
+					 , OBDT.EXPCTQTY /*예정수량*/
+					 , OBDT.PKQTY /*피킹수량*/
+					 , OBDT.PAKQTY /*패킹완료수량*/
+					 , OBDT.CNFRMQTY /*확정수량*/
+					 , NISDT.NISQTY /*결품수량*/
+					 , CASE WHEN OBHD.OBSTATUSCD = '50' THEN OBDT.PAKQTY
+							WHEN OBHD.OBSTATUSCD IN ('60', '65', '70') THEN OBDT.CNFRMQTY
+							ELSE COALESCE(NISDT.CNFRMQTY, OBDT.PKQTY) END	/*검수수량(출고수량화면입력값)*/
+					 , OBHD.DLVRYCORPCD
+					 , DLV.DLVRYCORPNM /*택배사*/
+					 , RBOX.BOXNM /*추천박스*/
+					 , PBOX.BOXNM /*포장박스*/
+					 , OBHD.PCKGBOXBARCODE
+					 , OBHD.WKCNLREQYN /*작업취소요청여부*/
+		             , OBHD.PKOBHDKEY
+		ORDER BY MAX(OBDT.PKQTY) OVER (PARTITION BY COALESCE(OBHD.PKOBHDKEY, OBHD.OBHDKEY)) DESC
+				, COALESCE(OBHD.PKOBHDKEY, OBHD.OBHDKEY)
+				, OBHD.OBHDKEY
+				, OBDT.PKQTY DESC
+	</sql>
+
+	<select id="selectSinglePckgObCount" resultType="java.lang.Integer">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgObCount - 포장처리 - 단포 출고정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectSinglePckgObSql"/>
+		)
+	</select>
+
+	<select id="selectSinglePckgObInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgObInfo - 포장처리 - 단포 출고정보 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectSinglePckgObSql"/>
+		)
+	</select>
+
+	<select id="selectSinglePckgObComplInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectSinglePckgObComplInfo - 포장처리 - 단포 출고완료 여부 조회 */
+		WITH OBHD AS (
+			SELECT
+				OBHD.CTKEY
+				,OBHD.OWKEY
+				,OBHD.OBHDKEY
+			FROM TWORK_INFO_OB_HD OBHD /*출고 공통정보*/
+				INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세정보*/
+					ON OBHD.CTKEY = OBDT.CTKEY
+					AND OBHD.OWKEY = OBDT.OWKEY
+					AND OBHD.OBHDKEY = OBDT.OBHDKEY
+				LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+					ON OBDT.CTKEY = PIDT.CTKEY
+					AND OBDT.OWKEY = PIDT.OWKEY
+					AND OBDT.OBHDKEY = PIDT.OBHDKEY
+					AND OBDT.OBDTKEY = PIDT.OBDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR_DT PCDT
+					ON PIDT.CTKEY = PCDT.CTKEY
+					AND PIDT.OWKEY = PCDT.OWKEY
+					AND PIDT.PIHDKEY = PCDT.PIHDKEY
+					AND PIDT.PIDTKEY = PCDT.PIDTKEY
+				LEFT OUTER JOIN TWORK_INFO_PK_CNTR PC
+					ON PCDT.CTKEY = PC.CTKEY
+					AND PCDT.OWKEY = PC.OWKEY
+					AND PCDT.PIHDKEY = PC.PIHDKEY
+					AND PCDT.CNTRBARCODE = PC.CNTRBARCODE
+			WHERE OBHD.CTKEY = #{ctkey}
+			AND OBHD.OWKEY = #{owkey}
+			AND OBHD.OBSTATUSCD IN ('25', '30', '40', '45', '50', '60', '65', '70', '80', '85', '97') /* 부분피킹, 피킹확정, 미패킹, 부분패킹, 패킹완료, 미출고, 부분출고, 출고완료, 결품보류, 결품보류확정, 작업취소 */
+			<choose>
+				<when test="obhdkey != null and obhdkey != ''">
+					AND OBHD.OBHDKEY = #{obhdkey}
+				</when>
+				<otherwise>
+					AND PC.CNTRDDLNYN = 'Y'
+					AND PC.PIHDKEY = #{pihdkey}
+					AND PC.CNTRBARCODE = #{cntrbarcode}
+				</otherwise>
+			</choose>
+			GROUP BY OBHD.CTKEY
+					,OBHD.OWKEY
+					,OBHD.OBHDKEY
+		),
+		NEWOBHD AS (
+			SELECT
+				NEWOBHD.CTKEY
+				,NEWOBHD.OWKEY
+				,NEWOBHD.OBHDKEY
+			FROM OBHD
+				INNER JOIN TWORK_INFO_OB_HD NEWOBHD
+				ON OBHD.CTKEY = NEWOBHD.CTKEY
+				AND OBHD.OWKEY = NEWOBHD.OWKEY
+				AND OBHD.OBHDKEY = NEWOBHD.PKOBHDKEY
+		)
+		SELECT
+			CASE
+				 WHEN COUNT(OH.OBHDKEY) = SUM(CASE WHEN OH.OBSTATUSCD IN ('60', '65', '70', '80') THEN 1 ELSE 0 END)
+			 THEN 'Y'
+			 ELSE 'N' END AS COMPLYN
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN
+			(SELECT
+				CTKEY
+				,OWKEY
+				,OBHDKEY
+			FROM OBHD
+			UNION
+			SELECT
+				CTKEY
+				,OWKEY
+				,OBHDKEY
+			FROM NEWOBHD) OBINFO
+			ON OH.CTKEY = OBINFO.CTKEY
+			AND OH.OWKEY = OBINFO.OWKEY
+			AND OH.OBHDKEY = OBINFO.OBHDKEY
+	</select>
+
+	<sql id="selectBoxBarcodeSql">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectBoxBarcodeSql - 포장처리 - 포장박스정보 SQL */
+		SELECT CTKEY
+     		 , BOXBARCODE
+     		 , BOXNM
+  		  FROM TWORK_MST_BOX
+ 		 WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+   		   AND BOXBARCODE = #{boxbarcode}
+	</sql>
+
+	<select id="selectBoxBarcodeCount" resultType="java.lang.Integer">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectBoxBarcodeCount - 포장처리 - 포장박스정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectBoxBarcodeSql"/>
+		)
+	</select>
+
+	<select id="selectBoxBarcodeInfo" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectBoxBarcodeInfo - 포장처리 - 포장박스정보 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectBoxBarcodeSql"/>
+		)
+	</select>
+
+	<select id="selectAddedObHd" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectAddedObHd - 포장처리 - 추가된 릴리즈코드 헤더정보 조회 */
+		SELECT OBHD.CTKEY
+			 , OBHD.OWKEY
+			 , OBHD.OBHDKEY
+		  FROM TWORK_INFO_OB_HD OBHD
+		 WHERE OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.PREOBHDKEY = #{obhdkey}
+	</select>
+
+	<insert id="insertObNisHd">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - insertObNisHd - 포장처리 - 출고 결품보류 헤더 등록 */
+		INSERT INTO TWORK_INFO_OB_NIS_HD /*출고 결품 헤더 정보*/
+		(	   CTKEY        /*센터 코드*/
+			 , OWKEY        /*화주 코드*/
+			 , OBNISNO      /*출고 결품 번호*/
+			 , OBHDKEY      /*릴리즈 코드*/
+			 , STNBARCODE   /*스테이션 바코드*/
+			 , INSERTDATE   /*입력 일시*/
+			 , INSERTURKEY  /*입력자*/
+			 , UPDATEDATE   /*수정 일시*/
+			 , UPDATEURKEY  /*수정자*/
+		) VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{obnisno}
+			 , #{obhdkey}
+			 , #{pakstnbarcode}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+	</insert>
+
+	<select id="selectObNisDtForInsert" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectObNisDtForInsert - 포장처리 - 출고 결품보류 상세 등록대상 데이터 조회 */
+		SELECT #{ctkey} AS CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{obnisno} AS OBNISNO
+			 , (COALESCE(MAX(CAST(NISDT.OBNISDTNO AS NUMERIC)), 0) + 1) AS OBNISDTNO
+			 , #{obhdkey} AS OBHDKEY
+			 , #{obdtkey} AS OBDTKEY
+			 , #{ickey} AS ICKEY
+			 , #{expctqty} AS EXPCTQTY
+			 , #{nisqty} AS NISQTY
+			 , #{pakqty} AS PAKQTY
+			 , #{nisprcsstatuscd} AS NISPRCSSTATUSCD
+			 , COALESCE(MAX(PTDT.PKIMPSYN), MAX(PREPTDT.PKIMPSYN)) AS PKIMPSYN
+		  FROM TWORK_INFO_OB_HD OBHD
+		  LEFT OUTER JOIN TWORK_INFO_OB_NIS_DT NISDT
+			ON OBHD.CTKEY = NISDT.CTKEY
+		   AND OBHD.OWKEY = NISDT.OWKEY
+		   AND NISDT.OBNISNO = #{obnisno}
+		  LEFT OUTER JOIN TWORK_INFO_PI_TOT_DT PTDT
+			ON OBHD.CTKEY = PTDT.CTKEY
+		   AND OBHD.OWKEY = PTDT.OWKEY
+		   AND OBHD.PIHDKEY = PTDT.PIHDKEY
+		   AND PTDT.ICKEY = #{ickey}
+		  LEFT OUTER JOIN TWORK_INFO_OB_HD PREOBHD
+			ON OBHD.CTKEY = PREOBHD.CTKEY
+		   AND OBHD.OWKEY = PREOBHD.OWKEY
+		   AND OBHD.PREOBHDKEY = PREOBHD.OBHDKEY
+		  LEFT OUTER JOIN TWORK_INFO_PI_TOT_DT PREPTDT
+			ON PREOBHD.CTKEY = PREPTDT.CTKEY
+		   AND PREOBHD.OWKEY = PREPTDT.OWKEY
+		   AND PREOBHD.PIHDKEY = PREPTDT.PIHDKEY
+		   AND PREPTDT.ICKEY = #{ickey}
+		 WHERE OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.OBHDKEY = #{obhdkey}
+	</select>
+
+	<insert id="insertObNisDt">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - insertObNisDt - 포장처리 - 출고 결품보류 상세 등록 */
+		INSERT INTO TWORK_INFO_OB_NIS_DT /*출고 결품 상세 정보*/
+		(	   CTKEY         /*센터 코드*/
+			 , OWKEY         /*화주 코드*/
+			 , OBNISNO       /*출고 결품 번호*/
+			 , OBNISDTNO     /*출고 결품 상세 번호*/
+			 , OBHDKEY       /*릴리즈 코드*/
+			 , OBDTKEY       /*릴리즈 상세 코드*/
+			 , ICKEY		 /*상품 코드*/
+			 , EXPCTQTY      /*예정 수량*/
+			 , NISQTY        /*결품 수량*/
+			 , CNFRMQTY      /*확정 수량*/
+			 , NISPRCSSTATUSCD /*결품 처리 상태 코드*/
+		     , PKIMPSYN      /*피킹 불가 여부*/
+			 , INSERTDATE    /*입력 일시*/
+			 , INSERTURKEY   /*입력자*/
+			 , UPDATEDATE    /*수정 일시*/
+			 , UPDATEURKEY   /*수정자*/
+		) VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{obnisno}
+			 , #{obnisdtno}
+			 , #{obhdkey}
+			 , #{obdtkey}
+			 , #{ickey}
+			 , #{expctqty}
+			 , #{nisqty}
+			 , #{pakqty}
+			 , #{nisprcsstatuscd}
+			 , #{pkimpsyn}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+
+
+	</insert>
+
+	<select id="selectNisHoldCnfrmDt" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectNisHoldCnfrmDt - 포장처리 - 결품보류확정 데이터 조회 */
+		SELECT OBDT.CTKEY /*센터 코드*/
+			 , OBDT.OWKEY /*화주 코드*/
+			 , OBDT.OBHDKEY /*릴리즈 코드*/
+			 , OBDT.OBDTKEY /*릴리즈 상세 코드*/
+			 , OBDT.OBDTSTATUSCD /*출고 상세 상태 코드*/
+			 , CASE WHEN NISHD.REWKOBHDKEY IS NULL /*재작업 릴리즈 코드*/
+						 THEN NISDT.NISQTY
+					WHEN NISHD.REWKOBHDKEY IS NOT NULL
+						 THEN 0
+				END AS NISQTY /*결품 수량*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+		 INNER JOIN TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+		    ON OBHD.CTKEY = NISHD.CTKEY
+		   AND OBHD.OWKEY = NISHD.OWKEY
+		   AND OBHD.OBHDKEY = NISHD.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+		    ON NISHD.CTKEY = NISDT.CTKEY
+		   AND NISHD.OWKEY = NISDT.OWKEY
+		   AND NISHD.OBNISNO = NISDT.OBNISNO
+		 INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세 정보*/
+			ON NISDT.CTKEY = OBDT.CTKEY
+		   AND NISDT.OWKEY = OBDT.OWKEY
+		   AND NISDT.OBHDKEY = OBDT.OBHDKEY
+		   AND NISDT.OBDTKEY = OBDT.OBDTKEY
+		 WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OBHD.OBHDKEY = #{obhdkey}
+		   AND OBHD.OBSTATUSCD = #{obstatuscd}
+		   AND NISHD.CNFRMYN = 'Y' /*확정 여부*/
+	</select>
+
+	<!--상품목록 대상 릴리즈코드 조회 -->
+	<select id="selectCombnPckgIcTarget" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectCombnPckgIcTarget - 상품목록 대상 릴리즈코드 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+		  FROM (
+				SELECT CTKEY
+					, OWKEY
+					, OBHDKEY
+					, ROW_NUMBER() OVER(ORDER BY OBHDKEY DESC) AS RN
+				FROM (
+					SELECT CTKEY, OWKEY, OBHDKEY
+					FROM TWORK_INFO_OB_HD
+					WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+					AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+					AND OBHDKEY = #{obhdkey}
+					UNION ALL
+					SELECT CTKEY, OWKEY, OBHDKEY
+					FROM TWORK_INFO_OB_HD
+					WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+					AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+					AND PKOBHDKEY = #{obhdkey}
+					)
+			   )
+		 WHERE RN = 1
+	</select>
+
+	<!--릴리즈코드 상태 변경 BY 결품보류 -->
+	<update id="updateOutboundHeaderStatusCdByNisHold">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - updateOutboundHeaderStatusCdByNisHold - 릴리즈코드 상태 변경 BY 결품보류 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = #{obstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectWkCntrInfoOnPop" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectWkCntrInfoOnPop - 포장처리 - 작업용기 조회(팝업) */
+		SELECT WH.WAHDDAY
+			 , WH.WAHDNM
+			 , CD.CTCDDTNM
+			 , PC.CNTRBARCODE
+			 , PC.PIHDKEY
+			 , SUM(PCD.PKQTY) AS PKQTY
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_PI_HD PH
+		    ON WH.CTKEY = PH.CTKEY
+		   AND WH.OWKEY = PH.OWKEY
+		   AND WH.PIHDKEY = PH.PIHDKEY
+		 INNER JOIN TWORK_INFO_PI_DT PD
+			ON PH.CTKEY = PD.CTKEY
+		   AND PH.OWKEY = PD.OWKEY
+		   AND PH.PIHDKEY = PD.PIHDKEY
+		 INNER JOIN TWORK_INFO_PK_CNTR PC
+			ON PH.CTKEY = PC.CTKEY
+		   AND PH.OWKEY = PC.OWKEY
+		   AND PH.PIHDKEY = PC.PIHDKEY
+		 INNER JOIN TWORK_INFO_PK_CNTR_DT PCD
+			ON PD.CTKEY = PCD.CTKEY
+		   AND PD.OWKEY = PCD.OWKEY
+		   AND PD.PIHDKEY = PCD.PIHDKEY
+		   AND PD.PIDTKEY = PCD.PIDTKEY
+		 INNER JOIN TWORK_MST_CNTR CNTR
+			ON PC.CTKEY = CNTR.CTKEY
+		   AND PC.CNTRBARCODE = CNTR.CNTRBARCODE
+		 INNER JOIN TWORK_MST_CTCD_DT CD
+			ON CNTR.CTKEY = CD.CTKEY
+		   AND CNTR.CNTRDIVCD = CD.CTCDDTKEY
+		   AND CD.CTCDHDKEY = 'CNTRDIVCD'
+		 INNER JOIN TWORK_MST_ICBARCODE ICB
+			ON PD.CTKEY = ICB.CTKEY
+		   AND PD.OWKEY = ICB.OWKEY
+		   AND PD.ICKEY = ICB.ICKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDDAY BETWEEN #{wkdayfr} AND #{wkdayto}
+		<if test="icbarcode != null and icbarcode != ''">
+		   AND ICB.BARCODE = #{icbarcode}
+		</if>
+		 GROUP BY
+			   WH.WAHDDAY
+			 , WH.WAHDNM
+			 , CD.CTCDDTNM
+			 , PC.CNTRBARCODE
+			 , PC.PIHDKEY
+	</select>
+
+	<select id="selectWkCnlYn" resultType="camelMap">
+		/* wms-outbound-obpckgprcs-sql-oracle.xml - selectWkCnlYn - WMS > 출고 관리 > 포장처리 - 작업취소여부 확인 */
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , WKCNLREQYN
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</select>
+
+</mapper>

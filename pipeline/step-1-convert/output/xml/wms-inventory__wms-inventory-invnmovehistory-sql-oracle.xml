@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnMoveHistoryMapper">
+
+    <sql id="selectInvnMoveHistorysql">
+        SELECT *
+        FROM (
+                SELECT A.CTKEY
+                     , H.CTNM
+                     , A.OWKEY
+                     , A.IVCHGDATE
+                     , A.IVHSKEY
+                     , A.IVHSTYPECD
+                     , A.ICKEY
+                     , N.ICNM
+                     , L.CTGNM AS CTG_LV_NM1
+                     , K.CTGNM AS CTG_LV_NM2
+                     , J.CTGNM AS CTG_LV_NM3
+                     , COALESCE(M.ASRTMASICKEY, A.ICKEY) AS ASRTMASICKEY
+                     , COALESCE(O.ICNM, N.ICNM) AS ASRTMASICNM
+                     , CASE WHEN M.ASRTDTICKEY IS NOT NULL THEN A.ICKEY
+                            ELSE COALESCE(M.ASRTMASICKEY, A.ICKEY) END AS ASRTDTICKEY
+                     , CASE WHEN M.ASRTDTICKEY IS NOT NULL THEN N.ICNM
+                            ELSE COALESCE(O.ICNM, N.ICNM) END AS ASRTDTICNM
+                     , P.ICUNITQTY AS INN_ICUNITQTY
+                     , Q.ICUNITQTY AS CTN_ICUNITQTY
+                     , I.SLPRC
+                     , A.FRLCKEY
+                     , C.ZNKEY AS FRZNKEY
+                     , C.ZNNM AS FRZNNM
+                     , D.ARKEY AS FRARKEY
+                     , D.ARNM AS FRARNM
+                     , A.FRIVSERIALNO
+                     , A.TOLCKEY
+                     , F.ZNKEY AS TOZNKEY
+                     , F.ZNNM AS TOZNNM
+                     , G.ARKEY AS TOARKEY
+                     , G.ARNM AS TOARNM
+                     , A.TOIVSERIALNO
+                     , A.UOM
+                     , CASE WHEN A.QTY > 0 THEN ROUND(A.QTY / COALESCE(R.ICUNITQTY, 1),2)
+                            ELSE A.QTY END AS QTY_UNIT
+                     , A.QTY
+                     , I.SLPRC * A.QTY AS IV_AMT
+                     , S.BARCODE
+                     , A.FRBFCHGQTY
+                     , A.TOBFCHGQTY
+                     , A.IBHDKEY
+                     , A.IBDTKEY
+                     , A.OBHDKEY
+                     , A.OBDTKEY
+                     , A.PIHDKEY
+                     , A.PIDTKEY
+                     , A.TAHDKEY
+                     , A.TADTKEY
+                     , A.IVMOVERSNCD
+                     , A.IVMOVEDTCONT
+                     , A.INSERTDATE
+                     , A.INSERTURKEY
+                     , A.UPDATEDATE
+                     , A.UPDATEURKEY
+                  FROM TWORK_INFO_IVHS A
+                  LEFT OUTER JOIN TWORK_MST_LC B
+                    ON A.CTKEY = B.CTKEY
+                   AND A.FRLCKEY = B.LCKEY
+                  LEFT OUTER JOIN TWORK_MST_ZN C
+                    ON B.CTKEY = C.CTKEY
+                   AND B.ZNKEY = C.ZNKEY
+                  LEFT OUTER JOIN TWORK_MST_AR D
+                    ON B.CTKEY = D.CTKEY
+                   AND B.ARKEY = D.ARKEY
+                   AND B.ZNKEY = D.ZNKEY
+                  LEFT OUTER JOIN TWORK_MST_LC E
+                    ON A.CTKEY = E.CTKEY
+                   AND A.TOLCKEY = E.LCKEY
+                  LEFT OUTER JOIN TWORK_MST_ZN F
+                    ON E.CTKEY = F.CTKEY
+                   AND E.ZNKEY = F.ZNKEY
+                  LEFT OUTER JOIN TWORK_MST_AR G
+                    ON E.CTKEY = G.CTKEY
+                   AND E.ARKEY = G.ARKEY
+                   AND E.ZNKEY = G.ZNKEY
+                 INNER JOIN TWORK_MST_CT H
+                    ON A.CTKEY = H.CTKEY
+                 INNER JOIN TWORK_MST_IC I
+                    ON A.CTKEY = I.CTKEY
+                   AND A.OWKEY = I.OWKEY
+                   AND A.ICKEY = I.ICKEY
+                  LEFT OUTER JOIN TWORK_MST_CTG J
+                    ON A.CTKEY = J.CTKEY
+                   AND A.OWKEY = J.OWKEY
+                   AND I.CTGKEY = J.CTGKEY
+                   AND J.CTGLV = '3'
+                  LEFT OUTER JOIN TWORK_MST_CTG K
+                    ON A.CTKEY = K.CTKEY
+                   AND A.OWKEY = K.OWKEY
+                   AND J.UPRCTGKEY = K.CTGKEY
+                   AND K.CTGLV = '2'
+                  LEFT OUTER JOIN TWORK_MST_CTG L
+                    ON A.CTKEY = L.CTKEY
+                   AND A.OWKEY = L.OWKEY
+                   AND K.UPRCTGKEY = L.CTGKEY
+                   AND L.CTGLV = '1'
+                  LEFT OUTER JOIN TWORK_MST_ASRT M
+                    ON A.CTKEY = M.CTKEY
+                   AND A.OWKEY = M.OWKEY
+                   AND A.ICKEY = M.ASRTDTICKEY
+                 INNER JOIN TWORK_MST_IC N
+                    ON A.CTKEY = N.CTKEY
+                   AND A.OWKEY = N.OWKEY
+                   AND A.ICKEY = N.ICKEY
+                  LEFT JOIN TWORK_MST_IC O
+                    ON M.CTKEY = O.CTKEY
+                   AND M.OWKEY = O.OWKEY
+                   AND M.ASRTMASICKEY = O.ICKEY
+                  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE P
+                    ON A.CTKEY = P.CTKEY
+                   AND A.OWKEY = P.OWKEY
+                   AND A.ICKEY = P.ICKEY
+                   AND P.ICUNITTYPECD = 'INN'
+                  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE Q
+                    ON A.CTKEY = Q.CTKEY
+                   AND A.OWKEY = Q.OWKEY
+                   AND A.ICKEY = Q.ICKEY
+                   AND Q.ICUNITTYPECD = 'CTN'
+                  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE R
+                    ON A.CTKEY = R.CTKEY
+                   AND A.OWKEY = R.OWKEY
+                   AND A.ICKEY = R.ICKEY
+                   AND A.UOM = R.ICUNITTYPECD
+                  LEFT OUTER JOIN TWORK_MST_ICBARCODE S
+                    ON A.CTKEY = S.CTKEY
+                   AND A.OWKEY = S.OWKEY
+                   AND A.ICKEY = S.ICKEY
+                   AND S.UOM = 'EA'
+             )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+        </if>
+
+    </sql>
+
+    <select id="selectInvnMoveHistoryCount" resultType="java.lang.Integer" >
+        /* wms-inventory-invnmovehistory-sql-oracle.xml - selectInvnMoveHistoryCount - 재고이동 내역조회 Count */
+        SELECT  COUNT(1)
+        FROM (
+        <include refid="selectInvnMoveHistorysql"/>
+        )
+    </select>
+
+    <select id="selectInvnMoveHistory" resultType="camelMap">
+        /* wms-inventory-invnmovehistory-sql-oracle.xml - selectInvnMoveHistory - 재고이동 내역조회 */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectInvnMoveHistorysql"/>
+        <choose>
+            <when test='sortValue !=null and sortValue != ""'>
+                <if test='sortValue == "DESC" and colName !=null'>
+                    ORDER BY #{colName} DESC
+                </if>
+                <if test='sortValue == "ASC" and colName !=null'>
+                    ORDER BY #{colName} ASC
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY IVHSKEY DESC
+            </otherwise>
+        </choose>
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+</mapper>

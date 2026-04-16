@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.sample.in.mapper.SampleEmpMapper">
+
+	<select id="getEmpInfo" parameterType="com.daiso.wif.rest.sample.vo.EmpVO" resultType="com.daiso.wif.rest.sample.vo.EmpVO">
+		SELECT EMPNO
+			  ,EMPNM
+			  ,EMPADDR
+		  FROM TWORK_EMP1
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(empNo)">
+			AND EMPNO = #{empNo}
+		</if>
+	</select>
+
+	<insert id="insertEmp" parameterType="com.daiso.wif.rest.sample.vo.EmpVO">
+		INSERT INTO TWORK_EMP1
+		(
+			 EMPNO
+			,EMPNM
+			,EMPADDR
+		)
+		VALUES
+		(
+			 #{empNo}
+			,#{empNm}
+			,#{empAddr}
+		)
+	</insert>
+
+	<delete id="deleteEmp">
+		DELETE FROM TWORK_EMP1
+		 WHERE EMPNO = #{empNo}
+	</delete>
+
+	<select id="getDecodeSample" resultType="com.daiso.wif.rest.sample.vo.ClassifPlanVO">
+		SELECT WASEQ,ORDERSEQ,CTKEY,OWKEY,WAHDKEY,OBHDKEY,RCVPRSNADDR,RCVPRSNTEL,RCVPRSNHP
+		  FROM TWIF_DAS_CLASSIFPLAN_ORDER
+		 WHERE WASEQ = 263
+	</select>
+
+</mapper>

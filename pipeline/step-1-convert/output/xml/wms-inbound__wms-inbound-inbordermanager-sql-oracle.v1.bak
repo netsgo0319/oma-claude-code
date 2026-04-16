@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.InbOrderManagerMapper">
+	
+	<select id="selectIbDt" parameterType="inbOrderDtVO" resultType="inbOrderDtVO">
+		<![CDATA[			
+			SELECT A.CTKEY, A.IBHDKEY, A.IBDTKEY, A.OWKEY, A.ICKEY, A.SBKEY, A.ICUTKEY
+			    , A.INITQTY, A.EXQTY, A.CFQTY, A.RJQTY, A.UOM, A.TO_LCKEY, A.TO_IVATKEY
+			    , A.TO_ULCKEY, A.WKSTATUS, A.PRODUCTDATE, A.EXPIREDATE
+			    , A.ATTRIBUTE1, A.ATTRIBUTE2, A.ATTRIBUTE3, A.ATTRIBUTE4, A.ATTRIBUTE5
+			    , A.PRODUCTLOT, A.ORHDKEY, A.ORDTKEY, A.ITIV_HDKEY, A.ITIV_DTKEY
+			    , B.IBHDTYPE, B.POHDKEY, A.LOGGRPCD, A.EXTERNORDERKEY , A.EXTERNORDERLINENUM
+			    , #{ibqty} AS IBQTY
+			    , A.ORGCHITNO 
+			    , A.ORGCHITSEQ
+			    , B.FR_CTKEY
+			    , A.CHITID
+			    , A.ORGCHITYMD
+			    , B.STORE_KEY
+			    , A.ICGRKEY
+			    , A.ACKEY
+			    , A.DCKEY
+			    , A.WGT
+			    , A.ILBHSKEY
+			    , #{net_wgt_in} AS NET_WGT_IN
+		 	 FROM TWORK_INFO_IB_DT A
+		 	 	,TWORK_INFO_IB_HD B
+			WHERE A.CTKEY = B.CTKEY
+				AND A.IBHDKEY = B.IBHDKEY
+			AND A.CTKEY = #{ctkey}
+		    AND A.IBHDKEY = #{ibhdkey}				
+		    AND A.IBDTKEY = #{ibdtkey}	 	 	
+		]]>		 	
+	</select>
+
+	<select id="selectIbHd" parameterType="inbOrderHdVO" resultType="inbOrderHdVO">
+		<![CDATA[			
+		SELECT CTKEY          
+			,IBHDKEY        
+			,IBHDTYPE       
+			,IBHDDATE       
+			,OWKEY          
+			,ACKEY          
+			,ACNAME         
+			,IBCONFIRMDATE  
+			,IBCLOSINGDATE  
+			,WKSTATUS       
+			,COMMENTS1      
+			,COMMENTS2      
+			,ORHDKEY        
+			,PACKAGEORDERKEY
+			,ITIV_HDKEY     
+			,EXTERNORDERKEY 
+			,EXTERNORDERKEY2
+			,UDF1           
+			,UDF2           
+			,UDF3
+			,UDF4
+			,UDF5
+			,WAYBILLNO
+			,TEL
+			,ZCKEY
+			,ADDRESS1
+			,ADDRESS2
+			,POHDKEY
+			,LOGGRPCD
+			,PLQTY
+			,FR_CTKEY
+	 	 FROM TWORK_INFO_IB_HD
+		WHERE CTKEY = #{ctkey}
+		    AND IBHDKEY = #{ibhdkey}
+		]]>		 	
+	</select>
+		
+	<update id="updateIbDtConfirmQty" parameterType="inbOrderDtVO">
+		UPDATE TWORK_INFO_IB_DT SET
+			CFQTY = CFQTY + #{ibqty}
+			,RJQTY = #{rjqty}
+			,TO_IVATKEY = #{to_ivatkey}
+			,IBNRCD = #{ibnrcd}
+			,UDF5 = #{udf5}
+			,WGT = #{wgt}
+			,EXPIREDATE = #{expiredate, typeHandler=GmtDateTimeFormatTypeHandler}
+			,PRODUCTLOT = #{productlot}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND IBHDKEY = #{ibhdkey}
+		    AND IBDTKEY = #{ibdtkey}
+	</update>
+	
+	<update id="updateIbDtWorkStatus" parameterType="inbOrderDtVO">
+		<![CDATA[	
+		UPDATE TWORK_INFO_IB_DT SET
+			 WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+			,UPDATEKEY = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISSFF')
+		WHERE CTKEY = #{ctkey}
+		    AND IBHDKEY = #{ibhdkey}
+		    AND IBDTKEY = #{ibdtkey}
+		]]>		 
+	</update>
+	
+	<select id="selectIbDtList" parameterType="inbOrderDtVO" resultType="inbOrderDtVO">
+		<![CDATA[			
+		SELECT CTKEY, IBHDKEY, IBDTKEY, OWKEY, ICKEY, SBKEY, ICUTKEY
+		    , INITQTY, EXQTY, CFQTY, RJQTY, UOM, TO_LCKEY, TO_IVATKEY
+		    , TO_ULCKEY, WKSTATUS, PRODUCTDATE, EXPIREDATE
+		    , ATTRIBUTE1, ATTRIBUTE2, ATTRIBUTE3, ATTRIBUTE4, ATTRIBUTE5
+		    , PRODUCTLOT, ORHDKEY, ORDTKEY, ITIV_HDKEY, ITIV_DTKEY
+		    , IBNRCD
+	 	 FROM TWORK_INFO_IB_DT
+		WHERE CTKEY = #{ctkey}
+		    AND IBHDKEY = #{ibhdkey}			
+		]]>		 	
+	</select>		
+
+	<update id="updateIbHdWorkStatus" parameterType="inbOrderHdVO">	
+		UPDATE TWORK_INFO_IB_HD SET
+			WKSTATUS = #{wkstatus}
+		<if test=" '00'.equals(wkstatus) " >
+			,IBCONFIRMDATE = null
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(temperature)" >
+			,TEMPERATURE = #{temperature}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(plqty)" >
+			,PLQTY = #{plqty}
+		</if>
+		 <if test=" '91'.equals(wkstatus) " > <!--WKSTATUS 마감처리일때만 로직 체크  -->
+		    , IBCLOSINGDATE = #{ibclosingdate}
+		 </if>
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+			,UPDATEKEY = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISSFF')
+		WHERE    CTKEY = #{ctkey}
+		     AND IBHDKEY = #{ibhdkey}
+		     
+		     <if test=" '91'.equals(wkstatus) " > <!--WKSTATUS 마감처리일때만 로직 체크  -->
+		     AND NOT EXISTS  (
+                             SELECT 1
+                             FROM TWORK_INFO_IB_DT
+                             WHERE CTKEY = #{ctkey}
+							 AND   EXTERNORDERKEY = #{externorderkey}
+                             AND   WKSTATUS != '91' 
+                           )
+             </if>              
+	</update>
+
+	<update id="updateIbDtCancelQty" parameterType="inbOrderDtVO">
+		UPDATE TWORK_INFO_IB_DT SET
+			 CFQTY = CFQTY - #{cfqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+			,IBNRCD = #{ibnrcd}
+			,TO_IVATKEY = NULL
+			,UPDATEKEY = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISSFF')
+		WHERE CTKEY = #{ctkey}
+		    AND IBHDKEY = #{ibhdkey}
+		    AND IBDTKEY = #{ibdtkey}
+	</update>
+
+	<update id="updateConfirmOrderHd" parameterType="inbOrderHdVO">
+		<![CDATA[	
+		UPDATE TWORK_INFO_IB_HD SET
+ 			IBCONFIRMDATE = #{ibconfirmdate}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{updateurkey}
+			, UPDATEKEY = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISSFF')
+		WHERE CTKEY = #{ctkey}	  
+			AND IBHDKEY=#{ibhdkey}
+		]]>		 	
+	</update>	
+	
+
+	<update id="updateOrderHdPlqty" parameterType="inbOrderHdVO">
+		<![CDATA[	
+		UPDATE TWORK_INFO_IB_HD SET
+ 			  PLQTY  = #{plqty}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}	  
+			AND IBHDKEY=#{ibhdkey}
+		]]>		 	
+	</update>	
+	
+	<select id="selectUlcInfo" resultType="java.lang.Integer" >
+		SELECT COALESCE((
+		SELECT 	ICUTQTY
+	 	  FROM 	TWORK_MST_ICUTXTYPE
+		 WHERE 	
+				  CTKEY		= #{ctkey}
+		   AND OWKEY	= #{owkey}
+		   AND ICUTKEY	= #{icutkey}
+	       AND ICUTTYPE = 'PL'
+	     ), 0) 	 		
+	</select>
+	
+	<resultMap id="resultTolckey" type="java.util.HashMap">  	
+		<result property="lckey" column="lckey" />
+	</resultMap>
+	
+	<select id="selectTolckey"  statementType="CALLABLE"  resultMap="resultTolckey">
+		CALL SP_GET_LCKEY(#{ctkey},#{loggrpcd},#{lckey, javaType=java.sql.ResultSet,jdbcType=CURSOR,mode=OUT,resultMap=resultTolckey})	
+	</select>
+
+	<insert id="insertTworkInfoWkevIb" >
+		INSERT INTO TWORK_INFO_WKEV
+		(
+			 CTKEY       
+			,WKEVKEY    
+			,WKEVTYPE   
+			,TO_APKEY   
+			,KEYVALUE1  
+			,KEYVALUE2  
+			,KEYVALUE3  
+			,IFSTATUS   
+			,IFMESSAGE  
+			,INSERTDATE 
+			,INSERTURKEY
+			,UPDATEDATE 
+			,UPDATEURKEY
+			,OWKEY      
+		) VALUES (
+			 #{ctkey}
+			,#{wkevkey}
+			,#{wkevtype}
+			,#{to_apkey}
+			,#{keyvalue1}
+			,''
+			,''
+			,'10'
+			,''
+			,#{sysdate}
+		  	,#{surkey}
+		  	,#{sysdate}
+	      	,#{surkey}
+			,#{owkey}
+			
+		)	
+	</insert>	
+					
+					
+	<insert id="insertInbSerialNo" parameterType="inbOrderDtVO">
+		INSERT INTO TWORK_INFO_IB_SN
+		(
+			  CTKEY
+			, IBHDKEY
+			, IBDTKEY
+			, SERIAL_NO
+			, ICKEY
+			, UOM
+			, WEIGHT
+			, PRODUCTDATE
+			, EXPIREDATE
+			, INSERTDATE
+			, INSERTURKEY
+		)
+		SELECT
+			  #{ctkey}
+			, #{ibhdkey}
+			, #{ibdtkey}
+			, SERIAL_NO
+			, #{ickey}
+			, #{uom}
+			, #{weight}
+			, #{productdate}
+			, #{expiredate}
+			, #{sysdate}
+		  	, #{inserturkey}
+		FROM TWORK_INFO_ILBHS A
+		   , TWORK_INFO_IBSN_SCAN B
+		WHERE A.ULCKEY = B.ULCKEY
+		  AND A.CTKEY = #{ctkey}
+		  AND A.ILBHSKEY = #{ilbhskey}
+	</insert>
+	
+	
+	<delete id="deleteInbSerialNo" parameterType="inbOrderDtVO">
+		DELETE FROM TWORK_INFO_IB_SN
+		WHERE CTKEY = #{ctkey}
+		  AND IBHDKEY = #{ibhdkey}
+		  AND IBDTKEY =	#{ibdtkey}
+	</delete>
+		
+	<delete id="deleteInbIlbhskey" parameterType="inbOrderDtVO">
+		UPDATE TWORK_INFO_ILBHS
+		SET DEL_YN = 'Y'
+		WHERE ILBHSKEY = #{ilbhskey}
+	</delete>
+		
+	
+	<update id="deleteInbDtIlbhskey" parameterType="inbOrderDtVO">
+		UPDATE TWORK_INFO_IB_DT
+		SET ILBHSKEY = NULL
+		WHERE IBHDKEY = #{ibhdkey}
+		  AND IBDTKEY = #{ibdtkey}
+		  AND CTKEY   = #{ctkey}
+	</update>
+	
+	<update id="deleteInbCfDtIlbhskey" parameterType="inbOrderDtVO">
+		UPDATE TWORK_INFO_IBCF_DT
+		SET ILBHSKEY = NULL
+		WHERE CTKEY   = #{ctkey}
+		  AND EXTERNORDERKEY = #{externorderkey}
+		  AND EXTERNORDERLINENUM = #{externorderlinenum}
+	</update>
+	
+	<select id="selectIbCfDtSnCheck"   resultType="java.lang.Integer">
+		SELECT COALESCE(MAX(CAST(SN AS NUMERIC))+1, 1)
+		FROM TWORK_INFO_IBCF_DT
+		WHERE CTKEY = #{ctkey}
+		  AND EXTERNORDERKEY = #{externorderkey} 
+		  AND EXTERNORDERLINENUM = #{externorderlinenum}
+	</select>
+	
+	<insert id="insertIbCfDt" >
+		INSERT INTO TWORK_INFO_IBCF_DT
+		(
+			 CTKEY
+			,EXTERNORDERKEY
+			,EXTERNORDERLINENUM
+			,SN
+			,CFQTY
+			,IBNRCD
+			,TO_IVATKEY
+			,ILBHSKEY
+			,IBCONFIRMDATE
+			,INSERTDATE 
+			,INSERTURKEY
+			,UPDATEDATE 
+			,UPDATEURKEY
+			,PRODUCTLOT
+			,PRODUCTDATE
+			,EXPIREDATE
+			,NET_WGT
+		) VALUES (
+			 #{ctkey}
+			,#{externorderkey}
+			,#{externorderlinenum}
+			,#{sn}
+			,#{cfqty}
+			,#{ibnrcd}
+			,#{to_ivatkey}
+			,#{ilbhskey}
+			,#{ibconfirmdate}
+			,#{sysdate}
+		  	,#{surkey}
+		  	,#{sysdate}
+	      	,#{surkey}
+	      	,#{productlot}
+			,#{productdate}
+			,#{expiredate}
+			,#{net_wgt}		
+		)	
+	</insert>
+	
+	<update id="updateIlbhsIvatkey">
+		UPDATE TWORK_INFO_ILBHS
+	    SET IVATKEY = #{ivatkey}
+	       ,UPDATEDATE = #{sysdate}
+		   ,UPDATEURKEY = #{surkey}
+	    WHERE ILBHSKEY = #{ilbhskey}
+	</update>
+
+	
+	<update id="updateIlbhsIvatXIb">
+		UPDATE TWORK_INFO_ILBHS A SET QTY = (
+                                             SELECT COUNT(1)
+                                             FROM TWORK_INFO_IBSN_SCAN B
+                                             WHERE A.ULCKEY = B.ULCKEY
+                                            )
+                                     ,IBHDKEY = #{ibhdkey}
+                                     ,IBDTKEY = #{ibdtkey}
+                                     ,UPDATEDATE = #{sysdate}
+		   							 ,UPDATEURKEY = #{surkey}
+		   							 
+		WHERE ULCKEY = (
+		                SELECT MAX(ULCKEY)
+		                FROM TWORK_INFO_IBSN_SCAN B
+		                WHERE A.ULCKEY = B.ULCKEY 
+		               )
+		AND ILBHSKEY = #{ilbhskey}
+	</update>
+	
+	<insert id="insertIvatXUlcXSn">
+	  INSERT INTO TWORK_INFO_IVATXULCXSN (CTKEY,IVATKEY,OWKEY,ICKEY,ULCKEY,SERIAL_NO,UOM,WEIGHT,PRODUCTDATE,EXPIREDATE,INSERTDATE,INSERTURKEY)
+      SELECT B.CTKEY
+            ,B.IVATKEY
+            ,B.OWKEY
+            ,B.ICKEY
+            ,B.ULCKEY
+            ,A.SERIAL_NO
+            ,A.SCAN_UOM
+            ,A.SCAN_WEIGHT
+            ,A.SCAN_PRODUCTDATE
+            ,A.SCAN_EXPIREDATE
+            ,(SELECT TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'))
+            ,#{surkey}
+      FROM   (
+             SELECT SERIAL_NO, WEIGHT || UOM AS WEIGHT
+                   ,WEIGHT        AS SCAN_WEIGHT
+                   ,ULCKEY
+                   ,ICKEY        AS SCAN_ICKEY
+                   ,UOM          AS SCAN_UOM
+                   ,PRODUCTDATE  AS SCAN_PRODUCTDATE
+                   ,EXPIREDATE   AS SCAN_EXPIREDATE  
+             FROM   TWORK_INFO_IBSN_SCAN
+             WHERE  ULCKEY IN (
+             					SELECT ULCKEY 
+             					FROM  TWORK_INFO_ILBHS
+                      			WHERE CTKEY   = #{ctkey}
+                      			 AND  IBHDKEY = #{ibhdkey}
+                      			 AND  IBDTKEY = #{ibdtkey}
+                        )
+             ) A
+            ,TWORK_INFO_ILBHS B
+      WHERE  A.ULCKEY = B.ULCKEY
+      AND    B.CTKEY = #{ctkey}
+	</insert>
+	
+	<select id="selectCrTypeCheck" resultType="java.lang.String">
+		SELECT COALESCE(MAX(CRTYPE), 'N')
+		FROM TWORK_INFO_ILBHS
+		WHERE CTKEY = #{ctkey}
+		  AND ILBHSKEY = #{ilbhskey}
+	</select>
+
+</mapper>

@@ -1,0 +1,1194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.po.mapper.PoMasterMapper">
+
+	<select id="selectTorderMstReqorder" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstReqorder */
+        WITH BASE_IC AS (
+        SELECT *
+        FROM   TORDER_MST_IC
+        WHERE  OWKEY = 'DAISO'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(poableyn)" >
+        AND  POABLEYN = #{poableyn}
+        </if>
+        )
+		SELECT ROW_NUMBER() OVER() AS ROWNUM, T.*
+		FROM (
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT '0' AS CHK
+				  , ROW_NUMBER() OVER()
+				  , I.OWKEY
+				  , IC.CTKEY
+				  , I.ICKEY
+				  , I.ICNM
+				  , CASE I.ASRTYN WHEN 'Y' THEN '아소트' ELSE '일반' END AS ASRTYN
+				  , I.ACKEY
+			      , AC.ACNM
+			      , I.UNICYN
+				  , I.DSPYN
+				  , I.SALESTATUS
+				  , I.DLVRYYN
+				  , I.POABLEYN
+				  , I.OLNICDIV
+				  , I.ICTYPE
+				  , CD1.COMDTNM AS ICTYPENM
+				  , IC.DSBTGRADE
+				  , IC.LCKEY
+				  , R.REQORDERTYPE
+				  , R.TIMESERIESYN
+				  , R.SAFEIVDAYSINCYN
+				  , R.NEEDDAYS
+		          , COALESCE(R.AUTOCHGYN, 'N') AUTOCHGYN
+				  , R.INSERTDATE
+				  , R.INSERTURKEY
+				  , R.UPDATEDATE
+				  , R.UPDATEURKEY
+			FROM (
+                   -- GR
+                  SELECT X.*
+                    FROM BASE_IC X
+                   WHERE X.ICGRPKEY = 'GR'
+                     AND X.ICSTATUSDIV != '9'
+                     AND (
+                           X.ASRTYN = 'N'
+                           OR (X.ASRTYN = 'Y'
+                               AND EXISTS (
+                                 SELECT 1
+                                   FROM TORDER_MST_ASRT Z
+                                  WHERE Z.OWKEY = X.OWKEY
+                                    AND Z.ASRTREPKEY = X.ICKEY
+                                    AND Z.QTY > 0
+                               )
+                           )
+                     )
+                   UNION ALL
+                   -- SM
+                  SELECT X.*
+                    FROM BASE_IC X
+                   WHERE X.ICGRPKEY = 'SM'
+                     AND X.DELYN = 'N'
+			) I
+			INNER JOIN TORDER_MST_ICXCT IC
+				   ON I.OWKEY = IC.OWKEY
+				  AND I.ICKEY = IC.ICKEY
+			INNER JOIN TORDER_MST_CT CT
+				   ON IC.CTKEY = CT.CTKEY
+			LEFT JOIN TORDER_MST_REQORDER R
+				   ON I.OWKEY = R.OWKEY
+				  AND I.ICKEY = R.ICKEY
+				  AND IC.CTKEY = R.CTKEY
+			LEFT JOIN TORDER_MST_COM_DT CD1
+				   ON I.OWKEY = CD1.OWKEY
+				  AND CD1.COMHDKEY = 'ICTYPE'
+				  AND I.ICTYPE = CD1.COMDTKEY
+				  AND CD1.INSERTSYSTM = 'OMS'
+				  AND CD1.LAKEY = 'KOR'
+			LEFT JOIN TORDER_MST_COM_DT CD2
+				   ON I.OWKEY = CD2.OWKEY
+				  AND CD2.COMHDKEY = 'CD_00203'
+				  AND I.SALESTATUS = CD2.COMDTKEY
+				  AND CD2.INSERTSYSTM = 'OMS'
+				  AND CD2.LAKEY = 'KOR'
+            LEFT JOIN TORDER_MST_AC AC
+                   ON I.OWKEY = AC.OWKEY
+                  AND I.ACKEY = AC.ACKEY
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					#{SEARCH_CONDITION}
+                    <if test='reqordertype=="99"' >
+                        OR  COALESCE(R.REQORDERTYPE, '99') = #{reqordertype}
+                    </if>
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY R.UPDATEDATE DESC NULLS LAST, I.ICKEY ASC
+				</otherwise>
+			</choose>
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		) T
+	</select>
+  
+	<select id="selectTorderMstReqorderCount" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstReqorderCount */
+        WITH BASE_IC AS (
+           SELECT *
+             FROM   TORDER_MST_IC
+            WHERE  OWKEY = 'DAISO'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(poableyn)" >
+              AND  POABLEYN = #{poableyn}
+        </if>
+        )
+        SELECT count(1)
+		  FROM (
+                 -- GR
+                SELECT X.*
+                  FROM BASE_IC X
+                 WHERE X.ICGRPKEY = 'GR'
+                   AND X.ICSTATUSDIV != '9'
+                   AND (
+                         X.ASRTYN = 'N'
+                         OR (X.ASRTYN = 'Y'
+                             AND EXISTS (
+                               SELECT 1
+                                 FROM TORDER_MST_ASRT Z
+                                WHERE Z.OWKEY = X.OWKEY
+                                  AND Z.ASRTREPKEY = X.ICKEY
+                                  AND Z.QTY > 0
+                             )
+                         )
+                       )
+                 UNION ALL
+                 -- SM
+                SELECT X.*
+                  FROM BASE_IC X
+                 WHERE X.ICGRPKEY = 'SM'
+                   AND X.DELYN = 'N'
+          ) I
+          INNER JOIN TORDER_MST_ICXCT IC
+                  ON I.OWKEY = IC.OWKEY
+                 AND I.ICKEY = IC.ICKEY
+          INNER JOIN TORDER_MST_CT CT
+                  ON IC.CTKEY = CT.CTKEY
+          LEFT JOIN TORDER_MST_REQORDER R
+                 ON I.OWKEY = R.OWKEY
+                AND I.ICKEY = R.ICKEY
+                AND IC.CTKEY = R.CTKEY
+          LEFT JOIN TORDER_MST_COM_DT CD1
+                 ON I.OWKEY = CD1.OWKEY
+                AND CD1.COMHDKEY = 'ICTYPE'
+                AND I.ICTYPE = CD1.COMDTKEY
+                AND CD1.INSERTSYSTM = 'OMS'
+                AND CD1.LAKEY = 'KOR'
+          LEFT JOIN TORDER_MST_COM_DT CD2
+                 ON I.OWKEY = CD2.OWKEY
+                AND CD2.COMHDKEY = 'CD_00203'
+                AND I.SALESTATUS = CD2.COMDTKEY
+                AND CD2.INSERTSYSTM = 'OMS'
+                AND CD2.LAKEY = 'KOR'
+          LEFT JOIN TORDER_MST_AC AC
+                 ON I.OWKEY = AC.OWKEY
+                AND I.ACKEY = AC.ACKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+                <if test='reqordertype=="99"' >
+                    OR  COALESCE(R.REQORDERTYPE, '99') = #{reqordertype}
+                </if>
+			</if>	
+		</where>	
+	</select>
+
+    <select id="selectTorderMstReqorderExcelList" resultType="camelMap" >
+        /* oms-po-poMaster-sql-oracle.xml - selectTorderMstReqorderExcelList */
+        WITH BASE_IC AS (
+        SELECT *
+          FROM   TORDER_MST_IC
+         WHERE  OWKEY = 'DAISO'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(poableyn)" >
+           AND  POABLEYN = #{poableyn}
+        </if>
+        )
+        SELECT '0' AS CHK
+             , ROW_NUMBER() OVER()
+             , I.OWKEY
+             , IC.CTKEY
+             , I.ICKEY
+             , I.ICNM
+             , CASE I.ASRTYN WHEN 'Y' THEN '아소트' ELSE '일반' END AS ASRTYN
+             , I.ACKEY
+             , AC.ACNM
+             , I.UNICYN
+             , I.DSPYN
+             , I.SALESTATUS
+             , I.DLVRYYN
+             , I.POABLEYN
+             , I.OLNICDIV
+             , I.ICTYPE
+             , CD1.COMDTNM AS ICTYPENM
+             , IC.DSBTGRADE
+             , IC.LCKEY
+             , R.REQORDERTYPE
+             , R.TIMESERIESYN
+             , R.SAFEIVDAYSINCYN
+             , R.NEEDDAYS
+             , COALESCE(R.AUTOCHGYN, 'N') AUTOCHGYN
+             , R.INSERTDATE
+             , R.INSERTURKEY
+             , R.UPDATEDATE
+             , R.UPDATEURKEY
+          FROM (
+              -- GR
+              SELECT X.*
+                FROM BASE_IC X
+               WHERE X.ICGRPKEY = 'GR'
+                 AND X.ICSTATUSDIV != '9'
+                 AND (
+                       X.ASRTYN = 'N'
+                       OR (X.ASRTYN = 'Y'
+                           AND EXISTS (
+                              SELECT 1
+                                FROM TORDER_MST_ASRT Z
+                               WHERE Z.OWKEY = X.OWKEY
+                                 AND Z.ASRTREPKEY = X.ICKEY
+                                 AND Z.QTY > 0
+                           )
+                       )
+                 )
+               UNION ALL
+              -- SM
+              SELECT X.*
+                FROM BASE_IC X
+               WHERE X.ICGRPKEY = 'SM'
+                 AND X.DELYN = 'N'
+          ) I
+         INNER JOIN TORDER_MST_ICXCT IC
+            ON I.OWKEY = IC.OWKEY
+           AND I.ICKEY = IC.ICKEY
+         INNER JOIN TORDER_MST_CT CT
+            ON IC.CTKEY = CT.CTKEY
+          LEFT JOIN TORDER_MST_REQORDER R
+            ON I.OWKEY = R.OWKEY
+           AND I.ICKEY = R.ICKEY
+           AND IC.CTKEY = R.CTKEY
+          LEFT JOIN TORDER_MST_COM_DT CD1
+            ON I.OWKEY = CD1.OWKEY
+           AND CD1.COMHDKEY = 'ICTYPE'
+           AND I.ICTYPE = CD1.COMDTKEY
+           AND CD1.INSERTSYSTM = 'OMS'
+           AND CD1.LAKEY = 'KOR'
+          LEFT JOIN TORDER_MST_COM_DT CD2
+            ON I.OWKEY = CD2.OWKEY
+           AND CD2.COMHDKEY = 'CD_00203'
+           AND I.SALESTATUS = CD2.COMDTKEY
+           AND CD2.INSERTSYSTM = 'OMS'
+           AND CD2.LAKEY = 'KOR'
+          LEFT JOIN TORDER_MST_AC AC
+            ON I.OWKEY = AC.OWKEY
+           AND I.ACKEY = AC.ACKEY
+          <where>
+              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                  #{SEARCH_CONDITION}
+                  <if test='reqordertype=="99"' >
+                      OR  COALESCE(R.REQORDERTYPE, '99') = #{reqordertype}
+                  </if>
+              </if>
+          </where>
+          <choose>
+              <when test='sortValue !=null and sortValue != ""'>
+                  <if test='sortValue == "DESC" and colName !=null'>
+                      ORDER BY #{colName} DESC
+                  </if>
+                  <if test='sortValue == "ASC" and colName !=null'>
+                      ORDER BY #{colName} ASC
+                  </if>
+              </when>
+              <otherwise>
+                  ORDER BY R.UPDATEDATE DESC NULLS LAST, I.ICKEY ASC
+              </otherwise>
+          </choose>
+    </select>
+
+    <insert id="mergePoMaster">
+		/* oms-po-poMaster-sql-oracle.xml - mergePoMaster */
+		INSERT INTO TORDER_MST_REQORDER (
+			 OWKEY
+			, CTKEY
+			, ICKEY
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+			, REQORDERTYPE
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(needdays)" >
+			, NEEDDAYS
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(safeivdaysincyn)" >
+			, SAFEIVDAYSINCYN
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(timeseriesyn)" >
+			, TIMESERIESYN
+			</if>
+			, AUTOCHGYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			, EAUOM
+			, INNUOM
+			, CTNUOM
+			, CPPUOM
+			, VOL
+		)
+		SELECT S.OWKEY
+			, S.CTKEY
+			, S.ICKEY
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+			, S.REQORDERTYPE
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(needdays)" >
+			, S.NEEDDAYS
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(safeivdaysincyn)" >
+			, S.SAFEIVDAYSINCYN
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(timeseriesyn)" >
+			, S.TIMESERIESYN
+			</if>
+			, COALESCE(#{autochgyn}, 'N')
+			, S.CURR_DATE
+			, S.URKEY
+			, S.CURR_DATE
+			, S.URKEY
+			, S.EAUOM
+			, S.INNUOM
+			, S.CTNUOM
+			, S.CPPUOM
+			, S.VOL
+		FROM (
+			SELECT #{owkey} AS OWKEY
+				, #{ctkey} AS CTKEY
+				, #{ickey} AS ICKEY
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+				, #{reqordertype} AS REQORDERTYPE
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(needdays)" >
+				, #{needdays} AS NEEDDAYS
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(safeivdaysincyn)" >
+				, #{safeivdaysincyn} AS SAFEIVDAYSINCYN
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(timeseriesyn)" >
+				, #{timeseriesyn} AS TIMESERIESYN
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autochgyn)" >
+				, #{autochgyn} AS AUTOCHGYN
+				</if>
+				, #{surkey} AS URKEY
+				, #{sysdate} AS CURR_DATE
+				, COALESCE(SUM(CASE WHEN U.ICUNITTYPE='EA'  THEN U.ICUNITQTY END), 0) AS EAUOM
+				, COALESCE(SUM(CASE WHEN U.ICUNITTYPE='INN' THEN U.ICUNITQTY END), 0) AS INNUOM
+				, COALESCE(SUM(CASE WHEN U.ICUNITTYPE='CTN' THEN U.ICUNITQTY END), 0) AS CTNUOM
+				, COALESCE(SUM(CASE WHEN U.ICUNITTYPE='CTN' THEN CASE U.CPP WHEN 0 THEN 1 ELSE U.CPP END END), 0) AS CPPUOM
+				, COALESCE(SUM(CASE WHEN U.ICUNITTYPE='INN' THEN U.VOL END), 0) AS VOL
+			FROM TORDER_MST_ICUTXTYPE U
+			WHERE U.OWKEY = #{owkey}
+			  AND U.ICKEY = #{ickey}
+		) S
+		ON CONFLICT (OWKEY, CTKEY, ICKEY)
+		DO UPDATE SET
+			  UPDATEURKEY     = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE      = EXCLUDED.UPDATEDATE
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+			, REQORDERTYPE    = EXCLUDED.REQORDERTYPE
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(needdays)" >
+			, NEEDDAYS        = EXCLUDED.NEEDDAYS
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(safeivdaysincyn)" >
+			, SAFEIVDAYSINCYN = EXCLUDED.SAFEIVDAYSINCYN
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(timeseriesyn)" >
+			, TIMESERIESYN    = EXCLUDED.TIMESERIESYN
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autochgyn)" >
+			, AUTOCHGYN       = EXCLUDED.AUTOCHGYN
+			</if>
+			, EAUOM           = EXCLUDED.EAUOM
+			, INNUOM          = EXCLUDED.INNUOM
+			, CTNUOM          = EXCLUDED.CTNUOM
+			, CPPUOM          = EXCLUDED.CPPUOM
+			, VOL             = EXCLUDED.VOL
+	</insert>
+
+	<select id="checkAutochgyn" resultType="string">
+		SELECT COALESCE(R.AUTOCHGYN, 'N')  AS CHECK_YN
+		FROM TORDER_MST_REQORDER R
+		INNER JOIN TORDER_MST_CT CT
+		        ON R.CTKEY = CT.CTKEY
+		WHERE R.OWKEY = #{owkey}
+		  AND R.CTKEY = #{ctkey}
+		  AND R.ICKEY = #{ickey}
+	</select>
+
+
+	<select id="selectTorderMstObavgqty" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqty */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+              , ROW_NUMBER() OVER()
+		      , I.OWKEY
+		      , IC.CTKEY
+		      , I.ICKEY
+		      , I.ICNM
+		      , CASE I.ASRTYN WHEN 'Y' THEN '아소트' ELSE '일반' END AS ASRTYN
+              , I.ACKEY
+              , AC.ACNM
+		      , I.UNICYN
+		      , I.DSPYN
+		      , I.DLVRYYN
+		      , I.SALESTATUS
+		      , CD.COMDTNM AS SALESTATUSNM
+		      , I.POABLEYN
+		      , I.OLNICDIV
+		      , IC.DSBTGRADE
+		      , IC.LCKEY
+		      , COALESCE(Q.HWSETYN, 'N') AS HWSETYN
+              , Q.OBFROMDAY
+              , Q.OBTODAY
+              , Q.OBQTYCRITCAL
+              , Q.APLYDAYS
+		      , Q.INSERTDATE
+		      , Q.INSERTURKEY
+		      , Q.UPDATEDATE
+		      , Q.UPDATEURKEY
+		FROM
+		(
+			SELECT X.*
+					FROM   TORDER_MST_IC X
+					WHERE  X.OWKEY = #{owkey}
+					AND (
+							X.ICGRPKEY = 'GR'
+						AND X.POABLEYN = 'Y'
+						AND X.ICSTATUSDIV != '9'
+						AND (
+								X.ASRTYN = 'N'
+							 OR (
+									X.ASRTYN = 'Y'
+								AND EXISTS (
+										SELECT 1
+										FROM   TORDER_MST_ASRT Z
+										WHERE  Z.OWKEY = X.OWKEY
+										AND    Z.ASRTREPKEY = X.ICKEY
+										AND    Z.QTY > 0
+									)
+								)
+							)
+					)
+
+					UNION ALL
+					SELECT X.*
+					FROM   TORDER_MST_IC X
+					WHERE X.ICGRPKEY = 'SM'
+					AND  X.DELYN='N'
+
+		) I
+		LEFT JOIN TORDER_MST_ICXCT IC
+		       ON I.OWKEY = IC.OWKEY
+		      AND I.ICKEY = IC.ICKEY
+		LEFT JOIN TORDER_MST_OBAVGQTY Q
+		       ON I.OWKEY = Q.OWKEY
+		      AND I.ICKEY = Q.ICKEY
+		      AND IC.CTKEY = Q.CTKEY
+		LEFT JOIN TORDER_MST_COM_DT CD
+			   ON I.OWKEY = CD.OWKEY
+			  AND CD.COMHDKEY = 'CD_00203'
+			  AND I.SALESTATUS = CD.COMDTKEY
+			  AND CD.INSERTSYSTM = 'OMS'
+			  AND CD.LAKEY = 'KOR'
+        LEFT JOIN TORDER_MST_AC AC
+               ON I.OWKEY = AC.OWKEY
+              AND I.ACKEY = AC.ACKEY
+        LEFT JOIN TORDER_MST_REQORDER R
+            ON I.OWKEY = R.OWKEY
+           AND I.ICKEY = R.ICKEY
+           AND IC.CTKEY = R.CTKEY
+		WHERE I.OWKEY = #{owkey}
+		  AND IC.CTKEY = #{ctkey}			
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(poAbleYn)" >
+		  AND I.POABLEYN = #{poAbleYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+		  AND I.ICKEY = #{ickey}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dspYn)" >
+		  AND I.DSPYN = #{dspYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtYn)" >
+		  AND I.ASRTYN = #{asrtYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(salesStatus)" >
+		  AND I.SALESTATUS = #{salesStatus}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(olnicDiv)" >
+		  AND I.OLNICDIV = #{olnicDiv}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dsbtGrade)" >
+		  AND IC.DSBTGRADE = #{dsbtGrade}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(unicYn)" >
+		  AND I.UNICYN = #{unicYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dlvrYn)" >
+		  AND I.DLVRYYN = #{dlvrYn}
+    	</if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGrpkey)" >
+          AND I.ICGRPKEY = #{icGrpkey}
+        </if>
+
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+            <if test='reqordertype=="99"' >
+                AND R.REQORDERTYPE IS NULL
+            </if>
+            <if test='reqordertype!="99"' >
+                AND R.REQORDERTYPE = #{reqordertype}
+            </if>
+        </if>
+
+
+<!--		<where>-->
+<!--			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >-->
+<!--				#{SEARCH_CONDITION}-->
+<!--			</if>-->
+<!--		</where>-->
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY Q.UPDATEDATE DESC NULLS LAST, I.ICKEY ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTorderMstObavgqtyCount" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqtyCount */
+        SELECT count(1)
+		FROM
+		(
+				SELECT X.*
+					FROM   TORDER_MST_IC X
+					WHERE  X.OWKEY = #{owkey}
+					AND (
+							X.ICGRPKEY = 'GR'
+						AND X.POABLEYN = 'Y'
+						AND X.ICSTATUSDIV != '9'
+						AND (
+								X.ASRTYN = 'N'
+							 OR (
+									X.ASRTYN = 'Y'
+								AND EXISTS (
+										SELECT 1
+										FROM   TORDER_MST_ASRT Z
+										WHERE  Z.OWKEY = X.OWKEY
+										AND    Z.ASRTREPKEY = X.ICKEY
+										AND    Z.QTY > 0
+									)
+								)
+							)
+					)
+
+					UNION ALL
+					SELECT X.*
+					FROM   TORDER_MST_IC X
+					WHERE X.ICGRPKEY = 'SM'
+					AND  X.DELYN='N'
+
+		) I
+		LEFT JOIN TORDER_MST_ICXCT IC
+		       ON I.OWKEY = IC.OWKEY
+		      AND I.ICKEY = IC.ICKEY
+		LEFT JOIN TORDER_MST_OBAVGQTY Q
+		       ON I.OWKEY = Q.OWKEY
+		      AND I.ICKEY = Q.ICKEY
+		      AND IC.CTKEY = Q.CTKEY
+        LEFT JOIN TORDER_MST_REQORDER R
+        ON I.OWKEY = R.OWKEY
+        AND I.ICKEY = R.ICKEY
+        AND IC.CTKEY = R.CTKEY
+		WHERE I.OWKEY = #{owkey}
+		  AND IC.CTKEY = #{ctkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(poAbleYn)" >
+		  AND I.POABLEYN = #{poAbleYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+		  AND I.ICKEY = #{ickey}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dspYn)" >
+		  AND I.DSPYN = #{dspYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtYn)" >
+		  AND I.ASRTYN = #{asrtYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(salesStatus)" >
+		  AND I.SALESTATUS = #{salesStatus}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(olnicDiv)" >
+		  AND I.OLNICDIV = #{olnicDiv}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dsbtGrade)" >
+		  AND IC.DSBTGRADE = #{dsbtGrade}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(unicYn)" >
+		  AND I.UNICYN = #{unicYn}
+    	</if>
+    	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dlvrYn)" >
+		  AND I.DLVRYYN = #{dlvrYn}
+    	</if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icGrpkey)" >
+          AND I.ICGRPKEY = #{icGrpkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqordertype)" >
+            <if test='reqordertype=="99"' >
+                AND R.REQORDERTYPE IS NULL
+            </if>
+            <if test='reqordertype!="99"' >
+                AND R.REQORDERTYPE = #{reqordertype}
+            </if>
+        </if>
+	</select>
+
+	<insert id="mergePoObavgqty">
+		/* oms-po-poMaster-sql-oracle.xml - mergePoObavgqty */
+		INSERT INTO TORDER_MST_OBAVGQTY (
+			  OWKEY
+			, CTKEY
+			, ICKEY
+			, HWSETYN
+			, OBFROMDAY
+			, OBTODAY
+			, OBQTYCRITCAL
+			, APLYDAYS
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{owkey}
+			, #{ctkey}
+			, #{ickey}
+			, #{hwsetyn}
+			, #{obfromday}
+			, #{obtoday}
+			, #{obqtycritcal}
+			, #{aplydays}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		ON CONFLICT (OWKEY, CTKEY, ICKEY)
+		DO UPDATE SET
+			  HWSETYN      = EXCLUDED.HWSETYN
+			, OBFROMDAY    = EXCLUDED.OBFROMDAY
+			, OBTODAY      = EXCLUDED.OBTODAY
+			, OBQTYCRITCAL = EXCLUDED.OBQTYCRITCAL
+			, APLYDAYS     = EXCLUDED.APLYDAYS
+			, UPDATEURKEY  = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE   = EXCLUDED.UPDATEDATE
+	</insert>
+
+	<select id="selectTorderMstObavgqtyT01" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqtyT01 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '2' THEN 1 END) AS MON
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '3' THEN 1 END) AS THU
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '4' THEN 1 END) AS WED
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '5' THEN 1 END) AS THR
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '6' THEN 1 END) AS FRI
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '7' THEN 1 END) AS SAT
+		     , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY, 'YYYYMMDD'), 'D') = '1' THEN 1 END) AS SUN
+		FROM  TORDER_INFO_ORDER_STAT
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND ICKEY = #{ickey}
+		AND TO_DATE(CRITDAY, 'YYYYMMDD') BETWEEN DATE_TRUNC('month', CURRENT_TIMESTAMP)::DATE AND (DATE_TRUNC('month', (CURRENT_TIMESTAMP + (12) * INTERVAL '1 month')) + INTERVAL '1 month - 1 day')::DATE
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTorderMstObavgqtyT01Count" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqtyT01Count */
+        SELECT 1
+	</select>
+
+	<select id="selectTorderMstObavgqtyT02" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqtyT02 */
+		SELECT COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (0) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_1
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (1) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_2
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (2) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_3
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (3) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_4
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (4) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_5
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (5) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_6
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (6) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_7
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (7) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_8
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (8) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_9
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (9) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_10
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (10) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_11
+			 , COUNT(CASE WHEN TO_CHAR(TO_DATE(CRITDAY,'YYYYMMDD'),'YYYYMM') = TO_CHAR((TRUNC(CURRENT_TIMESTAMP,'MM') + (11) * INTERVAL '1 month'),'YYYYMM') THEN 1 END) AS MONTH_12
+		FROM TORDER_INFO_ORDER_STAT
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND ICKEY = #{ickey}
+		  AND TO_DATE(CRITDAY,'YYYYMMDD') BETWEEN TRUNC(CURRENT_TIMESTAMP,'MM') AND (DATE_TRUNC('month', (CURRENT_TIMESTAMP + (11) * INTERVAL '1 month')) + INTERVAL '1 month - 1 day')::DATE
+	</select>
+
+	<select id="selectTorderMstObavgqtyT02Count" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstObavgqtyT02Count */
+        SELECT 1
+	</select>
+
+	<select id="selectTorderMstGrade" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstGrade */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT  '0' AS CHK
+		      , GR.OWKEY
+		      , GR.CTKEY
+		      , GR.OLNICDIV
+		      , DT.COMDTNM
+		      , GR.NEEDDAYS
+		      , GR.INSERTDATE
+		      , GR.INSERTURKEY
+		      , GR.UPDATEDATE
+		FROM TORDER_MST_GRADE GR
+		INNER JOIN TORDER_MST_COM_DT DT
+		ON  DT.OWKEY =  GR.OWKEY
+		AND DT.COMDTKEY  =  GR.OLNICDIV
+		WHERE GR.OWKEY = #{owkey}
+		  AND GR.CTKEY = #{ctkey}
+		  AND DT.COMHDKEY ='CD_00577'
+		  AND DT.DELYN ='N'
+
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY   GR.OLNICDIV DESC
+				         , GR.UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <select id="selectTorderMstGradeCount" resultType="java.lang.Integer" >
+        /* oms-po-poMaster-sql-oracle.xml - selectTorderMstGradeCount */
+        SELECT count(1)
+        FROM TORDER_MST_GRADE G
+        WHERE G.OWKEY = #{owkey}
+        AND G.CTKEY = #{ctkey}
+    </select>
+
+    <insert id="mergePoGrade">
+		/* oms-po-poMaster-sql-oracle.xml - mergePoGrade */
+		INSERT INTO TORDER_MST_GRADE (
+			  OWKEY
+			, CTKEY
+			, OLNICDIV
+			, NEEDDAYS
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{owkey}
+			, #{ctkey}
+			, #{olnicdiv}
+			, #{needdays}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		ON CONFLICT (OWKEY, CTKEY, OLNICDIV)
+		DO UPDATE SET
+			  NEEDDAYS    = EXCLUDED.NEEDDAYS
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+	</insert>
+
+	<select id="selectTorderMstIcOlnicdiv" resultType="camelMap" >
+		SELECT A.OWKEY, A.ICKEY, B.CTKEY
+		FROM TORDER_MST_IC A
+		INNER JOIN TORDER_MST_REQORDER B
+		        ON A.OWKEY  = B.OWKEY
+		AND A.ICKEY = B.ICKEY
+		AND A.POABLEYN  = 'Y'
+		AND A.OLNICDIV  = #{olnicdiv}
+	</select>
+
+	<update id="updateMstReqorderNeedday">
+		UPDATE TORDER_MST_REQORDER
+		SET NEEDDAYS    = #{needdays}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autochgyn)" >
+		  , AUTOCHGYN   = #{autochgyn}
+    	</if>
+		  , UPDATEDATE  = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectTorderMstReqorderCntrunit" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstReqorderCntrunit */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+              , RC.OWKEY
+              , RC.CTKEY
+		      , C.CTNM
+              , RC.REQORDERUNIT
+              , RC.CRITUNIT
+              , RC.CRITSET
+              , RC.NUMRNG
+              , RC.DELYN
+		      , RC.INSERTDATE
+		      , RC.INSERTURKEY
+		      , RC.UPDATEDATE
+		      , RC.UPDATEURKEY
+		      , C.CRITMODE
+		FROM TORDER_MST_REQORDER_CNTRUNIT RC
+		INNER JOIN TORDER_MST_CT C
+		        ON RC.CTKEY = C.CTKEY
+		WHERE 1 = 1
+		  AND RC.OWKEY = #{owkey}
+		  AND RC.CTKEY = #{ctkey}
+		  AND RC.REQORDERUNIT LIKE CASE WHEN COALESCE(C.CRITMODE, '') = 'SINGLE' THEN 'CTN'
+		  							ELSE ''||'%'
+		  							END
+		ORDER BY RC.UPDATEDATE DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTorderMstReqorderCntrunitCount" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstReqorderCntrunitCount */
+        SELECT count(1)
+		FROM TORDER_MST_REQORDER_CNTRUNIT RC
+		INNER JOIN TORDER_MST_CT C
+		        ON RC.CTKEY = C.CTKEY
+		WHERE 1 = 1
+		  AND RC.OWKEY = #{owkey}
+		  AND RC.CTKEY = #{ctkey}
+          AND RC.REQORDERUNIT LIKE CASE WHEN COALESCE(C.CRITMODE, '') = 'SINGLE' THEN 'CTN'
+                                    ELSE ''||'%'
+                                    END
+
+	</select>
+
+	<insert id="mergePoUnitSet">
+		/* oms-po-poMaster-sql-oracle.xml - mergePoUnitSet */
+		INSERT INTO TORDER_MST_REQORDER_CNTRUNIT (
+			  OWKEY
+			, CTKEY
+			, REQORDERUNIT
+			, CRITUNIT
+			, CRITSET
+			, NUMRNG
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{owkey}
+			, #{ctkey}
+			, #{reqorderunit}
+			, #{critunit}
+			, #{critset}
+			, #{numrng}
+			, #{delyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		ON CONFLICT (OWKEY, CTKEY, REQORDERUNIT)
+		DO UPDATE SET
+			  CRITUNIT    = EXCLUDED.CRITUNIT
+			, CRITSET     = EXCLUDED.CRITSET
+			, NUMRNG      = EXCLUDED.NUMRNG
+			, DELYN       = EXCLUDED.DELYN
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+	</insert>
+
+	<select id="checkPoUnitSet" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - checkPoUnitSet */
+		SELECT count(1)
+		FROM TORDER_MST_REQORDER_CNTRUNIT
+		WHERE OWKEY        = #{owkey}
+	      AND CTKEY        = #{ctkey}
+	      AND REQORDERUNIT = #{reqorderunit}
+	</select>
+
+	<insert id="insertPoUnitSet">
+		/* oms-po-poMaster-sql-oracle.xml - insertPoUnitSet */
+		INSERT INTO TORDER_MST_REQORDER_CNTRUNIT
+		(
+			 OWKEY
+		   , CTKEY
+		   , REQORDERUNIT
+		   , CRITUNIT
+		   , CRITSET
+		   , NUMRNG
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+			)
+		VALUES	(
+			 #{owkey}
+		   , #{ctkey}
+		   , #{reqorderunit}
+		   , #{critunit}
+		   , #{critset}
+		   , #{numrng}
+		   , #{delyn}
+		   , #{sysdate}
+		   , #{surkey}
+		   , #{sysdate}
+		   , #{surkey}
+		)
+	</insert>
+
+	<update id="updatePoUnitSet">
+		/* oms-po-poMaster-sql-oracle.xml - updatePoUnitSet */
+		UPDATE TORDER_MST_REQORDER_CNTRUNIT
+		   SET CRITUNIT    = #{critunit}
+		     , CRITSET     = #{critset}
+		     , NUMRNG      = #{numrng}
+		     , DELYN       = #{delyn}
+		     , UPDATEURKEY = #{surkey}
+		     , UPDATEDATE  = #{sysdate}
+		WHERE OWKEY        = #{owkey}
+	      AND CTKEY        = #{ctkey}
+	      AND REQORDERUNIT = #{reqorderunit}
+	</update>
+
+	<select id="selectTorderMstCtCapa" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstCtCapa */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+              , CP.OWKEY
+              , CP.CTKEY
+		      , C.CTNM
+              , CP.CAPA
+              , CP.DELYN
+		      , CP.INSERTDATE
+		      , CP.INSERTURKEY
+		      , CP.UPDATEDATE
+		      , CP.UPDATEURKEY
+		FROM TORDER_MST_CT_CAPA CP
+		INNER JOIN TORDER_MST_CT C
+		        ON CP.CTKEY = C.CTKEY
+		WHERE 1 = 1
+		  AND CP.OWKEY = #{owkey}
+		  AND CP.CTKEY = #{ctkey}
+		ORDER BY CP.UPDATEDATE DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTorderMstCtCapaCount" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstCtCapaCount */
+        SELECT count(1)
+		FROM TORDER_MST_CT_CAPA CP
+		INNER JOIN TORDER_MST_CT C
+		        ON CP.CTKEY = C.CTKEY
+		WHERE 1 = 1
+		  AND CP.OWKEY = #{owkey}
+		  AND CP.CTKEY = #{ctkey}
+
+	</select>
+
+	<select id="checkCtCapa" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - checkCtCapa */
+		SELECT count(1)
+		FROM TORDER_MST_CT_CAPA
+		WHERE OWKEY  = #{owkey}
+	      AND CTKEY  = #{ctkey}
+	</select>
+
+	<insert id="insertCtCapa">
+		/* oms-po-poMaster-sql-oracle.xml - insertCtCapa */
+		INSERT INTO TORDER_MST_CT_CAPA
+		(
+			 OWKEY
+		   , CTKEY
+		   , CAPA
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+			)
+		VALUES	(
+			 #{owkey}
+		   , #{ctkey}
+		   , #{capa}
+		   , #{delyn}
+		   , #{sysdate}
+		   , #{surkey}
+		   , #{sysdate}
+		   , #{surkey}
+		)
+	</insert>
+
+	<update id="updateCtCapa">
+		/* oms-po-poMaster-sql-oracle.xml - updateCtCapa */
+		UPDATE TORDER_MST_CT_CAPA
+		   SET CAPA        = #{capa}
+		     , DELYN       = #{delyn}
+		     , UPDATEURKEY = #{surkey}
+		     , UPDATEDATE  = #{sysdate}
+		WHERE OWKEY        = #{owkey}
+	      AND CTKEY        = #{ctkey}
+	</update>
+
+
+
+	<select id="selectTorderMstB2bgrtdays" resultType="camelMap" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstB2bgrtdays */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		WITH CMN_TB AS (
+			SELECT
+				A.CTKEY,
+				A.CTNM,
+				B.OWKEY,
+				C.ICKEY,
+				C.ICNM
+			FROM TORDER_MST_CT A
+			INNER JOIN TORDER_MST_ICXCT B
+				ON A.CTKEY = B.CTKEY
+			INNER JOIN TORDER_MST_IC C
+				ON B.OWKEY  = C.OWKEY
+			   AND B.ICKEY = C.ICKEY
+			WHERE A.CTKEY = #{ctkey}
+			  AND C.OWKEY = #{owkey}
+			  AND C.POABLEYN = 'Y'
+		)
+
+		SELECT
+			'0' AS CHK,
+			CMN_TB.OWKEY,
+			CMN_TB.CTKEY,
+			CMN_TB.CTNM,
+			CMN_TB.ICKEY,
+			CMN_TB.ICNM,
+			D.B2BCTKEY,
+			E.CTNM AS B2BCTNM,
+			D.B2BCTGRTDAYS,
+			D.INSERTDATE,
+			D.INSERTURKEY,
+			D.UPDATEDATE,
+			D.UPDATEURKEY
+		FROM CMN_TB
+		INNER JOIN TORDER_MST_B2BGRTDAYS D
+			ON CMN_TB.CTKEY = D.CTKEY
+		   AND CMN_TB.OWKEY = D.OWKEY
+		   AND CMN_TB.ICKEY = D.ICKEY
+		INNER JOIN TORDER_MST_CT E
+			ON D.B2BCTKEY = E.CTKEY
+
+		UNION ALL
+
+		SELECT
+			'0' AS CHK,
+			CMN_TB.OWKEY,
+			CMN_TB.CTKEY,
+			CMN_TB.CTNM,
+			CMN_TB.ICKEY,
+			CMN_TB.ICNM,
+			D.CTKEY AS B2BCTKEY,
+			D.CTNM AS B2BCTNM,
+			0 AS B2BCTGRTDAYS,
+			''  AS INSERTDATE,
+			'' AS INSERTURKEY,
+			'' AS UPDATEDATE,
+			'' AS UPDATEURKEY
+		FROM CMN_TB
+		INNER JOIN TORDER_MST_CT D
+			ON D.CTKEY IN ('01','04','05')  -- 남사, 부산, 안성
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM TORDER_MST_B2BGRTDAYS F
+			WHERE F.ICKEY = CMN_TB.ICKEY
+			  AND F.OWKEY = CMN_TB.OWKEY
+			  AND F.CTKEY = CMN_TB.CTKEY
+		)
+		ORDER BY ICKEY, B2BCTKEY, UPDATEDATE
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectTorderMstB2bgrtdaysCount" resultType="java.lang.Integer" >
+		/* oms-po-poMaster-sql-oracle.xml - selectTorderMstB2bgrtdaysCount */
+        SELECT count(1)
+		FROM TORDER_MST_CT A
+        INNER JOIN TORDER_MST_ICXCT B
+                ON A.CTKEY = B.CTKEY
+        INNER JOIN TORDER_MST_IC C
+                ON B.OWKEY  = C.OWKEY
+               AND B.ICKEY = C.ICKEY
+               AND C.POABLEYN  = 'Y'
+        LEFT JOIN TORDER_MST_B2BGRTDAYS D
+               ON A.CTKEY = D.CTKEY
+              AND C.OWKEY = D.OWKEY
+              AND C.ICKEY = D.ICKEY
+        LEFT JOIN TORDER_MST_CT E
+               ON E.CTKEY IN ('01','04','05')  -- 01:  남사,  04 : 부산 , 05:안성
+        WHERE 1=1
+          AND C.OWKEY = #{owkey}
+		  AND A.CTKEY = #{ctkey}
+        ORDER BY D.UPDATEDATE,C.ICKEY, E.CTKEY
+	</select>
+
+	<insert id="mergeB2bgrtdays">
+		/* oms-po-poMaster-sql-oracle.xml - mergeB2bgrtdays */
+		INSERT INTO TORDER_MST_B2BGRTDAYS (
+			  OWKEY
+			, CTKEY
+			, ICKEY
+			, B2BCTKEY
+			, B2BCTGRTDAYS
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{owkey}
+			, #{ctkey}
+			, #{ickey}
+			, #{b2bctkey}
+			, #{b2bctgrtdays}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		ON CONFLICT (OWKEY, CTKEY, ICKEY, B2BCTKEY)
+		DO UPDATE SET
+			  B2BCTGRTDAYS = EXCLUDED.B2BCTGRTDAYS
+			, UPDATEURKEY  = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE   = EXCLUDED.UPDATEDATE
+	</insert>
+
+	<select id="selectCritModeByCenter" resultType="java.lang.String">
+	/* oms-po-poMaster-sql-oracle.xml - selectCritModeByCenter */
+	
+	   SELECT COALESCE(CRITMODE, 'SINGLE') AS CRITMODE
+		 FROM TORDER_MST_CT
+		WHERE CTKEY = #{ctkey}
+	</select>
+</mapper>
+	

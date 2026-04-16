@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.item.mapper.CtgMapper">
+
+	<select id="selectCtgCount" resultType="java.lang.Integer" >
+		/* oms-item-ctg-sql-oracle.xml - selectCtgCount */
+		SELECT COUNT(1)
+		FROM (	
+			SELECT C1.OWKEY
+				 , C1.CTGKEY AS CTGKEY1
+				 , C1.CTGNM AS CTGNM1
+				 , C2.CTGKEY AS CTGKEY2
+				 , C2.CTGNM AS CTGNM2
+				 , C3.CTGKEY AS CTGKEY3
+				 , C3.CTGNM AS CTGNM3
+				 , COALESCE(C3.CTGKEY, COALESCE(C2.CTGKEY, C1.CTGKEY)) AS CTGKEY
+				 , COALESCE(C3.CTGNM, COALESCE(C2.CTGNM, C1.CTGNM)) AS CTGNM
+				 , COALESCE(C3.CTGLV, COALESCE(C2.CTGLV, C1.CTGLV)) AS CTGLV
+				 , COALESCE(C3.DELYN, COALESCE(C2.DELYN, C1.DELYN)) AS DELYN
+				 , COALESCE(C3.IFYN, COALESCE(C2.IFYN, C1.IFYN)) AS IFYN
+				 , COALESCE(C3.INSERTDATE, COALESCE(C2.INSERTDATE, C1.INSERTDATE)) AS INSERTDATE
+				 , COALESCE(C3.UPDATEDATE, COALESCE(C2.UPDATEDATE, C1.UPDATEDATE)) AS UPDATEDATE
+				 , COALESCE(C3.INSERTURKEY, COALESCE(C2.INSERTURKEY, C1.INSERTURKEY)) AS INSERTURKEY
+				 , COALESCE(C3.UPDATEURKEY, COALESCE(C2.UPDATEURKEY, C1.UPDATEURKEY)) AS UPDATEURKEY
+			  FROM TORDER_MST_CTG C1
+			  LEFT JOIN TORDER_MST_CTG C2
+			    ON C1.OWKEY = C2.OWKEY
+			   AND C1.CTGKEY = C2.UPPERCTGKEY
+			   AND C2.CTGLV = '2'
+			  LEFT JOIN TORDER_MST_CTG C3
+			    ON C2.OWKEY = C3.OWKEY
+			   AND C2.CTGKEY = C3.UPPERCTGKEY
+			   AND C3.CTGLV = '3'
+			 WHERE C1.OWKEY = #{owkey}
+			   AND C1.CTGLV = '1'
+		   ) T
+		INNER JOIN TORDER_MST_OW OW
+				ON T.OWKEY = OW.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+	
+	<select id="selectCtg" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - selectCtg */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+			 , T.OWKEY -- 화주코드
+			 , OW.OWNM -- 화주명
+			 , T.CTGKEY1
+			 , T.CTGNM1
+			 , T.CTGKEY2
+			 , T.CTGNM2
+			 , T.CTGKEY3
+			 , T.CTGNM3
+			 , T.UPPERCTGKEY
+			 , T.CTGKEY
+			 , T.CTGNM
+			 , T.INSERTDATE -- 입력일시
+			 , T.UPDATEDATE -- 수정일시
+			 , T.INSERTURKEY -- 입력자
+			 , T.UPDATEURKEY -- 수정자
+			 , T.CTGLV
+			 , T.DELYN -- 삭제여부
+			 , T.IFYN
+		FROM (	
+				SELECT C1.OWKEY
+					 , C1.CTGKEY AS CTGKEY1
+					 , C1.CTGNM AS CTGNM1
+					 , C2.CTGKEY AS CTGKEY2
+					 , C2.CTGNM AS CTGNM2
+					 , C3.CTGKEY AS CTGKEY3
+					 , C3.CTGNM AS CTGNM3
+					 , COALESCE(C3.UPPERCTGKEY, COALESCE(C2.UPPERCTGKEY, C1.UPPERCTGKEY)) AS UPPERCTGKEY
+					 , COALESCE(C3.CTGKEY, COALESCE(C2.CTGKEY, C1.CTGKEY)) AS CTGKEY
+				 	 , COALESCE(C3.CTGNM, COALESCE(C2.CTGNM, C1.CTGNM)) AS CTGNM
+					 , COALESCE(C3.CTGLV, COALESCE(C2.CTGLV, C1.CTGLV)) AS CTGLV
+					 , COALESCE(C3.DELYN, COALESCE(C2.DELYN, C1.DELYN)) AS DELYN
+					 , COALESCE(C3.IFYN, COALESCE(C2.IFYN, C1.IFYN)) AS IFYN
+					 , COALESCE(C3.CLOSDATE, COALESCE(C2.CLOSDATE, C1.CLOSDATE)) AS CLOSDATE
+					 , COALESCE(C3.INSERTDATE, COALESCE(C2.INSERTDATE, C1.INSERTDATE)) AS INSERTDATE
+					 , COALESCE(C3.UPDATEDATE, COALESCE(C2.UPDATEDATE, C1.UPDATEDATE)) AS UPDATEDATE
+					 , COALESCE(C3.INSERTURKEY, COALESCE(C2.INSERTURKEY, C1.INSERTURKEY)) AS INSERTURKEY
+					 , COALESCE(C3.UPDATEURKEY, COALESCE(C2.UPDATEURKEY, C1.UPDATEURKEY)) AS UPDATEURKEY
+				  FROM TORDER_MST_CTG C1
+				  LEFT JOIN TORDER_MST_CTG C2
+				    ON C1.OWKEY = C2.OWKEY
+				   AND C1.CTGKEY = C2.UPPERCTGKEY
+				   AND C2.CTGLV = '2'
+				  LEFT JOIN TORDER_MST_CTG C3
+				    ON C2.OWKEY = C3.OWKEY
+				   AND C2.CTGKEY = C3.UPPERCTGKEY
+				   AND C3.CTGLV = '3'
+				 WHERE C1.OWKEY = #{owkey}
+				   AND C1.CTGLV = '1'
+			   ) T
+			INNER JOIN TORDER_MST_OW OW
+			   ON T.OWKEY = OW.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY T.CTGKEY1, T.CTGKEY2, T.CTGKEY3
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkCtg" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - selectPkCtg */
+		SELECT 	 A.OWKEY
+				,'OWKEY' || ';' || A.OWKEY AS OWKEY_DESC
+				,B.OWNM
+				,A.CTGKEY
+				,A.CTGLV
+				,'CTGLEVEL' || ';' || A.CTGLV AS CTGLEVEL_DESC
+				,A.CTGNM
+				,A.UPPERCTGKEY
+				,C.CTGNM AS UPPERCTGNAME
+				,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.CLOSDATE
+				,A.DELYN
+				,'YESORNO' || ';' || A.DELYN AS DELYN_DESC
+		FROM 	TORDER_MST_CTG A
+		INNER JOIN TORDER_MST_OW B
+		        ON A.OWKEY = B.OWKEY
+		LEFT JOIN TORDER_MST_CTG C
+		  ON A.OWKEY = C.OWKEY
+		 AND A.UPPERCTGKEY = C.CTGKEY
+		 AND C.CTGLV = CASE WHEN A.CTGLV='3' THEN '2' ELSE '1' END
+		WHERE	A.OWKEY = #{owkey}
+		AND     A.CTGKEY = #{ctgkey}
+		AND     (A.CTGLV = #{ctglevel} OR A.CTGLV = #{ctglv}) 
+	</select>
+
+	<select id="selectPkCtgMap" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - selectPkCtgMap */
+		SELECT OWKEY
+			 ,'OWKEY' || ';' || OWKEY AS OWKEY_DESC
+			 ,CTGKEY
+			 ,CTGLV
+			 ,'CTGLEVEL' || ';' || CTGLV AS CTGLEVEL_DESC
+			 ,CTGNM
+			 ,UPPERCTGKEY
+			 ,INSERTDATE
+			 ,INSERTURKEY
+			 ,UPDATEDATE
+			 ,CLOSDATE
+			 ,DELYN
+			 ,'YESORNO' || ';' || DELYN AS DELYN_DESC
+		FROM 	TORDER_MST_CTG
+		WHERE	OWKEY = #{owkey}
+		  AND     CTGKEY = #{ctgkey}
+		  AND     CTGLV = #{ctglevel}
+	</select>
+
+	<insert id="insertTAdminMstCtg">
+		/* oms-item-ctg-sql-oracle.xml - insertTAdminMstCtg */
+		INSERT INTO TORDER_MST_CTG	(
+			 OWKEY
+			,CTGKEY
+			,CTGLV
+			,CTGNM
+			,UPPERCTGKEY
+			,CLOSDATE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )
+		VALUES	(
+			 #{owkey}
+			,#{ctgkey}
+			,#{ctglv}
+			,#{ctgnm}
+			,COALESCE(#{upperctgkey}, 'DIR')
+			,#{closdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>	
+	
+	<update id="updateTAdminMstCtg">
+		/* oms-item-ctg-sql-oracle.xml - updateTAdminMstCtg */
+		UPDATE 	TORDER_MST_CTG
+		   SET	 CTGNM 		  	  = #{ctgnm}
+		   	    ,DELYN 		  	  = #{delyn}
+				,UPPERCTGKEY 		  = #{upperctgkey}
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE OWKEY 		 = #{owkey}
+		AND   CTGKEY   		 = #{ctgkey}
+		AND   CTGLV 		 = #{ctglv}
+	</update>
+	
+	<delete id="deleteTAdminMstCtg">
+		/* oms-item-ctg-sql-oracle.xml - deleteTAdminMstCtg */
+		UPDATE  TORDER_MST_CTG
+		SET      DELYN 				= 'Y'
+				,CLOSDATE			= #{closdate}
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE OWKEY 		 = #{owkey}
+		AND   CTGKEY   		 = #{ctgkey}
+		AND   CTGLV 		 = #{ctglv}
+	</delete>
+	
+	<select id="selectCtkey" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - selectCtkey */
+		SELECT CTKEY
+		FROM TORDER_MST_CT
+		WHERE DELYN  = 'N'
+		  AND MANAGEMENTYN ='Y'
+	</select>
+
+	<select id="searchCtg" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - searchCtg */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT
+		CTGKEY
+		,CTGNM
+		FROM 	TORDER_MST_CTG
+		<where>
+			<if test='owkey != null and owkey != ""'>
+				<![CDATA[
+				AND  OWKEY = #{owkey}
+				 ]]>
+			</if>
+			<if test='searchValue != null and searchValue != ""'>
+				AND (CTGKEY LIKE '%' || #{searchValue} || '%' OR CTGNM LIKE '%' || #{searchValue} || '%')
+			</if>
+			<if test='searchLevel != null and searchLevel != ""'>
+				<![CDATA[
+				AND  CTGLV = #{searchLevel}
+				 ]]>
+			</if>
+			<if test='ctgkey != null and ctgkey != ""'>
+				<![CDATA[
+				AND  CTGKEY = #{ctgkey}
+				 ]]>
+			</if>
+		</where>
+
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectApiTest" resultType="camelMap">
+		/* oms-item-ctg-sql-oracle.xml - selectApiTest */
+		SELECT '123' AS CTKEY
+		     , '456' AS OWKEY
+		     , '777' AS ASRTREPKEY
+		     , '888' AS ASRTKEY
+		     , '9' AS QTY
+		     , 'BLUE' AS ICCOLOR
+		     , '세련' AS ICDESIGN
+		     , '하추핑' AS ICCHRT
+		     , 'img' AS ICIMGURL
+		     , 'N' AS DELYN
+		UNION ALL
+		SELECT 'ABC' AS CTKEY
+		     , 'DEF' AS OWKEY
+		     , '111' AS ASRTREPKEY
+		     , '222' AS ASRTKEY
+		     , '3' AS QTY
+		     , 'RED' AS ICCOLOR
+		     , '트렌디' AS ICDESIGN
+		     , '군인' AS ICCHRT
+		     , 'image' AS ICIMGURL
+		     , 'Y' AS DELYN
+	</select>
+
+</mapper>	

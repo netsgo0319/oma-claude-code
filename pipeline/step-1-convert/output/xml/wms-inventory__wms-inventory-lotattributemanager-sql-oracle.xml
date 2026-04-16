@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.LotAttributeManagerMapper">
+		
+	<select id="selectExistLotAttribute" parameterType="lotAttributeVO" resultType="string">
+		SELECT MAX(IVATKEY) AS IVATKEY
+ 		 FROM TWORK_INFO_IVAT
+		<where>
+			CTKEY=#{ctkey}
+    		AND OWKEY=#{owkey}
+    		AND ICKEY=#{ickey}
+    		<if test='@com.kns.framework.util.StringUtil@isEmpty(productdate)'>
+    			AND PRODUCTDATE IS NULL
+    		</if>    		
+    		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(productdate)'>
+    			AND PRODUCTDATE=#{productdate,typeHandler=GmtDateTimeFormatTypeHandler}
+    		</if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(expiredate)'>
+		    	AND EXPIREDATE IS NULL
+		    </if>    		
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(expiredate)'>
+		    	AND EXPIREDATE=#{expiredate,typeHandler=GmtDateTimeFormatTypeHandler}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(ibconfirmdate)'>
+		    	AND IBCONFIRMDATE IS NULL
+		    </if> 		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(ibconfirmdate)'>
+		    	AND IBCONFIRMDATE=#{ibconfirmdate,typeHandler=GmtDateTimeFormatTypeHandler}
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute1)'>
+		    	AND ATTRIBUTE1 IS NULL
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute1)'>
+		    	AND ATTRIBUTE1=#{attribute1}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute2)'>
+		    	AND ATTRIBUTE2 IS NULL
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute2)'>
+		    	AND ATTRIBUTE2=#{attribute2}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute3)'>
+		    	AND ATTRIBUTE3 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute3)'>
+		    	AND ATTRIBUTE3=#{attribute3}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute4)'>
+		    	AND ATTRIBUTE4 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute4)'>
+		    	AND ATTRIBUTE4=#{attribute4}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute5)'>
+		    	AND ATTRIBUTE5 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute5)'>
+		    	AND ATTRIBUTE5=#{attribute5}
+		    </if>
+		     <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute6)'>
+		    	AND ATTRIBUTE6 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute6)'>
+		    	AND ATTRIBUTE6=#{attribute6}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute7)'>
+		    	AND ATTRIBUTE7 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute7)'>
+		    	AND ATTRIBUTE7=#{attribute7}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute8)'>
+		    	AND ATTRIBUTE8 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute8)'>
+		    	AND ATTRIBUTE8=#{attribute8}
+		    </if>
+		     <if test='@com.kns.framework.util.StringUtil@isEmpty(attribute9)'>
+		    	AND ATTRIBUTE9 IS NULL
+		    </if>		    		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(attribute9)'>
+		    	AND ATTRIBUTE9=#{attribute9}
+		    </if>
+		    <if test='@com.kns.framework.util.StringUtil@isEmpty(productlot)'>
+		    	AND PRODUCTLOT IS NULL		
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(productlot)'>
+		    	AND PRODUCTLOT=#{productlot}		
+		    </if>
+		</where>
+	</select>
+
+	<select id="selectLotAttributeByPk" parameterType="lotAttributeVO" resultType="lotAttributeVO">
+		<![CDATA[			
+		SELECT CTKEY      
+			  ,IVATKEY    
+			  ,OWKEY      
+			  ,ICKEY      
+			  ,PRODUCTDATE
+			  ,EXPIREDATE 
+			  ,IBCONFIRMDATE
+			  ,ATTRIBUTE1 
+			  ,ATTRIBUTE2 
+			  ,ATTRIBUTE3 
+			  ,ATTRIBUTE4 
+			  ,ATTRIBUTE5 
+			  ,PRODUCTLOT 
+			  ,IVATSTATUS 
+ 		 FROM TWORK_INFO_IVAT
+		WHERE CTKEY= #{ctkey}
+    	  AND IVATKEY= #{ivatkey}
+		]]>    		
+	</select>
+
+
+	<insert id="insertTworkInfoIvat" parameterType="lotAttributeVO">
+		<![CDATA[		
+		INSERT INTO TWORK_INFO_IVAT (
+				CTKEY      
+				,IVATKEY    
+				,OWKEY      
+				,ICKEY      
+				,PRODUCTDATE
+				,EXPIREDATE 
+				,IBCONFIRMDATE
+				,ATTRIBUTE1 
+				,ATTRIBUTE2 
+				,ATTRIBUTE3 
+				,ATTRIBUTE4 
+				,ATTRIBUTE5 
+				,ATTRIBUTE6
+				,ATTRIBUTE7
+				,ATTRIBUTE8
+				,ATTRIBUTE9
+				,PRODUCTLOT 
+				,IVATSTATUS
+				,ACKEY
+				,STORE_KEY 
+				,LOGGRPCD 
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY
+				,NET_WGT
+				,CFQTY
+			) VALUES (
+				#{ctkey}
+				,#{ivatkey}
+				,#{owkey}
+				,#{ickey}
+				,#{productdate,typeHandler=GmtDateTimeFormatTypeHandler}
+				,#{expiredate,typeHandler=GmtDateTimeFormatTypeHandler}
+				,COALESCE(#{ibconfirmdate}, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'))
+				,#{attribute1}
+				,#{attribute2}
+				,#{attribute3}
+				,#{attribute4}
+				,#{attribute5}
+				,#{attribute6}
+				,#{attribute7}
+				,#{attribute8}
+				,#{attribute9}
+				,#{productlot}
+				,#{ivatstatus}
+				,#{ackey}
+				,#{store_key}	
+				,COALESCE(#{loggrpcd}, '1')	
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+		      	,#{net_wgt_in}
+		      	,#{ibqty}
+			)		
+		]]>				
+	</insert>
+	
+	<!-- TWORK_INFO_IVAT에 무게, 확정수량 업데이트 . 2020.03.13 kej -->
+	<update id="updateIvat"  parameterType="lotAttributeVO">
+		<![CDATA[
+		UPDATE TWORK_INFO_IVAT
+		   SET NET_WGT = (SELECT SUM (NET_WGT) FROM TWORK_INFO_IBCF_DT WHERE TO_IVATKEY = #{ivatkey}),
+		       CFQTY = (SELECT SUM (CFQTY) FROM TWORK_INFO_IBCF_DT WHERE TO_IVATKEY = #{ivatkey}),
+		       UPDATEDATE = #{sysdate},
+		       UPDATEURKEY = #{updateurkey}
+		 WHERE CTKEY=#{ctkey}
+		   AND IVATKEY = #{ivatkey}
+		]]>		    
+	</update>
+
+</mapper>

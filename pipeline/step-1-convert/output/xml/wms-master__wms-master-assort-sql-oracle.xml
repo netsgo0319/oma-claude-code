@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.AssortMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectAssortMaster">
+		SELECT ASRT.CTKEY
+			 , CT.CTNM
+			 , ASRT.OWKEY
+			 , OW.OWNM
+			 , ASRT.ASRTMASICKEY
+			 , IC.ICNM AS ASRTMASICNM
+		     , SUM(ASRT.QTY) AS QTY
+			 , MAX(ASRT.INSERTDATE) AS INSERTDATE
+			 , MAX(ASRT.INSERTURKEY) AS INSERTURKEY
+			 , MAX(ASRT.UPDATEDATE) AS UPDATEDATE
+			 , MAX(ASRT.UPDATEURKEY) AS UPDATEURKEY
+		  FROM TWORK_MST_ASRT ASRT
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ASRT.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = ASRT.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTMASICKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtdtickeyArr)">
+				AND EXISTS (
+				    SELECT 1
+				      FROM TWORK_MST_ASRT
+				     WHERE CTKEY = ASRT.CTKEY
+				       AND OWKEY = ASRT.OWKEY
+				       AND ASRTMASICKEY = ASRT.ASRTMASICKEY
+
+						<foreach collection="asrtdtickeyArr" item="item" open=" AND ASRTDTICKEY IN (" separator="," close=")">
+							#{item}
+						</foreach>
+				  )
+			</if>
+
+		</where>
+
+		 GROUP BY
+			   ASRT.CTKEY
+			 , CT.CTNM
+			 , ASRT.OWKEY
+			 , OW.OWNM
+			 , ASRT.ASRTMASICKEY
+			 , IC.ICNM
+	</sql>
+
+	<select id="selectAssortMasterCount" resultType="java.lang.Integer">
+		/* wms-master-assort-sql-oracle.xml - selectAssortMasterCount */
+		SELECT COUNT(*)
+		  FROM (
+			<include refid="sql_selectAssortMaster"/>
+		     )
+	</select>
+
+	<select id="selectAssortMasterList" resultType="camelMap">
+		/* wms-master-assort-sql-oracle.xml - selectAssortMasterList */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectAssortMaster"/>
+		 ORDER BY
+			   ASRT.ASRTMASICKEY
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectAssortDetailList" resultType="camelMap">
+		/* wms-master-assort-sql-oracle.xml - selectAssortDetailList */
+		SELECT ASRT.CTKEY
+			 , CT.CTNM
+			 , ASRT.OWKEY
+			 , OW.OWNM
+			 , ASRT.ASRTDTICKEY
+			 , IC.ICNM AS ASRTDTICNM
+			 , ASRT.QTY
+			 , ASRT.COLOR
+			 , ASRT.DESIGN
+			 , ASRT.CHRT
+			 , ASRT.INSERTDATE
+			 , ASRT.INSERTURKEY
+			 , ASRT.UPDATEDATE
+			 , ASRT.UPDATEURKEY
+		  FROM TWORK_MST_ASRT ASRT
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ASRT.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = ASRT.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTDTICKEY
+		 WHERE ASRT.CTKEY = #{ctkey}
+		   AND ASRT.OWKEY = #{owkey}
+		   AND ASRT.ASRTMASICKEY = #{asrtmasickey}
+	</select>
+
+	<select id="selectAssortExcelList" resultType="camelMap">
+		/* wms-master-assort-sql-oracle.xml - selectAssortExcelList */
+		SELECT ASRT.CTKEY
+			 , CT.CTNM
+			 , ASRT.OWKEY
+			 , OW.OWNM
+			 , ASRT.ASRTMASICKEY
+		     , ICMS.ICNM AS ASRTMASICNM
+			 , ASRT.ASRTDTICKEY
+			 , IC.ICNM AS ASRTDTICNM
+			 , ASRT.QTY
+			 , ASRT.COLOR
+			 , ASRT.DESIGN
+			 , ASRT.CHRT
+			 , ASRT.INSERTDATE
+			 , ASRT.INSERTURKEY
+			 , ASRT.UPDATEDATE
+			 , ASRT.UPDATEURKEY
+		  FROM TWORK_MST_ASRT ASRT
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ASRT.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = ASRT.OWKEY
+		 INNER JOIN TWORK_MST_IC ICMS
+			ON ICMS.CTKEY = ASRT.CTKEY
+		   AND ICMS.OWKEY = ASRT.OWKEY
+		   AND ICMS.ICKEY = ASRT.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTDTICKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtdtickeyArr)">
+				AND EXISTS (
+				    SELECT 1
+				      FROM TWORK_MST_ASRT
+				     WHERE CTKEY = ASRT.CTKEY
+				       AND OWKEY = ASRT.OWKEY
+				       AND ASRTMASICKEY = ASRT.ASRTMASICKEY
+
+						<foreach collection="asrtdtickeyArr" item="item" open=" AND ASRTDTICKEY IN (" separator="," close=")">
+							#{item}
+						</foreach>
+				  )
+			</if>
+		</where>
+		 ORDER BY
+			   ASRT.ASRTMASICKEY
+			  , ASRT.ASRTDTICKEY
+	</select>
+
+</mapper>

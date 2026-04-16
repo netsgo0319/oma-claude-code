@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.EqMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectEqMgmt">
+		  FROM TWORK_MST_EQ EQ
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = EQ.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectEqMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-eqmgmt-sql-oracle.xml - selectEqMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectEqMgmt"/>
+	</select>
+
+	<select id="selectEqMgmtList" resultType="camelMap">
+		/* wms-master-eqmgmt-sql-oracle.xml - selectEqMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , EQ.CTKEY
+		     , CT.CTNM
+			 , EQ.EQNM
+			 , EQ.EQDIVCD
+			 , EQ.EQBARCODE
+			 , EQ.MODELNO
+			 , EQ.MODELSERIALNO
+			 , EQ.PRDCTCPNM
+			 , EQ.PRDCTCPTELNO
+			 , EQ.SALECPNM
+			 , EQ.SALECPTELNO
+			 , EQ.INSDAY
+			 , EQ.OPERSTARTDAY
+			 , EQ.PICH
+			 , EQ.SUBPICH
+			 , EQ.IPADDR
+			 , EQ.INSERTDATE
+			 , EQ.INSERTURKEY
+			 , EQ.UPDATEDATE
+			 , EQ.UPDATEURKEY
+		<include refid="sql_selectEqMgmt"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectEqMgmtDuplicateCount" resultType="java.lang.Integer">
+		/* wms-master-eqmgmt-sql-oracle.xml - selectEqMgmtDuplicateCount */
+		SELECT COUNT(*)
+		  FROM TWORK_MST_EQ
+		 WHERE CTKEY = #{ctkey}
+		   AND EQNM = #{eqnm}
+	</select>
+
+	<insert id="insertEqMgmt">
+		/* wms-master-eqmgmt-sql-oracle.xml - insertEqMgmt */
+		INSERT INTO TWORK_MST_EQ (
+			   CTKEY
+			 , EQNM
+			 , EQDIVCD
+			 , EQBARCODE
+			 , MODELNO
+			 , MODELSERIALNO
+			 , PRDCTCPNM
+			 , PRDCTCPTELNO
+			 , SALECPNM
+			 , SALECPTELNO
+			 , INSDAY
+			 , OPERSTARTDAY
+			 , PICH
+			 , SUBPICH
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		VALUES (
+			   #{ctkey}
+			 , #{eqnm}
+			 , #{eqdivcd}
+			 , #{eqbarcode}
+			 , #{modelno}
+			 , #{modelserialno}
+			 , #{prdctcpnm}
+			 , #{prdctcptelno}
+			 , #{salecpnm}
+			 , #{salecptelno}
+			 , #{insday}
+			 , #{operstartday}
+			 , #{pich}
+			 , #{subpich}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateEqMgmt">
+		/* wms-master-eqmgmt-sql-oracle.xml - updateEqMgmt */
+		UPDATE TWORK_MST_EQ
+		   SET MODELNO = #{modelno}
+			 , MODELSERIALNO = #{modelserialno}
+			 , PRDCTCPNM = #{prdctcpnm}
+			 , PRDCTCPTELNO = #{prdctcptelno}
+			 , SALECPNM = #{salecpnm}
+			 , SALECPTELNO = #{salecptelno}
+			 , INSDAY = #{insday}
+			 , OPERSTARTDAY = #{operstartday}
+			 , PICH = #{pich}
+			 , SUBPICH = #{subpich}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND EQNM = #{eqnm}
+	</update>
+
+	<delete id="deleteEqMgmt">
+		/* wms-master-eqmgmt-sql-oracle.xml - deleteEqMgmt */
+		DELETE
+		  FROM TWORK_MST_EQ
+		 WHERE CTKEY = #{ctkey}
+		   AND EQNM = #{eqnm}
+	</delete>
+
+</mapper>

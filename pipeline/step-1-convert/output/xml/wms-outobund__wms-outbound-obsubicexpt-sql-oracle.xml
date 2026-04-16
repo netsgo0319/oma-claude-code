@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObSubicExptMapper">
+	<sql id="subicExptSql">
+    /* wms-outbound-obsubicexpt-sql-oracle.xml - subicExptSql - 부자재 반출 - 부자재 반출 재고 정보 조회 SQL */
+    SELECT 0 AS CHK         /*체크박스*/
+         , IVLC.CTKEY       /*센터 코드*/
+         , IVLC.OWKEY       /*화주 코드*/
+         , CT.CTNM          /*센터명*/
+         , IVLC.ICKEY       /*상품코드*/
+         , ICB.BARCODE      /*바코드*/
+         , IC.ICNM          /*상품명*/
+         , CTG.CTGNM		/*상품대/중/소명*/
+         , IVLC.IVATKEY     /*재고 속성 코드*/
+         , IVLC.IVSTATUSCD  /*재고상태코드*/
+         , IVLC.LCKEY       /*로케이션 코드*/
+         , IVLC.IVSERIALNO  /*재고시리얼번호*/
+         , IVLC.AVQTY       /*가용 수량*/
+         , 0 AS PISPQTY     /*실사수량*/
+         , IVLC.INSERTDATE  /*입력 일시*/
+         , IVLC.INSERTURKEY /*입력 사용자 ID*/
+         , IVLC.UPDATEDATE  /*수정 일시*/
+         , IVLC.UPDATEURKEY /*수정 사용자 ID*/
+         , CASE WHEN BX.BOXBARCODE IS NOT NULL THEN 'Y' ELSE 'N' END AS BOXYN /*박스여부*/
+      FROM TWORK_INFO_IVATXLC IVLC /*재고 속성별 로케이션별 재고 정보*/
+     INNER JOIN TWORK_INFO_IVAT IV /*재고속성정보*/
+        ON IVLC.CTKEY   = IV.CTKEY
+       AND IVLC.OWKEY   = IV.OWKEY
+       AND IVLC.IVATKEY = IV.IVATKEY
+	 INNER JOIN TWORK_MST_LC LC /*로케이션 마스터*/
+	    ON IVLC.CTKEY = LC.CTKEY
+	   AND IVLC.LCKEY = LC.LCKEY
+	 INNER JOIN TWORK_MST_ZN ZN /*존 마스터*/
+	    ON LC.CTKEY = ZN.CTKEY
+	   AND LC.ZNKEY = ZN.ZNKEY
+     INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+        ON IV.CTKEY = IC.CTKEY
+       AND IV.OWKEY = IC.OWKEY
+       AND IV.ICKEY = IC.ICKEY
+     INNER JOIN TWORK_MST_CTG CTG /*상품 분류 마스터*/
+        ON IC.CTKEY  = CTG.CTKEY
+       AND IC.OWKEY  = CTG.OWKEY
+       AND IC.CTGKEY = CTG.CTGKEY
+     INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+        ON IC.CTKEY = CT.CTKEY
+     LEFT JOIN TWORK_MST_ICBARCODE ICB /*상품바코드 마스터*/
+        ON IC.CTKEY = ICB.CTKEY
+       AND IC.OWKEY = ICB.OWKEY
+       AND IC.ICKEY = ICB.ICKEY
+       AND IC.UOM   = ICB.UOM
+     LEFT JOIN TWORK_MST_BOX BX /*박스 마스터*/
+        ON IC.CTKEY = BX.CTKEY
+       AND IC.ICKEY = BX.ICKEY
+        <where>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+           #{SEARCH_CONDITION}
+            </if>
+       AND IVLC.AVQTY > 0
+       AND ZN.ZNTYPECD = '10' /*10: 보관존*/
+       AND ZN.ZNKEY = 'SM' /*SM: 부자재 보관존*/
+        </where>
+     ORDER BY IVLC.ICKEY, IVLC.IVATKEY
+	</sql>
+
+	<select id="selectSubicExptCount" resultType="java.lang.Integer">
+		/* wms-outbound-obsubicexpt-sql-oracle.xml - selectSubicExptCount - 부자재반출 - 부자재 반출 재고 정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+        <include refid="subicExptSql"/>
+		)
+	</select>
+
+	<select id="selectSubicExptList" resultType="camelMap">
+		/* wms-outbound-obsubicexpt-sql-oracle.xml - selectSubicExptList - 부자재반출 - 부자재 반출 재고 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		<include refid="subicExptSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <insert id="subicExptTaDtInsert">
+        /* wms-outbound-obsubicexpt-sql-oracle.xml - subicExptTaDtInsert - 부자재반출 - 작업지시 상세 등록 */
+        INSERT INTO TWORK_INFO_TA_DT (
+               CTKEY          /*센터 코드*/
+             , OWKEY          /*화주 코드*/
+             , TAHDKEY        /*TASK번호*/
+             , TADTKEY        /*TASK상세번호*/
+             , WKREGDATE      /*작업등록일시*/
+             , WKSTARTDATE    /*작업시작일시*/
+             , WKCLOSDATE     /*작업종료일시*/
+             , ICKEY          /*상품코드*/
+             , IVATKEY        /*재고속성코드*/
+             , FRLCKEY        /*FROM로케이션코드*/
+             , UOM            /*단위*/
+             , OUTQTY         /*반출수량*/
+             , TAWKDTSTATUSCD /*TASK작업상세상태코드*/
+             , INSERTDATE     /*입력 일시*/
+             , INSERTURKEY    /*입력 사용자 ID*/
+             , UPDATEDATE     /*수정 일시*/
+             , UPDATEURKEY    /*수정 사용자 ID*/
+        )
+        SELECT #{ctkey} AS CTKEY
+             , #{owkey} AS OWKEY
+             , #{tahdkey} AS TAHDKEY
+             , COALESCE(MAX(CAST(TADT.TADTKEY AS NUMERIC)), 0) + 1 AS TADTKEY
+             , #{sysdate} AS WKREGDATE
+             , #{sysdate} AS WKSTARTDATE
+             , #{sysdate} AS WKCLOSDATE
+             , #{ickey} AS ICKEY
+             , #{ivatkey} AS IVATKEY
+             , #{lckey} AS FRLCKEY
+             , 'EA' AS UOM
+             , #{outqty} AS OUTQTY
+             , #{tawkdtstatuscd} AS TAWKDTSTATUSCD
+             , #{sysdate} AS INSERTDATE
+             , #{surkey} AS INSERTURKEY
+             , #{sysdate} AS UPDATEDATE
+             , #{surkey} AS UPDATEURKEY
+          FROM TWORK_INFO_TA_DT TADT
+         WHERE TADT.CTKEY = #{ctkey}
+           AND TADT.OWKEY = #{owkey}
+           AND TADT.TAHDKEY = #{tahdkey}
+    </insert>
+
+    <insert id="subicExptTaHdInsert">
+        /* wms-outbound-obsubicexpt-sql-oracle.xml - subicExptTaHdInsert - 부자재반출 - 작업지시 헤더 등록 */
+        INSERT INTO TWORK_INFO_TA_HD (
+               CTKEY        /*센터코드*/
+             , OWKEY        /*화주코드*/
+             , TAHDKEY      /*TASK번호*/
+             , TATYPECD     /*TASK유형번호*/
+             , REGDATE      /*등록일시*/
+             , FRWKDATE     /*작업기간_FROM*/
+             , TOWKDATE     /*작업기간_TO*/
+             , TADDLNDATE   /*TASK마감일시*/
+             , TAWKSTATUSCD /*TASK작업상태코드*/
+             , INSERTDATE   /*입력일시*/
+             , INSERTURKEY  /*입력사용자ID*/
+             , UPDATEDATE   /*수정일시*/
+             , UPDATEURKEY  /*수정사용자ID*/
+        ) VALUES (
+               #{ctkey}
+             , #{owkey}
+             , #{tahdkey}
+             , #{tatypecd}
+             , #{sysdate}
+             , #{sysdate}
+             , #{sysdate}
+             , #{sysdate}
+             , #{tawkstatuscd}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+        )
+    </insert>
+
+    <update id="subicExptIvatByLcUpdate">
+        /* wms-outbound-obsubicexpt-sql-oracle.xml - subicExptIvatByLcUpdate - 부자재반출 - 재고 속성별 로케이션별 재고정보 업데이트 */
+        UPDATE TWORK_INFO_IVATXLC /*재고 속성별 로케이션별 재고 정보*/
+           SET AVQTY = AVQTY - #{outqty}
+             , TOTQTY = TOTQTY - #{outqty}
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND IVATKEY = #{ivatkey}
+           AND LCKEY = #{lckey}
+           AND ICKEY = #{ickey}
+           AND IVSERIALNO = #{ivserialno}
+    </update>
+</mapper>

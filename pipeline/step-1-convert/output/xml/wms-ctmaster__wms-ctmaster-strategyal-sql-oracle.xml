@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.StrategyAlMapper">
+
+	<sql id="selectListStgAlHdsql">
+		/* wms-ctmaster-strategyal-sql-oracle.xml - selectListStgAlHdsql - 할당 전략 헤더 조회  SQL */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , B.CTNM
+			 , A.ALSTGHDKEY
+			 , A.ALSTGNM
+			 , A.USEYN
+			 , A.CMT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_MST_AL_STG_HD A
+		 INNER JOIN TWORK_MST_CT B
+			ON A.CTKEY = B.CTKEY
+		 WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+
+	</sql>
+
+	<select id="selectListStgAlHdCount" resultType="java.lang.Integer" >
+		/* wms-ctmaster-strategyal-sql-oracle.xml - selectListStgAlHdCount - 할당전략 헤더 건수 조회  SQL */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectListStgAlHdsql"/>
+				)
+	</select>
+
+	<select id="selectListStgAlHd" resultType="camelMap">
+		/* wms-ctmaster-strategyal-sql-oracle.xml - selectListStgAlHd - 할당 전략 헤더 조회  SQL */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectListStgAlHdsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectStgAlHdMap" resultType="camelMap" >
+		/* wms-ctmaster-strategyal-sql-oracle.xml - selectStgAlHdMap - 할당전략 조회 */
+		SELECT *
+		  FROM TWORK_MST_AL_STG_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND ALSTGHDKEY = #{alstghdkey}
+	</select>
+
+
+	<insert id="insertStgAlHd"  parameterType="mstAlStgHdVO">
+		/* wms-ctmaster-strategyal-sql-oracle.xml - insertStgAlHd - 할당 전략 생성  */
+		INSERT INTO TWORK_MST_AL_STG_HD (
+			   CTKEY
+			 , ALSTGHDKEY
+			 , ALSTGNM
+			 , USEYN
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES
+			 ( #{ctkey}
+			 , #{alstghdkey}
+			 , #{alstgnm}
+			 , #{useyn}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+	</insert>
+
+	<update id="updateStgAlHd" parameterType="mstAlStgHdVO">
+		/* wms-ctmaster-strategyalsql-oracle.xml - updateStgAlHd - 할당 전략 수정 */
+		UPDATE TWORK_MST_AL_STG_HD
+		   SET ALSTGNM 	= #{alstgnm}
+			 , USEYN   	 	= #{useyn}
+			 , CMT   	 	= #{cmt}
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY   		= #{ctkey}
+		   AND ALSTGHDKEY = #{alstghdkey}
+	</update>
+
+	<delete id="deleteStgAlHd" parameterType="mstAlStgHdVO">
+		/* wms-ctmaster-strategyalsql-oracle.xml - deleteStgAlHd - 할당 전략 삭제 */
+		DELETE FROM TWORK_MST_AL_STG_HD
+		 WHERE CTKEY   		= #{ctkey}
+		   AND ALSTGHDKEY = #{alstghdkey}
+	</delete>
+
+
+	<select id="selectListStgAlDt" resultType="camelMap">
+		/* wms-ctmaster-strategyal-sql-oracle.xml - selectListStgAlDt - 할당 전략 상세 조회  SQL */
+		SELECT CTKEY
+			 , ALSTGHDKEY
+			 , DTSEQNO
+			 , ALSTGATCD
+			 , ALSTGATDIVCD
+			 , ATVALUE1
+			 , ATVALUE2
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_MST_AL_STG_DT
+		 WHERE CTKEY   		= #{ctkey}
+		   AND ALSTGHDKEY = #{alstghdkey}
+	</select>
+
+	<delete id="deleteStgAlDt" >
+		/* wms-ctmaster-strategyalsql-oracle.xml - deleteStgAlDt - 할당 전략 상세 삭제 */
+		DELETE FROM TWORK_MST_AL_STG_DT
+		 WHERE CTKEY   		= #{ctkey}
+		   AND ALSTGHDKEY = #{alstghdkey}
+	</delete>
+
+	<insert id="insertStgAlDt"  parameterType="mstAlStgDtVO">
+		/* wms-ctmaster-strategyal-sql-oracle.xml - insertStgAlDt - 할당 전략 생성  */
+		INSERT INTO TWORK_MST_AL_STG_DT (
+			   CTKEY
+			 , ALSTGHDKEY
+			 , DTSEQNO
+			 , ALSTGATCD
+			 , ALSTGATDIVCD
+			 , ATVALUE1
+			 , ATVALUE2
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES
+			 ( #{ctkey}
+			 , #{alstghdkey}
+			 , #{dtseqno}
+			 , #{alstgatcd}
+			 , #{alstgatdivcd}
+			 , #{atvalue1}
+			 , #{atvalue2}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+</mapper>

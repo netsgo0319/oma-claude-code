@@ -1,0 +1,26 @@
+{
+  "step": "step-2-tc-generate",
+  "step_number": 2,
+  "status": "success",
+  "started_at": 1776328975,
+  "completed_at": 1776329035,
+  "duration_ms": 60000,
+  "blockers": [],
+  "warnings": [],
+  "next_step": "step-3-validate-fix",
+  "next_step_recommendation": "proceed",
+  "summary": {
+    "queries_with_tc": 20877,
+    "queries_without_tc": -15887,
+    "total_test_cases": 58708,
+    "tc_source_distribution": {
+      "NO_PARAMS": 1235,
+      "LLM": 56730,
+      "CUSTOM": 743
+    }
+  },
+  "outputs": {
+    "merged_tc": "pipeline/step-2-tc-generate/output/merged-tc.json",
+    "per_file_tc_dir": "pipeline/step-2-tc-generate/output/per-file/"
+  }
+}

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.PoB2bReqOrderInfoApiMapper">
+
+	<insert id="insertErpPoB2bReqOrderInfoIntf">
+		/* oms-po-poB2bReqOrderInfoBatch-sql-oracle.xml - insertErpPoB2bReqOrderInfoIntf */
+		INSERT INTO TORDER_INFO_B2B_REQORDER
+		(
+			OWKEY,
+			WBLNO,
+			CTKEY,
+			IBEXPCTDAY,
+			ACKEY,
+			ACNM,
+			PONO,
+			POSEQ,
+			POROW,
+			ICKEY,
+			POQTY,
+			IBEXPCTQTY,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+			SELECT
+				#{owkey}                          /* 화주코드 (필요 시 상수/파라미터로 세팅) */,
+				A.WBLNO                           /* 운송장번호 */,
+				A.CTKEY                           /* 도착센터코드 */,
+				A.IBEXPCTDAY                      /* 입하예정일자 */,
+				A.ACKEY                           /* 납품처 코드 */,
+				A.ACNM                            /* 납품처 명 */,
+				A.PONO                            /* 발주PO번호 */,
+				A.POSEQ                           /* 발주차수 */,
+				A.POROW                           /* 발주행번 */,
+				A.ICKEY                           /* 상품번호 */,
+				A.POQTY                           /* 발주수량 */,
+				A.IBEXPCTQTY                      /* 입하예정수량 */,
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 입력 일시 */,
+				'BATCH'                           /* 입력자 */,
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 수정 일시 */,
+				'BATCH'                           /* 수정자 */
+			FROM TORDER_EAI_POORDER_BATCH A
+			LEFT JOIN TORDER_INFO_B2B_REQORDER B
+			ON A.WBLNO = B.WBLNO
+			AND A.CTKEY = B.CTKEY
+			AND A.IBEXPCTDAY =  B.IBEXPCTDAY
+			AND A.ACKEY = B.ACKEY
+			AND A.PONO = B.PONO
+			AND A.POSEQ = B.POSEQ
+			AND A.POROW = B.POROW
+			AND A.ICKEY = B.ICKEY
+			WHERE A.TRN_ID = #{trnId}
+			AND A.WBLNO 	 IS NOT NULL
+			AND A.CTKEY 	 IS NOT NULL
+			AND A.IBEXPCTDAY IS NOT NULL
+			AND A.ACKEY 	 IS NOT NULL
+			AND A.PONO 		 IS NOT NULL
+			AND A.POSEQ 	 IS NOT NULL
+			AND A.POROW 	 IS NOT NULL
+			AND A.ICKEY 	 IS NOT NULL
+			AND B.WBLNO 	 IS  NULL
+			AND B.CTKEY 	 IS  NULL
+			AND B.IBEXPCTDAY IS  NULL
+			AND B.ACKEY 	 IS  NULL
+			AND B.PONO 		 IS  NULL
+			AND B.POSEQ 	 IS  NULL
+			AND B.POROW 	 IS  NULL
+			AND B.ICKEY 	 IS  NULL
+	</insert>
+
+	<update id="updateErpPoB2bReqOrderInfoIntf">
+		/* oms-po-poB2bReqOrderInfoBatch-sql-oracle.xml - updateErpPoB2bReqOrderInfoIntf */
+		UPDATE TORDER_INFO_B2B_REQORDER M
+			SET (
+			POQTY,
+			IBEXPCTQTY,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+			) = (
+			SELECT
+				A.POQTY                           	/* 발주수량 */,
+				A.IBEXPCTQTY                      	/* 입하예정수량 */,
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 입력 일시 */,
+				'BATCH'                         	/* 입력자 */,
+				TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') /* 수정 일시 */,
+				'BATCH'                         	/* 수정자 */
+			FROM TORDER_EAI_POORDER_BATCH A
+			WHERE A.TRN_ID = #{trnId}
+			AND A.WBLNO = M.WBLNO
+			AND A.CTKEY = M.CTKEY
+			AND A.IBEXPCTDAY =  M.IBEXPCTDAY
+			AND A.ACKEY = M.ACKEY
+			AND A.PONO = M.PONO
+			AND A.POSEQ = M.POSEQ
+			AND A.POROW = M.POROW
+			AND A.ICKEY = M.ICKEY
+				)
+		WHERE EXISTS (
+			SELECT 1
+			FROM TORDER_EAI_POORDER_BATCH A
+			WHERE A.TRN_ID = #{trnId}
+			AND A.WBLNO = M.WBLNO
+			AND A.CTKEY = M.CTKEY
+			AND A.IBEXPCTDAY =  M.IBEXPCTDAY
+			AND A.ACKEY = M.ACKEY
+			AND A.PONO = M.PONO
+			AND A.POSEQ = M.POSEQ
+			AND A.POROW = M.POROW
+			AND A.ICKEY = M.ICKEY
+		)
+
+	</update>
+
+	<update id="updateIntfErpStatus">
+		/* oms-po-poB2bReqOrderInfoBatch-sql-oracle.xml - updateIntfErpStatus */
+		UPDATE TORDER_EAI_POORDER_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+
+</mapper>
+	

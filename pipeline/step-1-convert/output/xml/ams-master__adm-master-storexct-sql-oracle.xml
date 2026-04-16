@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.StorexctMapper">
+
+	<select id="selectStorexctCount" resultType="java.lang.Integer" >
+		/* adm-master-storexct-sql-oracle.xml - selectStorexctCount */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_STORE A
+			INNER JOIN TADMIN_MST_STOREXCT B
+					ON A.STOREKEY = B.STOREKEY
+				   AND A.OWKEY = B.OWKEY
+			LEFT OUTER JOIN TADMIN_MST_ICGR C
+						 ON B.ICGRPKEY = C.ICGRPKEY
+						AND B.OWKEY = C.OWKEY
+			LEFT OUTER JOIN TADMIN_MST_OW OW
+						 ON A.OWKEY = OW.OWKEY
+			LEFT OUTER JOIN TADMIN_MST_CT CT
+				   		 ON B.CTKEY = CT.CTKEY
+			LEFT OUTER JOIN TT_MST_STOREXCT TMST
+						 ON B.CTKEY = TMST.CTKEY
+						AND B.STOREKEY = TMST.STORE_KEY
+						AND B.RNDKEY = TMST.DCKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+	
+	<select id="selectStorexct" resultType="camelMap">
+		/* adm-master-storexct-sql-oracle.xml - selectStorexct */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT A.OWKEY
+				     , OW.OWNM
+				     , B.CTKEY
+					 , CT.CTNM
+					 , B.STOREKEY
+					 , A.STORENM
+					 , TMST.ARR_TIME
+				     , A.ZIPCD
+				     , A.ADDR1
+					 , A.ADDR2
+					 , A.DELYN
+					 , B.NEWYN
+				     , A.OWNM
+				     , A.REGNO
+				     , A.TEL1
+				     , A.TEL2
+					 , COALESCE(B.CLOSDATE, '29991231235959') AS CLOSDATE
+					 , B.INSERTDATE
+					 , B.UPDATEDATE
+					 , B.INSERTURKEY
+ 					 , B.UPDATEURKEY
+					 , TMST.ARRTIMEAPPLYDATE AS ARR_TIME_APPLYDATE
+					 , TMST.SPCL01YN
+					 , TMST.SPCL02YN
+					 , TMST.SPCL03YN
+					 , TMST.SPCL04YN
+					 , TMST.SPCL05YN
+					 , TMST.SPCL06YN
+					 , TMST.SPCLSTOREYN
+					 , TMST.DOCKKEY
+					 , TMST.DCKEY
+					 , B.ICGRPKEY
+					 , C.ICGRPNM
+					 , B.SCMCK
+					 , B.SCMURKEY
+				FROM TADMIN_MST_STORE A
+				    INNER JOIN TADMIN_MST_STOREXCT B
+				    		ON A.STOREKEY = B.STOREKEY
+						   AND A.OWKEY = B.OWKEY
+					LEFT OUTER JOIN TADMIN_MST_ICGR C
+								 ON B.ICGRPKEY = C.ICGRPKEY
+								AND B.OWKEY = C.OWKEY
+					LEFT OUTER JOIN TADMIN_MST_OW OW
+								 ON A.OWKEY = OW.OWKEY
+					LEFT OUTER JOIN TADMIN_MST_CT CT
+								 ON B.CTKEY = CT.CTKEY
+					LEFT OUTER JOIN TT_MST_STOREXCT TMST
+								 ON B.CTKEY = TMST.CTKEY
+								AND B.STOREKEY = TMST.STORE_KEY
+							    AND B.RNDKEY = TMST.DCKEY
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY B.UPDATEDATE DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkStorexct" resultType="camelMap">
+		/* adm-master-storexct-sql-oracle.xml - selectPkStorexct */
+		SELECT	 CTKEY
+				,(SELECT CTNM FROM TADMIN_MST_CT WHERE CTKEY = A.CTKEY) CTNM
+				,STOREKEY
+				,(SELECT DISTINCT STORENM FROM TADMIN_MST_STORE WHERE STOREKEY = A.STOREKEY) STORENM
+				,ARRTIME
+				,DELYN
+				,NEWYN
+				,ARRTIMEAPPLYDATE
+				,SPCL01YN
+				,SPCL02YN
+				,SPCL03YN
+				,SPCL04YN
+				,SPCL05YN
+				,SPCL06YN
+				,SPCLSTOREYN
+				,A.SCMCK
+				,A.SCMURKEY
+				,A.RNDKEY
+				,A.ICGRPKEY
+				,B.ICGRPNM
+		FROM 	TADMIN_MST_STOREXCT A
+		LEFT OUTER JOIN TADMIN_MST_ICGR B
+					 ON A.ICGRPKEY = B.ICGRPKEY
+				    AND A.OWKEY = B.OWKEY
+		WHERE	CTKEY = #{ctkey}
+		AND     STOREKEY = #{storekey}
+		AND     A.OWKEY = #{owkey}
+	</select>
+	
+	<insert id="insertTAdminMstStorexct">
+		/* adm-master-storexct-sql-oracle.xml - insertTAdminMstStorexct */
+		INSERT INTO TADMIN_MST_STOREXCT
+		(
+			  UPDATEURKEY
+			 ,UPDATEDATE
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,CTKEY
+			 ,STOREKEY
+			 ,NEWYN
+			 ,RNDKEY
+			 ,ICGRPKEY
+		 ) VALUES (
+			  #{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{ctkey}
+			 ,#{storekey}
+			 ,'Y'
+			 ,#{rndkey}
+			 ,#{icgrpkey}
+		 )
+	</insert>	
+	
+	
+	<update id="updateTAdminMstStorexct">
+		/* adm-master-storexct-sql-oracle.xml - updateTAdminMstStorexct */
+		UPDATE TADMIN_MST_STOREXCT
+		SET   ARRTIME = #{arrtime}
+			, NEWYN = #{newyn} 
+			, ARRTIMEAPPLYDATE = #{arrtimeapplydate}
+			, CLOSDATE = #{closdate}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		WHERE CTKEY = #{ctkey}
+		AND   STOREKEY = #{storeKey}
+		<if test='owkey != "" and owkey !=null'>
+			AND	  OWKEY = #{owkey}
+		</if>
+	</update>
+	<update id="updateTTMstStorexct">
+		/* adm-master-storexct-sql-oracle.xml - updateTTMstStorexct */
+		UPDATE TT_MST_STOREXCT
+		SET   ARR_TIME = #{arrTime}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		WHERE CTKEY = #{ctkey}
+		  AND STORE_KEY = #{storeKey}
+		<if test='owkey != "" and owkey !=null'>
+			AND	  OWKEY = #{owkey}
+		</if>
+	</update>
+
+</mapper>

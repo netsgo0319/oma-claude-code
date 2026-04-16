@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.oms.common.mapper.LoggingMapper">
+
+    <insert id="insertMaster" parameterType="com.daiso.oms.common.dto.LogInfoDTO">
+        <selectKey resultType="com.daiso.oms.common.dto.LogInfoDTO" keyProperty="ifid,reqdt,reqtm" order="BEFORE">
+            SELECT nextval('seq_interface_log') AS ifid
+            , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS reqdt
+            , TO_CHAR(CURRENT_TIMESTAMP, 'HH24MISS') AS reqtm
+        </selectKey>
+        INSERT INTO INTERFACE_LOG
+        (
+              IFID
+            , IFNM
+            , IFTYPE
+            , REQDT
+            , REQTM
+            , STATUS
+            , ISPROCESS
+            , REQDATA
+            , RESDATA
+            , ERRMSG
+            , INSERTURKEY
+            , UPDATEURKEY
+        ) VALUES (
+              #{ifid}
+            , #{ifnm}
+            , COALESCE(#{iftype}, 'R')
+            , #{reqdt}
+            , #{reqtm}
+            , 'E'
+            , 'N'
+            <choose>
+                <when test="@com.kns.framework.util.CmFunction@notEmpty(reqdata)">
+                    <foreach collection="reqdata" item="reqData" open="," separator="||">
+                        #{reqData}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.CmFunction@notEmpty(resdata)">
+                    <foreach collection="resdata" item="resData" open="," separator="||">
+                        #{resData}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.CmFunction@notEmpty(errmsg)">
+                    <foreach collection="errmsg" item="errMsg" open="," separator="||">
+                        #{errMsg}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            , #{surkey}
+            , #{surkey}
+        )
+    </insert>
+
+    <update id="updateResult" parameterType="com.daiso.oms.common.dto.LogInfoDTO">
+        UPDATE INTERFACE_LOG
+        SET ISPROCESS = COALESCE(#{isprocess}, 'Y')
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(status)">
+            ,  STATUS = #{status}
+        </if>
+        <choose>
+            <when test="@com.kns.framework.util.CmFunction@notEmpty(resdata)">
+                ,  RESDATA = <foreach collection="resdata" item="resData" separator="||">
+                #{resData}::TEXT
+            </foreach>
+            </when>
+        </choose>
+        <choose>
+            <when test="@com.kns.framework.util.CmFunction@notEmpty(errmsg)">
+                ,  ERRMSG = <foreach collection="errmsg" item="errMsg" separator="||">
+                #{errMsg}::TEXT
+            </foreach>
+            </when>
+        </choose>
+        ,  STATUSCD = #{statuscd}
+        ,  UPDATEDATE = CURRENT_TIMESTAMP
+        ,  UPDATEURKEY = #{surkey}
+        WHERE IFID = #{ifid}
+    </update>
+
+</mapper>

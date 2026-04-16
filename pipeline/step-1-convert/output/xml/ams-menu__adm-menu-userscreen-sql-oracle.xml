@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.menu.mapper.UserScreenMapper">
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+				ORDER BY
+				UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		<include refid="sql_sort"/>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<select id="selectUserScreenCount" resultType="java.lang.Integer">
+		/* adm-menu-userscreen-sql-oracle.xml - selectUserScreenCount */
+		SELECT
+			COUNT(1)
+		FROM
+			TADMIN_MST_URSCR
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectUserScreenList" resultType="camelMap">
+		/* adm-menu-userscreen-sql-oracle.xml - selectUserScreenList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  '0' AS CHK
+			, A.APKEY
+			, A.USKEY
+			, A.USNM
+			, A.USPATH
+			, A.USSCHDKEY
+			, B.USSCHDNM
+			, A.ISDWUS
+			, A.NXPATH
+		    , A.URINFOYN
+			, A.CMT
+			, A.INSERTDATE
+			, A.INSERTURKEY AS INSERTURNAME
+			, A.UPDATEDATE
+			, A.UPDATEURKEY AS UPDATEURNAME
+		FROM TADMIN_MST_URSCR A
+		LEFT OUTER JOIN
+			TADMIN_MST_USSC_HD B ON B.USSCHDKEY = A.USSCHDKEY
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<insert id="insertUserScreen">
+		/* adm-menu-userscreen-sql-oracle.xml - insertUserScreen */
+		INSERT INTO TADMIN_MST_URSCR (
+			  APKEY
+			, USKEY
+			, USNM
+			, USPATH
+			, USSCHDKEY
+			, ISDWUS
+			, NXPATH
+			, URINFOYN
+			, CMT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{apkey}
+			, #{uskey}
+			, #{usnm}
+			, #{uspath}
+			, #{usschdkey}
+			, #{isdwus}
+			, #{nxpath}
+			, #{urinfoyn}
+			, #{cmt}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)	
+	</insert>
+	
+	<update id="updateUserScreen">
+		/* adm-menu-userscreen-sql-oracle.xml - updateUserScreen */
+		UPDATE
+		    TADMIN_MST_URSCR
+		SET
+		      USNM = #{usnm}
+			, USPATH = #{uspath}
+			, USSCHDKEY = #{usschdkey}
+			, ISDWUS = #{isdwus}
+			, NXPATH = #{nxpath}
+		    , URINFOYN = #{urinfoyn}
+			, CMT = #{cmt}
+		  	, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE USKEY = #{uskey}
+		AND APKEY = #{apkey}
+	</update>
+	
+	<delete id="deleteUserScreen">
+		/* adm-menu-userscreen-sql-oracle.xml - deleteUserScreen */
+		DELETE 
+		FROM TADMIN_MST_URSCR
+		WHERE USKEY = #{uskey}
+		AND APKEY = #{apkey}
+	</delete>
+	
+</mapper>	

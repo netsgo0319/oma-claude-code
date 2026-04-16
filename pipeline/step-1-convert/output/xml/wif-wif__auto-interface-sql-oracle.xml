@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.sample.auto.AutoTestMapper">
+	<select id="selectFieldSpec1" resultType="camelMap">
+		SELECT * FROM TWIF_CMM_FIELD_SPEC_X WHERE API_ID = #{apiId} AND PARENT_FIELD_ID IS NULL ORDER BY SORT_ORDER
+	</select>
+
+	<select id="selectFieldSpec2" resultType="camelMap">
+		SELECT * FROM TWIF_CMM_FIELD_SPEC_X WHERE API_ID = #{apiId} AND PARENT_FIELD_ID = #{parentFieldId} ORDER BY SORT_ORDER
+	</select>
+
+    <insert id="insertWave" parameterType="map">
+        INSERT INTO TWIF_CMM_WAVE_X (
+            WAVE_NO, CT_KEY, OW_KEY, DT_ORDER, WK_DATE
+        ) VALUES (
+            #{wave_no, jdbcType=VARCHAR},
+            #{ctKey, jdbcType=VARCHAR},
+            #{owKey, jdbcType=VARCHAR},
+            #{dt_order, jdbcType=VARCHAR},
+            #{wk_date, jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <insert id="insertOrder" parameterType="map">
+        INSERT INTO TWIF_CMM_ORDER_X (
+            ORDER_NO, WAVE_NO, CELL_BARCODE, NO_INVOICE, RCV_NM, WEIGHT
+        ) VALUES (
+            #{order_no, jdbcType=VARCHAR},
+            #{wave_no, jdbcType=VARCHAR},  -- 부모(Wave)의 키
+            #{cell_barcode, jdbcType=VARCHAR},
+            #{no_invoice, jdbcType=VARCHAR},
+            #{rcv_nm, jdbcType=VARCHAR},
+            #{weight, jdbcType=NUMERIC}
+        )
+    </insert>
+
+    <insert id="insertItem" parameterType="map">
+        INSERT INTO TWIF_CMM_ITEM_X (
+            ORDER_NO, ITEM_NO, DS_PRODUCTS, QTY_ORDER
+        ) VALUES (
+            #{order_no, jdbcType=VARCHAR}, -- 부모(Order)의 키
+            #{item_no, jdbcType=VARCHAR},
+            #{ds_products, jdbcType=VARCHAR},
+            #{qty_order, jdbcType=NUMERIC}
+        )
+    </insert>
+</mapper>

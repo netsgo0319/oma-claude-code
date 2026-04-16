@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnXAttributeMapper">
+
+	<sql id="selectInvnXAttributeRefSql">
+	/* wms-inventory-invnxattribute-sql-oracle.xml - selectInvnXAttributeRefSql - 재고 속성별 재고 조회 SQL */
+		SELECT A.CTKEY
+		     , H.CTNAME
+		     , A.OWKEY
+		     , D.OWNAME
+		     , A.LCKEY
+		     , LC.ARKEY 
+		     , AR.ARNAME 
+		     , A.ICKEY
+		     , C.ICNAME
+		     , C.SPEC
+		     , A.IVATKEY 
+		     , C.LOGGRPCD AS IC_LOGGRPCD
+		     , B.UOM
+		     , AR.WRHOUS_SE 
+		     , CD.CTCD_DTNAME AS WRHOUS_SE_NM
+		     , C.WRHOUS_SE      AS ITEM_WRHOUS_SE
+		     , C.BOL_WRHOUS_SE  AS ITEM_BOL_WRHOUS_SE
+		     , DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE AS TTQTY_UNIT
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN ROUND(A.AVQTY/G.ICUTQTY,2)
+		            ELSE DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE
+		       END AS AVQTY_UNIT
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN ROUND(A.ALQTY/G.ICUTQTY,2)
+		            ELSE DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE
+		       END AS ALQTY_UNIT
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN ROUND(A.PIQTY/G.ICUTQTY,2)
+		            ELSE DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE
+		       END AS PIQTY_UNIT
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN ROUND(A.PAQTY/G.ICUTQTY,2)
+		            ELSE DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE
+		       END AS PAQTY_UNIT
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN ROUND(A.HOQTY/G.ICUTQTY,2)
+		            ELSE DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE
+		       END AS HOQTY_UNIT
+		     , (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS TTQTY
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN A.AVQTY
+		            ELSE (DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE * G.ICUTQTY)
+		       END AS AVQTY
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN A.ALQTY
+		            ELSE (DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE * G.ICUTQTY)
+		       END AS ALQTY
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN A.PIQTY
+		            ELSE (DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE * G.ICUTQTY)
+		       END AS PIQTY
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN A.PAQTY
+		            ELSE (DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE * G.ICUTQTY)
+		       END AS PAQTY
+		     , CASE WHEN MOD(A.TTQTY,G.ICUTQTY) = 0 THEN A.HOQTY
+		            ELSE (DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE * G.ICUTQTY)
+		       END AS HOQTY
+		     , LC.LCHOLDTYPE
+		     , LC.LCSEQ
+		     , LC.LCSTORTYPE
+		     , LC.LCTYPE
+		     , LC.LOGGRPCD
+		     , B.IVATSTATUS
+             , B.EXPIREDATE
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		          ), 0)AS TOTAL_WEIGHT
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		           ), 0) -
+		       COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND WKSTATUS = '20' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		         ), 0)AS AV_WEIGHT
+		     , (SELECT COALESCE(MAX(N.SERIAL_NO), 'N') 
+		          FROM TWORK_INFO_IVATXLCXULCXBOX N
+		          WHERE  A.CTKEY = N.CTKEY
+		             AND A.OWKEY = N.OWKEY
+		             AND A.IVATKEY = N.IVATKEY
+		             AND A.ULCKEY = N.ULCKEY
+		             AND A.ICKEY = N.ICKEY
+		             AND SUBSTR(N.WKSTATUS, 2, 1) = '0' 
+		           ) AS SERIAL_NO
+		     , A.INSERTDATE
+		     , A.INSERTURKEY
+		     , A.UPDATEDATE
+		     , A.UPDATEURKEY
+		     , CASE WHEN B.UOM = 'EA' THEN 1
+		            WHEN B.UOM = 'BOL' THEN 2
+		            WHEN B.UOM = 'BOX' THEN 3
+		       END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+		       INNER JOIN TWORK_INFO_IVAT B
+		         ON A.CTKEY = B.CTKEY
+		        AND A.OWKEY = B.OWKEY
+		        AND A.IVATKEY = B.IVATKEY
+		        AND A.ICKEY = B.ICKEY
+		       INNER JOIN TWORK_MST_IC C
+		         ON A.CTKEY = C.CTKEY
+		        AND A.OWKEY = C.OWKEY
+		        AND A.ICKEY = C.ICKEY
+		       INNER JOIN TWORK_MST_OW D
+		      	 ON A.OWKEY = D.OWKEY
+		       INNER JOIN TWORK_MST_LC LC
+		      	 ON A.CTKEY = LC.CTKEY
+		      	AND A.LCKEY = LC.LCKEY
+		       INNER JOIN TWORK_MST_AR AR
+		         ON LC.CTKEY = AR.CTKEY
+		        AND LC.ARKEY = AR.ARKEY
+		       INNER JOIN TWORK_MST_ICUTXTYPE G
+		         ON C.CTKEY = G.CTKEY
+		        AND C.OWKEY = G.OWKEY
+		        AND C.ICUTKEY = G.ICUTKEY
+		        AND G.ICUTTYPE = B.UOM
+		       INNER JOIN TWORK_MST_CT H
+		      	 ON A.CTKEY = H.CTKEY
+		       INNER JOIN TWORK_MST_CTCD_DT CD
+		         ON AR.CTKEY = CD.CTKEY
+		        AND CD.CTCD_HDKEY = 'WRHOUS_SE'
+		        AND CD.CTCD_DTKEY = AR.WRHOUS_SE
+		        AND CD.LAKEY = #{lakey}
+		      LEFT OUTER JOIN TADMIN_MST_ICXBRAND BW
+		        ON C.BRANDKEY = BW.BRANDKEY
+		 WHERE A.TTQTY > 0
+	         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	   		  AND #{SEARCH_CONDITION}
+	 		</if>
+	    UNION ALL
+		SELECT A.CTKEY
+		     , H.CTNAME
+		     , A.OWKEY
+		     , D.OWNAME
+		     , A.LCKEY
+		     , LC.ARKEY 
+		     , AR.ARNAME 
+		     , A.ICKEY
+		     , C.ICNAME
+		     , C.SPEC
+		     , A.IVATKEY 
+		     , C.LOGGRPCD AS IC_LOGGRPCD
+		     , I.ICUTTYPE AS UOM
+		     , AR.WRHOUS_SE 
+		     , CD.CTCD_DTNAME AS WRHOUS_SE_NM
+		     , C.WRHOUS_SE      AS ITEM_WRHOUS_SE
+		     , C.BOL_WRHOUS_SE  AS ITEM_BOL_WRHOUS_SE
+		     , (A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS TTQTY_UNIT
+		     , (A.AVQTY - (DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS AVQTY_UNIT
+		     , (A.ALQTY - (DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS ALQTY_UNIT
+		     , (A.PIQTY - (DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS PIQTY_UNIT
+		     , (A.PAQTY - (DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS PAQTY_UNIT
+		     , (A.HOQTY - (DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/I.ICUTQTY AS HOQTY_UNIT
+		     , A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS TTQTY
+		     , A.AVQTY - (DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS AVQTY
+		     , A.ALQTY - (DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS ALQTY
+		     , A.PIQTY - (DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS PIQTY
+		     , A.PAQTY - (DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS PAQTY
+		     , A.HOQTY - (DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS HOQTY      
+		     , LC.LCHOLDTYPE
+		     , LC.LCSEQ
+		     , LC.LCSTORTYPE
+		     , LC.LCTYPE
+		     , LC.LOGGRPCD
+		     , B.IVATSTATUS
+             , B.EXPIREDATE
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		          ), 0)AS TOTAL_WEIGHT
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		           ), 0) -
+		       COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND WKSTATUS = '20' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		         ), 0)AS AV_WEIGHT
+		     , (SELECT COALESCE(MAX(N.SERIAL_NO), 'N') 
+		          FROM TWORK_INFO_IVATXLCXULCXBOX N
+		          WHERE  A.CTKEY = N.CTKEY
+		             AND A.OWKEY = N.OWKEY
+		             AND A.IVATKEY = N.IVATKEY
+		             AND A.ULCKEY = N.ULCKEY
+		             AND A.ICKEY = N.ICKEY
+		             AND SUBSTR(N.WKSTATUS, 2, 1) = '0' 
+		           ) AS SERIAL_NO
+		     , A.INSERTDATE
+		     , A.INSERTURKEY
+		     , A.UPDATEDATE
+		     , A.UPDATEURKEY
+		     , CASE WHEN I.ICUTTYPE = 'EA' THEN 1
+		            WHEN I.ICUTTYPE = 'BOL' THEN 2
+		            WHEN I.ICUTTYPE = 'BOX' THEN 3
+		       END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+		       INNER JOIN TWORK_INFO_IVAT B
+		         ON A.CTKEY = B.CTKEY
+		        AND A.OWKEY = B.OWKEY
+		        AND A.IVATKEY = B.IVATKEY
+		        AND A.ICKEY = B.ICKEY
+		       INNER JOIN TWORK_MST_IC C
+		         ON A.CTKEY = C.CTKEY
+		        AND A.OWKEY = C.OWKEY
+		        AND A.ICKEY = C.ICKEY
+		       INNER JOIN TWORK_MST_OW D
+		      	 ON A.OWKEY = D.OWKEY
+		       INNER JOIN TWORK_MST_LC LC
+		      	 ON A.CTKEY = LC.CTKEY
+		      	AND A.LCKEY = LC.LCKEY
+		       INNER JOIN TWORK_MST_AR AR
+		         ON LC.CTKEY = AR.CTKEY
+		        AND LC.ARKEY = AR.ARKEY
+		       INNER JOIN TWORK_MST_ICUTXTYPE G
+		         ON C.CTKEY = G.CTKEY
+		        AND C.OWKEY = G.OWKEY
+		        AND C.ICUTKEY = G.ICUTKEY
+		        AND G.ICUTTYPE = B.UOM
+		       INNER JOIN TWORK_MST_CT H
+		      	 ON A.CTKEY = H.CTKEY
+		       INNER JOIN TWORK_MST_ICUTXTYPE I
+		         ON C.CTKEY = I.CTKEY
+		        AND C.OWKEY = I.OWKEY
+		        AND C.ICUTKEY = I.ICUTKEY
+		        AND I.ICUTTYPE = 'BOL'
+		        AND I.OUTBOUNDUSEYN = 'Y'
+		       INNER JOIN TWORK_MST_CTCD_DT CD
+		         ON AR.CTKEY = CD.CTKEY
+		        AND CD.CTCD_HDKEY = 'WRHOUS_SE'
+		        AND CD.CTCD_DTKEY = AR.WRHOUS_SE
+		        AND CD.LAKEY = #{lakey}
+		      LEFT OUTER JOIN TADMIN_MST_ICXBRAND BW
+		        ON C.BRANDKEY = BW.BRANDKEY
+		 WHERE A.TTQTY > 0
+		   AND MOD(A.TTQTY,G.ICUTQTY) > 0
+		   AND MOD(A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY),I.ICUTQTY) = 0
+	         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	   		  AND #{SEARCH_CONDITION}
+	 		</if>
+	    UNION ALL
+		SELECT A.CTKEY
+		     , H.CTNAME
+		     , A.OWKEY
+		     , D.OWNAME
+		     , A.LCKEY
+		     , LC.ARKEY 
+		     , AR.ARNAME 
+		     , A.ICKEY
+		     , C.ICNAME
+		     , C.SPEC
+		     , A.IVATKEY 
+		     , C.LOGGRPCD AS IC_LOGGRPCD
+		     , J.ICUTTYPE AS UOM
+		     , AR.WRHOUS_SE 
+		     , CD.CTCD_DTNAME AS WRHOUS_SE_NM
+		     , C.WRHOUS_SE      AS ITEM_WRHOUS_SE
+		     , C.BOL_WRHOUS_SE  AS ITEM_BOL_WRHOUS_SE
+		     , (A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS TTQTY_UNIT
+		     , (A.AVQTY - (DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS AVQTY_UNIT
+		     , (A.ALQTY - (DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS ALQTY_UNIT
+		     , (A.PIQTY - (DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS PIQTY_UNIT
+		     , (A.PAQTY - (DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS PAQTY_UNIT
+		     , (A.HOQTY - (DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE * G.ICUTQTY))/J.ICUTQTY AS HOQTY_UNIT
+		     , A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS TTQTY
+		     , A.AVQTY - (DATE_TRUNC('day', A.AVQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS AVQTY
+		     , A.ALQTY - (DATE_TRUNC('day', A.ALQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS ALQTY
+		     , A.PIQTY - (DATE_TRUNC('day', A.PIQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS PIQTY
+		     , A.PAQTY - (DATE_TRUNC('day', A.PAQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS PAQTY
+		     , A.HOQTY - (DATE_TRUNC('day', A.HOQTY/G.ICUTQTY)::DATE * G.ICUTQTY) AS HOQTY      
+		     , LC.LCHOLDTYPE
+		     , LC.LCSEQ
+		     , LC.LCSTORTYPE
+		     , LC.LCTYPE
+		     , LC.LOGGRPCD
+		     , B.IVATSTATUS
+             , B.EXPIREDATE
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		          ), 0)AS TOTAL_WEIGHT
+		     , COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND SUBSTR(WKSTATUS, 2, 1) = '0' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		           ), 0) -
+		       COALESCE((SELECT (SUM(FN_GET_BACODE_PARS(BW.BRANDKEY , SERIAL_NO)))::TEXT
+		              FROM TWORK_INFO_IVATXLCXULCXBOX 
+		             WHERE CTKEY = A.CTKEY 
+		               AND OWKEY = A.OWKEY 
+		               AND ICKEY = A.ICKEY
+		               AND IVATKEY = A.IVATKEY 
+		               AND ULCKEY = A.ULCKEY 
+		               AND ICKEY = A.ICKEY
+		               AND WKSTATUS = '20' 
+		             GROUP BY CTKEY , OWKEY , IVATKEY ,ICKEY
+		         ), 0)AS AV_WEIGHT
+		     , (SELECT COALESCE(MAX(N.SERIAL_NO), 'N') 
+		          FROM TWORK_INFO_IVATXLCXULCXBOX N
+		          WHERE  A.CTKEY = N.CTKEY
+		             AND A.OWKEY = N.OWKEY
+		             AND A.IVATKEY = N.IVATKEY
+		             AND A.ULCKEY = N.ULCKEY
+		             AND A.ICKEY = N.ICKEY
+		             AND SUBSTR(N.WKSTATUS, 2, 1) = '0' 
+		           ) AS SERIAL_NO
+		     , A.INSERTDATE
+		     , A.INSERTURKEY
+		     , A.UPDATEDATE
+		     , A.UPDATEURKEY
+		     , CASE WHEN J.ICUTTYPE = 'EA' THEN 1
+		            WHEN J.ICUTTYPE = 'BOL' THEN 2
+		            WHEN J.ICUTTYPE = 'BOX' THEN 3
+		       END  AS UOM_SORT
+		  FROM TWORK_INFO_IVATXLCXULC A
+		       INNER JOIN TWORK_INFO_IVAT B
+		         ON A.CTKEY = B.CTKEY
+		        AND A.OWKEY = B.OWKEY
+		        AND A.IVATKEY = B.IVATKEY
+		        AND A.ICKEY = B.ICKEY
+		       INNER JOIN TWORK_MST_IC C
+		         ON A.CTKEY = C.CTKEY
+		        AND A.OWKEY = C.OWKEY
+		        AND A.ICKEY = C.ICKEY
+		       INNER JOIN TWORK_MST_OW D
+		      	 ON A.OWKEY = D.OWKEY
+		       INNER JOIN TWORK_MST_LC LC
+		      	 ON A.CTKEY = LC.CTKEY
+		      	AND A.LCKEY = LC.LCKEY
+		       INNER JOIN TWORK_MST_AR AR
+		         ON LC.CTKEY = AR.CTKEY
+		        AND LC.ARKEY = AR.ARKEY
+		       INNER JOIN TWORK_MST_ICUTXTYPE G
+		         ON C.CTKEY = G.CTKEY
+		        AND C.OWKEY = G.OWKEY
+		        AND C.ICUTKEY = G.ICUTKEY
+		        AND G.ICUTTYPE = B.UOM
+		       INNER JOIN TWORK_MST_CT H
+		      	 ON A.CTKEY = H.CTKEY
+		       LEFT OUTER JOIN TWORK_MST_ICUTXTYPE I
+		         ON C.CTKEY = I.CTKEY
+		        AND C.OWKEY = I.OWKEY
+		        AND C.ICUTKEY = I.ICUTKEY
+		        AND I.ICUTTYPE = 'BOL'
+		       INNER JOIN TWORK_MST_ICUTXTYPE J
+		         ON C.CTKEY = J.CTKEY
+		        AND C.OWKEY = J.OWKEY
+		        AND C.ICUTKEY = J.ICUTKEY
+		        AND J.ICUTTYPE = 'EA'
+		       INNER JOIN TWORK_MST_CTCD_DT CD
+		         ON AR.CTKEY = CD.CTKEY
+		        AND CD.CTCD_HDKEY = 'WRHOUS_SE'
+		        AND CD.CTCD_DTKEY = AR.WRHOUS_SE
+		        AND CD.LAKEY = #{lakey}
+		      LEFT OUTER JOIN TADMIN_MST_ICXBRAND BW
+		        ON C.BRANDKEY = BW.BRANDKEY
+		 WHERE A.TTQTY > 0
+		   AND MOD(A.TTQTY,G.ICUTQTY) > 0
+		   AND (
+		        MOD(A.TTQTY - (DATE_TRUNC('day', A.TTQTY/G.ICUTQTY)::DATE * G.ICUTQTY),COALESCE(I.ICUTQTY, 1)) > 0
+		        OR
+		        COALESCE(I.ICUTQTY, 1) = 1
+		       )
+	         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	   		  AND #{SEARCH_CONDITION}
+	 		</if>
+	</sql>
+	
+	<select id="selectInvnXAttribute" resultType="camelMap">
+		/* wms-inventory-invnxattribute-sql-oracle.xml - selectInvnXAttribute - 재고 속성별 재고 조회 SQL */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnXAttributeRefSql"/>
+				<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+						<if test='colName == "expiredate"'>
+							ORDER BY EXPIREDATE DESC, ICNAME, ATTRIBUTE3
+						</if>
+						<if test='colName != "expiredate"'>
+							ORDER BY #{colName} DESC
+						</if>
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+						<if test='colName == "expiredate"'>
+							ORDER BY EXPIREDATE ASC, ICNAME, ATTRIBUTE3
+						</if>
+						<if test='colName != "expiredate"'>
+							ORDER BY #{colName} ASC
+						</if>
+					</if>	
+				</when>	
+				<otherwise>
+					 ORDER BY OWKEY, LCKEY, ICKEY, EXPIREDATE, UOM_SORT
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnXAttributeCount" resultType="java.lang.Integer" >
+		/* wms-inventory-invnxattribute-sql-oracle.xml - selectInvnXAttributeCount - 재고 속성별 재고 조회 SQL COUNT */
+		SELECT 	COUNT(1)
+       	  FROM  (
+			<include refid="selectInvnXAttributeRefSql"/>
+       	  )
+	</select>
+	
+	
+	<select id="selectInvnXAttributeSum" resultType="camelMap">
+		SELECT  SUM(TTQTY) AS TTQTY
+	            ,SUM(AVQTY) AS AVQTY
+	            ,SUM(ALQTY) AS ALQTY
+	            ,SUM(PIQTY) AS PIQTY
+	            ,SUM(HOQTY) AS HOQTY 
+	            ,SUM(TOTAL_WEIGHT) AS TOTAL_WEIGHT 
+	            ,SUM(AV_WEIGHT) AS AV_WEIGHT
+	  	  FROM  (
+			<include refid="selectInvnXAttributeRefSql"/>
+		 )
+	</select>
+
+	<resultMap id="selectInvnXAttributeSerialMap" type="java.util.HashMap">
+        <result property="serial_no" 	column="SERIAL_NO" />
+        <result property="uom_desc"     column="UOM_DESC" />
+        <result property="total_weight" column="TOTAL_WEIGHT" />
+        <result property="sn_weight"    column="SN_WEIGHT" />
+        <result property="weight"       column="WEIGHT" />
+	</resultMap>
+
+	<select id="selectInvnXAttributeSerial" resultMap="selectInvnXAttributeSerialMap">
+		SELECT A.SERIAL_NO,
+		       TO_CHAR(FN_GET_BACODE_PARS(C.BRANDKEY , A.SERIAL_NO),'999,999,999,999.99') WEIGHT,		       
+		       C.UOM AS UOM_DESC
+		  FROM TWORK_INFO_IVATXLCXULCXBOX A,
+		       TADMIN_MST_IC B,
+		       TADMIN_MST_ICXBRAND C
+		 WHERE A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		   AND B.BRANDKEY = C.BRANDKEY
+		   AND SUBSTR(A.WKSTATUS, 2, 1) = '0' 
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.ULCKEY = #{ulckey}
+		   AND A.IVATKEY = #{ivatkey} 
+	</select>	
+	
+	<select id="selectInvnXAttributeSerialSum" resultMap="selectInvnXAttributeSerialMap">
+        SELECT TO_CHAR(SUM(FN_GET_BACODE_PARS(C.BRANDKEY , A.SERIAL_NO)),'999,999,999,999.99') AS SN_WEIGHT
+          FROM TWORK_INFO_IVATXLCXULCXBOX A,
+               TADMIN_MST_IC B,
+               TADMIN_MST_ICXBRAND C
+         WHERE A.OWKEY = B.OWKEY
+           AND A.ICKEY = B.ICKEY
+           AND B.BRANDKEY = C.BRANDKEY
+           AND SUBSTR(A.WKSTATUS, 2, 1) = '0'
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.ULCKEY = #{ulckey}
+		   AND A.IVATKEY = #{ivatkey}
+	</select>
+	
+	<insert id="insertTworkMstUlc">
+ 		INSERT INTO TWORK_MST_ULC
+ 		(
+ 			CTKEY,
+ 			ULCKEY,
+ 			ULCTYPE,
+ 			INSERTDATE,
+ 			INSERTURKEY,
+ 			UPDATEDATE,
+ 			UPDATEURKEY
+ 		)
+ 		VALUES
+ 		(
+ 			#{ctkey},
+ 			#{ulckey},
+ 			#{ulctype},
+ 			#{sysdate},
+			#{surkey},
+			#{sysdate},
+			#{surkey}
+ 		) 
+	</insert>	
+	
+</mapper>

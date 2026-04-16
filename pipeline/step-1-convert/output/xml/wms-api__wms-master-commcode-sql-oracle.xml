@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.CommCodeApiMapper">
+
+	<select id="selectInterfaceCommCodeCount" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-commcode-sql-oracle.xml - selectInterfaceCommCodeCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_COMCD_HD_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND COMHDKEY = #{comhdkey}			/* 공통코드헤더키 */
+	</select>
+
+	<insert id="insertInterfaceCommCode" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO">
+		/* wms-master-commcode-sql-oracle.xml - insertInterfaceCommCode */
+		INSERT INTO TWORK_INTF_COMCD_HD_RCV (
+			   CTKEY			/* 센터코드 */
+			 , COMHDKEY			/* 공통코드헤더키 */
+			 , COMHDNM			/* 공통코드헤더명 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{comhdkey}
+			 , #{comhdnm}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceCommCode" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO">
+		/* wms-master-commcode-sql-oracle.xml - updateInterfaceCommCode */
+		UPDATE TWORK_INTF_COMCD_HD_RCV
+		   SET UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = #{sysdate}		/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, COMHDNM = #{comhdnm}		/* 공통코드헤더명 */
+					, DELYN = #{delyn}			/* 삭제여부 */
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = null			/* 처리일시 */
+					, RCVDATE = #{sysdate}		/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND COMHDKEY = #{comhdkey}			/* 공통코드헤더키 */
+	</update>
+
+	<select id="selectTworkMstCtcdHdCount" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-commcode-sql-oracle.xml - selectTworkMstCtcdHdCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_CTCD_HD
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND CTCDHDKEY = #{comhdkey}			/* 센터 기준 코드 공통 코드 */
+	</select>
+
+	<insert id="insertTworkMstCtcdHd" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO">
+		/* wms-master-commcode-sql-oracle.xml - insertTworkMstCtcdHd */
+		INSERT INTO TWORK_MST_CTCD_HD (
+			   CTKEY			/* 센터 코드 */
+			 , CTCDHDKEY		/* 센터 기준 코드 공통 코드 */
+			 , CTCDHDNM			/* 센터 기준 공통 코드 명 */
+			 , DELYN			/* 삭제여부 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{comhdkey}
+			 , #{comhdnm}
+			 , COALESCE(#{delyn}, 'N')
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstCtcdHd" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO">
+		/* wms-master-commcode-sql-oracle.xml - updateTworkMstCtcdHd */
+		UPDATE TWORK_MST_CTCD_HD
+		   SET CTCDHDNM = #{comhdnm}			/* 센터 기준 공통 코드 명 */
+		     , DELYN = COALESCE(#{delyn}, 'N')		/* 삭제여부 */
+		     , UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND CTCDHDKEY = #{comhdkey}			/* 공통코드헤더키 */
+	</update>
+
+	<select id="selectInterfaceCommCodeDtCount" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo" resultType="java.lang.Integer">
+		/* wms-master-commcode-sql-oracle.xml - selectInterfaceCommCodeDtCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_COMCD_DT_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND COMHDKEY = #{comhdkey}			/* 공통코드헤더키 */
+		   AND COMDTKEY = #{comdtkey}			/* 공통코드상세코드 */
+	</select>
+
+	<insert id="insertInterfaceCommCodeDt" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo">
+		/* wms-master-commcode-sql-oracle.xml - insertInterfaceCommCodeDt */
+		INSERT INTO TWORK_INTF_COMCD_DT_RCV (
+			   CTKEY			/* 센터코드 */
+			 , COMHDKEY			/* 공통코드헤더키 */
+			 , COMDTKEY			/* 공통코드상세코드 */
+			 , COMDTNM			/* 공통코드상세명 */
+			 , LAKEY			/* 언어코드 */
+			 , DTKEYORD			/* 상세코드순서 */
+			 , CMT				/* 비고 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{comhdkey}
+			 , #{comdtkey}
+			 , #{comdtnm}
+			 , #{lakey}
+			 , #{dtkeyord}
+			 , #{cmt}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceCommCodeDt" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo">
+		/* wms-master-commcode-sql-oracle.xml - updateInterfaceCommCodeDt */
+		UPDATE TWORK_INTF_COMCD_DT_RCV
+		   SET UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = #{sysdate}		/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, COMDTNM = #{comdtnm}		/* 공통코드상세명 */
+					, LAKEY = #{lakey}			/* 언어코드 */
+					, DTKEYORD = #{dtkeyord}	/* 상세코드순서 */
+					, CMT = #{cmt}				/* 비고 */
+					, DELYN = #{delyn}			/* 삭제여부 */
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = null			/* 처리일시 */
+					, RCVDATE = #{sysdate}		/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND COMHDKEY = #{comhdkey}			/* 공통코드헤더키 */
+		   AND COMDTKEY = #{comdtkey}			/* 공통코드상세코드 */
+	</update>
+
+	<select id="selectTworkMstCtcdDtCount" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo" resultType="java.lang.Integer">
+		/* wms-master-commcode-sql-oracle.xml - selectTworkMstCtcdDtCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_CTCD_DT
+		WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		  AND CTCDHDKEY = #{comhdkey}		/* 센터 기준 코드 공통 코드 */
+		  AND CTCDDTKEY = #{comdtkey}		/* 센터 기준 코드 상세 코드 */
+		  AND LAKEY = #{lakey}				/* 국가별 언어 코드 */
+	</select>
+
+	<insert id="insertTworkMstCtcdDt" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo">
+		/* wms-master-commcode-sql-oracle.xml - insertTworkMstCtcdDt */
+		INSERT INTO TWORK_MST_CTCD_DT (
+			   CTKEY			/* 센터 코드 */
+			 , CTCDHDKEY		/* 센터 기준 코드 공통 코드 */
+			 , CTCDDTKEY		/* 센터 기준 코드 상세 코드 */
+			 , LAKEY			/* 국가별 언어 코드 */
+			 , CTCDDTORD		/* 센터 기준 코드 상세 순서 */
+			 , CTCDDTNM			/* 센터 기준 코드 상세 명 */
+			 , CTCDDTVAL		/* 센터 기준 코드 상세 값 */
+			 , CMT				/* 설명 */
+			 , DELYN			/* 삭제여부 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{comhdkey}
+			 , #{comdtkey}
+			 , #{lakey}
+			 , #{dtkeyord}
+			 , #{comdtnm}
+			 , #{comdtkey}
+			 , #{cmt}
+			 , COALESCE(#{delyn}, 'N')
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		     )
+	</insert>
+
+	<update id="updateTworkMstCtcdDt" parameterType="com.daiso.wms.api.in.dto.CommCodeRequestDTO$CtdtVo">
+		/* wms-master-commcode-sql-oracle.xml - updateTworkMstCtcdDt */
+		UPDATE TWORK_MST_CTCD_DT
+		   SET CTCDDTORD = #{dtkeyord}		/* 센터 기준 코드 상세 순서 */
+			 , CTCDDTNM = #{comdtnm}		/* 센터 기준 코드 상세 명 */
+			 , CTCDDTVAL = #{comdtkey}		/* 센터 기준 코드 상세 값 */
+			 , CMT = #{cmt}					/* 설명 */
+			 , DELYN = COALESCE(#{delyn}, 'N')	/* 삭제여부 */
+			 , UPDATEDATE = #{sysdate}		/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}		/* 수정사용자 */
+		WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		  AND CTCDHDKEY = #{comhdkey}		/* 센터 기준 코드 공통 코드 */
+		  AND CTCDDTKEY = #{comdtkey}		/* 센터 기준 코드 상세 코드 */
+		  AND LAKEY = #{lakey}				/* 국가별 언어 코드 */
+	</update>
+
+</mapper>

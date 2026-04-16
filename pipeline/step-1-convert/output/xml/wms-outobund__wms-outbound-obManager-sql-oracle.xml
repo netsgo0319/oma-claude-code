@@ -1,0 +1,780 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObManagerMapper">
+	<select id="selectObStatus" resultType="camelMap">
+		/* wms-outbound-obManagerMapper-sql-oracle.xml - selectObStatus - WMS > 출고 관리 > 출고주문 헤더 상태값 변경 - 출고주문 헤더 상태값 조회 */
+		WITH T_OB_DATA AS (
+				SELECT OBDT.CTKEY
+					 , OBDT.OWKEY
+					 , OBDT.OBHDKEY
+					 , SUM(COALESCE(OBDT.INITQTY, 0)) AS INITQTY /*초기수량*/
+					 , SUM(COALESCE(OBDT.EXPCTQTY, 0)) AS EXPCTQTY /*출고예정수량*/
+					 , SUM(COALESCE(OBDT.ALQTY, 0)) AS ALQTY /*할당수량*/
+					 , SUM(COALESCE(OBDT.PKISTQTY, 0)) AS PKISTQTY /*피킹지시수량*/
+					 , SUM(COALESCE(OBDT.PKQTY, 0)) AS PKQTY /*피킹확정수량*/
+					 , SUM(COALESCE(OBDT.PAKQTY, 0)) AS PAKQTY /*패킹수량*/
+					 , SUM(COALESCE(OBDT.CNFRMQTY, 0)) AS CNFRMQTY /*출고확정수량*/
+					 , COUNT(OBDT.OBDTKEY) AS OB_CNT /*출고주문 건수*/
+					 , SUM(COALESCE((CASE OBDT.OBDTSTATUSCD WHEN '00' THEN 1 ELSE 0 END), 0)) AS OBDTSTATUSCD_00_CNT /*작업대상 건수*/
+					 , SUM(COALESCE((CASE OBDT.OBDTSTATUSCD WHEN '01' THEN 1 ELSE 0 END), 0)) AS OBDTSTATUSCD_01_CNT /*미할당 건수*/
+					 , SUM(COALESCE((CASE OBDT.OBDTSTATUSCD WHEN '10' THEN 1 ELSE 0 END), 0)) AS OBDTSTATUSCD_10_CNT /*할당 건수*/
+					 , SUM(COALESCE((CASE OBDT.OBDTSTATUSCD WHEN '40' THEN 1 ELSE 0 END), 0)) AS OBDTSTATUSCD_40_CNT /*미패킹 건수*/
+					 , SUM(COALESCE((CASE OBDT.OBDTSTATUSCD WHEN '60' THEN 1 ELSE 0 END), 0)) AS OBDTSTATUSCD_60_CNT /*미출고 건수*/
+					 , MAX(OBDT.OBDTSTATUSCD) OBDTSTATUSCD
+				  FROM TWORK_INFO_OB_DT OBDT
+				 WHERE OBDT.CTKEY = #{ctkey}
+				   AND OBDT.OWKEY = #{owkey}
+				   AND OBDT.OBHDKEY = #{obhdkey}
+				   AND OBDT.OBDTSTATUSCD NOT IN ('98','98','99')
+				 GROUP BY
+					   OBDT.CTKEY
+					 , OBDT.OWKEY
+					 , OBDT.OBHDKEY
+		), RESULT AS (
+				SELECT CTKEY
+					 , OWKEY
+					 , OBHDKEY
+					 , (CASE
+							 WHEN OBDTSTATUSCD = '00' THEN '00'												 	 /*작업대상*/
+							 WHEN OB_CNT = OBDTSTATUSCD_01_CNT THEN '01' 									     /*미할당*/
+							 WHEN OB_CNT = OBDTSTATUSCD_00_CNT + OBDTSTATUSCD_01_CNT THEN '00'					 /*작업대상*/
+							 WHEN (OBDTSTATUSCD IN ('00','05','10') AND ALQTY > 0 AND EXPCTQTY > ALQTY) THEN '05'  /*부분할당*/
+							 WHEN OBDTSTATUSCD = '10' AND ALQTY > 0 AND EXPCTQTY = ALQTY THEN '10' 			     /*할당*/
+							 WHEN OBDTSTATUSCD = '20' THEN '20'											     	/*피킹지시*/
+							 WHEN OBDTSTATUSCD IN ('25', '30') AND PKQTY >= 0 AND PKISTQTY > PKQTY THEN '25'     /*부분피킹*/
+							 WHEN OBDTSTATUSCD = '30' AND PKQTY > 0 AND PKISTQTY = PKQTY THEN '30' 			     /*피킹확정*/
+							 WHEN OB_CNT = OBDTSTATUSCD_40_CNT + OBDTSTATUSCD_01_CNT THEN '40'				     /*미패킹*/
+							 WHEN OBDTSTATUSCD IN ('45', '50') AND PAKQTY >= 0 AND EXPCTQTY > PAKQTY THEN '45'   /*부분패킹*/
+							 WHEN OBDTSTATUSCD = '50' AND PAKQTY > 0 AND EXPCTQTY = PAKQTY THEN '50' 		     /*패킹완료*/
+							 WHEN OB_CNT = OBDTSTATUSCD_60_CNT + OBDTSTATUSCD_01_CNT THEN '60'					 /*미출고*/
+							 WHEN OBDTSTATUSCD IN ('65', '70') AND CNFRMQTY > 0 AND INITQTY > CNFRMQTY THEN '65' /*부분출고*/
+							 WHEN OBDTSTATUSCD = '70' AND CNFRMQTY > 0 AND INITQTY = CNFRMQTY THEN '70' 		 /*출고완료*/
+							 ELSE 'UNK'
+						END) AS OBSTATUSCD
+					, (CASE
+							WHEN OBDTSTATUSCD = '00' THEN '작업대상' 												 /*작업대상*/
+							WHEN OB_CNT = OBDTSTATUSCD_01_CNT THEN '미할당' 									         /*미할당*/
+							WHEN OB_CNT = OBDTSTATUSCD_00_CNT + OBDTSTATUSCD_01_CNT THEN '작업대상'				     /*작업대상*/
+							WHEN (OBDTSTATUSCD IN ('00','05','10') AND ALQTY > 0 AND EXPCTQTY > ALQTY) THEN '부분할당'  /*부분할당*/
+							WHEN OBDTSTATUSCD = '10' AND ALQTY > 0 AND EXPCTQTY = ALQTY THEN '할당' 			         /*할당*/
+							WHEN OBDTSTATUSCD = '20' THEN '피킹지시' 											     /*피킹지시*/
+							WHEN OBDTSTATUSCD IN ('25', '30') AND PKQTY >= 0 AND PKISTQTY > PKQTY THEN '부분피킹'      /*부분피킹*/
+							WHEN OBDTSTATUSCD = '30' AND PKQTY > 0 AND PKISTQTY = PKQTY THEN '피킹확정' 			     /*피킹확정*/
+							WHEN OB_CNT = OBDTSTATUSCD_40_CNT + OBDTSTATUSCD_01_CNT THEN '미패킹'					 /*미패킹*/
+							WHEN OBDTSTATUSCD IN ('45', '50') AND PAKQTY >= 0 AND EXPCTQTY > PAKQTY THEN '부분패킹'   /*부분패킹*/
+							WHEN OBDTSTATUSCD = '50' AND PAKQTY > 0 AND EXPCTQTY = PAKQTY THEN '패킹완료' 		     /*패킹완료*/
+							WHEN OB_CNT = OBDTSTATUSCD_60_CNT + OBDTSTATUSCD_01_CNT THEN '미출고'					 /*미출고*/
+							WHEN OBDTSTATUSCD IN ('65', '70') AND CNFRMQTY > 0 AND INITQTY > CNFRMQTY THEN '부분출고' /*부분출고*/
+							WHEN OBDTSTATUSCD = '70' AND CNFRMQTY > 0 AND INITQTY = CNFRMQTY THEN '출고완료' 		 /*출고완료*/
+							ELSE 'UNK'
+						END) AS OBSTATUSCDNM
+				  FROM T_OB_DATA
+		)
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.OBHDKEY
+			 , A.OBSTATUSCD
+			 , B.CTCDDTNM
+			 , A.OBSTATUSCDNM
+		  FROM RESULT A
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OBSTATUSCD = B.CTCDDTKEY
+		   AND B.CTCDHDKEY = 'OBSTATUSCD' /*출고작업상태*/
+		   AND B.LAKEY = #{slakey}
+	</select>
+
+	<update id="updateObHdStatusCd">
+		/* wms-outbound-obOrderManager-sql-oracle.xml - updateObHdStatusCd - 출고주문 헤더 상태값 변경 - 출고주문 헤더 상태값 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = #{obstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectWaStatus" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectWaStatus - 출고주문 헤더 상태값 변경 - 웨이브 헤더 상태값 조회 */
+		WITH STATUS_BASE AS (
+				SELECT WH.CTKEY
+					 , WH.OWKEY
+					 , WH.WAHDKEY
+					 , WH.WKTYPECD
+					 , WH.CLASSIFPLANSNDYN
+					 , WH.LOCPLANSNDYN
+					 , WH.WAWKSTATUSCD
+					 , COUNT(OH.OBHDKEY) AS OBCNT
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '00' THEN 1 ELSE 0 END) AS OBSTATUSCD_00 /*작업대상*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '01' THEN 1 ELSE 0 END) AS OBSTATUSCD_01 /*미할당*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '05' THEN 1 ELSE 0 END) AS OBSTATUSCD_05 /*부분할당*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '10' THEN 1 ELSE 0 END) AS OBSTATUSCD_10 /*할당완료*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '20' THEN 1 ELSE 0 END) AS OBSTATUSCD_20 /*피킹지시*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '25' THEN 1 ELSE 0 END) AS OBSTATUSCD_25 /*부분피킹*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '30' THEN 1 ELSE 0 END) AS OBSTATUSCD_30 /*피킹확정*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '40' THEN 1 ELSE 0 END) AS OBSTATUSCD_40 /*미패킹*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '45' THEN 1 ELSE 0 END) AS OBSTATUSCD_45 /*부분패킹*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '50' THEN 1 ELSE 0 END) AS OBSTATUSCD_50 /*패킹완료*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '60' THEN 1 ELSE 0 END) AS OBSTATUSCD_60 /*미출고*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '65' THEN 1 ELSE 0 END) AS OBSTATUSCD_65 /*부분출고*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '70' THEN 1 ELSE 0 END) AS OBSTATUSCD_70 /*출고완료*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '80' THEN 1 ELSE 0 END) AS OBSTATUSCD_80 /*결품보류*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '85' THEN 1 ELSE 0 END) AS OBSTATUSCD_85 /*결품보류확정*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '97' THEN 1 ELSE 0 END) AS OBSTATUSCD_97 /*작업취소*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '98' THEN 1 ELSE 0 END) AS OBSTATUSCD_98 /*결품취소*/
+					 , SUM(CASE WHEN OH.OBSTATUSCD = '99' THEN 1 ELSE 0 END) AS OBSTATUSCD_99 /*주문취소*/
+					 , SUM(CASE WHEN COALESCE(OH.DLVRYPRGRSTATUSCD, '00') IN ('00','10') THEN 1 ELSE 0 END) AS DLVRYPRGRSTATUSCD_00
+					 , SUM(CASE WHEN COALESCE(OH.DLVRYPRGRSTATUSCD, '00') IN ('05','98','99') THEN 1 ELSE 0 END) AS DLVRYPRGRSTATUSCD_F
+					 , SUM(CASE WHEN COALESCE(OH.DLVRYPRGRSTATUSCD, '00') IN ('20') THEN 1 ELSE 0 END) AS DLVRYPRGRSTATUSCD_20
+					 , SUM(CASE WHEN COALESCE(OH.DLVRYPRGRSTATUSCD, '00') IN ('30') THEN 1 ELSE 0 END) AS DLVRYPRGRSTATUSCD_S
+				  FROM TWORK_INFO_WA_HD WH
+				 INNER JOIN TWORK_INFO_WA_DT WD
+					ON WH.CTKEY = WD.CTKEY
+				   AND WH.OWKEY = WD.OWKEY
+				   AND WH.WAHDKEY = WD.WAHDKEY
+				 INNER JOIN TWORK_INFO_OB_HD OH
+					ON WD.CTKEY = OH.CTKEY
+				   AND WD.OWKEY = OH.OWKEY
+				   AND WD.OBHDKEY = OH.OBHDKEY
+				 WHERE WH.CTKEY = #{ctkey}
+				   AND WH.OWKEY = #{owkey}
+				   AND WH.WAHDKEY = #{wahdkey}
+				   AND WD.DELYN = 'N'
+				 GROUP BY
+					   WH.CTKEY
+					 , WH.OWKEY
+					 , WH.WAHDKEY
+					 , WH.WKTYPECD
+					 , WH.CLASSIFPLANSNDYN
+					 , WH.LOCPLANSNDYN
+					 , WH.WAWKSTATUSCD
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , WAHDKEY
+			 , (CASE
+					WHEN OBCNT = (OBSTATUSCD_01 + OBSTATUSCD_97 + OBSTATUSCD_98 + OBSTATUSCD_99) THEN '05' /*작업취소*/
+					WHEN OBCNT = (OBSTATUSCD_00 + OBSTATUSCD_01 + OBSTATUSCD_05 + OBSTATUSCD_10) AND OBCNT > OBSTATUSCD_10 THEN '05' /*부분할당*/
+					WHEN OBCNT = OBSTATUSCD_10 AND OBCNT = DLVRYPRGRSTATUSCD_00 THEN '10' /*할당완료*/
+					WHEN OBCNT = OBSTATUSCD_10 AND DLVRYPRGRSTATUSCD_F > 0 THEN '15' /*택배접수오류*/
+					WHEN OBCNT = OBSTATUSCD_10 AND DLVRYPRGRSTATUSCD_20 > 0 THEN '11' /*택배접수중*/
+					WHEN OBCNT = OBSTATUSCD_10 AND OBCNT > DLVRYPRGRSTATUSCD_S THEN '10' /*할당완료*/
+					WHEN OBCNT = OBSTATUSCD_10 AND OBCNT = DLVRYPRGRSTATUSCD_S AND COALESCE(CLASSIFPLANSNDYN, 'N') = 'N' AND COALESCE(LOCPLANSNDYN, 'N') = 'N' THEN '20' /*택배접수완료*/
+					WHEN WKTYPECD = 'DW' AND OBCNT = OBSTATUSCD_10 AND OBCNT = DLVRYPRGRSTATUSCD_S AND CLASSIFPLANSNDYN = 'Y' AND LOCPLANSNDYN = 'N' THEN '20' /*택배접수완료*/
+					WHEN WKTYPECD = 'DW' AND OBCNT = OBSTATUSCD_10 AND OBCNT = DLVRYPRGRSTATUSCD_S AND CLASSIFPLANSNDYN = 'Y' AND LOCPLANSNDYN = 'Y' THEN '30' /*분류계획전송완료*/
+					WHEN WKTYPECD IN ('RW','PW') AND OBCNT = OBSTATUSCD_10 AND OBCNT = DLVRYPRGRSTATUSCD_S AND CLASSIFPLANSNDYN = 'Y' THEN '30' /*분류계획전송완료*/
+					WHEN OBSTATUSCD_20 > 0 AND (OBSTATUSCD_25 + OBSTATUSCD_30) = 0 THEN '40' /*피킹지시*/
+					WHEN OBCNT = (OBSTATUSCD_20 + OBSTATUSCD_25 + OBSTATUSCD_30 + OBSTATUSCD_45) THEN '50' /*작업중*/
+					WHEN OBSTATUSCD_20 > 0 AND OBCNT > (OBSTATUSCD_25 + OBSTATUSCD_30 + OBSTATUSCD_45) THEN '50' /*작업중*/
+					WHEN OBCNT = (OBSTATUSCD_30 + OBSTATUSCD_45 + OBSTATUSCD_50 + OBSTATUSCD_65 + OBSTATUSCD_70) THEN '60' /*작업완료*/
+				END) AS WAWKSTATUSCD
+		  FROM STATUS_BASE
+	</select>
+
+	<update id="updateWaStatus">
+		/* wms-outbound-obordermanager-sql-oracle.xml - updateWaStatus - 출고주문 헤더 상태값 변경 - 웨이브 헤더 상태값 변경 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET WAWKSTATUSCD = #{wawkstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<select id="selectGetMsgCode" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectGetMsgCode - 메시지 코드 조회 */
+		SELECT HD.MULAAPMSGHDKEY
+			 , DT.DISPLAYMSG
+		  FROM TADMIN_MST_MULAAPMSG_HD HD
+		 INNER JOIN TADMIN_MST_MULAAPMSG_DT DT
+		    ON HD.MULAAPMSGHDKEY = DT.MULAAPMSGHDKEY
+		 WHERE HD.MULAAPMSGHDKEY = (CASE WHEN SUBSTR(#{mulaapmsghdkey},1,4) = 'MSG_' THEN #{mulaapmsghdkey} ELSE 'MSG_' || #{mulaapmsghdkey} END)
+		   AND DT.MSGTYPE = 'MSG'
+		   AND DT.LAKEY = COALESCE(COALESCE(#{lakey}, #{slakey}), 'KOR')
+	</select>
+
+	<select id="selectobHdCnfrm" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectobHdCnfrm - 출고주문 헤더 상태값 변경 - 출고주문 헤더 출고완료 조회 */
+		WITH OB_DATA AS (
+			SELECT CTKEY
+				 , OWKEY
+				 , OBHDKEY
+				 , COUNT(*) OB_CNT
+				 , SUM(CASE WHEN WKSTATUS IN ('80','90') THEN 1 ELSE 0 END) CF_CNT
+				 , MAX(OBCONFIRMDATE) AS OBCONFIRMDATE
+			  FROM TWORK_INFO_OB_DT
+			 WHERE CTKEY = #{ctkey}
+			   AND OWKEY = #{owkey}
+			   AND OBHDKEY = #{obhdkey}
+			   AND WKSTATUS NOT IN ('98')
+			 GROUP BY
+				   CTKEY
+				 , OWKEY
+				 , OBHDKEY
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , OBCONFIRMDATE
+		  FROM OB_DATA
+		 WHERE OB_CNT = CF_CNT
+	</select>
+
+	<update id="obHdCfrmUpdate">
+		/* wms-outbound-obordermanager-sql-oracle.xml - obHdCfrmUpdate - 출고주문 헤더 상태값 변경 - 출고주문 헤더 출고완료 확정일 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBCONFIRMDATE = #{obconfirmdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectObCfrmHdDate" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectObCfrmHdDate - 출고주문 헤더 상태값 변경 - 결품처리시 전체 출고확정시 출고확정일 조회 */
+		WITH OB_DATA AS (
+			SELECT CTKEY
+				 , OWKEY
+				 , OBHDKEY
+				 , COUNT(*) OB_CNT
+				 , SUM(CASE WHEN WKSTATUS IN ('80','90') THEN 1 ELSE 0 END) CF_CNT
+				 , MAX(OBCONFIRMDATE) AS OBCONFIRMDATE
+			  FROM TWORK_INFO_OB_DT
+			 WHERE CTKEY = #{ctkey}
+			   AND OWKEY = #{owkey}
+			   AND OBHDKEY = #{obhdkey}
+			   AND WKSTATUS NOT IN ('98')
+			 GROUP BY
+				   CTKEY
+				 , OWKEY
+				 , OBHDKEY
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , OBCONFIRMDATE
+		  FROM OB_DATA
+		 WHERE OB_CNT = CF_CNT
+	</select>
+
+	<update id="updateObCfrmHdDate">
+		/* wms-outbound-obordermanager-sql-oracle.xml - updateObCfrmHdDate - 출고주문 헤더 상태값 변경 - 결품처리시 전체 출고확정시 출고확정일 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBCONFIRMDATE = #{obconfirmdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectObStockOutHd" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectObStockOutHd - 출고주문 헤더 상태값 변경 - 결품처리시 주문건수와 결품건수 확인 */
+		SELECT OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+			 , COUNT(OD.OBHDKEY) AS OB_CNT
+			 , SUM(CASE WHEN OD.OBDTSTATUSCD = '98' THEN 1 ELSE 0 END) AS STOCK_CNT
+		  FROM TWORK_INFO_OB_DT OD
+		 WHERE OD.CTKEY = #{ctkey}
+		   AND OD.OWKEY = #{owkey}
+		   AND OD.OBHDKEY = #{obhdkey}
+		 GROUP BY
+			   OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+	</select>
+
+	<update id="updateObStockOutHd">
+		/* wms-outbound-obordermanager-sql-oracle.xml - updateObStockOutHd - 출고주문 헤더 상태값 변경 - 결품처리건의 출고헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = #{obstatuscd}
+<!--		   	 , OBCONFIRMDATE = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')-->
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="SelectobCfStoreExpireDate" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - SelectobCfStoreExpireDate - 출고주문 헤더 상태값 변경 - 거래처 최종 유통기한 변경 조회 */
+		WITH OB_DATA AS (
+			SELECT A.CTKEY /*센터코드*/
+				 , A.OWKEY /*화주사코드*/
+				 , B.STORE_KEY /*거래처코드*/
+				 , A.ICKEY /*상품코드*/
+				 , MAX(SUBSTR(A.OBCONFIRMDATE,1,8)) AS OUTBOUNDDT /*출고확정일자*/
+				 , MAX(D.EXPIREDATE) AS OBDT_EXPIREDATE /*유통기한*/
+				 , MAX(COALESCE(E.EXPIREDATE, '00000000000000')) AS STORE_IC_EXPIREDATE
+			  FROM TWORK_INFO_OB_DT A
+			 INNER JOIN TWORK_INFO_OB_HD B
+				ON A.CTKEY = B.CTKEY
+			   AND A.OWKEY = B.OWKEY
+			   AND A.OBHDKEY = B.OBHDKEY
+			 INNER JOIN TWORK_INFO_PI_DT C
+				ON A.CTKEY = C.CTKEY
+			   AND A.OWKEY = C.OWKEY
+			   AND A.OBHDKEY = C.OBHDKEY
+			   AND A.OBDTKEY = C.OBDTKEY
+			   AND A.ICKEY = C.ICKEY
+			INNER JOIN TWORK_INFO_IVAT D
+				ON C.CTKEY = D.CTKEY
+			   AND C.OWKEY = D.OWKEY
+			   AND C.IVATKEY = D.IVATKEY
+			   AND C.ICKEY = D.ICKEY
+			 LEFT OUTER JOIN TWORK_INFO_STORE_IC_EXPIRE E
+				ON B.CTKEY = E.CTKEY
+			   AND B.OWKEY = E.OWKEY
+			   AND B.STORE_KEY = E.STORE_KEY
+			   AND A.ICKEY = E.ICKEY
+			 WHERE B.OBHDTYPE = '15'
+			   AND A.CTKEY = #{ctkey}
+			   AND A.OWKEY = #{owkey}
+			   AND A.OBHDKEY = #{obhdkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ordtkey)">
+			   AND A.OBDTKEY IN
+				<foreach item="item" index="index" collection="obdtkey"
+					  open="(" separator="," close=")">
+						#{item}
+				  </foreach>
+			</if>
+			   AND C.OB_CFQTY > 0
+			 GROUP BY
+				   A.CTKEY /*센터코드*/
+				 , A.OWKEY /*화주사코드*/
+				 , B.STORE_KEY /*거래처코드*/
+				 , A.ICKEY /*상품코드*/
+		)
+		SELECT CTKEY /*센터코드*/
+			 , OWKEY /*화주사코드*/
+			 , STORE_KEY /*거래처코드*/
+			 , ICKEY /*상품코드*/
+			 , OUTBOUNDDT /*출고확정일자*/
+			 , OBDT_EXPIREDATE AS EXPIREDATE /*유통기한*/
+			 , (CASE WHEN STORE_IC_EXPIREDATE = '00000000000000' THEN 'I' ELSE 'U' END) AS IU_FLAG
+		  FROM OB_DATA
+		 WHERE OBDT_EXPIREDATE > STORE_IC_EXPIREDATE
+	</select>
+
+	<insert id="insertobCfStoreExpDate">
+		/* wms-outbound-obordermanager-sql-oracle.xml - insertobCfStoreExpDate - 출고주문 헤더 상태값 변경 - 거래처 최종 유통기한 변경 Insert */
+		INSERT INTO TWORK_INFO_STORE_IC_EXPIRE
+		(
+			  CTKEY
+			, OWKEY
+			, STORE_KEY
+			, ICKEY
+			, OUTBOUNDDT
+			, EXPIREDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			  #{ctkey}
+			, #{owkey}
+			, #{storeKey}
+			, #{ickey}
+			, #{outbounddt}
+			, #{expiredate}
+			, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			, #{surkey}
+			, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateObCfStoreExpDate">
+		/* wms-outbound-obordermanager-sql-oracle.xml - updateObCfStoreExpDate - 출고주문 헤더 상태값 변경 - 거래처 최종 유통기한 변경 조회 Update */
+		UPDATE TWORK_INFO_STORE_IC_EXPIRE
+		   SET OUTBOUNDDT = #{outbounddt}
+			 , EXPIREDATE = #{expiredate}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND STORE_KEY = #{storeKey}
+		   AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectWaveHdStatus" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectWaveHdStatus - 웨이브 헤더 상태값 변경 - 웨이브 헤더 값 조회 */
+		WITH WA_HDKEY AS (
+				SELECT CTKEY
+					 , OWKEY
+					 , WAHDKEY
+				  FROM TWORK_INFO_OB_HD
+				 WHERE CTKEY = #{ctkey}
+				   AND OWKEY = #{owkey}
+				   AND OBHDKEY = #{obhdkey}
+				   AND WAHDKEY IS NOT NULL
+				 GROUP BY
+					   CTKEY
+					 , OWKEY
+					 , WAHDKEY
+		), WA_DATA AS (
+				SELECT WAHD.CTKEY
+					 , WAHD.OWKEY
+					 , WAHD.WAHDKEY
+					 , COUNT(OBHD.OBHDKEY) AS OBHD_CNT /*출고주문건수*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '00' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_00 /*작업생성*/
+					 , SUM(CASE WHEN
+								(SELECT OBHDKEY FROM TWORK_INFO_OB_DISTRIBUTE WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND OBHDKEY = #{obhdkey} GROUP BY OBHDKEY)
+								IS NOT NULL THEN 1
+							ELSE 0 END)
+						AS OBHD_WKSTATUS_05 /*주문수량배분*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '15' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_15 /*부분할당*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '20' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_20 /*할당*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '30' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_30 /*피킹지시*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '65' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_65 /*부분피킹*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '70' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_70 /*피킹확정*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '80' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_80 /*부분출고*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '90' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_90 /*출고완료*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '98' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_98 /*결품*/
+					 , SUM((CASE WHEN OBHD.WKSTATUS = '99' THEN 1 ELSE 0 END)) AS OBHD_WKSTATUS_99 /*출고취소*/
+				  FROM TWORK_INFO_WA_HD WAHD
+				 INNER JOIN TWORK_INFO_WA_DT WADT
+					ON WAHD.CTKEY = WADT.CTKEY
+				   AND WAHD.OWKEY = WADT.OWKEY
+				   AND WAHD.WAHDKEY = WADT.WAHDKEY
+				 INNER JOIN TWORK_INFO_OB_HD OBHD
+					ON WADT.CTKEY = OBHD.CTKEY
+				   AND WADT.OWKEY = OBHD.OWKEY
+				   AND WADT.WAHDKEY = OBHD.WAHDKEY
+				   AND WADT.OBHDKEY = OBHD.OBHDKEY
+				-- INNER JOIN TWORK_INFO_OB_DT OBDT
+				--    ON OBHD.CTKEY = OBDT.CTKEY
+				--   AND OBHD.OWKEY = OBDT.OWKEY
+				----   AND OBHD.WAHDKEY = OBDT.WAKEY
+				--   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+				--  LEFT OUTER JOIN TWORK_INFO_PI_DT PIDT
+				--    ON OBDT.CTKEY = PIDT.CTKEY
+				--   AND OBDT.OWKEY = PIDT.OWKEY
+				--   AND OBDT.OBHDKEY = PIDT.OBHDKEY
+				--   AND OBDT.OBDTKEY = PIDT.OBDTKEY
+				 WHERE WAHD.CTKEY = #{ctkey}
+				   AND WAHD.OWKEY = #{owkey}
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)'>
+						AND WAHD.WAHDKEY = #{wahdkey}
+					</when>
+					<otherwise>
+						AND WAHD.WAHDKEY = (SELECT WAHDKEY FROM WA_HDKEY)
+					</otherwise>
+				</choose>
+				 GROUP BY
+					   WAHD.CTKEY
+					 , WAHD.OWKEY
+					 , WAHD.WAHDKEY
+		), RESULT AS (
+				SELECT CTKEY
+					 , OWKEY
+					 , WAHDKEY
+					 , CASE WHEN OBHD_CNT = (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '99'
+							WHEN OBHD_CNT = OBHD_WKSTATUS_00 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) AND OBHD_WKSTATUS_05 > 0 THEN '05'
+							WHEN OBHD_CNT = OBHD_WKSTATUS_00 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '00'
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT > OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '10'
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT = OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '30'
+							/*
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0 AND OBHD_WKSTATUS_70 = 0
+								  AND OBHD_CNT >= OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65  + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '50'
+							*/
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 > 0 THEN '50'
+							/*
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT >= OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '40'
+							*/
+							WHEN OBHD_WKSTATUS_70 > 0
+								 AND OBHD_CNT = OBHD_WKSTATUS_70 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '40'
+							WHEN OBHD_CNT = (OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99)) THEN '90'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_70 > 0 THEN '191'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 > 0 THEN '192'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 > 0 THEN '193'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_00 > 0 THEN '194'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_30 > 0 THEN '141'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 > 0 THEN '142'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_00 > 0 THEN '143'
+							ELSE 'UNK'
+					   END AS WKSTATUS
+					 , CASE WHEN OBHD_CNT = (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '99:웨이브출고취소'
+							WHEN OBHD_CNT = OBHD_WKSTATUS_00 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) AND OBHD_WKSTATUS_05 > 0 THEN '주문배분'
+							WHEN OBHD_CNT = OBHD_WKSTATUS_00 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '00:웨이브생성'
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT > OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '10:웨이브할당중'
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT = OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '30:웨이브할당완료'
+							/*
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0 AND OBHD_WKSTATUS_70 = 0
+								  AND OBHD_CNT >= OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '50:웨이브작업지시'
+							*/
+							WHEN OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 > 0 THEN '50:웨이브작업지시'
+							/*
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 = 0
+								  AND OBHD_CNT >= OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '40:웨이브피킹확정'
+							*/
+							WHEN OBHD_WKSTATUS_70 > 0
+								 AND OBHD_CNT = OBHD_WKSTATUS_70 + OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99) THEN '40:웨이브피킹확정'
+							WHEN OBHD_CNT = (OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 + (OBHD_WKSTATUS_98 + OBHD_WKSTATUS_99)) THEN '90:웨이브완료'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_70 > 0 THEN '191:웨이브완료(피킹확정)'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_30 + OBHD_WKSTATUS_65 > 0 THEN '192:웨이브완료(작업지시)'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 > 0 THEN '193:웨이브완료(할당)'
+							WHEN OBHD_WKSTATUS_80 + OBHD_WKSTATUS_90 > 0
+								 AND OBHD_WKSTATUS_00 > 0 THEN '194:웨이브완료(작업생성)'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_30 > 0 THEN '141:웨이브피킹확정(작업지시)'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_15 + OBHD_WKSTATUS_20 > 0 THEN '142:웨이브피킹확정(할당)'
+							WHEN OBHD_WKSTATUS_65 + OBHD_WKSTATUS_70 > 0
+								 AND OBHD_WKSTATUS_00 > 0 THEN '143:웨이브피킹확정(작업생성)'
+							ELSE 'UNK'
+					   END AS WKSTATUS_NAME
+				  FROM WA_DATA
+		)
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.WAHDKEY
+			 , A.WKSTATUS
+			 , B.CTCD_DTNAME
+			 , A.WKSTATUS_NAME
+		  FROM RESULT A
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.WKSTATUS = B.CTCD_DTKEY
+		   AND B.CTCD_HDKEY = 'WA_WKSTATUS' /*출고작업상태*/
+		   AND B.LAKEY = #{slakey}
+	</select>
+
+	<update id="updateWaveHdStatus">
+		/* wms-outbound-obordermanager-sql-oracle.xml - updateWaveHdStatus - WAVE 헤더 상태값 변경 - WAVE 헤더 값 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET WKSTATUS = #{wkstatus}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wavePickingTypecd)" >
+			 , WAVE_PICKING_TYPECD = #{wavePickingTypecd}
+		</if>
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<select id="selectWavePickingType" resultType="camelMap">
+		/* wms-outbound-obordermanager-sql-oracle.xml - selectWavePickingType - WAVE 웨이브 피킹유형 변경 - 웨이브 헤더 피킹유형 변경 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.WAHDKEY
+			 , F.PITYPECD
+			 , (CASE F.PITYPECD WHEN '10' THEN 'PICKINGORDER_OB' WHEN '20' THEN 'PICKINGORDER_TOT' END) AS WAVE_PICKING_TYPECD
+		  FROM TWORK_INFO_WA_HD A
+		 INNER JOIN TWORK_INFO_WA_DT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.WAHDKEY = B.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD C
+			ON B.CTKEY = C.CTKEY
+		   AND B.OWKEY = C.OWKEY
+		   AND B.OBHDKEY = C.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT D
+			ON C.CTKEY = D.CTKEY
+		   AND C.OWKEY = D.OWKEY
+		   AND C.OBHDKEY = D.OBHDKEY
+		 INNER JOIN TWORK_INFO_PI_DT E
+			ON D.CTKEY = E.CTKEY
+		   AND D.OWKEY = E.OWKEY
+		   AND D.OBHDKEY = E.OBHDKEY
+		   AND D.OBDTKEY = E.OBDTKEY
+		   AND D.ICKEY = E.ICKEY
+		 INNER JOIN TWORK_INFO_PI_HD F
+			ON E.CTKEY = F.CTKEY
+		   AND E.OWKEY = F.OWKEY
+		   AND E.PIHDKEY = F.PIHDKEY
+		 WHERE A.WAVE_PICKING_TYPECD IS NULL
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.WAHDKEY = #{wahdkey}
+		 GROUP BY
+			   A.CTKEY
+			 , A.OWKEY
+			 , A.WAHDKEY
+			 , F.PITYPECD
+	</select>
+
+	<!--출고헤더 조회 BY 릴리즈코드-->
+	<select id="selectOutboundHeaderByOutboundHeaderKey" resultType="camelMap">
+		/* wms-outbound-obManager-sql-oracle.xml - selectOutboundHeaderByOutboundHeaderKey - 출고헤더 조회 BY 릴리즈코드 */
+		SELECT
+			CTKEY
+			, OWKEY
+			, OBHDKEY
+			, WAHDKEY
+			, PIHDKEY
+			, OBSTATUSCD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--출고상세 조회 BY 릴리즈코드/릴리즈상세코드-->
+	<select id="selectOutboundDetailByOutboundDetailKey" resultType="camelMap">
+		/* wms-outbound-obManager-sql-oracle.xml - selectOutboundDetailByOutboundDetailKey - 출고상세 조회 BY 릴리즈코드/릴리즈상세코드 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.OBHDKEY
+			,OD.OBDTKEY
+			,OD.ICKEY
+			,OD.OBDTSTATUSCD
+			,OD.UOM
+			,OD.INITQTY
+			,OD.EXPCTQTY
+			,OD.ALQTY
+			,OD.PKISTQTY
+			,OD.PKQTY
+			,OD.CLASSIFSQTY
+			,OD.PAKQTY
+			,OD.NISQTY
+			,OD.CNFRMQTY
+			,(CASE WHEN OH.PIHDKEY IS NULL
+				THEN
+					(SELECT PIHDKEY
+					FROM TWORK_INFO_OB_HD
+					WHERE CTKEY = OH.CTKEY
+					AND OWKEY = OH.OWKEY
+					AND OBHDKEY = OH.PKOBHDKEY)
+				ELSE OH.PIHDKEY END) AS  PIHDKEY
+			,OH.OBHDTYPECD
+			,OH.WKTYPECD
+			,OH.OBSTATUSCD
+			,OH.PKOBHDKEY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OD.CTKEY = #{ctkey}
+		AND OD.OWKEY = #{owkey}
+		AND OD.OBHDKEY = #{obhdkey}
+		AND OD.OBDTKEY = #{obdtkey}
+	</select>
+
+	<!--출고상세 조회 BY 릴리즈코드-->
+	<select id="selectOutboundDetailByOutboundHeaderKey" resultType="camelMap">
+		/* wms-outbound-obManager-sql-oracle.xml - selectOutboundDetailByOutboundHeaderKey - 출고상세 조회 BY 릴리즈코드 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.OBHDKEY
+			,OD.OBDTKEY
+			,OD.ICKEY
+			,OD.OBDTSTATUSCD
+			,OD.UOM
+			,OD.INITQTY
+			,OD.EXPCTQTY
+			,OD.ALQTY
+			,OD.PKISTQTY
+			,OD.PKQTY
+			,OD.CLASSIFSQTY
+			,OD.PAKQTY
+			,OD.NISQTY
+			,OD.CNFRMQTY
+			,OD.OBORDKEY
+			,OD.OBORDDTKEY
+			,OD.ORHDKEY
+			,OD.ORDTKEY
+			,OD.EXTERNORDERKEY
+			,OD.EXTERNORDERLINENUM
+			,OH.PIHDKEY
+			,OH.OBHDTYPECD
+			,OH.OBSTATUSCD
+		FROM TWORK_INFO_OB_HD OH
+		INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+			AND OH.OWKEY = OD.OWKEY
+			AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--출고상태 IF 송신 데이터 조회-->
+	<select id="selectOutboundStatusInformationForInterfaceSend" resultType="com.daiso.wms.api.out.dto.OutboundStatusInfomationRequestDTO">
+		/* wms-outbound-obManager-sql-oracle.xml - selectOutboundDetailByOutboundHeaderKey - 출고상태 IF 송신 데이터 */
+		SELECT
+			T.CTKEY
+			,T.OWKEY
+			,T.EXTERNORDERKEY AS CUSTORDNO
+			,T.CLAIMNO
+			,CASE WHEN MALPRGRSTATUSCD = '01' THEN '02' ELSE '01' END AS STATUSCD
+		FROM (
+			SELECT
+				ORD.CTKEY
+				,ORD.OWKEY
+				,ORD.OBORDKEY
+				,ORD.EXTERNORDERKEY
+				,ORD.CLAIMNO
+				,ORD.MALPRGRSTATUSCD
+				,MAX(CASE WHEN OH.OBSTATUSCD IN ('00', '05', '10') /* 출고상태가 작업대상,부분할당,할당완료 */
+										AND COALESCE(WA.WAWKSTATUSCD, '05') IN ('05', '10', '11', '15', '20', '25') /*웨이브상태가 부분할당,할당완료,택배접수중,택배접수오류,택배접수완료,분류계획전송오류 (웨이브건이 아닐 시 */
+									THEN '01'
+									ELSE '02' END) AS MAXOBSTATUS
+			FROM TWORK_INFO_OB_ORD_HD ORD
+				INNER JOIN TWORK_INFO_OB_HD OH
+					ON ORD.CTKEY = OH.CTKEY
+					AND ORD.OWKEY = OH.OWKEY
+					AND ORD.OBORDKEY = OH.OBORDKEY
+				LEFT OUTER JOIN TWORK_INFO_WA_HD WA
+					ON OH.CTKEY = WA.CTKEY
+					AND OH.OWKEY = WA.OWKEY
+					AND OH.WAHDKEY = WA.WAHDKEY
+			WHERE ORD.CTKEY = #{ctkey}
+			AND ORD.OWKEY = #{owkey}
+			AND ORD.OBORDKEY IN
+			<foreach collection="subList" item="item" open=" (" separator="," close=")">
+				#{item.obordkey}
+			</foreach>
+			GROUP BY
+				ORD.CTKEY
+				,ORD.OWKEY
+				,ORD.OBORDKEY
+				,ORD.EXTERNORDERKEY
+				,ORD.CLAIMNO
+				,ORD.MALPRGRSTATUSCD
+		) T
+		WHERE (CASE WHEN MALPRGRSTATUSCD = '01' THEN (CASE WHEN MAXOBSTATUS = '02' THEN 'Y' ELSE 'N' END)
+				ELSE (CASE WHEN MAXOBSTATUS = '01' THEN 'Y' ELSE 'N' END)
+				END) = 'Y'
+		ORDER BY EXTERNORDERKEY, CLAIMNO
+	</select>
+
+	<!--출고상태 IF 대상 진행상태코드 변경-->
+	<update id="updateOutboundOrderPrgrStatusCd" parameterType="com.daiso.wms.api.out.dto.OutboundStatusInfomationRequestDTO">
+		/* wms-outbound-obManager-sql-oracle.xml - updateOutboundOrderPrgrStatusCd - 출고상태 IF 대상 진행상태코드 변경  */
+		UPDATE TWORK_INFO_OB_ORD_HD
+		SET MALPRGRSTATUSCD = #{statuscd}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND EXTERNORDERKEY = #{custordno}
+	</update>
+</mapper>	

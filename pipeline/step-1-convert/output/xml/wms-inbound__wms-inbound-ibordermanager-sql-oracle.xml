@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.inbound.mapper.IbOrderManagerMapper">
+
+    <select id="selectIbHdInfoMap" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbHdInfoMap - 입고 헤더 정보 */
+        SELECT *
+          FROM TWORK_INFO_IB_HD
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY = #{ibhdkey}
+    </select>
+
+    <select id="selectIbDtInfoMap" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbDtInfoMap - 입고 상세 정보 Map */
+        SELECT *
+          FROM TWORK_INFO_IB_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY = #{ibhdkey}
+           AND IBDTKEY = #{ibdtkey}
+    </select>
+
+    <select id="selectIbDtInfoList" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbDtInfoList - 입고 상세 정보 List */
+        SELECT CTKEY
+             , OWKEY
+             , IBHDKEY
+             , IBDTKEY
+             , IBDTKEY AS DTKEY
+             , UPRIBDTKEY
+             , ORGRIICYN
+             , ICKEY
+             , SBKEY
+             , ICUNITKEY
+             , INITQTY
+             , EXPCTQTY
+             , IBQTY
+             , CNFRMQTY
+             , DMGQTY
+             , FOODDMGQTY
+             , DFCQTY
+             , DONAQTY
+             , COALESCE(IBQTY, 0) + COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS QTY  /* 수량(반품입고수량) */
+             , IBQTY AS AVQTY  /* 가용(예정)수량 */
+             , COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS NAVQTY  /* 불용수량 */
+             , NONQTY
+             , DSPSQTY
+             , RJQTY
+             , UOM
+             , CPAMT
+             , PRDCTDATE
+             , EXPDATE
+             , ORHDKEY
+             , ORDTKEY
+             , EXTORDERKEY
+             , EXPORDERLINENO
+             , SLPRCAMT
+             , IBNISRSNCD
+             , IBNISDTRSNCONT
+             , CLAIMSNDYN
+             , CLAIMRSNCONT
+             , ORGCHITNO
+             , ORGCHITSEQNO
+             , ORGCHITDATE
+             , ACKEY
+             , ICTMPRDIVCD
+             , DCKEY
+             , ILBHSKEY
+             , IBCNFRMPRCSDATE
+             , IBCNFRMURKEY
+             , IBDDLNDATE
+             , IBDDLNURKEY
+             , UPDATEKEY
+             , WKCHNLCD
+             , IBDTSTATUSCD
+             , WEIGHT
+             , PLCMSTATUSCD
+             , ASRTMASICKEY
+             , ASRTWKTGTYN
+             , ASRTWKCOMPLYN
+             , ASRTWKQTY
+             , DLVRYCORPCD
+             , WBLNO
+             , RETSHIPDLVRYCORPCD
+             , RETSHIPWBLNO
+             , FILEKEY
+             , RIDMGRSNCD
+             , RIDFCRSNCONT
+             , RIPRGRSTATUSCD
+             , RIHOLDABLEQTY
+             , RIHOLDIMPSQTY
+             , RIHOLDRSNCD
+             , RIHOLDDTRSNCD
+             , RIHOLDDTCONT
+             , B2BOBCNFRMYN
+             , RIHOLDPRCSISTCD
+             , ISTIBQTY
+             , ISTRETSHIPQTY
+             , ISTDSPSQTY
+             , PRCSISTCONT
+             , HOLDPRCSPCKYN
+             , ICADDYN
+          FROM TWORK_INFO_IB_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY = #{ibhdkey}
+    </select>
+
+    <select id="selectIbcfDtInfoList" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfDtInfoList - 입고 확정 상세 조회 */
+        SELECT *
+          FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY 	 	= #{ctkey}
+           AND OWKEY 	 	= #{owkey}
+           AND IBHDKEY 	 	= #{ibhdkey}
+           AND IBDTKEY   	= #{ibdtkey}
+    </select>
+
+    <select id="selectIbcfDtCntCheck" resultType="biginteger">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfDtCntCheck - 입고 확정 상세 체크 */
+        SELECT COUNT(*)
+          FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY 	 = #{ctkey}
+           AND OWKEY 	 = #{owkey}
+           AND IBHDKEY 	 = #{ibhdkey}
+           AND IBDTKEY 	 = #{ibdtkey}
+           AND IBCFSEQNO = #{ibcfseqno}
+    </select>
+
+    <select id="selectIbcfDtMap" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfDtMap - 입고 확정 상세 조회 */
+        SELECT *
+          FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY 	 = #{ctkey}
+        AND OWKEY 	 = #{owkey}
+        AND IBHDKEY 	 = #{ibhdkey}
+        AND IBDTKEY 	 = #{ibdtkey}
+        AND IBCFSEQNO = #{ibcfseqno}
+    </select>
+
+    <select id="selectIbcfDtByPrdctdateAndExpdate" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfDtByPrdctdateAndExpdate - 입고 확정 조회 */
+        SELECT *
+          FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY   = #{ctkey}
+           AND OWKEY   = #{owkey}
+           AND IBHDKEY = #{ibhdkey}
+           AND ICKEY   = #{ickey}
+           AND CNTRNO = #{cntrno}
+           AND (EXPDATE = #{expdate} OR (EXPDATE IS NULL AND #{expdate} IS NULL))
+           AND (PRDCTDATE = #{prdctdate} OR (PRDCTDATE IS NULL AND #{prdctdate} IS NULL))
+    </select>
+
+    <select id="selectIbcfDtSeqno" resultType="biginteger">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfDtSeqno - 확정 상세 시퀀스 번호 조회 */
+        SELECT COALESCE(MAX(IBCFSEQNO) + 1, 1)
+          FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY = #{ibhdkey}
+    </select>
+
+    <update id="updateIbcfDtQty">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - updateIbcfDtQty - 확정 상세 수량 무게 수정 */
+        UPDATE TWORK_INFO_IBCF_DT
+           SET IBQTY        = IBQTY + #{ibqty}
+             , CNFRMQTY     = CNFRMQTY + #{cnfrmqty}
+             , WEIGHT       = WEIGHT + #{weight}
+             , UPDATEDATE   = #{sysdate}
+             , UPDATEURKEY  = #{surkey}
+         WHERE CTKEY        = #{ctkey}
+           AND OWKEY        = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY      = #{ibhdkey}
+           AND IBDTKEY      = #{ibdtkey}
+           AND IBCFSEQNO    = #{ibcfseqno}
+    </update>
+
+    <insert id="insertIbcfDt" parameterType="ibOrderCfdtVO">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - insertIbcfDt - 확정 상세 생성 */
+        INSERT INTO TWORK_INFO_IBCF_DT
+        (
+            CTKEY
+            , OWKEY
+            , IBHDKEY
+            , IBDTKEY
+            , IBCFSEQNO
+            , ICKEY
+            , IVATKEY
+            , IBQTY
+            , CNFRMQTY
+            , WEIGHT
+            , IBCNFRMDATE
+            , PRDCTLOT
+            , PRDCTDATE
+            , EXPDATE
+            , ILBHSKEY
+            , PLCMSTATUSCD
+            , CNTRNO
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+        ) VALUES
+        (
+            #{ctkey}
+            , COALESCE(#{owkey}, #{sowkey})
+            , #{ibhdkey}
+            , #{ibdtkey}
+            , #{ibcfseqno}
+            , #{ickey}
+            , #{ivatkey}
+            , #{ibqty}
+            , #{cnfrmqty}
+            , #{weight}
+            , #{ibcnfrmdate}
+            , #{prdctlot}
+            , #{prdctdate}
+            , #{expdate}
+            , #{ilbhskey}
+            , #{plcmstatuscd}
+            , #{cntrno}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+    <delete id="deleteIbcfDt">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - deleteIbcfDt - 입고 확정 상세 삭제 */
+        DELETE FROM TWORK_INFO_IBCF_DT
+         WHERE CTKEY 	 = #{ctkey}
+           AND OWKEY 	 = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY 	 = #{ibhdkey}
+           AND IBDTKEY 	 = #{ibdtkey}
+           AND IBCFSEQNO  = #{ibcfseqno}
+    </delete>
+
+    <select id="selectIbcfCntrMap" resultType="camelMap">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfCntrMap - 입고확정 용기 조회 */
+        SELECT *
+          FROM TWORK_INFO_IBCF_CNTR
+         WHERE CTKEY 		= #{ctkey}
+           AND OWKEY 		= #{owkey}
+           AND IBHDKEY 		= #{ibhdkey}
+           AND IBDTKEY		= #{ibdtkey}
+           AND IBCFSEQNO	= #{ibcfseqno}
+           AND CNTRNO 		= #{cntrno}
+    </select>
+
+    <select id="selectIbcfCntrCnt" resultType="java.lang.Integer">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - selectIbcfCntrCnt - 입고확정 용기 조회 */
+        SELECT COUNT(*)
+          FROM TWORK_INFO_IBCF_CNTR
+         WHERE CTKEY   = #{ctkey}
+           AND OWKEY   = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY = #{ibhdkey}
+           AND IBDTKEY = #{ibdtkey}
+           AND ICKEY   = #{ickey}
+           AND IVATKEY = #{ivatkey}
+           AND CNTRNO  = #{cntrno}
+    </select>
+
+    <update id="updateIbcfCntr">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - insertIbcfCntr - 입고확정 용기 수량 수정 */
+        UPDATE TWORK_INFO_IBCF_CNTR
+        SET UPDATEDATE = #{sysdate}
+        , UPDATEURKEY = #{surkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(qty)">
+            , QTY = QTY + #{qty}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibqty)">
+            , IBQTY = IBQTY + #{ibqty}
+        </if>
+        WHERE CTKEY   = #{ctkey}
+        AND OWKEY   = COALESCE(#{owkey}, #{sowkey})
+        AND IBHDKEY = #{ibhdkey}
+        AND IBDTKEY = #{ibdtkey}
+        AND ICKEY   = #{ickey}
+        AND IVATKEY = #{ivatkey}
+        AND CNTRNO  = #{cntrno}
+    </update>
+
+    <insert id="insertIbcfCntr" parameterType="ibOrderCfdtCntrVO">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - insertIbcfCntr - 입고확정 용기 등록 */
+        INSERT INTO TWORK_INFO_IBCF_CNTR
+        (
+            CTKEY
+            , OWKEY
+            , IBHDKEY
+            , IBDTKEY
+            , IBCFSEQNO
+            , CNTRNO
+            , ICKEY
+            , IVATKEY
+            , BFCHGCNTRNO
+            , MASICIBCFSEQNO
+            , QTY
+            , IBQTY
+            , CNFRMQTY
+            , PRDCTDATE
+            , EXPDATE
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+        ) VALUES
+        (
+            #{ctkey}
+            , COALESCE(#{owkey}, #{sowkey})
+            , #{ibhdkey}
+            , #{ibdtkey}
+            , #{ibcfseqno}
+            , #{cntrno}
+            , #{ickey}
+            , #{ivatkey}
+            , #{bfchgcntrno}
+            , #{masicibcfseqno}
+            , #{qty}
+            , #{ibqty}
+            , #{cnfrmqty}
+            , #{prdctdate}
+            , #{expdate}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+    <delete id="deleteIbcfCntr">
+        /* wms-inbound-ibordermaganer-sql-oracle.xml - deleteIbcfCntr - 입고확정 용기 수량 삭제 */
+        DELETE FROM TWORK_INFO_IBCF_CNTR
+         WHERE CTKEY 	  = #{ctkey}
+           AND OWKEY 	  = COALESCE(#{owkey}, #{sowkey})
+           AND IBHDKEY	  = #{ibhdkey}
+           AND IBDTKEY   = #{ibdtkey}
+           AND ICKEY 	  = #{ickey}
+           AND IVATKEY   = #{ivatkey}
+           AND CNTRNO    = #{cntrno}
+    </delete>
+
+</mapper>

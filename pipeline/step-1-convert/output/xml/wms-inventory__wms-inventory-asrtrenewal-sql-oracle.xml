@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.AsrtRenewalUnitizeOrderMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectAsrtRenewalTask">
+		  WITH T_INVN AS (
+			   SELECT A.CTKEY
+					 , A.OWKEY
+					 , A.ICKEY
+					 , SUM(A.AVQTY) AS AVQTY
+					 , SUM(A.NAVQTY) AS NAVQTY
+					 , A.AVZNYN
+				  FROM (
+						SELECT IVLC.CTKEY
+							 , IVLC.OWKEY
+							 , IVLC.ICKEY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.TOTQTY ELSE 0 END AS AVQTY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.TOTQTY END AS NAVQTY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN 'Y' ELSE 'N' END AS AVZNYN
+						  FROM TWORK_INFO_IVATXLC IVLC
+						 INNER JOIN TWORK_INFO_IVAT IV
+							ON IV.CTKEY = IVLC.CTKEY
+						   AND IV.OWKEY = IVLC.OWKEY
+						   AND IV.ICKEY = IVLC.ICKEY
+						   AND IV.IVATKEY = IVLC.IVATKEY
+						 INNER JOIN TWORK_MST_LC LC
+							ON LC.CTKEY = IVLC.CTKEY
+						   AND LC.LCKEY = IVLC.LCKEY
+						 INNER JOIN TWORK_MST_ZN ZN
+							ON ZN.CTKEY = IVLC.CTKEY
+						   AND ZN.ZNKEY = LC.ZNKEY
+						 INNER JOIN TWORK_MST_AR AR
+							ON AR.CTKEY = IVLC.CTKEY
+						   AND AR.ZNKEY = LC.ZNKEY
+						   AND AR.ARKEY = LC.ARKEY
+						 WHERE IVLC.TOTQTY > 0
+					 ) A
+				 GROUP BY A.CTKEY
+					 , A.OWKEY
+					 , A.ICKEY
+					 , A.AVZNYN
+			 )
+
+		SELECT '0' AS CHK
+		     , ASTR.CTKEY				/* 센터코드 */
+			 , CT.CTNM					/* 센터명 */
+			 , ASTR.OWKEY				/* 화주코드 */
+			 , OW.OWNM					/* 화주명 */
+			 , ASTR.BFCHGICKEY AS ICKEY	/* 변경전 상품코드 */
+			 , ASTR.BFCHGICKEY			/* 변경전 상품코드 */
+			 , BFIC.ICNM AS BFCHGICNM	/* 변경전 상품명 */
+			 , ASTR.AFCHGICKEY			/* 변경후 상품코드 */
+			 , AFIC.ICNM AS AFCHGICNM	/* 변경후 상품명 */
+			 , ASTR.WKISTDATE			/* 작업지시일 */
+			 , ASTR.IVCNVRSNYN			/* 재고전환 여부 */
+			 , ASTR.LBLPRYN				/* 라벨출력 여부 */
+			 , COALESCE(AVINVN.AVQTY, 0) AS AVQTY	/* 가용재고 */
+			 , COALESCE(NAVINVN.NAVQTY, 0) AS NAVQTY	/* 불용재고 */
+			 , ASTR.INSERTDATE			/* 등록일자 */
+			 , ASTR.INSERTURKEY			/* 등록자 */
+			 , ASTR.UPDATEDATE			/* 수정일자 */
+			 , ASTR.UPDATEURKEY			/* 수정자 */
+		  FROM TWORK_INFO_ASRT_RENEW ASTR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ASTR.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = ASTR.OWKEY
+		 INNER JOIN TWORK_MST_IC BFIC
+			ON BFIC.CTKEY = ASTR.CTKEY
+		   AND BFIC.OWKEY = ASTR.OWKEY
+		   AND BFIC.ICKEY = ASTR.BFCHGICKEY
+		 INNER JOIN TWORK_MST_IC AFIC
+			ON AFIC.CTKEY = ASTR.CTKEY
+		   AND AFIC.OWKEY = ASTR.OWKEY
+		   AND AFIC.ICKEY = ASTR.AFCHGICKEY
+		  LEFT JOIN T_INVN AVINVN
+			ON AVINVN.CTKEY = ASTR.CTKEY
+		   AND AVINVN.OWKEY = ASTR.OWKEY
+		   AND AVINVN.ICKEY = ASTR.BFCHGICKEY
+		   AND AVINVN.AVZNYN = 'Y'
+		  LEFT JOIN T_INVN NAVINVN
+			ON NAVINVN.CTKEY = ASTR.CTKEY
+		   AND NAVINVN.OWKEY = ASTR.OWKEY
+		   AND NAVINVN.ICKEY = ASTR.BFCHGICKEY
+		   AND NAVINVN.AVZNYN = 'N'
+
+		<where>
+			AND ASTR.OWKEY = COALESCE(#{owkey}, #{sowkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectAsrtRenewalTaskCount" resultType="java.lang.Integer">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - selectAsrtRenewalTaskCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectAsrtRenewalTask"/>
+			 )
+	</select>
+
+	<select id="selectAsrtRenewalTaskList" resultType="camelMap">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - selectAsrtRenewalTaskList */
+		<include refid="sql_pagingTop"/>
+
+		<include refid="sql_selectAsrtRenewalTask"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectItemInvnList" resultType="camelMap">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - selectItemInvnList */
+		SELECT '0' AS CHK
+             , #{bfchgickey}     AS BFCHGICKEY   /* 변경 전 상품코드 */
+             , #{afchgickey}     AS AFCHGICKEY   /* 변경 후 상품코드 */
+             , IVLC.CTKEY		/* 센터코드 */
+			 , IVLC.OWKEY		/* 화주코드 */
+			 , OW.OWNM			/* 화주명 */
+			 , LC.ZNKEY			/* 존코드 */
+		     , ZN.ZNNM			/* 존명 */
+			 , LC.ARKEY			/* 구역코드 */
+			 , AR.ARNM			/* 구역명 */
+			 , IVLC.LCKEY		/* 로케이션 코드 */
+		     , IVLC.IVSERIALNO
+			 , IVLC.ICKEY		/* 상품코드 */
+		     , IC.ICNM			/* 상품명 */
+		     , ICBC.BARCODE		/* 상품바코드 */
+		     , IVLC.IVATKEY		/* 재고속성코드 */
+			 , IV.TCDCDIVCD		/* TCDC구분코드 */
+			 , IV.PRDCTDATE		/* 생산일시 */
+			 , IV.EXPDATE		/* 유통기한 */
+		     , IV.EXPIMMTDATE	/* 유통기한임박일시 */
+			 , IV.OBIMPSDATE	/* 출고불가일시 */
+			 , IV.ICTMPRDIVCD	/* 상품온도구분코드 */
+			 , IV.IVATSTATUSCD	/* 재고 속성 상태 코드 */
+		     , IVLC.TOTQTY		/* 총수량 */
+			 , IVLC.AVQTY		/* 가용수량 */
+			 , IVLC.ALQTY		/* 할당수량 */
+			 , IVLC.HOLDQTY		/* 보류수량 */
+			 , ZN.ZNTYPECD
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.ICKEY = IVLC.ICKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IVLC.CTKEY
+		   AND ICBC.OWKEY = IVLC.OWKEY
+		   AND ICBC.ICKEY = IVLC.ICKEY
+		   AND ICBC.UOM = 'EA'
+		   AND ICBC.USEYN = 'Y'
+
+		<where>
+			AND IVLC.CTKEY = #{ctkey}
+			AND IVLC.OWKEY = #{owkey}
+			AND (
+            	IVLC.ICKEY = #{ickey}
+            	OR
+            	IVLC.ICKEY = #{afchgickey}
+            )
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+		</where>
+
+	</select>
+
+    <!-- 아소트 재고전환을 위해 다시 상세 조회  -->
+    <select id="selectItemInvnDetail" resultType="camelMap">
+        /* wms-inventory-asrtrenewal-sql-oracle.xml - selectItemInvnList */
+        SELECT '0' AS CHK
+             , #{bfchgickey}     AS BFCHGICKEY   /* 변경 전 상품코드 */
+             , #{afchgickey}     AS AFCHGICKEY   /* 변경 후 상품코드 */
+             , IVLC.CTKEY		/* 센터코드 */
+             , IVLC.OWKEY		/* 화주코드 */
+             , OW.OWNM			/* 화주명 */
+             , LC.ZNKEY			/* 존코드 */
+             , ZN.ZNNM			/* 존명 */
+             , LC.ARKEY			/* 구역코드 */
+             , AR.ARNM			/* 구역명 */
+             , IVLC.LCKEY		/* 로케이션 코드 */
+             , IVLC.IVSERIALNO
+             , IVLC.ICKEY		/* 상품코드 */
+             , IC.ICNM			/* 상품명 */
+             , ICBC.BARCODE		/* 상품바코드 */
+             , IVLC.IVATKEY		/* 재고속성코드 */
+             , IV.TCDCDIVCD		/* TCDC구분코드 */
+             , IV.PRDCTDATE		/* 생산일시 */
+             , IV.EXPDATE		/* 유통기한 */
+             , IV.EXPIMMTDATE	/* 유통기한임박일시 */
+             , IV.OBIMPSDATE	/* 출고불가일시 */
+             , IV.ICTMPRDIVCD	/* 상품온도구분코드 */
+             , IV.IVATSTATUSCD	/* 재고 속성 상태 코드 */
+             , IVLC.TOTQTY		/* 총수량 */
+             , IVLC.AVQTY		/* 가용수량 */
+             , IVLC.ALQTY		/* 할당수량 */
+             , IVLC.HOLDQTY		/* 보류수량 */
+             , ZN.ZNTYPECD
+          FROM TWORK_INFO_IVATXLC IVLC
+         INNER JOIN TWORK_MST_CT CT
+            ON CT.CTKEY = IVLC.CTKEY
+         INNER JOIN TWORK_MST_OW OW
+            ON OW.OWKEY = IVLC.OWKEY
+         INNER JOIN TWORK_MST_IC IC
+            ON IC.CTKEY = IVLC.CTKEY
+           AND IC.OWKEY = IVLC.OWKEY
+           AND IC.ICKEY = IVLC.ICKEY
+         INNER JOIN TWORK_INFO_IVAT IV
+            ON IV.CTKEY = IVLC.CTKEY
+           AND IV.OWKEY = IVLC.OWKEY
+           AND IV.ICKEY = IVLC.ICKEY
+           AND IV.IVATKEY = IVLC.IVATKEY
+         INNER JOIN TWORK_MST_LC LC
+            ON LC.CTKEY = IVLC.CTKEY
+           AND LC.LCKEY = IVLC.LCKEY
+         INNER JOIN TWORK_MST_ZN ZN
+            ON ZN.CTKEY = LC.CTKEY
+           AND ZN.ZNKEY = LC.ZNKEY
+         INNER JOIN TWORK_MST_AR AR
+            ON AR.CTKEY = LC.CTKEY
+           AND AR.ZNKEY = LC.ZNKEY
+           AND AR.ARKEY = LC.ARKEY
+          LEFT JOIN TWORK_MST_ICBARCODE ICBC
+            ON ICBC.CTKEY = IVLC.CTKEY
+           AND ICBC.OWKEY = IVLC.OWKEY
+           AND ICBC.ICKEY = IVLC.ICKEY
+           AND ICBC.UOM = 'EA'
+           AND ICBC.USEYN = 'Y'
+
+        <where>
+            AND IVLC.CTKEY = #{ctkey}
+            AND IVLC.OWKEY = #{owkey}
+            AND IVLC.ICKEY = #{bfchgickey}
+            AND IVLC.LCKEY = #{lckey}
+            AND IVLC.IVATKEY = #{ivatkey}
+            AND IVLC.IVSERIALNO = #{ivserialno}
+            AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+        </where>
+
+    </select>
+
+
+	<select id="selectAsrtRenewalItemPrintList" resultType="camelMap">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - selectAsrtRenewalItemPrintList */
+		WITH T_INVN AS (
+			   SELECT A.CTKEY
+					 , A.OWKEY
+					 , A.ICKEY
+					 , SUM(A.AVQTY) AS AVQTY
+					 , SUM(A.NAVQTY) AS NAVQTY
+					 , A.AVZNYN
+				  FROM (
+						SELECT IVLC.CTKEY
+							 , IVLC.OWKEY
+							 , IVLC.ICKEY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.TOTQTY ELSE 0 END AS AVQTY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.TOTQTY END AS NAVQTY
+							 , CASE ZN.ZNTYPECD WHEN '10' THEN 'Y' ELSE 'N' END AS AVZNYN
+						  FROM TWORK_INFO_IVATXLC IVLC
+						 INNER JOIN TWORK_INFO_IVAT IV
+							ON IV.CTKEY = IVLC.CTKEY
+						   AND IV.OWKEY = IVLC.OWKEY
+						   AND IV.ICKEY = IVLC.ICKEY
+						   AND IV.IVATKEY = IVLC.IVATKEY
+						 INNER JOIN TWORK_MST_LC LC
+							ON LC.CTKEY = IVLC.CTKEY
+						   AND LC.LCKEY = IVLC.LCKEY
+						 INNER JOIN TWORK_MST_ZN ZN
+							ON ZN.CTKEY = IVLC.CTKEY
+						   AND ZN.ZNKEY = LC.ZNKEY
+						 INNER JOIN TWORK_MST_AR AR
+							ON AR.CTKEY = IVLC.CTKEY
+						   AND AR.ZNKEY = LC.ZNKEY
+						   AND AR.ARKEY = LC.ARKEY
+						 WHERE IVLC.TOTQTY > 0
+					 ) A
+				 GROUP BY A.CTKEY
+					 , A.OWKEY
+					 , A.ICKEY
+					 , A.AVZNYN
+			 )
+
+		SELECT '0' AS CHK
+		     , ASTR.CTKEY				/* 센터코드 */
+			 , ASTR.OWKEY				/* 화주코드 */
+			 , ASTR.BFCHGICKEY			/* 변경전 상품코드 */
+			 , BFIC.ICNM AS BFCHGICNM	/* 변경전 상품명 */
+			 , ASTR.AFCHGICKEY			/* 변경후 상품코드 */
+			 , AFIC.ICNM AS AFCHGICNM	/* 변경후 상품명 */
+		     , ICBC.BARCODE				/* 상품바코드 */
+			 , ASTR.IVCNVRSNYN			/* 재고전환 여부 */
+			 , ASTR.LBLPRYN				/* 라벨출력 여부 */
+			 , COALESCE(AVINVN.AVQTY, 0) AS AVQTY	/* 가용재고 */
+			 , COALESCE(NAVINVN.NAVQTY, 0) AS NAVQTY	/* 불용재고 */
+		     , 0 AS PRINTQTY
+		     , AFIC.LCKEY
+		     , LC.RACKNO
+			 , LC.ROWNO
+			 , LC.TIERNO
+			 , ASTR.INSERTDATE			/* 등록일자 */
+			 , ASTR.INSERTURKEY			/* 등록자 */
+			 , ASTR.UPDATEDATE			/* 수정일자 */
+			 , ASTR.UPDATEURKEY			/* 수정자 */
+		  FROM TWORK_INFO_ASRT_RENEW ASTR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = ASTR.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = ASTR.OWKEY
+		 INNER JOIN TWORK_MST_IC BFIC
+			ON BFIC.CTKEY = ASTR.CTKEY
+		   AND BFIC.OWKEY = ASTR.OWKEY
+		   AND BFIC.ICKEY = ASTR.BFCHGICKEY
+		 INNER JOIN TWORK_MST_IC AFIC
+			ON AFIC.CTKEY = ASTR.CTKEY
+		   AND AFIC.OWKEY = ASTR.OWKEY
+		   AND AFIC.ICKEY = ASTR.AFCHGICKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = ASTR.CTKEY
+		   AND ICBC.OWKEY = ASTR.OWKEY
+		   AND ICBC.ICKEY = ASTR.AFCHGICKEY
+		   AND ICBC.UOM = 'EA'
+		   AND ICBC.USEYN = 'Y'
+		  LEFT JOIN T_INVN AVINVN
+			ON AVINVN.CTKEY = ASTR.CTKEY
+		   AND AVINVN.OWKEY = ASTR.OWKEY
+		   AND AVINVN.ICKEY = ASTR.AFCHGICKEY
+		   AND AVINVN.AVZNYN = 'Y'
+		  LEFT JOIN T_INVN NAVINVN
+			ON NAVINVN.CTKEY = ASTR.CTKEY
+		   AND NAVINVN.OWKEY = ASTR.OWKEY
+		   AND NAVINVN.ICKEY = ASTR.AFCHGICKEY
+		   AND NAVINVN.AVZNYN = 'N'
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = AFIC.CTKEY
+		   AND LC.LCKEY = AFIC.LCKEY
+
+		<where>
+			<if test="infoList != null and infoList.size > 0">
+				AND ASTR.CTKEY || ASTR.OWKEY || ASTR.BFCHGICKEY || ASTR.AFCHGICKEY IN
+				<foreach collection="infoList" item="info" separator="," open="(" close=")">
+					#{info.ctkey} || #{info.owkey} || #{info.bfchgickey} || #{info.afchgickey}
+				</foreach>
+			</if>
+		</where>
+
+	</select>
+
+	<update id="saveAsrtRenewalItemPrintYn">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - saveAsrtRenewalItemPrintYn */
+		UPDATE TWORK_INFO_ASRT_RENEW
+		   SET UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		     , LBLPRYN = 'Y'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND BFCHGICKEY = #{bfchgickey}
+		   AND AFCHGICKEY = #{afchgickey}
+	</update>
+
+	<select id="selectTworkInfoIvatCount" resultType="java.lang.Integer">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - selectTworkInfoIvatCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(expdate)">
+				AND EXPDATE = #{expdate}
+			</when>
+			<otherwise>
+				AND EXPDATE IS NULL
+			</otherwise>
+		</choose>
+
+	</select>
+
+	<insert id="insertTworkInfoIvat">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - insertTworkInfoIvat */
+		INSERT INTO TWORK_INFO_IVAT
+		SELECT CTKEY
+			 , OWKEY
+			 , #{ivatkey}
+			 , #{ickey}
+			 , TCDCDIVCD
+			 , PRDCTDATE
+			 , EXPDATE
+			 , EXPIMMTDATE
+			 , OBIMPSDATE
+			 , ICTMPRDIVCD
+			 , IVATSTATUSCD
+			 , IBCNFRMDATE
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IVATKEY = #{dtivatkey}
+	</insert>
+
+    <!-- 아소트 자상품의 재고전환 완료 여부 체크 -->
+    <select id="selectTworkInfoAsrtRenewConvert" resultType="String">
+        /* wms-inventory-asrtrenewal-sql-oracle.xml - selectTworkInfoAsrtRenewConvert */
+        SELECT CASE WHEN COUNT(1) = 0 THEN 'Y'
+                    ELSE 'N'
+               END AS  COMPLETEYN          /* 가용재고 전환 여부 */
+          FROM TWORK_INFO_IVATXLC
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND ICKEY = #{bfchgickey}
+           AND TOTQTY > 0
+    </select>
+
+	<update id="updateTworkInfoAsrtRenewConvert">
+		/* wms-inventory-asrtrenewal-sql-oracle.xml - updateTworkInfoAsrtRenewConvert */
+		UPDATE TWORK_INFO_ASRT_RENEW
+		   SET UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+			 , IVCNVRSNYN = #{completeyn}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND BFCHGICKEY = #{bfchgickey}
+		  AND AFCHGICKEY = #{afchgickey}
+	</update>
+</mapper>

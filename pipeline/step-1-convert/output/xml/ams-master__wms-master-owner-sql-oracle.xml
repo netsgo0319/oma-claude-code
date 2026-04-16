@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.OwnerWmsMapper">
+
+	<insert id="insertTWorkMstOw">
+		/* wms-master-owner-sql-oracle.xml - insertTWorkMstOw */
+		INSERT INTO TWORK_MST_OW	(
+			ZIPCODE
+			,UPDATEURKEY
+			,UPDATEDATE
+			,TEL2
+			,TEL1
+			,STATE
+			,OWNAME
+			,OWKEY
+			,REGNO
+			,BUSINESSTYPE
+			,BUSINESSCATEGORY
+			,INSERTURKEY
+			,INSERTDATE
+			,FAX
+			,COUNTRYCODE
+			,CONTACT
+			,CITY
+			,CEO
+			,ADDRESS2
+			,ADDRESS1
+			,DIMENSION_UOM
+			,WEIGHT_UOM	
+			,UDF1
+			,UDF2
+			,UDF3
+            ,BOXTYPE
+			,LAKEY
+            ,CURRTYP
+            ,BRCDTYP
+            ,DELSTTVRFTYP
+            ,ALWMXDYN
+            ,EMAIL
+            ,WEBURL
+            ,UOMTYP
+            ,LOGGRPCD
+            ,CUSTTYPE
+            ,STTCD
+            ,ADDRID
+            ,CLOSDATE
+		) 
+		VALUES	(
+			#{zipcode}
+			,#{surkey}
+			,#{sysdate}
+			,#{tel2}
+			,#{tel1}
+			,#{state}
+			,#{owname}
+			,#{owkey}
+			,#{regno}
+			,#{businesstype}
+			,#{businesscategory}
+			,#{surkey}
+			,#{sysdate}
+			,#{fax}
+			,#{countrycode}
+			,#{contact}
+			,#{city}
+			,#{ceo}
+			,#{address2}
+			,#{address1}
+			,#{dimension_uom}
+			,#{weight_uom}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{boxtype}
+			,#{lakey}
+            ,#{currtyp}
+            ,#{brcdtyp}
+            ,#{delsttvrftyp}
+            ,#{alwmxdyn}
+            ,#{email}
+            ,#{weburl}
+            ,#{uomtyp}
+            ,#{loggrpcd}
+            ,#{custtype}
+            ,#{sttcd}
+            ,#{addrid}
+            ,#{closdate}
+		)	
+	</insert>	
+	
+	<update id="updateTWorkMstOw">
+		/* wms-master-owner-sql-oracle.xml - updateTWorkMstOw */
+		UPDATE 	TWORK_MST_OW
+		SET	     ZIPCD      		= #{zipcd}
+				,UPDATEURKEY  		= #{surkey}
+				,UPDATEDATE   		= #{sysdate}
+				,TELNO2         		= #{tel2}
+				,TELNO1         		= #{tel1}
+				,STATE        		= #{state}
+				,OWNM       		= #{owname}
+				,REGNO       		= #{regno}
+		        ,BUSINESSTYPE   	= #{businesstype}
+		        ,BUSINESSCATEGORY	= #{businesscategory} 
+				,FAXNO          		= #{fax}
+				,CNTRYCD  		= #{countrycode}
+				,CONTACT      		= #{contact}
+				,CITY         		= #{city}
+				,CEO          		= #{ceo}
+				,ADDR2     		= #{address2}
+				<!-- ,ADDRESS1     		= #{address1} -->
+				,ADDR1     		= #{addr}				
+				,EMAIL				= #{email}
+				,LAKEY				= #{lakey}
+		WHERE	OWKEY = #{owkey} 
+	</update>
+
+	<delete id="deleteTWorkMstOw">
+		/* wms-master-owner-sql-oracle.xml - deleteTWorkMstOw */
+		UPDATE  TWORK_MST_OW
+		SET     CLOSDATE		= #{updatedate , typeHandler=GmtDateTimeTypeHandler }
+		WHERE	OWKEY = #{owkey} 
+	</delete>	
+	 
+</mapper>	

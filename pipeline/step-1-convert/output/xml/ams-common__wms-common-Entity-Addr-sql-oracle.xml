@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.common.mapper.CommonAddrEntityWmsMapper">
+
+	<insert id="addAddressEntitymaster">
+		<![CDATA[
+		INSERT INTO TWORK_MST_ADDR_T (
+			  ADDRID
+			, ADDNT
+			, UNIT
+			, STNM
+			, CTYNM
+			, ZIPCD
+			, CNTRYCD
+			, STACD
+			, SHPGLOCNM
+			, LAT
+			, LON
+			, ADDRSTTCD
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) 
+		VALUES (
+			  #{addrid}
+			, #{addnt}
+			, #{unit}
+			, #{stnm}
+			, #{ctynm}
+			, #{zipcd}
+			, #{cntrycd}
+			, #{stacd}
+			, #{shpglocnm}
+			, #{lat}
+			, #{lon}
+			, #{addrsttcd}
+			, 'N'
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		]]>
+	</insert>
+
+	<update id="changeAddressEntitymaster">
+		UPDATE TWORK_MST_ADDR_T
+		SET UPDATEDATE = #{sysdate}
+		  ,     DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(addnt)">
+			, ADDNT = #{addnt}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(unit)">
+			, UNIT = #{unit}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(stnm)">
+			, STNM = #{stnm}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctynm)">
+			, CTYNM = #{ctynm}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(zipcd)">
+			, ZIPCD = #{zipcd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cntrycd)">
+			, CNTRYCD = #{cntrycd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(stacd)">
+			, STACD = #{stacd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(shpglocnm)">
+			, SHPGLOCNM = #{shpglocnm}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lat)">
+			, LAT = #{lat}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lon)">
+			, LON = #{lon}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(addrsttcd)">
+			, ADDRSTTCD = #{addrsttcd}
+		</if>
+		, UPDATEURKEY = #{surkey}
+		WHERE ADDRID = #{addrid}
+	</update>
+
+	<update id="deleteAddressEntitymaster">
+		<![CDATA[
+	    UPDATE    TWORK_MST_ADDR_T
+		SET       DELYN      = 'Y'
+		        , UPDATEDATE     = #{sysdate}
+				, UPDATEURKEY     = #{surkey}
+		WHERE     ADDRID     = #{addrid}
+		]]>
+	</update>
+
+</mapper>	

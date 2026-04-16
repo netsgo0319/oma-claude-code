@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.LocationApiMapper">
+	<insert id="insertIntfTableLocMst">
+		/* oms-master-locationBatch-sql-oracle.xml - insertIntfTableLcMst */
+		INSERT INTO TORDER_INTF_WMS_LC (
+		     CTKEY
+           , ZNKEY
+           , ZNNM
+           , ARKEY
+           , ARNM
+           , LCKEY
+           , CBMSTARTRNG
+           , CBMCLOSRNG
+           , ANSUNGB2BPOCTG
+           , NAMSAB2BPOCTG
+           , BUSANB2BPOCTG
+           , SEJONGB2BPOCTG
+           , USEYN
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{ctkey}
+           , #{znkey}
+           , #{znnm}
+           , #{arkey}
+           , #{arnm}
+           , #{lckey}
+           , #{cbmstartrng}
+           , #{cbmclosrng}
+           , #{ansungb2bpoctg}
+           , #{namsab2bpoctg}
+           , #{busanb2bpoctg}
+           , #{sejongb2bpoctg}
+           , #{useyn}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeLocation"><![CDATA[
+		/* oms-master-locationBatch-sql-oracle.xml - mergeLocation */
+		INSERT INTO TORDER_MST_LC (
+			  CTKEY
+			, ZNKEY
+			, ZNNM
+			, ARKEY
+			, ARNM
+			, LCKEY
+			, CBMSTARTRNG
+			, CBMCLOSRNG
+			, ANSUNGB2BPOCTG
+			, NAMSAB2BPOCTG
+			, BUSANB2BPOCTG
+			, SEJONGB2BPOCTG
+			, USEYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT DISTINCT
+			  CTKEY
+			, ZNKEY
+			, ZNNM
+			, ARKEY
+			, ARNM
+			, LCKEY
+			, CBMSTARTRNG
+			, CBMCLOSRNG
+			, ANSUNGB2BPOCTG
+			, NAMSAB2BPOCTG
+			, BUSANB2BPOCTG
+			, SEJONGB2BPOCTG
+			, USEYN
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		FROM TORDER_INTF_WMS_LC
+		WHERE IFID = #{interfaceId}
+		ON CONFLICT (CTKEY, ZNKEY, ARKEY, LCKEY)
+		DO UPDATE SET
+			  ZNNM           = EXCLUDED.ZNNM
+			, ARNM           = EXCLUDED.ARNM
+			, CBMSTARTRNG    = EXCLUDED.CBMSTARTRNG
+			, CBMCLOSRNG     = EXCLUDED.CBMCLOSRNG
+			, ANSUNGB2BPOCTG = EXCLUDED.ANSUNGB2BPOCTG
+			, NAMSAB2BPOCTG  = EXCLUDED.NAMSAB2BPOCTG
+			, BUSANB2BPOCTG  = EXCLUDED.BUSANB2BPOCTG
+			, SEJONGB2BPOCTG = EXCLUDED.SEJONGB2BPOCTG
+			, UPDATEURKEY    = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE     = EXCLUDED.UPDATEDATE
+	]]></insert>
+
+</mapper>

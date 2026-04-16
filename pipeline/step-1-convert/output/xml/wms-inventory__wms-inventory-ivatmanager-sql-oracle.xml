@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.IvatManagerMapper">
+
+	<select id="selectIvatInfoMap" resultType="camelMap">
+		/* wms-inventory-ivatmanager-sql-oracle.xml - selectIvatInfoMap - 재고 속성 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		   AND ICKEY = #{ickey}
+		   AND (EXPDATE = #{expdate} OR (EXPDATE IS NULL AND #{expdate} IS NULL))
+		   AND (PRDCTDATE = #{prdctdate} OR (PRDCTDATE IS NULL AND #{prdctdate} IS NULL))
+	</select>
+
+</mapper>

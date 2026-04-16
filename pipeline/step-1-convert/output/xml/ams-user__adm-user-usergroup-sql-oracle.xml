@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.user.mapper.UserGroupMapper">
+	
+	<select id="selectUserGroupInfoList" resultType="camelMap" >
+		/* adm-user-usergroup-sql-oracle.xml - selectUserGroupInfoList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT '0' AS CHK
+				 , URGRKEY
+				 , URGRNM
+			     , WRITEPERMIT
+				 , INSERTDATE
+				 , UPDATEDATE
+				 , INSERTURKEY
+				 , UPDATEURKEY
+			  FROM TADMIN_MST_URGR
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   #{SEARCH_CONDITION}
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	
+	<select id="selectUserGroupInfo" resultType="camelMap" >
+		/* adm-user-usergroup-sql-oracle.xml - selectUserGroupInfo */
+			SELECT URGRKEY
+			     , URGRNM
+			     , WRITEPERMIT
+			     , INSERTDATE
+	   		  	 , UPDATEDATE
+	   		  	 , INSERTURKEY
+ 				 , UPDATEURKEY
+			  FROM TADMIN_MST_URGR	
+	    	 WHERE URGRKEY = #{urgrkey}
+	</select>
+	
+	<select id="selectUserGroupCount" resultType="java.lang.Integer" >
+		/* adm-user-usergroup-sql-oracle.xml - selectUserGroupCount */
+		SELECT count(1)
+		FROM TADMIN_MST_URGR
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+
+	<select id="selectUserGroupCheck" resultType="java.lang.Integer" >
+		/* adm-user-usergroup-sql-oracle.xml - selectUserGroupCheck */
+		SELECT count(1)
+		FROM TADMIN_MST_URGR
+		WHERE URGRKEY = #{urgrkey}
+	</select>
+
+	<insert id="insertUserGroupInfo">
+		/* adm-user-usergroup-sql-oracle.xml - insertUserGroupInfo */
+		INSERT INTO TADMIN_MST_URGR
+		(
+		      URGRKEY
+		    , URGRNM
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(writepermit)">
+				, WRITEPERMIT
+			</if>
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{urgrkey}
+		    ,#{urgrnm}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(writepermit)">
+				, #{writepermit}
+			</if>
+   			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	
+	<update id="updateUserGroupInfo">
+		/* adm-user-usergroup-sql-oracle.xml - updateUserGroupInfo */
+		UPDATE TADMIN_MST_URGR
+		   SET URGRNM = #{urgrnm}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(writepermit)">
+				, WRITEPERMIT = #{writepermit}
+			</if>
+		  	 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE URGRKEY  = #{urgrkey}
+	</update>
+			
+	
+	<delete id="deleteUserGroupInfo">
+		/* adm-user-usergroup-sql-oracle.xml - deleteUserGroupInfo */
+		DELETE FROM TADMIN_MST_URGR
+		 WHERE URGRKEY  = #{urgrkey}
+	</delete>
+		
+	
+</mapper>

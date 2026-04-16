@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.DayAvgObQtySetMapper">
+
+    <delete id="deleteTodayDayAvgObQtyInfo">
+        /* DayAvgObQtySetMapper.xml - deleteTodayDayAvgObQtyInfo */
+        DELETE
+          FROM TWORK_INFO_DAY_AVG_OBQTY
+         WHERE CTKEY = '09'
+           AND OWKEY = 'DAISO'
+           AND CRITDAY = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+    </delete>
+
+    <insert id="insertDayAvgObQtyInfo">
+		/* DayAvgObQtySetMapper.xml - insertDayAvgObQtyInfo */
+		INSERT INTO TWORK_INFO_DAY_AVG_OBQTY
+        SELECT T.CTKEY
+             , T.OWKEY
+             , T.ICKEY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS CRITDAY
+             , T.OBSTARTDAY
+             , MAX(T.OBCNFRMDATE) AS OBCLOSDAY
+             , SUM(T.CNFRMQTY) AS OBQTY
+             , AVG(T.CNFRMQTY) AS DAYAVGOBQTY
+             , AVG(T.CNFRMQTY) * T.AVDAYS AS AVGOBQTY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS INSERTDATE
+             , 'BATCH' AS INSERTURKEY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS UPDATEDATE
+             , 'BATCH' AS UPDATEURKEY
+          FROM (
+                SELECT OD.CTKEY
+                     , OD.OWKEY
+                     , OD.ICKEY
+                     , SUBSTR(OD.OBCNFRMDATE, 0, 8) AS OBCNFRMDATE
+                     , SUM(OD.CNFRMQTY) AS CNFRMQTY		/* 일별 확정수량 */
+                     , AVG.AVDAYS
+                     , CASE WHEN AVG.OBQTYCALCRITCD = '10' THEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '1 days', 'YYYYMMDD')					/* 일 기준 */
+                            WHEN AVG.OBQTYCALCRITCD = '20' THEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '7 days', 'YYYYMMDD')					/* 주 기준 */
+                            WHEN AVG.OBQTYCALCRITCD = '30' THEN TO_CHAR((CURRENT_TIMESTAMP + (-1) * INTERVAL '1 month'), 'YYYYMMDD')	/* 월 기준 */
+                            WHEN AVG.OBQTYCALCRITCD = '40' THEN TO_CHAR(CURRENT_TIMESTAMP-AVG.CRITDAYS, 'YYYYMMDD')		/* 수기입력 */
+                            END AS OBSTARTDAY
+                  FROM TWORK_INFO_OB_HD OH
+                  JOIN TWORK_INFO_OB_DT OD
+                    ON OD.CTKEY = OH.CTKEY
+                   AND OD.OWKEY = OH.OWKEY
+                   AND OD.OBHDKEY = OH.OBHDKEY
+                  JOIN TWORK_MST_CT CT
+                    ON CT.CTKEY = OH.CTKEY
+                  JOIN TWORK_MST_OW OW
+                    ON OW.OWKEY = OH.OWKEY
+                  JOIN TWORK_MST_IC IC
+                    ON IC.CTKEY = OH.CTKEY
+                   AND IC.OWKEY = OH.OWKEY
+                   AND IC.ICKEY = OD.ICKEY
+                  JOIN TWORK_MST_DAY_AVG_OBQTY AVG
+                    ON AVG.CTKEY = OH.CTKEY
+                 WHERE OH.CTKEY = '09'
+                   AND OH.OWKEY = 'DAISO'
+                   AND OH.OBSTATUSCD IN ('65','70')		/* 65:부분출고, 70:출고완료 */
+                   AND OD.OBDTSTATUSCD IN ('65','70')	/* 65:부분출고, 70:출고완료 */
+                   AND SUBSTR(OH.OBCNFRMDATE, 1, 8) BETWEEN CASE WHEN AVG.OBQTYCALCRITCD = '10' THEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '1 days', 'YYYYMMDD')					/* 일 기준 */
+                                                                 WHEN AVG.OBQTYCALCRITCD = '20' THEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '7 days', 'YYYYMMDD')					/* 주 기준 */
+                                                                 WHEN AVG.OBQTYCALCRITCD = '30' THEN TO_CHAR((CURRENT_TIMESTAMP + (-1) * INTERVAL '1 month'), 'YYYYMMDD')	/* 월 기준 */
+                                                                 WHEN AVG.OBQTYCALCRITCD = '40' THEN TO_CHAR(CURRENT_TIMESTAMP-AVG.CRITDAYS, 'YYYYMMDD')		/* 수기입력 */
+                                                            END
+                                                        AND TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '1 days', 'YYYYMMDD')
+                 GROUP BY OD.CTKEY
+                     , OD.OWKEY
+                     , OD.ICKEY
+                     , SUBSTR(OD.OBCNFRMDATE, 0, 8)
+                     , AVG.AVDAYS
+                     , AVG.CRITDAYS
+                     , AVG.OBQTYCALCRITCD
+             ) T
+         GROUP BY T.CTKEY
+             , T.OWKEY
+             , T.ICKEY
+             , T.OBSTARTDAY
+             , T.AVDAYS
+    </insert>
+</mapper>

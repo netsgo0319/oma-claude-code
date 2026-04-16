@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.ItemManagerMapper">
+
+	<select id="selectItemUnitType" parameterType="itemUnitVO" resultType="itemUnitVO">
+		<![CDATA[	
+		SELECT CTKEY, OWKEY
+				,ICUTKEY
+				,ICUTORDER
+		        ,ICUTTYPE 
+		        ,ICUTQTY  
+		  FROM TWORK_MST_ICUTXTYPE 
+		 WHERE CTKEY = #{ctkey}
+		 	AND OWKEY = #{owkey}
+			AND ICUTKEY = #{icutkey}
+			AND ICUTTYPE = #{icuttype}
+		]]>
+	</select>
+		
+	<select id="selectItemMasterByPk" parameterType="itemVO" resultType="itemVO">
+		SELECT IC.CTKEY             
+			 , IC.OWKEY             
+			 , IC.ICKEY             
+			 , IC.ICNAME            
+			 , IC.ICGRKEY           
+			 , IC.ICGRTYPE          
+			 , IC.ICUTKEY           
+			 , IC.UOM               
+			 , IC.WIDTH             
+			 , IC.LENGTH            
+			 , IC.HEIGHT            
+			 , IC.WEIGHT            
+			 , IC.VOLUME            
+			 , IC.BRANDCODE         
+			 , IC.ICST_HDKEY        
+			 , IC.TO_LCKEY          
+			 , IC.TO_ARKEY          
+			 , IC.ABC               
+			 , IC.SAFE_INVQTY       
+			 , IC.CLOSDATE
+			 , IC.SHELFLIFEINDICATOR
+			 , IC.SHELFLIFE     
+			 , IC.SHELFDAY    
+			 , IC.SHELFLIFECODETYPE
+			 , IC.UDF1              
+			 , IC.UDF2              
+			 , IC.UDF3              
+			 , IC.UDF4              
+			 , IC.UDF5              
+			 , IC.COSTPRICE         
+			 , IC.SALEPRICE         
+			 , IC.LOGGRPCD
+			 , IC.CTGKEY
+			 , COALESCE(IC.WRHOUS_SE, CTG3.WRHOUS_SE) AS WRHOUS_SE
+			 , COALESCE(IC.BOL_WRHOUS_SE, CTG3.BOL_WRHOUS_SE) AS BOL_WRHOUS_SE
+			 , IC.INSERTDATE        
+			 , IC.INSERTURKEY       
+			 , IC.UPDATEDATE        
+			 , IC.UPDATEURKEY  
+		  FROM TWORK_MST_IC IC
+		     , TWORK_MST_CTG CTG1
+		     , TWORK_MST_CTG CTG2
+		     , TWORK_MST_CTG CTG3
+		 WHERE IC.CTKEY = CTG1.CTKEY
+           AND IC.OWKEY = CTG1.OWKEY
+           AND IC.CTGKEY = CTG1.CTGKEY
+           AND CTG1.CTGLEVEL = '3'
+           AND CTG1.CTKEY = CTG2.CTKEY
+           AND CTG1.OWKEY = CTG2.OWKEY
+           AND CTG1.UPPERCTGKEY = CTG2.CTGKEY
+           AND CTG2.CTGLEVEL = '2'
+           AND CTG2.CTKEY = CTG3.CTKEY
+           AND CTG2.OWKEY = CTG3.OWKEY
+           AND CTG2.UPPERCTGKEY = CTG3.CTGKEY
+           AND CTG3.CTGLEVEL = '1'
+		   AND IC.CTKEY = #{ctkey}
+		   AND IC.OWKEY = #{owkey} 		   
+		   AND IC.ICKEY = #{ickey}
+	</select>
+		
+</mapper>	

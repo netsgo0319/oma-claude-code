@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.IcxctxacMapper">
+	<select id="selectIcxctxacCount" resultType="java.lang.Integer" >
+		/* adm-master-icxctxac-sql-oracle.xml - selectIcxctxacCount */
+		      SELECT COUNT(1)
+			   FROM (
+					   SELECT X.*
+					   		, Y.ICUNITQTY AS POICUTQTY
+					   		, (X.SMPOMLP * Y.ICUNITQTY) AS SMPOQTY
+						 FROM
+						 	 (
+		  						  SELECT A.OWKEY
+										,A.ICKEY
+										,IC.ICNM
+										,IC.ICUNITKEY
+										,A.DELYN
+										,A.CTKEY
+										,CT.CTNM
+										,A.ACKEY
+										,AC.ACNM
+										,A.CP
+										,A.IBPTKEY
+										,IT.OBPTKEY
+										,CASE WHEN A.PODDLNTIME IS NULL THEN NULL ELSE SUBSTR(A.PODDLNTIME, 1, 2) || ':' || SUBSTR(A.PODDLNTIME, 3, 2) END AS POCLOSDATE
+										,A.POICUTTYPE
+										,A.SMPOMLP
+										,A.POHDTYPE
+										,A.CTPOYN
+										,A.POSTOPYN
+										,CASE WHEN A.IBTM IS NULL THEN NULL ELSE SUBSTR(A.IBTM, 1, 2) || ':' || SUBSTR(A.IBTM, 3, 2) END AS IBTIME
+										,A.INSERTDATE
+										,A.UPDATEDATE
+										, A.INSERTURKEY
+ 										, A.UPDATEURKEY
+										,IC.ORDQTY
+										,A.SCMCK
+										,A.SCMURKEY
+										,IT.STCAPPLYGRADETYPE
+										,IT.STCAPPLYGRADENM
+								   FROM TADMIN_MST_CTXACXIC A
+								   INNER JOIN TADMIN_MST_IC IC
+								       	   ON A.OWKEY = IC.OWKEY
+										  AND A.ICKEY = IC.ICKEY
+								   INNER JOIN TADMIN_MST_CT CT
+								       	   ON A.CTKEY = CT.CTKEY
+								   INNER JOIN TADMIN_MST_AC AC
+								       	   ON A.ACKEY = AC.ACKEY
+										  AND A.OWKEY = AC.OWKEY
+								   INNER JOIN TADMIN_MST_ICXCT IT
+								   		   ON A.OWKEY = IT.OWKEY
+										  AND A.ICKEY = IT.ICKEY
+										  AND A.CTKEY = IT.CTKEY
+							  ) X
+						  LEFT OUTER JOIN TADMIN_MST_ICUTXTYPE Y
+						 			   ON X.POICUTTYPE = Y.ICUNITTYPE
+									  AND X.ICUNITKEY = Y.ICUNITKEY
+									  AND X.OWKEY = Y.OWKEY
+	   					) AA
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					WHERE #{SEARCH_CONDITION}
+				</if>
+	</select>
+	
+	<select id="selectIcxctxac" resultType="camelMap">
+		/* adm-master-icxctxac-sql-oracle.xml - selectIcxctxac */
+	/* 센터거래처상품 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			 SELECT AA.*
+			   FROM (
+					   SELECT X.*
+					   		, Y.ICUNITQTY AS POICUTQTY
+					   		, (X.SMPOMLP * Y.ICUNITQTY) AS SMPOQTY
+						 FROM
+						 	 (
+		  						  SELECT '0' AS CHK
+		  						      	,A.OWKEY
+		  						  		,OW.OWNM
+										,A.ICKEY
+										,IC.ICNM
+										,IC.ICUNITKEY
+										,A.DELYN
+										,A.CTKEY
+										,CT.CTNM
+										,A.ACKEY
+										,AC.ACNM
+										,A.ASNAUTOYN
+										,A.CP
+										,A.IBPTKEY
+										,IT.OBPTKEY
+										,CASE WHEN A.PODDLNTIME IS NULL THEN NULL ELSE SUBSTR(A.PODDLNTIME, 1, 2) || ':' || SUBSTR(A.PODDLNTIME, 3, 2) END AS POCLOSDATE
+										,A.POICUTTYPE
+										,A.SMPOMLP
+										,A.POHDTYPE
+										,A.CTPOYN
+										,A.POSTOPYN
+										,CASE WHEN A.IBTM IS NULL THEN NULL ELSE SUBSTR(A.IBTM, 1, 2) || ':' || SUBSTR(A.IBTM, 3, 2) END AS IBTM
+										,A.INSERTDATE
+										,A.UPDATEDATE
+										, A.INSERTURKEY
+ 										, A.UPDATEURKEY
+										,IC.ORDQTY
+										,A.SCMCK
+										,A.SCMURKEY
+										,IT.STCAPPLYGRADETYPE
+										,IT.STCAPPLYGRADENM
+										,IT.ORDTYPE
+										,IT.NEWYN
+										,IC.UOM
+										,IC.SPEC
+										,IC.UDF3
+								   FROM TADMIN_MST_CTXACXIC A
+								   INNER JOIN TADMIN_MST_IC IC
+								       	   ON A.OWKEY = IC.OWKEY
+										  AND A.ICKEY = IC.ICKEY
+								   INNER JOIN TADMIN_MST_CT CT
+								       	   ON A.CTKEY = CT.CTKEY
+								   INNER JOIN TADMIN_MST_AC AC
+								       	   ON A.ACKEY = AC.ACKEY
+										  AND A.OWKEY = AC.OWKEY
+								   INNER JOIN TADMIN_MST_ICXCT IT
+								       	   ON A.OWKEY = IT.OWKEY
+										  AND A.ICKEY = IT.ICKEY
+										  AND A.CTKEY = IT.CTKEY
+								   INNER JOIN TADMIN_MST_OW OW
+								   		   ON A.OWKEY = OW.OWKEY
+								  WHERE IC.DELYN = 'N'
+							  ) X
+						  LEFT OUTER JOIN TADMIN_MST_ICUTXTYPE Y
+						 			   ON X.POICUTTYPE = Y.ICUNITTYPE
+									  AND X.ICUNITKEY = Y.ICUNITKEY
+									  AND X.OWKEY = Y.OWKEY
+	   					) AA
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					WHERE #{SEARCH_CONDITION}
+				</if>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY UPDATEDATE DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+
+	<update id="updateTAdminMstIcxctxac">
+		/* adm-master-icxctxac-sql-oracle.xml - updateTAdminMstIcxctxac */
+		UPDATE 	TADMIN_MST_CTXACXIC
+		   SET	 CP 		  	  	  = #{cp}
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE	OWKEY = #{owkey}
+		AND     CTKEY = #{ctkey}
+		AND     ACKEY = #{ackey}
+		AND     ICKEY = #{ickey}
+	</update>
+	
+	<update id="updateTAdminMstIcxctxacAll">
+		/* adm-master-icxctxac-sql-oracle.xml - updateTAdminMstIcxctxacAll */
+		UPDATE 	TADMIN_MST_CTXACXIC
+		   SET	 
+				 UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		   <if test="chk_ibptkey != null and chk_ibptkey.equalsIgnoreCase('true')">
+		        ,IBPTKEY 		  	  = #{ibptkey}
+		   </if>
+		   <if test="chk_poclosdate != null and chk_poclosdate.equalsIgnoreCase('true')">
+		        ,PODDLNTIME 		  = #{poclosdate}
+		   </if>
+		   <if test="chk_ibtime != null and chk_ibtime.equalsIgnoreCase('true')">
+		        <!--,IBTIME 			  =  DECODE(#{ibtime} , NULL, NULL,  SUBSTR(#{ibtime}, 9, 14)) -->
+		        ,IBTM 			  =  #{ibtm}
+		   </if>
+		   <if test="chk_pohdtype != null and chk_pohdtype.equalsIgnoreCase('true')">
+		        ,POHDTYPE 			  = #{pohdtype}
+		   </if>		   
+		   <if test="chk_poicuttype != null and chk_poicuttype.equalsIgnoreCase('true')">
+		        ,POICUTTYPE 		  = #{poicuttype}
+		   </if>
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</update>	
+	
+	<delete id="deleteTAdminMstIcxctxac">
+		/* adm-master-icxctxac-sql-oracle.xml - deleteTAdminMstIcxctxac */
+		UPDATE 	TADMIN_MST_CTXACXIC
+		   SET	DELYN = 'Y'
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE	OWKEY = #{owkey}
+		AND     CTKEY = #{ctkey}
+		AND     ACKEY = #{ackey}
+		AND     ICKEY = #{ickey}
+	</delete>
+	
+	<select id="selectPkIcxctxac" resultType="camelMap">
+		/* adm-master-icxctxac-sql-oracle.xml - selectPkIcxctxac */
+		SELECT X.*, Y.ICUNITQTY AS POICUTQTY, (X.SMPOMLP * Y.ICUNITQTY) AS SMPOQTY
+		FROM(
+			SELECT	 A.OWKEY
+					,A.ICKEY
+					,IC.ICNM
+					,IC.ICUNITKEY
+					,A.CTKEY
+					,CT.CTNM
+					,A.ACKEY
+					,AC.ACNM
+					,A.CP
+					,A.IBPTKEY
+					,IT.OBPTKEY
+					,A.PODDLNTIME AS POCLOSDATE
+					,A.POICUTTYPE
+					,'POICUTTYPE' ||';'|| A.POICUTTYPE AS POICUTTYPE_DESC
+					,A.SMPOMLP
+					,A.POHDTYPE
+					,'POHDTYPE' ||';'|| A.POHDTYPE AS POHDTYPE_DESC
+					,A.CTPOYN
+					,'YESORNO' ||';'|| A.CTPOYN AS CTPOYN_DESC
+					,A.POSTOPYN
+					,'YESORNO' ||';'|| A.POSTOPYN AS POSTOPYN_DESC
+					,A.IBTM
+					,A.INSERTDATE
+					,A.INSERTURKEY
+					,A.UPDATEDATE
+					,A.UPDATEURKEY
+					,A.SCMCK
+					,'YESORNO' ||';'|| A.SCMCK AS SCMCHECK_DESC
+					,A.SCMURKEY
+					,IC.UOM
+			FROM 	TADMIN_MST_CTXACXIC A
+			INNER JOIN TADMIN_MST_IC IC
+			    	ON A.OWKEY = IC.OWKEY
+			  	   AND A.ICKEY = IC.ICKEY
+			INNER JOIN TADMIN_MST_CT CT
+			    	ON A.CTKEY = CT.CTKEY
+			INNER JOIN TADMIN_MST_AC AC
+			    	ON A.ACKEY = AC.ACKEY
+				   AND A.OWKEY = AC.OWKEY
+			INNER JOIN TADMIN_MST_ICXCT IT
+					ON A.OWKEY = IT.OWKEY
+				   AND A.ICKEY = IT.ICKEY
+				   AND A.CTKEY = IT.CTKEY
+			) X
+			INNER JOIN TADMIN_MST_ICUTXTYPE Y
+					ON X.UOM = Y.ICUNITTYPE
+				   AND X.ICUNITKEY = Y.ICUNITKEY
+				   AND X.OWKEY = Y.OWKEY
+		WHERE	X.OWKEY = #{owkey}
+		AND     X.CTKEY = #{ctkey}
+		AND     X.ACKEY = #{ackey}
+		AND     X.ICKEY = #{ickey}
+	</select>
+</mapper>	

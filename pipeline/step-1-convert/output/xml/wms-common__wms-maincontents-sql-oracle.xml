@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.common.mapper.MainContentsMapper">
+	<select id="selectReleaseCnt" resultType="java.lang.Integer">
+		/* wms-maincontents-sql-oracle.xml - selectReleaseCnt */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY  = #{sctkey}
+		   AND OWKEY  = #{sowkey}
+		   AND OBHDDAY BETWEEN #{startDate} AND #{endDate}
+		   AND OBHDTYPECD IN ('10','20') /* OBHDTYPECD(출고유형) */
+	</select>
+
+	<select id="selectTotObBox" resultType="java.lang.Integer">
+		/* wms-maincontents-sql-oracle.xml - selectTotObBox */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY  = #{sctkey}
+		   AND OWKEY  = #{sowkey}
+		   AND OBHDDAY BETWEEN #{startDate} AND #{endDate}
+		   AND OBHDTYPECD IN ('10','20') /* OBHDTYPECD(출고유형) */
+		   AND OBSTATUSCD IN ('65','70') /* OBSTATUSCD(출고상태) */
+		   AND PCKGBOXBARCODE IS NOT NULL
+	</select>
+
+	<select id="selectProcessRating" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectProcessRating */
+		SELECT AA.OB_CNT_00
+			,  COALESCE(ROUND(OB_CNT_00 / NULLIF(TOT_CNT, 0) * 100, 2), 0) AS OB_CNT_00_RATIO
+			,  AA.OB_CNT_ING
+			,  COALESCE(ROUND(OB_CNT_ING / NULLIF(TOT_CNT, 0) * 100, 2), 0) AS OB_CNT_ING_RATIO
+			,  AA.OB_CNT_CNFRM
+			,  COALESCE(ROUND(OB_CNT_CNFRM / NULLIF(TOT_CNT, 0) * 100, 2), 0) AS OB_CNT_CNFRM_RATIO
+		FROM (
+		SELECT COALESCE(OB_CNT_00, 0) AS OB_CNT_00
+			 , COALESCE(OB_CNT_ING, 0) AS OB_CNT_ING
+			 , COALESCE(OB_CNT_CNFRM, 0) AS OB_CNT_CNFRM
+			 , COALESCE((OB_CNT_00 + OB_CNT_ING + OB_CNT_CNFRM), 0) AS TOT_CNT
+		  FROM (
+				SELECT SUM(CASE WHEN OBSTATUSCD IN ('00') THEN 1 ELSE 0 END) AS OB_CNT_00
+					 , SUM(CASE WHEN OBSTATUSCD IN ('05','10','20','25','30','40','50','80','85') THEN 1 ELSE 0 END) AS OB_CNT_ING
+					 , SUM(CASE WHEN OBSTATUSCD IN ('60','65','70') THEN 1 ELSE 0 END) AS OB_CNT_CNFRM
+				  FROM TWORK_INFO_OB_HD
+				 WHERE CTKEY = #{sctkey}
+				   AND OWKEY = #{sowkey}
+				   AND OBHDDAY BETWEEN #{startDate} AND #{endDate}
+				   AND OBHDTYPECD IN ('10','20')/* OBHDTYPECD(출고유형) */
+			) A
+		) AA
+	</select>
+
+	<select id="selectNisList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectNisList */
+		SELECT
+			/* 전체 출고 기준 */
+			COALESCE(A.OB_CNT, 0) 		AS OB_CNT          -- 총 출고건수
+		  , COALESCE(A.OD_CNT, 0) 		AS OD_CNT          -- 출고 상세건수
+		  , COALESCE(A.OD_EXPCTQTY, 0)   AS OD_EXPCTQTY     -- 출고 예정수량
+			/* 결품 기준 */
+		  , COALESCE(B.OB_CNT_NIS, 0) 	AS OB_CNT_NIS      -- 결품건수
+		  , COALESCE(ROUND(B.OB_CNT_NIS / NULLIF(A.OB_CNT, 0) * 100, 1), 0) AS OB_CNT_NIS_RATIO -- 결품률(%)
+		  , COALESCE(B.NISQTY, 0) 		AS  NISQTY         -- 결품수량
+		  , COALESCE(ROUND(B.NISQTY / NULLIF(A.OD_EXPCTQTY, 0) * 100, 1), 0) AS NISQTY_RATIO    -- 결품수량률(%)
+		FROM
+		(
+			/* 전체 출고 집계 */
+			SELECT COUNT(DISTINCT OH.OBHDKEY) AS OB_CNT
+				 , COUNT(OD.OBDTKEY) AS OD_CNT
+				 , SUM(OD.EXPCTQTY) AS OD_EXPCTQTY
+			FROM TWORK_INFO_OB_HD OH
+			LEFT JOIN TWORK_INFO_OB_DT OD
+			 	   ON OH.CTKEY = OD.CTKEY
+			 	  AND OH.OWKEY = OD.OWKEY
+			 	  AND OH.OBHDKEY = OD.OBHDKEY
+			WHERE OH.CTKEY = #{sctkey}
+			  AND OH.OWKEY = #{sowkey}
+			  AND OBHDDAY BETWEEN #{startDate} AND #{endDate}
+			  AND OH.OBHDTYPECD IN ('10','20') /* OBHDTYPECD(출고유형) */
+		) A
+		CROSS JOIN
+		(
+			/* 결품 집계 */
+			SELECT COUNT(DISTINCT NIS.OBHDKEY) AS OB_CNT_NIS
+				 , SUM(CASE WHEN COALESCE(NID.NISQTY, 0) > 0 THEN NID.NISQTY ELSE 0 END) AS NISQTY
+			FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_NIS_HD NIS
+			  		ON OH.CTKEY = NIS.CTKEY
+			 	   AND OH.OWKEY = NIS.OWKEY
+			 	   AND OH.OBHDKEY = NIS.OBHDKEY
+			INNER JOIN TWORK_INFO_OB_NIS_DT NID
+			  		ON NIS.CTKEY = NID.CTKEY
+			 	   AND NIS.OWKEY = NID.OWKEY
+			 	   AND NIS.OBHDKEY = NID.OBHDKEY
+			WHERE OH.CTKEY = #{sctkey}
+			  AND OH.OWKEY = #{sowkey}
+			  AND OBHDDAY BETWEEN #{startDate} AND #{endDate}
+			  AND OH.OBHDTYPECD IN ('10','20') /* OBHDTYPECD(출고유형) */
+		) B
+	</select>
+
+	<select id="selectWorkByRatioList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectWorkByRatioList */
+		SELECT WKTYPECD
+			 , CTCDDTNM AS WKTYPENM
+			 , TOT_CNT
+			 , COALESCE(ROUND(COMPLETED_CNT / NULLIF(TOT_CNT, 0) * 100, 0), 0) AS COMPLETION_RATE -- 출고 완료율(%)
+			 , IN_PROGRESS_CNT
+			 , COALESCE(ROUND((TOT_CNT) / NULLIF(WORK_TOT_CNT, 0) * 100, 0), 0) AS WORK_RATIO
+		  FROM (
+			SELECT CTKEY
+				 , WKTYPECD
+				 , OB_CNT_00              AS IN_PROGRESS_CNT   -- 진행중 작업
+				 , OB_CNT_CNFRM           AS COMPLETED_CNT     -- 출고완료
+				 , COALESCE(ROUND(OB_CNT_CNFRM / NULLIF(OB_CNT_00 + OB_CNT_CNFRM, 0) * 100, 2), 0) AS COMPLETION_RATE -- 출고 완료율(%)
+				 , SUM(OB_CNT_00 + OB_CNT_CNFRM) OVER() AS WORK_TOT_CNT
+				 , OB_CNT_00 + OB_CNT_CNFRM AS TOT_CNT
+			FROM (
+					SELECT OH.CTKEY
+						 , OH.WKTYPECD
+						 , SUM(CASE WHEN OH.OBSTATUSCD IN ('60','65','70') THEN 0 ELSE 1 END) AS OB_CNT_00
+						 , SUM(CASE WHEN OH.OBSTATUSCD IN ('60','65','70') THEN 1 ELSE 0 END) AS OB_CNT_CNFRM
+					FROM TWORK_INFO_OB_HD OH
+					WHERE OH.CTKEY = #{sctkey}
+					  AND OH.OWKEY = #{sowkey}
+					  AND OH.OBHDDAY BETWEEN #{startDate} AND #{endDate}
+					  AND OH.OBHDTYPECD IN ('10','20') /* OBHDTYPECD(출고유형) */
+					  AND OH.OBSTATUSCD IN ('05','10','20','25','30','40','50','60','65','70')
+					  AND OH.WKTYPECD IS NOT NULL
+					GROUP BY OH.CTKEY, OH.WKTYPECD
+			) A
+		) AA
+		JOIN TWORK_MST_CTCD_DT CD
+		  ON CD.CTKEY = AA.CTKEY
+		 AND CD.CTCDHDKEY = 'WKTYPECD'
+		 AND CD.LAKEY = #{slakey}
+		 AND CD.CTCDDTKEY = AA.WKTYPECD
+		ORDER BY WKTYPECD
+	</select>
+
+	<select id="selectOrderIntakeByTime" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectOrderIntakeByTime */
+		WITH HOUR_TBL AS (
+			SELECT LPAD((gs - 1)::TEXT, 2, '0') AS ORDER_TIME
+			FROM generate_series(1, 24) AS gs
+		),
+		BASE AS (
+			SELECT SUBSTR(INSERTDATE, 9, 2) AS ORDER_TIME,
+				   CASE
+					   WHEN INSERTDATE BETWEEN #{startDate} AND #{endDate} THEN 0
+					   WHEN INSERTDATE BETWEEN #{bef1Start} AND #{bef1End} THEN 1
+					   WHEN INSERTDATE BETWEEN #{bef2Start} AND #{bef2End} THEN 2
+					   WHEN INSERTDATE BETWEEN #{bef3Start} AND #{bef3End} THEN 3
+					   WHEN INSERTDATE BETWEEN #{bef4Start} AND #{bef4End} THEN 4
+				   END AS WORK_BEF
+			FROM TWORK_INTF_OB_HD_RCV
+			WHERE CTKEY = #{sctkey}
+			  AND OWKEY = #{sowkey}
+			  AND OBHDTYPECD IN ('10','20')
+			  AND INSERTDATE BETWEEN #{bef4Start} AND #{endDate}
+		),
+		AGG AS (
+			SELECT ORDER_TIME,
+				   SUM(CASE WHEN WORK_BEF = 0 THEN 1 ELSE 0 END) AS MAIN_CNT,
+				   SUM(CASE WHEN WORK_BEF IN (1,2,3,4) THEN 1 ELSE 0 END) AS BEF_SUM
+			FROM BASE
+			GROUP BY ORDER_TIME
+		)
+		SELECT H.ORDER_TIME,
+			   COALESCE(A.MAIN_CNT, 0) AS ORDER_CNT,
+			   COALESCE(A.BEF_SUM, 0) / 4 AS TOT_AVG_CNT
+		FROM HOUR_TBL H
+		LEFT JOIN AGG A
+			   ON H.ORDER_TIME = A.ORDER_TIME
+		ORDER BY H.ORDER_TIME
+	</select>
+
+	<select id="selectInbounExpList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectInbounExpList */
+		SELECT IBHD.ACKEY AS CTKEY
+			 , CASE WHEN CT.CTNM IS NOT NULL THEN CT.CTNM
+			        ELSE ( SELECT CTCDDTNM
+			                 FROM TWORK_MST_CTCD_DT
+			                WHERE CTKEY = IBHD.CTKEY
+			                  AND CTCDHDKEY = 'IBHDTYPECD'
+			                  AND CTCDDTKEY = IBHD.IBHDTYPECD
+			                )
+			   END AS CTNM
+			 , IBHD.OWKEY
+			 , COUNT(DISTINCT IBDT.ICKEY) AS SKU_CNT -- 중복을 제거한 상품 종류 수
+			 , SUM(IBDT.EXPCTQTY)         AS PCS_QTY -- 예정 수량의 전체 합계
+			 , SUM(IBDT.EXPCTQTY * MSIC.SLPRC) AS SLPRC -- 금액
+		  FROM TWORK_INFO_IB_HD IBHD
+		  LEFT OUTER JOIN TWORK_INFO_IB_DT IBDT
+					   ON IBHD.CTKEY = IBDT.CTKEY
+					  AND IBHD.OWKEY = IBDT.OWKEY
+					  AND IBHD.IBHDKEY = IBDT.IBHDKEY
+		  LEFT OUTER JOIN TWORK_MST_IC MSIC
+					   ON IBHD.CTKEY = MSIC.CTKEY
+					  AND IBHD.OWKEY = MSIC.OWKEY
+					  AND IBDT.ICKEY = MSIC.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+				 	   ON CT.CTKEY = IBHD.ACKEY
+		 WHERE 1=1
+		   AND IBHD.CTKEY = #{sctkey}
+		   AND IBHD.OWKEY = #{sowkey}
+		   AND IBHD.IBEXPCTDATE = #{startDate}
+		   AND IBHD.IBHDTYPECD NOT IN  ('50', '60')
+		   AND IBDT.UPRIBDTKEY IS NULL  /* 아소트 자상품 제외 */
+		 GROUP BY IBHD.CTKEY, IBHD.ACKEY, CT.CTNM, IBHD.OWKEY, IBHD.IBHDTYPECD
+		 ORDER BY
+		       IBHD.IBHDTYPECD ASC
+		     , IBHD.ACKEY DESC
+	</select>
+
+	<select id="selectInboundPlcmList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectInboundPlcmList */
+		SELECT IBHD.CTKEY
+			  , IBHD.OWKEY
+			  , COUNT(DISTINCT IBDT.ICKEY) AS SKU_CNT -- 중복을 제거한 상품 종류 수
+			  , SUM(IBDT.CNFRMQTY)         AS PCS_QTY -- 예정 수량의 전체 합계
+			  , SUM(IBDT.CNFRMQTY * MSIC.SLPRC) AS SLPRC -- 금액
+		   FROM TWORK_INFO_IB_HD IBHD
+		  INNER JOIN TWORK_INFO_IB_DT IBDT
+				  ON IBHD.CTKEY = IBDT.CTKEY
+				 AND IBHD.OWKEY = IBDT.OWKEY
+				 AND IBHD.IBHDKEY = IBDT.IBHDKEY
+		  INNER JOIN TWORK_MST_IC MSIC
+				  ON IBHD.CTKEY = MSIC.CTKEY
+			     AND IBHD.OWKEY = MSIC.OWKEY
+			     AND IBDT.ICKEY = MSIC.ICKEY
+		  WHERE 1=1
+			AND IBHD.CTKEY = #{sctkey}
+			AND IBHD.OWKEY = #{sowkey}
+			AND IBHD.IBEXPCTDATE = #{startDate}
+			AND IBHD.IBHDTYPECD NOT IN  ('50', '60')	/* 반품, 부자재 제외 */
+			AND IBDT.UPRIBDTKEY IS NULL  /* 아소트 자상품 제외 */
+			AND IBDT.PLCMSTATUSCD = '20' /* 적치 완료 */
+		GROUP BY IBHD.CTKEY, IBHD.OWKEY
+	</select>
+
+	<select id="selectInboundRateList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectInboundRateList */
+		SELECT IBHD.CTKEY
+			 , IBHD.OWKEY
+			 , SUM(IBDT.EXPCTQTY) AS TOT_EXPCT_PCS -- 총 예정 PCS
+			 , SUM(IBDT.IBQTY)    AS TOT_IB_PCS    -- 총 입고 PCS
+			 , COUNT(DISTINCT CASE WHEN IBDT.EXPCTQTY - IBDT.IBQTY > 0 THEN IBDT.ICKEY END) AS REMAIN_SKU -- 잔여 SKU
+			 , SUM(CASE WHEN IBDT.EXPCTQTY - IBDT.IBQTY > 0 THEN IBDT.EXPCTQTY - IBDT.IBQTY ELSE 0 END) AS REMAIN_PCS -- 잔여 PCS
+			 , COALESCE(ROUND(SUM(IBDT.IBQTY) / NULLIF(SUM(IBDT.EXPCTQTY), 0) * 100, 2), 0) AS IBRATE
+		  FROM TWORK_INFO_IB_HD IBHD
+		 INNER JOIN TWORK_INFO_IB_DT IBDT
+				 ON IBHD.CTKEY = IBDT.CTKEY
+			    AND IBHD.OWKEY = IBDT.OWKEY
+			    AND IBHD.IBHDKEY = IBDT.IBHDKEY
+		 WHERE 1=1
+		   AND IBHD.CTKEY = #{sctkey}
+		   AND IBHD.OWKEY = #{sowkey}
+		   AND IBHD.IBEXPCTDATE = #{startDate}
+		   AND IBHD.IBHDTYPECD NOT IN  ('50', '60')	/* 반품, 부자재 제외 */
+		   AND IBDT.UPRIBDTKEY IS NULL  /* 아소트 자상품 제외 */
+		 GROUP BY IBHD.CTKEY, IBHD.OWKEY
+	</select>
+
+	<select id="selectInboundPlcmRateList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectInboundPlcmRateList */
+		SELECT IBHD.CTKEY
+			 , IBHD.OWKEY
+			 , SUM(IBDT.EXPCTQTY) 	AS TOT_EXPCT_PCS -- 총 예정 PCS
+			 , SUM(IBDT.CNFRMQTY)   AS TOT_PLCM_PCS    -- 총 적치 PCS
+			 , COUNT(DISTINCT CASE WHEN IBDT.EXPCTQTY - IBDT.CNFRMQTY > 0 THEN IBDT.ICKEY END) AS REMAIN_SKU -- 잔여 SKU
+			 , SUM(CASE WHEN IBDT.EXPCTQTY - IBDT.CNFRMQTY > 0 THEN IBDT.EXPCTQTY - IBDT.CNFRMQTY ELSE 0 END) AS REMAIN_PCS -- 잔여 PCS
+			 , ROUND(SUM(IBDT.CNFRMQTY) / NULLIF(SUM(IBDT.EXPCTQTY), 0) * 100, 2) AS PLCMRATE
+		  FROM TWORK_INFO_IB_HD IBHD
+		 INNER JOIN TWORK_INFO_IB_DT IBDT
+				 ON IBHD.CTKEY = IBDT.CTKEY
+			    AND IBHD.OWKEY = IBDT.OWKEY
+			    AND IBHD.IBHDKEY = IBDT.IBHDKEY
+		 WHERE 1=1
+		   AND IBHD.CTKEY = #{sctkey}
+		   AND IBHD.OWKEY = #{sowkey}
+		   AND IBHD.IBEXPCTDATE = #{startDate}
+		   AND IBHD.IBHDTYPECD NOT IN  ('50', '60')	/* 반품, 부자재 제외 */
+		   AND IBDT.UPRIBDTKEY IS NULL  /* 아소트 자상품 제외 */
+		 GROUP BY IBHD.CTKEY, IBHD.OWKEY
+	</select>
+
+	<select id="selectInventoryList" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectInventoryList */
+		<![CDATA[
+			WITH T_INVN_ITEM AS (
+				-- 상품(재고속성)별 재고 정보
+				SELECT T.CTKEY								/* 센터코드 */
+					 , T.OWKEY								/* 화주코드 */
+					 , T.ICKEY								/* 상품코드 */
+					 , T.IVATKEY							/* 재고속성코드 */
+					 , SUM(T.TOTQTY) AS TOTQTY				/* 총 수량 */
+					 , SUM(T.TOTQTY * T.SLPRC) AS TOTAMT	/* 총 금액 */
+					 , SUM(T.AVQTY) AS AVQTY				/* 가용 수량 */
+					 , SUM(T.AVQTY * T.SLPRC) AS AVAMT		/* 가용재고 총 금액 */
+					 , SUM(T.NAVQTY) AS NAVQTY				/* 불용 수량 */
+					 , SUM(T.NAVQTY * T.SLPRC) AS NAVAMT	/* 불용재고 총 금액 */
+					 , T.EXPCKYN							/* 유통기한 체크여부 */
+					 , T.CHECKDATE							/* 유통기한 */
+					 , TO_CHAR(TO_DATE(T.CHECKDATE, 'YYYYMMDD') - T.EXPCNVRSNDAYS::INTEGER + (T.EXPCNVRSNDAYS * (T.IMMTIVCRITRT / 100))::INTEGER, 'YYYYMMDD')	AS IMMTDATE /* 유통기한 임박일자 */
+					 , T.UNICYN								/* 미취급여부 */
+					 , T.SALESTATUSCD						/* 판매상태 */
+					 , T.DLVRYYN							/* 택배여부 */
+				  FROM (
+						-- 로케이션별 재고 정보
+						SELECT IVLC.CTKEY		/* 센터코드 */
+							 , IVLC.OWKEY		/* 화주코드 */
+							 , IVLC.ICKEY		/* 상품코드 */
+							 , IVLC.IVATKEY		/* 재고속성코드 */
+							 , IC.EXPCKYN		/* 유통기한 체크여부 */
+							 , IC.EXPCKTYPECD	/* 유통기한 체크유형 */
+							 , COALESCE(IC.EXPCNVRSNDAYS, 0) AS EXPCNVRSNDAYS	/* 유통기한전환일수 */
+							 , IC.SLPRC			/* 판매가격 */
+							 , IC.UNICYN		/* 미취급여부 */
+							 , IC.SALESTATUSCD	/* 판매상태 */
+							 , IC.DLVRYYN		/* 택배여부 */
+							 , IV.EXPDATE		/* 유통기한 */
+							 , IV.PRDCTDATE		/* 생산일자 */
+							 , CASE WHEN IC.EXPCKTYPECD = 'E' THEN SUBSTR(IV.EXPDATE, 0, 8)
+									WHEN IC.EXPCKTYPECD = 'P' THEN TO_CHAR(TO_DATE(IV.PRDCTDATE, 'YYYYMMDD') + IC.EXPCNVRSNDAYS::INTEGER, 'YYYYMMDD')
+									ELSE SUBSTR(IV.EXPDATE, 0, 8) END AS CHECKDATE		/* 체크 유형에 따른 체크일자 */
+							 , ZN.ZNTYPECD		/* 존유형 */
+							 , IVLC.TOTQTY		/* 총 수량 */
+							 , CASE WHEN ZN.ZNTYPECD = '10' THEN IVLC.TOTQTY - IVLC.HOLDQTY ELSE 0 END AS AVQTY		/* 가용수량 */
+							 , CASE WHEN ZN.ZNTYPECD = '10' THEN IVLC.HOLDQTY
+									WHEN ZN.ZNTYPECD <> '10' THEN IVLC.TOTQTY ELSE 0 END AS NAVQTY					/* 불용수량 */
+							 , IMMT.IMMTIVCRITRT
+						  FROM TWORK_INFO_IVATXLC IVLC
+						  JOIN TWORK_MST_CT CT
+							ON CT.CTKEY = IVLC.CTKEY
+						  JOIN TWORK_MST_OW OW
+							ON OW.OWKEY = IVLC.OWKEY
+						  JOIN TWORK_MST_IC IC
+							ON IC.CTKEY = IVLC.CTKEY
+						   AND IC.OWKEY = IVLC.OWKEY
+						   AND IC.ICKEY = IVLC.ICKEY
+						  JOIN TWORK_INFO_IVAT IV
+							ON IV.CTKEY = IVLC.CTKEY
+						   AND IV.OWKEY = IVLC.OWKEY
+						   AND IV.IVATKEY = IVLC.IVATKEY
+						  JOIN TWORK_MST_LC LC
+							ON LC.CTKEY = IVLC.CTKEY
+						   AND LC.LCKEY = IVLC.LCKEY
+						  JOIN TWORK_MST_AR AR
+							ON AR.CTKEY = LC.CTKEY
+						   AND AR.ZNKEY = LC.ZNKEY
+						   AND AR.ARKEY = LC.ARKEY
+						  JOIN TWORK_MST_ZN ZN
+							ON ZN.CTKEY = LC.CTKEY
+						   AND ZN.ZNKEY = LC.ZNKEY
+						  JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+							ON IMMT.CTKEY = IVLC.CTKEY
+						 WHERE IVLC.CTKEY = '09'	-- SCTKEY
+						   AND IVLC.OWKEY = 'DAISO'	-- SOWKEY
+						   AND IVLC.TOTQTY > 0
+					 ) T
+				 GROUP BY
+					   T.CTKEY
+					 , T.OWKEY
+					 , T.ICKEY
+					 , T.IVATKEY
+					 , T.EXPCKYN
+					 , T.CHECKDATE
+					 , T.IMMTIVCRITRT
+					 , T.EXPCNVRSNDAYS
+					 , T.UNICYN
+					 , T.SALESTATUSCD
+					 , T.DLVRYYN
+			 ), T_EXP_ITEM AS (
+				-- 유통기한 임박/초과 재고 정보
+				SELECT T.CTKEY
+					 , T.OWKEY
+					 , COUNT(DISTINCT (CASE WHEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') >= T.IMMTDATE THEN T.ICKEY ELSE NULL END)) AS IMMTSKUCNT	/* 임박 SKU */
+					 , SUM(CASE WHEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') >= T.IMMTDATE THEN T.TOTQTY ELSE 0 END) AS ITTMTOTQTY						/* 임박 수량 */
+					 , COUNT(DISTINCT (CASE WHEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') >= T.CHECKDATE THEN T.ICKEY ELSE NULL END)) AS OVERSKUCNT	/* 초과 SKU */
+					 , SUM(CASE WHEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') >= T.CHECKDATE THEN T.TOTQTY ELSE 0 END) AS OVERTOTQTY					/* 초과 수량 */
+				  FROM T_INVN_ITEM T
+				 WHERE T.CHECKDATE IS NOT NULL
+				   AND T.EXPCKYN = 'Y'
+				 GROUP BY
+					   T.CTKEY
+					 , T.OWKEY
+			 ), T_INVN AS (
+				-- 보유 재고정보
+				SELECT T.CTKEY
+					 , T.OWKEY
+					 , COUNT(DISTINCT T.ICKEY) AS SKUCNT
+					 , SUM(T.TOTQTY) AS TOTQTY
+					 , SUM(T.TOTAMT) AS TOTAMT
+					 , COUNT(DISTINCT (CASE WHEN T.AVQTY <> 0 THEN T.ICKEY ELSE NULL END)) AS AVSKUCNT
+					 , SUM(T.AVQTY) AS AVQTY
+					 , SUM(T.AVAMT) AS AVAMT
+					 , COUNT(DISTINCT (CASE WHEN T.NAVQTY <> 0 THEN T.ICKEY ELSE NULL END)) AS NAVSKUCNT
+					 , SUM(T.NAVQTY) AS NAVQTY
+					 , SUM(T.NAVAMT) AS NAVAMT
+				  FROM T_INVN_ITEM T
+				 GROUP BY
+					   T.CTKEY
+					 , T.OWKEY
+			 )
+			 , T_INVN_DSP AS (
+				-- 전시 재고정보
+				-- 전시상품 기준 -> 미취급여부:Y, 판매상태:판매중(CD_00203 - 03::INTEGER), 택배여부:Y
+				SELECT T.CTKEY
+					 , T.OWKEY
+					 , COUNT(DISTINCT T.ICKEY) AS SKUCNT
+					 , SUM(T.TOTQTY) AS TOTQTY
+					 , SUM(T.TOTAMT) AS TOTAMT
+					 , COUNT(DISTINCT (CASE WHEN T.AVQTY <> 0 THEN T.ICKEY ELSE NULL END)) AS AVSKUCNT
+					 , SUM(T.AVQTY) AS AVQTY
+					 , SUM(T.AVAMT) AS AVAMT
+					 , COUNT(DISTINCT (CASE WHEN T.NAVQTY <> 0 THEN T.ICKEY ELSE NULL END)) AS NAVSKUCNT
+					 , SUM(T.NAVQTY) AS NAVQTY
+					 , SUM(T.NAVAMT) AS NAVAMT
+				  FROM T_INVN_ITEM T
+				 WHERE 1 = 1
+				   AND UNICYN = 'N'			/* 미취급여부 */
+				   AND SALESTATUSCD = '03'	/* 판매상태 */
+				   AND DLVRYYN = 'Y'		/* 택배여부 */
+				 GROUP BY
+					   T.CTKEY
+					 , T.OWKEY
+			 )
+		SELECT COALESCE(EXP.OVERSKUCNT, 0) AS OVERSKU /* 유통기한 초과 SKU */
+			 , COALESCE(EXP.OVERTOTQTY, 0) AS OVERQTY /* 유통기한 초과 EA */
+			 , COALESCE(EXP.IMMTSKUCNT, 0) AS IMMTSKU /* 유통기한 임박 SKU */
+			 , COALESCE(EXP.ITTMTOTQTY, 0) AS IMMTQTY /* 유통기한 임박 EA */
+			 , TO_CHAR(COALESCE(EXP.OVERSKUCNT, 0), 'FM999,999,999') || ' SKU / ' || TO_CHAR(COALESCE(EXP.OVERTOTQTY, 0), 'FM999,999,999') || ' EA' AS OVERINFO	/* 유통기한 초과 */
+			 , TO_CHAR(COALESCE(EXP.IMMTSKUCNT, 0), 'FM999,999,999') || ' SKU / ' || TO_CHAR(COALESCE(EXP.ITTMTOTQTY, 0), 'FM999,999,999') || ' EA' AS IMMTINFO	/* 유통기한 임박 */
+			 /* 보유재고  */
+			 , COALESCE(INVN.SKUCNT, 0) AS SKUCNT			/* 총 SKU */
+			 , COALESCE(INVN.TOTQTY, 0) AS TOTQTY			/* 총 수량 */
+			 , COALESCE(INVN.TOTAMT, 0) AS TOTAMT	/* 총 금액 */
+			 , ROUND(COALESCE(INVN.TOTAMT / NULLIF(AVG.SLPRC, 0), 0), 0) AS DAYS									/* 보유재고 총 금액 / 일 평균 출고금액 (가용일수) */
+			 , COALESCE(INVN.NAVAMT, 0) AS NAVAMT																/* 불용보유재고 총 금액 */
+			 , COALESCE(INVN.AVAMT, 0)  AS AVAMT
+			 , COALESCE(INVN.NAVSKUCNT, 0) AS NAVSKUCNT	/* 불용 SKU */
+			 , COALESCE(ROUND(INVN.NAVSKUCNT / NULLIF(INVN.SKUCNT, 0), 1), 0) * 100  AS NAVSKUPCT				/* 불용 SKU(%) */
+			 , COALESCE(INVN.AVSKUCNT, 0) AS AVSKUCNT		/* 가용 SKU */
+			 , COALESCE(ROUND(INVN.AVSKUCNT / NULLIF(INVN.SKUCNT, 0), 1), 0) * 100 AS AVSKUPCT				/* 가용 SKU(%) */
+			 , COALESCE(LC.USECELLCNT, 0) AS USECELLCNT		/* 사용 CELL */
+			 , COALESCE(LC.TOTCELLCNT, 0) AS TOTCELLCNT		/* 총 CELL */
+			 , COALESCE(ROUND(LC.USECELLCNT / NULLIF(LC.TOTCELLCNT, 0) * 100, 0), 0)  AS LOADPCT									/* 적재율 */
+			 /* 전시재고 */
+			 , DSP.SKUCNT AS DSPSKUCNT																		/* 전시 보유재고 SKU */
+			 , DSP.TOTQTY AS DSPTOTQTY																		/* 전시 보유재고 수량 */
+			 , DSP.TOTAMT AS DSPTOTAMT																		/* 전시 보유재고 총 금액 */
+			 , ROUND(COALESCE(DSP.TOTAMT / NULLIF(AVG.SLPRC, 0), 0), 0) AS DSPDAYS								/* 전시재고보유금액 / 일 평균 출고금액 (가용일수) */
+			 , ROUND(COALESCE(DSP.SKUCNT / NULLIF(DPS_IC.SKUCNT, 0), 0), 2) * 100 AS DSPSKUPCT					/* 전시 보유재고 SKU / 전시상품 SKU (%) */
+			 , ROUND(COALESCE((COALESCE(DSP.SKUCNT, 0) + COALESCE(ALLNIS.ALLNISSKUQTY, 0)) / NULLIF(DPS_IC.SKUCNT, 0), 0), 2) * 100 AS DSPSKUPCT2		/* ( 전시 보유재고 SKU + 전사결품 SKU ) / 전시상품 SKU (%) */
+			 , COALESCE(DSP.SKUCNT, 0) + COALESCE(ALLNIS.ALLNISSKUQTY, 0) AS DSPSKUCNT2								/* 전시 보유재고 SKU + 전사결품 SKU */
+			 , COALESCE(DPS_IC.SKUCNT, 0) AS ALLDSPSKUCNT														/* 총 전시재고 */
+			 , COALESCE(ALLNIS.ALLNISSKUQTY, 0) AS ALLNISSKUQTY
+		  FROM (
+				SELECT '09' AS CTKEY
+					 , 'DAISO' AS OWKEY
+			 ) A
+		  LEFT JOIN T_EXP_ITEM EXP
+			ON EXP.CTKEY = A.CTKEY
+		   AND EXP.OWKEY = A.OWKEY
+		  LEFT JOIN T_INVN INVN
+			ON INVN.CTKEY = A.CTKEY
+		   AND INVN.OWKEY = A.OWKEY
+		  LEFT JOIN T_INVN_DSP DSP
+			ON DSP.CTKEY = A.CTKEY
+		   AND DSP.OWKEY = A.OWKEY
+		  LEFT JOIN TWORK_INFO_ALLNIS ALLNIS
+			ON ALLNIS.CTKEY = A.CTKEY
+		  LEFT JOIN (
+				SELECT LC.CTKEY
+					 , COUNT(LC.LCKEY) AS TOTCELLCNT
+					 , COUNT(IVLC.LCKEY) AS USECELLCNT
+				  FROM TWORK_MST_LC LC
+				  JOIN TWORK_MST_CT CT
+					ON CT.CTKEY = LC.CTKEY
+				  JOIN TWORK_MST_ZN ZN
+					ON ZN.CTKEY = LC.CTKEY
+				   AND ZN.ZNKEY = LC.ZNKEY
+				  JOIN TWORK_MST_AR AR
+					ON AR.CTKEY = LC.CTKEY
+				   AND AR.ZNKEY = LC.ZNKEY
+				   AND AR.ARKEY = LC.ARKEY
+				  LEFT JOIN (
+						SELECT IVLC.CTKEY
+							 , IVLC.LCKEY
+						  FROM TWORK_INFO_IVATXLC IVLC
+						 WHERE IVLC.CTKEY = '09'
+						   AND IVLC.OWKEY = 'DAISO'
+						   AND IVLC.TOTQTY > 0
+						 GROUP BY
+							   IVLC.CTKEY
+							 , IVLC.LCKEY
+					 ) IVLC
+					ON IVLC.CTKEY = LC.CTKEY
+				   AND IVLC.LCKEY = LC.LCKEY
+				 WHERE LC.CTKEY = '09'
+				   AND ZN.ZNTYPECD = '10'
+				   AND ZN.ZNKEY <> 'SM'
+				 GROUP BY LC.CTKEY
+			 ) LC
+			ON LC.CTKEY = A.CTKEY
+		  LEFT JOIN (
+				SELECT T.CTKEY
+					 , T.OWKEY
+					 , SUM(T.SLPRC) AS SLPRC
+				  FROM (
+						SELECT AVG.CTKEY
+							 , AVG.OWKEY
+							 , AVG.ICKEY
+							 , IC.SLPRC * AVG.DAYAVGOBQTY AS SLPRC
+						  FROM TWORK_INFO_DAY_AVG_OBQTY AVG
+						  JOIN TWORK_MST_IC IC
+							ON IC.CTKEY = AVG.CTKEY
+						   AND IC.OWKEY = AVG.OWKEY
+						   AND IC.ICKEY = AVG.ICKEY
+				  ) T
+				 GROUP BY T.CTKEY
+					 , T.OWKEY
+			 ) AVG
+			ON AVG.CTKEY = A.CTKEY
+		   AND AVG.OWKEY = A.OWKEY
+		  LEFT JOIN (
+				-- 전시상품 SKU
+				SELECT CTKEY
+					 , OWKEY
+					 , COUNT(1) AS SKUCNT
+				  FROM TWORK_MST_IC
+				 WHERE 1 = 1
+				   AND UNICYN = 'N'			/* 미취급여부 */
+				   AND SALESTATUSCD = '03'	/* 판매상태 */
+				   AND DLVRYYN = 'Y'		/* 택배여부 */
+				 GROUP BY CTKEY
+					 , OWKEY
+			 ) DPS_IC
+			ON DPS_IC.CTKEY = A.CTKEY
+		   AND DPS_IC.OWKEY = A.OWKEY
+		]]>
+	</select>
+
+	<select id="selectNisSku" resultType="camelMap">
+		/* wms-maincontents-sql-oracle.xml - selectNisSku */
+		SELECT A.CTKEY
+			 , COALESCE(A.ALLNISSKUQTY, 0) AS ALLNISSKUQTY
+			 , A.CMT
+		FROM (SELECT 1) AS D
+		LEFT JOIN TWORK_INFO_ALLNIS A
+		  ON A.CTKEY = #{sctkey}
+	</select>
+
+	<update id="saveNisSku">
+		/* wms-maincontents-sql-oracle.xml - saveNisSku */
+		INSERT INTO TWORK_INFO_ALLNIS (
+					  CTKEY
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(allnisskuqty)">
+						, ALLNISSKUQTY
+					</if>
+					, INSERTDATE
+					, INSERTURKEY
+					, UPDATEDATE
+					, UPDATEURKEY
+				)
+				VALUES (
+					  #{sctkey}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(allnisskuqty)">
+						, #{allnisskuqty}
+					</if>
+					, #{sysdate}
+					, #{surkey}
+					, #{sysdate}
+					, #{surkey}
+				)
+				ON CONFLICT (CTKEY) DO UPDATE SET
+					  UPDATEURKEY = #{surkey}
+					, UPDATEDATE  = #{sysdate}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(allnisskuqty)">
+						, ALLNISSKUQTY = #{allnisskuqty}
+					</if>
+	</update>
+</mapper>

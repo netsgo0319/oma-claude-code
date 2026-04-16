@@ -1,0 +1,2966 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.common.mapper.CommonMapper">
+ <resultMap id="selectPopupCommonCode" type="java.util.HashMap">
+		<result property="fn_get_master_impos" column="FN_GET_MASTER_IMPOS" />
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+		<result property="field7" column="FIELD7" />
+		<result property="field8" column="FIELD8" />
+		<result property="field9" column="FIELD9" />
+		<result property="field10" column="FIELD10" />
+		<result property="field11" column="FIELD11" />
+		<result property="field12" column="FIELD12" />
+		<result property="field13" column="FIELD13" />
+		<result property="field14" column="FIELD14" />
+		<result property="field15" column="FIELD15" />
+		<result property="field16" column="FIELD16" />
+		<result property="field17" column="FIELD17" />
+		<result property="field18" column="FIELD18" />
+		<result property="field19" column="FIELD19" />
+		<result property="field20" column="FIELD20" />
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field2_desc" column="FIELD2_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field3_desc" column="FIELD3_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field4_desc" column="FIELD4_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field5_desc" column="FIELD5_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field6_desc" column="FIELD6_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field7_desc" column="FIELD7_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field8_desc" column="FIELD8_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field9_desc" column="FIELD9_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field10_desc" column="FIELD10_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field11_desc" column="FIELD11_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field12_desc" column="FIELD12_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field13_desc" column="FIELD13_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field14_desc" column="FIELD14_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field15_desc" column="FIELD15_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field16_desc" column="FIELD16_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field17_desc" column="FIELD17_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field18_desc" column="FIELD18_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field19_desc" column="FIELD19_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field20_desc" column="FIELD20_DESC" typeHandler="CodeDescTypeHandler"/>
+	</resultMap>
+
+    <resultMap id="selectCommonCode" type="java.util.HashMap">
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+		<result property="field7" column="FIELD7" />
+		<result property="field8" column="FIELD8" />
+		<result property="field9" column="FIELD9" />
+		<result property="field10" column="FIELD10" />
+		<result property="field11" column="FIELD11" />
+		<result property="field12" column="FIELD12" />
+		<result property="field13" column="FIELD13" />
+		<result property="field14" column="FIELD14" />
+		<result property="field15" column="FIELD15" />
+		<result property="field16" column="FIELD16" />
+		<result property="field17" column="FIELD17" />
+		<result property="field18" column="FIELD18" />
+		<result property="field19" column="FIELD19" />
+		<result property="field20" column="FIELD20" />
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field2_desc" column="FIELD2_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field3_desc" column="FIELD3_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field4_desc" column="FIELD4_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field5_desc" column="FIELD5_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field6_desc" column="FIELD6_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field7_desc" column="FIELD7_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field8_desc" column="FIELD8_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field9_desc" column="FIELD9_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field10_desc" column="FIELD10_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field11_desc" column="FIELD11_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field12_desc" column="FIELD12_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field13_desc" column="FIELD13_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field14_desc" column="FIELD14_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field15_desc" column="FIELD15_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field16_desc" column="FIELD16_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field17_desc" column="FIELD17_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field18_desc" column="FIELD18_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field19_desc" column="FIELD19_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+		<result property="field20_desc" column="FIELD20_DESC" typeHandler="IcomCodeDescTypeHandler"/>
+	</resultMap>
+
+	<sql id="sql_pagingTop">
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* FROM (
+		</if>
+	</sql>
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+				ORDER BY
+				FIELD1 ASC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+				) B
+				<include refid="sql_sort"/>
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</when>
+			<otherwise>
+				<include refid="sql_sort"/>
+			</otherwise>
+		</choose>
+	</sql>
+
+    <select id="selectTAdminMstOw" resultMap="selectPopupCommonCode">
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_TOP} </if>
+						SELECT	B.*
+						  FROM(
+								SELECT 	OWKEY AS FIELD1
+										,OWNM AS FIELD2
+										,MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+								FROM 	TADMIN_MST_OW
+								WHERE DELYN = 'N'
+								  AND CLOSDATE >= #{sysdate}
+							    <if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+							    	AND OWKEY IN
+									<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+										#{OWKEY_SELECTION_VALUE}
+									</foreach>
+							    </if>
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+									<choose>
+								        <when test='opval !=null and opval.equals("eq")'>
+								            AND OWKEY = #{value}
+								        </when>
+							        	<otherwise>
+								   			AND (OWKEY LIKE '%' || #{value} || '%' OR OWNM LIKE '%' || #{value} || '%')
+								   		</otherwise>
+								   	</choose>
+								</if>
+					 		)B
+				 		<choose>
+							<when test='sortValue !=null and sortValue != ""'>
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>
+							</when>
+							<otherwise>
+								ORDER BY FIELD1 ASC
+							</otherwise>
+						</choose>
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_BOTTOM} </if>
+	</select>
+
+    <select id="selectTAdminMstCt" resultMap="selectPopupCommonCode">
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_TOP} </if>
+			SELECT	B.*
+				  FROM(
+
+					SELECT 	CTKEY AS FIELD1
+							,CTNM AS FIELD2
+							,CTTYPE AS FIELD3
+							,'CTTYPE' || ';' || CTTYPE AS FIELD3_DESC
+					FROM 	TADMIN_MST_CT
+					WHERE	CLOSDATE >= #{sysdate}
+					  AND	DELYN = 'N'
+				    <if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+				    	AND CTKEY IN
+						<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+							#{CTKEY_SELECTION_VALUE}
+						</foreach>
+				    </if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+						<choose>
+					        <when test='opval !=null and opval.equals("eq")'>
+					            AND CTKEY = #{value}
+					        </when>
+				        	<otherwise>
+					   			AND (CTKEY LIKE '%' || #{value} || '%' OR CTNM LIKE '%' || #{value} || '%')
+					   		</otherwise>
+					   	</choose>
+					</if>
+				)B
+	 		<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY FIELD1 ASC
+				</otherwise>
+			</choose>
+		<if test="type != 'combo'"> #{GRIDPAGING_ROWNUMTYPE_BOTTOM} </if>
+	</select>
+
+	<sql id="sql_tAdminMstIc">
+		FROM TWORK_INFO_IVAT A
+		INNER JOIN TWORK_INFO_IVATXLCXULC B
+			    ON A.CTKEY = B.CTKEY
+			   AND A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+			   AND A.IVATKEY = B.IVATKEY
+		INNER JOIN TWORK_MST_IC C
+				ON A.OWKEY = C.OWKEY
+			   AND A.CTKEY = C.CTKEY
+			   AND A.OWKEY = C.OWKEY
+			   AND A.ICKEY = C.ICKEY
+		INNER JOIN TWORK_MST_LC D
+				ON B.CTKEY = D.CTKEY
+			   AND B.LCKEY = D.LCKEY
+		INNER JOIN TADMIN_MST_ICXCT E
+				ON C.OWKEY = E.OWKEY
+			   AND C.ICKEY = E.ICKEY
+			   AND C.CTKEY = E.CTKEY
+		INNER JOIN TADMIN_MST_OW F
+				ON C.OWKEY = F.OWKEY
+		WHERE B.TTQTY > 0
+		AND EXISTS (SELECT 1 FROM TWORK_MST_CT X WHERE A.CTKEY = X.CTKEY)
+		AND D.LCHOLDTYPE IN ('20','30')
+		AND A.ATTRIBUTE2 = #{attribute}
+		AND F.OWKEY = #{owkey}
+
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			AND F.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+				<when test='opval !=null and opval.equals("eq")'>
+					AND ICKEY = #{value}
+				</when>
+				<otherwise>
+					AND  (C.ICKEY LIKE '%' || #{value} || '%' OR C.ICNAME LIKE '%' || #{value} || '%' OR F.OWKEY LIKE '%' || #{value} || '%')
+				</otherwise>
+			</choose>
+		</if>
+		GROUP BY F.OWNAME, A.ICKEY, C.ICKEY, C.ICNAME, A.ATTRIBUTE3, A.PRODUCTLOT
+	</sql>
+
+    <select id="selectTAdminMstIc" resultMap="selectPopupCommonCode">
+		<include refid="sql_pagingTop"/>
+			SELECT 	C.ICKEY         AS FIELD1
+				   ,C.ICNAME        AS FIELD2
+				   ,F.OWNM        AS FIELD3
+				   ,MIN(C.UOM)      AS FIELD4
+				   ,A.PRODUCTLOT    AS FIELD5
+				   ,A.ATTRIBUTE3    AS FIELD6
+				   ,SUM(B.HOQTY)    AS FIELD7
+				   ,SUM(B.TTQTY)    AS FIELD8
+		<include refid="sql_tAdminMstIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+    <select id="selectGridCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_UPDF_HD A
+		  INNER JOIN TADMIN_MST_UPDF_DT B
+		  		  ON A.UPDFHDKEY = B.UPDFHDKEY
+		 WHERE A.APKEY = #{apkey}
+		   AND A.ULTYPE = #{ultype}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		 	AND A.OWKEY = #{owkey}
+		 </if>
+	</select>
+
+    <resultMap id="GridColumnsMap" type="java.util.HashMap">
+  		<result property="updfdtkey" column="UPDFDTKEY" />
+		<result property="columnnm" column="COLUMNNM" />
+		<result property="columndesc" column="COLUMNDESC" />
+		<result property="columntype" column="COLUMNTYPE" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ultype" column="ULTYPE" />
+	</resultMap>
+
+	<select id="selectGridColumns" resultMap="GridColumnsMap">
+		SELECT B.UPDFDTKEY
+			  ,B.COLUMNNM
+			  ,B.COLUMNDESC
+			  ,B.COLUMNTYPE
+			  ,A.OWKEY
+			  ,A.ULTYPE
+		  FROM TADMIN_MST_UPDF_HD A
+		  INNER JOIN TADMIN_MST_UPDF_DT B
+		  		  ON A.UPDFHDKEY = B.UPDFHDKEY
+		 WHERE A.APKEY = #{apkey}
+		   AND A.ULTYPE = #{ultype}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+		 	AND A.OWKEY = #{owkey}
+		 </if>
+		 ORDER BY B.COLUMNORDER,B.UPDFDTKEY
+	</select>
+
+    <select id="getIcomMulLangMsg" resultType="java.lang.String">
+		SELECT 	DISPLAYMSG
+		FROM 	TADMIN_MST_MULAAPMSG_DT
+		WHERE 	MULAAPMSGHDKEY = #{msgcode}
+		  AND 	LAKEY = #{lakey}
+	</select>
+
+    <select id="selectTAdminMstIcxct" resultType="camelMap">
+        SELECT
+               A.UPDATEURKEY
+              ,A.UPDATEDATE
+              ,A.INSERTURKEY
+              ,A.INSERTDATE
+              ,A.OWKEY
+              ,A.ICKEY
+              ,A.CTKEY
+              ,B.CTNM
+          FROM TADMIN_MST_ICXCT A
+          INNER JOIN TADMIN_MST_CT B
+          		  ON A.CTKEY = B.CTKEY
+         WHERE A.OWKEY = #{owkey}
+		   AND A.ICKEY = #{ickey}
+	</select>
+
+    <select id="selectTorderIcxctCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		FROM TADMIN_MST_ICXCT
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND ICKEY = #{ickey}
+    </select>
+
+    <insert id="saveFileInfo">
+		<selectKey keyProperty="filekey" resultType="string" order="BEFORE">
+			SELECT nextval('seq_tadmin_mst_file')
+		</selectKey>
+		/* adm-common-sql-oracle.xml - saveFileInfo */
+		INSERT INTO TADMIN_MST_FILE
+		(
+		       FILEKEY
+		     , FILESEQ
+		     , APKEY
+		     , MEKEY
+		     , FILEPATH
+		     , FILESIZE
+		     , FILEEXTS
+		     , ORIGFILENM
+		     , SAVEFILENM
+		     , REM
+		     , INSERTDATE
+		     , INSERTURKEY
+		     , UPDATEDATE
+		     , UPDATEURKEY
+		)
+		VALUES
+		(
+		       #{filekey}
+			 , #{fileseq}
+			 , #{apkey}
+			 , #{mekey}
+			 , #{filepath}
+			 , #{filesize}
+			 , #{fileexts}
+			 , #{origfilenm}
+			 , #{savefilenm}
+			 , #{rem}
+   			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+	</insert>
+
+	<sql id="sql_tOrderMstOrcdDt">
+		FROM TORDER_MST_ORCD_DT
+		WHERE
+		LAKEY = #{lakey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ORDERCOMHDKEY)" >
+			AND ORDERCOMHDKEY = #{ORDERCOMHDKEY}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (ORDERCOMHDKEY LIKE '%'|| #{value} || '%' OR ORDERCOMDTKEY LIKE '%'|| #{value} || '%' OR ORDERCOMDTNM LIKE '%'|| #{value} || '%' OR ORDERCOMDTVAL LIKE '%'|| #{value} || '%')
+		</if>
+	</sql>
+	
+	<sql id="sql_tOrderMstAdcdDt">
+		FROM TADMIN_MST_ADCD_DT
+		WHERE
+		LAKEY = #{lakey}
+		AND ADCDHDKEY = 'POINT'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ORDERCOMHDKEY)" >
+			AND ADCDHDKEY = #{ORDERCOMHDKEY}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (ADCDHDKEY LIKE '%'|| #{value} || '%' OR ADCDDTKEY LIKE '%'|| #{value} || '%' OR ADCDDTNM LIKE '%'|| #{value} || '%' OR ADCDDTVALUE LIKE '%'|| #{value} || '%')
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstOrcdDtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  <include refid="sql_tOrderMstOrcdDt"/>
+	</select>
+
+	<select id="selectTOrderMstOrcdDt" resultType="camelMap">
+		<if test="type != 'combo'">
+	       SELECT *
+	         FROM (
+	            SELECT A.* ,
+	                   ROWNUM PAGING_NUM
+	              FROM (
+		</if>			SELECT B.*
+							FROM(
+								SELECT ORDERCOMDTKEY AS FIELD1 ,
+								       ORDERCOMDTNM AS FIELD2 ,
+								       ORDERCOMDTVAL  AS FIELD3,
+								       ORDERCOMHDKEY AS FIELD4,
+								       DTKEYORD AS DTKEYORD
+									<include refid="sql_tOrderMstOrcdDt"/>
+								)B
+								<choose>
+									<when test='sortValue !=null'>
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>
+									</when>
+									<otherwise>
+										ORDER BY DTKEYORD ASC
+									</otherwise>
+								</choose>
+
+		<if test="type != 'combo'">
+	                           ) A
+	                    )
+	        <![CDATA[
+	               WHERE
+	                       PAGING_NUM > (#{currentPage} -1)* #{pagingLimit}
+	                   AND PAGING_NUM <= #{currentPage} * #{pagingLimit}
+	        ]]>
+		</if>
+	</select>
+	
+	<select id="selectTOrderMstAdcdDtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  <include refid="sql_tOrderMstAdcdDt"/>
+	</select>
+
+	<select id="selectTOrderMstAdcdDt" resultType="camelMap">
+		<if test="type != 'combo'">
+	       SELECT *
+	         FROM (
+	            SELECT A.* ,
+	                   ROWNUM PAGING_NUM
+	              FROM (
+		</if>			SELECT B.*
+							FROM(
+								SELECT ADCDDTKEY AS FIELD1 ,
+								       ADCDDTNM AS FIELD2 ,
+								       ADCDDTVALUE  AS FIELD3,
+								       ADCDHDKEY AS FIELD4,
+								       ADCDDTORDER AS DTKEYORD
+									<include refid="sql_tOrderMstAdcdDt"/>
+								)B
+								<choose>
+									<when test='sortValue !=null'>
+										<if test='sortValue == "DESC" and colName !=null'>
+										ORDER BY #{colName} DESC
+										</if>
+										<if test='sortValue == "ASC" and colName !=null'>
+										ORDER BY #{colName} ASC
+										</if>
+									</when>
+									<otherwise>
+										ORDER BY ADCDDTORDER ASC
+									</otherwise>
+								</choose>
+
+		<if test="type != 'combo'">
+	                           ) A
+	                    )
+	        <![CDATA[
+	               WHERE
+	                       PAGING_NUM > (#{currentPage} -1)* #{pagingLimit}
+	                   AND PAGING_NUM <= #{currentPage} * #{pagingLimit}
+	        ]]>
+		</if>
+	</select>
+
+	<sql id="sql_tOrderMstAc">
+		FROM TORDER_MST_AC
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(actype)" >
+			AND ACTYPE = #{actype}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			AND OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+			AND OWKEY IN
+			<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+				#{owList}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (ACKEY LIKE '%' || #{value} || '%' OR ACNM LIKE '%'|| #{value} || '%' )
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstAcCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+	  	  <include refid="sql_tOrderMstAc"/>
+	</select>
+
+	<select id="selectTOrderMstAc" resultType="camelMap">
+	  <include refid="sql_pagingTop"/>
+		SELECT ACKEY FIELD1
+			  ,ACNM FIELD2
+			  ,OWKEY FIELD3
+	  <include refid="sql_tOrderMstAc"/>
+	  <include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstOw">
+		FROM TADMIN_MST_OW A
+		<where>
+			AND EXISTS (
+				SELECT 1
+				FROM T_ROLE_OW
+				WHERE OWKEY = A.OWKEY
+			)
+			AND A.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.OWKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.OWKEY ~ #{value}
+						OR
+						A.OWNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tRoleCt">
+		WITH T_ROLE AS (
+			SELECT D.ROKEY
+			  FROM TADMIN_MST_UR A
+			 INNER JOIN TADMIN_MST_URGR B
+					 ON B.URGRKEY = A.URGRKEY
+			 INNER JOIN TADMIN_MST_URGRXROGT C
+					 ON C.URGRKEY = B.URGRKEY
+			 INNER JOIN TADMIN_MST_RO D
+					 ON D.ROKEY = C.ROKEY
+			 WHERE A.DELYN = 'N'
+			   AND A.URKEY = #{surkey}
+		), T_ROLE_CT AS (
+		SELECT DISTINCT
+			   B.CTKEY
+		  FROM TADMIN_MST_ROXCTGT A
+		  INNER JOIN TADMIN_MST_CT B
+		  		  ON A.CTKEY = B.CTKEY
+		 WHERE B.DELYN = 'N'
+		   AND EXISTS (
+				SELECT 1
+				FROM T_ROLE
+				WHERE ROKEY = A.ROKEY
+			)
+		)
+	</sql>
+
+	<sql id="sql_tOrderMstOwTop">
+		WITH T_ROLE AS (
+			SELECT D.ROKEY
+			FROM TADMIN_MST_UR A
+					 INNER JOIN TADMIN_MST_URGR B
+								ON B.URGRKEY = A.URGRKEY
+					 INNER JOIN TADMIN_MST_URGRXROGT C
+								ON C.URGRKEY = B.URGRKEY
+					 INNER JOIN TADMIN_MST_RO D
+								ON D.ROKEY = C.ROKEY
+			WHERE A.DELYN = 'N'
+			  AND A.URKEY = #{surkey}
+		),
+			 T_ROLE_OW AS (
+				 SELECT DISTINCT A.OWKEY
+				 FROM TADMIN_MST_ROXOWGT A
+				 INNER JOIN  TADMIN_MST_CT B
+				     	 ON A.CTKEY = B.CTKEY
+				 INNER JOIN  TADMIN_MST_OW C
+				 	 	 ON A.OWKEY = C.OWKEY
+				 WHERE B.DELYN = 'N'
+				   AND C.DELYN = 'N'
+				   AND EXISTS (
+					 SELECT 1
+					 FROM T_ROLE
+					 WHERE ROKEY = A.ROKEY
+				 )
+			 )
+	</sql>
+
+    <select id="selectTOrderMstOwCount" resultType="java.lang.Integer">
+		  <include refid="sql_tOrderMstOwTop"/>
+		SELECT COUNT(1)
+	  	  <include refid="sql_tOrderMstOw"/>
+	</select>
+
+
+	<select id="selectTOrderMstOw" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_tOrderMstOwTop"/>
+			SELECT OWKEY FIELD1
+				  ,OWNM FIELD2
+		<include refid="sql_tOrderMstOw"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstCt">
+		FROM TORDER_MST_CT A -- 센터코드
+			LEFT OUTER JOIN TORDER_MST_COM_DT B
+						 ON B.COMHDKEY ='CTTYPE'
+						AND A.CTTYPE = B.COMDTKEY
+						AND B.LAKEY = #{lakey}
+		WHERE A.CLOSDATE >= #{sysdate}
+		  AND A.MANAGEMENTYN = 'Y'
+		  AND A.DELYN = 'N'
+		<if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+			AND A.CTKEY IN
+			<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{CTKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.CTKEY LIKE '%'|| #{value} || '%'
+			OR A.CTNM LIKE '%'|| #{value} || '%'
+			OR A.CTTYPE LIKE '%'|| #{value} || '%'
+			OR A.CNTRYCD LIKE '%'|| #{value} || '%'
+			OR A.CLOSDATE LIKE '%'|| #{value} || '%')
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(popParam)" >
+			AND (A.CTKEY LIKE '%'|| #{popParam} || '%'
+			OR A.CTNM LIKE '%'|| #{popParam} || '%')
+		</if>
+
+	</sql>
+
+    <select id="selectTOrderMstCtCount" resultType="java.lang.Integer">
+<!--		<include refid="sql_tRoleCt"/>-->
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstCt"/>
+	</select>
+
+	<select id="selectTOrderMstCt" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+<!--		<include refid="sql_tRoleCt"/> 권한 관련 임시주석-->
+			SELECT A.CTKEY FIELD1
+				  ,A.CTNM FIELD2
+				  ,B.COMDTNM FIELD3
+				  ,A.CNTRYCD FIELD4
+				  ,A.CLOSDATE FIELD5
+		<include refid="sql_tOrderMstCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstCtxow">
+		FROM TORDER_MST_CT A -- 센터코드
+			INNER JOIN TORDER_MST_CTXOW B
+		            ON A.CTKEY = B.CTKEY
+			LEFT OUTER JOIN TORDER_MST_COM_DT C
+						 ON C.COMHDKEY ='CTTYPE'
+						AND A.CTTYPE = C.COMDTKEY
+						AND C.LAKEY = #{lakey}
+		WHERE A.CLOSDATE >= #{sysdate}
+		  AND A.DELYN = 'N'
+		  --AND A.MANAGEMENTYN = 'Y'
+		  AND B.OWKEY = #{owkey}
+		<if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+			AND A.CTKEY IN
+			<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{CTKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.CTKEY LIKE '%'|| #{value} || '%'
+			OR A.CTNM LIKE '%'|| #{value} || '%'
+			OR A.CTTYPE LIKE '%'|| #{value} || '%'
+			OR A.CNTRYCD LIKE '%'|| #{value} || '%'
+			OR A.CLOSDATE LIKE '%'|| #{value} || '%')
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(popParam)" >
+			AND (A.CTKEY LIKE '%'|| #{popParam} || '%'
+			OR A.CTNM LIKE '%'|| #{popParam} || '%')
+		</if>
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(oflnctyn) and "Y".equals(oflnctyn)' >
+			AND A.CTTYPE = '02'
+		</if>
+
+	</sql>
+
+    <select id="selectTOrderMstCtxowCount" resultType="java.lang.Integer">
+<!--		<include refid="sql_tRoleCt"/>-->
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstCtxow"/>
+	</select>
+
+	<select id="selectTOrderMstCtxow" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+<!--		<include refid="sql_tRoleCt"/> 권한 관련 임시주석-->
+			SELECT A.CTKEY FIELD1
+				  ,A.CTNM FIELD2
+				  ,B.OWKEY FIELD3
+				  ,C.COMDTNM FIELD4
+				  ,A.CNTRYCD FIELD5
+				  ,A.CLOSDATE FIELD6
+		<include refid="sql_tOrderMstCtxow"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tadminMstIcgr">
+	/* oms-common-sql-oracle.xml - sql_tadminMstIcgr */
+		FROM TORDER_MST_ICGR
+		<where>
+			CLOSDATE >= #{sysdate}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+				AND OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+				AND OWKEY IN
+				<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+					#{owList}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (ICGRPKEY LIKE '%' || #{value} || '%' OR ICGRPNM LIKE '%' || #{value} || '%' OR  OWKEY LIKE '%' || #{value} || '%' )
+			</if>
+		</where>
+	</sql>
+
+    <select id="selectTOrderMstIcgrCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		<include refid="sql_tadminMstIcgr"/>
+	</select>
+
+	<select id="selectTOrderMstIcgr" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT ICGRPKEY AS FIELD1
+				  ,ICGRPNM AS FIELD2
+				  ,ICGRPTYPE AS FIELD3
+				  ,'ICGRTYPE' || ';' || ICGRPTYPE AS FIELD3_DESC
+				  ,OWKEY AS FIELD4
+		<include refid="sql_tadminMstIcgr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOderMstIcut">
+		FROM TORDER_MST_IC A
+		INNER JOIN TORDER_MST_ICUTXTYPE B
+				ON A.OWKEY = B.OWKEY
+			   --AND A.ICUNITKEY = B.ICUTKEY // 추후제거 및 컬럼변경
+			WHERE A.CLOSDATE >= #{sysdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icutkey)" >
+			AND A.ICUNITKEY = #{icutkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+			AND A.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.ICUNITKEY LIKE '%'|| #{value} || '%' OR A.CLOSDATE LIKE '%'|| #{value} || '%')
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+			AND A.OWKEY IN
+			<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+				#{owList}
+			</foreach>
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstIcutCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  <include refid="sql_tOderMstIcut"/>
+	</select>
+
+	<select id="selectTOrderMstIcut" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.ICUNITKEY AS FIELD1
+				   ,B.ICUNITTYPE AS FIELD2
+				   ,B.ICUNITQTY AS FIELD3
+				   ,A.OWKEY AS FIELD4
+		<include refid="sql_tOderMstIcut"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIc">
+		  FROM TORDER_MST_IC A
+		 INNER JOIN TORDER_MST_ICUTXTYPE B
+			ON A.ICKEY = B.ICKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.UOM = B.ICUNITTYPE
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<if test="valueList != null and valueList.size > 0">
+				 INNER JOIN (
+					SELECT OWKEY, ICKEY
+					  FROM (
+							<foreach item="item" collection="valueList" separator="UNION ALL">
+								SELECT COALESCE(#{owkey}, #{sowkey}) AS OWKEY
+									 , #{item} AS ICKEY
+							</foreach>
+						 ) T
+						 GROUP BY OWKEY, ICKEY
+					 ) T_SCH
+					ON A.OWKEY = T_SCH.OWKEY
+				   AND A.ICKEY LIKE T_SCH.ICKEY || '%'
+			</if>
+		</if>
+
+		<where>
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			AND A.CLOSDATE >= #{sysdate}
+			AND A.DELYN = 'N'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+    <select id="selectTOrderMstIcCount" resultType="java.lang.Integer" >
+    	/* oms-common-sql-oracle.xml - selectTOrderMstIcCount */
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstIc"/>
+	</select>
+
+	<select id="selectTOrderMstIc" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.ICKEY AS FIELD1
+				 , A.ICNM AS FIELD2
+				 , A.OWKEY AS FIELD3
+				 , A.ICUNITKEY AS FIELD4
+				 , A.SLPRC AS FIELD5
+				 , A.UDF2 AS FIELD6
+		<include refid="sql_tOrderMstIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIcAvqty">
+		FROM TADMIN_MST_IC A
+		INNER JOIN TADMIN_MST_ICXCT B
+				ON A.ICKEY = B.ICKEY
+		LEFT OUTER JOIN TWORK_INFO_IVAT C
+					 ON A.OWKEY = C.OWKEY
+					AND A.ICKEY = C.ICKEY
+					AND B.CTKEY = C.CTKEY
+		LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC D
+					 ON C.CTKEY = D.CTKEY
+					AND C.OWKEY = D.OWKEY
+					AND C.ICKEY = D.ICKEY
+					AND C.IVATKEY = D.IVATKEY
+		WHERE A.CLOSDATE >= #{sysdate}
+		AND A.DELYN = 'N'
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test='owkey != null and owkey != ""'>
+			AND A.OWKEY = #{owkey}
+		</if>
+		<if test='ackey != null and ackey != ""'>
+			AND A.ACKEY = #{ackey}
+		</if>
+		<if test='ctkey != null and ctkey != ""'>
+			AND B.CTKEY = #{ctkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.ICKEY LIKE '%'|| #{value} || '%'
+			OR A.ICNM LIKE '%'|| #{value} || '%'
+			OR A.ICUNITKEY LIKE '%'|| #{value} || '%'
+			OR A.UOM LIKE '%'|| #{value} || '%'
+			)
+		</if>
+		GROUP BY A.ICKEY, A.ICNAME, A.OWKEY, A.ICUTKEY, A.UOM, B.LOGGRPCD
+	</sql>
+
+    <!-- 상품의 가용재고 팝업 추가 2018-12-03 -->
+	<select id="selectTOrderMstIcAvqtyCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstIcAvqty"/>
+	</select>
+
+	<!-- 상품의 가용재고 팝업 추가 2018-12-03 -->
+	<select id="selectTOrderMstIcAvqty" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT DISTINCT A.ICKEY AS FIELD1
+			  ,A.ICNM AS FIELD2
+			  ,A.OWKEY AS FIELD3
+			  ,A.ICUNITKEY AS FIELD4
+			  ,A.UOM AS FIELD5
+			  ,'ICUTTYPE' ||';'|| A.UOM AS FIELD5_DESC
+			  ,B.LOGGRPCD AS FIELD6
+			  ,'LOGGRPCD' ||';'|| B.LOGGRPCD AS FIELD6_DESC
+			  ,COALESCE(SUM(D.AVQTY), 0) AS FIELD7
+			  ,COALESCE(SUM(D.TTQTY), 0) AS FIELD8
+		<include refid="sql_tOrderMstIcAvqty"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIcsb">
+		FROM TADMIN_MST_ICSB
+		WHERE
+		CLOSDATE >= #{sysdate}
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (ICKEY LIKE '%' || #{value} || '%' OR SBKEY LIKE '%' || #{value} || '%' OR OWKEY LIKE '%' || #{value} || '%' OR ICUNITTYPE LIKE '%' || #{value} || '%')
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstIcsbCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstIcsb"/>
+	</select>
+
+	<select id="selectTOrderMstIcsb" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT  SBKEY AS FIELD1
+				,ICKEY AS FIELD2
+				,OWKEY AS FIELD3
+				,ICUNITTYPE AS FIELD4
+				,'ICUTTYPE' ||';'|| ICUNITTYPE AS FIELD4_DESC
+		<include refid="sql_tOrderMstIcsb"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+    <select id="selectTOrderSetOrcs" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT ORCSKEY AS FIELD1
+			  ,ORCSNAME AS FIELD2
+		  FROM TORDER_SET_ORCS
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			WHERE (ORCSKEY LIKE '%' || #{value} || '%' OR ORCSNAME LIKE '%' || #{value} || '%')
+		</if>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstZc">
+		FROM TORDER_MST_ZC
+		WHERE
+		COUNTRYCODE = #{countrycode}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dlcompany)">
+			AND DLCOMPANY = #{dlcompany}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND      (  ZIP_NO LIKE '%'|| #{value} || '%'
+			OR SIDO_ADDR LIKE '%'|| #{value} || '%'
+			OR SKK_ADDR LIKE '%'|| #{value} || '%'
+			OR DONG_ADDR LIKE '%'|| #{value} || '%'
+			OR DLCOMPANY LIKE '%'|| #{value} || '%'
+			)
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstZcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	<include refid="sql_tOrderMstZc"/>
+	</select>
+
+	<select id="selectTOrderMstZc" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT
+				 ZIP_NO		AS FIELD1
+				,SIDO_ADDR       AS FIELD2
+				,SKK_ADDR      AS FIELD3
+				,DONG_ADDR   AS FIELD4
+				,DLCOMPANY   AS FIELD5
+				,'DLCOMPANY'||';'||DLCOMPANY AS FIELD5_DESC
+		<include refid="sql_tOrderMstZc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIcutxtype">
+		FROM TADMIN_MST_ICUTXTYPE
+		<where>
+			<if test="icutkey != null">
+				ICUNITKEY = #{icutkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				(ICUNITKEY LIKE '%'|| #{value} || '%' OR ICUNITTYPE LIKE '%'|| #{value} || '%')
+			</if>
+		</where>
+	</sql>
+
+    <select id="selectTOrderMstIcutxtypeCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	<include refid="sql_tOrderMstIcutxtype"/>
+	</select>
+
+    <select id="selectTOrderMstIcutxtype" resultType="camelMap">
+		<include refid="sql_pagingBottom"/>
+		SELECT ICUNITTYPE FIELD1
+			  ,'ICUTTYPE' ||';'|| ICUNITTYPE AS FIELD1_DESC
+			  ,ICUNITQTY  FIELD2
+		<include refid="sql_tOrderMstIcutxtype"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstOrcdCstDt">
+		FROM TORDER_MST_ORCD_HD A
+		<!--
+                     LEFT OUTER JOIN TORDER_MST_ORCD_DT B
+                                 ON A.ORDERCOMHDKEY = B.ORDERCOMHDKEY
+                                AND B.LAKEY = #{lakey}
+        -->
+                <where>
+                    AND A.DELYN = 'N'
+        <!--
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+                        AND (A.ORDERCOMHDKEY LIKE '%' || #{value} || '%' OR B.ORDERCOMDTKEY LIKE '%'|| #{value} || '%' OR B.ORDERCOMDTNM LIKE '%'|| #{value} || '%' OR B.ORDERCOMDTVAL LIKE '%'|| #{value} || '%' OR A.ORDERCOMHNM LIKE '%' || #{value} || '%')
+                    </if>
+        -->			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.ORDERCOMHDKEY LIKE '%' || #{value} || '%'  OR A.ORDERCOMHNM LIKE '%' || #{value} || '%')
+		    </if>
+		</where>
+
+	</sql>
+
+    <select id="selectTOrderMstOrcdCstDtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstOrcdCstDt"/>
+	</select>
+
+	<select id="selectTOrderMstOrcdCstDt" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.ORDERCOMHDKEY AS FIELD1,
+				   A.ORDERCOMHNM AS FIELD2
+		           /*
+				   CASE B.ORDERCOMDTNM WHEN B.ORDERCOMDTNM IS NULL THEN A.ORDERCOMHNM ELSE B.ORDERCOMDTNM END AS FIELD3,
+				   B.ORDERCOMDTKEY AS FIELD4,
+				   B.ORDERCOMDTVAL AS FIELD5
+		           */
+		<include refid="sql_tOrderMstOrcdCstDt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tAdminMStEq">
+		FROM TADMIN_MST_EQ
+		WHERE
+		CLOSDATE >= #{sysdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (EQKEY LIKE '%' || #{value} || '%')
+		</if>
+	</sql>
+
+    <select id="selectTAdminMstEqCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tAdminMStEq"/>
+	</select>
+
+	<select id="selectTAdminMstEq" resultMap="selectPopupCommonCode">
+		<include refid="sql_pagingTop"/>
+			SELECT EQKEY AS FIELD1
+				  ,EQTYPE AS FIELD2
+				  ,'EQTYPE' ||';'|| EQTYPE AS FIELD2_DESC
+		<include refid="sql_tAdminMStEq"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIcmp">
+		FROM 	TORDER_MST_ICMP_HD
+		WHERE 	1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND	(
+			ICMPKEY LIKE '%'|| #{value} || '%'
+			OR OWKEY LIKE '%'|| #{value} || '%'
+			)
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			AND	 	OWKEY IN
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					 open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>
+		<if test="owkey != null">
+			AND 	OWKEY = #{owkey}
+		</if>
+
+	</sql>
+
+    <select id="selectTOrderMstIcmpCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		<include refid="sql_tOrderMstIcmp"/>
+	</select>
+
+	<select id="selectTOrderMstIcmp" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT 	ICMPKEY	AS FIELD1
+					,OWKEY	AS FIELD2
+		<include refid="sql_tOrderMstIcmp"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstStore">
+		FROM TADMIN_MST_STORE
+		WHERE CLOSDATE >= #{sysdate}
+		AND DELYN = 'N'
+		AND STORETYPE = '0'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (STOREKEY LIKE '%' || #{value} || '%' OR STORENM LIKE '%'|| #{value} || '%' )
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstStoreCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstStore"/>
+	</select>
+
+	<select id="selectTOrderMstStore" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT STOREKEY	FIELD1
+			      ,STORENM	FIELD2
+		<include refid="sql_tOrderMstStore"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstAddrT">
+		FROM TADMIN_MST_ADDR_T
+		WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (ADDRID LIKE '%' || #{value} || '%' OR CTYNM LIKE '%'|| #{value} || '%' OR STNM LIKE '%'|| #{value} || '%' OR UNIT LIKE '%'|| #{value} || '%' OR ZIPCD LIKE '%'|| #{value} || '%')
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstAddrTCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstAddrT"/>
+	</select>
+
+	<select id="selectTOrderMstAddrT" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT ADDRID	FIELD1
+			      ,CTYNM	FIELD2
+			      ,STNM		FIELD3
+			      ,UNIT		FIELD4
+			      ,ZIPCD	FIELD5
+		<include refid="sql_tOrderMstAddrT"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstSeIc">
+		FROM TADMIN_MST_SEIC_HD A
+		INNER JOIN TADMIN_MST_IC B
+				ON B.OWKEY = A.OWKEY
+			   AND B.ICKEY = A.ICKEY
+		WHERE A.CLOSDATE >= #{sysdate}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.SETICKEY LIKE '%' || #{value} || '%' OR A.ICKEY LIKE '%'|| #{value} || '%' OR A.ICUNITKEY LIKE '%'|| #{value} || '%' OR B.ICNM LIKE '%'|| #{value} || '%')
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					 open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstSeIcCount" resultType="java.lang.Integer">
+		SELECT COUNT (1)
+		<include refid="sql_tOrderMstSeIc"/>
+	</select>
+
+
+	<select id="selectTOrderMstSeIc" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT
+				   A.SETICKEY	FIELD1,
+				   A.ICKEY		FIELD2,
+				   B.ICNM		FIELD3,
+				   A.OWKEY		FIELD4,
+				   B.UOM FIELD5 ,
+				   'ICUTTYPE' ||';'|| B.UOM AS FIELD5_DESC,
+				   A.ICUNITKEY	FIELD6,
+				   A.CLOSDATE	FIELD7
+		<include refid="sql_tOrderMstSeIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOderMstPogrp">
+		FROM TORDER_MST_POGRP
+		WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				AND (  POGRPKEY  LIKE '%' || #{value} || '%' OR
+				POGRPNAME LIKE '%'|| #{value} || '%' OR
+				OWKEY     LIKE '%'|| #{value} || '%'
+				)
+			</if>
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+	<select id="selectTOrderMstPogrpCount" resultType="java.lang.Integer">
+		SELECT COUNT (1)
+		<include refid="sql_tOderMstPogrp"/>
+	</select>
+
+	<select id="selectTOrderMstPogrp" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT POGRPKEY		FIELD1,
+				   POGRPNAME	FIELD2,
+				   OWKEY		FIELD3
+		<include refid="sql_tOderMstPogrp"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIcxCt">
+		FROM TADMIN_MST_ICXCT A
+		INNER JOIN TADMIN_MST_IC B
+				ON A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+		INNER JOIN TADMIN_MST_CT C
+				ON A.CTKEY = C.CTKEY
+		WHERE B.CLOSDATE >= #{sysdate}
+		AND B.DELYN = 'N'
+		<if test="owkey != null">
+			AND A.OWKEY = #{owkey}
+		</if>
+		<if test="ctkey != null">
+			AND A.CTKEY = #{ctkey}
+		</if>
+		<if test="ickey != null">
+			AND A.ICKEY = #{ickey}
+		</if>
+		<if test="ackey != null">
+			AND A.ACKEY = #{ackey}
+		</if>
+		<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					 open="(" separator="," close=")">
+				#{OWKEY_AUTH_LIST}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.OWKEY LIKE '%'|| #{value} || '%'
+			OR A.ICKEY LIKE '%'|| #{value} || '%'
+			OR B.ICNM LIKE '%'|| #{value} || '%'
+			OR B.ICUNITKEY LIKE '%'|| #{value} || '%'
+			OR B.UOM LIKE '%'|| #{value} || '%'
+			OR C.CTNM LIKE '%'|| #{value} || '%'
+			)
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstIcxCtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	<include refid="sql_tOrderMstIcxCt"/>
+	</select>
+
+	<select id="selectTOrderMstIcxCt" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.ICKEY AS FIELD1,
+				   B.ICNM AS FIELD2,
+				   A.OWKEY AS FIELD3,
+				   A.CTKEY AS FIELD4,
+				   B.ICUNITKEY AS FIELD5,
+				   B.UOM AS FIELD6,
+				   'ICUTTYPE' || ';' || B.UOM AS FIELD6_DESC,
+				   C.CTNM AS FIELD7,
+				   A.CP AS FIELD8,
+				   A.ICGRPKEY AS FIELD9,
+				   B.SPEC AS FIELD10,
+				   A.LOGGRPCD AS FIELD11,
+				   A.RNDKEY AS FIELD12
+		<include refid="sql_tOrderMstIcxCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstStorexCt">
+		FROM TADMIN_MST_STOREXCT A
+		INNER JOIN TADMIN_MST_STORE B
+				ON A.STOREKEY = B.STOREKEY
+		WHERE B.CLOSDATE >= #{sysdate}
+		AND B.DELYN = 'N'
+		<if test="ctkey != null">
+			AND A.CTKEY = #{ctkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.STOREKEY LIKE '%' || #{value} || '%' OR B.STORENM LIKE '%'|| #{value} || '%' )
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+			AND B.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		GROUP BY A.STOREKEY
+		,B.STORENM, A.CTKEY
+	</sql>
+
+    <select id="selectTOrderMstStorexCtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstStorexCt"/>
+	</select>
+
+	<select id="selectTOrderMstStorexCt" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			  SELECT A.STOREKEY	FIELD1
+					,B.STORENM	FIELD2
+					,A.CTKEY		FIELD3
+		<include refid="sql_tOrderMstStorexCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstOrTypeReason">
+		FROM TORDER_MST_ORCD_HD TB1
+		INNER JOIN TORDER_MST_ORCD_DT TB2
+				ON TB1.ORDERCOMHDKEY = TB2.ORDERCOMHDKEY
+		WHERE TB1.ORDERCOMHDKEY = 'OM_MT_CT_MOVE_RSN'
+		<if test="lakey != null">
+			AND TB2.LAKEY = #{lakey}
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstOrTypeReasonCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstOrTypeReason"/>
+	</select>
+
+	<select id="selectTOrderMstOrTypeReason" resultType="camelMap">
+    	#{GRIDPAGING_ROWNUMTYPE_TOP}
+		 SELECT TB2.ORDERCOMDTKEY AS FIELD1
+		       ,TB2.ORDERCOMDTNM AS FIELD2
+		<include refid="sql_tOrderMstOrTypeReason"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <resultMap id="selectCommonCodeAcxUr" type="java.util.HashMap">
+		<result property="field1" column="FIELD1"/>
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+	</resultMap>
+
+	<select id="selectTOrderMstAcXUrCommonCdCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTOrderMstAcXUrCommonCdRefSql"/>
+		  )
+	</select>
+
+
+	<select id="selectTOrderMstAcXUrCommonCd" resultMap="selectCommonCodeAcxUr">
+	    #{GRIDPAGING_ROWNUMTYPE_TOP}
+	    	SELECT  *
+	    	  FROM (
+	    	  	<include refid="selectTOrderMstAcXUrCommonCdRefSql"/>
+	    	  )
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectTOrderMstAcXUrCommonCdRefSql">
+           SELECT DISTINCT
+                  A.URKEY AS FIELD1
+				 ,A.URKEY AS FIELD1_DESC
+                 ,A.ACKEY AS FIELD2
+                 ,B.ACNAME AS FIELD3
+                 ,A.ICGRKEY AS FIELD4
+                 ,A.ICGRTYPE AS FIELD5
+                 ,C.ICGRNAME AS FIELD6
+             FROM TWORK_MST_ACXUR A
+             INNER JOIN TWORK_MST_AC B
+                	 ON A.CTKEY = B.CTKEY
+					AND A.ACKEY = B.ACKEY
+             LEFT OUTER JOIN TWORK_MST_ICGR C
+                 		  ON A.CTKEY = C.CTKEY
+						 AND A.OWKEY = C.OWKEY
+						 AND A.ICGRKEY = C.ICGRKEY
+						 AND A.ICGRTYPE = C.ICGRTYPE
+             LEFT OUTER JOIN TADMIN_MST_UR D
+             		  	  ON A.URKEY = D.URKEY
+						 AND A.CTKEY = D.CTKEY
+            WHERE 1 = 1
+			<if test="LOGGRPCD_SELECTION_VALUE != null and LOGGRPCD_SELECTION_VALUE != ''" >
+				AND A.LOGGRPCD IN
+				<foreach item="LOGGRPCD_SELECTION_VALUE" index="loggrpcdIdx" collection="LOGGRPCD_SELECTION_VALUE" open="(" separator="," close=")">
+					#{LOGGRPCD_SELECTION_VALUE}
+				</foreach>
+			</if>
+
+		     <if test="CTKEY_AUTH_LIST != null and CTKEY_AUTH_LIST.size > 0" >
+				AND A.CTKEY IN
+				<foreach item="CTKEY_AUTH_LIST" index="index2" collection="CTKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{CTKEY_AUTH_LIST}
+				</foreach>
+			 </if>
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			   AND 	(
+				       A.URKEY LIKE '%' || #{value} || '%'
+				    OR A.ACKEY LIKE '%'|| #{value} || '%'
+					OR B.ACNAME LIKE '%'|| #{value} || '%'
+					OR A.ICGRKEY LIKE '%'|| #{value} || '%'
+					OR A.ICGRTYPE  LIKE '%'|| #{value} || '%'
+					OR C.ICGRNAME  LIKE '%'|| #{value} || '%'
+					OR D.URNM LIKE '%'|| #{value} || '%'
+			   )
+			 </if>
+	</sql>
+
+    <sql id="selectTOrderMstPromotionIcRefSql">
+		SELECT A.ICKEY AS FIELD1
+		      ,B.ICNM AS FIELD2
+		      ,A.OWKEY AS FIELD3
+		      ,B.ICUNITKEY AS FIELD4
+		      ,B.UOM AS FIELD5
+		      ,'ICUTTYPE' || ';' || B.UOM AS FIELD5_DESC
+		      ,A.CP AS FIELD6
+		      ,A.ICGRPKEY AS FIELD7
+		      ,B.SPEC AS FIELD8
+		      ,A.LOGGRPCD AS FIELD9
+		      ,A.RNDKEY AS FIELD10
+		  FROM (
+		        SELECT OWKEY, ICKEY, LOGGRPCD, RNDKEY, ICGRPKEY, MAX(CP) AS CP
+		          FROM TADMIN_MST_ICXCT
+		         WHERE ICGRPKEY IN ('19', '20', '21')
+		         GROUP BY OWKEY, ICKEY, LOGGRPCD, RNDKEY, ICGRPKEY
+		       ) A
+		 INNER JOIN TADMIN_MST_IC B
+		  		 ON A.OWKEY = B.OWKEY
+				AND A.ICKEY = B.ICKEY
+		 WHERE B.CLOSDATE >= #{sysdate}
+		   AND B.DELYN = 'N'
+			<if test="owkey != null">
+			AND A.OWKEY = #{owkey}
+			</if>
+			<if test="ickey != null">
+			AND A.ICKEY = #{ickey}
+			</if>
+			<if test="OWKEY_AUTH_LIST != null and OWKEY_AUTH_LIST.size > 0" >
+				 AND A.OWKEY IN
+				<foreach item="OWKEY_AUTH_LIST" index="index" collection="OWKEY_AUTH_LIST"
+					open="(" separator="," close=")">
+					#{OWKEY_AUTH_LIST}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.OWKEY LIKE '%'|| #{value} || '%'
+				OR A.ICKEY LIKE '%'|| #{value} || '%'
+				OR B.ICNM LIKE '%'|| #{value} || '%'
+				OR B.ICUNITKEY LIKE '%'|| #{value} || '%'
+				OR B.UOM LIKE '%'|| #{value} || '%'
+				)
+			</if>
+	</sql>
+
+	<select id="selectTOrderMstPromotionIcCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectTOrderMstPromotionIcRefSql"/>
+		  )
+	</select>
+
+
+	<select id="selectTOrderMstPromotionIc" resultType="camelMap">
+	    #{GRIDPAGING_ROWNUMTYPE_TOP}
+	    	SELECT *
+	    	  FROM (
+	    	  	<include refid="selectTOrderMstPromotionIcRefSql"/>
+	    	  )
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="sql_tOrderMstCtg">
+		FROM TORDER_MST_CTG
+		WHERE CLOSDATE >= #{sysdate}
+		AND DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctglevel)" >
+			AND CTGLV = #{ctglevel}
+		</if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrpkey)" >
+            AND ICGRPKEY = #{icgrpkey}
+        </if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (CTGKEY LIKE '%' || #{value} || '%' OR CTGNM LIKE '%'|| #{value} || '%' )
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstCtgCount" resultType="java.lang.Integer" >
+		SELECT COUNT(*) AS CNT
+		<include refid="sql_tOrderMstCtg"/>
+	</select>
+
+	<select id="selectTOrderMstCtg" resultType="camelMap">
+    	<include refid="sql_pagingTop"/>
+			SELECT DISTINCT CTGKEY	FIELD1
+			      --,CTGLV	FIELD2
+			      ,CTGNM	FIELD2
+		<include refid="sql_tOrderMstCtg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstAcForRep">
+		FROM
+		(
+		SELECT REPACKEY AS ACKEY
+		,OWKEY
+		FROM TADMIN_MST_AC
+		GROUP BY REPACKEY, OWKEY
+		) A
+		INNER JOIN TADMIN_MST_AC B
+				ON A.ACKEY = B.ACKEY
+			   AND A.OWKEY = B.OWKEY
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (B.ACKEY LIKE '%'|| #{value} || '%' OR B.ACNM LIKE '%'|| #{value} || '%' OR B.ACNM LIKE '%'|| #{value} || '%')
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstAcForRepCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstAcForRep"/>
+	</select>
+
+	<select id="selectTOrderMstAcForRep" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT  B.ACKEY AS FIELD1
+			       ,B.ACNM AS FIELD2
+			       ,B.ACTYPE AS FIELD3
+			       ,A.OWKEY AS FIELD4
+			       ,'ACTYPE' || ';' || B.ACTYPE AS FIELD3_DESC
+		<include refid="sql_tOrderMstAcForRep"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_BatchOrderMstIc">
+		FROM	(
+		SELECT A.ICKEY,
+		B.ICNM,
+		C.ACKEY,
+		C.ACNM,
+		A.CTKEY,
+		A.OWKEY
+		FROM TADMIN_MST_CTXACXIC A
+		INNER JOIN TADMIN_MST_IC B
+				ON A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+		INNER JOIN TADMIN_MST_AC C
+				ON A.ACKEY = C.ACKEY
+			   AND A.OWKEY = C.OWKEY
+		GROUP BY A.ICKEY,
+		B.ICNM,
+		C.ACKEY,
+		C.ACNM,
+		A.CTKEY,
+		A.OWKEY
+		)
+		WHERE  1 = 1
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE.size > 0" >
+			AND  CTKEY IN
+			<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{CTKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test='value !=null'>
+			AND (  ACKEY LIKE '#{value}' || '%'
+			OR ICKEY LIKE '#{value}' || '%'
+			OR ICNM LIKE '%' || '#{value}' || '%'
+			OR ACNM LIKE '%' || '#{value}' || '%'
+			)
+		</if>
+	</sql>
+
+    <select id="selectBatchOrderMstIcCount" resultType="java.lang.Integer" >
+
+		SELECT 	COUNT(1)
+		<include refid="sql_BatchOrderMstIc"/>
+  </select>
+
+  <select id="selectBatchOrderMstIc" resultType="camelMap" >
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	ICKEY  AS FIELD1,
+	 			ICNM AS FIELD2,
+		        ACKEY AS FIELD3,
+	  			ACNM AS FIELD4,
+		        CTKEY AS FIELD5,
+		        OWKEY AS FIELD6
+	  <include refid="sql_BatchOrderMstIc"/>
+        ORDER BY OWKEY, ICKEY, ACKEY
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="sql_NewProductMstIc">
+		FROM	(
+		SELECT A.OWKEY, A.ACKEY, A.ICKEY, B.ICNM, C.ACNM
+		FROM TADMIN_MST_CTXACXIC A
+		INNER JOIN TADMIN_MST_IC B
+				ON A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+		INNER JOIN TADMIN_MST_AC C
+				ON A.ACKEY = C.ACKEY
+			   AND A.OWKEY = C.OWKEY
+		GROUP BY A.OWKEY, A.ACKEY, A.ICKEY, B.ICNM, C.ACNM
+		)
+		WHERE  1 = 1
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test='value !=null'>
+			AND (  ACKEY LIKE '#{value}' || '%'
+			OR ICKEY LIKE '#{value}' || '%'
+			OR ICNM LIKE '%' || '#{value}' || '%'
+			OR ACNM LIKE '%' || '#{value}' || '%'
+			)
+		</if>
+	</sql>
+
+    <select id="selectNewProductMstIcCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		<include refid="sql_NewProductMstIc"/>
+   </select>
+
+   <select id="selectNewProductMstIc" resultType="camelMap" >
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	ICKEY  AS FIELD1,
+	   			ICNM AS FIELD2,
+		        ACKEY AS FIELD3,
+	   			ACNM AS FIELD4,
+		        OWKEY AS FIELD5
+	   <include refid="sql_NewProductMstIc"/>
+        ORDER BY OWKEY, ICKEY, ACKEY
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="sql_newProductMstSimIc">
+		FROM TADMIN_MST_IC
+		WHERE 1 = 1
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+		<if test='value !=null'>
+			AND ICKEY = '#{value}'
+		</if>
+	</sql>
+
+    <select id="selectNewProductMstSimIcCount" resultType="java.lang.Integer" >
+	   SELECT COUNT(1)
+	   <include refid="sql_newProductMstSimIc"/>
+   </select>
+
+   <select id="selectNewProductMstSimIc" resultType="camelMap" >
+	   SELECT ICKEY AS FIELD1,
+	   ICNM AS FIELD2
+	   <include refid="sql_newProductMstSimIc"/>
+  </select>
+
+	<sql id="sql_tAdminMstCtg">
+		FROM TORDER_MST_CTG
+		WHERE CLOSDATE >= #{sysdate}
+		AND DELYN = 'N'
+		AND CTGLV = #{ctglevel}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (CTGKEY LIKE '%' || #{value} || '%' OR CTGNM LIKE '%'|| #{value} || '%' )
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+  <select id="selectTOrderMstCtgLevelCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tAdminMstCtg"/>
+	</select>
+
+	<select id="selectTOrderMstCtgLevel" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT CTGKEY	FIELD1
+			      ,CTGLEVEL	FIELD2
+			      ,CTGNAME	FIELD3
+		<include refid="sql_tAdminMstCtg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstIvChange">
+		FROM TORDER_MST_ORCD_HD TB1
+		INNER JOIN TORDER_MST_ORCD_DT TB2
+				ON TB1.ORDERCOMHDKEY = TB2.ORDERCOMHDKEY
+		WHERE TB1.ORDERCOMHDKEY = 'OM_INV_TYPE_CHG'
+		<if test="lakey != null">
+			AND TB2.LAKEY = #{lakey}
+		</if>
+	</sql>
+
+    <select id="selectTOrderMstIvChangeCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstIvChange"/>
+    </select>
+
+    <select id="selectTOrderMstIvChange" resultType="camelMap">
+    #{GRIDPAGING_ROWNUMTYPE_TOP}
+		 SELECT TB2.ORDERCOMDTKEY AS FIELD1
+		       ,TB2.ORDERCOMDTNM AS FIELD2
+		<include refid="sql_tOrderMstIvChange"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY FIELD1 ASC
+			</otherwise>
+		</choose>
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <select id="selectTOrTypeCount" resultType="java.lang.Integer" >
+    /* oms-common-sql-oracle.xml - selectTOrTypeCount */
+		SELECT COUNT(1)
+		  FROM TORDER_MST_ORTYPE
+		 WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND OWKEY = #{value}
+		</if>
+	</select>
+
+	<select id="selectTOrType" resultType="camelMap">
+	/* oms-common-sql-oracle.xml - selectTOrType */
+		<if test="type != null and type != ''" >
+    		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>
+		 SELECT ORDERTYPECD AS FIELD1
+		      , ORDERTYPECD || ':' || COALESCE(ORDERTYPENM, ORDERTYPECD) AS FIELD2
+		      , OWKEY AS FIELD3
+		      , IBYN AS FIELD4
+		      , OBYN AS FIELD5
+		      , ORDERAT AS FIELD6
+		   FROM TORDER_MST_ORTYPE
+		  WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND OWKEY = #{value}
+		</if>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY LPAD(ORDERTYPECD::TEXT, 20, '0')
+			</otherwise>
+		</choose>
+		<if test="type != null and type != ''" >
+    		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		</if>
+	</select>
+
+	<select id="selectTOwOrTypeCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_MST_EXTERN
+		 WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND OWKEY = #{value}
+		</if>
+	</select>
+
+	<select id="selectTOwOrType" resultType="camelMap">
+    	<if test="type != null and type != ''" >
+    		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>
+		 SELECT EXTORDERTYPECD AS FIELD1
+		      , EXTORDERTYPECD || ':' || COALESCE(EXTORDERTYPENM, EXTORDERTYPECD) AS FIELD2
+		      , OWKEY AS FIELD3
+		   FROM TORDER_MST_EXTERN
+		  WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND OWKEY = #{value}
+		</if>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY LPAD(EXTORDERTYPECD::TEXT, 20, '0')
+			</otherwise>
+		</choose>
+		<if test="type != null and type != ''" >
+    		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		</if>
+	</select>
+
+	<select id="selectTAdminMstCustomerCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		FROM TORDER_MST_AC A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+				AND A.OWKEY IN
+				<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+					#{owList}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(accountgroup)">
+				AND A.ACGRP = #{accountgroup}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ACKEY ~ #{value}
+						OR
+						A.ACNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ACNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</select>
+
+	<select id="selectTAdminMstCustomerList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT A.ACKEY AS FIELD1
+			 , A.ACNM AS FIELD2
+			 , A.OWKEY AS FIELD3
+			 , A.ACGRP AS FIELD4
+			 --, A.ADDRID AS FIELD5
+		FROM TORDER_MST_AC A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+				AND A.OWKEY IN
+				<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+					#{owList}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(accountgroup)">
+				AND A.ACGRP = #{accountgroup}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ACKEY ~ #{value}
+						OR
+						A.ACNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ACNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTOrderMstOwOrderTypeList" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderMstOwOrderTypeList */
+		SELECT A.EXTORDERTYPECD AS FIELD1
+			,  B.EXTORDERTYPENM AS FIELD2
+			,  A.ORDERTYPECD || ' : '|| C.ORDERTYPENM AS FIELD3
+			,  A.ORDERTYPECD AS FIELD4
+			,  A.OWKEY AS FIELD5
+			,  C.ORDERTYPENM AS FIELD6
+		FROM TORDER_INFO_ORTYPE_MAPPING A
+			INNER JOIN TORDER_MST_EXTERN B
+				    ON A.OWKEY = B.OWKEY
+				   AND A.EXTORDERTYPECD = B.EXTORDERTYPECD
+			INNER JOIN TORDER_MST_ORTYPE C
+					ON A.OWKEY = C.OWKEY
+				   AND A.ORDERTYPECD = C.ORDERTYPECD
+		WHERE A.DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+			AND A.OWKEY IN
+			<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+				#{owList}
+			</foreach>
+		</if>
+		ORDER BY A.EXTORDERTYPECD, LPAD(A.ORDERTYPECD::TEXT, 20, '0')
+	</select>
+
+	<sql id="tOrderMstItemCodeList">
+		FROM TORDER_MST_IC IC
+		<where>
+			AND IC.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+<!--			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">-->
+<!--				AND IC.OWKEY IN-->
+<!--				<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">-->
+<!--					#{owList}-->
+<!--				</foreach>-->
+<!--			</if>-->
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND IC.ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						IC.ICKEY ~ #{value}
+						OR
+						IC.ICNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						IC.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectItemCodeListCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectItemCodeListCount */
+		SELECT COUNT(1)
+		<include refid="tOrderMstItemCodeList"/>
+	</select>
+
+	<select id="selectItemCodeList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectItemCodeList */
+		<include refid="sql_pagingTop"/>
+		SELECT IC.ICKEY AS FIELD1
+		     , IC.ICNM AS FIELD2
+		     , IC.OWKEY AS FIELD3
+			 , IC.ICUNITKEY AS FIELD4
+			 , IC.UDF2 AS FIELD5 /* 온도 */
+		<include refid="tOrderMstItemCodeList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<select id="selectItemAsrtListCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectItemAsrtListCount */
+		SELECT COUNT(1)
+		<include refid="tOrderMstAsrtList"/>
+	</select>
+
+	<select id="selectItemAsrtList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectItemAsrtList */
+		<include refid="sql_pagingTop"/>
+		SELECT IC.ICKEY AS FIELD1
+			 , IC.ICNM AS FIELD2
+			 , IC.OWKEY AS FIELD3
+		     , IC.ICKEY AS FIELD4
+		     , A.ASRTNM AS FIELD5
+			 , IC.ICUNITKEY AS FIELD6
+			 , AC.ACKEY
+			 , AC.ACNM
+		<include refid="tOrderMstAsrtList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="tOrderMstAsrtList">
+		FROM TORDER_MST_IC IC
+		LEFT JOIN TORDER_MST_ASRT A
+		   ON IC.OWKEY = A.OWKEY
+		  AND IC.ICKEY = A.ASRTKEY
+		  LEFT JOIN TORDER_MST_AC AC
+		  	ON AC.OWKEY = IC.OWKEY
+		   AND AC.ACKEY = IC.ACKEY
+		   AND AC.DELYN <![CDATA[ <> ]]> 'Y'
+		<where>
+			AND IC.DELYN = 'N'
+			AND NOT EXISTS( SELECT 1 FROM  TORDER_MST_ASRT  C
+			WHERE  C.ASRTREPKEY  = IC.ICKEY )
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND A.ASRTREPKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND IC.ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtkey)">
+				AND IC.ASRTKEY = #{asrtkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						IC.ICKEY ~ #{value}
+						OR
+						IC.ICNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						IC.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	
+	
+	<select id="selectItemAsrtRepListCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectItemAsrtRepListCount */
+		SELECT COUNT(1)
+		<include refid="tOrderAsrtRepList"/>
+	</select>	  
+	
+	<select id="selectItemAsrtRepList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectItemAsrtRepList */
+		<include refid="sql_pagingTop"/>
+		SELECT IC.ICKEY AS FIELD1
+		     , IC.ICNM AS FIELD2
+		     , IC.OWKEY AS FIELD3
+			 , IC.ICUNITKEY AS FIELD4
+			 , IC.UDF2 AS FIELD5 /* 온도 */
+			 , EA.WEIGHT AS FIELD6
+			 , EA.VOL AS FIELD7
+		     , EA.ICUNITQTY AS FIELD8
+		     , IC.ASRTYN AS FIELD9
+		     , ASRT.ASRTREPKEY AS FIELD10
+		     , REP.ICNM AS FIELD11
+			 , AC.ACKEY
+			 , AC.ACNM
+			 , EA.ICUNITQTY AS EAUNITQTY
+			 , INN.ICUNITQTY AS INNUNITQTY
+			 , CTN.ICUNITQTY AS CTNUNITQTY
+		<include refid="tOrderAsrtRepList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<sql id="tOrderAsrtRepList">
+		  FROM TORDER_MST_IC IC
+		 INNER JOIN TORDER_MST_IC_ORG ORG
+		    ON IC.OWKEY = ORG.OWKEY
+		   AND IC.ICKEY = ORG.ICKEY
+		 INNER JOIN TORDER_MST_ICUTXTYPE EA
+			ON EA.OWKEY = IC.OWKEY
+		   AND EA.ICKEY = IC.ICKEY
+		   AND EA.ICUNITTYPE = IC.UOM
+		   AND EA.ICUNITTYPE = 'EA'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE INN
+			ON INN.OWKEY = IC.OWKEY
+		   AND INN.ICKEY = IC.ICKEY
+		   AND INN.ICUNITTYPE = 'INN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE CTN
+			ON CTN.OWKEY = IC.OWKEY
+		   AND CTN.ICKEY = IC.ICKEY
+		   AND CTN.ICUNITTYPE = 'CTN'
+		  LEFT JOIN TORDER_MST_AC AC
+			ON AC.OWKEY = IC.OWKEY
+		   AND AC.ACKEY = IC.ACKEY
+		   AND AC.DELYN <![CDATA[ <> ]]> 'Y'
+		  LEFT JOIN TORDER_MST_ASRT ASRT
+            ON IC.OWKEY = ASRT.OWKEY
+           AND IC.ICKEY = ASRT.ASRTREPKEY
+          LEFT JOIN TORDER_MST_IC REP
+            ON ASRT.OWKEY = REP.OWKEY
+           AND ASRT.ASRTKEY = REP.ICKEY
+		<where>
+			AND IC.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND IC.ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(olnickey)">
+				AND (
+                    ASRT.ASRTKEY = #{olnickey}
+                    OR
+                    ORG.ICKEY = #{olnickey}
+                    )
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND IC.ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						ASRT.ASRTKEY ~ #{value}
+						OR
+						ASRT.ASRTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						ASRT.ASRTKEY LIKE '%' || #{value} || '%'
+						OR
+						ASRT.ASRTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	
+
+	<select id="selectTOrderMstOrderTypeList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectTOrderMstOrderTypeList */
+		SELECT ORDERTYPECD AS FIELD1
+		     , ORDERTYPECD || ' : '|| ORDERTYPENM AS FIELD2
+			 , IBYN AS FIELD3
+			 , OBYN AS FIELD4
+			 , ORDERAT AS FIELD5
+			 , OWKEY AS FIELD6
+			 , ORDERTYPECD || ' : '|| ORDERTYPECD AS FIELD7
+		FROM TORDER_MST_ORTYPE
+		WHERE DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibyn)">
+			AND IBYN = #{ibyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obyn)">
+			AND OBYN = #{obyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orderAttr)">
+			AND ORDERAT = #{orderAttr}
+		</if>
+		ORDER BY LPAD(ORDERTYPECD::TEXT, 20, '0')
+	</select>
+
+	<select id="selectTOrderMstOwOrderTypeGList" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderMstOwOrderTypeGList */
+		SELECT TB.FIELD1
+			 , TB.FIELD2
+			 , TB.FIELD5
+		FROM (	SELECT A.EXTORDERTYPECD AS FIELD1
+					,  A.EXTORDERTYPECD || ' : ' || B.EXTORDERTYPENM AS FIELD2
+					,  A.ORDERTYPECD || ' : '|| C.ORDERTYPENM AS FIELD3
+					,  A.ORDERTYPECD AS FIELD4
+					,  A.OWKEY AS FIELD5
+					,  C.ORDERTYPENM AS FIELD6
+		            ,  B.EXTORDERTYPENM AS FIELD7
+				FROM TORDER_INFO_ORTYPE_MAPPING A
+					INNER JOIN TORDER_MST_EXTERN B
+							ON A.OWKEY = B.OWKEY
+						   AND A.EXTORDERTYPECD = B.EXTORDERTYPECD
+				    	   AND B.DELYN = 'N'
+				INNER JOIN TORDER_MST_ORTYPE C
+						ON A.OWKEY = C.OWKEY
+					   AND A.ORDERTYPECD = C.ORDERTYPECD
+				   	   AND C.DELYN = 'N'
+				WHERE A.DELYN = 'N'
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+					AND A.OWKEY = #{owkey}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(listOw)">
+					AND A.OWKEY IN
+					<foreach collection="listOw" item="owList" separator="," open="(" close=")" index="index">
+						#{owList}
+					</foreach>
+				</if>
+				ORDER BY A.EXTORDERTYPECD ) TB
+		GROUP BY TB.FIELD1, TB.FIELD2, TB.FIELD5
+		ORDER BY TB.FIELD1
+	</select>
+	
+	<select id="selectTOrderMstOwOrTypeList" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderMstOwOrTypeList */
+		SELECT TB.FIELD1
+			 , TB.FIELD2
+			 , TB.FIELD5
+		FROM (			 
+				SELECT CH.EXTORDERTYPECD AS FIELD1
+					 , CH.EXTORDERTYPECD || ' : ' || EXTORDERTYPENM AS FIELD2
+					 , CH.OWKEY AS FIELD5
+				  FROM TORDER_INFO_CO_HD CH
+				  INNER JOIN TORDER_MST_EXTERN ME
+				  ON CH.OWKEY = ME.OWKEY 
+				  AND CH.EXTORDERTYPECD = ME.EXTORDERTYPECD 
+				 WHERE CH.OWKEY = #{owkey}
+			  ) TB	
+		GROUP BY TB.FIELD1, TB.FIELD2, TB.FIELD5
+		ORDER BY TB.FIELD1	
+	</select>
+	
+	<select id="selectTOrderNameList" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderNameList */
+		SELECT 'A.RECPNM' AS FIELD1, '받는자명' AS FIELD2
+		UNION ALL
+		SELECT 'A.BUYER', '주문자명'
+		UNION ALL
+		SELECT 'A.RECALLER', '회수 신청인명'	
+	</select>
+	
+	<select id="selectTOrderInfoList" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderInfoList */
+		SELECT 'A.RECPTEL01' AS FIELD1, '받는자 연락처1' AS FIELD2
+		UNION ALL
+		SELECT 'A.RECPTEL02', '받는자 연락처2'
+		UNION ALL
+		SELECT 'A.RECPADDRHD||A.RECPADDRDT', '받는자 주소'
+		UNION ALL
+		SELECT 'A.RECPZIPCD', '받는자 우편번호'
+		UNION ALL
+		SELECT 'A.BUYERTEL01' AS FIELD1, '주문자 연락처1' AS FIELD2
+		UNION ALL
+		SELECT 'A.BUYERTEL02', '주문자 연락처2'
+		UNION ALL
+		SELECT 'A.BUYERADDRHD||A.BUYERADDRDT', '주문자 주소'
+		UNION ALL
+		SELECT 'A.BUYERZIPCD', '주문자 우편번호'
+		UNION ALL
+		SELECT 'A.RECALLERTEL01' AS FIELD1, '회수지 연락처1' AS FIELD2
+		UNION ALL
+		SELECT 'A.RECALLERTEL02', '회수지 연락처2'
+		UNION ALL
+		SELECT 'A.RECALLERADDRHD||A.RECALLERADDRDT', '회수지 주소'
+		UNION ALL
+		SELECT 'A.RECALLERZIPCD', '회수지 우편번호' 	
+	</select>
+	
+	<select id="selectCoItemCodeListCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectCoItemCodeListCount */
+		SELECT COUNT(1)
+		<include refid="tOrderCoItemCodeList"/>
+	</select>	  
+	
+	<select id="selectCoItemCodeList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectCoItemCodeList */
+		<include refid="sql_pagingTop"/>
+		SELECT IC.ICKEY AS FIELD1
+		     , IC.ICNM AS FIELD2
+		     , IC.OWKEY AS FIELD3
+			 , IC.ICUNITKEY AS FIELD4
+			 , IC.UDF2 AS FIELD5 /* 온도 */
+			 , EA.WEIGHT AS FIELD6
+			 , EA.VOL AS FIELD7
+		     , EA.ICUNITQTY AS FIELD8
+		     , IC.ASRTYN AS FIELD9
+		     , ASRT.ASRTREPKEY AS FIELD10
+		     , REP.ICNM AS FIELD11
+			 , AC.ACKEY
+			 , AC.ACNM
+			 , EA.ICUNITQTY AS EAUNITQTY
+			 , INN.ICUNITQTY AS INNUNITQTY
+			 , CTN.ICUNITQTY AS CTNUNITQTY
+		<include refid="tOrderCoItemCodeList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<sql id="tOrderCoItemCodeList">
+		  FROM TORDER_MST_IC IC
+		 INNER JOIN TORDER_MST_IC_ORG ORG
+		    ON IC.OWKEY = ORG.OWKEY
+		   AND IC.ICKEY = ORG.ICKEY
+		 INNER JOIN TORDER_MST_ICUTXTYPE EA
+			ON EA.OWKEY = IC.OWKEY
+		   AND EA.ICKEY = IC.ICKEY
+		   AND EA.ICUNITTYPE = IC.UOM
+		   AND EA.ICUNITTYPE = 'EA'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE INN
+			ON INN.OWKEY = IC.OWKEY
+		   AND INN.ICKEY = IC.ICKEY
+		   AND INN.ICUNITTYPE = 'INN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE CTN
+			ON CTN.OWKEY = IC.OWKEY
+		   AND CTN.ICKEY = IC.ICKEY
+		   AND CTN.ICUNITTYPE = 'CTN'
+		  LEFT JOIN TORDER_MST_AC AC
+			ON AC.OWKEY = IC.OWKEY
+		   AND AC.ACKEY = IC.ACKEY
+		   AND AC.DELYN <![CDATA[ <> ]]> 'Y'
+		  LEFT JOIN TORDER_MST_ASRT ASRT
+            ON IC.OWKEY = ASRT.OWKEY
+           AND IC.ICKEY = ASRT.ASRTKEY
+          LEFT JOIN TORDER_MST_IC REP
+            ON ASRT.OWKEY = REP.OWKEY
+           AND ASRT.ASRTREPKEY = REP.ICKEY
+		<where>
+			AND IC.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND IC.ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtkey)">
+				AND IC.ASRTKEY = #{asrtkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND IC.ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						IC.ICKEY ~ #{value}
+						OR
+						IC.ICNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						IC.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	
+	
+	
+	<select id="selectCoOrgItemCodeListCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectCoOrgItemCodeListCount */
+		SELECT COUNT(1)
+		<include refid="tOrderCoOrgItemCodeList"/>
+	</select>	  
+	
+	<select id="selectCoOrgItemCodeList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectCoOrgItemCodeList */
+		<include refid="sql_pagingTop"/>
+		SELECT IC.ICKEY AS FIELD1
+		     , IC.ICNM AS FIELD2
+		     , IC.OWKEY AS FIELD3
+			 , IC.ICUNITKEY AS FIELD4
+			 , IC.UDF2 AS FIELD5 /* 온도 */
+			 , EA.WEIGHT AS FIELD6
+			 , EA.VOL AS FIELD7
+		     , EA.ICUNITQTY AS FIELD8
+		     , IC.ASRTYN AS FIELD9
+			 , AC.ACKEY AS FIELD10
+			 , AC.ACNM AS FIELD11
+			 , EA.ICUNITQTY AS EAUNITQTY
+			 , INN.ICUNITQTY AS INNUNITQTY
+			 , CTN.ICUNITQTY AS CTNUNITQTY
+		<include refid="tOrderCoOrgItemCodeList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<sql id="tOrderCoOrgItemCodeList">
+		  FROM TORDER_MST_IC IC
+		 INNER JOIN TORDER_MST_ICUTXTYPE EA
+			ON EA.OWKEY = IC.OWKEY
+		   AND EA.ICKEY = IC.ICKEY
+		   AND EA.ICUNITTYPE = IC.UOM
+		   AND EA.ICUNITTYPE = 'EA'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE INN
+			ON INN.OWKEY = IC.OWKEY
+		   AND INN.ICKEY = IC.ICKEY
+		   AND INN.ICUNITTYPE = 'INN'
+		  LEFT JOIN TORDER_MST_ICUTXTYPE CTN
+			ON CTN.OWKEY = IC.OWKEY
+		   AND CTN.ICKEY = IC.ICKEY
+		   AND CTN.ICUNITTYPE = 'CTN'
+		  LEFT JOIN TORDER_MST_IC_ORG ORG
+			ON IC.OWKEY = ORG.OWKEY
+		   AND IC.ICKEY = ORG.ICKEY
+		  LEFT JOIN TORDER_MST_AC AC
+			ON AC.OWKEY = IC.OWKEY
+		   AND AC.ACKEY = IC.ACKEY
+		   AND AC.DELYN <![CDATA[ <> ]]> 'Y'
+
+		<where>
+			AND IC.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND IC.ICKEY = #{ickey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(asrtkey)">
+				AND C.ASRTKEY = #{asrtkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND IC.ACKEY = #{ackey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						IC.ICKEY ~ #{value}
+						OR
+						IC.ICNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						IC.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	
+	
+	
+	
+	
+	
+
+	<sql id = "tOrderMstComList">
+		FROM TORDER_MST_COM_HD A
+		WHERE A.DELYN = 'N'
+		AND (A.COMHDKEY LIKE '%' || #{value} || '%'  OR A.COMHDNM LIKE '%' || #{value} || '%')
+	</sql>
+
+	<select id="selectTorderMstComCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectTorderMstComCount */
+		SELECT COUNT(1)
+		<include refid="tOrderMstComList"/>
+	</select>
+
+	<select id="selectTorderMstComList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectTorderMstComList */
+		<include refid="sql_pagingTop"/>
+		SELECT A.COMHDKEY AS FIELD1
+		     , A.COMHDNM AS FIELD2
+		<include refid="tOrderMstComList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	<sql id="sql_tOrderMstAdcdUnion">
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND T.FIELD1 = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						T.FIELD1 ~ #{value}
+						OR
+						T.FIELD2 ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						T.FIELD1 LIKE '%' || #{value} || '%'
+						OR
+						T.FIELD2 LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	<select id="selectTOrderMstAdcdUnionCount" resultType="java.lang.Integer">
+		/* oms-common-sql-oracle.xml - selectTOrderMstAdcdUnionCount */
+		SELECT COUNT(1)
+		FROM (
+		    SELECT B.ADCDDTKEY AS FIELD1
+				 , B.ADCDDTNM AS FIELD2
+			FROM TADMIN_MST_ADCD_HD A
+				INNER JOIN TADMIN_MST_ADCD_DT B
+						ON B.ADCDHDKEY = A.ADCDHDKEY
+			WHERE  A.DELYN = 'N'
+			  AND B.DELYN = 'N'
+			  AND A.ADCDHDKEY = 'CTGLEVEL'
+			  AND B.LAKEY = 'KOR'
+			  AND A.ADCDHDKEY = 'CTGLEVEL'
+			  ) T
+		<include refid="sql_tOrderMstAdcdUnion"/>
+	</select>
+
+	<select id="selectTOrderMstAdcdUnion" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderMstAdcdUnion */
+		<include refid="sql_pagingTop"/>
+		SELECT T.FIELD1
+			 , T.FIELD2
+			 , T.FIELD3
+			 , T.FIELD4
+			 , T.FIELD5
+		FROM   (SELECT B.ADCDDTKEY AS FIELD1
+			 	     , B.ADCDDTNM AS FIELD2
+			 	     , B.ADCDDTVALUE AS FIELD3
+			 	     , A.ADCDHDKEY AS FIELD4
+			 	     , B.ADCDDTORDER AS FIELD5
+				FROM TADMIN_MST_ADCD_HD A
+					INNER JOIN TADMIN_MST_ADCD_DT B
+							ON B.ADCDHDKEY = A.ADCDHDKEY
+				WHERE A.DELYN = 'N'
+				  AND B.DELYN = 'N'
+				  AND A.ADCDHDKEY = 'CTGLEVEL'
+				  AND B.LAKEY = 'KOR') T
+		<include refid="sql_tOrderMstAdcdUnion"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	<select id="selectTOrderCtgDivCount" resultType="java.lang.Integer">
+		/* oms-common-sql-oracle.xml - selectTOrderCtgDivCount */
+		SELECT COUNT(1)
+		FROM (
+			    SELECT COMHDKEY AS FIELD1
+				     , COMHDNM  AS FIELD2
+				     , (CASE WHEN COMHDKEY = 'DIV_MAX' THEN '1' 
+				             WHEN COMHDKEY = 'DIV_MID' THEN '2'
+				             WHEN COMHDKEY = 'DIV_MIN' THEN '3'
+				       ELSE '' END) AS FIELD3
+				FROM TORDER_MST_COM_HD  
+				WHERE 1 = 1
+				AND COMHDKEY IN ('DIV_MAX', 'DIV_MID', 'DIV_MIN')
+			  ) T
+		<include refid="sql_tOrderMstAdcdUnion"/>
+	</select>
+
+	<select id="selectTOrderCtgDiv" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTOrderrCtgDiv */
+		<include refid="sql_pagingTop"/>
+		SELECT T.FIELD1
+			 , T.FIELD2
+			 , T.FIELD3
+		FROM   (
+				SELECT (CASE WHEN COMHDKEY = 'DIV_MAX' THEN '1' 
+				             WHEN COMHDKEY = 'DIV_MID' THEN '2'
+				             WHEN COMHDKEY = 'DIV_MIN' THEN '3'
+				       ELSE '' END) AS FIELD1
+				     , COMHDNM AS FIELD2
+				     , COMHDKEY  AS FIELD3
+				FROM TORDER_MST_COM_HD  
+				WHERE 1 = 1
+				AND COMHDKEY IN ('DIV_MAX', 'DIV_MID', 'DIV_MIN')
+				) T
+		<include refid="sql_tOrderMstAdcdUnion"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	
+
+	<select id="selectTorderMstDlvryCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectTorderMstDlvryCount */
+		SELECT COUNT(1)
+		<include refid="tOrderMstDlvryList"/>
+	</select>
+
+	<select id="selectTorderMstDlvryList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectTorderMstDlvryList */
+		<include refid="sql_pagingTop"/>
+		SELECT COMDTKEY AS FIELD1
+     		 , COMDTNM AS FIELD2
+		<include refid="tOrderMstDlvryList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	<sql id = "tOrderMstDlvryList">
+		FROM TORDER_MST_COM_DT
+		WHERE 1 = 1
+		AND COMHDKEY = 'DLVRY'
+		AND DELYN = 'N'
+	</sql>
+	
+	
+	
+
+	<sql id = "tOrderMstAcList">
+		FROM TORDER_MST_AC A
+		WHERE A.DELYN = 'N'
+		AND (A.ACKEY LIKE '%' || #{value} || '%'  OR A.ACNM LIKE '%' || #{value} || '%')
+	</sql>
+
+	<select id="selectTorderMstAcCount" resultType="java.lang.Integer">
+		/*  oms-common-sql-oracle.xml - selectTorderMstAcCount */
+		SELECT COUNT(1)
+		<include refid="tOrderMstAcList"/>
+	</select>
+
+	<select id="selectTorderMstAcList" resultType="camelMap">
+		/*  oms-common-sql-oracle.xml - selectTorderMstAcList */
+		<include refid="sql_pagingTop"/>
+		SELECT A.ACKEY AS FIELD1
+		     , A.ACNM  AS FIELD2
+		<include refid="tOrderMstAcList"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tOrderMstOrcd">
+		FROM TORDER_MST_ORCD_HD TB1
+		INNER JOIN TORDER_MST_ORCD_DT TB2
+		ON TB1.ORDERCOMHDKEY = TB2.ORDERCOMHDKEY
+		WHERE TB1.DELYN = 'N'
+	</sql>
+
+	<select id="selectTOrderMstOrcdCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstOrcd"/>
+	</select>
+
+	<select id="selectTOrderMstOrcdList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		SELECT ACKEY FIELD1
+		      ,ACNM FIELD2
+		      ,OWKEY FIELD3
+		<include refid="sql_tOrderMstOrcd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	<select id="selectTAdminMstCtgCount" resultType="java.lang.Integer">
+		/* oms-common-sql-oracle.xml - selectTAdminMstCtgCount */
+		SELECT
+		COUNT(1)
+		FROM (
+		SELECT
+		DISTINCT
+		CTGKEY
+		, CTGNM
+		<include refid="sql_tAdminMstCtg"/>
+		)
+	</select>
+
+	<select id="selectTAdminMstCtg" resultType="camelMap">
+		/* oms-common-sql-oracle.xml - selectTAdminMstCtg */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		DISTINCT
+		CTGKEY AS FIELD1
+		, CTGNM AS FIELD2
+		<include refid="sql_tAdminMstCtg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<sql id="sql_tOrderMstCtgAll">
+		FROM TORDER_MST_CTG A
+		INNER JOIN TORDER_MST_CTG B
+				ON A.OWKEY = B.OWKEY
+			   AND A.CTGKEY  = B.UPPERCTGKEY
+			   AND A.CTGLV + 1 = B.CTGLV
+		INNER JOIN TORDER_MST_CTG C
+				ON B.OWKEY = C.OWKEY
+			   AND B.CTGKEY  = C.UPPERCTGKEY
+			   AND B.CTGLV + 1 = C.CTGLV
+		WHERE A.CLOSDATE >= #{sysdate}
+		AND A.DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (C.CTGKEY LIKE '%' || #{value} || '%' OR C.CTGNM LIKE '%'|| #{value} || '%' )
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+  <select id="selectTorderMstCtgAllCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstCtgAll"/>
+	</select>
+
+	<select id="selectTorderMstCtgAllList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.CTGKEY AS FIELD1
+				 , A.CTGNM  AS FIELD2
+				 , B.CTGKEY AS FIELD3
+				 , B.CTGNM  AS FIELD4
+				 , C.CTGKEY AS FIELD5
+				 , C.CTGNM  AS FIELD6
+		<include refid="sql_tOrderMstCtgAll"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+	<sql id="sql_tOrderMstReqItem">
+		FROM TORDER_MST_IC A
+		INNER JOIN TORDER_MST_ICXCT B
+		        ON A.OWKEY = B.OWKEY
+		       AND A.ICKEY = B.ICKEY
+		INNER JOIN TORDER_MST_REQORDER C
+		        ON B.OWKEY = C.OWKEY
+		       AND B.CTKEY = C.CTKEY
+		       AND B.ICKEY = C.ICKEY
+		WHERE C.REQORDERTYPE = '03'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND B.CTKEY = #{ctkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			AND (A.ICKEY LIKE '%' || #{value} || '%' OR A.ICNM LIKE '%'|| #{value} || '%' )
+		</if>
+		<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE.size > 0" >
+			AND A.OWKEY IN
+			<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE"
+					 open="(" separator="," close=")">
+				#{OWKEY_SELECTION_VALUE}
+			</foreach>
+		</if>
+	</sql>
+
+  <select id="selectTorderMstReqItemCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		<include refid="sql_tOrderMstReqItem"/>
+	</select>
+
+	<select id="selectTorderMstReqItemList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+			SELECT A.ICKEY AS FIELD1
+		         , A.ICNM  AS FIELD2
+		<include refid="sql_tOrderMstReqItem"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<insert id="insertTadminInfoUrHs">
+		/* oms-common-sql-oracle.xml - insertTadminInfoUrHs */
+		INSERT INTO TADMIN_INFO_URHS (
+				ACSDATE
+			 ,  ACSURKEY
+			 ,  ACSIP
+			 ,  ACSUSKEY
+			 ,  SEARCHCOND
+			 ,  PRGRBIZ
+			 ,  INFOTGTCNT
+			 ,  INSERTDATE
+			 ,  INSERTURKEY
+			 ,  UPDATEDATE
+			 ,  UPDATEURKEY
+		) VALUES (
+				#{sysdate}
+			 ,  #{surkey}
+			 ,  #{acsip}
+			 ,  #{menuId}
+			 ,  #{resultParam}
+			 ,  #{method}
+			 ,  #{infotgtcnt}
+			 ,  #{sysdate}
+			 ,  #{surkey}
+			 ,  #{sysdate}
+			 ,  #{surkey}
+		)
+	</insert>
+	<insert id="insertSystemNoticeFromCt" parameterType="map">
+		/* oms-common-sql-oracle.xml - insertSystemNoticeFromCt */
+		INSERT INTO TADMIN_INFO_NOTICE
+		(
+		MSGNO,
+		MSGTYPE,
+		STARTDT,
+		ENDDT,
+		TITLE,
+		CONTENT,
+		TARGET,
+		PARENTMSGNO,
+		UPPERMSGNO,
+		HITSCNT,
+		RIPPLECNT,
+		OPENYN,
+		FILEYN,
+		FILEKEY,
+		INSERTDATE,
+		INSERTURKEY,
+		UPDATEDATE,
+		UPDATEURKEY
+		)
+		SELECT
+		(COALESCE((SELECT MAX(CAST(MSGNO AS NUMERIC)) FROM WMSON.TADMIN_INFO_NOTICE), 0) + 1)::TEXT AS  MSGNO,
+		'1',  -- 시스템 알림
+		TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD'),
+		TO_CHAR(CURRENT_TIMESTAMP + #{validDays}, 'YYYYMMDD'),
+
+		'[WMS 알림] ' || CTNM || ' 운송장 사용률 임계치 도달 안내 (' || #{usert} || '%)',
+
+		CTNM || ' 운송장 사용률이 임계치(' || #{usert} || '%)에 도달하였습니다.'
+		|| CHR(10) || CHR(10)
+		|| '운송장 소진에 따른 출고 지연이 발생하지 않도록'
+		|| CHR(10)
+		|| '담당자께서는 현재 사용 현황을 확인하시고'
+		|| CHR(10)
+		|| '필요 시 추가 발급 등 사전 조치를 진행해 주시기 바랍니다.',
+		'1',  -- 전체 대상
+		/* PARENTMSGNO = 자기 자신 (동일 계산식) */
+		(COALESCE((SELECT MAX(CAST(MSGNO AS NUMERIC)) FROM WMSON.TADMIN_INFO_NOTICE), 0) + 1)::TEXT AS  PARENTMSGNO,
+		NULL,
+		0,
+		0,
+		'Y',
+		'N',
+		NULL,
+		TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'),
+		'SYSTEM',
+		TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'),
+		'SYSTEM'
+		FROM TORDER_MST_CT
+		WHERE CTKEY = #{ctkey}
+	</insert>
+</mapper>

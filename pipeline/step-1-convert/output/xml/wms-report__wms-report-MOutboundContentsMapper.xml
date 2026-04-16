@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.MOutboundContentsMapper">
+
+    <sql id="sql_selectWorkByRatioList">
+        WITH 
+            -- 0. 해당 날짜의 순수 총 작업 건수 사전 집계
+            TOTAL_STATS AS (
+                SELECT 
+                    COUNT(DISTINCT OBHDKEY) AS TOT_WORK_CNT
+                FROM TWORK_INFO_OB_HD
+                WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey}
+                AND OBHDDAY LIKE #{fromDate} || '%'
+            ),
+            
+            -- 1. 기초 데이터 (날짜/센터/화주 기준)
+            BASE_MAP AS (
+                SELECT W.WAHDKEY, W.PIHDKEY, W.WKTYPECD,
+                    CAST(COALESCE(SUBSTRING(W.WAHDNM FROM '([0-9]+)회차'), W.WARND) AS NUMERIC) AS RN
+                FROM TWORK_INFO_WA_HD W
+                WHERE WAHDDAY LIKE #{fromDate} || '%'
+                AND CTKEY = #{ctkey} AND OWKEY = #{owkey} AND PIHDKEY IS NOT NULL
+            ),
+            
+            -- 2. 통합 웨이브 명칭 (PIHDKEY 기준)
+            PICK_NAMED AS (
+                SELECT PIHDKEY,
+                    CASE WHEN MAX(WKTYPECD) = 'PW' THEN 'Bulk Wave'
+                        WHEN MAX(WKTYPECD) = 'UW' THEN 'Single Wave'
+                        ELSE 'Wave ' || DENSE_RANK() OVER(ORDER BY MIN(RN), PIHDKEY) END AS INTEGRATED_WAVE
+                FROM BASE_MAP
+                GROUP BY PIHDKEY
+            ),
+            
+            -- 3. 주문 모수 집계
+            ORD_DATA AS (
+                SELECT B.PIHDKEY,
+                    COUNT(DISTINCT OH.OBHDKEY) AS RELEASE_ORD_CNT,
+                    COUNT(DISTINCT CASE WHEN B.WKTYPECD = 'DW' THEN OH.OBHDKEY END) AS DAS_ORD_CNT,
+                    COUNT(DISTINCT CASE WHEN B.WKTYPECD = 'RW' THEN OH.OBHDKEY END) AS ROB_ORD_CNT,
+                    SUM(OD.INITQTY) AS TOTAL_PCS,
+                    SUM(CASE WHEN B.WKTYPECD = 'DW' THEN OD.INITQTY ELSE 0 END) AS DAS_TARGET_PCS,
+                    SUM(CASE WHEN B.WKTYPECD = 'UW' THEN OD.INITQTY ELSE 0 END) AS SINGLE_TARGET_PCS,
+                    SUM(CASE WHEN B.WKTYPECD = 'RW' AND IC.ROBSORTERICYN = 'Y' THEN OD.INITQTY ELSE 0 END) AS ROB_TARGET_PCS,
+                    SUM(CASE WHEN B.WKTYPECD = 'RW' AND IC.ROBSORTERICYN = 'N' THEN OD.INITQTY ELSE 0 END) AS IRR_TARGET_PCS,
+                    SUM(OD.PAKQTY) AS TOTAL_PAK_PCS
+                FROM BASE_MAP B
+                INNER JOIN TWORK_INFO_OB_HD OH ON B.WAHDKEY = OH.WAHDKEY
+                INNER JOIN TWORK_INFO_OB_DT OD ON OH.OBHDKEY = OD.OBHDKEY
+                INNER JOIN TWORK_MST_IC IC ON OD.ICKEY = IC.ICKEY
+                GROUP BY B.PIHDKEY
+            ),
+            
+            -- 4. DAS 및 로봇 실적 통합
+            PERF_IF AS (
+                SELECT B.PIHDKEY,
+                    SUM(CASE WHEN B.WKTYPECD = 'DW' THEN COALESCE(DAS.DAS_MID_QTY, 0) ELSE 0 END) AS DAS_MID,
+                    SUM(CASE WHEN B.WKTYPECD = 'DW' THEN COALESCE(DAS.DAS_SML_QTY, 0) ELSE 0 END) AS DAS_SML,
+                    SUM(CASE WHEN B.WKTYPECD = 'RW' THEN COALESCE(RI.QTY, 0) ELSE 0 END) AS ROB_IN,
+                    SUM(CASE WHEN B.WKTYPECD = 'RW' THEN COALESCE(RP.QTY, 0) ELSE 0 END) AS ROB_PAK,
+                    SUM(CASE WHEN B.WKTYPECD = 'RW' THEN COALESCE(RR.QTY, 0) ELSE 0 END) AS ROB_IRR
+                FROM BASE_MAP B
+                LEFT JOIN (
+                    SELECT A.WAHDKEY
+                        , SUM(CASE WHEN A.DASDIV = '2' THEN COALESCE(C.QTY, 0) ELSE 0 END) AS DAS_MID_QTY
+                        , SUM(CASE WHEN A.DASDIV = '3' THEN COALESCE(C.QTY, 0) ELSE 0 END) AS DAS_SML_QTY
+                        FROM TWIF_DAS_PRCSRSLT_WA A
+                        JOIN TWIF_DAS_PRCSRSLT_ORDER O ON A.CTKEY = O.CTKEY AND A.OWKEY = O.OWKEY AND A.WASEQ = O.WASEQ
+                        JOIN TWIF_DAS_PRCSRSLT_IC C ON O.CTKEY = C.CTKEY AND O.OWKEY = C.OWKEY AND O.WASEQ = C.WASEQ AND O.ORDERSEQ = C.ORDERSEQ
+                    WHERE A.IFTYPE = 'R' AND A.IFSTATUS = '90'
+                    GROUP BY A.WAHDKEY
+                ) DAS ON B.WAHDKEY = DAS.WAHDKEY
+                LEFT JOIN (SELECT WAHDKEY, SUM(QTY) AS QTY FROM TWIF_ROBDAS_PRCSRSLT_IC GROUP BY WAHDKEY) RI ON B.WAHDKEY = RI.WAHDKEY
+                LEFT JOIN (SELECT WAHDKEY, SUM(QTY) AS QTY FROM TWIF_ROBDAS_PAKCOMPL_IC GROUP BY WAHDKEY) RP ON B.WAHDKEY = RP.WAHDKEY
+                LEFT JOIN (SELECT WAHDKEY, SUM(QTY) AS QTY FROM TWIF_ROBDAS_RSLTXNIS_IC GROUP BY WAHDKEY) RR ON B.WAHDKEY = RR.WAHDKEY
+                GROUP BY B.PIHDKEY
+            ),
+            
+            -- 5. 피킹 실적 (CELL 기준)
+            PICK_RSLT AS (
+                SELECT PIHDKEY, COUNT(DISTINCT ICKEY) AS PICK_SKU, COUNT(DISTINCT LCKEY) AS PLAN_CELL,
+                    COUNT(DISTINCT CASE WHEN CNFRMQTY > 0 THEN LCKEY END) AS CONF_CELL
+                FROM TWORK_INFO_PI_TOT_DT 
+                WHERE PIHDKEY IN (SELECT DISTINCT PIHDKEY FROM BASE_MAP)
+                GROUP BY PIHDKEY
+            ),
+            
+            -- 6. 지표 계산
+            FINAL_VALS AS (
+                SELECT PN.INTEGRATED_WAVE,
+                    CAST(P.PICK_SKU AS NUMERIC) AS C01, CAST(P.PLAN_CELL AS NUMERIC) AS C02, CAST(O.TOTAL_PCS AS NUMERIC) AS C03,
+                    CAST(O.RELEASE_ORD_CNT AS NUMERIC) AS C04, CAST(O.DAS_ORD_CNT AS NUMERIC) AS C05, CAST(O.ROB_ORD_CNT AS NUMERIC) AS C06,
+                    CAST(P.CONF_CELL AS NUMERIC) AS C07, CAST(I.DAS_SML AS NUMERIC) AS C08, CAST((I.ROB_IN + I.ROB_IRR) AS NUMERIC) AS C09,
+                    CAST(LEAST(100, ROUND(COALESCE(P.CONF_CELL/NULLIF(P.PLAN_CELL,0)*100, 0))) AS NUMERIC) AS P10, CAST(P.CONF_CELL AS NUMERIC) AS V10, CAST(P.PLAN_CELL AS NUMERIC) AS T10,
+                    CAST(LEAST(100, ROUND(COALESCE(I.DAS_MID/NULLIF(O.DAS_TARGET_PCS,0)*100, 0))) AS NUMERIC) AS P11, CAST(I.DAS_MID AS NUMERIC) AS V11, CAST(O.DAS_TARGET_PCS AS NUMERIC) AS T11,
+                    CAST(LEAST(100, ROUND(COALESCE(I.DAS_SML/NULLIF(O.DAS_TARGET_PCS,0)*100, 0))) AS NUMERIC) AS P12, CAST(I.DAS_SML AS NUMERIC) AS V12, CAST(O.DAS_TARGET_PCS AS NUMERIC) AS T12,
+                    CAST(LEAST(100, ROUND(COALESCE(O.TOTAL_PAK_PCS/NULLIF(O.DAS_TARGET_PCS + COALESCE(O.SINGLE_TARGET_PCS, 0),0)*100, 0))) AS NUMERIC) AS P13, CAST(O.TOTAL_PAK_PCS AS NUMERIC) AS V13, CAST(O.DAS_TARGET_PCS + COALESCE(O.SINGLE_TARGET_PCS, 0) AS NUMERIC) AS T13,
+                    CAST(LEAST(100, ROUND(COALESCE(I.ROB_IN/NULLIF(O.ROB_TARGET_PCS,0)*100, 0))) AS NUMERIC) AS P14, CAST(I.ROB_IN AS NUMERIC) AS V14, CAST(O.ROB_TARGET_PCS AS NUMERIC) AS T14,
+                    CAST(LEAST(100, ROUND(COALESCE(I.ROB_PAK/NULLIF(O.ROB_TARGET_PCS,0)*100, 0))) AS NUMERIC) AS P15, CAST(I.ROB_PAK AS NUMERIC) AS V15, CAST(O.ROB_TARGET_PCS AS NUMERIC) AS T15,
+                    CAST(LEAST(100, ROUND(COALESCE(I.ROB_IRR/NULLIF(O.IRR_TARGET_PCS,0)*100, 0))) AS NUMERIC) AS P16, CAST(I.ROB_IRR AS NUMERIC) AS V16, CAST(O.IRR_TARGET_PCS AS NUMERIC) AS T16
+                FROM PICK_NAMED PN
+                LEFT JOIN ORD_DATA O ON PN.PIHDKEY = O.PIHDKEY
+                LEFT JOIN PICK_RSLT P ON PN.PIHDKEY = P.PIHDKEY
+                LEFT JOIN PERF_IF I ON PN.PIHDKEY = I.PIHDKEY
+            ),
+
+            -- 7. UNPIVOT (Oracle UNPIVOT -> LATERAL + VALUES)
+            UNPIVOT_DATA AS (
+                SELECT F.INTEGRATED_WAVE, v.GRP_NM, v.VAL, v.NUMERATOR, v.DENOMINATOR
+                FROM FINAL_VALS F
+                CROSS JOIN LATERAL (
+                    VALUES
+                        ('01. 피킹_SKU', F.C01, F.C01, F.C01),
+                        ('02. 피킹_CELL', F.C02, F.C02, F.C02),
+                        ('03. 전체_주문_PCS', F.C03, F.C03, F.C03),
+                        ('04. [통합] 주문건수', F.C04, F.C04, F.C04),
+                        ('05. [DAS] 주문건수', F.C05, F.C05, F.C05),
+                        ('06. [로봇] 주문건수', F.C06, F.C06, F.C06),
+                        ('07. [통합] 완료건수', F.C07, F.C07, F.C07),
+                        ('08. [DAS] 완료건수', F.C08, F.C08, F.C08),
+                        ('09. [로봇] 완료건수', F.C09, F.C09, F.C09),
+                        ('10. 피킹 진척율 (%)', F.P10, F.V10, F.T10),
+                        ('11. [DAS] 중분류 진척율 (%)', F.P11, F.V11, F.T11),
+                        ('12. [DAS] 소분류 진척율 (%)', F.P12, F.V12, F.T12),
+                        ('13. [DAS] 포장 진척율 (%)', F.P13, F.V13, F.T13),
+                        ('14. [로봇] 투입 진척율 (%)', F.P14, F.V14, F.T14),
+                        ('15. [로봇] 검수 진척율 (%)', F.P15, F.V15, F.T15),
+                        ('16. [로봇] 이형물 진척율 (%)', F.P16, F.V16, F.T16)
+                ) AS v(GRP_NM, VAL, NUMERATOR, DENOMINATOR)
+            )
+
+        -- 8. 최종 PIVOT (Oracle PIVOT -> CASE + GROUP BY) 및 가중 평균
+        SELECT
+            D.GRP_NM,
+            MAX(D.W1) AS W1, MAX(D.W2) AS W2, MAX(D.W3) AS W3, MAX(D.W4) AS W4, MAX(D.W5) AS W5,
+            MAX(D.W6) AS W6, MAX(D.W7) AS W7, MAX(D.W8) AS W8, MAX(D.W9) AS W9, MAX(D.W10) AS W10,
+            MAX(D.W11) AS W11, MAX(D.W12) AS W12, MAX(D.BULK) AS BULK, MAX(D.SINGLE) AS SINGLE,
+            CASE
+                WHEN D.GRP_NM LIKE '%진척율%'
+                THEN LEAST(100, ROUND(COALESCE(SUM(D.S_NUM) / NULLIF(SUM(D.S_DEN), 0) * 100, 0)))
+                ELSE (COALESCE(MAX(D.W1), 0)+COALESCE(MAX(D.W2), 0)+COALESCE(MAX(D.W3), 0)+COALESCE(MAX(D.W4), 0)+COALESCE(MAX(D.W5), 0)+
+                    COALESCE(MAX(D.W6), 0)+COALESCE(MAX(D.W7), 0)+COALESCE(MAX(D.W8), 0)+COALESCE(MAX(D.W9), 0)+COALESCE(MAX(D.W10), 0)+
+                    COALESCE(MAX(D.BULK), 0)+COALESCE(MAX(D.SINGLE), 0))
+            END AS TOTCNT,
+            MAX(T.TOT_WORK_CNT) AS TOTWORKCNT
+        FROM (
+            SELECT
+                GRP_NM,
+                INTEGRATED_WAVE,
+                VAL,
+                NUMERATOR AS S_NUM,
+                DENOMINATOR AS S_DEN,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 1' THEN VAL END) AS W1,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 2' THEN VAL END) AS W2,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 3' THEN VAL END) AS W3,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 4' THEN VAL END) AS W4,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 5' THEN VAL END) AS W5,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 6' THEN VAL END) AS W6,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 7' THEN VAL END) AS W7,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 8' THEN VAL END) AS W8,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 9' THEN VAL END) AS W9,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 10' THEN VAL END) AS W10,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 11' THEN VAL END) AS W11,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Wave 12' THEN VAL END) AS W12,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Bulk Wave' THEN VAL END) AS BULK,
+                MAX(CASE WHEN INTEGRATED_WAVE = 'Single Wave' THEN VAL END) AS SINGLE
+            FROM UNPIVOT_DATA
+            GROUP BY GRP_NM, INTEGRATED_WAVE, VAL, NUMERATOR, DENOMINATOR
+        ) D
+        CROSS JOIN TOTAL_STATS T
+        GROUP BY D.GRP_NM
+        ORDER BY D.GRP_NM
+    </sql>
+
+    <select id="selectWorkByRatioList" resultType="camelMap">
+        SELECT *
+        FROM (
+            <include refid="sql_selectWorkByRatioList"/>
+        ) DATA
+        ORDER BY DATA.GRP_NM
+    </select>
+
+</mapper>

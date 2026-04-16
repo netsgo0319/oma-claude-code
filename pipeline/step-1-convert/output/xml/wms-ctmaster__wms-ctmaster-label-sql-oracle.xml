@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.ctmaster.mapper.LabelMgmtMapper">
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<select id="selectLpnLabelCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-label-sql-oracle.xml - selectLpnLabelCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IB_LPN LPN
+		 INNER JOIN TWORK_MST_CT CT
+				 ON CT.CTKEY = LPN.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+				 ON OW.OWKEY = LPN.OWKEY
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectLpnLabelList" resultType="camelMap">
+		/* wms-ctmaster-label-sql-oracle.xml - selectLpnLabelList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+		SELECT '0' AS CHK
+			, LPN.CTKEY
+			, CT.CTNAME
+			, LPN.OWKEY
+			, OW.OWNAME
+			, LPN.LPN
+			, 'LPN' AS LABELTYPE
+			, LPN.PRINTYN
+			, LPN.REPBLICTEYN
+			, LPN.INSERTDATE
+			, LPN.INSERTURKEY
+			, LPN.UPDATEDATE
+			, LPN.UPDATEURKEY
+		  FROM TWORK_INFO_IB_LPN LPN
+		 INNER JOIN TWORK_MST_CT CT
+				 ON CT.CTKEY = LPN.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+				 ON OW.OWKEY = LPN.OWKEY
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+
+		ORDER BY LPN.INSERTDATE DESC
+			   , CAST(LPN.LPN AS NUMERIC) DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectLabelCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-label-sql-oracle.xml - selectLabelCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_LABEL LA
+		 INNER JOIN TWORK_MST_CT CT
+		     	 ON CT.CTKEY = LA.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+				 ON OW.OWKEY = LA.OWKEY
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectLabelList" resultType="camelMap">
+		/* wms-ctmaster-label-sql-oracle.xml - selectLabelList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+		SELECT '0' AS CHK
+			  , LA.CTKEY
+			  , CT.CTNAME
+			  , LA.OWKEY
+			  , OW.OWNAME
+			  , LA.LABELNO
+			  , LA.LABELTYPE
+			  , LA.REPBLICTEYN
+			  , LA.INSERTDATE
+			  , LA.INSERTURKEY
+			  , LA.UPDATEDATE
+			  , LA.UPDATEURKEY
+		  FROM TWORK_INFO_LABEL LA
+		 INNER JOIN TWORK_MST_CT CT
+		     	 ON CT.CTKEY = LA.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+				 ON OW.OWKEY = LA.OWKEY
+
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+
+		ORDER BY LA.INSERTDATE DESC
+			   , CAST(LA.LABELNO AS NUMERIC) DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<insert id="insertLabel">
+		/* wms-inbound-iborder-sql-oracle.xml - insertLpn - LPN 발행(생성) SQL */
+		<selectKey keyProperty="maxLabelno" resultType="int" order="BEFORE">
+			SELECT TO_NUMBER(COALESCE(MAX(SUBSTR(LABELNO,5,4)), '0')) AS MAX_LABELNO
+			  FROM TWORK_INFO_LABEL
+
+			  <where>
+					AND CTKEY = #{ctkey}
+			  		AND OWKEY = #{owkey}
+			  		AND LABELTYPE = #{labeltype}
+
+				  <choose>
+					  <when test='"ROLL".equals(labeltype)'>
+						  AND LABELNO LIKE '20'||TO_CHAR(CURRENT_TIMESTAMP, 'YY')||'%'
+					  </when>
+					  <when test='"TOTE".equals(labeltype)'>
+						  AND LABELNO LIKE '10'||TO_CHAR(CURRENT_TIMESTAMP, 'YY')||'%'
+					  </when>
+				  </choose>
+			  </where>
+
+		</selectKey>
+
+		INSERT INTO TWORK_INFO_LABEL (
+			   CTKEY
+			 , OWKEY
+			 , LABELNO
+			 , LABELTYPE
+			 , REPBLICTEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		SELECT #{ctkey} AS CTKEY
+			 , #{owkey} AS OWKEY
+
+			<choose>
+				<when test='"ROLL".equals(labeltype)'>
+					, '20' || TO_CHAR(CURRENT_TIMESTAMP, 'YY') || LPAD((#{maxLabelno} + gs)::TEXT, 4, '0') AS LABELNO
+				</when>
+				<when test='"TOTE".equals(labeltype)'>
+					, '10' || TO_CHAR(CURRENT_TIMESTAMP, 'YY') || LPAD((#{maxLabelno} + gs)::TEXT, 4, '0') AS LABELNO
+				</when>
+			</choose>
+
+			 , #{labeltype} AS LABELTYPE
+			 , 'N' AS REPBLICTEYN
+			 , #{sysdate} INSERTDATE
+			 , #{surkey} AS INSERTURKEY
+			 , #{sysdate} AS UPDATEDATE
+			 , #{surkey} AS UPDATEURKEY
+		FROM generate_series(1, #{createQty}) AS gs
+	</insert>
+
+	<select id="selectLabelPrintList" resultType="camelMap">
+		/* wms-ctmaster-label-sql-oracle.xml - selectLabelPrintList */
+		SELECT '0' AS CHK
+					 , LA.CTKEY
+					 , CT.CTNAME
+					 , LA.OWKEY
+					 , OW.OWNAME
+					 , LA.LABELNO
+					 , LA.LABELTYPE
+					 , LA.REPBLICTEYN
+					 , LA.INSERTDATE
+					 , LA.INSERTURKEY
+					 , LA.UPDATEDATE
+					 , LA.UPDATEURKEY
+				  FROM TWORK_INFO_LABEL LA
+				 INNER JOIN TWORK_MST_CT CT
+						 ON CT.CTKEY = LA.CTKEY
+				 INNER JOIN TWORK_MST_OW OW
+						 ON OW.OWKEY = LA.OWKEY
+
+				<where>
+					AND LA.CTKEY = #{ctkey}
+					AND LA.OWKEY = #{owkey}
+					AND LA.LABELTYPE = #{labeltype}
+
+				</where>
+
+				 ORDER BY CAST(LA.LABELNO AS NUMERIC) DESC
+		 LIMIT #{createQty}
+	</select>
+
+	<update id="updateLpnLabelRepblicte">
+		/* wms-ctmaster-label-sql-oracle.xml - updateLpnLabelRepblicte */
+		UPDATE TWORK_INFO_IB_LPN
+		SET REPBLICTEYN = 'Y'
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND LPN = #{lpn}
+	</update>
+
+	<update id="updateLabelRepblicte">
+		/* wms-ctmaster-label-sql-oracle.xml - updateLabelRepblicte */
+		UPDATE TWORK_INFO_LABEL
+		   SET REPBLICTEYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND LABELTYPE = #{labeltype}
+		   AND LABELNO = #{labelno}
+	</update>
+
+</mapper>
+	

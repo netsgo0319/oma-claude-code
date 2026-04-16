@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.pda.mapper.PdaCommonMapper">
+	
+	<!--2024-06-20-->
+	<select id="selectLpnUseChk" resultType="java.lang.Integer">
+	/* wms-pda-common-sql-oracle.xml - selectLpnUseChk - LPN번호 사용유무 조회  SQL */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IB_LPN
+		 WHERE OWKEY = #{sowkey}
+		   AND CTKEY = #{sctkey}
+		   AND LPN = #{lpnNo}
+		   AND LABELUSEYN = 'N'
+	</select>
+
+	<!--2024-06-20-->
+	<select id="selectIcBarcode" resultType="camelMap">
+		/* wms-pda-common-sql-oracle.xml - selectIcBarcode -  상품바코드 조회  SQL */
+		SELECT A.ICKEY, B.ICNAME
+		  FROM TADMIN_MST_ICBACODE A
+		 INNER JOIN TWORK_MST_IC B
+				 ON A.OWKEY = B.OWKEY
+				AND A.ICKEY = B.ICKEY
+		 WHERE B.CTKEY = #{sctkey}
+		   AND A.OWKEY = #{sowkey}
+		   AND A.BARCODE = #{barcode}
+		   AND B.DELYN = 'N'
+	</select>
+
+	<select id="selectUomConvert" resultType="camelMap">
+		/* wms-pda-common-sql-oracle.xml - selectUomConvert -  단위 환산 정보 조회  SQL */
+		SELECT ICUTTYPE
+		     , ICUTQTY
+		FROM TWORK_MST_ICUTXTYPE
+		WHERE ICUTKEY = #{icutkey}
+		  AND CTKEY = #{sctkey}
+		  AND OWKEY = #{sowkey}
+		<if test="ibUseYn == 'Y' or ibUseYn == 'N'">
+			AND INBOUNDUSEYN = #{ibUseYn}		/* 입고사용여부 */
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obUseYn)">
+			AND OUTBOUNDUSEYN = #{obUseYn}		/* 출고사용여부 */
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivUseYn)">
+			AND IVUSEYN = #{ivUseYn}			/* 재고사용여부 */
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rtUseYn)">
+			AND RETURNUSEYN = #{rtUseYn}		/* 반품사용여부 */
+		</if>
+		ORDER BY ICUTORDER
+	</select>
+	
+	<select id="selectCtcdDt" resultType="camelMap">
+		/* wms-pda-common-sql-oracle.xml - selectCtcdDt -  공통상세 SQL */
+		SELECT CTCD_DTKEY, CTCD_DTNAME
+		  FROM TWORK_MST_CTCD_DT 
+		 WHERE CTKEY = #{sctkey} 
+		   AND CTCD_HDKEY = #{ctcdHdkey}
+		   AND LAKEY = #{slakey}
+		   AND DELYN = 'N'
+		 ORDER BY CTCD_DTORDER
+	</select>
+
+</mapper>

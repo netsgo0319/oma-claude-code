@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObDlvrySbmMgmtMapper">
+	<select id="selectDlvryCorp" resultType="camelMap">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - selectDlvryCorp - 택배접수 관리 - 택배사코드 조회 */
+		SELECT DLVRYCORPCD /*택배사코드*/
+     		 , DLVRYCORPNM /*택배사명*/
+  		  FROM TWORK_MST_DLVRYCORP /*택배사 마스터*/
+ 		 WHERE CTKEY = COALESCE(#{CTKEY}, #{sctkey})
+		   AND OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		   AND DELYN = 'N'
+		   AND CNTRCTNO IS NOT NULL
+		   AND TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') BETWEEN CNTRCTSTARTDAY AND CNTRCTCLOSEDAY
+	</select>
+
+	<sql id="selectDlvrySbmSql">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - selectDlvrySbmSql - 택배접수 관리 - 택배접수 정보 조회 */
+		SELECT 0 AS CHK /*체크박스*/
+			 , OBHD.CTKEY /*센터코드*/
+			 , OBHD.OWKEY /*화주코드*/
+			 , OBHD.OBHDKEY /*릴리즈코드*/
+		     , OBHD.WAHDKEY /*웨이브공통코드*/
+		     , OBHD.OBHDTYPECD /*출고헤더유형코드*/
+		     , OBHD.OBSTATUSCD /*출고상태코드*/
+			 , OBHD.OBHDDAY /*출고예정일시*/
+			 , pkg_crypto$decrypt(OBHD.ORDNM, #{encKey}) AS ORDNM /*주문자명*/
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNNM, #{encKey}) AS RCPPRSNNM /*수령인명*/
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNTELNO, #{encKey}) AS RCPPRSNTELNO /*전화번호*/
+			 , pkg_crypto$decrypt(OBHD.RCPPRSNADDR1, #{encKey}) AS RCPPRSNADDR1 /*주소1*/
+			 , OBHD.DLVYMSG /* 배송메세지 */
+		     , OBHD.DLVRYCORPCD /*택배사코드*/
+		     , COALESCE(HJSBM.WBLNO, OBHD.WBLNO) AS WBLNO /*운송장번호*/
+		     , OBHD.DLVRYPRGRSTATUSCD /*택배진행상태코드*/
+			 , HJSBM.CBMURKEY /*접수자*/
+			 , HJSBM.CBMDATE /*접수일시*/
+			 , HJSBM.ERRMSG /*오류메세지*/
+		     , TRIM(OBHD.RCPPRSNADDR1) || ' ' || TRIM(OBHD.RCPPRSNADDR2) AS ADDRESS /*주소_prWblAPI송신용데이터*/
+			 , OBHD.RCPPRSNZIPCD /*수령인우편번호_prWblAPI송신용데이터*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고공통정보*/
+		  INNER JOIN TWORK_INFO_OB_DT OBDT /*출고상세정보*/
+		  	ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+	      LEFT OUTER JOIN TWORK_INFO_HANJIN_SBM HJSBM /*한진택배 접수정보*/
+	        ON OBHD.CTKEY = HJSBM.CTKEY
+	       AND OBHD.OWKEY = HJSBM.OWKEY
+	       AND OBHD.OBHDKEY = HJSBM.OBHDKEY
+		 WHERE 1=1
+		   AND
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			   #{SEARCH_CONDITION}
+			</if>
+			<if test="sowkey != null and sowkey!= ''">
+		   AND OBHD.OWKEY = #{sowkey}
+			</if>
+		   AND OBHD.OBHDTYPECD IN ('10','20')
+		 GROUP BY OBHD.CTKEY
+				, OBHD.OWKEY
+				, OBHD.OBHDKEY
+			    , OBHD.WAHDKEY
+			    , OBHD.OBHDTYPECD
+			    , OBHD.OBSTATUSCD
+				, OBHD.OBHDDAY
+				, OBHD.ORDNM
+				, OBHD.RCPPRSNNM
+				, OBHD.RCPPRSNTELNO
+				, OBHD.RCPPRSNADDR1
+				, OBHD.RCPPRSNADDR2
+				, OBHD.DLVYMSG
+				, OBHD.RCPPRSNZIPCD
+				, OBHD.DLVRYCORPCD
+			    , OBHD.WBLNO
+			    , OBHD.DLVRYPRGRSTATUSCD
+				, HJSBM.CBMURKEY
+				, HJSBM.CBMDATE
+				, HJSBM.ERRMSG
+				, HJSBM.WBLNO
+		 ORDER BY OBHD.OBHDKEY
+	</sql>
+
+	<select id="selectDlvrySbmCount" resultType="java.lang.Integer">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - selectDlvrySbmCount - 택배접수 관리 - 택배접수 정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectDlvrySbmSql"/>
+		)
+	</select>
+
+	<select id="selectDlvrySbmList" resultType="camelMap">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - selectDlvrySbmList - 택배접수 관리 - 택배접수 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+				<include refid="selectDlvrySbmSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="obDlvrySbmInfoSelect" resultType="camelMap">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obDlvrySbmInfoSelect - 운송장출력 이력등록 대상 색인 */
+		SELECT SBM.CTKEY
+			 , SBM.OWKEY
+			 , OBHD.DLVRYCORPCD
+			 , SBM.WBLNO
+			 , SBM.OBHDKEY
+		FROM TWORK_INFO_OB_HD OBHD
+			INNER JOIN TWORK_INFO_HANJIN_SBM SBM
+				ON OBHD.CTKEY = SBM.CTKEY
+				AND OBHD.OWKEY = SBM.OWKEY
+				AND OBHD.OBHDKEY = SBM.OBHDKEY
+		WHERE SBM.CTKEY = #{ctkey}
+			AND SBM.OWKEY = #{owkey}
+		   	AND SBM.OBHDKEY = #{obhdkey}
+			AND SBM.WBLNO = #{wblno}
+	</select>
+
+	<select id="obWblPrWaveSelect" resultType="camelMap">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obWblPrWaveSelect - 운송장출력 이력등록 대상 색인(웨이브관리) */
+		SELECT OBHD.CTKEY
+			 , OBHD.OWKEY
+			 , OBHD.DLVRYCORPCD
+			 , OBHD.WBLNO
+			 , OBHD.OBHDKEY
+		  FROM TWORK_INFO_WA_HD WAHD
+		 INNER JOIN TWORK_INFO_WA_DT WADT
+			ON WAHD.CTKEY = WADT.CTKEY
+		   AND WAHD.OWKEY = WADT.OWKEY
+		   AND WAHD.WAHDKEY = WADT.WAHDKEY
+		   AND WADT.DELYN = 'N'
+		 INNER JOIN TWORK_INFO_OB_HD OBHD
+			ON WADT.CTKEY = OBHD.CTKEY
+		   AND WADT.OWKEY = OBHD.OWKEY
+		   AND WADT.OBHDKEY = OBHD.OBHDKEY
+		   AND WADT.WAHDKEY = OBHD.WAHDKEY
+		 WHERE WAHD.CTKEY = #{ctkey}
+		   AND WAHD.OWKEY = #{owkey}
+		   AND WAHD.WAHDKEY = #{wahdkey}
+		   AND WAHD.WAWKSTATUSCD <![CDATA[ >= ]]> #{wawkstatuscd}
+	</select>
+
+	<insert id="obDlvryWblPrHsInsert">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obDlvryWblPrHsInsert - 택배접수 관리 - 운송장 출력 이력정보 등록 */
+		INSERT INTO TWORK_INFO_WBL_PRHS (
+		    CTKEY
+		    , OWKEY
+			, DLVRYCORPCD
+			, WBLNO
+			, OBHDKEY
+			, PRSEQ
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT
+		    #{ctkey}
+		    , #{owkey}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, #{obhdkey}
+			, COALESCE(MAX(PRSEQ), 0) + 1
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		FROM TWORK_INFO_WBL_PRHS
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND DLVRYCORPCD = #{dlvrycorpcd}
+		AND WBLNO = #{wblno}
+	</insert>
+
+	<sql id="obDlvryWblPrHsSql">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obDlvryWblPrHsSql - 택배접수 관리 - 운송장 출력 이력정보 SQL */
+		SELECT CTKEY /*센터 코드*/
+			 , OWKEY /*화주 코드*/
+			 , DLVRYCORPCD /*택배사 코드*/
+			 , WBLNO /*운송장번호*/
+			 , OBHDKEY /*릴리즈 코드*/
+			 , INSERTDATE /*입력 일시*/
+			 , INSERTURKEY /*입력자*/
+		  FROM TWORK_INFO_WBL_PRHS /*운송장 출력 이력 정보*/
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND DLVRYCORPCD = #{dlvrycorpcd}
+		   AND WBLNO = #{wblno}
+		   AND OBHDKEY = #{obhdkey}
+		 ORDER BY PRSEQ
+	</sql>
+
+	<select id="obDlvryWblPrHsCount" resultType="java.lang.Integer">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obDlvryWblPrHsCount - 택배접수 관리 - 운송장 출력 이력정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="obDlvryWblPrHsSql"/>
+		)
+	</select>
+
+	<select id="obDlvryWblPrHsSelect" resultType="camelMap">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - obDlvryWblPrHsSelect - 택배접수 관리 - 운송장 출력 이력정보 조회 */
+		SELECT *
+		  FROM (
+				<include refid="obDlvryWblPrHsSql"/>
+		)
+	</select>
+
+	<update id="updateWaHdWblNo">
+		/* wms-outbound-obdlvrysbmmgmt-sql-oracle.xml - updateWaHdWblNo - 택배접수 관리 > 운송장번호 등록 - 웨이브 헤더에 택배사 코드 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET DLVRYCORPCD = #{dlvrycorpcd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+</mapper>

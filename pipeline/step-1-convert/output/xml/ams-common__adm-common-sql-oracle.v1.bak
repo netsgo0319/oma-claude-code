@@ -1,0 +1,3117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.common.mapper.CommonMapper">
+
+	<!-- SQL ====================================================================== -->
+
+	<sql id="sql_pagingTop">
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* FROM (
+		</if>
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+				) B
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</when>
+		</choose>
+	</sql>
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+				ORDER BY
+				FIELD1 ASC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_Tmsg">
+		T_MSG AS (
+			SELECT
+				  A.MULAAPMSGHDKEY
+				, B.MSGTYPE
+				, B.DISPLAYMSG
+			FROM
+				TADMIN_MST_MULAAPMSG_HD A
+			INNER JOIN
+				TADMIN_MST_MULAAPMSG_DT B ON B.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+			<where>
+				AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+					AND LAKEY = #{lakey}
+				</if>
+			</where>
+		)
+	</sql>
+
+	<sql id="sql_Tcode">
+		T_CODE AS (
+			SELECT
+				  A.ADCDHDKEY
+				, B.ADCDDTKEY
+				, B.ADCDDTNM
+			FROM TADMIN_MST_ADCD_HD A
+			INNER JOIN TADMIN_MST_ADCD_DT B
+				ON B.ADCDHDKEY = A.ADCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+					AND B.LAKEY = #{lakey}
+				</if>
+			</where>
+		)
+	</sql>
+
+	<sql id="sql_tRoleAp">
+		T_ROLE AS (
+			SELECT
+				D.ROKEY
+			FROM TADMIN_MST_UR A
+			INNER JOIN TADMIN_MST_URGR B
+					ON B.URGRKEY = A.URGRKEY
+			INNER JOIN TADMIN_MST_URGRXROGT C
+					ON C.URGRKEY = B.URGRKEY
+			INNER JOIN TADMIN_MST_RO D
+					ON D.ROKEY = C.ROKEY
+			WHERE
+				A.URKEY = #{surkey}
+		), T_ROLE_AP AS (
+			SELECT
+				DISTINCT
+				APKEY
+			FROM TADMIN_MST_ROXAPGT A
+			WHERE EXISTS (
+				SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+			)
+		)
+	</sql>
+
+	<sql id="sql_tRoleCt">
+		T_ROLE AS (
+			SELECT
+				D.ROKEY
+			FROM TADMIN_MST_UR A
+					 INNER JOIN TADMIN_MST_URGR B
+								ON B.URGRKEY = A.URGRKEY
+					 INNER JOIN TADMIN_MST_URGRXROGT C
+								ON C.URGRKEY = B.URGRKEY
+					 INNER JOIN TADMIN_MST_RO D
+								ON D.ROKEY = C.ROKEY
+			 WHERE A.DELYN = 'N'
+			   AND A.URKEY = #{surkey}
+		), T_ROLE_CT AS (
+			SELECT DISTINCT
+				   B.CTKEY
+			  FROM
+				   TADMIN_MST_ROXCTGT A
+			  INNER JOIN  TADMIN_MST_CT B
+			  		  ON A.CTKEY = B.CTKEY
+			 WHERE B.DELYN = 'N'
+			   AND EXISTS (
+					SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+				   )
+		)
+	</sql>
+
+	<sql id="sql_tRoleOw">
+		WITH T_ROLE AS (
+			SELECT D.ROKEY
+			  FROM TADMIN_MST_UR A
+			 INNER JOIN TADMIN_MST_URGR B
+				ON B.URGRKEY = A.URGRKEY
+			 INNER JOIN TADMIN_MST_URGRXROGT C
+				ON C.URGRKEY = B.URGRKEY
+			 INNER JOIN TADMIN_MST_RO D
+				ON D.ROKEY = C.ROKEY
+			 WHERE A.DELYN = 'N'
+			   AND A.URKEY = #{surkey}
+		), T_ROLE_OW AS (
+			SELECT DISTINCT
+				   A.OWKEY
+			  FROM TADMIN_MST_ROXOWGT A
+			  INNER JOIN  TADMIN_MST_CT B
+			     	  ON A.CTKEY = B.CTKEY
+			  INNER JOIN  TADMIN_MST_OW C
+			  		  ON A.OWKEY = C.OWKEY
+			 WHERE B.DELYN = 'N'
+			   AND C.DELYN = 'N'
+			   AND EXISTS (
+					SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+				   )
+		)
+	</sql>
+
+	<sql id="sql_tRoleCtOw">
+		WITH T_ROLE AS (
+			SELECT
+				D.ROKEY
+			FROM TADMIN_MST_UR A
+			 INNER JOIN TADMIN_MST_URGR B
+						ON B.URGRKEY = A.URGRKEY
+			 INNER JOIN TADMIN_MST_URGRXROGT C
+						ON C.URGRKEY = B.URGRKEY
+			 INNER JOIN TADMIN_MST_RO D
+						ON D.ROKEY = C.ROKEY
+			WHERE
+				A.URKEY = #{surkey}
+		), T_ROLE_CT AS (
+			SELECT
+				DISTINCT
+				CTKEY
+			FROM TADMIN_MST_ROXCTGT A
+			WHERE  EXISTS (
+				SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+			)
+		), T_ROLE_CT_OW AS (
+			SELECT
+				DISTINCT
+				OWKEY
+			FROM TADMIN_MST_CTXOW A
+			WHERE EXISTS (
+				SELECT 1 FROM T_ROLE_CT WHERE CTKEY = A.CTKEY
+			)
+		), T_ROLE_OW AS (
+			SELECT DISTINCT
+				 A.CTKEY
+				,A.OWKEY
+			FROM TADMIN_MST_ROXOWGT A
+			INNER JOIN TADMIN_MST_CT B
+			    	ON A.CTKEY = B.CTKEY
+			INNER JOIN TADMIN_MST_OW C
+					ON A.OWKEY = C.OWKEY
+			WHERE B.DELYN = 'N'
+			  AND C.DELYN = 'N'
+			  AND EXISTS (
+				SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+			)
+			  AND EXISTS (
+				SELECT 1 FROM T_ROLE_CT_OW WHERE OWKEY = A.OWKEY
+			)
+		)
+	</sql>
+
+	<sql id="sql_tRoleAc">
+		WITH T_ROLE AS (
+			SELECT
+				D.ROKEY
+			FROM TADMIN_MST_UR A
+					 INNER JOIN TADMIN_MST_URGR B
+								ON B.URGRKEY = A.URGRKEY
+					 INNER JOIN TADMIN_MST_URGRXROGT C
+								ON C.URGRKEY = B.URGRKEY
+					 INNER JOIN TADMIN_MST_RO D
+								ON D.ROKEY = C.ROKEY
+			WHERE
+				A.URKEY = #{surkey}
+		), T_ROLE_CT AS (
+			SELECT
+				DISTINCT
+				CTKEY
+			FROM TADMIN_MST_ROXCTGT A
+			WHERE EXISTS (
+				SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+			)
+		), T_ROLE_CT_AC AS (
+			SELECT
+				DISTINCT
+				ACKEY
+			FROM TADMIN_MST_ACXCT A
+			WHERE EXISTS (
+				SELECT 1 FROM T_ROLE_CT WHERE CTKEY = A.CTKEY
+			)
+		)
+	</sql>
+
+	<sql id="sql_tGrpRoleCt">
+		T_ROLE AS (
+			SELECT B.ROKEY
+			  FROM TADMIN_MST_URGRXROGT A
+			 INNER JOIN TADMIN_MST_RO B
+				ON B.ROKEY = A.ROKEY
+			 WHERE A.URGRKEY = #{urgrkey}
+		), T_ROLE_CT AS (
+			SELECT DISTINCT
+			B.CTKEY
+			FROM TADMIN_MST_ROXCTGT A
+			INNER JOIN TADMIN_MST_CT B
+					ON A.CTKEY = B.CTKEY
+			WHERE B.DELYN = 'N'
+			  AND EXISTS (
+					SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+				)
+		)
+	</sql>
+
+	<sql id="sql_tGrpRoleOw">
+		WITH T_ROLE AS (
+			SELECT B.ROKEY
+			FROM TADMIN_MST_URGRXROGT A
+					 INNER JOIN TADMIN_MST_RO B
+								ON B.ROKEY = A.ROKEY
+			WHERE A.URGRKEY = #{urgrkey}
+		), T_ROLE_OW AS (
+			SELECT DISTINCT
+				A.OWKEY
+			FROM TADMIN_MST_ROXOWGT A
+			INNER JOIN TADMIN_MST_CT B
+			    	ON A.CTKEY = B.CTKEY
+			INNER JOIN TADMIN_MST_OW C
+					ON A.OWKEY = C.OWKEY
+			WHERE B.DELYN = 'N'
+			  AND C.DELYN = 'N'
+			  AND EXISTS (
+				SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+			  )
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+			   AND A.CTKEY = #{ctkey}
+			</if>
+		)
+	</sql>
+
+	<sql id="sql_tAdminMstAp">
+		FROM TADMIN_MST_AP A
+		<where>
+			AND EXISTS (
+				SELECT 1 FROM T_ROLE_AP WHERE APKEY = A.APKEY
+            )
+			AND A.ISOFFLINE = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.APKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.APKEY ~ #{value}
+						OR
+						A.APNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.APKEY LIKE '%' || #{value} || '%'
+						OR
+						A.APNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstAdcd">
+		FROM TADMIN_MST_ADCD_HD A
+		INNER JOIN TADMIN_MST_ADCD_DT B
+		ON B.ADCDHDKEY = A.ADCDHDKEY
+		<where>
+			AND A.DELYN = 'N'
+			AND B.DELYN = 'N'
+			AND A.ADCDHDKEY = #{adcd_hdkey}
+			AND B.LAKEY = #{lakey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.ADCDDTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						B.ADCDDTKEY ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						OR
+						B.ADCDDTVALUE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						B.ADCDDTKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTVALUE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstMulaapmsg">
+		FROM TADMIN_MST_MULAAPMSG_HD A
+		INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+			ON B.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND B.LAKEY = #{slakey}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(msgtype)">
+				AND B.MSGTYPE = #{msgtype}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.MULAAPMSGHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						B.MULAAPMSGHDKEY ~ #{value}
+						OR
+						B.DISPLAYMSG ~ #{value}
+						OR
+						B.LAKEY ~ #{value}
+						OR
+						B.MSGTYPE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						B.MULAAPMSGHDKEY LIKE '%' || #{value} || '%'
+						OR
+						B.DISPLAYMSG LIKE '%' || #{value} || '%'
+						OR
+						B.LAKEY LIKE '%' || #{value} || '%'
+						OR
+						B.MSGTYPE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstAc">
+		FROM TADMIN_MST_AC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'ACTYPE' AND B.ADCDDTKEY = A.ACTYPE
+
+		<where>
+			AND EXISTS (
+				SELECT 1 FROM T_ROLE_CT_AC WHERE ACKEY = A.ACKEY
+			)
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ACKEY ~ #{value}
+						OR
+						A.ACNM ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ACNM LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstOw">
+		FROM TADMIN_MST_OW A
+
+		<where>
+			AND EXISTS (
+				SELECT 1 FROM T_ROLE_OW WHERE OWKEY = A.OWKEY
+			)
+
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.OWKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.OWKEY ~ #{value}
+						OR
+						A.OWNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstCt">
+		FROM TADMIN_MST_CT A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'CTTYPE' AND B.ADCDDTKEY = A.CTTYPE
+
+		<where>
+			AND EXISTS (
+				SELECT 1 FROM T_ROLE_CT WHERE CTKEY = A.CTKEY
+			)
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.CTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.CTKEY ~ #{value}
+						OR
+						A.CTNM ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.CTKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTNM LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstUrgr">
+		FROM TADMIN_MST_URGR
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND URGRKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						URGRKEY ~ #{value}
+						OR
+						URGRNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						URGRKEY LIKE '%' || #{value} || '%'
+						OR
+						URGRNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstUr">
+		FROM TADMIN_MST_UR A
+		INNER JOIN TADMIN_MST_URGR B
+			ON A.URGRKEY = B.URGRKEY
+
+		<where>
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.URKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.URKEY ~ #{value}
+						OR
+						A.URNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						/* 2025.11.17 보안점검 조치로 인하여 like 검색 제외 */
+						AND (
+						A.URKEY = #{value}
+						OR
+						A.URNM = #{value}
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstIcgr">
+		FROM TADMIN_MST_ICGR A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'ICGRTYPE' AND B.ADCDDTKEY = A.ICGRPTYPE
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICGRPKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICGRPKEY ~ #{value}
+						OR
+						A.ICGRPNM ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICGRPKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICGRPNM LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstIcut">
+		FROM TADMIN_MST_ICUT A
+		INNER JOIN TADMIN_MST_ICUTXTYPE B
+			ON B.OWKEY = A.OWKEY AND B.ICUNITKEY = A.ICUNITKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.ADCDHDKEY = 'ICUTTYPE' AND C.ADCDDTKEY = B.ICUNITTYPE
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICUNITKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICUNITKEY ~ #{value}
+						OR
+						C.ADCDDTNM ~ #{value}
+						OR
+						B.ICUNITQTY ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICUNITKEY LIKE '%' || #{value} || '%'
+						OR
+						C.ADCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						B.ICUNITQTY LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstIc">
+		FROM TADMIN_MST_IC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'ICUTTYPE' AND B.ADCDDTKEY = A.UOM
+		LEFT OUTER JOIN T_CODE C
+			ON C.ADCDHDKEY = 'LOGGRPCD' AND C.ADCDDTKEY = A.UDF2
+
+		<where>
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICKEY ~ #{value}
+						OR
+						A.ICNM ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						OR
+						A.ICUNITKEY ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						OR
+						C.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNM LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICUNITKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						C.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstIcInIcom">
+		FROM TADMIN_MST_IC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'ICUTTYPE' AND B.ADCDDTKEY = A.UOM
+		LEFT OUTER JOIN T_CODE C
+			ON C.ADCDHDKEY = 'LOGGRPCD' AND C.ADCDDTKEY = A.UDF2
+
+		<where>
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICKEY ~ #{value}
+						OR
+						A.ICNM ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNM LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstIcsb">
+		FROM TADMIN_MST_ICSB A
+		LEFT OUTER JOIN T_CODE B
+		ON B.ADCDHDKEY = 'ICUTTYPE' AND B.ADCDDTKEY = A.ICUNITTYPE
+
+		<where>
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.SBKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.SBKEY ~ #{value}
+						OR
+						A.ICKEY ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.SBKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstUsscHd">
+		FROM TADMIN_MST_USSC_HD
+
+		<where>
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.USSCHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						USSCHDKEY ~ #{value}
+						OR
+						USSCHDNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						USSCHDKEY LIKE '%' || #{value} || '%'
+						OR
+						USSCHDNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstUrsc">
+		FROM TADMIN_MST_URSCR
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)">
+				AND APKEY = #{apkey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND USKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						USKEY ~ #{value}
+						OR
+						USNM ~ #{value}
+						OR
+						APKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						USKEY LIKE '%' || #{value} || '%'
+						OR
+						USNM LIKE '%' || #{value} || '%'
+						OR
+						APKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstMe">
+		FROM TADMIN_MST_ME A
+			LEFT OUTER JOIN T_MSG B
+						 ON B.MULAAPMSGHDKEY = A.MENM
+						AND B.MSGTYPE = 'MENU'
+			INNER JOIN TADMIN_MST_URSCR C
+					ON C.APKEY = A.APKEY
+				   AND C.USKEY = A.USKEY
+			LEFT OUTER JOIN TADMIN_MST_ME D
+						 ON D.MEKEY = A.UPRMEKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)">
+				AND A.APKEY = #{apkey}
+			</if>
+			AND A.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.MEKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.MEKEY ~ #{value}
+						OR
+						A.MENM ~ #{value}
+						OR
+						B.DISPLAYMSG ~ #{value}
+						OR
+						A.APKEY ~ #{value}
+						OR
+						A.EQTYPE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.MEKEY LIKE '%' || #{value} || '%'
+						OR
+						A.MENM LIKE '%' || #{value} || '%'
+						OR
+						B.DISPLAYMSG LIKE '%' || #{value} || '%'
+						OR
+						A.APKEY LIKE '%' || #{value} || '%'
+						OR
+						A.EQTYPE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+		START WITH A.UPRMEKEY ='0'
+		CONNECT BY PRIOR A.MEKEY = A.UPRMEKEY
+		ORDER SIBLINGS BY A.MEORDER
+	</sql>
+
+	<sql id="sql_tAdminMstRo">
+		FROM TADMIN_MST_RO
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND ROKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						ROKEY ~ #{value}
+						OR
+						RONM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						ROKEY LIKE '%' || #{value} || '%'
+						OR
+						RONM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstTz">
+		FROM TADMIN_MST_TZ_HD A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.TZKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.TZKEY ~ #{value}
+						OR
+						A.UTCOFFSET ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.TZKEY LIKE '%' || #{value} || '%'
+						OR
+						A.UTCOFFSET LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstCtg">
+		FROM TADMIN_MST_CTG
+
+		<where>
+			AND DELYN = 'N'
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctglevel)">
+				AND CTGLV = #{ctglevel}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND CTGKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						CTGKEY ~ #{value}
+						OR
+						CTGNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						CTGKEY LIKE '%' || #{value} || '%'
+						OR
+						CTGNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstEq">
+		FROM TADMIN_MST_EQ A
+		LEFT OUTER JOIN T_CODE B
+			ON B.ADCDHDKEY = 'EQTYPE' AND B.ADCDDTKEY = A.EQTYPE
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.EQKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.EQKEY ~ #{value}
+						OR
+						B.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.EQKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstAccount">
+		FROM TADMIN_MST_AC
+
+		<where>
+			AND OWKEY = #{owkey}
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						ACKEY ~ #{value}
+						OR
+						ACNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						ACKEY LIKE '%' || #{value} || '%'
+						OR
+						ACNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstStore">
+		FROM TADMIN_MST_STORE
+
+		<where>
+			AND DELYN = 'N'
+			AND STORE_TYPE = '0'
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND STOREKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						STOREKEY ~ #{value}
+						OR
+						STORENM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						STOREKEY LIKE '%' || #{value} || '%'
+						OR
+						STORENM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstAddr">
+		FROM TADMIN_MST_ADDR_T
+
+		<where>
+			AND DELYN = 'N'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND ADDRID = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						ADDRID ~ #{value}
+						OR
+						CTYNM ~ #{value}
+						OR
+						STNM ~ #{value}
+						OR
+						UNIT ~ #{value}
+						OR
+						ZIPCD ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						ADDRID LIKE '%' || #{value} || '%'
+						OR
+						CTYNM LIKE '%' || #{value} || '%'
+						OR
+						STNM LIKE '%' || #{value} || '%'
+						OR
+						UNIT LIKE '%' || #{value} || '%'
+						OR
+						ZIPCD LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstUrxEq">
+		FROM TADMIN_MST_URXEQ A
+		INNER JOIN TADMIN_MST_UR B
+		ON B.URKEY = A.URKEY
+		LEFT OUTER JOIN T_CODE C
+		ON B.ADCDHDKEY = 'EQTYPE' AND B.ADCDDTKEY = A.EQTYPE
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+				AND B.CTKEY = #{ctkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.URKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.URKEY ~ #{value}
+						OR
+						B.URNM ~ #{value}
+						OR
+						A.EQTYPE ~ #{value}
+						OR
+						A.PUSHID ~ #{value}
+						OR
+						C.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.URKEY LIKE '%' || #{value} || '%'
+						OR
+						B.URNM LIKE '%' || #{value} || '%'
+						OR
+						A.EQTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.PUSHID LIKE '%' || #{value} || '%'
+						OR
+						C.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstAcForRep">
+		FROM (
+		SELECT
+		REPACKEY AS ACKEY
+		, OWKEY
+		FROM TADMIN_MST_AC
+		GROUP BY
+		REPACKEY
+		, OWKEY
+		) A
+		INNER JOIN TADMIN_MST_AC B
+		ON B.ACKEY = A.ACKEY AND B.OWKEY = A.OWKEY
+		LEFT OUTER JOIN T_CODE C
+		ON C.ADCDHDKEY = 'ACTYPE' AND C.ADCDDTKEY = B.ACTYPE
+
+		<where>
+			AND DELYN = 'N'
+			AND CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						B.ACKEY ~ #{value}
+						OR
+						B.ACNM ~ #{value}
+						OR
+						C.ADCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						B.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ACNM LIKE '%' || #{value} || '%'
+						OR
+						C.ADCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstZipCd">
+		FROM TADMIN_MST_ADDR_T A
+		LEFT OUTER JOIN T_CODE B
+		ON B.ADCDHDKEY = 'CNTRYCD' AND B.ADCDDTKEY = A.CNTRYCD
+
+		<where>
+			AND A.ZIPCD IS NOT NULL
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ZIPCD = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ZIPCD ~ #{value}
+						OR
+						APNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ZIPCD LIKE '%' || #{value} || '%'
+						OR
+						APNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstPartner">
+		FROM TADMIN_MST_PARTNER
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(corpcd)">
+				AND CORPCD = #{corpcd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND PARTNERCD = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						PARTNERCD ~ #{value}
+						OR
+						PARTNERLN ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						PARTNERCD LIKE '%' || #{value} || '%'
+						OR
+						PARTNERLN LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tAdminMstBrand">
+		FROM TADMIN_MST_ICXBRAND
+
+		<where>
+			AND DELYN = 'N'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND BRANDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						BRANDKEY ~ #{value}
+						OR
+						BRANDNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						BRANDKEY LIKE '%' || #{value} || '%'
+						OR
+						BRANDNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<!-- SELECT ====================================================================== -->
+
+	<select id="selectTAdminMstApCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstApCount */
+		WITH <include refid="sql_tRoleAp"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstAp"/>
+	</select>
+
+	<select id="selectTAdminMstAp" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAp */
+		WITH <include refid="sql_tRoleAp"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.APKEY AS FIELD1
+			, A.APNM AS FIELD2
+			, A.APKEY
+			, A.APNM
+		<include refid="sql_tAdminMstAp"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstAdcdCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.zxml - selectTAdminMstAdcdCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstAdcd"/>
+	</select>
+
+	<select id="selectTAdminMstAdcd" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAdcd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  B.ADCDDTKEY AS FIELD1
+			, B.ADCDDTNM AS FIELD2
+			, B.ADCDDTVALUE as FIELD3
+			, A.ADCDHDKEY AS FIELD4
+			, B.ADCDDTORDER AS FIELD5
+		<include refid="sql_tAdminMstAdcd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstMulaapmsgCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstMulaapmsgCount */
+		SELECT
+		COUNT(1)
+		<include refid="sql_tAdminMstMulaapmsg"/>
+	</select>
+
+	<select id="selectTAdminMstMulaapmsg" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstMulaapmsg */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  B.MULAAPMSGHDKEY AS FIELD1
+			, B.DISPLAYMSG AS FIELD2
+			, B.LAKEY AS FIELD3
+			, B.MSGTYPE AS FIELD4
+		<include refid="sql_tAdminMstMulaapmsg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstAcCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAcCount */
+		  <include refid="sql_tRoleAc"/>
+		, <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstAc"/>
+	</select>
+
+	<select id="selectTAdminMstAc" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAc */
+		  <include refid="sql_tRoleAc"/>
+		, <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.ACKEY AS FIELD1
+			, A.ACNM AS FIELD2
+			, B.ADCDDTNM AS FIELD3
+		    , A.ACKEY
+			, A.ACNM
+			, A.ACTYPE
+			, B.ADCDDTNM
+		<include refid="sql_tAdminMstAc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstOwCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstOwCount */
+		<include refid="sql_tRoleOw"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstOw"/>
+	</select>
+
+	<select id="selectTAdminMstOw" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstOw */
+		<include refid="sql_tRoleOw"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.OWKEY AS FIELD1
+			, A.OWNM AS FIELD2
+			, A.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+			, A.OWKEY
+			, A.OWNM
+			, A.MASTERUPDATEIMPOS
+		<include refid="sql_tAdminMstOw"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstCtOw" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtOw - 센터별 화주 리스트*/
+		<include refid="sql_tRoleCtOw"/>
+		SELECT
+			  CTKEY
+			, OWKEY
+		FROM T_ROLE_OW
+	</select>
+
+	<select id="selectTAdminMstCtCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtCount */
+		WITH <include refid="sql_tRoleCt"/>
+		   , <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstCt"/>
+	</select>
+
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCt */
+		WITH <include refid="sql_tRoleCt"/>
+		   , <include refid="sql_Tcode"/>
+		    <include refid="sql_pagingTop"/>
+		SELECT
+		      A.CTKEY AS FIELD1
+			, A.CTNM AS FIELD2
+			, B.ADCDDTNM AS FIELD3
+			, A.CTKEY
+			, A.CTNM
+			, A.CTTYPE
+			, B.ADCDDTNM AS CTTYPE_NAME
+		<include refid="sql_tAdminMstCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstUrgrCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrgrCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstUrgr"/>
+	</select>
+
+	<select id="selectTAdminMstUrgr" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrgr */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      URGRKEY AS FIELD1
+			, URGRNM AS FIELD2
+			, URGRKEY
+			, URGRNM
+		<include refid="sql_tAdminMstUrgr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstUrCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstUr"/>
+	</select>
+
+	<select id="selectTAdminMstUr" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUr */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.URKEY AS FIELD1
+			, A.URNM AS FIELD2
+		    , A.URKEY
+			, A.URNM
+			, A.URGRKEY
+			, B.URGRNM
+		<include refid="sql_tAdminMstUr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstIcgrCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcgrCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstIcgr"/>
+	</select>
+
+	<select id="selectTAdminMstIcgr" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcgr */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.ICGRPKEY AS FIELD1
+			, A.ICGRPNM AS FIELD2
+			, B.ADCDDTNM AS FIELD3
+			, A.OWKEY AS FIELD4
+			, A.ICGRPKEY
+			, A.ICGRPNM
+			, A.ICGRPTYPE
+		    , B.ADCDDTNM
+			, A.OWKEY
+		<include refid="sql_tAdminMstIcgr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstIcutCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcutCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstIcut"/>
+	</select>
+
+	<select id="selectTAdminMstIcut" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcut */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.ICUNITKEY AS FIELD1
+			, C.ADCDDTNM AS FIELD2
+			, B.ICUNITQTY AS FIELD3
+			, A.OWKEY AS FIELD4
+			, A.ICUNITKEY
+		    , B.ICUNITTYPE
+			, C.ADCDDTNM
+			, B.ICUNITQTY
+			, A.OWKEY
+		<include refid="sql_tAdminMstIcut"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstIcCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstIc"/>
+	</select>
+
+	<select id="selectTAdminMstIc" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIc */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.ICKEY AS FIELD1
+			, A.ICNM AS FIELD2
+			, A.OWKEY AS FIELD3
+			, A.ICUNITKEY AS FIELD4
+			, B.ADCDDTNM AS FIELD5
+			, C.ADCDDTNM AS FIELD6
+			, A.ICKEY
+			, A.ICNM
+			, A.OWKEY
+			, A.ICUNITKEY
+		    , A.UOM
+			, B.ADCDDTNM AS UOM_NAME
+		    , A.UDF2
+			, C.ADCDDTNM AS UDF2_NAME
+		<include refid="sql_tAdminMstIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstIcInIcomCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcInIcomCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstIcInIcom"/>
+	</select>
+
+	<select id="selectTAdminMstIcInIcom" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcInIcom */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      ICKEY AS FIELD1
+			, ICNM AS FIELD2
+			, OWKEY AS FIELD3
+			, ICKEY
+			, ICNM
+			, OWKEY
+		<include refid="sql_tAdminMstIcInIcom"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstIcsbCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcsbCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstIcsb"/>
+	</select>
+
+	<select id="selectTAdminMstIcsb" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstIcsb */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.SBKEY AS FIELD1
+			, A.ICKEY AS FIELD2
+			, A.OWKEY AS FIELD3
+			, B.ADCDDTNM AS FIELD4
+			, A.SBKEY
+			, A.ICKEY
+			, A.OWKEY
+			, A.ICUNITTYPE
+		<include refid="sql_tAdminMstIcsb"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstUsscHdCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUsscHdCount */
+		SELECT
+			COUNT(1)
+		<include refid="sql_tAdminMstUsscHd"/>
+	</select>
+
+	<select id="selectTAdminMstUsscHd" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUsscHd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  USSCHDKEY AS FIELD1
+			, USSCHDNM AS FIELD2
+			, USSCHDKEY
+			, USSCHDNM
+		<include refid="sql_tAdminMstUsscHd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstUrscCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrscCount */
+		SELECT
+			COUNT(1)
+		<include refid="sql_tAdminMstUrsc"/>
+	</select>
+
+	<select id="selectTAdminMstUrsc" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrsc */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  USKEY AS FIELD1
+			, USNM  AS FIELD2
+			, APKEY AS FIELD3
+			, USKEY
+			, USNM
+			, APKEY
+		<include refid="sql_tAdminMstUrsc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstMeCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstMeCount */
+		WITH <include refid="sql_Tmsg"/>
+		SELECT
+			COUNT(1)
+		<include refid="sql_tAdminMstMe"/>
+	</select>
+
+	<select id="selectTAdminMstMe" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstMe */
+		WITH <include refid="sql_Tmsg"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.MEKEY AS FIELD1
+			, B.DISPLAYMSG AS FIELD2
+			, A.MENM AS FIELD3
+			, A.APKEY AS FIELD4
+			, A.EQTYPE AS FIELD5
+			, A.MEKEY
+			, A.MENM
+			, B.DISPLAYMSG
+			, A.APKEY
+			, A.EQTYPE
+		<include refid="sql_tAdminMstMe"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstRoCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstRoCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstRo"/>
+	</select>
+
+	<select id="selectTAdminMstRo" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstRo */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      ROKEY AS FIELD1
+			, RONM AS FIELD2
+			, ROKEY
+			, RONM
+		<include refid="sql_tAdminMstRo"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstTzCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstTzCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstTz"/>
+	</select>
+
+	<select id="selectTAdminMstTz" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstTz */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.TZKEY AS FIELD1
+			, A.UTCOFFSET AS FIELD2
+			, A.TZKEY
+			, A.UTCOFFSET
+		<include refid="sql_tAdminMstTz"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstCtgCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtgCount */
+		SELECT
+		COUNT(1)
+		FROM (
+		SELECT
+		DISTINCT
+		CTGKEY
+		, CTGNM
+		<include refid="sql_tAdminMstCtg"/>
+		)
+	</select>
+
+	<select id="selectTAdminMstCtg" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtg */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		DISTINCT
+		CTGKEY AS FIELD1
+		, CTGNM AS FIELD2
+		<include refid="sql_tAdminMstCtg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstEqCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstEqCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstEq"/>
+	</select>
+
+	<select id="selectTAdminMstEq" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstEq */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.EQKEY AS FIELD1
+			, B.ADCDDTNM AS FIELD2
+			, A.EQKEY
+			, A.EQTYPE
+			, B.ADCDDTNM AS EQTYPE_NAME
+		<include refid="sql_tAdminMstEq"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstAccountCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAccount */
+		SELECT
+		COUNT(1)
+		<include refid="sql_tAdminMstAccount"/>
+	</select>
+
+	<select id="selectTAdminMstAccount" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAccount */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		ACKEY AS FIELD1
+		, ACNM AS FIELD2
+		, ACKEY
+		, ACNM
+		<include refid="sql_tAdminMstAccount"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstStoreCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstStoreCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstStore"/>
+	</select>
+
+	<select id="selectTAdminMstStore" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstStore */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      STOREKEY	AS FIELD1
+			, STORENM AS FIELD2
+			, STOREKEY
+			, STORENM
+		<include refid="sql_tAdminMstStore"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstAddrCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAddrCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstAddr"/>
+	</select>
+
+	<select id="selectTAdminMstAddr" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAddr */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      ADDRID AS FIELD1
+			, CTYNM AS FIELD2
+			, STNM AS FIELD3
+			, UNIT AS FIELD4
+			, ZIPCD AS FIELD5
+			, ADDRID
+			, CTYNM
+			, STNM
+			, UNIT
+			, ZIPCD
+		<include refid="sql_tAdminMstAddr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstUrXEqCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrXEqCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+			COUNT(1)
+		<include refid="sql_tAdminMstUrxEq"/>
+	</select>
+
+	<select id="selectTAdminMstUrXEq" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstUrXEq */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.URKEY AS FIELD1
+			, B.URNM AS FIELD2
+			, C.ADCDDTNM AS FIELD3
+			, A.PUSHID AS FIELD4
+			, A.URKEY
+			, B.URNM
+			, A.EQTYPE
+			, C.ADCDDTNM AS EQTYPE_NAME
+			, A.PUSHID
+		<include refid="sql_tAdminMstUrxEq"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+    <sql id="sql_ttCarrT">
+       FROM    TT_CARR_T
+       WHERE   1 = 1
+       AND DELYN = 'N'
+       <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+           AND (CARRCD LIKE '%' || #{value} || '%' OR CARRNM LIKE '%' || #{value} || '%')
+       </if>
+   </sql>
+
+    <select id="selectTtCarrTCount" resultType="java.lang.Integer">
+        SELECT  COUNT(1)
+        <include refid="sql_ttCarrT"/>
+    </select>
+
+    <select id="selectTtCarrTList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT CARRCD  AS FIELD1
+            ,  CARRNM  AS FIELD2
+        <include refid="sql_ttCarrT"/>
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+	<select id="selectTAdminMstAcForRepCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtg */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstAcForRep"/>
+
+	</select>
+
+	<select id="selectTAdminMstAcForRep" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstCtg */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      B.ACKEY AS FIELD1
+			, B.ACNM AS FIELD2
+			, C.ADCDDTNM AS FIELD3
+			, B.ACKEY
+			, B.ACNM
+			, B.ACTYPE
+			, C.ADCDDTNM AS ACTYPE_NAME
+		<include refid="sql_tAdminMstAcForRep"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstZipcdCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstZipcdCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+			COUNT(1)
+		FROM (
+			SELECT
+			DISTINCT
+				  A.ZIPCD
+				, A.STACD
+				, A.CTYNM
+				, A.CNTRYCD
+			<include refid="sql_tAdminMstZipCd"/>
+		)
+	</select>
+
+	<select id="selectTAdminMstZipcd" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstZipcd */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		DISTINCT
+			  A.ZIPCD AS FIELD1
+			, A.STACD AS FIELD2
+			, A.CTYNM AS FIELD3
+			, B.ADCDDTNM AS FIELD4
+			, A.ZIPCD
+			, A.STACD
+			, A.CTYNM
+			, B.ADCDDTNM
+		<include refid="sql_tAdminMstZipCd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstPartnerCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstPartnerCount */
+		SELECT
+			COUNT(1)
+		<include refid="sql_tAdminMstPartner"/>
+	</select>
+
+	<select id="selectTAdminMstPartner" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstPartner */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  PARTNERCD AS FIELD1
+			, PARTNERLN AS FIELD2
+			, PARTNERCD
+			, PARTNERLN
+		<include refid="sql_tAdminMstPartner"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstBrandCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstBrandCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_tAdminMstBrand"/>
+	</select>
+
+	<select id="selectTAdminMstBrand" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstBrand */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      BRANDKEY AS FIELD1
+			, BRANDNM AS FIELD2
+			, BRANDKEY
+			, BRANDNM
+		<include refid="sql_tAdminMstBrand"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstGroupRoleByOwCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstGroupRoleByOwCount */
+		<include refid="sql_tGrpRoleOw"/>
+		SELECT
+		COUNT(1)
+		<include refid="sql_tAdminMstOw"/>
+	</select>
+
+	<select id="selectTAdminMstGroupRoleByOw" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstGroupRoleByOw */
+		<include refid="sql_tGrpRoleOw"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		A.OWKEY AS FIELD1
+		, A.OWNM AS FIELD2
+		, A.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+		, A.OWKEY
+		, A.OWNM
+		, A.MASTERUPDATEIMPOS
+		<include refid="sql_tAdminMstOw"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstGroupRoleByCtCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstGroupRoleByCtCount */
+		WITH <include refid="sql_tGrpRoleCt"/>
+		, <include refid="sql_Tcode"/>
+		SELECT
+		COUNT(1)
+		<include refid="sql_tAdminMstCt"/>
+	</select>
+
+	<select id="selectTAdminMstGroupRoleByCt" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstGroupRoleByCt */
+		WITH <include refid="sql_tGrpRoleCt"/>
+		, <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		A.CTKEY AS FIELD1
+		, A.CTNM AS FIELD2
+		, B.ADCDDTNM AS FIELD3
+		, A.CTKEY
+		, A.CTNM
+		, A.CTTYPE
+		, B.ADCDDTNM AS CTTYPE_NAME
+		<include refid="sql_tAdminMstCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<!--  -->
+
+	<select id="selectAmsCommonCode" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectAmsCommonCode */
+		SELECT
+		      B.ADCDHDKEY AS HDKEY
+			, B.ADCDDTKEY AS FIELD1
+			, B.ADCDDTNM AS FIELD2
+		FROM
+		    TADMIN_MST_ADCD_HD A
+		INNER JOIN TADMIN_MST_ADCD_DT B
+			ON B.ADCDHDKEY = A.ADCDHDKEY
+		WHERE A.DELYN = 'N'
+		AND B.DELYN = 'N'
+		AND B.LAKEY = #{slakey}
+		ORDER BY
+		      A.ADCDHDKEY ASC
+			, B.ADCDDTORDER ASC
+	</select>
+
+	<select id="selectOmsCommonCode" fetchSize="1000" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectOmsCommonCode */
+		<include refid="sql_tRoleOw"/>
+		SELECT B.COMHDKEY AS HDKEY
+			 , B.COMDTKEY AS FIELD1
+			 , B.COMDTNM AS FIELD2
+			 , B.COMHDKEY
+			 , B.COMDTKEY
+			 , B.COMDTNM
+			 , B.VAL
+			 , B.OWKEY
+		  FROM TORDER_MST_COM_HD A
+		 INNER JOIN TORDER_MST_COM_DT B
+				 ON A.OWKEY = B.OWKEY
+				AND B.COMHDKEY = A.COMHDKEY
+		 WHERE EXISTS (
+				SELECT 1 FROM T_ROLE_OW WHERE OWKEY = A.OWKEY
+			)
+		   AND A.DELYN = 'N'
+		   AND B.DELYN = 'N'
+		   AND B.LAKEY = #{slakey}
+		 ORDER BY
+		 		A.COMHDKEY
+			  , B.COMDTKEY
+	</select>
+
+	<select id="selectOrderCode" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectOrderCode */
+		SELECT
+		      B.ORDERCOMHDKEY AS HDKEY
+			, B.ORDERCOMDTKEY AS FIELD1
+			, B.ORDERCOMDTNM AS FIELD2
+		FROM TORDER_MST_ORCD_HD A
+		INNER JOIN TORDER_MST_ORCD_DT B
+			ON B.ORDERCOMHDKEY = A.ORDERCOMHDKEY
+		WHERE A.DELYN = 'N'
+		AND B.DELYN = 'N'
+		AND B.LAKEY = #{slakey}
+		ORDER BY
+		      A.ORDERCOMHDKEY
+			, B.ORDERCOMDTKEY
+	</select>
+
+	<select id="selectWmsCommonCode" fetchSize="1000" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectWmsCommonCode */
+		WITH <include refid="sql_tRoleCt"/>
+		SELECT
+		      B.CTCDHDKEY AS HDKEY
+			, B.CTCDDTKEY AS FIELD1
+			, B.CTCDDTNM AS FIELD2
+			, A.CTKEY
+			, B.CTCDHDKEY
+			, B.CTCDDTKEY
+			, B.CTCDDTNM
+			, B.CTCDDTORD
+			, B.CTCDDTVAL
+			, B.CMT
+		FROM TWORK_MST_CTCD_HD A
+		INNER JOIN TWORK_MST_CTCD_DT B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+		WHERE EXISTS (
+			SELECT 1 FROM T_ROLE_CT WHERE CTKEY = A.CTKEY
+		)
+		AND A.DELYN = 'N'
+		AND B.DELYN = 'N'
+		AND B.LAKEY = #{slakey}
+		ORDER BY
+		      A.CTCDHDKEY
+			, B.CTCDDTORD
+	</select>
+
+	<select id="selectTmsCommonCode" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTmsCommonCode */
+		SELECT B.TMCD_HDKEY AS HDKEY
+			 , B.TMCD_DTKEY AS FIELD1
+			 , B.TMCD_DTNAME AS FIELD2
+		FROM TT_MST_TMCD_HD A
+				 INNER JOIN TT_MST_TMCD_DT B
+							ON B.TMCD_HDKEY = A.TMCD_HDKEY
+		WHERE A.DELYN = 'N'
+		  AND B.DELYN = 'N'
+		  AND B.LAKEY = #{slakey}
+		ORDER BY A.TMCD_HDKEY
+			   , B.TMCD_DTORDER
+	</select>
+
+	<select id="selectBookmarkMenuCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectBookmarkMenuCount */
+		SELECT
+			COUNT(1)
+		FROM TADMIN_MST_URBM
+		WHERE URKEY = #{surkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)">
+				AND APKEY = #{apkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(mekey)">
+				AND MEKEY = #{mekey}
+			</if>
+	</select>
+
+	<select id="selectBookmarkMenu" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectBookmarkMenu */
+		WITH <include refid="sql_Tmsg"/>
+		, <include refid="sql_tRoleAp"/>
+
+		SELECT
+			*
+		FROM (
+			SELECT
+				  APKEY
+				, MEKEY
+				, MENAME
+				, APORDER
+				, LEVEL AS LVL
+				, CONNECT_BY_ISLEAF AS LEAF
+			FROM (
+				SELECT
+					  '' AS APKEY
+					, A.APKEY AS MEKEY
+					, A.APNM AS MENAME
+					, A.APORDER
+				FROM TADMIN_MST_AP A
+				WHERE EXISTS (
+					SELECT 1 FROM T_ROLE_AP WHERE APKEY = A.APKEY
+				)
+				AND A.ISOFFLINE = 'N'
+
+				UNION
+
+				SELECT
+					  B.APKEY
+					, A.MEKEY
+					, D.DISPLAYMSG AS MENAME
+					, 0 AS APORDER
+				FROM TADMIN_MST_URBM A
+				INNER JOIN TADMIN_MST_AP B
+					ON B.APKEY = A.APKEY
+				INNER JOIN TADMIN_MST_ME C
+					ON C.MEKEY = A.MEKEY
+				LEFT OUTER JOIN T_MSG D
+					ON D.MSGTYPE = 'MENU' AND D.MULAAPMSGHDKEY = C.MENM
+				WHERE B.ISOFFLINE = 'N'
+				AND A.URKEY = #{surkey}
+				AND C.DELYN = 'N'
+			)
+			CONNECT BY PRIOR MEKEY = APKEY
+			START WITH APKEY IS NULL
+			ORDER SIBLINGS BY APORDER
+		)
+		WHERE NOT(APKEY IS NULL AND LEAF=1)
+	</select>
+
+	<insert id="insertBookmarkMenu">
+		/* adm-common-sql-oracle.xml - insertBookmarkMenu */
+		INSERT INTO TADMIN_MST_URBM (
+			  URKEY
+			, APKEY
+			, MEKEY
+			, BKORDER
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{surkey}
+			, #{apkey}
+			, #{mekey}
+			, (SELECT COALESCE(MAX(BKORDER), 1) FROM TADMIN_MST_URBM WHERE URKEY = #{surkey})
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<delete id="deleteBookmarkMenu">
+		/* adm-common-sql-oracle.xml - deleteBookmarkMenu */
+		DELETE
+		FROM TADMIN_MST_URBM
+
+		<where>
+			AND URKEY = #{surkey}
+			AND APKEY = #{apkey}
+			AND MEKEY = #{mekey}
+		</where>
+	</delete>
+
+	<select id="selectBatchManageCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  FROM BATCH_MANAGE
+		 WHERE BATEXECYN = 'Y'
+	</select>
+
+	<select id="selectBatchManage" resultType="camelMap">
+		SELECT BATID AS FIELD1
+			,  BATNM AS FIELD2
+		FROM BATCH_MANAGE
+		WHERE BATEXECYN = 'Y'
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<resultMap id="selectModuleMenuNexacroMap" type="java.util.HashMap">
+		<result property="apkey" column="APKEY" />
+		<result property="uskey" column="USKEY" />
+		<result property="usname" column="USNAME" />
+		<result property="melvl" column="MELVL" />
+		<result property="mekey" column="MEKEY" />
+		<result property="mename" column="MENAME" />
+		<result property="mepullpath" column="MEPULLPATH" />
+		<result property="mename_eng" column="MENAME_ENG" />
+		<result property="meorder" column="MEORDER" />
+		<result property="UPRMEKEY" column="UPRMEKEY" />
+		<result property="uspath" column="USPATH" />
+		<result property="nxpath" column="NXPATH" />
+		<result property="remark" column="REMARK" />
+		<result property="useyn" column="USEYN" />
+		<result property="eqtype" column="EQTYPE" />
+		<result property="isleaf" column="ISLEAF" />
+		<result property="isseparator" column="ISSEPARATOR" />
+		<result property="urinfoyn" column="URINFOYN" />
+	</resultMap>
+
+	<resultMap id="selectAppMessageMap" type="java.util.HashMap">
+		<result property="mulaapmsghdkey" column="MULAAPMSGHDKEY" />
+		<result property="displaymsg" column="DISPLAYMSG" />
+	</resultMap>
+
+	<resultMap id="staticManagerMap" type="java.util.HashMap">
+		<result property="adcd_hdkey" 	column="ADCD_HDKEY" />
+		<result property="adcd_dtkey" 	column="ADCD_DTKEY" />
+		<result property="adcd_dtorder"	column="ADCD_DTORDER" />
+		<result property="adcd_dtname"	column="ADCD_DTNAME" />
+		<result property="lakey" 		column="LAKEY" />
+	</resultMap>
+
+	<resultMap id="selectAdminConfigListMap" type="java.util.HashMap">
+		<result property="key" 			column="ADCSKEY" />
+		<result property="name" 		column="ADCSNM" />
+		<result property="value1"		column="VALUE1" />
+		<result property="value2"		column="VALUE2" />
+		<result property="defaultvalue" column="DEFAULTVALUE" />
+	</resultMap>
+
+	<resultMap id="selectSystemConfigListMap" type="java.util.HashMap">
+		<result property="key" 			column="SCKEY" />
+		<result property="name" 		column="SCNM" />
+		<result property="value1"		column="VALUE1" />
+		<result property="value2"		column="VALUE2" />
+		<result property="defaultvalue" column="DEFAULTVALUE" />
+	</resultMap>
+
+	<resultMap id="selectTadminMstApListMap" type="java.util.HashMap">
+		<result property="apkey" 		column="APKEY" />
+		<result property="isoffline" 	column="ISOFFLINE" />
+	</resultMap>
+
+	<select id="selectAdminConfigList" resultMap="selectAdminConfigListMap">
+		SELECT ADCSKEY 
+		      ,ADCSNM
+		      ,VALUE1
+		      ,VALUE2
+		      ,DEFAULTVALUE
+		  FROM TADMIN_SET_ADCS
+	</select>		
+	
+	<select id="selectSystemConfigList" resultMap="selectSystemConfigListMap">
+		SELECT SCKEY
+		      ,SCNM
+		      ,VALUE1
+		      ,VALUE2
+		      ,DEFAULTVALUE
+		  FROM TADMIN_SET_SC
+		 <if test="sckey != null">
+		 WHERE SCKEY = #{sckey}
+		 </if>
+	</select>	
+	
+	<select id="selectAppMessage" fetchSize="1000" resultMap="selectAppMessageMap">
+	     SELECT
+	         	  A.MULAAPMSGHDKEY
+	           	, CASE WHEN #{eqtype} IN ('20', '30') THEN COALESCE(DISPLAYMSGABBR, DISPLAYMSG) ELSE DISPLAYMSG END AS DISPLAYMSG
+	      FROM TADMIN_MST_MULAAPMSG_HD A 
+	      INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+	      		  ON A.MULAAPMSGHDKEY = B.MULAAPMSGHDKEY
+	     WHERE A.CLOSDATE >= #{sysdate}
+	       AND B.LAKEY = #{lakey}
+	       AND B.MSGTYPE = #{msgtype}
+	</select>
+	
+	<select id="selectTAdminMstAdcdDtList" fetchSize="1000" resultMap="staticManagerMap">
+		<![CDATA[
+		SELECT ADCDHDKEY, ADCDDTKEY, ADCDDTORDER, ADCDDTNM, LAKEY
+		 FROM TADMIN_MST_ADCD_DT
+		 ]]>    		
+	</select>
+
+		
+	<select id="selectModuleMenuNexacro" resultMap="selectModuleMenuNexacroMap">
+		/* adm-common-sql-oracle.xml  selectModuleMenuNexacro */
+               SELECT EQTYPE,ISLEAF,ISSEPARATOR,MEKEY
+			  ,COALESCE(MENAME, MEKEY)AS MENAME,MEPULLPATH
+			  ,USNAME,MEORDER,UPRMEKEY,USKEY,USPATH,NXPATH,APKEY,DELYN,MELVL,URINFOYN,REMARK
+          FROM (
+                 SELECT A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+						,A.MENAME,LTRIM(SYS_CONNECT_BY_PATH(A.MENAME, '|'), '|') AS MEPULLPATH,A.USNAME
+                       ,A.MEORDER,A.UPRMEKEY,A.USKEY,A.USPATH,A.NXPATH,A.APKEY,A.DELYN
+                       ,LEVEL-2 AS MELVL
+                       ,A.URINFOYN
+                       ,A.REMARK
+                   FROM (
+                          SELECT A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                ,A.APKEY,A.DELYN
+                                ,B.USPATH,B.NXPATH
+                                ,COALESCE(( SELECT D.DISPLAYMSG
+                                     FROM TADMIN_MST_MULAAPMSG_HD C
+                                     INNER JOIN TADMIN_MST_MULAAPMSG_DT D
+                                     		 ON C.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY
+                                    WHERE C.CLOSDATE >= #{sysdate}
+                                      AND D.MSGTYPE = 'MENU'
+                                      AND D.LAKEY = #{lakey}
+                                      AND C.MULAAPMSGHDKEY = A.MENM
+                                  ), A.MENM)AS MENAME
+                                ,COALESCE(( SELECT D.DISPLAYMSG
+                                     FROM TADMIN_MST_MULAAPMSG_HD C
+                                     INNER JOIN TADMIN_MST_MULAAPMSG_DT D
+                                     		 ON  C.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY
+                                    WHERE C.CLOSDATE >= #{sysdate}
+                                      AND D.MSGTYPE = 'MENU'
+                                      AND D.LAKEY = #{lakey}
+                                      AND C.MULAAPMSGHDKEY = B.USNM
+                                  ), B.USNM) AS USNAME
+                               	  , B.URINFOYN
+                                  , B.CMT AS REMARK
+                            FROM (
+                                   SELECT A.MENM,A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                         ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                         ,A.APKEY,A.DELYN
+                                     FROM TADMIN_MST_ME A
+                                    WHERE 1=1
+                                      AND A.DELYN <![CDATA[ <> ]]> 'Y'
+                                    EXCEPT
+                                   SELECT A.MENM,A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                         ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                         ,A.APKEY,A.DELYN
+                                     FROM TADMIN_MST_ME A
+                                    WHERE 1=1
+                               CONNECT BY
+                                    PRIOR MEKEY=UPRMEKEY
+                               START WITH DELYN = 'Y'
+                                  ) A
+                                ,TADMIN_MST_URSCR B
+                                ,( SELECT TB3.MEKEY
+                                     FROM TADMIN_MST_UR TB1
+                                     INNER JOIN TADMIN_MST_URXROGT TB2
+                                         	 ON TB1.URKEY = TB2.URKEY
+                                     INNER JOIN TADMIN_MST_ROXMEGT TB3
+                                     	     ON TB2.ROKEY = TB3.ROKEY
+                                    WHERE TB1.URKEY = #{surkey}
+                                    UNION
+                                   SELECT TB4.MEKEY
+                                     FROM TADMIN_MST_UR TB1
+                                     INNER JOIN TADMIN_MST_URGR TB2
+                                         	 ON TB1.URGRKEY = TB2.URGRKEY
+                                     INNER JOIN TADMIN_MST_URGRXROGT TB3
+                                         	 ON TB2.URGRKEY = TB3.URGRKEY
+                                            AND TB1.URGRKEY = TB3.URGRKEY
+                                     INNER JOIN TADMIN_MST_ROXMEGT TB4
+                                     	 	 ON TB3.ROKEY = TB4.ROKEY
+                                    WHERE TB1.URKEY = #{surkey}
+                                  ) C
+                           WHERE A.USKEY = B.USKEY
+                             AND A.APKEY = B.APKEY
+                             AND A.MEKEY = C.MEKEY
+                             AND A.DELYN <![CDATA[ <> ]]> 'Y'
+							AND A.APKEY = #{apKey}
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqType)">
+								AND A.EQTYPE = #{eqType}
+							</if>
+		                 ) A
+             CONNECT BY
+                  PRIOR MEKEY=UPRMEKEY
+             START WITH UPRMEKEY = '0'
+      ORDER SIBLINGS BY MEORDER
+		)
+		WHERE MELVL > -1
+
+	</select>
+	
+	<select id="selectModuleMenuByRoleNexacro" resultMap="selectModuleMenuNexacroMap">
+		/* adm-common-sql-oracle.xml  selectModuleMenuByRoleNexacro */
+        SELECT EQTYPE,ISLEAF,ISSEPARATOR,MEKEY
+			  ,COALESCE(MENAME, MEKEY)AS MENAME,MEPULLPATH
+			  ,USNAME,MEORDER,UPRMEKEY,USKEY,USPATH,NXPATH,APKEY,DELYN,MELVL,URINFOYN, CMT
+          FROM (
+                 SELECT A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+						,A.MENAME,LTRIM(SYS_CONNECT_BY_PATH(A.MENAME, '|'), '|') AS MEPULLPATH,A.USNAME
+                       ,A.MEORDER,A.UPRMEKEY,A.USKEY,A.USPATH,A.NXPATH,A.APKEY,A.DELYN
+                       ,LEVEL-2 AS MELVL
+                       ,A.URINFOYN
+                       ,A.CMT
+                   FROM (
+                          SELECT A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                ,A.APKEY,A.DELYN
+                                ,B.USPATH,B.NXPATH
+                                ,COALESCE(( SELECT D.DISPLAYMSG
+                                     FROM TADMIN_MST_MULAAPMSG_HD C
+                                     INNER JOIN TADMIN_MST_MULAAPMSG_DT D
+                                     		 ON C.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY
+                                    WHERE C.CLOSDATE >= #{sysdate}
+                                      AND D.MSGTYPE = 'MENU'
+                                      AND D.LAKEY = #{lakey}
+                                      AND C.MULAAPMSGHDKEY = A.MENM
+                                  ), A.MENM)AS MENAME
+                                ,COALESCE(( SELECT D.DISPLAYMSG
+                                     FROM TADMIN_MST_MULAAPMSG_HD C
+                                     INNER JOIN TADMIN_MST_MULAAPMSG_DT D
+                                     		 ON  C.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY
+                                    WHERE C.CLOSDATE >= #{sysdate}
+                                      AND D.MSGTYPE = 'MENU'
+                                      AND D.LAKEY = #{lakey}
+                                      AND C.MULAAPMSGHDKEY = B.USNM
+                                  ), B.USNM) AS USNAME
+                               	  , B.URINFOYN
+                                  , B.CMT
+                            FROM (
+                                   SELECT A.MENM,A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                         ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                         ,A.APKEY,A.DELYN
+                                     FROM TADMIN_MST_ME A
+                                    WHERE 1=1
+                                      AND A.DELYN <![CDATA[ <> ]]> 'Y'
+                                    EXCEPT
+                                   SELECT A.MENM,A.EQTYPE,A.ISLEAF,A.ISSEPARATOR,A.MEKEY
+                                         ,A.MEORDER,A.UPRMEKEY,A.USKEY
+                                         ,A.APKEY,A.DELYN
+                                     FROM TADMIN_MST_ME A
+                                    WHERE 1=1
+                               CONNECT BY
+                                    PRIOR MEKEY=UPRMEKEY
+                               START WITH DELYN = 'Y'
+                                  ) A
+                                ,TADMIN_MST_URSCR B
+                                ,( SELECT TB3.MEKEY
+                                     FROM TADMIN_MST_UR TB1
+                                     INNER JOIN TADMIN_MST_URXROGT TB2
+                                         	 ON TB1.URKEY = TB2.URKEY
+                                     INNER JOIN TADMIN_MST_ROXMEGT TB3
+                                     	     ON TB2.ROKEY = TB3.ROKEY
+                                    WHERE TB1.URKEY = #{surkey}
+                                    UNION
+                                   SELECT TB4.MEKEY
+                                     FROM TADMIN_MST_UR TB1
+                                     INNER JOIN TADMIN_MST_URGR TB2
+                                         	 ON TB1.URGRKEY = TB2.URGRKEY
+                                     INNER JOIN TADMIN_MST_URGRXROGT TB3
+                                         	 ON TB2.URGRKEY = TB3.URGRKEY
+                                            AND TB1.URGRKEY = TB3.URGRKEY
+                                     INNER JOIN TADMIN_MST_ROXMEGT TB4
+                                     	 	 ON TB3.ROKEY = TB4.ROKEY
+                                    WHERE TB1.URKEY = #{surkey}
+                                  ) C
+                           WHERE A.USKEY = B.USKEY
+                             AND A.APKEY = B.APKEY
+                             AND A.MEKEY = C.MEKEY
+                             AND A.DELYN <![CDATA[ <> ]]> 'Y'
+                          <if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqType)">
+                             AND A.EQTYPE = #{eqType}
+                          </if>                             
+		                 ) A
+             CONNECT BY
+                  PRIOR MEKEY=UPRMEKEY
+             START WITH UPRMEKEY = '0'
+      ORDER SIBLINGS BY MEORDER
+		)
+		WHERE MELVL > -1
+	</select>
+	
+	<select id="selectUserSearchCondtion" resultType="camelMap">
+         SELECT
+				 C.USSCHDKEY
+               , C.DBFIELDNM
+               ,C.DEFAULTOPERATOR
+               ,C.DEFAULTVALUE
+               ,C.INPUTRESTRICT
+               ,C.SEARCHID
+               ,C.USSCDTKEY
+               ,C.USSCDTTYPE
+               ,C.USSCLABEL
+               ,C.USSCORDER
+               ,C.ISMANDATORY
+               ,A.USKEY 
+               ,C.SINGLEOPERATORYN
+               ,C.GMTAPPLYCHK
+               ,C.DATEFORMAT
+               ,C.USSCACTIVE
+               ,C.FRDATEVALUE
+               ,C.TODATEVALUE
+               ,C.SINGLEPOPYN
+         	   , A.APKEY
+         	, D.MEKEY
+          FROM TADMIN_MST_URSCR A
+          INNER JOIN TADMIN_MST_USSC_DT C
+             	  ON <choose>
+						<when test="tabIdx == 'tab2'">
+							A.USSCHDKEY2 = C.USSCHDKEY
+						</when>
+						<otherwise>
+							A.USSCHDKEY = C.USSCHDKEY
+						</otherwise>
+					</choose>
+           INNER JOIN TADMIN_MST_USSC_HD B
+				   ON B.USSCHDKEY = C.USSCHDKEY
+           INNER JOIN TADMIN_MST_ME D
+				   ON A.APKEY = D.APKEY
+				  AND A.USKEY = D.USKEY
+         WHERE D.DELYN = 'N'
+	      <if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqtype)">
+           AND D.EQTYPE = #{eqtype}
+          </if>
+      ORDER BY C.USSCORDER ASC
+		   
+	</select>
+		
+
+	<select id="selectEquipmentList" resultType="camelMap">
+		SELECT EQKEY 
+		      ,PRTYPE 
+		      ,EQTYPE 
+		      ,EQNM
+		      ,DLVRYCORP
+		      ,IPADDR
+		  FROM TADMIN_MST_EQ
+		 WHERE APKEY = 'AMS'
+	</select>
+	
+	<resultMap id="selectUserInfoMap" type="java.util.HashMap">
+		<result property="urkey" column="URKEY" />
+		<result property="urnm" column="URNM" />
+	</resultMap>	
+
+	<select id="selectUserInfoList" fetchSize="1000" resultMap="selectUserInfoMap">
+		SELECT URKEY
+		       ,URNM
+		  FROM TADMIN_MST_UR
+	</select>	
+
+	
+	<select id="selectTAdminMstApListCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_AP
+		 WHERE ISOFFLINE = 'N'
+	</select>
+	
+	<select id="selectTadminMstApList" resultMap="selectTadminMstApListMap">
+		SELECT APKEY
+			  ,ISOFFLINE
+		FROM TADMIN_MST_AP
+		WHERE ISOFFLINE = 'N'
+	</select>
+
+	<resultMap id="GridColumnsMap" type="java.util.HashMap">
+  		<result property="updfdtkey" column="UPDFDTKEY" />
+		<result property="columnnm" column="COLUMNNM" />
+		<result property="columndesc" column="COLUMNDESC" />
+		<result property="columntype" column="COLUMNTYPE" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ultype" column="ULTYPE" />
+	</resultMap> 
+	
+	<select id="selectGridColumns" resultMap="GridColumnsMap">
+		SELECT B.UPDFDTKEY
+			  ,B.COLUMNNM
+			  ,B.COLUMNDESC
+			  ,B.COLUMNTYPE
+			  ,A.OWKEY
+			  ,A.ULTYPE
+		  FROM TADMIN_MST_UPDF_HD A
+		  INNER JOIN TADMIN_MST_UPDF_DT B
+		  		  ON A.UPDFHDKEY = B.UPDFHDKEY
+		 WHERE A.APKEY = #{apkey}
+		   AND A.ULTYPE = #{ultype}		
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+		 	AND A.OWKEY = #{owkey}
+		 </if>
+		 ORDER BY B.COLUMNORDER,B.UPDFDTKEY
+	</select>
+
+	<select id="selectGridCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)  
+		  FROM TADMIN_MST_UPDF_HD A
+		  INNER JOIN TADMIN_MST_UPDF_DT B
+		  		  ON A.UPDFHDKEY = B.UPDFHDKEY
+		 WHERE A.APKEY = #{apkey}
+		   AND A.ULTYPE = #{ultype}		
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+		 	AND A.OWKEY = #{owkey}
+		 </if>
+	</select>	
+
+	<select id="selectEncTargetMstUR" resultType="camelMap">
+		SELECT URKEY, CP, EMAIL
+		  FROM TADMIN_MST_UR
+		 WHERE EMAIL IS NOT NULL
+	</select>
+
+	<update id="updateEncTargetMstUR">
+		UPDATE TADMIN_MST_UR
+		   SET CP = #{cp}
+		     , EMAIL = #{email}
+		 WHERE URKEY = #{urkey}
+	</update>
+
+	<select id="selectEncTargetDriver" resultType="camelMap">
+		SELECT DRVNO, MOBILENO
+	      FROM TT_DRVR_T
+		 WHERE MOBILENO IS NOT NULL
+	</select>
+
+	<update id="updateEncTargetDriver">
+        UPDATE TT_DRVR_T
+           SET MOBILENO = #{mobileno}
+         WHERE DRVNO = #{drvno}
+	</update>
+
+	<sql id="sql_tAdminMstAdcdUnion">
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND T.FIELD1 = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						T.FIELD1 ~ #{value}
+						OR
+						T.FIELD2 ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						T.FIELD1 LIKE '%' || #{value} || '%'
+						OR
+						T.FIELD2 LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTAdminMstAdcdUnionCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAdcdUnionCount */
+		SELECT COUNT(1)
+		FROM (
+		    SELECT B.ADCDDTKEY AS FIELD1
+				 , B.ADCDDTNM AS FIELD2
+			FROM TADMIN_MST_ADCD_HD A
+				INNER JOIN TADMIN_MST_ADCD_DT B
+						ON B.ADCDHDKEY = A.ADCDHDKEY
+			WHERE  A.DELYN = 'N'
+			  AND B.DELYN = 'N'
+			  AND A.ADCDHDKEY = 'CTGLEVEL'
+			  AND B.LAKEY = 'KOR'
+			  AND A.ADCDHDKEY = 'CTGLEVEL'
+		    UNION ALL
+		    SELECT B.ADCDDTKEY AS FIELD1
+				 , B.ADCDDTNM AS FIELD2
+			FROM TADMIN_MST_ADCD_HD A
+				INNER JOIN TADMIN_MST_ADCD_DT B
+						ON B.ADCDHDKEY = A.ADCDHDKEY
+			WHERE  A.DELYN = 'N'
+			  AND B.DELYN = 'N'
+			  AND A.ADCDHDKEY = 'CTGLEVELTOP'
+			  AND B.LAKEY = 'KOR' ) T
+		<include refid="sql_tAdminMstAdcdUnion"/>
+	</select>
+
+	<select id="selectTAdminMstAdcdUnion" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTAdminMstAdcdUnion */
+		<include refid="sql_pagingTop"/>
+		SELECT T.FIELD1
+			 , T.FIELD2
+			 , T.FIELD3
+			 , T.FIELD4
+			 , T.FIELD5
+		FROM   (SELECT B.ADCDDTKEY AS FIELD1
+			 	     , B.ADCDDTNM AS FIELD2
+			 	     , B.ADCDDTVALUE AS FIELD3
+			 	     , A.ADCDHDKEY AS FIELD4
+			 	     , B.ADCDDTORDER AS FIELD5
+				FROM TADMIN_MST_ADCD_HD A
+					INNER JOIN TADMIN_MST_ADCD_DT B
+							ON B.ADCDHDKEY = A.ADCDHDKEY
+				WHERE A.DELYN = 'N'
+				  AND B.DELYN = 'N'
+				  AND A.ADCDHDKEY = 'CTGLEVEL'
+				  AND B.LAKEY = 'KOR'
+				UNION ALL
+				SELECT B.ADCDDTKEY AS FIELD1
+					 , B.ADCDDTNM AS FIELD2
+					 , B.ADCDDTVALUE AS FIELD3
+					 , A.ADCDHDKEY AS FIELD4
+					 , B.ADCDDTORDER AS FIELD5
+				FROM TADMIN_MST_ADCD_HD A
+					INNER JOIN TADMIN_MST_ADCD_DT B
+							ON B.ADCDHDKEY = A.ADCDHDKEY
+				WHERE  A.DELYN = 'N'
+				  AND B.DELYN = 'N'
+				  AND A.ADCDHDKEY = 'CTGLEVELTOP'
+				  AND B.LAKEY = 'KOR' ) T
+		<include refid="sql_tAdminMstAdcdUnion"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tAdminMstUrDetail">
+		FROM TADMIN_MST_UR A
+		INNER JOIN TADMIN_MST_URGR B
+				ON A.URGRKEY = B.URGRKEY
+		LEFT OUTER JOIN T_CODE C
+					 ON C.ADCDHDKEY = 'URTYP'
+					AND C.ADCDDTKEY = A.URTYP
+		<where>
+			AND A.DELYN = 'N'
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.URKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.URKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.URKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+			AND EXISTS (SELECT 1
+						  FROM TADMIN_MST_URGRXROGT GRRO
+				    INNER JOIN TADMIN_MST_RO RO
+				  		    ON GRRO.ROKEY = RO.ROKEY
+				    INNER JOIN TADMIN_MST_ROXAPGT ROAP
+				  		    ON RO.ROKEY = ROAP.ROKEY
+				    INNER JOIN TADMIN_MST_ROXMEGT ROME
+				  		    ON RO.ROKEY = ROME.ROKEY
+						 WHERE GRRO.URGRKEY = B.URGRKEY
+						   AND ROAP.APKEY = #{apkey}
+						   AND ROME.MEKEY = #{mekey}
+					)
+		</where>
+	</sql>
+
+	<select id="selectTadminMstUrDetailCount" resultType="java.lang.Integer">
+		/* adm-common-sql-oracle.xml - selectTadminMstUrDetailCount */
+		WITH <include refid="sql_Tcode"/>
+		SELECT
+		COUNT(1)
+		<include refid="sql_tAdminMstUrDetail"/>
+	</select>
+
+	<select id="selectTadminMstUrDetail" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectTadminMstUrDetail */
+		WITH <include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		  A.URKEY AS FIELD1
+		, A.URNM AS FIELD2
+		, C.ADCDDTKEY
+		, C.ADCDDTNM AS FIELD3
+		, A.URGRKEY AS FIELD4
+		, B.URGRNM AS FIELD5
+		<include refid="sql_tAdminMstUrDetail"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+	<insert id="insertTadminInfoUrHs">
+		/* adm-common-sql-oracle.xml - insertTadminInfoUrHs */
+		INSERT INTO TADMIN_INFO_URHS (
+		       ACSDATE
+			,  ACSURKEY
+			,  ACSIP
+			,  ACSUSKEY
+			,  SEARCHCOND
+			,  PRGRBIZ
+			,  INFOTGTCNT
+			,  INSERTDATE
+			,  INSERTURKEY
+			,  UPDATEDATE
+			,  UPDATEURKEY
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cmt)">
+				, CMT
+			</if>
+		) VALUES (
+			   #{sysdate}
+			,  #{surkey}
+			,  #{acsip}
+			,  #{menuId}
+			,  #{resultParam}
+			,  #{method}
+			,  #{infotgtcnt}
+			,  #{sysdate}
+			,  #{surkey}
+			,  #{sysdate}
+			,  #{surkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cmt)">
+				, #{cmt}
+			</if>
+		)
+	</insert>
+
+	<select id="selectMainNoticeList" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectMainNoticeList */
+		<![CDATA[
+		SELECT MSGNO
+		           , TITLE
+		      	   , INSERTURKEY
+		      	   , INSERTDATE
+		        FROM TADMIN_INFO_NOTICE
+		       WHERE STARTDT <= TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+		         AND ENDDT >= TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+		       ORDER BY INSERTDATE DESC
+LIMIT 4
+		]]>
+	</select>
+
+	<select id="selectRecruitment" resultType="camelMap">
+		/* adm-common-sql-oracle.xml - selectRecruitment */
+		WITH BASE AS (
+			SELECT
+				COALESCE(REC.TOWEEK, 0) AS TO_WEEK,
+				COALESCE(REC.TONGT, 0) AS TO_NGT,
+				COALESCE(REC.POWEEK, 0) AS PO_WEEK,
+				COALESCE(REC.PONGT, 0) AS PO_NGT,
+				COALESCE(REC.WORKWEEK, 0) AS WORK_WEEK,
+				COALESCE(REC.WORKNGT, 0) AS WORK_NGT,
+				COALESCE(REC.ETCWEEK, 0) AS ETC_WEEK,
+				COALESCE(REC.ETCNGT, 0) AS ETC_NGT DL
+			LEFT JOIN TADMIN_INFO_RECRUIT REC
+				   ON REC.REQDAY = #{reqDay}
+		),
+		UNPVT AS (
+			SELECT SUBSTR(COL, 1, POSITION('_' IN COL) - 1) AS COLTYPE
+				,  SUBSTR(COL, POSITION('_' IN COL) + 1)    AS TM
+				,  VAL
+			  FROM BASE
+			  UNPIVOT ( VAL FOR COL IN (
+							TO_WEEK   AS 'TO_WEEK',
+							TO_NGT    AS 'TO_NGT',
+							PO_WEEK   AS 'PO_WEEK',
+							PO_NGT    AS 'PO_NGT',
+							WORK_WEEK AS 'WORK_WEEK',
+							WORK_NGT  AS 'WORK_NGT',
+							ETC_WEEK  AS 'ETC_WEEK',
+							ETC_NGT   AS 'ETC_NGT'
+        					)
+					  )
+			 )
+		SELECT *
+		  FROM UNPVT
+		 PIVOT ( SUM(val)
+					FOR TM IN (
+						'WEEK' AS WEEK,
+						'NGT'  AS NGT
+					)
+				)
+		ORDER BY CASE COLTYPE
+				 WHEN 'TO'   THEN 1
+				 WHEN 'PO'   THEN 2
+				 WHEN 'WORK' THEN 3
+				 WHEN 'ETC'  THEN 4
+				 END
+	</select>
+
+	<update id="saveRecruitment">
+		/* adm-common-sql-oracle.xml - saveRecruitment */
+		MERGE INTO TADMIN_INFO_RECRUIT A
+			 USING DUAL
+				ON (REQDAY = #{reqDay})
+		WHEN MATCHED THEN
+				UPDATE SET
+					  A.UPDATEURKEY = #{surkey}
+					, A.UPDATEDATE  = #{sysdate}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_WEEK)">
+						, A.TOWEEK 	 	= #{TO_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_NGT)">
+						, A.TONGT  	 	= #{TO_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_WEEK)">
+						, A.POWEEK 	 	= #{PO_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_NGT)">
+						, A.PONGT 	 	= #{PO_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_WEEK)">
+						, A.WORKWEEK 	= #{WORK_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_NGT)">
+						, A.WORKNGT  	= #{WORK_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_WEEK)">
+						, A.ETCWEEK  	= #{ETC_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_NGT)">
+						, A.ETCNGT   	= #{ETC_NGT}
+					</if>
+		WHEN NOT MATCHED THEN
+				INSERT (
+					  A.REQDAY
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_WEEK)">
+						, A.TOWEEK
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_NGT)">
+						, A.TONGT
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_WEEK)">
+						, A.POWEEK
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_NGT)">
+						, A.PONGT
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_WEEK)">
+						, A.WORKWEEK
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_NGT)">
+						, A.WORKNGT
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_WEEK)">
+						, A.ETCWEEK
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_NGT)">
+						, A.ETCNGT
+					</if>
+					, A.INSERTDATE
+					, A.INSERTURKEY
+					, A.UPDATEDATE
+					, A.UPDATEURKEY
+				)
+				VALUES (
+					  #{reqDay}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_WEEK)">
+						, #{TO_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(TO_NGT)">
+						, #{TO_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_WEEK)">
+						, #{PO_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PO_NGT)">
+						, #{PO_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_WEEK)">
+						, #{WORK_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(WORK_NGT)">
+						, #{WORK_NGT}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_WEEK)">
+						, #{ETC_WEEK}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ETC_NGT)">
+						, #{ETC_NGT}
+					</if>
+					, #{sysdate}
+					, #{surkey}
+					, #{sysdate}
+					, #{surkey}
+					)
+	</update>
+
+</mapper>	

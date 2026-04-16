@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.IcManagerMapper">
+
+	<select id="selectIbMstIcMap" resultType="camelMap">
+		/* wms-master-icmanager-sql-oracle.xml - selectIbMstIcMap - 상품 정보 */
+		SELECT *
+		FROM TWORK_MST_IC
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		AND ICKEY = #{ickey}
+	</select>
+
+	<select id="selectIbMstIcutxtypeMap" resultType="camelMap">
+		/* wms-master-icmanager-sql-oracle.xml - selectIbMstIcutxtypeMap - 상품 단위 유형 마스터 조회 */
+		SELECT *
+		  FROM TWORK_MST_ICUTXTYPE
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		   AND ICUNITKEY = #{icunitkey}
+		   AND ICUNITTYPECD = 'EA'
+	</select>
+
+	<select id="selectIcUom" resultType="camelMap">
+		/* wms-master-icmanager-sql-oracle.xml - selectIcUom - 단위 정보 조회 */
+		SELECT B.ICUNITTYPECD
+			 , B.ICUNITQTY
+		  FROM TWORK_MST_IC A
+		 INNER JOIN TWORK_MST_ICUTXTYPE B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICUNITKEY = B.ICUNITKEY
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.ICKEY = #{ickey}
+	</select>
+
+
+</mapper>	

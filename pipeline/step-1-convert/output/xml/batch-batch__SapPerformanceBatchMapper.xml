@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapPerformanceBatchMapper">
+
+    <insert id="saveInboundSapIntfList">
+		/* SapPerformanceBatchMapper.xml saveInboundSapIntfList */
+        INSERT INTO TORDER_INTF_IB_SAPRESULT
+		(	  EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY
+			, CUSTOMERORDERKEY
+			, CUSTOMERORDERDTKEY
+			, ICKEY
+			, OR_HD_DT
+			, CFQTY
+			, UOM
+			, COMMENTS
+			, SAPTRANSFAILYN
+			, SAPFAILCOMMENTS
+			, REQUESTDT
+			, INTERFACE_ID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{externorderkey}
+			, #{externorderlinenum}
+			, #{customerorderkey}
+			, #{customerorderdtkey}
+			, #{ickey}
+			, #{orHdDt}
+			, #{cfqty}
+			, #{uom}
+			, #{comments}
+			, #{saptransfailyn}
+			, #{sapfailcomments}
+			, #{requestDt}
+			, #{interfaceId}    
+		    , #{interfaceDate}
+		    , #{interfaceUrkey}
+		    , #{interfaceDate}
+		    , #{interfaceUrkey}
+		)
+    </insert>
+    
+    <insert id="saveOutboundSapIntfList">
+		/* SapPerformanceBatchMapper.xml saveOutboundSapIntfList */
+        INSERT INTO TORDER_INTF_OB_SAPRESULT
+		(
+			  EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY
+			, CUSTOMERORDERKEY
+			, CUSTOMERORDERDTKEY
+			, EXTERN_OR_TYPE_CD
+			, ICKEY
+			, EXPIREDATE
+			, CFQTY
+			, UNIT
+			, CONVERTQTY
+			, SALEUNIT
+			, SAPTRANSFAILYN
+			, SAPFAILCOMMENTS
+			, REQUESTDT
+			, INTERFACE_ID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES (
+			  #{externorderkey}
+			, #{externorderlinenum}
+			, #{customerorderkey}
+			, #{customerorderdtkey}
+			, #{externOrTypeCd}
+			, #{ickey}
+			, #{expiredate}
+			, #{cfqty}
+			, #{unit}
+			, #{covertqty}
+			, #{saleunit}
+			, #{saptransfailyn}
+			, #{sapfailcomments}
+			, #{requestDt}
+			, #{interfaceId}    
+		    , #{interfaceDate}
+		    , #{interfaceUrkey}
+		    , #{interfaceDate}
+		    , #{interfaceUrkey}
+		)
+    </insert>
+
+	<update id="updateBatchHold">
+		UPDATE TORDER_INFO_CO_HD SET SAPTRANSFAILYN =#{saptransfailyn}
+									, UPDATEDATE = #{interfaceDate}
+									, UPDATEURKEY =  #{interfaceUrkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(customerorderkey)" >
+		WHERE CUSTOMERORDERKEY = #{customerorderkey}  
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isEmpty(customerorderkey)" >
+		WHERE EXTERNORDERKEY = #{externorderkey}
+		AND WKSTATUS <![CDATA[<>]]> 'CANCEL'
+		</if>
+		
+	</update>	
+		  
+
+</mapper>

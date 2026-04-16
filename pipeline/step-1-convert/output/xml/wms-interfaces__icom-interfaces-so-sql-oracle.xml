@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfIcomSoIcomMapper">
+
+
+	<resultMap id="selectPkTOrderInfoSoRsltMap" type="java.util.HashMap">
+		<result property="so_hdkey" column="SO_HDKEY" />
+		<result property="so_dtkey" column="SO_DTKEY" />
+		<result property="or_wk_type_cd" column="OR_WK_TYPE_CD" />
+		<result property="or_wk_status_cd" column="OR_WK_STATUS_CD" />
+		<result property="so_rsltkey" column="SO_RSLTKEY" />
+		<result property="cfdate" column="CFDATE" />
+		<result property="cfqty" column="CFQTY" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="insertdate" column="INSERTDATE" />
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE" />
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="rjqty" column="RJQTY" />
+		<result property="ibnrcd" column="IBNRCD" />
+	</resultMap>	
+	
+	<select id="selectPkTOrderInfoSoRsltHd" resultMap="selectPkTOrderInfoSoRsltMap">
+		SELECT SO_HDKEY
+			  ,OR_WK_TYPE_CD
+			  ,OR_WK_STATUS_CD
+			  ,INSERTDATE
+			  ,INSERTURKEY
+			  ,UPDATEDATE
+			  ,UPDATEURKEY
+		  FROM TORDER_INFO_SO_RSLT_HD
+		 WHERE 
+			   SO_HDKEY = #{so_hdkey}
+	       AND OR_WK_TYPE_CD = #{or_wk_type_cd}
+	</select>
+
+	<select id="selectTOrderInfoSoRsltDtQty" resultMap="selectPkTOrderInfoSoRsltMap">
+		SELECT 
+              SO_HDKEY
+			 ,SO_DTKEY
+			 ,OR_WK_TYPE_CD
+			 ,SUM(CFQTY) AS CFQTY
+			 ,COSTPRICE
+			 ,SALEPRICE
+			 ,SUM(RJQTY) AS CFQTY
+			 ,IBNRCD		
+		  FROM TORDER_INFO_SO_RSLT_DT
+		 WHERE
+			   SO_HDKEY = #{so_hdkey}
+	       AND SO_DTKEY = #{so_dtkey}
+	       AND OR_WK_TYPE_CD = #{or_wk_type_cd}
+	 GROUP BY
+              SO_HDKEY
+			 ,SO_DTKEY
+			 ,OR_WK_TYPE_CD
+			 ,CFDATE
+			 ,CFQTY
+			 ,COSTPRICE
+			 ,SALEPRICE
+			 ,RJQTY
+			 ,IBNRCD		
+	</select>
+
+	<insert id="insertTOrderInfoSoRsltHd">
+		INSERT INTO TORDER_INFO_SO_RSLT_HD 
+		(
+			  SO_HDKEY
+			 ,OR_WK_TYPE_CD
+			 ,OR_WK_STATUS_CD
+			 ,INSERTDATE
+			 ,INSERTURKEY
+			 ,UPDATEDATE
+			 ,UPDATEURKEY
+		) VALUES (
+			  #{so_hdkey}
+			 ,#{or_wk_type_cd}
+			 ,#{or_wk_status_cd}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+		)	
+	</insert>
+	
+	<update id="updateTOrderInfoSoRsltHd">
+		UPDATE TORDER_INFO_SO_RSLT_HD
+		   SET OR_WK_STATUS_CD = #{or_wk_status_cd}
+			  ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE
+		       SO_HDKEY = #{so_hdkey}
+		   AND OR_WK_TYPE_CD = #{or_wk_type_cd}   
+		  
+	
+	</update>
+
+	<insert id="insertTOrderInfoSoRsltDt">
+		INSERT INTO TORDER_INFO_SO_RSLT_DT
+		(
+				  SO_HDKEY
+				 ,SO_DTKEY
+				 ,OR_WK_TYPE_CD
+				 ,SO_RSLTKEY
+				 ,CFDATE
+				 ,CFQTY
+				 ,COSTPRICE
+				 ,SALEPRICE
+				 ,INSERTDATE
+				 ,INSERTURKEY
+				 ,UPDATEDATE
+				 ,UPDATEURKEY
+				 ,RJQTY
+				 ,IBNRCD
+		
+		) VALUES (
+				  #{so_hdkey}
+				 ,#{so_dtkey}
+				 ,#{or_wk_type_cd}
+				 ,(
+					SELECT COUNT(1) + 1 
+					  FROM TORDER_INFO_SO_RSLT_DT
+					 WHERE SO_HDKEY = #{so_hdkey}
+					   AND SO_DTKEY = #{so_dtkey}
+					   AND OR_WK_TYPE_CD = #{or_wk_type_cd}			 
+				 ) 
+				 ,#{cfdate}
+				 ,#{cfqty}
+				 ,#{costprice}
+				 ,#{saleprice}
+				 ,#{sysdate}
+				 ,#{surkey}
+				 ,#{sysdate}
+				 ,#{surkey}
+				 ,#{rjqty}
+				 ,#{ibnrcd}
+		 )	
+	</insert>
+		
+	<delete id="deleteTOrderInfoSoRsltDt">
+		DELETE 
+		  FROM TORDER_INFO_SO_RSLT_DT
+		 WHERE 
+			   SO_HDKEY = #{so_hdkey}
+	       AND OR_WK_TYPE_CD = #{or_wk_type_cd}
+	</delete>
+		
+	<update id="updatePkTOrderInfoSoRsltHd">
+		UPDATE TORDER_INFO_SO_RSLT_HD
+		   SET OR_WK_STATUS_CD = #{or_wk_status_cd}
+			  ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE
+			   SO_HDKEY = #{so_hdkey}
+	       AND OR_WK_TYPE_CD = #{or_wk_type_cd}
+	</update>
+
+	<update id="updatePkTOrderInfoSoRsltDt">
+		UPDATE TORDER_INFO_SO_RSLT_DT
+		   SET UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE
+			   SO_HDKEY = #{so_hdkey}
+	       AND SO_DTKEY = #{so_dtkey}
+	       AND OR_WK_TYPE_CD = #{or_wk_type_cd}
+	       AND OR_WK_TYPE_CD = #{so_rsltkey}
+	</update>	
+
+
+	<update id="updateInfoSoHd">
+		UPDATE TORDER_INFO_SO_HD
+		   SET UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+			  ,OR_NOCHG_CD = #{or_nochg_cd}
+		 WHERE
+			   SO_HDKEY = #{so_hdkey}
+	</update>
+	
+
+	<update id="updateInfoSoDt">
+		UPDATE TORDER_INFO_SO_DT
+		   SET UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(cfqty)" >
+				  ,CFQTY = CFQTY + #{cfqty}
+			  </if>
+		 WHERE
+			   SO_HDKEY = #{so_hdkey}
+	       AND SO_DTKEY = #{so_dtkey}
+	</update>	
+
+	<update id="updateTOrderInfoAsnDt">
+		UPDATE 	TORDER_INFO_ASN_DT
+		   SET 	UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+              	,IBNRCD = #{ibnrcd}
+              	,IBNRIMGKEY = #{ibnrimgkey}
+		 		,IBCFQTY = #{ibcfqty}	
+				,IBRJQTY = #{ibrjqty}	  
+		 WHERE
+		       SO_HDKEY = #{so_hdkey}
+		   AND SO_DTKEY = #{so_dtkey}
+	</update>
+	
+	<update id="updateIbnrcdTOrderInfoAsnDt">
+		UPDATE 	TORDER_INFO_ASN_DT
+		   SET 	UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+              	,IBNRCD = #{ibnrcd}
+		 WHERE
+		       	SO_HDKEY = #{so_hdkey}
+		   AND 	SO_DTKEY = #{so_dtkey}
+	</update>
+
+	<select id="selectInfoAsnDtGetPoInfo" resultType="camelMap">
+		SELECT 	CTKEY
+				,POHDKEY
+		      	,PODTKEY
+		  FROM  TORDER_INFO_ASN_DT
+		 WHERE
+		       	SO_HDKEY = #{so_hdkey}
+		   AND 	SO_DTKEY = #{so_dtkey}
+	</select>	
+
+	<update id="updateTOrderInfoPoInfo" >
+		UPDATE TORDER_INFO_PO1_DT
+		   SET 
+			   IBYN = 'Y'
+			  ,IBDATE = #{cfdate}
+		 	  ,IBQTY = IBQTY + #{cfqty}
+			  ,IBAMT = DATE_TRUNC('day', #{costprice} * (IBQTY + #{cfqty}))::DATE
+   			  ,IBRPRSN = #{ibnrcd}
+   			  ,IN_HM = #{ibcreatedate}
+   			  ,IBCREATEDATE = #{ibcreatedate}
+   			  ,IBCREATEURKEY = #{surkey}
+		      ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE 
+		       POHDKEY = #{pohdkey}
+		   AND PODTKEY = #{podtkey}
+		   AND CTKEY = #{ctkey}
+	</update>	
+	
+	<update id="updateInbrcdTOrderInfoPoInfo" >
+		UPDATE 	TORDER_INFO_PO1_DT
+		   SET 	IBRPRSN = #{ibnrcd}
+		       	,UPDATEDATE = #{sysdate}
+			   	,UPDATEURKEY = #{surkey}
+		 WHERE 
+		       	POHDKEY = #{pohdkey}
+		   AND 	PODTKEY = #{podtkey}
+		   AND 	CTKEY = #{ctkey}
+	</update>
+
+
+	<update id="updateTOrderInfoRtnGap">
+		UPDATE TORDER_INFO_RTNGAP
+		   SET 
+			   STORE_CD			= #{store_cd}       
+			  ,GAP_YMD          = TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '1 days' , 'YYYYMMDD')
+			  ,GAP_ID           = #{gap_id}         
+			  ,GAP_SEQ_NO       = #{gap_seq_no}     
+			  ,NAP_CD           = #{nap_cd}         
+			  ,CUST_CD          = #{cust_cd}        
+			  ,LARGE_CD         = #{large_cd}       
+			  ,MID_CD           = #{mid_cd}         
+			  ,SMALL_CD         = #{small_cd}       
+			  ,PLU_CD           = #{plu_cd}         
+			  ,TAX_ID           = #{tax_id}         
+			  ,ITEM_WONGA       = #{item_wonga}     
+			  ,ITEM_MAEGA       = #{item_maega}     
+			  ,DGFW_QTY         = #{dgfw_qty}       
+			  ,BUY_QTY          = #{buy_qty}        
+			  ,GAP_QTY          = #{gap_qty}        
+			  ,ORG_CHIT_NO      = #{org_chit_no}    
+			  ,ORG_CHIT_SEQ	    = #{org_chit_seq} 
+			  ,ORG_CHIT_YMD     = #{org_chit_ymd}
+			  ,APPROVAL_ID      = #{approval_id}    
+			  ,GAP_REASON       = #{gap_reason}    
+			  ,GAP_REASON_WM    = #{gap_reason_wm} 
+			  ,ACP_CONF_ID      = #{acp_conf_id}    
+			  ,ORG_CHIT_ID      = #{org_chit_id}    
+			  ,SEND_YN          = #{send_yn}        
+			  ,SEND_DATE        = #{send_date}      
+		      ,UPDATEDATE 		= #{sysdate}
+			  ,UPDATEURKEY 		= #{surkey}
+		 WHERE 
+		       SO_HDKEY = #{so_hdkey}
+		   AND SO_DTKEY = #{so_dtkey}
+		   AND CHIT_NO = #{chit_no}
+		   AND CHIT_SEQ = #{chit_seq}	
+	</update>	
+
+	<insert id="insertTOrderInfoRtnGap">
+		INSERT INTO TORDER_INFO_RTNGAP (
+				 SO_HDKEY
+				,SO_DTKEY
+				,CHIT_NO
+				,CHIT_SEQ
+				,STORE_CD
+				,GAP_YMD
+				,GAP_ID
+				,GAP_SEQ_NO
+				,NAP_CD
+				,CUST_CD
+				,LARGE_CD
+				,MID_CD
+				,SMALL_CD
+				,PLU_CD
+				,TAX_ID
+				,ITEM_WONGA
+				,ITEM_MAEGA
+				,DGFW_QTY
+				,BUY_QTY
+				,GAP_QTY
+				,ORG_CHIT_NO
+				,ORG_CHIT_SEQ
+				,ORG_CHIT_YMD
+				,APPROVAL_ID
+				,GAP_REASON
+				,GAP_REASON_WM
+				,ACP_CONF_ID
+				,ORG_CHIT_ID
+				,ACTION_TYPE
+				,SEND_YN
+				,SEND_DATE
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+		) VALUES (
+				 #{so_hdkey}
+				,#{so_dtkey}
+				,#{chit_no}
+				,#{chit_seq}
+				,#{store_cd}
+				,TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '1 days' , 'YYYYMMDD')
+				,#{gap_id}
+				,#{gap_seq_no}
+				,#{nap_cd}
+				,#{cust_cd}
+				,#{large_cd}
+				,#{mid_cd}
+				,#{small_cd}
+				,#{plu_cd}
+				,#{tax_id}
+				,#{item_wonga}
+				,#{item_maega}
+				,#{dgfw_qty}
+				,#{buy_qty}
+				,#{gap_qty}
+				,#{org_chit_no}
+				,#{org_chit_seq}
+				,#{org_chit_ymd}
+				,#{approval_id}
+				,#{gap_reason}
+				,#{gap_reason_wm}
+				,#{acp_conf_id}
+				,#{org_chit_id}
+				,#{action_type}
+				,#{send_yn}
+				,#{send_date}
+			    ,#{sysdate}
+			    ,#{surkey}
+			    ,#{sysdate}
+		    	,#{surkey}
+		)	
+	</insert>	
+
+	<resultMap id="selectTOrderInfoRtnGapInfoMap" type="java.util.HashMap">
+		<result property="send_yn" column="SEND_YN" />
+		<result property="chit_no_cd" column="CHIT_NO_CD" />
+	</resultMap>	
+	
+	<select id="selectTOrderInfoRtnGapInfo" resultMap="selectTOrderInfoRtnGapInfoMap" >
+		SELECT SEND_YN
+		  FROM TORDER_INFO_RTNGAP
+		 WHERE 
+		       SO_HDKEY = #{so_hdkey}
+		   AND SO_DTKEY = #{so_dtkey}
+		   AND CHIT_NO = #{chit_no}
+		   AND CHIT_SEQ = #{chit_seq}	
+	</select>
+	
+
+	<select id="selectOrderOverActionCheck" resultMap="selectTOrderInfoRtnGapInfoMap" >
+		SELECT SUBSTR(CHIT_NO,10,2) AS CHIT_NO_CD
+		  FROM TORDER_INFO_SO_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND SO_HDKEY = #{obhdkey}
+		   AND ORGCHITNO = #{org_chit_no}
+		   AND ORGCHITSEQ = #{org_chit_seq}
+		   AND SUBSTR(EXTERNORDERKEY , 10,2) != '01'
+	</select>	
+
+	<update id="updateTorderInfoSoHdWithObOrder">
+		UPDATE 	TORDER_INFO_SO_HD
+		   SET 	UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+			  	,OR_NOCHG_CD = #{or_nochg_cd}
+		 WHERE
+			   	SO_HDKEY = #{so_hdkey}
+	</update>
+	
+
+	<update id="updateTorderInfoSoDtWithObOrder">
+		UPDATE 	TORDER_INFO_SO_DT
+		   SET 	UPDATEDATE = #{sysdate}
+			  	,UPDATEURKEY = #{surkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(exqty)" >
+				,EXQTY = #{exqty}
+		  	</if>
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cfqty)" >
+				,CFQTY = #{cfqty}
+		  	</if>
+		 WHERE
+			   	SO_HDKEY = #{so_hdkey}
+	       AND 	SO_DTKEY = #{so_dtkey}
+	</update>	
+	
+</mapper>	

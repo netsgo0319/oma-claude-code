@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.LocationApiMapper">
+	<insert id="insertIntfTableLocMst">
+		/* oms-master-locationBatch-sql-oracle.xml - insertIntfTableLcMst */
+		INSERT INTO TORDER_INTF_WMS_LC (
+		     CTKEY
+           , ZNKEY
+           , ZNNM
+           , ARKEY
+           , ARNM
+           , LCKEY
+           , CBMSTARTRNG
+           , CBMCLOSRNG
+           , ANSUNGB2BPOCTG
+           , NAMSAB2BPOCTG
+           , BUSANB2BPOCTG
+           , SEJONGB2BPOCTG
+           , USEYN
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{ctkey}
+           , #{znkey}
+           , #{znnm}
+           , #{arkey}
+           , #{arnm}
+           , #{lckey}
+           , #{cbmstartrng}
+           , #{cbmclosrng}
+           , #{ansungb2bpoctg}
+           , #{namsab2bpoctg}
+           , #{busanb2bpoctg}
+           , #{sejongb2bpoctg}
+           , #{useyn}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeLocation"><![CDATA[
+		/* oms-master-locationBatch-sql-oracle.xml - mergeLocation */
+		MERGE INTO TORDER_MST_LC LC
+			USING (
+				SELECT DISTINCT
+		             CTKEY
+				   , ZNKEY
+				   , ZNNM
+				   , ARKEY
+				   , ARNM
+				   , LCKEY
+				   , CBMSTARTRNG
+				   , CBMCLOSRNG
+                   , ANSUNGB2BPOCTG
+                   , NAMSAB2BPOCTG
+                   , BUSANB2BPOCTG
+                   , SEJONGB2BPOCTG
+				   , USEYN
+		        FROM TORDER_INTF_WMS_LC
+		        WHERE IFID = #{interfaceId}
+		        ) IN_LC
+			ON (
+				   LC.CTKEY = IN_LC.CTKEY
+		       AND LC.ZNKEY = IN_LC.ZNKEY
+		       AND LC.ARKEY = IN_LC.ARKEY
+		       AND LC.LCKEY = IN_LC.LCKEY
+		    )
+			WHEN MATCHED THEN
+				 UPDATE
+					SET LC.ZNNM          = IN_LC.ZNNM
+		              , LC.ARNM          = IN_LC.ARNM
+		              , LC.CBMSTARTRNG   = IN_LC.CBMSTARTRNG
+		              , LC.CBMCLOSRNG    = IN_LC.CBMCLOSRNG
+                      , LC.ANSUNGB2BPOCTG = IN_LC.ANSUNGB2BPOCTG
+                      , LC.NAMSAB2BPOCTG  = IN_LC.NAMSAB2BPOCTG
+                      , LC.BUSANB2BPOCTG  = IN_LC.BUSANB2BPOCTG
+                      , LC.SEJONGB2BPOCTG = IN_LC.SEJONGB2BPOCTG
+					  , LC.UPDATEURKEY   = #{surkey}
+					  , LC.UPDATEDATE    = #{sysdate}
+			WHEN NOT MATCHED THEN
+				INSERT (
+					 LC.CTKEY
+				   , LC.ZNKEY
+				   , LC.ZNNM
+				   , LC.ARKEY
+				   , LC.ARNM
+				   , LC.LCKEY
+				   , LC.CBMSTARTRNG
+				   , LC.CBMCLOSRNG
+                   , LC.ANSUNGB2BPOCTG
+                   , LC.NAMSAB2BPOCTG
+                   , LC.BUSANB2BPOCTG
+                   , LC.SEJONGB2BPOCTG
+				   , LC.USEYN
+		           , LC.INSERTDATE
+		           , LC.INSERTURKEY
+		           , LC.UPDATEDATE
+		           , LC.UPDATEURKEY
+					)
+		        VALUES	(
+				     IN_LC.CTKEY
+				   , IN_LC.ZNKEY
+				   , IN_LC.ZNNM
+				   , IN_LC.ARKEY
+				   , IN_LC.ARNM
+				   , IN_LC.LCKEY
+				   , IN_LC.CBMSTARTRNG
+				   , IN_LC.CBMCLOSRNG
+                   , IN_LC.ANSUNGB2BPOCTG
+                   , IN_LC.NAMSAB2BPOCTG
+                   , IN_LC.BUSANB2BPOCTG
+                   , IN_LC.SEJONGB2BPOCTG
+				   , IN_LC.USEYN
+		           , #{sysdate}
+		           , #{surkey}
+		           , #{sysdate}
+		           , #{surkey}
+		        )
+	]]></insert>
+
+</mapper>

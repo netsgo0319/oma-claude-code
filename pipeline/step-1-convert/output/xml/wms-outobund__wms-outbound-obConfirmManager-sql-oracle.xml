@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObConfirmManagerMapper">
+
+	<!--PICKTO -> PICKBACK 이동 대상LIST 조회-->
+	<select id="selectPickingDetailListByPickingConfirmed" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectPickingDetailListByPickingConfirmed - PICKTO -> PICKBACK 이동 대상LIST 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,IVATKEY
+			,LCKEY
+			,ICKEY
+			,CNFRMQTY
+			,OBCNFRMQTY
+			,PIHDKEY
+			,PIDTKEY
+			,OBHDKEY
+			,OBDTKEY
+			,CNFRMQTY - OBCNFRMQTY - RVSQTY AS REMAINQTY
+		FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+		AND (CNFRMQTY - OBCNFRMQTY - RVSQTY) > 0
+		AND PKDTWKSTATUSCD = '10'
+		ORDER BY IVATKEY, LCKEY
+	</select>
+
+	<!--피킹상세 원복수량 수정-->
+	<update id="updatePickingDetailRvsQty">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updatePickingDetailRvsQty - 피킹상세 원복수량 수정 */
+		UPDATE TWORK_INFO_PI_DT
+		SET RVSQTY = RVSQTY + #{rvsqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND PIDTKEY = #{pidtkey}
+	</update>
+
+	<!--피킹실패 대상 색인(총량피킹)-->
+	<select id="selectPickingTotalDetailListForPickingFailed" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectPickingTotalDetailListForPickingFailed - 피킹실패 대상 색인(총량피킹) */
+		SELECT
+			PTD.CTKEY
+			,PTD.OWKEY
+			,PTD.PIHDKEY
+			,PTD.ICKEY
+			,PTD.IVATKEY
+			,PTD.LCKEY
+			,PTD.CELLKEY
+			,IC.ICUNITKEY
+			,PTD.UOM
+			,(PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY AS NONPKQTY
+			,PTD.LCKEY AS FRLCKEY
+			,PTD.LCKEY AS FRCELLKEY
+			,'PICKFAIL' AS TOLCKEY
+			,'PICKFAIL' AS TOCELLKEY
+		FROM TWORK_INFO_PI_TOT_DT PTD
+			INNER JOIN TWORK_INFO_IVAT IVAT
+				ON PTD.CTKEY = IVAT.CTKEY
+				AND PTD.OWKEY = IVAT.OWKEY
+				AND PTD.IVATKEY = IVAT.IVATKEY
+			INNER JOIN TWORK_MST_IC IC
+				ON PTD.CTKEY = IC.CTKEY
+				AND PTD.OWKEY = IC.OWKEY
+				AND PTD.ICKEY = IC.ICKEY
+		WHERE PTD.CTKEY = #{ctkey}
+		AND PTD.OWKEY = #{owkey}
+		AND PTD.PIHDKEY = #{pihdkey}
+		AND PTD.ICKEY = #{ickey}
+		AND (PTD.EXPCTQTY - PTD.PKFAILQTY) - PTD.CNFRMQTY > 0 /* 피킹실패 처리가 가능한 건 */
+		AND PTD.PKWKSTATUSCD = '10'
+		ORDER BY PTD.IVATKEY, PTD.LCKEY
+	</select>
+
+	<!--피킹상세 LIST for 이고출고 PICKFAIL처리-->
+	<select id="selectPickingDetailListForPickingFailed" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectPickingDetailListForPickingFailed - 피킹상세 LIST for 이고출고 PICKFAIL처리 */
+		SELECT
+			PIDT.CTKEY
+			,PIDT.OWKEY
+			,PIDT.PIHDKEY
+			,PIDT.ICKEY
+			,PIDT.IVATKEY
+			,PIDT.LCKEY
+			,PIDT.CELLKEY
+			,IC.ICUNITKEY
+			,PIDT.UOM
+			,(PIDT.EXPCTQTY - PIDT.CNFRMQTY) AS NONPKQTY
+			,PIDT.FROMLCKEY AS FRLCKEY
+			,PIDT.FROMCELLKEY AS FRCELLKEY
+			,'PICKFAIL' AS TOLCKEY
+			,'PICKFAIL' AS TOCELLKEY
+			,PIDT.PIDTKEY
+			,PIDT.OBHDKEY
+			,PIDT.OBDTKEY
+		FROM TWORK_INFO_PI_DT PIDT
+			INNER JOIN TWORK_MST_IC IC
+				ON PIDT.CTKEY = IC.CTKEY
+				AND PIDT.OWKEY = IC.OWKEY
+				AND PIDT.ICKEY = IC.ICKEY
+		WHERE PIDT.CTKEY = #{ctkey}
+		AND PIDT.OWKEY = #{owkey}
+		AND PIDT.PIHDKEY = #{pihdkey}
+		AND PIDT.OBHDKEY = #{obhdkey}
+		AND PIDT.OBDTKEY = #{obdtkey}
+		AND (PIDT.EXPCTQTY - PIDT.CNFRMQTY) > 0
+		AND PIDT.PKDTWKSTATUSCD = '10'
+		ORDER BY PIDT.IVATKEY ,PIDT.LCKEY
+	</select>
+
+	<!--PICKFAIL 이동대상 총량피킹상세 피킹실패수량 UP-->
+	<update id="updatePickingTotalDetailPickingFailQty">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updatePickingTotalDetailPickingFailQty - PICKFAIL 이동대상 총량피킹상세 피킹실패수량 UP */
+		UPDATE TWORK_INFO_PI_TOT_DT
+		SET PKFAILQTY = PKFAILQTY + #{pkfailqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+		AND LCKEY = #{lckey}
+		AND CELLKEY = #{cellkey}
+	</update>
+
+	<!--출고확정에 의한 PICKTO 재고차감 대상 조회-->
+	<select id="selectPickingDetailListByOutboundConfirmed" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectPickingDetailListByOutboundConfirmed - 출고확정에 의한 PICKTO 재고차감 대상 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,IVATKEY
+			,LCKEY
+			,ICKEY
+			,(CNFRMQTY - OBCNFRMQTY - RVSQTY) AS SUBQTY
+			,PIHDKEY
+			,PIDTKEY
+			,OBHDKEY
+			,OBDTKEY
+		FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+		AND (CNFRMQTY - OBCNFRMQTY - RVSQTY) > 0
+		AND PKDTWKSTATUSCD = '10'
+		ORDER BY IVATKEY, LCKEY
+	</select>
+
+	<!--릴리즈상세 출고확정처리-->
+	<update id="updateOutboundDetailByConfirm">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateOutboundDetailByConfirm - 릴리즈상세 출고확정처리 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = CASE WHEN 0 = (CNFRMQTY + #{cnfrmqty}) THEN '60' /*60:미출고*/
+								WHEN INITQTY > (CNFRMQTY + #{cnfrmqty}) THEN '65' /*65:부분출고*/
+								WHEN INITQTY = (CNFRMQTY + #{cnfrmqty}) THEN '70' /*70:출고완료*/
+								ELSE OBDTSTATUSCD END
+			,NISQTY = NISQTY + #{nisqty}
+			,CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			,OBCNFRMDATE = #{sysdate}
+			,OBCONFIRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--릴리즈헤더 출고확정처리-->
+	<update id="updateOutboundHeaderByConfirm">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateOutboundHeaderByConfirm - 릴리즈헤더 출고확정처리 */
+		UPDATE TWORK_INFO_OB_HD
+		SET OBCNFRMDATE = #{sysdate}
+			,OBDDLNSNDRSLTCD = '00' /*출고 마감 송신 결과 코드 - 대기(00)*/
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<!--오더상세 출고확정처리-->
+	<update id="updateOutboundOrderDetailByConfirm">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateOutboundOrderDetailByConfirm - 오더상세 출고확정처리 */
+		UPDATE TWORK_INFO_OB_ORD_DT
+		SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			,OBCNFRMDATE = #{sysdate}
+			,OBCONFIRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{obordkey}
+		AND OBORDDTKEY = #{oborddtkey}
+	</update>
+
+	<!--오더헤더 출고확정처리-->
+	<update id="updateOutboundOrderHeaderByConfirm">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateOutboundOrderHeaderByConfirm - 오더헤더 출고확정처리 */
+		UPDATE TWORK_INFO_OB_ORD_HD ORD
+		SET ORD.OBCNFRMDATE = #{sysdate}
+			,ORD.UPDATEDATE = #{sysdate}
+			,ORD.UPDATEURKEY = #{surkey}
+		WHERE ORD.CTKEY = #{ctkey}
+		AND ORD.OWKEY = #{owkey}
+		AND ORD.OBORDKEY = #{obordkey}
+		AND NOT EXISTS (
+			SELECT 1
+			FROM TWORK_INFO_OB_HD OH
+			WHERE OH.CTKEY = ORD.CTKEY
+			AND OH.OWKEY = ORD.OWKEY
+			AND OH.OBORDKEY = ORD.OBORDKEY
+			AND OH.OBSTATUSCD NOT IN ('60','65','70','97','98') /* 미출고,부분출고,출고완료,작업취소,결품취소 가 아닌 건 (출고가 종료되지 않은건이 존재 시)*/
+		)
+	</update>
+
+	<!--출고헤더 / 출고마감 IF 송신 데이터 조회-->
+	<select id="selectOutboundHeaderForInterfaceSend" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectOutboundHeaderForInterfaceSend - 출고헤더 / 출고마감 IF 송신 데이터 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBORDKEY
+			,ORHDKEY
+			,DLVRYCORPCD
+			,WBLNO
+			,OBSTATUSCD
+		    ,COALESCE(WKTYPECD, 'ET') AS WKTYPECD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDDLNSNDRSLTCD = '00'
+	</select>
+
+	<!--출고상세 / 출고마감 IF 송신 데이터 조회-->
+	<select id="selectOutboundDetailListForInterfaceSend" resultType="com.daiso.wms.api.out.dto.OutboundOrderCloseRequestDTO$OutboundOrderCloseDetailDTO">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectOutboundDetailListForInterfaceSend - 출고상세 / 출고마감 IF 송신 데이터 조회 */
+		SELECT
+			ORDTKEY
+			,OBCNFRMDATE
+			,CASE
+				WHEN COALESCE(#{niscd}, 'EMPTY') != 'EMPTY' THEN #{niscd}
+				WHEN INITQTY <![CDATA[ > ]]> CNFRMQTY THEN '03' /* 2025-12-24 KJH 결품코드 조건 변경 */
+				WHEN OBDTSTATUSCD IN ('97') THEN '07' END AS NISCD
+			,ICKEY
+			,UOM
+			,INITQTY AS EXPCTQTY
+			,CNFRMQTY
+		FROM TWORK_INFO_OB_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--피킹상세 출고확정수량 수정-->
+	<update id="updatePickingDetailObCnfrmQty">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updatePickingDetailObCnfrmQty - 피킹상세 출고확정수량 수정 */
+		UPDATE TWORK_INFO_PI_DT
+		SET OBCNFRMQTY = OBCNFRMQTY + #{obcnfrmqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND PIDTKEY = #{pidtkey}
+	</update>
+
+	<!--피킹지시된 출고상세정보 조회 BY ICKEY-->
+	<select id="selectPickingInstructedOutboundDetailByIckey" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectPickingInstructedOutboundDetailByIckey - 피킹지시된 출고상세정보 조회 BY ICKEY */
+		SELECT
+			PD.CTKEY
+			,PD.OWKEY
+			,PD.OBHDKEY
+			,PD.OBDTKEY
+			,PD.ICKEY
+			,PD.PIHDKEY
+		FROM TWORK_INFO_PI_DT PD
+		WHERE PD.CTKEY = #{ctkey}
+		AND PD.OWKEY = #{owkey}
+		AND PD.OBHDKEY = COALESCE(#{pkobhdkey}, #{obhdkey})
+		AND PD.ICKEY = #{ickey}
+		GROUP BY PD.CTKEY
+				,PD.OWKEY
+				,PD.OBHDKEY
+				,PD.OBDTKEY
+				,PD.ICKEY
+				,PD.PIHDKEY
+	</select>
+
+	<!--출고마감 IF 송신 데이터 조회 BY 이고출고 용기별마감-->
+	<select id="selectMoveOutboundHeaderForInterfaceSend" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectMoveOutboundHeaderForInterfaceSend - 출고마감 IF 송신 데이터 조회 BY 이고출고 용기별마감 */
+		SELECT
+			OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			,OH.OBORDKEY
+			,OH.ORHDKEY
+			,OH.OBSTATUSCD
+			,MC.CNTRBARCODE AS CNTRCD
+			,MC.MVOBGRPNO
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_MVOB_CNTR MC
+				ON OH.CTKEY = MC.CTKEY
+				AND OH.OWKEY = MC.OWKEY
+				AND OH.OBHDKEY = MC.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+		AND MC.MVOBGRPNO = #{mvobgrpno}
+		AND MC.CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<!--출고마감 IF 송신 데이터 조회 BY 이고출고 용기별마감 상세정보-->
+	<select id="selectMoveOutboundDetailListForInterfaceSend" resultType="com.daiso.wms.api.out.dto.OutboundOrderCloseRequestDTO$OutboundOrderCloseDetailDTO">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectMoveOutboundHeaderForInterfaceSend - 출고마감 IF 송신 데이터 조회 BY 이고출고 용기별마감 상세정보 */
+		SELECT
+			OD.ORDTKEY
+			,MAX(OD.OBCNFRMDATE) AS OBCNFRMDATE
+			,OD.ICKEY
+			,OD.UOM
+			,SUM(MCDT.QTY) AS EXPCTQTY
+			,SUM(MCDT.QTY) AS CNFRMQTY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_DT OD /*출고 상세 정보*/
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+			INNER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세 정보*/
+				ON OD.CTKEY = MCDT.CTKEY
+				AND OD.OWKEY = MCDT.OWKEY
+				AND OD.OBHDKEY = MCDT.OBHDKEY
+				AND OD.OBDTKEY = MCDT.OBDTKEY
+			INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+				ON MCDT.CTKEY = MC.CTKEY
+				AND MCDT.OWKEY = MC.OWKEY
+				AND MCDT.OBHDKEY = MC.OBHDKEY
+				AND MCDT.CNTRBARCODE = MC.CNTRBARCODE
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+		AND MC.MVOBGRPNO = #{mvobgrpno}
+		AND MC.CNTRBARCODE = #{cntrbarcode}
+		GROUP BY OD.CTKEY
+				,OD.OWKEY
+				,OD.ORHDKEY
+				,OD.ORDTKEY
+				,OD.ICKEY
+				,OD.UOM
+				,OD.EXPCTQTY
+		ORDER BY OD.ORHDKEY
+				,OD.ORDTKEY
+	</select>
+
+	<!--웨이브 작업완료 처리-->
+	<update id="updateWaveHeaderWorkStatusCdByConfirm">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateWaveHeaderWorkStatusCdByConfirm - 웨이브 작업완료 처리 */
+		UPDATE TWORK_INFO_WA_HD WH
+		SET WAWKSTATUSCD = '60'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND WAHDKEY = #{wahdkey}
+		AND WAWKSTATUSCD = '50'
+		AND NOT EXISTS ( /*미출고, 부분출고, 출고완료, 결품보류, 결품보류확정, 작업취소 가 아닌건이 존재하지 않으면 UPDATE */
+			SELECT 1
+			FROM TWORK_INFO_WA_DT WD
+			INNER JOIN TWORK_INFO_OB_HD OH
+				ON WD.CTKEY = OH.CTKEY
+				AND WD.OWKEY = OH.OWKEY
+				AND WD.OBHDKEY = OH.OBHDKEY
+			WHERE WD.CTKEY = WH.CTKEY
+			AND WD.OWKEY = WH.OWKEY
+			AND WD.WAHDKEY = WH.WAHDKEY
+			AND OH.OBSTATUSCD NOT IN ('60', '65', '70', '80', '85', '97') /*미출고, 부분출고, 출고완료, 결품보류, 결품보류확정, 작업취소 가 아닌건이 존재하는지 색인*/
+		)
+	</update>
+
+	<!--재고이동 후 릴리즈 상세 업데이트-->
+	<update id="updateObWkCnlObDt">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateObWkCnlObDt - 재고이동 후 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = '97'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--작업취소 후 릴리즈 헤더 상태값 변경-->
+	<update id="updateObWkCnlObHd">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateObWkCnlObHd - 작업취소 후 릴리즈 헤더 상태값 변경 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = '97'
+			 , OBDDLNSNDRSLTCD = '00' /*출고 마감 송신 결과 코드 - 대기(00)*/
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<!--출고헤더 인터페이스 송신결과 저장-->
+	<update id="updateOutboundHeaderIfSendResultCd">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - updateOutboundHeaderIfSendResultCd - 출고헤더 인터페이스 송신결과 저장 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBDDLNSNDRSLTCD = #{obddlnsndrsltcd}
+			 , OBDDLNSNDRSLTMSG = #{obddlnsndrsltmsg}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+</mapper>	

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.common.mapper.BatchMapper">
+    <insert id="insertMessageTemp">
+        /* adm-common-batch-sql-oracle.xml insertMessageTemp */
+        INSERT INTO TADMIN_UPLOAD_MESSAGE(
+               UPLDKEY
+              ,MULAAPMSGHDKEY
+              ,LAKEY
+              ,MSGTYPE
+              ,DISPLAYMSG
+              ,DISPLAYMSGABBR
+              ,DELYN
+              ,INSERTDATE
+              ,INSERTURKEY
+              ,UPDATEDATE
+              ,UPDATEURKEY
+        ) VALUES (
+                   #{uplHsKey}
+                 , #{mulaapmsghdkey}
+                 , #{lakey}
+                 , #{msgtype}
+                 , #{displaymsg}
+                 , #{displaymsgabbr}
+                 , 'N'
+                 , #{sysdate}
+                 , #{surkey}
+                 , #{sysdate}
+                 , #{surkey}
+                  )
+    </insert>
+
+    <insert id="insertItemCodeTemp">
+        /* adm-common-batch-sql-oracle.xml insertItemCodeTemp */
+        INSERT INTO TADMIN_UPLOAD_IC (
+              UPLDKEY
+            , ICKEY
+            , ICNM
+            , ICTYPE
+            , LOGGRPCD
+            , ICGRPKEY
+            , UOM
+            , OPERSTATUSTYPE
+            , CTGKEY
+            , ACKEY
+            , FOODYN
+            , SPEC
+            , OBDAYS
+            , EXPCKYN
+            , EXPCKTYPE
+            , WGTCFYN
+            , SHELFDAY
+            , CMT
+            , ICUNITKEY
+            , ICUNITTYPE
+            , ICUNITORDER
+            , ICUNITQTY
+            , LENGTH
+            , WIDTH
+            , HEIGHT
+            , WEIGHT
+            , VOL
+            , ERRCD
+            , ERRCMTS
+            , DELYN
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+        ) VALUES (
+              #{uplHsKey}
+            , #{ickey}
+            , #{icnm}
+            , #{ictype}
+            , #{loggrpcd}
+            , #{icgrpkey}
+            , #{uom}
+            , COALESCE(#{operstatustype}, '0')
+            , #{ctgkey}
+            , #{ackey}
+            , COALESCE(#{foodyn}, 'N')
+            , #{spec}
+            , #{obdays}
+            , COALESCE(#{expckyn}, 'N')
+            , #{expcktype}
+            , COALESCE(#{wgtcfyn}, 'N')
+            , #{shelfday}
+            , #{cmt}
+            , #{ickey}
+            , #{icunittype}
+            , #{icunitorder}
+            , #{icunitqty}
+            , #{lengthuom}
+            , #{widthuom}
+            , #{heightuom}
+            , #{weight}
+            , #{vol}
+            , #{errcd}
+            , #{errcmts}
+            , 'N'
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+</mapper>

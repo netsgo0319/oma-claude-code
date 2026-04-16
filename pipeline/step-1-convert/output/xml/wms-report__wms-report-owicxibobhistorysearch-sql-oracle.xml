@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.OwIcXIbObHistorySearchMapper">
+
+	<sql id="selectOwIcInfoSql">
+		SELECT X.CTKEY, B.CTNAME, X.OWKEY, C.OWNAME, X.ICKEY, D.ICNAME
+		  FROM (
+			   SELECT A.CTKEY, A.OWKEY, A.ICKEY
+				 FROM (
+					  SELECT 'IB' AS IOTYPE, TO1.CTKEY, TO1.OWKEY, TO1.ICKEY, TO1.IVATKEY, TO1.LOGGRPCD
+					       , TO1.ICGRKEY, TO1.IBHDTYPE, TO1.IBCONFIRMDATE, TO1.CFQTY AS IN_QTY, 0 AS OUT_QTY
+					       , TO1.ATTRIBUTE3, TO1.PRODUCTLOT, TO1.SPEC, TO1.UOM, TO1.PRODUCTDATE, TO1.EXPIREDATE, TO1.IBEXPECTDATE
+						FROM (
+							 SELECT T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY
+							      , T1.IBHDTYPE, T1.IBCONFIRMDATE, SUM(T1.CFQTY) AS CFQTY, T1.ATTRIBUTE3
+							      , T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.IBEXPECTDATE
+							   FROM (
+									SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY, E.LOGGRPCD, E.ICGRKEY
+									     , B.IBHDTYPE, COALESCE(CAST(D.CFQTY AS NUMERIC), 0) AS CFQTY, F.IBCONFIRMDATE, F.ATTRIBUTE3
+									     , F.PRODUCTLOT, E.SPEC, C.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+									  FROM TWORK_INFO_IB_HD B
+									 INNER JOIN TWORK_INFO_IB_DT C
+									    	 ON C.CTKEY = B.CTKEY
+									     	AND C.IBHDKEY = B.IBHDKEY
+									 INNER JOIN TWORK_INFO_IBCF_DT D
+											 ON D.CTKEY = C.CTKEY
+											AND D.EXTERNORDERKEY = C.EXTERNORDERKEY
+											AND D.EXTERNORDERLINENUM = C.EXTERNORDERLINENUM
+									 INNER JOIN TWORK_MST_IC E
+											 ON E.CTKEY = C.CTKEY
+											AND E.OWKEY = C.OWKEY
+											AND E.ICKEY = C.ICKEY
+									 INNER JOIN TWORK_INFO_IVAT F
+											 ON F.CTKEY = C.CTKEY
+											AND F.ICKEY = C.ICKEY
+											AND F.IVATKEY = D.TO_IVATKEY
+									 WHERE B.IBHDTYPE IN ('10', '40')
+									   AND C.WKSTATUS IN ('90', '91')
+
+									 UNION ALL
+
+									SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY, D.LOGGRPCD, D.ICGRKEY
+									     , B.IBHDTYPE, COALESCE(C.CFQTY, 0) AS CFQTY, F.IBCONFIRMDATE, F.ATTRIBUTE3
+									     , F.PRODUCTLOT, D.SPEC, D.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+									  FROM TWORK_INFO_IB_HD B
+									 INNER JOIN TWORK_INFO_IB_DT C
+									    	 ON C.CTKEY = B.CTKEY
+									     	AND C.IBHDKEY = B.IBHDKEY
+									 INNER JOIN TWORK_MST_IC D
+											 ON D.CTKEY = C.CTKEY
+											AND D.OWKEY = C.OWKEY
+											AND D.ICKEY = C.ICKEY
+									 INNER JOIN TWORK_INFO_IVAT F
+											 ON F.CTKEY = B.CTKEY
+											AND F.ICKEY = C.ICKEY
+											AND F.IVATKEY = C.TO_IVATKEY
+									 WHERE B.IBHDTYPE NOT IN ('10','40')
+									   AND C.WKSTATUS IN ('90', '91')
+
+								  ) T1
+							  GROUP BY T1.CTKEY
+							         , T1.OWKEY
+							         , T1.ICKEY
+							         , T1.IVATKEY
+							         , T1.LOGGRPCD
+							         , T1.ICGRKEY
+							         , T1.IBHDTYPE
+							         , T1.IBCONFIRMDATE
+							         , T1.ATTRIBUTE3
+							         , T1.PRODUCTLOT
+							         , T1.SPEC
+							         , T1.UOM
+									 , T1.PRODUCTDATE
+				        			 , T1.EXPIREDATE
+							         , T1.IBEXPECTDATE
+						   ) TO1
+
+					   UNION ALL
+
+					  SELECT 'OB' AS IOTYPE, T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY
+					       , T1.OBHDTYPE, T1.OBCONFIRMDATE, 0 IN_QTY, SUM(T1.CFQTY) AS OUT_QTY, T1.ATTRIBUTE3
+					       , T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+						FROM (
+							 SELECT A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY
+							      , A.OBHDTYPE, COALESCE(D.CFQTY, 0) AS CFQTY, B.OBCONFIRMDATE, F.ATTRIBUTE3
+							      , F.PRODUCTLOT, C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE
+							   FROM TWORK_INFO_OB_HD A
+							  INNER JOIN TWORK_INFO_OB_DT B
+									  ON A.CTKEY = B.CTKEY
+									 AND A.OWKEY = B.OWKEY
+									 AND A.OBHDKEY = B.OBHDKEY
+							  INNER JOIN TWORK_MST_IC C
+									  ON B.CTKEY = C.CTKEY
+									 AND B.OWKEY = C.OWKEY
+									 AND B.ICKEY = C.ICKEY
+							  INNER JOIN TWORK_INFO_PI_DT D
+									  ON B.CTKEY = D.CTKEY
+									 AND B.OWKEY = D.OWKEY
+									 AND B.ICKEY = D.ICKEY
+									 AND B.OBHDKEY = D.OBHDKEY
+									 AND B.OBDTKEY = D.OBDTKEY
+							  INNER JOIN TWORK_INFO_IVAT F
+									  ON A.CTKEY = F.CTKEY
+									 AND C.ICKEY = F.ICKEY
+									 AND D.IVATKEY = F.IVATKEY
+							  WHERE B.WKSTATUS IN ('90', '91')
+								AND D.WKSTATUS IN ('90', '91')
+								AND A.OBHDTYPE = '10'
+
+							  UNION ALL
+
+							 SELECT A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY
+							      , A.OBHDTYPE, COALESCE(D.CFQTY, 0) AS CFQTY, B.OBCONFIRMDATE, F.ATTRIBUTE3
+							      , F.PRODUCTLOT, C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE
+								FROM TWORK_INFO_OB_HD A
+							  INNER JOIN TWORK_INFO_OB_DT B
+									  ON B.CTKEY = A.CTKEY
+									 AND B.OWKEY = A.OWKEY
+									 AND B.OBHDKEY = A.OBHDKEY
+							  INNER JOIN TWORK_MST_IC C
+									  ON C.CTKEY = B.CTKEY
+									 AND C.OWKEY = B.OWKEY
+									 AND C.ICKEY = B.ICKEY
+							  INNER JOIN TWORK_INFO_PI_DT D
+									  ON D.CTKEY = B.CTKEY
+									 AND D.OWKEY = B.OWKEY
+									 AND D.ICKEY = B.ICKEY
+									 AND D.OBHDKEY = B.OBHDKEY
+									 AND D.OBDTKEY = B.OBDTKEY
+							  INNER JOIN TWORK_INFO_IVAT F
+									  ON F.CTKEY = A.CTKEY
+									 AND F.ICKEY = B.ICKEY
+									 AND F.IVATKEY = D.IVATKEY
+							 WHERE B.WKSTATUS IN ('90', '91')
+							   AND D.WKSTATUS IN ('90', '91')
+							   AND A.OBHDTYPE != '10'
+						  ) T1
+				      GROUP BY T1.CTKEY, T1.OWKEY ,T1.ICKEY ,T1.IVATKEY ,T1.LOGGRPCD ,T1.ICGRKEY
+				             , T1.OBHDTYPE, T1.OBCONFIRMDATE, T1.ATTRIBUTE3, T1.PRODUCTLOT
+				             , T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+				   ) A
+			   GROUP BY A.CTKEY, A.OWKEY, A.ICKEY
+			) X
+		INNER JOIN TWORK_MST_CT B
+				ON B.CTKEY = X.CTKEY
+		INNER JOIN TWORK_MST_OW C
+				ON C.OWKEY = X.OWKEY
+		INNER JOIN TWORK_MST_IC D
+				ON D.CTKEY = X.CTKEY AND D.OWKEY = X.OWKEY AND D.ICKEY = X.ICKEY
+
+		  <where>
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				  AND     #{SEARCH_CONDITION}
+			  </if>
+		  </where>
+	</sql>
+
+	<select id="selectOwIcInfoCount" resultType="java.lang.Integer">
+		/* wms-report-owicxibobhistorysearch-sql-oracle.xml - selectOwIcInfoCount */
+		SELECT COUNT(1)
+		  FROM (
+		 	<include refid="selectOwIcInfoSql"/>
+		     )
+	</select>
+
+	<select id="selectOwIcInfo" resultType="camelMap">
+		/* wms-report-owicxibobhistorysearch-sql-oracle.xml - selectOwIcInfo */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectOwIcInfoSql"/>
+		 ORDER BY X.CTKEY, X.OWKEY, X.ICKEY
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectOwIcXIbObHistorySearchRefSql">
+		SELECT X.*
+		  FROM (
+		  	   SELECT A.IOTYPE, A.IBHDTYPE, A.CTKEY, B.CTNAME, A.OWKEY, C.OWNAME, A.ICKEY, D.ICNAME, E.ICGRNAME
+					, A.LOGGRPCD, A.IN_QTY, A.OUT_QTY, SUBSTR(A.IBCONFIRMDATE,1,8) AS IBCONFIRMDATE_IBOB, A.IBCONFIRMDATE
+					, A.IVATKEY, A.ATTRIBUTE3, A.PRODUCTLOT, A.SPEC, A.UOM, A.PRODUCTDATE, A.EXPIREDATE, A.IBEXPECTDATE
+		  		 FROM (
+					  SELECT 'IB' AS IOTYPE, TO1.CTKEY, TO1.OWKEY, TO1.ICKEY, TO1.IVATKEY, TO1.LOGGRPCD, TO1.ICGRKEY
+					       , TO1.IBHDTYPE, TO1.IBCONFIRMDATE, TO1.CFQTY AS IN_QTY, 0 OUT_QTY, TO1.ATTRIBUTE3, TO1.PRODUCTLOT
+					       , TO1.SPEC, TO1.UOM, TO1.PRODUCTDATE, TO1.EXPIREDATE, TO1.IBEXPECTDATE
+						FROM (
+							 SELECT T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY
+							      , T1.IBHDTYPE, T1.IBCONFIRMDATE, SUM(T1.CFQTY) AS CFQTY, T1.ATTRIBUTE3
+							      , T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.IBEXPECTDATE
+							   FROM (
+									SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY, E.LOGGRPCD, E.ICGRKEY
+									     , B.IBHDTYPE, COALESCE(CAST(D.CFQTY AS NUMERIC), 0) AS CFQTY, F.IBCONFIRMDATE, F.ATTRIBUTE3
+									     , F.PRODUCTLOT, E.SPEC, C.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+									  FROM TWORK_INFO_IB_HD B
+									 INNER JOIN TWORK_INFO_IB_DT C
+											 ON C.CTKEY = B.CTKEY
+									      	AND C.IBHDKEY = B.IBHDKEY
+									 INNER JOIN TWORK_INFO_IBCF_DT D
+											 ON D.CTKEY = C.CTKEY
+											AND D.EXTERNORDERKEY = C.EXTERNORDERKEY
+											AND D.EXTERNORDERLINENUM = C.EXTERNORDERLINENUM
+									 INNER JOIN TWORK_MST_IC E
+											 ON E.CTKEY = C.CTKEY
+											AND E.OWKEY = C.OWKEY
+											AND E.ICKEY = C.ICKEY
+									 INNER JOIN TWORK_INFO_IVAT F
+											 ON F.CTKEY = C.CTKEY
+											AND F.ICKEY = C.ICKEY
+											AND F.IVATKEY = D.TO_IVATKEY
+									 WHERE B.CTKEY = #{ctkey}
+									   AND B.IBHDTYPE IN ('10','40')
+									   AND C.WKSTATUS IN ('90', '91')
+
+									 UNION ALL
+
+									SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY AS IVATKEY, D.LOGGRPCD, D.ICGRKEY
+									     , B.IBHDTYPE, COALESCE(C.CFQTY, 0) AS CFQTY, F.IBCONFIRMDATE, F.ATTRIBUTE3
+									     , F.PRODUCTLOT, D.SPEC, D.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+									  FROM TWORK_INFO_IB_HD B
+									 INNER JOIN TWORK_INFO_IB_DT C
+									      	 ON C.CTKEY = B.CTKEY
+											AND C.IBHDKEY = B.IBHDKEY
+									 INNER JOIN TWORK_MST_IC D
+									    	 ON D.CTKEY = C.CTKEY
+											AND D.OWKEY = C.OWKEY
+											AND D.ICKEY = C.ICKEY
+									 INNER JOIN TWORK_INFO_IVAT F
+									  		 ON F.CTKEY = B.CTKEY
+											AND F.ICKEY = C.ICKEY
+											AND F.IVATKEY = C.TO_IVATKEY
+									 WHERE B.CTKEY = #{ctkey}
+									   AND B.IBHDTYPE NOT IN ('10', '40')
+									   AND C.WKSTATUS IN ('90', '91')
+								  ) T1
+							  GROUP BY T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY
+							         , T1.IBHDTYPE, T1.IBCONFIRMDATE, T1.ATTRIBUTE3
+							         , T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.IBEXPECTDATE
+						   ) TO1
+
+					   UNION ALL
+
+					  SELECT 'OB' AS IOTYPE, T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY
+					       , T1.OBHDTYPE, T1.OBCONFIRMDATE, 0 IN_QTY ,SUM(T1.CFQTY) AS OUT_QTY, T1.ATTRIBUTE3
+					       , T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+						FROM (
+							 SELECT A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY
+							      , A.OBHDTYPE, COALESCE(D.CFQTY, 0) AS CFQTY, B.OBCONFIRMDATE, F.ATTRIBUTE3
+							      , F.PRODUCTLOT, C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE
+							   FROM TWORK_INFO_OB_HD A
+							  INNER JOIN TWORK_INFO_OB_DT B
+							          ON B.CTKEY = A.CTKEY
+									 AND B.OWKEY = A.OWKEY
+									 AND B.OBHDKEY = A.OBHDKEY
+							  INNER JOIN TWORK_MST_IC C
+									  ON C.CTKEY = B.CTKEY
+									 AND C.OWKEY = B.OWKEY
+									 AND C.ICKEY = B.ICKEY
+							  INNER JOIN TWORK_INFO_PI_DT D
+									  ON D.CTKEY = B.CTKEY
+									 AND D.OWKEY = B.OWKEY
+									 AND D.ICKEY = B.ICKEY
+									 AND D.OBHDKEY = B.OBHDKEY
+									 AND D.OBDTKEY = B.OBDTKEY
+							  INNER JOIN TWORK_INFO_IVAT F
+									  ON F.CTKEY = A.CTKEY
+									 AND F.ICKEY = B.ICKEY
+									 AND F.IVATKEY = D.IVATKEY
+							  WHERE A.CTKEY = #{ctkey}
+								AND B.WKSTATUS IN ('90', '91')
+								AND D.WKSTATUS IN ('90', '91')
+								AND A.OBHDTYPE = '10'
+
+							  UNION ALL
+
+							 SELECT A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY
+							      , A.OBHDTYPE, COALESCE(D.CFQTY, 0) AS CFQTY, B.OBCONFIRMDATE, F.ATTRIBUTE3
+							      , F.PRODUCTLOT, C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE
+							   FROM TWORK_INFO_OB_HD A
+							  INNER JOIN TWORK_INFO_OB_DT B
+									  ON B.CTKEY = A.CTKEY
+									 AND B.OWKEY = A.OWKEY
+									 AND B.OBHDKEY = A.OBHDKEY
+
+							  INNER JOIN TWORK_MST_IC C
+									  ON C.CTKEY = B.CTKEY
+									 AND C.OWKEY = B.OWKEY
+									 AND C.ICKEY = B.ICKEY
+
+							  INNER JOIN TWORK_INFO_PI_DT D
+									  ON D.CTKEY = B.CTKEY
+									 AND D.OWKEY = B.OWKEY
+									 AND D.ICKEY = B.ICKEY
+									 AND D.OBHDKEY = B.OBHDKEY
+									 AND D.OBDTKEY = B.OBDTKEY
+							  INNER JOIN TWORK_INFO_IVAT F
+									  ON F.CTKEY = A.CTKEY
+									 AND F.ICKEY = B.ICKEY
+									 AND F.IVATKEY = D.IVATKEY
+							  WHERE A.CTKEY = #{ctkey}
+								AND B.WKSTATUS IN ('90', '91')
+								AND D.WKSTATUS IN ('90', '91')
+								AND A.OBHDTYPE != '10'
+						   ) T1
+					   GROUP BY T1.CTKEY, T1.OWKEY ,T1.ICKEY ,T1.IVATKEY ,T1.LOGGRPCD ,T1.ICGRKEY
+					          , T1.OBHDTYPE, T1.OBCONFIRMDATE, T1.ATTRIBUTE3, T1.PRODUCTLOT
+					          , T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+					) A
+				INNER JOIN TWORK_MST_CT B
+					    ON B.CTKEY = A.CTKEY
+				INNER JOIN TWORK_MST_OW C
+					    ON C.OWKEY = A.OWKEY
+				INNER JOIN TWORK_MST_IC D
+						ON D.CTKEY = A.CTKEY
+					   AND D.OWKEY = A.OWKEY
+					   AND D.ICKEY = A.ICKEY
+				INNER JOIN TWORK_MST_ICGR E
+						ON E.CTKEY = A.CTKEY
+				       AND E.OWKEY= A.OWKEY
+				       AND E.ICGRKEY = A.ICGRKEY
+			 ) X
+		 WHERE X.CTKEY = #{ctkey}
+		   AND X.OWKEY = #{owkey}
+		   AND X.ICKEY = #{ickey}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboIogbtype)">
+			AND X.IOTYPE = #{cboIogbtype}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboIbhdtype)">
+			AND X.IBHDTYPE = #{cboIbhdtype}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(calFromdate)">
+			AND X.IBCONFIRMDATE_IBOB <![CDATA[ >=  ]]> #{calFromdate}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(calTodate)">
+			AND X.IBCONFIRMDATE_IBOB <![CDATA[ <= ]]> #{calTodate}
+		</if>
+	</sql>
+
+	<select id="selectOwIcXIbObHistorySearchCount" resultType="java.lang.Integer">
+		/* wms-report-owicxibobhistorysearch-sql-oracle.xml - selectOwIcXIbObHistorySearchCount */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectOwIcXIbObHistorySearchRefSql"/>
+			 )
+	</select>
+
+	<select id="selectOwIcXIbObHistorySearch" resultType="camelMap">
+		/* wms-report-owicxibobhistorysearch-sql-oracle.xml - selectOwIcXIbObHistorySearch */
+		<include refid="selectOwIcXIbObHistorySearchRefSql"/>
+		ORDER BY X.CTKEY, X.OWKEY, X.ICKEY
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<resultMap id="selectOwIcXIbObHistorySearchRefMap" type="java.util.HashMap">
+		<result property="iogb" 				column="IOGB" />
+		<result property="iobhdtype" 			column="IOBHDTYPE" />
+		<result property="ctkey" 				column="CTKEY" />
+		<result property="owkey" 				column="OWKEY" />
+		<result property="owname" 				column="OWNAME" />
+		<result property="ickey" 				column="ICKEY"/>
+		<result property="icname" 				column="ICNAME" />
+		<result property="loggrpcd" 			column="LOGGRPCD" />
+		<result property="icgrname" 			column="ICGRNAME" />
+		<result property="in_qty" 				column="IN_QTY" />
+		<result property="out_qty" 				column="OUT_QTY" />
+		<result property="ibconfirmdate_ibob" 	column="IBCONFIRMDATE_IBOB" />
+		<result property="ivatkey" 				column="IVATKEY" />
+		<result property="attribute3"			column="ATTRIBUTE3" />
+		<result property="productlot"			column="PRODUCTLOT" />
+		<result property="spec"					column="SPEC" />
+		<result property="uom"					column="UOM" />
+		<result property="productdate"			column="PRODUCTDATE" />
+		<result property="expiredate"			column="EXPIREDATE" />		
+	</resultMap> 
+	
+	<resultMap id="selectOwIcXIbObHistorySearchMap" type="java.util.HashMap" extends="selectOwIcXIbObHistorySearchRefMap" >
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+	</resultMap> 
+	
+
+	
+
+	
+	<sql id="selectOwIcXIbObHistorySearchExcelSql"> 	
+		SELECT X.*
+			FROM
+				(SELECT CASE WHEN IOTYPE = 'IB' THEN '입고' ELSE '출고' END AS IOGB,
+					   CASE WHEN IOTYPE = 'IB' AND IBHDTYPE = '10'  THEN '일반입고'
+				            WHEN IOTYPE = 'IB' AND IBHDTYPE = '40'  THEN '보세입고'
+				            WHEN IOTYPE = 'IB' AND IBHDTYPE = '180' THEN '기타입고'
+				            WHEN IOTYPE = 'IB' AND IBHDTYPE = '190' THEN '화주변경입고'
+				            WHEN IOTYPE = 'IB' AND IBHDTYPE = '50'  THEN '반품입고'
+				            WHEN IOTYPE = 'OB' AND IBHDTYPE = '10'  THEN '일반출고'
+				            WHEN IOTYPE = 'OB' AND IBHDTYPE = '180' THEN '기타출고'
+				            WHEN IOTYPE = 'OB' AND IBHDTYPE = '450' THEN '화주변경출고'
+				            WHEN IOTYPE = 'OB' AND IBHDTYPE = '120' THEN '폐기출고(일반)'
+				            WHEN IOTYPE = 'OB' AND IBHDTYPE = '430' THEN '폐기출고(보세)'
+				            ELSE IBHDTYPE
+				       END AS IOBHDTYPE_KOR
+				      ,IOTYPE
+				      ,IBHDTYPE
+				      ,CTKEY  
+				      ,OWKEY
+				      ,(SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY=A.OWKEY) AS OWNAME          
+				      ,ICKEY
+				      ,(SELECT ICNAME FROM TWORK_MST_IC WHERE CTKEY=A.CTKEY AND OWKEY=A.OWKEY AND ICKEY=A.ICKEY) AS ICNAME
+				      ,CASE WHEN A.LOGGRPCD = '4'  THEN '초저온'
+				            WHEN A.LOGGRPCD = '3'  THEN '냉동'
+				            WHEN A.LOGGRPCD = '2'  THEN '냉장'
+				            WHEN A.LOGGRPCD = '1'  THEN '상온'
+				            ELSE A.LOGGRPCD
+				       END AS LOGGRPCD
+				      ,(SELECT ICGRNAME FROM TWORK_MST_ICGR WHERE CTKEY = A.CTKEY AND OWKEY= A.OWKEY AND ICGRKEY = A.ICGRKEY) AS ICGRNAME
+				      ,IN_QTY
+				      ,OUT_QTY
+				      ,SUBSTR(IBCONFIRMDATE,1,8) AS IBCONFIRMDATE_IBOB 
+				      ,IBCONFIRMDATE
+				      ,IVATKEY
+				      ,ATTRIBUTE3
+				      ,PRODUCTLOT
+				      ,SPEC
+				      ,UOM
+				      ,PRODUCTDATE
+				      ,EXPIREDATE
+				      ,IBEXPECTDATE
+				FROM   ( 
+				       SELECT 'IB' AS IOTYPE, TO1.CTKEY, TO1.OWKEY, TO1.ICKEY, TO1.IVATKEY, TO1.LOGGRPCD, TO1.ICGRKEY, TO1.IBHDTYPE, TO1.IBCONFIRMDATE, TO1.CFQTY IN_QTY , 
+		                                      0 OUT_QTY, TO1.ATTRIBUTE3, TO1.PRODUCTLOT, TO1.SPEC, TO1.UOM, TO1.PRODUCTDATE, TO1.EXPIREDATE, TO1.IBEXPECTDATE
+				       FROM   (                       
+				              SELECT T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY,T1.IBHDTYPE, T1.IBCONFIRMDATE, SUM(T1.CFQTY) AS CFQTY, T1.ATTRIBUTE3, 
+		                             T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.IBEXPECTDATE
+				              FROM   (   
+				                     SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY, E.LOGGRPCD, E.ICGRKEY, B.IBHDTYPE, COALESCE(CAST(D.CFQTY AS NUMERIC), 0) AS CFQTY, 
+		                                    F.IBCONFIRMDATE, F.ATTRIBUTE3, F.PRODUCTLOT, 
+		                                    E.SPEC, C.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+				                     FROM   TWORK_INFO_IB_HD B
+				                           ,TWORK_INFO_IB_DT C
+				                           ,TWORK_INFO_IBCF_DT D
+				                           ,TWORK_MST_IC E
+				                           ,TWORK_INFO_IVAT F  
+				                     WHERE  B.CTKEY     = '100'
+				                     AND    B.IBHDTYPE IN ('10','40')
+				                     AND    C.WKSTATUS IN ('90', '91') 
+				                     AND    B.CTKEY     = C.CTKEY
+				                     AND    B.IBHDKEY   = C.IBHDKEY
+				                     AND    C.CTKEY              = D.CTKEY
+				                     AND    C.EXTERNORDERKEY     = D.EXTERNORDERKEY
+				                     AND    C.EXTERNORDERLINENUM = D.EXTERNORDERLINENUM                                      
+				                     AND    C.CTKEY     = E.CTKEY
+				                     AND    C.OWKEY     = E.OWKEY
+				                     AND    C.ICKEY     = E.ICKEY
+				                     AND    C.CTKEY     = F.CTKEY 
+				                     AND    C.ICKEY     = F.ICKEY 
+				                     AND    D.TO_IVATKEY   = F.IVATKEY  
+				                     UNION ALL
+				                     SELECT B.CTKEY, B.OWKEY, C.ICKEY, F.IVATKEY AS IVATKEY, D.LOGGRPCD, D.ICGRKEY, B.IBHDTYPE, COALESCE(C.CFQTY, 0) AS CFQTY, F.IBCONFIRMDATE, 
+		                                    F.ATTRIBUTE3, F.PRODUCTLOT, D.SPEC, D.UOM, F.PRODUCTDATE, F.EXPIREDATE, B.IBEXPECTDATE
+				                     FROM   TWORK_INFO_IB_HD B
+				                           ,TWORK_INFO_IB_DT C
+				                           ,TWORK_MST_IC D
+				                           ,TWORK_INFO_IVAT F
+				                     WHERE  B.CTKEY     = '100'
+				                     AND    B.IBHDTYPE NOT IN ('10','40')      
+				                     AND    C.WKSTATUS IN ('90', '91')                                        
+				                     AND    B.CTKEY     = C.CTKEY
+				                     AND    B.IBHDKEY   = C.IBHDKEY
+				                     AND    C.CTKEY     = D.CTKEY
+				                     AND    C.OWKEY     = D.OWKEY
+				                     AND    C.ICKEY     = D.ICKEY
+				                     AND    B.CTKEY     = F.CTKEY 
+				                     AND    C.ICKEY     = F.ICKEY 
+				                     AND    C.TO_IVATKEY   = F.IVATKEY     
+				                     ) T1  
+				                       GROUP BY T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY, T1.IBHDTYPE, T1.IBCONFIRMDATE, T1.ATTRIBUTE3, T1.PRODUCTLOT, 
+		                                        T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.IBEXPECTDATE
+				              ) TO1  
+				       UNION ALL
+				       SELECT  'OB' AS IOTYPE, T1.CTKEY, T1.OWKEY, T1.ICKEY, T1.IVATKEY, T1.LOGGRPCD, T1.ICGRKEY, T1.OBHDTYPE, T1.OBCONFIRMDATE, 0 IN_QTY ,SUM(T1.CFQTY) AS OUT_QTY, 
+		                                       T1.ATTRIBUTE3, T1.PRODUCTLOT, T1.SPEC, T1.UOM, T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+				       FROM    (     
+				               SELECT  A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY ,A.OBHDTYPE  ,COALESCE(D.CFQTY, 0) AS CFQTY, E.OBCONFIRMDATE, F.ATTRIBUTE3, F.PRODUCTLOT, 
+		                               C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE 
+				               FROM    TWORK_INFO_OB_HD A
+				                      ,TWORK_INFO_OB_DT B
+				                      ,TWORK_MST_IC C 
+				                      ,TWORK_INFO_PI_DT D
+				                      ,TWORK_INFO_WAVE_DT E 
+				                      ,TWORK_INFO_IVAT F   
+				               WHERE   1=1   
+				               AND     A.CTKEY     = '100'
+				               AND     B.WKSTATUS IN ('90', '91') 
+				               AND     D.WKSTATUS IN ('90', '91')      
+				               AND     A.OBHDTYPE = '10' 
+				               AND     A.CTKEY     = B.CTKEY
+				               AND     A.OWKEY     = B.OWKEY
+				               AND     A.OBHDKEY   = B.OBHDKEY
+				               AND     B.CTKEY     = C.CTKEY
+				               AND     B.OWKEY     = C.OWKEY
+				               AND     B.ICKEY     = C.ICKEY   
+				               AND     B.CTKEY     = D.CTKEY
+				               AND     B.OWKEY     = D.OWKEY
+				               AND     B.ICKEY     = D.ICKEY
+				               AND     B.OBHDKEY   = D.OBHDKEY   
+				               AND     B.OBDTKEY   = D.OBDTKEY 
+				               AND     D.CTKEY     = E.CTKEY
+				               AND     D.WAKEY     = E.WAKEY
+				               AND     B.EXTERNORDERKEY     = E.EXTERNORDERKEY
+				               AND     B.EXTERNORDERLINENUM = E.EXTERNORDERLINENUM  
+				               AND     A.CTKEY = F.CTKEY
+				               AND     B.ICKEY  = F.ICKEY
+				               AND     D.IVATKEY = F.IVATKEY                    
+				               UNION ALL
+				                SELECT  A.CTKEY, A.OWKEY, B.ICKEY, F.IVATKEY, C.LOGGRPCD, C.ICGRKEY, A.OBHDTYPE, COALESCE(D.CFQTY, 0) AS CFQTY, B.OBCONFIRMDATE, F.ATTRIBUTE3, F.PRODUCTLOT, 
+		                               C.SPEC, B.UOM, F.PRODUCTDATE, F.EXPIREDATE, A.OBREQUESTDATE
+				               FROM    TWORK_INFO_OB_HD A
+				                      ,TWORK_INFO_OB_DT B
+				                      ,TWORK_MST_IC C 
+				                      ,TWORK_INFO_PI_DT D   
+				                      ,TWORK_INFO_IVAT F     
+				               WHERE   1=1   
+				               AND     A.CTKEY     = '100'
+				               AND     B.WKSTATUS IN ('90', '91') 
+				               AND     D.WKSTATUS IN ('90', '91')
+				               AND     A.OBHDTYPE != '10'  
+				               AND     A.CTKEY     = B.CTKEY
+				               AND     A.OWKEY     = B.OWKEY
+				               AND     A.OBHDKEY   = B.OBHDKEY
+				               AND     B.CTKEY     = C.CTKEY
+				               AND     B.OWKEY     = C.OWKEY
+				               AND     B.ICKEY     = C.ICKEY   
+				               AND     B.CTKEY     = D.CTKEY
+				               AND     B.OWKEY     = D.OWKEY
+				               AND     B.ICKEY     = D.ICKEY
+				               AND     B.OBHDKEY   = D.OBHDKEY   
+				               AND     B.OBDTKEY   = D.OBDTKEY  
+				               AND     A.CTKEY = F.CTKEY
+				               AND     B.ICKEY = F.ICKEY 
+				               AND     D.IVATKEY = F.IVATKEY                       
+				               ) T1
+				        GROUP BY T1.CTKEY, T1.OWKEY ,T1.ICKEY ,T1.IVATKEY ,T1.LOGGRPCD ,T1.ICGRKEY,T1.OBHDTYPE, T1.OBCONFIRMDATE, T1.ATTRIBUTE3, T1.PRODUCTLOT, T1.SPEC, T1.UOM, 
+		                         T1.PRODUCTDATE, T1.EXPIREDATE, T1.OBREQUESTDATE
+				        ) A 
+				        ) X
+		WHERE  X.CTKEY = #{ctkey}
+		AND	   X.OWKEY = #{owkey}
+	</sql>
+		
+		
+
+		
+
+
+
+
+
+
+	
+	<select id="selectOwIcXIbObHistorySearchSum" resultMap="selectOwIcXIbObHistorySearchMap">
+		SELECT SUM(IN_QTY) AS IN_QTY, SUM(OUT_QTY) AS OUT_QTY
+		  FROM (
+		  	<include refid="selectOwIcXIbObHistorySearchRefSql"/>	
+		  ) 
+	</select>
+</mapper>

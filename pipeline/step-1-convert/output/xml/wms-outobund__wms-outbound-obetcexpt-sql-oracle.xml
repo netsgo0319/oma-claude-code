@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObEtcExptMapper">
+	<sql id="etcExptSql">
+		/* wms-outbound-etcexpt-sql-oracle.xml - etcExptSql - 기타반출 - 기타반출 대상 조회 SQL */
+		SELECT 0 AS CHK /*체크박스*/
+			 , MV.CTKEY /*센터코드*/
+			 , MV.OWKEY /*화주코드*/
+			 , MV.SEQNO /*일련번호*/
+			 , CT.CTNM /*센터명*/
+			 , MV.IVMOVECLOSDATE /*재고이동완료일시*/
+			 , MV.IVMOVERSNCD /*재고이동사유코드*/
+			 , MV.ICKEY /*상품코드*/
+			 , ICB.BARCODE /*바코드*/
+			 , IC.ICNM /*상품명*/
+			 , MV.IVATKEY /*재고속성코드*/
+			 , MV.FRLCKEY /*FROM로케이션코드*/
+			 , ZN.ZNNM AS TOZNKEY /*TO존코드*/
+			 , MV.TOLCKEY /*TO로케이션코드*/
+			 , MV.UOM /*단위*/
+			 , CASE WHEN MV.QTY > 0 THEN ROUND(MV.QTY / COALESCE(ICUT.ICUNITQTY, 1),2) ELSE MV.QTY END AS QTYUNIT /*이동수량(단위)*/
+			 , MV.QTY /*수량*/
+			 , MV.EXPTQTY /*반출수량*/
+			 , 0 AS INPUTQTY /*입력수량*/
+			 , MV.EXPTRSNCD /*반출사유코드*/
+			 , MV.EXPTRSNDTCONT /*반출사유상세내용*/
+			 , MV.INSERTURKEY /*입력사용자*/
+			 , MV.INSERTDATE /*입력일자*/
+			 , MV.UPDATEURKEY /*수정사용자*/
+			 , MV.UPDATEDATE /*수정일자*/
+			 , MV.IVMOVEDTCONT /*재고이동상세내용*/
+			 , CASE WHEN MV.QTY = MV.EXPTQTY
+                    THEN 'N'
+                    ELSE 'Y'
+				END AS QTY_EDITABLE_YN /*입력수량 입력가능여부*/
+		  FROM (
+				SELECT CTKEY, OWKEY, SEQNO, IVMOVECLOSDATE, IVMOVERSNCD, IVMOVEDTCONT, ICKEY, IVATKEY
+					 , FRLCKEY, TOZNKEY, TOLCKEY, UOM, QTY, EXPTQTY, EXPTRSNCD, EXPTRSNDTCONT
+					 , INSERTURKEY, INSERTDATE, UPDATEURKEY, UPDATEDATE
+				  FROM TWORK_INFO_IV_AD_MOVE /*재고관리자이동내역*/
+				 WHERE TOZNKEY IN ('DFS', 'DMS', 'DNS', 'DFR', 'DMR', 'DNR', 'DMN', 'DMG') /*DFS: 센터내불량존, DMS: 센터내파손존, DNS: 센터내기부존, DFR:고객반품불량존, DMR: 고객반품파손존, DNR: 고객반품기부존, DMN: 고객반품미회수존*, DMG: 고객반품파손-식품존/
+				   AND IVMOVEDIVCD IN ('10', '30') /*재고이동구분코드 10:관리자이동, 30:반품 재고이동*/
+			   ) MV
+		 INNER JOIN TWORK_MST_ICBARCODE ICB /*상품바코드 마스터*/
+			ON MV.CTKEY = ICB.CTKEY
+		   AND MV.OWKEY = ICB.OWKEY
+		   AND MV.ICKEY = ICB.ICKEY
+		   AND MV.UOM = ICB.UOM
+		INNER JOIN TWORK_MST_ZN ZN
+		   ON MV.CTKEY = ZN.CTKEY
+		  AND MV.TOZNKEY = ZN.ZNKEY
+		INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+			ON ICB.CTKEY = IC.CTKEY
+		   AND ICB.OWKEY = IC.OWKEY
+		   AND ICB.ICKEY = IC.ICKEY
+		 INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+			ON MV.CTKEY = CT.CTKEY
+		LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT
+			ON MV.CTKEY = ICUT.CTKEY
+			AND MV.OWKEY = ICUT.OWKEY
+			AND MV.ICKEY = ICUT.ICKEY
+			AND MV.UOM = ICUT.ICUNITTYPECD
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+		       #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectEtcExptCount" resultType="java.lang.Integer">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptCount - 기타반출 - 기타반출 대상 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="etcExptSql"/>
+		)
+	</select>
+
+	<select id="selectEtcExptList" resultType="camelMap">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptList - 기타반출 - 기타반출 대상 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		<include refid="etcExptSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="etcExptHsSql">
+		/* wms-outbound-etcexpt-sql-oracle.xml - etcExptHsSql - 기타반출 - 기타반출 대상 이력조회 SQL */
+		SELECT IVHS.CTKEY /*센터 코드*/
+			 , IVHS.OWKEY
+			 , CT.CTNM /*센터명*/
+			 , IVHS.INSERTDATE AS IVCHGDATE /*반출일시*/
+			 , IVHS.ICKEY /*상품 코드*/
+			 , ICB.BARCODE /*바코드*/
+			 , IC.ICNM /*상품명*/
+			 , IVHS.IVATKEY /*재고 속성 코드*/
+			 , IVHS.FRLCKEY /*FROM 로케이션 코드*/
+			 , IVHS.UOM /*단위(UOM)*/
+			 , IVHS.QTY /*반출수량*/
+			 , (IVHS.QTY * IC.SLPRC) AS SLPRC /*금액*/
+			 , IVHS.EXPTRSNCD /*반출사유*/
+			 , IVHS.EXPTRSNDTCONT /*상세사유*/
+			 , IVHS.INSERTURKEY /*입력자*/
+			 , IVHS.INSERTDATE /*입력 일시*/
+			 , IVHS.UPDATEURKEY /*수정자*/
+			 , IVHS.UPDATEDATE /*수정 일시*/
+		  FROM TWORK_INFO_IVHS IVHS /*상품재고이력정보*/
+		 INNER JOIN TWORK_MST_ICBARCODE ICB /*상품바코드 마스터*/
+			ON IVHS.CTKEY = ICB.CTKEY
+		   AND IVHS.OWKEY = ICB.OWKEY
+		   AND IVHS.ICKEY = ICB.ICKEY
+		   AND IVHS.UOM = ICB.UOM
+		 INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+			ON ICB.CTKEY = IC.CTKEY
+		   AND ICB.OWKEY = IC.OWKEY
+		   AND ICB.ICKEY = IC.ICKEY
+		 INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+			ON IVHS.CTKEY = CT.CTKEY
+		 WHERE IVHS.CTKEY = #{ctkey}
+		   AND IVHS.OWKEY = #{owkey}
+		   AND IVHS.IVHSTYPECD = #{ivhstypecd}
+		   AND IVHS.IVATKEY = #{ivatkey}
+		   AND IVHS.ICKEY = #{ickey}
+		   AND IVHS.FRLCKEY = #{lckey}
+		ORDER BY IVHS.IVHSKEY DESC
+	</sql>
+
+	<select id="selectEtcExptHsCount" resultType="java.lang.Integer">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptHsCount - 기타반출 - 기타반출 대상 이력조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="etcExptHsSql"/>
+		)
+	</select>
+
+	<select id="selectEtcExptHsList" resultType="camelMap">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptHsList - 기타반출 - 기타반출 대상 이력조회 */
+		SELECT *
+		  FROM (
+		<include refid="etcExptHsSql"/>
+		)
+	</select>
+
+	<update id="etcExptIvAdMvUpdate">
+		/* wms-outbound-etcexpt-sql-oracle.xml - etcExptIvAdMvUpdate - 기타반출 - 재고관리자이동내역 update */
+		UPDATE TWORK_INFO_IV_AD_MOVE
+		   SET EXPTRSNCD = #{exptrsncd}
+		     , EXPTRSNDTCONT = #{exptrsndtcont}
+			 , EXPTQTY = EXPTQTY + #{inputqty}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND SEQNO = #{seqno}
+	</update>
+
+	<sql id="etcExptIvSql">
+		/* wms-outbound-etcexpt-sql-oracle.xml - etcExptIvSql - 기타반출 - 로케이션별 재고정보 조회 SQL */
+		SELECT IVLC.CTKEY /*센터 코드*/
+			 , CT.CTNM /*센터명*/
+			 , IVLC.OWKEY /*화주 코드*/
+			 , ZN.ZNNM /*존명*/
+			 , AR.ARNM /*구역명*/
+			 , IVLC.LCKEY /*로케이션 코드*/
+			 , IVLC.ICKEY /*상품코드*/
+			 , IC.ICNM /*상품명*/
+			 , IVLC.TOTQTY /*총수량*/
+			 , IVLC.AVQTY /*가용수량*/
+			 , IVLC.ALQTY /*할당수량*/
+			 , IVLC.HOLDQTY /*보류수량*/
+			 , (IVLC.TOTQTY * IC.SLPRC) AS SLPRC /*금액*/
+			 , IVLC.INSERTDATE /*입력 일시*/
+			 , IVLC.INSERTURKEY /*입력 사용자 ID*/
+			 , IVLC.UPDATEDATE /*수정 일시*/
+			 , IVLC.UPDATEURKEY /*수정 사용자 ID*/
+		  FROM TWORK_INFO_IVATXLC IVLC /*재고 속성별 로케이션별 재고 정보*/
+		 INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+			ON IVLC.CTKEY = IC.CTKEY
+		   AND IVLC.OWKEY = IC.OWKEY
+		   AND IVLC.ICKEY = IC.ICKEY
+		 INNER JOIN TWORK_MST_ICBARCODE ICB /*상품바코드 마스터*/
+			ON IC.CTKEY = ICB.CTKEY
+		   AND IC.OWKEY = ICB.OWKEY
+		   AND IC.ICKEY = ICB.ICKEY
+		 INNER JOIN TWORK_MST_LC LC /*로케이션 마스터*/
+			ON IVLC.CTKEY = LC.CTKEY
+		   AND IVLC.LCKEY = LC.LCKEY
+		 INNER JOIN TWORK_MST_AR AR /*구역 마스터*/
+			ON LC.CTKEY = AR.CTKEY
+		   AND LC.ZNKEY = AR.ZNKEY
+		   AND LC.ARKEY = AR.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN /*존 마스터*/
+			ON AR.CTKEY = ZN.CTKEY
+		   AND AR.ZNKEY = ZN.ZNKEY
+		 INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+			ON ZN.CTKEY = CT.CTKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			   #{SEARCH_CONDITION}
+			</if>
+		   AND ICB.UOM = 'EA'
+		   AND ZN.ZNKEY IN ('DFS', 'DMS', 'DNS', 'DFR', 'DMR', 'DNR', 'DMN', 'DMG') /*DFS: 센터내불량존, DMS: 센터내파손존, DNS: 센터내기부존, DFR:고객반품불량존, DMR: 고객반품파손존, DNR: 고객반품기부존, DMN: 고객반품미회수존, DMG: 고객반품파손-식품존 */
+		</where>
+	</sql>
+
+	<select id="selectEtcExptIvCount" resultType="java.lang.Integer">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptIvCount - 기타반출 - 로케이션별 재고정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="etcExptIvSql"/>
+		)
+	</select>
+
+	<select id="selectEtcExptIvList" resultType="camelMap">
+		/* wms-outbound-etcexpt-sql-oracle.xml - selectEtcExptIvList - 기타반출 - 로케이션별 재고정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		<include refid="etcExptIvSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+</mapper>
