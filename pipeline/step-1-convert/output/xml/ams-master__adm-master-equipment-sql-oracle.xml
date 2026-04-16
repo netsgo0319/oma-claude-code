@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.EquipmentMapper">
+
+	<select id="selectEquipmentCount" resultType="java.lang.Integer">
+		/* adm-master-equipment-sql-oracle.xml  selectEquipmentCount */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_EQ A
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)">
+			AND APKEY = #{apkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqkey)">
+			AND EQKEY = #{eqkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(prtype)">
+			AND PRTYPE = #{prtype}
+		</if>
+	</select>
+
+	<select id="selectEquipment" resultType="camelMap">
+		/* adm-master-equipment-sql-oracle.xml  selectEquipment */
+		SELECT
+			  '0' AS CHK
+			, A.APKEY
+			, B.APNM
+			, A.EQKEY
+			, A.EQNM
+			, A.EQTYPE
+			, A.IPADDR
+			, A.PRTYPE
+			, A.DLVRYCORP
+			, A.CLOSDATE
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		FROM TADMIN_MST_EQ A
+		LEFT OUTER JOIN TADMIN_MST_AP B
+			ON B.APKEY = A.APKEY
+       	WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(apkey)">
+			AND A.APKEY = #{apkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqkey)">
+			AND A.EQKEY = #{eqkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(prtype)">
+			AND A.PRTYPE = #{prtype}
+		</if>
+		ORDER BY
+			A.UPDATEDATE DESC
+	</select>
+
+	<select id="selectPkTAdminMstEq" resultType="camelMap">
+		/* adm-master-equipment-sql-oracle.xml  selectPkTAdminMstEq */
+		SELECT
+		      APKEY
+			, EQKEY
+			, EQTYPE
+			, PRTYPE
+			, IPADDR
+			, EQNM
+			, DLVRYCORP
+		    , CLOSDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		FROM TADMIN_MST_EQ
+		WHERE APKEY = #{apkey}
+		AND EQKEY = #{eqkey}
+		AND PRTYPE = #{prtype}
+	</select>
+
+	<insert id="insertEquipment" >
+		/* adm-master-equipment-sql-oracle.xml  insertEquipment */
+		INSERT INTO TADMIN_MST_EQ(
+			  APKEY
+			, EQKEY
+			, EQTYPE
+			, IPADDR
+			, EQNM
+			, PRTYPE
+			, DLVRYCORP
+			, CLOSDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{apkey}
+			, #{eqkey}
+			, #{eqtype}
+			, #{ipaddr}
+			, #{eqnm}
+			, #{prtype}
+			, #{dlvrycorp}
+			, #{closdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateEquipment">
+		/* adm-master-equipment-sql-oracle.xml  updateEquipment */
+		UPDATE TADMIN_MST_EQ
+		SET
+			EQTYPE = #{eqtype}
+		  , IPADDR = #{ipaddr}
+		  , EQNM = #{eqnm}
+		  , DLVRYCORP = #{dlvrycorp}
+		  , CLOSDATE = #{closdate}
+		  ,UPDATEDATE = #{sysdate}
+		  ,UPDATEURKEY = #{surkey}
+		WHERE APKEY = #{apkey}
+		AND EQKEY = #{eqkey}
+		AND PRTYPE = #{prtype}
+	</update>
+
+	<delete id="deleteEquipment">
+		/* adm-master-equipment-sql-oracle.xml  deleteEquipment */
+		DELETE
+		FROM TADMIN_MST_EQ
+		WHERE APKEY = #{apkey}
+		AND EQKEY = #{eqkey}
+		AND PRTYPE = #{prtype}
+	</delete>
+
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-master-equipment-sql-oracle.xml  selectTAdminMstCt */
+		SELECT '0' AS CHK
+			 , CTKEY
+			 , CTNM
+		FROM TADMIN_MST_CT
+		WHERE DELYN = 'N'
+		  AND MANAGEMENTYN = 'Y'
+	</select>
+
+	<select id="selectTAdminMstEqxct" resultType="camelMap">
+		/* adm-master-equipment-sql-oracle.xml  selectTAdminMstEqxct */
+		SELECT
+			'0' AS CHK
+			 , C.CTKEY
+			 , C.CTNM
+			 , A.APKEY
+			 , A.EQKEY
+			 , A.EQNM
+			 , A.IPADDR
+			 , A.PRTYPE
+		FROM TADMIN_MST_EQ A
+		INNER JOIN TADMIN_MST_EQXCT B
+			ON B.APKEY = A.APKEY AND B.EQKEY = A.EQKEY AND B.PRTYPE = A.PRTYPE
+		INNER JOIN TADMIN_MST_CT C
+			ON C.CTKEY = B.CTKEY
+		WHERE A.APKEY = #{apkey}
+		  AND A.EQKEY = #{eqkey}
+		  AND A.PRTYPE = #{prtype}
+		  AND C.DELYN = 'N'
+	</select>
+
+	<insert id="insertTAdminMstEqxct" >
+		/* adm-master-equipment-sql-oracle.xml  insertTAdminMstEqxct */
+		INSERT INTO TADMIN_MST_EQXCT(
+			  CTKEY
+			, APKEY
+			, EQKEY
+			, PRTYPE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{ctkey}
+			, #{apkey}
+			, #{eqkey}
+			, #{prtype}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<delete id="deleteTAdminMstEqxct">
+		/* adm-master-equipment-sql-oracle.xml  deleteTAdminMstEqxct */
+		DELETE
+		FROM TADMIN_MST_EQXCT
+		WHERE APKEY = #{apkey}
+		AND EQKEY = #{eqkey}
+		AND PRTYPE = #{prtype}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+
+</mapper>	

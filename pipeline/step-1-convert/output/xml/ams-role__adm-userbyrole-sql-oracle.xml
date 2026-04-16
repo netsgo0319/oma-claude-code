@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.UserByRoleAdmMapper">
+	
+	<resultMap id="selectUserByRoleMap" type="java.util.HashMap">
+		<result property="appKey" column="APKEY" />
+		<result property="ownerKey" column="OWKEY" />
+		<result property="owname" column="OWNAME" />
+		<result property="centerKey" column="CTKEY" />
+		<result property="centerKey_desc" column="CTKEY_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="ctnm" column="CTNM" />
+		<result property="userScrnKey" column="USKEY" />
+		<result property="userScrnObjectKey" column="USOBTYPE" />
+		<result property="menuKey" column="MEKEY" />
+		<result property="owkey" column="OWKEY" />
+	</resultMap>
+	
+	<select id="actionLoginCount" resultType="java.lang.Integer">
+		/* adm-userbyrole-sql-oracle.xml - actionLoginCount */
+		<![CDATA[			
+		SELECT COUNT(1)
+		 FROM TADMIN_MST_UR
+		WHERE URKEY = #{urkey}
+		  AND DELYN = 'N'
+		AND CLOSDATE < #{sysdate}
+		]]>	
+	</select>
+		
+	<select id="actionLogin" resultType="LoginVO">
+		/* adm-userbyrole-sql-oracle.xml - actionLogin */
+		<![CDATA[			
+		SELECT 	A.URKEY
+			    ,A.URPW
+			    ,A.URNM
+			    ,A.URGRKEY
+		     	,A.LAKEY
+			    ,'PASS' AS CHGPW
+			    ,A.DST
+	            ,( SELECT UTCOFFSET
+	                FROM TADMIN_MST_TZ_HD
+	                WHERE TZKEY=A.TZKEY
+	            ) AS UTCOFFSET
+			    ,A.CTKEY
+				,C.CTNM AS CTKEY_DESC
+			    ,A.OWKEYM AS OWKEY
+			    ,A.LOGINFAILCNT
+	            ,A.DIVCD
+	            ,A.LOGGRPCD
+	            ,A.URTYP
+	            ,A.RSTCDIV
+	            ,A.RSTCLGST
+	            ,A.IPADDR AS UNIQUEADDR
+	            ,A.REPACKEY
+            	,B.ICGRPKEY
+            	,A.QUIESCENCEYN
+		  FROM 	TADMIN_MST_UR A
+		  LEFT OUTER JOIN TADMIN_MST_AC B
+		      		   ON A.URKEY = B.URKEY
+		  LEFT OUTER JOIN TADMIN_MST_CT C
+		  		   	   ON A.CTKEY = C.CTKEY
+		 WHERE 
+				A.URKEY = #{urkey}
+		   AND  A.DELYN = 'N'
+		]]>
+	</select>
+
+	<sql id="selectUrUnionUrGrByRole">
+		/* adm-userbyrole-sql-oracle.xml - selectUrUnionUrGrByRole */
+			SELECT TB3.ROKEY
+              FROM TADMIN_MST_UR TB1
+              INNER JOIN TADMIN_MST_URGR TB2
+                  	  ON TB1.URGRKEY = TB2.URGRKEY
+              INNER JOIN TADMIN_MST_URGRXROGT TB3
+              	  	  ON TB1.URGRKEY = TB3.URGRKEY
+               WHERE 1 = 1
+				<choose>
+					<when test='urkey !=null'>
+						AND TB1.URKEY = #{urkey}
+					</when>	
+					<otherwise>
+						AND TB1.URKEY = #{surkey}
+					</otherwise>
+				</choose>
+               UNION 
+               SELECT ROKEY
+                FROM TADMIN_MST_URXROGT 
+               WHERE 1=1
+				<choose>
+					<when test='urkey !=null'>
+						AND URKEY = #{urkey}
+					</when>	
+					<otherwise>
+						AND URKEY = #{surkey}
+					</otherwise>
+				</choose>
+	</sql>
+
+	<select id="selectAppKeyRoleAuth" resultType="camelMap">
+		/* adm-userbyrole-sql-oracle.xml - selectAppKeyRoleAuth */
+            SELECT A.APKEY
+            FROM TADMIN_MST_ROXAPGT A
+            INNER JOIN (
+					SELECT TB3.ROKEY
+		                FROM TADMIN_MST_UR TB1
+		                INNER JOIN TADMIN_MST_URGR TB2
+		                    	ON TB1.URGRKEY = TB2.URGRKEY
+		                INNER JOIN TADMIN_MST_URGRXROGT TB3
+		                		ON TB1.URGRKEY = TB3.URGRKEY
+		               WHERE TB1.URKEY = #{urkey}
+		               UNION 
+		               SELECT ROKEY
+		                FROM TADMIN_MST_URXROGT 
+		               WHERE URKEY = #{urkey}
+                ) B ON A.ROKEY=B.ROKEY
+            GROUP BY A.APKEY	
+	</select>
+	
+	<select id="selectAppKeyRoleAll" resultMap="selectUserByRoleMap" >
+		/* adm-userbyrole-sql-oracle.xml - selectAppKeyRoleAll */
+		<![CDATA[			
+            SELECT APKEY
+			 FROM TADMIN_MST_AP
+			 WHERE ISOFFLINE = 'N'
+		]]>	
+	</select>
+	
+	<select id="selectOwnerKeyRole" resultMap="selectUserByRoleMap" >
+		/* adm-userbyrole-sql-oracle.xml - selectOwnerKeyRole */
+            SELECT A.OWKEY , C.OWNM
+              FROM TADMIN_MST_ROXOWGT A
+              INNER JOIN (<include refid="selectUrUnionUrGrByRole"/>) B
+                  	  ON A.ROKEY = B.ROKEY
+              INNER JOIN TADMIN_MST_OW C
+              		  ON A.OWKEY = C.OWKEY
+          GROUP BY A.OWKEY , C.OWNM
+	</select>
+	
+	<select id="selectCenterKeyRole" resultMap="selectUserByRoleMap" >
+		/* adm-userbyrole-sql-oracle.xml - selectCenterKeyRole */
+			SELECT C.CTKEY , C.CTNM
+			FROM TADMIN_MST_ROXCTGT A
+			INNER JOIN (
+				<include refid="selectUrUnionUrGrByRole"/>
+			    ) B ON A.ROKEY=B.ROKEY
+			INNER JOIN TADMIN_MST_CT C
+					ON A.CTKEY=C.CTKEY
+		    GROUP BY C.CTKEY , C.CTNM
+		    ORDER BY C.CTKEY
+	</select>
+	
+	<select id="selectMenuObjectKeyRole" resultMap="selectUserByRoleMap" >
+		/* adm-userbyrole-sql-oracle.xml - selectMenuObjectKeyRole */
+            SELECT A.APKEY, A.USKEY, A.USOBTYPE, C.MEKEY
+            FROM TADMIN_MST_ROXUSOBGT A
+            INNER JOIN (
+				<include refid="selectUrUnionUrGrByRole"/>
+                ) B ON A.ROKEY=B.ROKEY
+            INNER JOIN TADMIN_MST_ME C
+            		ON A.USKEY = C.USKEY
+				   AND A.APKEY = C.APKEY
+            WHERE A.APKEY = #{appKey}
+                AND C.DELYN <![CDATA[ <> ]]> 'Y'
+            GROUP BY A.APKEY, A.USKEY, A.USOBTYPE, C.MEKEY			
+	</select>
+
+
+	<!-- 신규 -->
+
+	<select id="selectRoleApplication" resultType="camelMap">
+		/* adm-userbyrole-sql-oracle.xml - selectRoleApplication */
+		SELECT APKEY
+		 FROM (
+			SELECT AP.APKEY
+			     , AP.APORDER
+			  FROM TADMIN_MST_AP AP
+			  INNER JOIN TADMIN_MST_ROXAPGT APGT
+			     	  ON AP.APKEY = APGT.APKEY
+			  INNER JOIN ( <include refid="selectUrUnionUrGrByRole"/> ) B
+			  		  ON APGT.ROKEY = B.ROKEY
+			WHERE AP.ISOFFLINE = 'N'
+			GROUP BY AP.APKEY
+				   , AP.APORDER
+			ORDER BY AP.APORDER
+		)
+	</select>
+	
+</mapper>	

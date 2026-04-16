@@ -1,0 +1,1048 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ordercommon.mapper.OrderRestProcMapper">
+
+	<insert id="insertInterfaceIbHdList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbHdList */
+		INSERT INTO TORDER_INTF_IBORDER_HD
+		(
+			  EXTORDERTYPECD
+		    , REQORDERNO
+			, SHMISTNO
+			, DLVYEXPCTDAY
+			, ORDERISTDAY
+			, CTKEY
+			, FROMTOCTKEY
+			, CLAIMNO
+			, ORGORDERKEY
+			, RIRSNCD
+			, CMT
+			, RECALLER
+			, RECALLERADDRHD
+			, RECALLERADDRDT
+			, RECALLERZIPCD
+			, RECALLERTEL01
+			, RECALLERTEL02
+			, RECALLERIYN
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{extordertypecd}
+			, #{reqorderno}
+			, #{shmistno}
+			, #{dlvyexpctday}
+			, #{orderistday}
+			, COALESCE(#{ctkey}, '09')
+			, #{fromtoctkey}
+			, #{claimno}
+			, #{orgorderkey}<!--reqorderno-->
+			, #{rirsncd}
+			, #{cmt}
+			, #{recaller}
+			, #{recalleraddrhd}
+			, #{recalleraddrdt}
+			, #{recallerzipcd}
+			, #{recallertel01}
+			, #{recallertel02}
+			, #{recalleriyn}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertInterfaceIbDtList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbDtList */
+		INSERT INTO TORDER_INTF_IBORDER_DT
+		(
+		      REQORDERNO
+		    , SHMISTNO
+			, ICKEY
+			, UNIT
+			, ORDERISTQTY
+			, CLAIMNO
+			, OLNICKEY
+			, DLVRYCORP
+			, WBLNO
+			, IMGSEQ
+			, IMGURL
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{reqorderno}
+			, #{shmistno}
+			, #{ickey}
+			, #{unit}
+			, #{orderistqty}
+			, #{claimno}
+			, #{olnickey}
+			, #{dlvrycorp}
+			, #{wblno}
+			, #{imgseq}
+			, #{imgurl}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertInterfaceIbMalRetWblList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbMalRetWblList */
+		INSERT INTO TORDER_INTF_MAL_RET_WBL
+		(
+		      ORGORDERKEY
+			, CLAIMNO
+			, WBLNO
+			, DLVRYCORPCD
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{orgorderkey}
+			, #{claimno}
+			, #{wblno}
+			, #{dlvrycorpcd}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertInterfaceIbMalRetFileList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbMalRetFileList */
+		INSERT INTO TORDER_INTF_MAL_RET_FILE
+		(
+		      ORGORDERKEY
+			, CLAIMNO
+			, IMGSEQ
+			, IMGURL
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{orgorderkey}
+			, #{claimno}
+			, #{imgseq}
+			, #{imgurl}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertInterfaceObHdList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceObHdList */
+		INSERT INTO TORDER_INTF_OBORDER_HD
+		(
+			  EXTORDERTYPECD
+		    , ORGORDERKEY
+		    , CLAIMNO
+			, DLVYMETHDCD
+			, DLVYMETHDDTCD
+			, CTKEY
+			, MALORDERDIV
+			, NISCNLRNGDIV
+			, DLVYEXPCTDAY
+			, ORDERISTDAY
+			, PAYMTCOMPLDAY
+			, BUYER
+			, BUYERTEL01
+			, BUYERTEL02
+			, BUYERZIPCD
+			, BUYERADDRHD
+			, BUYERADDRDT
+			, RECPNM
+			, RECPTEL01
+			, RECPTEL02
+			, RECPZIPCD
+			, RECPADDRHD
+			, RECPADDRDT
+			, CMT
+			, PARTERID
+			, ACCESSKEY
+			, ADDCMT01
+			, ADDCMT02
+			, ADDCMT03
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{extordertypecd}
+			, #{orgorderkey}
+			, #{claimno}
+			, #{dlvymethdcd}
+			, #{dlvymethddtcd}
+			, CASE WHEN #{extordertypecd} = #{excextordertypecd} 
+				   THEN (
+					     SELECT MAX(X.CTKEY) 
+				   		 FROM TORDER_INFO_CO_HD X 
+				   		 WHERE X.ORGORDERKEY = #{orgorderkey} 
+				   		 AND X.EXTORDERTYPECD = #{orgextordertypecd}
+				   		 ) 
+			  ELSE COALESCE(#{ctkey}, '09')
+			  END
+			, #{malorderdiv}
+			, #{niscnlrngdiv}
+			, #{dlvyexpctday}
+			, #{orderistday}
+			, #{paymtcomplday}
+			, #{buyer}
+			, #{buyertel01}
+			, #{buyertel02}
+			, #{buyerzipcd}
+			, #{buyeraddrhd}
+			, #{buyeraddrdt}
+			, #{recpnm}
+			, #{recptel01}
+			, #{recptel02}
+			, #{recpzipcd}
+			, #{recpaddrhd}
+			, #{recpaddrdt}
+			, #{cmt}
+			, #{parterid}
+			, #{accesskey}
+			, #{addcmt01}
+			, #{addcmt02}
+			, #{addcmt03}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<insert id="insertInterfaceObDtList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceObDtList */
+		INSERT INTO TORDER_INTF_OBORDER_DT
+		(
+		      ORGORDERKEY
+			, ICKEY
+			, OLNICKEY
+			, ORDERISTQTY
+			, MALBOXQTY
+			, MALPCSQTY
+			, REQUESTDT
+			, IFID
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{orgorderkey}
+			, #{ickey}
+			, #{olnickey}
+			, #{orderistqty}
+			, #{malboxqty}
+			, #{malpcsqty}
+			, #{requestDt}
+			, #{interfaceId}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+			, #{interfaceDate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<!-- 다이소 -->
+
+
+	
+	<insert id="insertInterfaceObList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceObList */
+		INSERT INTO TORDER_INTF_OB_HD
+		(
+		      EXTERNORDERKEY    /*외부주문번호*/
+			, CTKEY    /*출고지시 센터코드*/
+			, OR_HD_DT    /*출고지시 일자*/
+			, EXTERN_OR_TYPE_CD    /*출고유형( 외부주문유형)*/
+			, DELIVERY_KEY    /*납품처*/
+			, TO_CTKEY    /*입고처 센터코드*/
+			, ACKEY    /*판매처 코드*/
+			, SALESPERSON_ID    /*영업사원ID*/
+			, DELIVERY_PERSON_ID    /*배송사원ID*/
+			, COMMENTS    /*설명*/
+			, REFERENCEKEY    /*참조문서번호*/
+			, LOADINGYN    /*배차여부*/
+			, SPECIALOUTTYPE    /*행사유형*/
+			, SPECIALORDERTYPE    /*특이주문유형(베이커리 등 구분)*/
+			, MOVEMENT_TYPE    /*이동유형*/
+			, PRIORITY_ORDER
+			, AMOUNTDISPLAYYN
+			, REQUESTDT    /*요청일자*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자ID*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자ID*/
+		) VALUES (
+			  #{externorderkey}    /*외부주문번호*/
+			, #{ctkey}    /*출고지시 센터코드*/
+			, #{orHdDt}    /*출고지시 일자*/
+			, #{externOrTypeCd}    /*출고유형( 외부주문유형)*/
+			, #{deliveryKey}    /*납품처*/
+			, #{toCtkey}   /*입고처 센터코드*/
+			, #{ackey}    /*판매처 코드*/
+			, #{salespersonId}    /*영업사원ID*/
+			, #{deliveryPersonId}    /*배송사원ID*/
+			, #{comments}    /*설명*/
+			, #{referencekey}    /*참조문서번호*/
+			, #{loadingyn} /*배차여부*/
+			, #{specialouttype} /*행사유형*/
+			, #{specialordertype} /*특이주문유형(베이커리 등 구분)*/
+			, #{movementType} /*이동유형*/
+			, #{priorityOrder}    
+			, #{amountdisplayyn} 
+			, #{requestDt}       /*요청일자*/
+			, #{interfaceId}       /*인터페이스 마스터 ID*/
+			, #{interfaceDate}       /*입력 일시*/
+			, #{interfaceUrkey}       /*입력 사용자 ID*/
+			, #{interfaceDate}    	/*수정 일시*/
+			, #{interfaceUrkey}      /*수정 사용자 ID*/
+		)
+	</insert>
+	
+	<insert id="insertInterfaceObItemList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceObItemList */
+		INSERT INTO TORDER_INTF_OB_DT
+		(
+		      EXTERNORDERKEY    /*외부주문번호*/
+			, EXTERNORDERDETAILKEY    /*외부주문상세번호*/
+			, CTKEY    /*출고지시 센터코드*/
+			, OR_HD_DT    /*출고지시 일자*/
+			, ICKEY    /*제품코드*/
+			, EXQTY    /*지시수량*/
+			, CONVERTQTY    /*환산수량(EA)*/
+			, UNIT    /*기본단위*/
+			, SALEUNIT    /*판매단위*/
+			, OB_COSTPRICE    /*출고가*/
+			, INDIAMT    /*지시금액(출고가 * 수량)*/
+			, VAT    /*부가세*/
+			, COMMENTS    /*설명*/
+			, EXTDT    /*역순통제 예외 관리일자*/
+			, REFERENCEKEY    /*참조문서*/
+			, REFERENCEDTKEY    /*참조문서상세*/
+			, IC_RATE    /*행사상품비율*/
+			, BONUS_IC_RATE    /*덤상품비율*/
+			, REQUESTDT    /*요청일자*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자ID*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자ID*/
+		) VALUES (
+			  #{externorderkey}    /*외부주문번호*/
+		    , #{externorderdetailkey}    /*외부주문상세번호*/
+		    , #{ctkey}    /*출고지시 센터코드*/
+		    , #{orHdDt}    /*출고지시 일자*/
+		    , #{ickey}    /*제품코드*/
+		    , #{exqty}    /*지시수량*/
+		    , #{convertqty}    /*환산수량(EA)*/
+		    , CASE WHEN #{unit}=#{boxexternuom} THEN #{boxuom} 
+		    		WHEN #{unit}=#{bolexternuom} THEN #{boluom}
+		    		WHEN #{unit}=#{eaexternuom} THEN #{eauom}
+		    		ELSE #{unit}
+		       END    /*기본단위*/
+		    , #{saleunit}    /*판매단위*/
+		    , #{obCostprice}    /*출고가*/
+		    , #{indiamt}    /*지시금액(출고가 * 수량)*/
+		    , #{vat}    /*부가세*/
+		    , #{comments}    /*설명*/
+		    , #{extdt}    /*역순통제 예외 관리일자*/
+		    , #{referencekey}    /*참조문서*/
+		    , #{referencedtkey}    /*참조문서상세*/
+		    , #{icRate}      /*행사상품비율*/
+			, #{bonusIcRate} /*덤상품비율*/
+	        , #{requestDt}       /*요청일자*/
+			, #{interfaceId}       /*인터페이스 마스터 ID*/
+			, #{interfaceDate}       /*입력 일시*/
+			, #{interfaceUrkey}       /*입력 사용자 ID*/
+			, #{interfaceDate}    	/*수정 일시*/
+			, #{interfaceUrkey}      /*수정 사용자 ID*/
+		)
+	</insert>
+	
+	<insert id="insertInterfaceIbList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbList */
+		INSERT INTO TORDER_INTF_IB_HD
+		(
+		      EXTERNORDERKEY    /*외부주문번호*/
+			, CTKEY    /*입고센터*/
+			, TO_CTKEY    /*출고센터*/
+			, ACKEY    /*공급처*/
+			, DELIVERY_KEY    /*납품처코드*/
+			, OR_HD_NO    /*입고지시번호 */
+			, OR_HD_DT    /*입고일자*/
+			, STORE_KEY    /*판매처코드*/
+			, EXTERN_OR_TYPE_CD    /*입고유형*/
+			, COMMENTS    /*설명*/
+			, CREATE_AT    /*등록일자*/
+			, DELIVERY_NO    /*배송번호*/
+			, PO_NO    /*발주번호*/
+			, PO_TYPE    /*N - 없음, S - Col PO, 9 : DC PO*/
+			, REFERENCEKEY    /*참조문서*/
+			, SPECIALORDERTYPE    /*특이주문유형(베이커리 등 구분)*/
+			, REQUESTDT    /*요청일자*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		) VALUES (
+			  #{externorderkey}    /*외부주문번호*/
+			, #{ctkey}    /*입고센터*/
+			, #{toCtkey}    /*출고센터*/
+			, #{ackey}    /*공급처*/
+			, #{deliveryKey}    /*납품처코드*/
+			, #{orHdNo}    /*입고지시번호 */
+			, #{orHdDt}    /*입고일자*/
+			, #{storeKey}    /*판매처코드*/
+			, #{externOrTypeCd}    /*입고유형*/
+			, #{comments}    /*설명*/
+			, #{createAt}    /*등록일자*/
+			, #{deliveryNo}    /*배송번호*/
+			, #{poNo}   /*발주번호*/
+			, #{poType}    /*N - 없음, S - Col PO, 9 : DC PO*/
+			, #{referencekey}   /*참조문서*/
+			, #{specialordertype} /*특이주문유형(베이커리 등 구분)*/
+			, #{requestDt}       /*요청일자*/
+			, #{interfaceId}       /*인터페이스 마스터 ID*/
+			, #{interfaceDate}       /*입력 일시*/
+			, #{interfaceUrkey}       /*입력 사용자 ID*/
+			, #{interfaceDate}    	/*수정 일시*/
+			, #{interfaceUrkey}      /*수정 사용자 ID*/
+		)
+	</insert>
+	
+	<insert id="insertInterfaceIbItemList">
+		/* oms-orderrest-sql-oracle.xml  insertInterfaceIbItemList */
+		INSERT INTO TORDER_INTF_IB_DT
+		(
+		      EXTERNORDERKEY    /*외부주문번호*/
+			, EXTERNORDERDETAILKEY    /*외부주문상세번호*/
+			, CTKEY    /*입고센터*/
+			, TO_CTKEY    /*출고센터*/
+			, OR_OUT_DT    /*촐고일자*/
+			, OR_OUT_NO    /*출고순번*/
+			, OR_IC_SEQ    /*출고제품순번*/
+			, ICKEY    /*제품코드*/
+			, EXQTY    /*지시수량*/
+			, CONVERTQTY    /*환산수량(EA)*/
+			, UNIT    /*지시단위*/
+			, SALEUNIT    /*판매단위*/
+			, OB_COSTPRICE    /*출고금액*/
+			, COMMENTS    /*설명*/
+			, CREATE_AT    /*등록일자*/
+			, DISTRIBUTION_AT    /*유통일자 distributionDate*/
+			, EXPIRATIONDATE    /*소비기한*/
+			, PRODUCT_DT    /*생산일자*/
+			, PRODUCT_LOT    /*생산 LOT*/
+			, TOTALWEIGHT    /*총중량*/
+			, WEIGHTUNIT    /*총중량단위*/
+			, WEIGHT    /*순중량*/
+			, VOLUME    /*부피*/
+			, VOLUMEUNIT    /*부피단위*/
+			, LOGGRPCD    /*온도*/
+			, REFERENCEKEY    /*참조문서*/
+			, REFERENCEDTKEY    /*참조문서 item*/
+			, REQUESTDT    /*요청일자*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		) VALUES (
+			  #{externorderkey}    /*외부주문번호*/
+			, #{externorderdetailkey}    /*외부주문상세번호*/
+			, #{ctkey}    /*입고센터*/
+			, #{toCtkey}    /*출고센터*/
+			, #{orOutDt}    /*촐고일자*/
+			, #{orOutNo}    /*출고순번*/
+			, #{orIcSeq}    /*출고제품순번*/
+			, #{ickey}    /*제품코드*/
+			, #{exqty}    /*지시수량*/
+			, #{convertqty}    /*환산수량(EA)*/
+			, CASE WHEN #{unit}=#{boxexternuom} THEN #{boxuom} 
+					WHEN #{unit}=#{bolexternuom} THEN #{boluom}
+					WHEN #{unit}=#{eaexternuom} THEN #{eauom}
+					ELSE #{unit}
+			   END    /*기본단위*/
+			, CASE WHEN #{saleunit}=#{boxexternuom} THEN #{boxuom} 
+					WHEN #{saleunit}=#{bolexternuom} THEN #{boluom}
+					WHEN #{saleunit}=#{eaexternuom} THEN #{eauom}
+					ELSE #{saleunit}
+			   END    /*판매단위*/
+			, #{obCostprice}    /*출고금액*/
+			, #{comments}   /*설명*/
+			, #{createAt}    /*등록일자*/
+			, #{distributionAt}    /*유통일자 distributionDate*/
+			, #{expirationdate}   /*소비기한*/
+			, #{productDt}    /*생산일자*/
+			, #{productLot}    /*생산 LOT*/
+			, #{totalweight}    /*총중량*/
+			, #{weightunit}   /*총중량단위*/
+			, #{weight}    /*순중량*/
+			, #{volume}    /*부피*/
+			, #{volumeunit}    /*부피단위*/
+			, #{loggrpcd}    /*온도*/
+			, #{referencekey}    /*참조문서*/
+			, #{referencedtkey}    /*참조문서 item*/
+			, #{requestDt}       /*요청일자*/
+			, #{interfaceId}       /*인터페이스 마스터 ID*/
+			, #{interfaceDate}       /*입력 일시*/
+			, #{interfaceUrkey}       /*입력 사용자 ID*/
+			, #{interfaceDate}    	/*수정 일시*/
+			, #{interfaceUrkey}      /*수정 사용자 ID*/
+		)
+	</insert>
+	
+	<update id="updateCoOrTypeMappList">
+		/* oms-orderrest-sql-oracle.xml  updateCoOrTypeMappList */
+		UPDATE TORDER_INFO_CO_HD
+		   SET ORDERTYPECD = #{ordertypecd}
+		     , WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}   	  
+	</update>
+	
+	<update id="updateCoItemOrTypeMappList">
+		/* oms-orderrest-sql-oracle.xml  updateCoItemOrTypeMappList */
+		UPDATE TORDER_INFO_CO_DT
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}   	  
+	</update>
+	
+	<update id="updateValidateCoHd">
+		/* oms-orderrest-sql-oracle.xml updateValidateCoHd */
+		UPDATE TORDER_INFO_CO_HD
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateValidateCoDt">
+		/* oms-orderrest-sql-oracle.xml updateValidateCoDt */
+		UPDATE TORDER_INFO_CO_DT
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+		   AND CODTKEY = #{codtkey}
+	</update>
+	
+	<update id="updateValidateCoDts">
+		/* oms-orderrest-sql-oracle.xml updateValidateCoDts */
+		UPDATE TORDER_INFO_CO_DT
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateValidateSoHd">
+		/* oms-orderrest-sql-oracle.xml updateValidateSoHd */
+		UPDATE TORDER_INFO_SO_HD
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+	</update>
+	
+	<update id="updateValidateSoDt">
+		/* oms-orderrest-sql-oracle.xml updateValidateSoDt */
+		UPDATE TORDER_INFO_SO_DT
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+		   AND SODTKEY = #{sodtkey}
+	</update>
+	
+	<update id="updateValidateSoByCoHd">
+		/* oms-orderrest-sql-oracle.xml updateValidateSoByCoHd */
+		UPDATE TORDER_INFO_CO_HD
+		   SET WKSTATUS = #{coWkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateValidateSoByCoDt">
+		/* oms-orderrest-sql-oracle.xml updateValidateSoByCoDt */
+		UPDATE TORDER_INFO_CO_DT
+		   SET WKSTATUS = #{coWkstatus}
+		     , ORDERERRCD = #{ordererrcd}
+		   	 , ORDERERRCMT = #{ordererrcmt}
+		   	 , UPDATEDATE = #{updatedate}
+		   	 , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+		   AND CODTKEY = #{codtkey}
+	</update>
+	
+	<update id="updateSOWksatusHd">
+		/* oms-orderrest-sql-oracle.xml updateSOWksatusHd */
+		UPDATE TORDER_INFO_SO_HD SET WKSTATUS = #{sowkstatus}
+                           , UPDATEDATE = #{updateDate}
+                           , UPDATEURKEY = #{updateurkey}
+		WHERE OWKEY = #{owkey}
+		AND   SOHDKEY = #{sohdkey}
+	</update>	
+		
+	<update id="updateSOWksatusDt">
+		/* oms-orderrest-sql-oracle.xml updateSOWksatusDt */
+		UPDATE TORDER_INFO_SO_DT SET WKSTATUS = #{sowkstatus}
+						   , CNFRMQTY = 0
+                           , UPDATEDATE = #{updateDate}
+                           , UPDATEURKEY = #{updateurkey}
+		WHERE OWKEY = #{owkey}
+		AND   SOHDKEY = #{sohdkey}
+	</update>
+	
+	<update id="updateCOWksatusHd">
+		/* oms-orderrest-sql-oracle.xml updateCOWksatusHd */
+		UPDATE TORDER_INFO_CO_HD SET WKSTATUS = #{cowkstatus}
+                           , UPDATEDATE = #{updateDate}
+                           , UPDATEURKEY = #{updateurkey}
+		WHERE OWKEY = #{owkey}
+		AND   COHDKEY = #{cohdkey}
+	</update>	
+	
+	<update id="updateCOWksatusDt">
+		/* oms-orderrest-sql-oracle.xml updateCOWksatusDt */
+		UPDATE TORDER_INFO_CO_DT SET WKSTATUS = #{cowkstatus}
+                           , UPDATEDATE = #{updateDate}
+                           , UPDATEURKEY = #{updateurkey}
+		WHERE OWKEY = #{owkey}
+		AND   COHDKEY = #{cohdkey}		
+	</update>	
+		
+	<update id="updateWmsPerformanceDelete">	
+		/* oms-orderrest-sql-oracle.xml updateWmsPerformanceDelete */
+		UPDATE TORDER_INFO_WMS_PERFORMANCE  
+		   SET DELYN ='Y' 
+		     , UPDATEDATE = #{updateDate}
+             , UPDATEURKEY = #{updateurkey}
+		WHERE OWKEY = #{owkey}
+		 AND  SO_HDKEY = #{soHdkey}
+		 AND  DELYN ='N'
+	</update>
+	
+	<update id="updateTmsPerformanceDelete">	
+		/* oms-orderrest-sql-oracle.xml updateTmsPerformanceDelete */
+		UPDATE TORDER_INFO_WMS_PERFORMANCE  
+		   SET DELYN ='Y' 
+		     , UPDATEDATE = #{updateDate}
+             , UPDATEURKEY = #{updateurkey} 
+		WHERE OWKEY = #{owkey}
+		 AND  SO_HDKEY = #{soHdkey}
+		 AND  DELYN ='N'
+	</update>
+	
+	<update id="updateNisSoDt">
+		/* oms-orderrest-sql-oracle.xml updateNisSoDt */
+		UPDATE TORDER_INFO_SO_DT 
+		   SET WKSTATUS = #{wkstatus}
+		  	 , NISYN = COALESCE(#{nisyn}, 'Y')
+		     , NISQTY = COALESCE(#{nisqty}, NISQTY)
+		     , UPDATEDATE = #{interfaceDate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+		   AND SODTKEY = #{sodtkey}
+	</update>
+	
+	<update id="updateNisSoHd">
+		/* oms-orderrest-sql-oracle.xml updateNisSoHd */
+		UPDATE TORDER_INFO_SO_HD 
+		   SET WKSTATUS = CASE WHEN #{compyn}='Y' THEN #{socompstatus} ELSE WKSTATUS END
+			 , NISSNDYN = CASE WHEN  #{compyn}='Y' THEN #{nissndyn} ELSE NISSNDYN END
+		  	 , NISYN = COALESCE(#{nisyn}, 'Y')
+		  	 , NISCNLRNGDIV = #{niscnlrngdiv}
+		     , UPDATEDATE = #{interfaceDate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+	</update> 
+	
+	<update id="updateNisCoDt">
+		/* oms-orderrest-sql-oracle.xml updateNisCoDt */
+		UPDATE TORDER_INFO_CO_DT 
+		   SET WKSTATUS = #{cowkstatus}
+		     , UPDATEDATE = #{interfaceDate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+		   AND CODTKEY = #{codtkey}
+	</update>
+	
+	<update id="updateNisCoHd">
+		/* oms-orderrest-sql-oracle.xml updateNisCoHd */
+		UPDATE TORDER_INFO_CO_HD 
+		   SET WKSTATUS = #{cowkstatus}
+		     , UPDATEDATE = #{interfaceDate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+	</update> 
+	
+	<update id="updateCoHdAfterEo">
+		/* oms-orderrest-sql-oracle.xml updateCoHdAfterEo */
+		UPDATE TORDER_INFO_CO_HD 
+		   SET WKSTATUS = COALESCE(#{coWkstatus}, WKSTATUS)
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+		   AND COHDKEY IN (SELECT MAX(COHDKEY)
+		   					 FROM TORDER_INFO_SO_DT
+		   					WHERE OWKEY = #{owkey}
+							  AND SOHDKEY = #{sohdkey}
+							  AND COALESCE(NISYN, 'N') != 'Y'
+		   				   )
+	</update>	
+		
+	<update id="updateCoDtAfterEo">
+		/* oms-orderrest-sql-oracle.xml updateCoDtAfterEo */
+		UPDATE TORDER_INFO_CO_DT 
+		   SET WKSTATUS = COALESCE(#{coWkstatus}, WKSTATUS)
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND COHDKEY = #{cohdkey}
+		   AND CODTKEY IN (SELECT CODTKEY
+		   					 FROM TORDER_INFO_SO_DT
+		   					WHERE OWKEY = #{owkey}
+							  AND SOHDKEY = #{sohdkey}
+							  AND COALESCE(NISYN, 'N') != 'Y'
+		   				   )		   
+	</update>
+	
+	<update id="updateSoHdAfterEo">
+		/* oms-orderrest-sql-oracle.xml updateSoHdAfterEo */
+		UPDATE TORDER_INFO_SO_HD 
+		   SET WKSTATUS = #{wkstatus}
+		     , ORDERSNDYN = CASE WHEN #{wkstatus}=#{sendWkstatus} THEN 'Y' ELSE ORDERSNDYN END
+			 , ORDERSNDDATE = CASE WHEN #{wkstatus}=#{sendWkstatus} THEN #{updatedate} ELSE ORDERSNDDATE END
+			 , ORDERSNDUSERID = CASE WHEN #{wkstatus}=#{sendWkstatus} THEN #{updateurkey} ELSE ORDERSNDUSERID END
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}		   
+		   AND SOHDKEY IN (SELECT MAX(SOHDKEY)
+		   					 FROM TORDER_INFO_SO_DT
+		   					WHERE OWKEY = #{owkey}
+							  AND SOHDKEY = #{sohdkey}
+							  AND COALESCE(NISYN, 'N') != 'Y'
+		   				   )
+	</update>	
+		
+	<update id="updateSoDtAfterEo">
+		/* oms-orderrest-sql-oracle.xml updateSoDtAfterEo */
+		UPDATE TORDER_INFO_SO_DT 
+		   SET WKSTATUS = #{wkstatus}
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+		   AND COALESCE(NISYN, 'N') != 'Y'
+	</update>
+	
+	<update id="updateSoDtAutoComplete">
+		/* oms-orderrest-sql-oracle.xml updateSoDtAutoComplete */
+		UPDATE TORDER_INFO_SO_DT 
+		   SET WKSTATUS = #{wkstatus}
+		     , CNFRMQTY = EXPCTQTY
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+	</update>
+	
+	<update id="updateSoHdBatchStatus">
+		/* oms-orderrest-sql-oracle.xml updateSoHdBatchStatus */
+		UPDATE TORDER_INFO_SO_HD 
+		   SET BATWKSTATUS = 'WAIT'
+             , UPDATEDATE = #{updatedate}
+             , UPDATEURKEY = #{updateurkey}
+		 WHERE OWKEY = #{owkey}
+		   AND SOHDKEY = #{sohdkey}
+	</update>
+	
+	<update id="updateErrorCoAfter">	
+		/* oms-orderrest-sql-oracle.xml updateErrorCoAfter */
+		UPDATE TORDER_INFO_CO_HD  
+		   SET ERPRESPONSECD = #{sapresponsecode}
+		     , WKSTATUS = #{wkstatus}
+		     , CNLYN = #{cancelYn}
+			 , CNLID = #{cancelId}
+		     , UPDATEDATE = #{updatedate}
+		WHERE OWKEY = #{owkey}
+		 AND  COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateErrorCoDtAfter">	
+		/* oms-orderrest-sql-oracle.xml updateErrorCoDtAfter */
+		UPDATE TORDER_INFO_CO_DT  
+		   SET WKSTATUS = #{wkstatus}
+		     , CNLYN = #{cancelYn}
+			 , CNLID = #{cancelId}
+		     , UPDATEDATE = #{updatedate}
+		WHERE OWKEY = #{owkey}
+		 AND  COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateErrorSoAfter">	
+		/* oms-orderrest-sql-oracle.xml updateErrorSoAfter */
+		UPDATE TORDER_INFO_SO_HD  
+		   SET WKSTATUS = #{wkstatus}
+		     , CNLYN = #{cancelYn}
+		     , CNLDATE = #{updatedate}
+			 , CNLEMPID = #{cancelId}
+		     , UPDATEDATE = #{updatedate}
+		WHERE OWKEY = #{owkey}
+		  AND COHDKEY = #{cohdkey}
+		  AND WKSTATUS<![CDATA[<>]]>#{wkstatus}
+	</update>
+	
+	<update id="updateErrorSoDtAfter">	
+		/* oms-orderrest-sql-oracle.xml updateErrorSoDtAfter */
+		UPDATE TORDER_INFO_SO_DT  
+		   SET WKSTATUS = #{wkstatus}
+		     , CNLYN = #{cancelYn}
+		     , UPDATEDATE = #{updatedate}
+		WHERE OWKEY = #{owkey}
+		  AND COHDKEY = #{cohdkey}
+		  AND WKSTATUS<![CDATA[<>]]>#{wkstatus}
+	</update>
+	
+	<insert id="insertIntfCloseWmsToOms">
+		/* oms-orderrest-sql-oracle.xml - insertIntfCloseWmsToOms */
+		INSERT INTO TORDER_INTF_WMS_PERFORMANCE (
+		     OWKEY
+		   , CTKEY
+		   , SOHDKEY
+		   , SODTKEY
+		   , RLESNO
+		   , EXPCTQTY
+		   , CNFRMQTY
+		   , NISCNLRNGDIV
+		   , ICKEY
+		   , UOM
+		   , CNFRMDATE
+		   , CLOSEYN
+		   , ORGORDERKEY
+		   , ORGORDERDTKEY
+		   , NISYN
+		   , DLVRYCORPCD
+		   , WBLNO
+		   , CNTRCD
+		   , MVOBGRPNO
+		   , WKTYPECD
+		   , CLAIMNO
+		   , RIRSNCD
+		   , CMT
+		   , AVQTY
+		   , NAVQTY
+		   , NORMALQTY
+		   , DMGQTY
+		   , DFCQTY
+		   , DONAQTY
+		   , FOODDMGQTY
+		   , MISOBQTY
+		   , REPROCESSYN
+		   , EXPIREDATE
+		   , DELIVERYPERSONID
+		   , ICADDYN
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{owkey}
+		   , #{ctkey}
+		   , #{sohdkey}
+		   , #{sodtkey}
+		   , #{rlesno}
+		   <if test='@com.kns.framework.util.StringUtil@isNotEmpty(extordertypecd) and "DA08".equals(extordertypecd)'>
+		   , #{cnfrmqty}
+		   </if>
+		   <if test='@com.kns.framework.util.StringUtil@isEmpty(extordertypecd) or !"DA08".equals(extordertypecd)'>
+		   , #{expctqty}
+		   </if>
+		   , #{cnfrmqty}
+		   , #{niscnlrngdiv}
+		   , #{ickey}
+		   , COALESCE(#{uom}, 'EA')
+		   , #{cnfrmdate}
+		   , 'N' -- closeyn
+		   , #{orgorderkey}
+		   , #{orgorderdtkey}
+		   , #{nisyn}
+		   , #{dlvrycorpcd}
+		   , #{wblno}
+		   , #{cntrcd}
+		   , #{mvobgrpno}
+		   , #{wktypecd}
+		   , #{claimno}
+		   , #{rirsncd}
+		   , #{cmt}
+		   , COALESCE(#{avqty}, 0)
+		   , COALESCE(#{navqty}, 0)
+		   , COALESCE(#{normalqty}, 0)
+		   , COALESCE(#{dmgqty}, 0)
+		   , COALESCE(#{dfcqty}, 0)
+		   , COALESCE(#{donaqty}, 0)
+		   , COALESCE(#{fooddmgqty}, 0)
+		   , COALESCE(#{misobqty}, 0)
+		   , #{reprocessyn}
+		   , #{expiredate}
+		   , #{deliverypersonid}
+		   , #{icaddyn}
+		   , #{requestDt}
+		   , #{ifid}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateSapResultWmEo">	
+		/* oms-orderrest-sql-oracle.xml updateSapResultWmEo */
+		UPDATE TORDER_INFO_WMS_PERFORMANCE
+		   SET SAPSENDYN = 'Y'
+		     , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+         WHERE OWKEY = #{owkey}
+           AND SO_HDKEY = #{soHdkey}
+		   AND SO_DTKEY = #{soDtkey}
+		   AND DELYN = 'N'
+	</update>
+	
+	<update id="updateSapResultTmEo">	
+		/* oms-orderrest-sql-oracle.xml updateSapResultTmEo */
+		UPDATE TORDER_INFO_TMS_PERFORMANCE
+		   SET SAPSENDYN = 'Y'
+		     , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+         WHERE OWKEY = #{owkey}
+           AND SO_HDKEY = #{soHdkey}
+		   AND SO_DTKEY = #{soDtkey}
+		   AND DELYN = 'N'
+	</update>
+	
+	<update id="updateSapResultCoDt">	
+		/* oms-orderrest-sql-oracle.xml updateSapResultCoDt */
+		UPDATE TORDER_INFO_CO_DT
+		   SET WKSTATUS = #{wkstatus}
+		     , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+         WHERE OWKEY = #{owkey}
+           AND COHDKEY = #{cohdkey}
+		   AND CODTKEY = #{codtkey}
+	</update>
+	
+	<update id="updateSapResultCoHd">	
+		/* oms-orderrest-sql-oracle.xml updateSapResultCoHd */
+		UPDATE TORDER_INFO_CO_HD
+		   SET WKSTATUS = #{wkstatus}
+		     , ERPSNDFAILYN = #{saptransfailyn}
+		     , FAILCNT = CASE WHEN #{saptransfailyn}<![CDATA[<>]]>'Y' THEN 0 ELSE COALESCE(FAILCNT, 0)+1 END
+		     , ERPSNDSEQ = CASE WHEN #{saptransfailyn}<![CDATA[<>]]>'Y' THEN (COALESCE(ERPSNDSEQ, '0')::INTEGER+1)::TEXT ELSE ERPSNDSEQ END
+		     , ORDERRCMT = #{sapfailcomments} 
+		     , UPDATEDATE = #{interfaceDate}
+		   	 , UPDATEURKEY = #{interfaceUrkey}
+         WHERE OWKEY = #{owkey}
+           AND COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="saveSaptransfailyn">	
+		/* oms-orderrest-sql-oracle.xml saveSaptransfailyn */
+		UPDATE TORDER_INFO_CO_HD
+		   SET ERPSNDFAILYN = #{erpsndfailyn}
+		     , FAILCNT = 0
+		     , UPDATEDATE = #{sysdate}
+		   	 , UPDATEURKEY = #{surkey}
+         WHERE OWKEY = #{owkey}
+           AND COHDKEY = #{cohdkey}
+	</update>
+	
+	<update id="updateIntfIbOrderErpStatus">
+		/* oms-orderrest-sql-oracle.xml updateIntfIbOrderErpStatus */
+		UPDATE TORDER_EAI_IBORDER_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+	
+	<update id="updateIntfB2bObOrderErpStatus">
+		/* oms-orderrest-sql-oracle.xml updateIntfB2bObOrderErpStatus */
+		UPDATE TORDER_EAI_B2BOBORDER_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+	
+</mapper>

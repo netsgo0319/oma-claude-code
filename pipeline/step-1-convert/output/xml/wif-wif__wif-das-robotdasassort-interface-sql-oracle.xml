@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.robotsorter.rsassort.mapper.AssortMapper">
+	<select id="getRobDasAssortResultWaveSeq" resultType="camelMap">
+		/* wif-das-robotdasassort-sql-oracle.xml - getRobDasAssortResultWaveSeq - RobotDAS Assort Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasAssortResultOrderSeq" resultType="camelMap">
+		/* wif-das-robotdasassort-sql-oracle.xml - getRobDasAssortResultOrderSeq - RobotDAS Assort Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasAssortResultItemSeq" resultType="camelMap">
+		/* wif-das-robotdasassort-sql-oracle.xml - getRobDasAssortResultItemSeq - RobotDAS Assort Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_prcsrslt_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasAssortResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultWaveVO">
+		/* wif-das-robotdasassort-sql-oracle.xml - insertRobDasAssortResultWave - RobotDAS Assort Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertRobDasAssortResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultOrderVO">
+		/* wif-das-robotdasassort-sql-oracle.xml - insertRobDasAssortResultOrder - RobotDAS Assort Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasAssortResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rsassort.vo.AssortResultItemVO">
+		/* wif-das-robotdasassort-sql-oracle.xml - insertRobDasAssortResultItem - RobotDAS Assort Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_prcsrslt_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_PRCSRSLT_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,SEEDWALL
+			,DASLOC
+			,ROBNO
+			,INDUCTNM
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{seedWall}
+			,#{dasLoc}
+			,#{robNo}
+			,#{inductNm}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+</mapper>

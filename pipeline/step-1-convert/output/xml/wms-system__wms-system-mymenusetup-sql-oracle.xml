@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.system.mapper.MyMenuSetupMapper">
+		
+	<resultMap id="selectMyMenuSetupMap" type="java.util.HashMap">
+		
+		<result property="mekey" column="MEKEY" />
+		<result property="mename" column="MENAME" />
+		<result property="meorder" column="MEORDER" />
+		<result property="eqtype" column="EQTYPE" />
+		<result property="uskey" column="USKEY" />
+		<result property="uppermekey" column="UPPERMEKEY" />
+		<result property="uppermename" column="UPPERMENAME" />
+		<result property="isseparator" column="ISSEPARATOR" />
+		<result property="isleaf" column="ISLEAF" />		
+		<result property="leaf" column="LEAF" />
+		<result property="comments" column="COMMENTS" />
+		<result property="melvl" column="MELVL" />
+		<result property="checked" column="CHECKED" javaType="boolean"/>
+		
+	</resultMap>
+	
+	<select id="selectMyMenuGrouping" resultMap="selectMyMenuSetupMap">
+	SELECT	A.*,
+			COALESCE((SELECT MENAME FROM TWORK_MST_URDFME WHERE  URKEY = #{surkey} AND MEKEY = A.UPPERMEKEY), 'My Menu') AS UPPERMENAME
+	  FROM (       
+ 			SELECT	URKEY
+                	,MEKEY
+                	,MENAME
+                	,MEORDER
+                	,EQTYPE
+                	,USKEY
+                	,UPPERMEKEY
+                	,ISSEPARATOR
+                	,ISLEAF
+                	,COMMENTS
+        	FROM    TWORK_MST_URDFME
+        	WHERE   URKEY = #{surkey}
+          	  AND   ISLEAF != 'N'
+        	)A
+    ORDER BY UPPERMEKEY,MEORDER
+	</select>
+	
+	<select id="selectMyMenuGroupingWithLevel" fetchSize="1000" resultMap="selectMyMenuSetupMap">
+        WITH RECURSIVE menu_tree AS (
+            SELECT URKEY
+                  ,MEKEY
+                  ,MENAME
+                  ,MEORDER
+                  ,EQTYPE
+                  ,USKEY
+                  ,UPPERMEKEY
+                  ,ISSEPARATOR
+                  ,ISLEAF
+                  ,COMMENTS
+                  ,1 AS depth
+                  ,ARRAY[UPPERMEKEY, MEORDER::TEXT] AS sort_path
+              FROM TWORK_MST_URDFME
+             WHERE UPPERMEKEY = '-1'
+            UNION ALL
+            SELECT c.URKEY
+                  ,c.MEKEY
+                  ,c.MENAME
+                  ,c.MEORDER
+                  ,c.EQTYPE
+                  ,c.USKEY
+                  ,c.UPPERMEKEY
+                  ,c.ISSEPARATOR
+                  ,c.ISLEAF
+                  ,c.COMMENTS
+                  ,p.depth + 1
+                  ,p.sort_path || ARRAY[c.UPPERMEKEY, c.MEORDER::TEXT]
+              FROM TWORK_MST_URDFME c
+             INNER JOIN menu_tree p ON c.UPPERMEKEY = p.MEKEY
+        )
+        SELECT URKEY
+              ,MEKEY
+              ,MENAME
+              ,MEORDER
+              ,EQTYPE
+              ,USKEY
+              ,UPPERMEKEY
+              ,ISSEPARATOR
+              ,ISLEAF
+              ,COMMENTS
+              ,depth - 2 AS MELVL
+          FROM menu_tree
+         WHERE 1=1
+           AND URKEY = #{surkey}
+         ORDER BY sort_path
+	</select>
+
+</mapper>	

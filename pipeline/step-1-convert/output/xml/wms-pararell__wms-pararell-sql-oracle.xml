@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.parallel.mapper.ParallelMapper">
+
+	<resultMap id="remainsMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="wahdkey" column="WAHDKEY" />
+		<result property="obhdkey" column="OBHDKEY" />
+	</resultMap>	
+
+	<select id="selectListObhdkeyRemains" resultType="camelMap">
+		SELECT 	CTKEY
+		        ,OWKEY
+		        ,OBHDKEY
+		        ,WAHDKEY
+		  FROM  TWORK_INFO_OB_HD
+		 WHERE  CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >		 	
+		   AND  OWKEY = #{owkey}
+		</if>
+	   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+	           AND OBHDKEY IN (SELECT OBHDKEY 
+	                               FROM TWORK_INFO_WA_DT 
+	                              WHERE CTKEY = #{ctkey} 
+	                              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >          
+	                                AND OWKEY = #{owkey}
+	                              </if>
+	                                AND WAHDKEY IN 
+	                  <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+	                    #{wahdkeyList}
+	                  </foreach>
+	                            )
+	        </if>		
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(minwkstatus)" > 
+		   AND  WKSTATUS <![CDATA[>]]> #{minwkstatus}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(maxwkstatus)" > 
+		   AND  WKSTATUS <![CDATA[<]]> #{maxwkstatus}
+		</if>		
+	</select>
+	
+
+	<resultMap id="selectParallelEngineMap" type="java.util.HashMap">
+		<result property="parallel_engine_id" column="PARALLEL_ENGINE_ID" />
+		<result property="parallel_engine_url" column="PARALLEL_ENGINE_URL" />
+		<result property="alive_flag" column="ALIVE_FLAG" />
+		<result property="use_flag" column="USE_FLAG" />
+	</resultMap>	
+	
+	<select id="selectParallelEngine" resultMap="selectParallelEngineMap">
+		SELECT 
+		       PARALLEL_ENGINE_ID 
+		      ,PARALLEL_ENGINE_URL
+		      ,ALIVE_FLAG         
+		      ,USE_FLAG           
+		  FROM TWORK_MST_PARALLEL_ENGINE
+		 WHERE USE_FLAG = 'Y'
+		   AND PARALLEL_TYPE = #{PARALLEL_TYPE}
+	</select>
+	
+	<resultMap id="selectParallelEngineHDMap" type="java.util.HashMap">
+		<result property="pe_hd_key" column="PE_HD_KEY" />
+		<result property="pe_hd_hb_url" column="PE_HD_HB_URL" />
+		<result property="pe_hd_hb_flag" column="PE_HD_HB_FLAG" />
+		<result property="use_flag" column="USE_FLAG" />
+	</resultMap>
+
+	<select id="selectParallelEngineHD" resultMap="selectParallelEngineHDMap">
+		SELECT PE_HD_KEY,
+		       PE_HD_HB_URL,
+		       PE_HD_HB_FLAG,
+		       USE_FLAG
+		  FROM TWORK_MST_PE_HD
+		 WHERE USE_FLAG = 'Y'
+	</select>	
+
+	<resultMap id="selectParallelEngineDTMap" type="java.util.HashMap">
+		<result property="pe_dt_url" column="PE_DT_URL" />
+		<result property="pe_hd_key" column="PE_HD_KEY" />
+		<result property="pe_dt_key" column="PE_DT_KEY" />
+	</resultMap>
+
+	<select id="selectParallelEngineDT" resultMap="selectParallelEngineDTMap">
+		SELECT PE_DT_URL,
+			   PE_HD_KEY,
+               PE_DT_KEY		
+		  FROM TWORK_MST_PE_DT
+		 WHERE PE_DT_TYPE = #{pe_dt_type}
+		   AND PE_HD_KEY IN 
+                  <foreach item="PE_HD_KEY_LIST" index="index" collection="PE_HD_KEY_LIST" open="(" separator="," close=")">
+                    #{PE_HD_KEY_LIST}
+                  </foreach>
+	</select>		
+	
+
+	<resultMap id="selectRemainsAllocateOrderMap" type="java.util.HashMap">
+		<result property="pe_dt_url" column="PE_DT_URL" />
+		<result property="pe_hd_key" column="PE_HD_KEY" />
+		<result property="pe_dt_key" column="PE_DT_KEY" />
+	</resultMap>
+
+	<select id="selectRemainsAllocateOrder" resultMap="selectRemainsAllocateOrderMap">
+		SELECT 
+		       A.CTKEY
+		      ,A.OWKEY
+		      ,A.ICKEY
+		      ,A.OBHDKEY
+		      ,A.OBDTKEY
+		      ,A.WKSTATUS
+		  FROM (
+		            SELECT B.CTKEY
+		                  ,B.OWKEY
+		                  ,B.ICKEY
+		                  ,B.OBHDKEY
+		                  ,B.OBDTKEY
+		                  ,B.WKSTATUS
+		                  ,B.LOGGRPCD
+		              FROM TWORK_INFO_WA_DT A
+		                  ,TWORK_INFO_OB_DT B
+		             WHERE
+		                   A.CTKEY = B.CTKEY
+		               AND A.OWKEY = B.OWKEY
+		               AND A.OBHDKEY = B.OBHDKEY
+		               AND A.CTKEY = #{ctkey}
+	                   AND A.WAHDKEY IN 
+			                 <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+			                   #{wahdkeyList} 
+			                 </foreach>
+		               AND B.WKSTATUS <![CDATA[>]]> '40'  
+		               AND B.WORKINGYN = 'N'
+		  ) A
+		 ,( SELECT A.CTKEY
+		          ,A.OWKEY
+		          ,A.ICKEY
+		      FROM TWORK_INFO_IVATXLCXULC A
+		     WHERE
+		           NOT EXISTS (
+		                SELECT 1 
+		                  FROM VWORK_INFO_IVATXLC_EXP IVATEXP
+		                 WHERE IVATEXP.CTKEY = A.CTKEY
+		                   AND IVATEXP.IVATKEY = A.IVATKEY
+		           )
+		       AND A.CTKEY = '100'
+		       AND A.AVQTY > 0
+		  GROUP BY
+		           A.CTKEY
+		          ,A.OWKEY
+		          ,A.ICKEY
+		  ) B 
+		WHERE
+		       A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		GROUP BY 
+		         A.CTKEY
+		        ,A.OWKEY
+		        ,A.ICKEY
+		        ,A.OBHDKEY
+		        ,A.OBDTKEY   
+		        ,A.WKSTATUS	
+	</select>			
+	
+	
+	<insert id="insertTWorkInfoPeHs">
+		INSERT INTO TWORK_INFO_PE_HS
+		(
+			 PE_HS_KEY
+			,PE_HS_VALUE1
+			,PE_HS_VALUE2
+			,PE_HS_VALUE3
+			,PE_HS_VALUE4
+			,PE_HS_VALUE5
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES 
+		(
+			 #{pe_hs_key}
+			,#{pe_hs_value1}
+			,#{pe_hs_value2}
+			,#{pe_hs_value3}
+			,#{pe_hs_value4}
+			,#{pe_hs_value5}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	<update id="updateTworkMstPeHdHeartBeat">
+		UPDATE TWORK_MST_PE_HD
+		   SET PE_HD_HB_FLAG = #{pe_hd_hb_flag}
+		      ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE
+		 	  PE_HD_KEY = #{pe_hd_key}		 
+	
+	</update>
+	
+	<select id="selectWorkingProcessCheck" resultType="java.lang.Integer" >
+		SELECT SUM(CASE WHEN WORKINGYN = 'Y' THEN 1 ELSE 0 END) AS WORKING_CNT 
+		  FROM TWORK_INFO_OB_DT A
+		 WHERE A.CTKEY = #{ctkey}
+	   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+           AND OBHDKEY IN (SELECT OBHDKEY 
+                             FROM TWORK_INFO_WA_DT 
+                            WHERE CTKEY = #{ctkey} 
+                              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >          
+                                AND OWKEY = #{owkey}
+                              </if>
+                                AND WAHDKEY IN 
+					                  <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					                    #{wahdkeyList}
+					                  </foreach>
+                            )
+		</if>		   
+	</select>
+
+	<select id="selectWorkingPickingProcessCheck" resultType="java.lang.Integer" >
+		SELECT SUM(CASE WHEN WKSTATUS BETWEEN '35' AND '40' THEN 1 ELSE 0 END) AS WORKING_CNT 
+		  FROM TWORK_INFO_OB_DT A
+		 WHERE A.CTKEY = #{ctkey}
+	   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+           AND OBHDKEY IN (SELECT OBHDKEY 
+                             FROM TWORK_INFO_WA_DT 
+                            WHERE CTKEY = #{ctkey} 
+                              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >          
+                                AND OWKEY = #{owkey}
+                              </if>
+                                AND WAHDKEY IN 
+					                  <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					                    #{wahdkeyList}
+					                  </foreach>
+                            )
+		</if>		   
+	</select>	
+
+	<select id="selectWorkingUnPickingProcessCheck" resultType="java.lang.Integer" >
+		SELECT SUM(CASE WHEN WKSTATUS != '00' THEN 1 ELSE 0 END) AS WORKING_CNT 
+		  FROM TWORK_INFO_OB_DT A
+		 WHERE A.CTKEY = #{ctkey}
+	   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+           AND OBHDKEY IN (SELECT OBHDKEY 
+                             FROM TWORK_INFO_WA_DT 
+                            WHERE CTKEY = #{ctkey} 
+                              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >          
+                                AND OWKEY = #{owkey}
+                              </if>
+                                AND WAHDKEY IN 
+					                  <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					                    #{wahdkeyList}
+					                  </foreach>
+                            )
+		</if>		   
+	</select>		
+
+	<select id="selectWorkingConfirmProcessCheck" resultType="java.lang.Integer" >
+		SELECT SUM(CASE WHEN A.OBDTSTATUSCD BETWEEN '35' AND '80' THEN 1 ELSE 0 END) AS WORKING_CNT
+		  FROM TWORK_INFO_OB_DT A
+		 WHERE A.CTKEY = #{ctkey}
+	   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkeyList)" > 
+           AND OBHDKEY IN (SELECT OBHDKEY 
+                             FROM TWORK_INFO_WA_DT 
+                            WHERE CTKEY = #{ctkey} 
+                              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >          
+                                AND OWKEY = #{owkey}
+                              </if>
+                                AND WAHDKEY IN 
+					                  <foreach item="wahdkeyList" index="index" collection="wahdkeyList" open="(" separator="," close=")">
+					                    #{wahdkeyList}
+					                  </foreach>
+                            )
+		</if>		   
+	</select>			
+	
+	
+	
+	
+	
+	
+	<resultMap id="selectParallelProgressWaveAllocateMap" type="java.util.HashMap">
+		<result property="working_row" column="WORKING_ROW" />
+		<result property="total_row" column="TOTAL_ROW" />
+		<result property="wkstatus_create" column="WKSTATUS_CREATE" />
+		<result property="wkstatus_part_allocate" column="WKSTATUS_PART_ALLOCATE" />
+		<result property="wkstatus_allocate" column="WKSTATUS_ALLOCATE" /> 
+		<result property="wkstatus_picking" column="WKSTATUS_PICKING" />
+		<result property="wkstatus_packing" column="WKSTATUS_PACKING" />
+		<result property="wkstatus_confirm" column="WKSTATUS_CONFIRM" />		
+	</resultMap>	
+	
+	<select id="selectParallelProgressWaveAllocate" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+		         SUM(CASE WHEN D.WORKINGYN = 'N'THEN 1 ELSE 0 END) WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN D.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN D.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_WA_HD A,
+		         TWORK_INFO_WA_DT B,
+		         TWORK_INFO_OB_HD C,
+		         TWORK_INFO_OB_DT D
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         <!-- AND A.OWKEY = B.OWKEY -->
+		         AND A.WAHDKEY = B.WAHDKEY
+		         AND B.CTKEY = C.CTKEY
+		         AND B.OWKEY = C.OWKEY
+		         AND B.OBHDKEY = C.OBHDKEY
+		         AND C.CTKEY = D.CTKEY
+		         AND C.OWKEY = D.OWKEY
+		         AND C.OBHDKEY = D.OBHDKEY
+                 AND A.WAHDKEY IN 
+		                 <foreach item="wahdkeyArr" index="index" collection="wahdkeyArr" open="(" separator="," close=")">
+		                   #{wahdkeyArr}
+		                 </foreach>
+	</select>
+	
+	<select id="selectParallelProgressWavePicking" resultMap="selectParallelProgressWaveAllocateMap">
+         SELECT COUNT(1) AS TOTAL_ROW
+               ,SUM(CASE WHEN D.WKSTATUS NOT BETWEEN '35' AND '40' THEN 1 ELSE 0 END ) AS  WORKING_ROW
+         		,SUM(CASE WHEN D.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+               ,SUM(CASE WHEN D.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+               ,SUM(CASE WHEN D.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+               ,SUM(CASE WHEN D.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+               ,SUM(CASE WHEN D.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+               ,SUM(CASE WHEN D.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+           FROM TWORK_INFO_WA_HD A,
+                TWORK_INFO_WA_DT B,
+                TWORK_INFO_OB_HD C,
+                TWORK_INFO_OB_DT D
+          WHERE     A.CTKEY = #{ctkey}
+                AND A.CTKEY = B.CTKEY
+                <!-- AND A.OWKEY = B.OWKEY -->
+                AND A.WAHDKEY = B.WAHDKEY
+                AND B.CTKEY = C.CTKEY
+                AND B.OWKEY = C.OWKEY
+                AND B.OBHDKEY = C.OBHDKEY
+                AND C.CTKEY = D.CTKEY
+                AND C.OWKEY = D.OWKEY
+                AND C.OBHDKEY = D.OBHDKEY
+                AND A.WAHDKEY IN 
+	                 <foreach item="wahdkeyArr" index="index" collection="wahdkeyArr" open="(" separator="," close=")">
+	                   #{wahdkeyArr}
+	                 </foreach>
+	</select>
+	
+	
+	<select id="selectParallelProgressWavePickingCancel" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+		         SUM(CASE WHEN D.WKSTATUS NOT BETWEEN '41' AND '49' THEN 1 ELSE 0 END) WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN D.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN D.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_WA_HD A,
+		         TWORK_INFO_WA_DT B,
+		         TWORK_INFO_OB_HD C,
+		         TWORK_INFO_OB_DT D
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         <!-- AND A.OWKEY = B.OWKEY -->
+		         AND A.WAHDKEY = B.WAHDKEY
+		         AND B.CTKEY = C.CTKEY
+		         AND B.OWKEY = C.OWKEY
+		         AND B.OBHDKEY = C.OBHDKEY
+		         AND C.CTKEY = D.CTKEY
+		         AND C.OWKEY = D.OWKEY
+		         AND C.OBHDKEY = D.OBHDKEY
+                 AND A.WAHDKEY IN 
+		                 <foreach item="wahdkeyArr" index="index" collection="wahdkeyArr" open="(" separator="," close=")">
+		                   #{wahdkeyArr}
+		                 </foreach>
+	</select>	
+
+	<select id="selectParallelProgressWaveConfirm" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+		         SUM(CASE WHEN (D.WKSTATUS = '00' OR D.WKSTATUS NOT BETWEEN '35' AND '80') THEN 1 ELSE 0 END) WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN D.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN D.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN D.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_WA_HD A,
+		         TWORK_INFO_WA_DT B,
+		         TWORK_INFO_OB_HD C,
+		         TWORK_INFO_OB_DT D
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         <!-- AND A.OWKEY = B.OWKEY -->
+		         AND A.WAHDKEY = B.WAHDKEY
+		         AND B.CTKEY = C.CTKEY
+		         AND B.OWKEY = C.OWKEY
+		         AND B.OBHDKEY = C.OBHDKEY
+		         AND C.CTKEY = D.CTKEY
+		         AND C.OWKEY = D.OWKEY
+		         AND C.OBHDKEY = D.OBHDKEY
+                 AND A.WAHDKEY IN 
+		                 <foreach item="wahdkeyArr" index="index" collection="wahdkeyArr" open="(" separator="," close=")">
+		                   #{wahdkeyArr}
+		                 </foreach>
+	</select>		
+	
+
+	<select id="selectParallelAllocateProgress" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+		         SUM(CASE WHEN B.WORKINGYN = 'N'THEN 1 ELSE 0 END) WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN B.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN B.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_OB_HD A
+		        ,TWORK_INFO_OB_DT B
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         AND A.OBHDKEY = B.OBHDKEY
+			     AND B.WORKINGID = #{workingid}
+	</select>
+
+	<select id="selectParallelPickingProgress" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+                 SUM(CASE WHEN B.WKSTATUS NOT BETWEEN '35' AND '40' THEN 1 ELSE 0 END ) AS  WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN B.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN B.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_OB_HD A
+		        ,TWORK_INFO_OB_DT B
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         AND A.OBHDKEY = B.OBHDKEY
+			     AND B.WORKINGID = #{workingid}
+	</select>
+	
+	<select id="selectParallelPickingCancelProgress" resultMap="selectParallelProgressWaveAllocateMap">
+		  SELECT 
+		         SUM(CASE WHEN B.WKSTATUS NOT BETWEEN '41' AND '49' THEN 1 ELSE 0 END) WORKING_ROW
+		        ,COUNT(1) AS TOTAL_ROW
+                ,SUM(CASE WHEN B.WKSTATUS = '00' THEN 1 ELSE 0  END) AS WKSTATUS_CREATE
+                ,SUM(CASE WHEN B.WKSTATUS = '35' THEN 1 ELSE 0  END) AS WKSTATUS_PART_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS = '40' THEN 1 ELSE 0  END) AS WKSTATUS_ALLOCATE
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '41' AND '49' THEN 1 ELSE 0  END) AS WKSTATUS_PICKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '51' AND '56' THEN 1 ELSE 0  END) AS WKSTATUS_PACKING
+                ,SUM(CASE WHEN B.WKSTATUS BETWEEN '81' AND '90' THEN 1 ELSE 0  END) AS WKSTATUS_CONFIRM
+		    FROM TWORK_INFO_OB_HD A
+		        ,TWORK_INFO_OB_DT B
+		   WHERE     A.CTKEY = #{ctkey}
+		         AND A.CTKEY = B.CTKEY
+		         AND A.OBHDKEY = B.OBHDKEY
+			     AND B.WORKINGID = #{workingid}
+	</select>
+	
+	<select id="selectParallelInvnUploadProgress" resultMap="selectParallelProgressWaveAllocateMap">
+		SELECT COUNT(1) AS TOTAL_ROW
+		      ,SUM(CASE WHEN IFSTATUS IN ('90','50') THEN 1 ELSE 0 END ) AS WORKING_ROW
+              ,0 AS WKSTATUS_CREATE
+              ,0 AS WKSTATUS_PART_ALLOCATE
+              ,0 AS WKSTATUS_ALLOCATE
+              ,0 AS WKSTATUS_PICKING
+              ,0 AS WKSTATUS_PACKING
+              ,0 AS WKSTATUS_CONFIRM
+		  FROM TWORK_TEMP_IVUP
+		 WHERE 
+		       CTKEY = #{ctkey}
+		   AND ULHSKEY = #{ulhskey}
+	</select>	
+	
+</mapper>

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.common.mapper.BatchMapper">
+
+    <insert id="insertReqOrderTemp">
+        /* oms-common-batch-sql-oracle.xml insertReqOrderTemp */
+        INSERT INTO TORDER_UPLOAD_REQORDER (
+             UPLDKEY
+           , OLNCTKEY
+           , OFLNCTKEY
+           , ICKEY
+           , REQORDERQTY
+           , DELYN
+           , INSERTDATE
+           , INSERTURKEY
+           , UPDATEDATE
+           , UPDATEURKEY
+        )
+        VALUES
+            (
+              #{uplHsKey}
+            , #{olnctkey}
+            , #{oflnctkey}
+            , #{ickey}
+            , #{reqorderqty}
+            , 'N'
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+            )
+    </insert>
+
+    <insert id="insertCustomerOrderTemp">
+        /* oms-common-batch-sql-oracle.xml insertCustomerOrderTemp */
+        INSERT INTO TORDER_UPLOAD_CUSTOMER (
+             UPLOADKEY
+           , ACKEY
+           , DELIVERY_KEY
+           , STORE_KEY
+           , CTKEY
+           , DELIVERY_HD_DT
+           , OR_HD_DT
+           , OR_TYPE_CD
+           , EXTORDERTYPECD
+           , COMMENTS
+           , ICKEY
+           , UNIT
+           , ORDERQTY
+           , DT_COMMENTS
+           , EXTERNORDERKEY
+           , EXTERNORDERDETAILKEY
+           , TO_CTKEY    /*TO_센터*/
+	       , SALESPERSON_ID    /*영업사원ID*/
+	       , DELIVERY_PERSON_ID    /*배송사원ID*/
+	       , IC_RATE    /*행사상품비율*/
+	       , BONUS_IC_RATE    /*덤상품비율*/
+	       , ICRATETYPE	
+           , ORDER_ERROR_CD
+           , ORDER_ERROR_COMMENTS
+           , INSERTDATE
+           , INSERTURKEY
+           , UPDATEDATE
+           , UPDATEURKEY
+        )
+        VALUES
+            (
+              #{uplHsKey}
+            , #{ackey}
+            , #{deliveryKey}
+            , #{storeKey}
+            , #{ctkey}
+            , regexp_replace(#{deliveryHdDt} , '-|/', '')
+            , regexp_replace(#{orHdDt} , '-|/', '')
+            , #{orTypeCd}
+            , #{extordertypecd}
+            , #{comments}
+            , #{ickey}
+            , #{unit}
+            , #{orderqty}
+            , #{dtComments}
+            , #{externorderkey}
+            , #{externorderdetailkey}
+            , #{toCtkey}
+			, #{salespersonId}
+			, #{deliveryPersonId}
+			, #{icRate}
+			, #{bonusIcRate}
+			, #{icratetype}
+            , #{orderErrorCd}
+            , #{orderErrorComments}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+            )
+    </insert>
+
+    <insert id="insertInboundOrderTemp">
+        /* oms-common-batch-sql-oracle.xml insertInboundOrderTemp */
+        INSERT INTO TORDER_UPLOAD_SO (
+                UPLOADKEY
+              , ACKEY
+              , CTKEY
+              , DLVYEXPCTDAY
+              , ORDERISTDAY
+              , ORDERTYPECD
+              , CMT
+              , ICKEY
+              , OLNICKEY
+              , UOM
+              , ORDQTY
+              , DTCMT
+              , ORDERERRCD
+              , ORDERERRCMT
+              , DELYN
+              , INSERTDATE
+              , INSERTURKEY
+              , UPDATEDATE
+              , UPDATEURKEY
+        )
+        VALUES
+            (
+                #{uplHsKey}
+              , CASE WHEN  #{ordertypecd} NOT IN ('50', '180') THEN  #{ackey} ELSE (SELECT  ACKEY FROM  TORDER_MST_IC WHERE ICKEY =#{ickey} ) END
+              , #{ctkey}
+              , #{dlvyexpctday}
+              , #{orderistday}
+              , #{ordertypecd}
+              , #{cmt}
+              , #{ickey}
+              , #{olnickey}
+              , #{uom}
+              , #{ordqty}
+              , #{dtcmt}
+              , #{ordererrcd}
+              , #{ordererrcmt}
+              , 'N'
+              , #{sysdate}
+              , #{surkey}
+              , #{sysdate}
+              , #{surkey}
+            )
+    </insert>
+    
+    <insert id="insertOutboundOrderTemp">
+        /* oms-common-batch-sql-oracle.xml insertOutboundOrderTemp */
+        INSERT INTO TORDER_UPLOAD_SO (
+                UPLOADKEY
+              , ACKEY
+              , DLVYACKEY
+              , CTKEY
+              , DLVYEXPCTDAY
+              , ORDERISTDAY
+              , ORDERTYPECD
+              , CMT
+              , ICKEY
+              , OLNICKEY
+              , UOM
+              , ORDQTY
+              , DTCMT
+              , FROMTOCTKEY
+			  , BUYER
+			  , RECPNM
+			  , RECPTEL01
+			  , RECPTEL02
+			  , RECPZIPCD
+			  , RECPADDRHD
+			  , RECPADDRDT
+			  , ADDCMT01
+              , ORDERERRCD
+              , ORDERERRCMT
+              , DELYN
+              , INSERTDATE
+              , INSERTURKEY
+              , UPDATEDATE
+              , UPDATEURKEY
+        )
+        VALUES
+            (
+                #{uplHsKey}
+              , #{ackey}
+              , #{dlvyackey}
+              , #{ctkey}
+              , #{dlvyexpctday}
+              , #{orderistday}
+              , #{ordertypecd}
+              , #{cmt}
+              <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+              , #{ickey}
+              </if>
+              <if test="@com.kns.framework.util.StringUtil@isEmpty(ickey)" >
+              , COALESCE((SELECT X.ASRTREPKEY FROM TORDER_MST_ASRT X WHERE X.ASRTKEY = #{olnickey}), #{olnickey})
+              </if>
+              , #{olnickey}
+              , #{uom}
+              , #{ordqty}
+              , #{dtcmt}
+              , #{fromtoctkey}
+			  , pkg_crypto$encrypt(#{buyer}, #{encKey})
+			  , pkg_crypto$encrypt(#{recpnm}, #{encKey})
+			  , pkg_crypto$encrypt(#{recptel01}, #{encKey})
+			  , pkg_crypto$encrypt(#{recptel02}, #{encKey})
+			  , #{recpzipcd}
+			  , pkg_crypto$encrypt(#{recpaddrhd}, #{encKey})
+			  , pkg_crypto$encrypt(#{recpaddrdt}, #{encKey})
+			  , #{addcmt01}
+              , #{ordererrcd}
+              , #{ordererrcmt}
+              , 'N'
+              , #{sysdate}
+              , #{surkey}
+              , #{sysdate}
+              , #{surkey}
+            )
+    </insert>
+
+
+
+</mapper>

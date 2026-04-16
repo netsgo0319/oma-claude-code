@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.wif.common.mapper.LoggingMapper">
+
+    <insert id="insertMaster" parameterType="com.daiso.wif.common.dto.LogInfoDTO">
+        <selectKey resultType="com.daiso.wif.common.dto.LogInfoDTO" keyProperty="ifid,reqdt,reqtm" order="BEFORE">
+            SELECT nextval('seq_twif_cmm_interface_log') AS ifid
+                 , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS reqdt
+                 , TO_CHAR(CURRENT_TIMESTAMP, 'HH24MISS') AS reqtm
+        </selectKey>
+        INSERT INTO TWIF_CMM_INTERFACE_LOG
+        (
+              IFID
+            , IFNM
+            , IFTYPE
+            , REQMODULE
+            , REQDT
+            , REQTM
+            , STATUS
+            , ISPROCESS
+            , REQDATA
+            , RESDATA
+            , ERRMSG
+            , INSERTURKEY
+            , UPDATEURKEY
+        ) VALUES (
+              #{ifid}
+            , #{ifnm}
+            , COALESCE(#{iftype}, 'R')
+            , 'WIF'
+            , #{reqdt}
+            , #{reqtm}
+            , 'E'
+            , 'N'
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(reqdata)">
+                    <foreach collection="reqdata" item="reqData" open="," separator="||">
+                        #{reqData}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(resdata)">
+                    <foreach collection="resdata" item="resData" open="," separator="||">
+                        #{resData}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(errmsg)">
+                    <foreach collection="errmsg" item="errMsg" open="," separator="||">
+                        #{errMsg}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            , #{surkey}
+            , #{surkey}
+        )
+    </insert>
+
+    <insert id="insertMasterEncrypt" parameterType="com.daiso.wif.common.dto.LogInfoDTO">
+        <selectKey resultType="com.daiso.wif.common.dto.LogInfoDTO" keyProperty="ifid,reqdt,reqtm" order="BEFORE">
+            SELECT nextval('seq_twif_cmm_interface_log') AS ifid
+                 , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS reqdt
+                 , TO_CHAR(CURRENT_TIMESTAMP, 'HH24MISS') AS reqtm
+        </selectKey>
+        INSERT INTO TWIF_CMM_INTERFACE_LOG
+        (
+              IFID
+            , IFNM
+            , IFTYPE
+            , REQMODULE
+            , REQDT
+            , REQTM
+            , STATUS
+            , ISPROCESS
+            , REQDATA
+            , RESDATA
+            , ERRMSG
+            , INSERTURKEY
+            , UPDATEURKEY
+        ) VALUES (
+              #{ifid}
+            , #{ifnm}
+            , COALESCE(#{iftype}, 'R')
+            , 'WIF'
+            , #{reqdt}
+            , #{reqtm}
+            , 'E'
+            , 'N'
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(reqdata)">
+                    <foreach collection="reqdata" item="reqData" open="," separator="||">
+                        pkg_crypto$encrypt(#{reqData}::TEXT, #{encKey})
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(resdata)">
+                    <foreach collection="resdata" item="resData" open="," separator="||">
+                        #{resData}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(errmsg)">
+                    <foreach collection="errmsg" item="errMsg" open="," separator="||">
+                        #{errMsg}::TEXT
+                    </foreach>
+                </when>
+                <otherwise>
+                    , null
+                </otherwise>
+            </choose>
+            , #{surkey}
+            , #{surkey}
+        )
+    </insert>
+
+    <update id="updateResult" parameterType="com.daiso.wif.common.dto.LogInfoDTO">
+        UPDATE TWIF_CMM_INTERFACE_LOG
+           SET ISPROCESS = COALESCE(#{isprocess}, 'Y')
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(status)">
+                ,  STATUS = #{status}
+            </if>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(resdata)">
+                    ,  RESDATA = <foreach collection="resdata" item="resData" separator="||">
+                                            #{resData}::TEXT
+                                        </foreach>
+                </when>
+            </choose>
+            <choose>
+                <when test="@com.kns.framework.util.ApiUtil@notEmpty(errmsg)">
+                    ,  ERRMSG = <foreach collection="errmsg" item="errMsg" separator="||">
+                                        #{errMsg}::TEXT
+                                    </foreach>
+                </when>
+            </choose>
+            ,  STATUSCD = #{statuscd}
+            ,  UPDATEDATE = CURRENT_TIMESTAMP
+            ,  UPDATEURKEY = #{surkey}
+        WHERE IFID = #{ifid}
+    </update>
+
+</mapper>

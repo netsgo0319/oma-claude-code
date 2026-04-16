@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.StationMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectStationMgmt">
+		  FROM TWORK_MST_STN STN
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = STN.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectStationMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectStationMgmt"/>
+	</select>
+
+	<select id="selectStationMgmtList" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , STN.CTKEY
+		     , CT.CTNM
+			 , STN.STNDIVCD
+			 , STN.CLASSIFDIVCD
+			 , STN.CLASSIFTYPECD
+		     , STN.CELLALCRITCD
+			 , STN.STNNO
+			 , STN.STNFACNO
+			 , STN.STNBARCODE
+			 , STN.WIDTH
+			 , STN.DEPTH
+			 , STN.HEIGHT
+			 , STN.CBMSTARTRNG
+			 , STN.CBMCLOSRNG
+			 , STN.USEYN
+			 , STN.INSERTDATE
+			 , STN.INSERTURKEY
+			 , STN.UPDATEDATE
+		  	 , STN.UPDATEURKEY
+		<include refid="sql_selectStationMgmt"/>
+
+		 ORDER BY STN.UPDATEDATE DESC
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectCheckDupStationMgmt" resultType="java.lang.Integer">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectCheckDupStationMgmt */
+		SELECT COUNT(*)
+		  FROM TWORK_MST_STN
+		 WHERE STNFACNO = #{stnfacno}
+	</select>
+
+	<insert id="insertStationMgmt">
+		/* wms-master-stationmgmt-sql-oracle.xml - insertStationMgmt */
+		<selectKey keyProperty="stnbarcode" resultType="String" order="BEFORE">
+			SELECT #{stnfacno} || TO_CHAR(CURRENT_TIMESTAMP,'YYYY')
+		</selectKey>
+
+		INSERT INTO TWORK_MST_STN (
+		       CTKEY
+			 , STNDIVCD
+			 , CLASSIFDIVCD
+			 , CLASSIFTYPECD
+			 , CELLALCRITCD
+			 , STNNO
+			 , STNFACNO
+			 , STNBARCODE
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{stndivcd}
+			 , #{classifdivcd}
+			 , #{classiftypecd}
+		  	 , #{cellalcritcd}
+			 , #{stnno}
+			 , #{stnfacno}
+			 , #{stnbarcode}
+		     , COALESCE(#{width}, 0)
+		     , COALESCE(#{depth}, 0)
+		     , COALESCE(#{height}, 0)
+		     , COALESCE(#{cbmstartrng}, 0)
+		     , COALESCE(#{cbmclosrng}, 0)
+		     , #{useyn}
+		     , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , #{surkey}
+		     , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , #{surkey}
+			 )
+	</insert>
+
+	<insert id="insertStationWkCell">
+		/* wms-master-stationmgmt-sql-oracle.xml - insertStationWkCell */
+		INSERT INTO TWORK_MST_STNWKCELL (
+			   CTKEY
+			 , STNBARCODE
+			 , CELLBARCODE
+			 , DIRTDIVCD
+			 , ROWNO
+			 , COLNO
+			 , CELLNO
+			 , RTYN
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		SELECT CTKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CASE WHEN STNDIVCD = '10' THEN 'D'||'-'||#{stnno}||'-'||DIRTDIVCD||'-'||CELLNO
+					WHEN STNDIVCD = '20' THEN 'MD'||#{stnno}||CELLNO
+				END AS CELLBARCODE
+			 , DIRTDIVCD
+			 , ROWNO
+			 , COLNO
+			 , CELLNO
+			 , RTYN
+			 , CASE WHEN STNDIVCD = '20' AND COALESCE(#{classifdivcd}, ' ') = '10' AND CELLNO IN ('01','11','21') THEN 'N'
+                    ELSE 'Y'
+               END AS USEYN
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+		  FROM TWORK_MST_STN_CELL_SET
+		 WHERE CTKEY = #{ctkey}
+		   AND STNDIVCD = #{stndivcd}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(classifdivcd)'>
+			AND CLASSIFDIVCD = #{classifdivcd}
+		</if>
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(classiftypecd)'>
+			AND CLASSIFTYPECD = #{classiftypecd}
+		</if>
+
+	</insert>
+
+	<delete id="deleteStationMgmt">
+		/* wms-master-stationmgmt-sql-oracle.xml - deleteStationMgmt */
+		DELETE
+		  FROM TWORK_MST_STN
+		 WHERE CTKEY = #{ctkey}
+		   AND STNBARCODE = #{stnbarcode}
+	</delete>
+
+	<delete id="deleteStationWkCell">
+		/* wms-master-stationmgmt-sql-oracle.xml - deleteStationWkCell */
+		DELETE
+		FROM TWORK_MST_STNWKCELL
+		WHERE CTKEY = #{ctkey}
+		  AND STNBARCODE = #{stnbarcode}
+	</delete>
+
+	<update id="updateStationMgmt">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationMgmt */
+		UPDATE TWORK_MST_STN
+		   SET WIDTH = COALESCE(#{width}, 0)
+			 , DEPTH = COALESCE(#{depth}, 0)
+			 , HEIGHT = COALESCE(#{height}, 0)
+			 , CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , USEYN = #{useyn}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND STNBARCODE = #{stnbarcode}
+	</update>
+
+	<select id="selectStationInfo" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationInfo */
+		SELECT CTKEY
+			 , STNDIVCD
+			 , CLASSIFDIVCD
+			 , CLASSIFTYPECD
+			 , CELLALCRITCD
+			 , STNNO
+			 , STNFACNO
+			 , STNBARCODE
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , USEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		FROM TWORK_MST_STN
+		WHERE CTKEY = #{ctkey}
+		  AND STNBARCODE = #{stnbarcode}
+	</select>
+
+	<select id="selectStationCell" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationCell */
+		SELECT CTKEY
+		     , MAX(CASE WHEN CELLNO = 'CELL01' THEN PRINO END) AS CELL01
+		     , MAX(CASE WHEN CELLNO = 'CELL02' THEN PRINO END) AS CELL02
+		     , MAX(CASE WHEN CELLNO = 'CELL03' THEN PRINO END) AS CELL03
+		     , MAX(CASE WHEN CELLNO = 'CELL04' THEN PRINO END) AS CELL04
+		     , MAX(CASE WHEN CELLNO = 'CELL05' THEN PRINO END) AS CELL05
+		     , MAX(CASE WHEN CELLNO = 'CELL06' THEN PRINO END) AS CELL06
+		     , MAX(CASE WHEN CELLNO = 'CELL07' THEN PRINO END) AS CELL07
+		     , MAX(CASE WHEN CELLNO = 'CELL08' THEN PRINO END) AS CELL08
+		     , MAX(CASE WHEN CELLNO = 'CELL09' THEN PRINO END) AS CELL09
+		     , MAX(CASE WHEN CELLNO = 'CELL10' THEN PRINO END) AS CELL10
+		     , MAX(CASE WHEN CELLNO = 'CELL11' THEN PRINO END) AS CELL11
+		     , MAX(CASE WHEN CELLNO = 'CELL12' THEN PRINO END) AS CELL12
+		     , MAX(CASE WHEN CELLNO = 'CELL13' THEN PRINO END) AS CELL13
+		     , MAX(CASE WHEN CELLNO = 'CELL14' THEN PRINO END) AS CELL14
+		     , MAX(CASE WHEN CELLNO = 'CELL15' THEN PRINO END) AS CELL15
+		     , MAX(CASE WHEN CELLNO = 'CELL16' THEN PRINO END) AS CELL16
+		     , MAX(CASE WHEN CELLNO = 'CELL17' THEN PRINO END) AS CELL17
+		     , MAX(CASE WHEN CELLNO = 'CELL18' THEN PRINO END) AS CELL18
+		     , MAX(CASE WHEN CELLNO = 'CELL19' THEN PRINO END) AS CELL19
+		     , MAX(CASE WHEN CELLNO = 'CELL20' THEN PRINO END) AS CELL20
+		     , MAX(CASE WHEN CELLNO = 'CELL21' THEN PRINO END) AS CELL21
+		     , MAX(CASE WHEN CELLNO = 'CELL22' THEN PRINO END) AS CELL22
+		     , MAX(CASE WHEN CELLNO = 'CELL23' THEN PRINO END) AS CELL23
+		     , MAX(CASE WHEN CELLNO = 'CELL24' THEN PRINO END) AS CELL24
+		     , MAX(CASE WHEN CELLNO = 'CELL25' THEN PRINO END) AS CELL25
+		     , MAX(CASE WHEN CELLNO = 'CELL26' THEN PRINO END) AS CELL26
+		     , MAX(CASE WHEN CELLNO = 'CELL27' THEN PRINO END) AS CELL27
+		     , MAX(CASE WHEN CELLNO = 'CELL28' THEN PRINO END) AS CELL28
+		     , MAX(CASE WHEN CELLNO = 'CELL29' THEN PRINO END) AS CELL29
+		     , MAX(CASE WHEN CELLNO = 'CELL30' THEN PRINO END) AS CELL30
+		  FROM (
+			   SELECT CTKEY
+					, STNBARCODE
+					, 'CELL' || CELLNO AS CELLNO
+					, PRINO
+				FROM TWORK_MST_STNWKCELL
+			   WHERE CTKEY = #{ctkey}
+				 AND STNBARCODE = #{stnbarcode}
+			 ) AS pvt_src
+		 GROUP BY CTKEY
+	</select>
+
+    <select id="selectWkCellUseYn" resultType="camelMap">
+        /* wms-master-stationmgmt-sql-oracle.xml - selectWkCellUseYn */
+        SELECT 'CELL'||CELLNO AS CELLNO
+             , USEYN
+          FROM TWORK_MST_STNWKCELL
+         WHERE CTKEY = #{ctkey}
+           AND STNBARCODE = #{stnbarcode}
+        ORDER BY
+              CELLNO
+    </select>
+
+	<select id="selectStationPalletCell" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationPalletCell */
+		SELECT CTKEY
+		     , MAX(CASE WHEN CELLNO = 'CELL02' THEN PRINO END) AS CELL02
+		     , MAX(CASE WHEN CELLNO = 'CELL03' THEN PRINO END) AS CELL03
+		     , MAX(CASE WHEN CELLNO = 'CELL04' THEN PRINO END) AS CELL04
+		     , MAX(CASE WHEN CELLNO = 'CELL22' THEN PRINO END) AS CELL22
+		     , MAX(CASE WHEN CELLNO = 'CELL05' THEN PRINO END) AS CELL05
+		     , MAX(CASE WHEN CELLNO = 'CELL06' THEN PRINO END) AS CELL06
+		     , MAX(CASE WHEN CELLNO = 'CELL12' THEN PRINO END) AS CELL12
+		     , MAX(CASE WHEN CELLNO = 'CELL13' THEN PRINO END) AS CELL13
+		     , MAX(CASE WHEN CELLNO = 'CELL14' THEN PRINO END) AS CELL14
+		     , MAX(CASE WHEN CELLNO = 'CELL23' THEN PRINO END) AS CELL23
+		     , MAX(CASE WHEN CELLNO = 'CELL24' THEN PRINO END) AS CELL24
+		     , MAX(CASE WHEN CELLNO = 'CELL15' THEN PRINO END) AS CELL15
+		     , MAX(CASE WHEN CELLNO = 'CELL07' THEN PRINO END) AS CELL07
+		     , MAX(CASE WHEN CELLNO = 'CELL08' THEN PRINO END) AS CELL08
+		     , MAX(CASE WHEN CELLNO = 'CELL09' THEN PRINO END) AS CELL09
+		     , MAX(CASE WHEN CELLNO = 'CELL10' THEN PRINO END) AS CELL10
+		     , MAX(CASE WHEN CELLNO = 'CELL16' THEN PRINO END) AS CELL16
+		     , MAX(CASE WHEN CELLNO = 'CELL17' THEN PRINO END) AS CELL17
+		     , MAX(CASE WHEN CELLNO = 'CELL18' THEN PRINO END) AS CELL18
+		     , MAX(CASE WHEN CELLNO = 'CELL19' THEN PRINO END) AS CELL19
+		     , MAX(CASE WHEN CELLNO = 'CELL20' THEN PRINO END) AS CELL20
+		     , MAX(CASE WHEN CELLNO = 'CELL25' THEN PRINO END) AS CELL25
+		     , MAX(CASE WHEN CELLNO = 'CELL26' THEN PRINO END) AS CELL26
+		     , MAX(CASE WHEN CELLNO = 'CELL27' THEN PRINO END) AS CELL27
+		     , MAX(CASE WHEN CELLNO = 'CELL28' THEN PRINO END) AS CELL28
+		     , MAX(CASE WHEN CELLNO = 'CELL29' THEN PRINO END) AS CELL29
+		     , MAX(CASE WHEN CELLNO = 'CELL30' THEN PRINO END) AS CELL30
+		FROM (
+				 SELECT CTKEY
+					  , STNBARCODE
+					  , 'CELL' || CELLNO AS CELLNO
+					  , PRINO
+				 FROM TWORK_MST_STNWKCELL
+				 WHERE CTKEY = #{ctkey}
+				   AND STNBARCODE = #{stnbarcode}
+			 ) AS pvt_src
+		GROUP BY CTKEY
+	</select>
+
+	<update id="updateStationCellalcritcd">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationCellalcritcd */
+		UPDATE TWORK_MST_STN
+		   SET CELLALCRITCD = #{cellalcritcd}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		<where>
+		   AND CTKEY = #{ctkey}
+
+			<choose>
+				<when test='"10".equals(classifdivcd)'>
+					AND CLASSIFDIVCD = #{classifdivcd}
+					AND CLASSIFTYPECD = #{classiftypecd}
+				</when>
+				<when test='"20".equals(classifdivcd)'>
+					AND STNBARCODE = #{stnbarcode}
+				</when>
+			    <otherwise>
+					AND 1 = 2
+				</otherwise>
+			</choose>
+		</where>
+	</update>
+
+	<update id="updateStationCell">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationCell */
+		UPDATE TWORK_MST_STNWKCELL
+		   SET UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+             , PRINO = #{prino}
+		<where>
+			AND CTKEY = #{ctkey}
+            AND CELLNO = #{cellno}
+			<choose>
+				<when test='"10".equals(classifdivcd)'>
+					AND STNBARCODE IN (
+						SELECT STNBARCODE
+						  FROM TWORK_MST_STN
+						 WHERE CTKEY = #{ctkey}
+						   AND CLASSIFDIVCD = #{classifdivcd}
+						   AND CLASSIFTYPECD = #{classiftypecd}
+					  )
+				</when>
+				<when test='"20".equals(classifdivcd)'>
+					AND STNBARCODE = #{stnbarcode}
+				</when>
+				<otherwise>
+					AND 1 = 2
+				</otherwise>
+			</choose>
+		</where>
+
+	</update>
+
+	<select id="selectStationWkCellUseYn" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationWkCellUseYn */
+		SELECT CTKEY
+		     , MAX(CASE WHEN KEY = 'L01' THEN USEYN END) AS L01, MAX(CASE WHEN KEY = 'L02' THEN USEYN END) AS L02, MAX(CASE WHEN KEY = 'L03' THEN USEYN END) AS L03, MAX(CASE WHEN KEY = 'L04' THEN USEYN END) AS L04, MAX(CASE WHEN KEY = 'L05' THEN USEYN END) AS L05, MAX(CASE WHEN KEY = 'L06' THEN USEYN END) AS L06, MAX(CASE WHEN KEY = 'L07' THEN USEYN END) AS L07, MAX(CASE WHEN KEY = 'L08' THEN USEYN END) AS L08, MAX(CASE WHEN KEY = 'L09' THEN USEYN END) AS L09, MAX(CASE WHEN KEY = 'L10' THEN USEYN END) AS L10
+		     , MAX(CASE WHEN KEY = 'L11' THEN USEYN END) AS L11, MAX(CASE WHEN KEY = 'L12' THEN USEYN END) AS L12, MAX(CASE WHEN KEY = 'L13' THEN USEYN END) AS L13, MAX(CASE WHEN KEY = 'L14' THEN USEYN END) AS L14, MAX(CASE WHEN KEY = 'L15' THEN USEYN END) AS L15, MAX(CASE WHEN KEY = 'L16' THEN USEYN END) AS L16, MAX(CASE WHEN KEY = 'L17' THEN USEYN END) AS L17, MAX(CASE WHEN KEY = 'L18' THEN USEYN END) AS L18, MAX(CASE WHEN KEY = 'L19' THEN USEYN END) AS L19, MAX(CASE WHEN KEY = 'L20' THEN USEYN END) AS L20
+		     , MAX(CASE WHEN KEY = 'L21' THEN USEYN END) AS L21, MAX(CASE WHEN KEY = 'L22' THEN USEYN END) AS L22, MAX(CASE WHEN KEY = 'L23' THEN USEYN END) AS L23, MAX(CASE WHEN KEY = 'L24' THEN USEYN END) AS L24, MAX(CASE WHEN KEY = 'L25' THEN USEYN END) AS L25, MAX(CASE WHEN KEY = 'L26' THEN USEYN END) AS L26, MAX(CASE WHEN KEY = 'L27' THEN USEYN END) AS L27, MAX(CASE WHEN KEY = 'L28' THEN USEYN END) AS L28, MAX(CASE WHEN KEY = 'L29' THEN USEYN END) AS L29, MAX(CASE WHEN KEY = 'L30' THEN USEYN END) AS L30
+		     , MAX(CASE WHEN KEY = 'L31' THEN USEYN END) AS L31, MAX(CASE WHEN KEY = 'L32' THEN USEYN END) AS L32, MAX(CASE WHEN KEY = 'L33' THEN USEYN END) AS L33, MAX(CASE WHEN KEY = 'L34' THEN USEYN END) AS L34, MAX(CASE WHEN KEY = 'L35' THEN USEYN END) AS L35, MAX(CASE WHEN KEY = 'L36' THEN USEYN END) AS L36, MAX(CASE WHEN KEY = 'L37' THEN USEYN END) AS L37, MAX(CASE WHEN KEY = 'L38' THEN USEYN END) AS L38, MAX(CASE WHEN KEY = 'L39' THEN USEYN END) AS L39, MAX(CASE WHEN KEY = 'L40' THEN USEYN END) AS L40
+		     , MAX(CASE WHEN KEY = 'R01' THEN USEYN END) AS R01, MAX(CASE WHEN KEY = 'R02' THEN USEYN END) AS R02, MAX(CASE WHEN KEY = 'R03' THEN USEYN END) AS R03, MAX(CASE WHEN KEY = 'R04' THEN USEYN END) AS R04, MAX(CASE WHEN KEY = 'R05' THEN USEYN END) AS R05, MAX(CASE WHEN KEY = 'R06' THEN USEYN END) AS R06, MAX(CASE WHEN KEY = 'R07' THEN USEYN END) AS R07, MAX(CASE WHEN KEY = 'R08' THEN USEYN END) AS R08, MAX(CASE WHEN KEY = 'R09' THEN USEYN END) AS R09, MAX(CASE WHEN KEY = 'R10' THEN USEYN END) AS R10
+		     , MAX(CASE WHEN KEY = 'R11' THEN USEYN END) AS R11, MAX(CASE WHEN KEY = 'R12' THEN USEYN END) AS R12, MAX(CASE WHEN KEY = 'R13' THEN USEYN END) AS R13, MAX(CASE WHEN KEY = 'R14' THEN USEYN END) AS R14, MAX(CASE WHEN KEY = 'R15' THEN USEYN END) AS R15, MAX(CASE WHEN KEY = 'R16' THEN USEYN END) AS R16, MAX(CASE WHEN KEY = 'R17' THEN USEYN END) AS R17, MAX(CASE WHEN KEY = 'R18' THEN USEYN END) AS R18, MAX(CASE WHEN KEY = 'R19' THEN USEYN END) AS R19, MAX(CASE WHEN KEY = 'R20' THEN USEYN END) AS R20
+		     , MAX(CASE WHEN KEY = 'R21' THEN USEYN END) AS R21, MAX(CASE WHEN KEY = 'R22' THEN USEYN END) AS R22, MAX(CASE WHEN KEY = 'R23' THEN USEYN END) AS R23, MAX(CASE WHEN KEY = 'R24' THEN USEYN END) AS R24, MAX(CASE WHEN KEY = 'R25' THEN USEYN END) AS R25, MAX(CASE WHEN KEY = 'R26' THEN USEYN END) AS R26, MAX(CASE WHEN KEY = 'R27' THEN USEYN END) AS R27, MAX(CASE WHEN KEY = 'R28' THEN USEYN END) AS R28, MAX(CASE WHEN KEY = 'R29' THEN USEYN END) AS R29, MAX(CASE WHEN KEY = 'R30' THEN USEYN END) AS R30
+		     , MAX(CASE WHEN KEY = 'R31' THEN USEYN END) AS R31, MAX(CASE WHEN KEY = 'R32' THEN USEYN END) AS R32, MAX(CASE WHEN KEY = 'R33' THEN USEYN END) AS R33, MAX(CASE WHEN KEY = 'R34' THEN USEYN END) AS R34, MAX(CASE WHEN KEY = 'R35' THEN USEYN END) AS R35, MAX(CASE WHEN KEY = 'R36' THEN USEYN END) AS R36, MAX(CASE WHEN KEY = 'R37' THEN USEYN END) AS R37, MAX(CASE WHEN KEY = 'R38' THEN USEYN END) AS R38, MAX(CASE WHEN KEY = 'R39' THEN USEYN END) AS R39, MAX(CASE WHEN KEY = 'R40' THEN USEYN END) AS R40
+		  FROM (
+			   SELECT CTKEY
+					, STNBARCODE
+					, DIRTDIVCD || CELLNO AS KEY
+					, USEYN
+				 FROM TWORK_MST_STNWKCELL
+				WHERE CTKEY = #{ctkey}
+				  AND STNBARCODE = #{stnbarcode}
+			 ) AS pvt_src
+		 GROUP BY CTKEY
+	</select>
+
+	<update id="updateStationWkCellUseYn">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationWkCellUseYn */
+		UPDATE TWORK_MST_STNWKCELL
+		   SET USEYN = #{useyn}
+			 , PRINO = null
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND STNBARCODE = #{stnbarcode}
+		   AND DIRTDIVCD = #{dirtdivcd}
+		   AND CELLNO = #{cellno}
+	</update>
+
+	<select id="selectStationWkCell" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationWkCell */
+		SELECT CTKEY
+		     , MAX(CASE WHEN KEY = 'L01' THEN PRINO END) AS L01, MAX(CASE WHEN KEY = 'L02' THEN PRINO END) AS L02, MAX(CASE WHEN KEY = 'L03' THEN PRINO END) AS L03, MAX(CASE WHEN KEY = 'L04' THEN PRINO END) AS L04, MAX(CASE WHEN KEY = 'L05' THEN PRINO END) AS L05, MAX(CASE WHEN KEY = 'L06' THEN PRINO END) AS L06, MAX(CASE WHEN KEY = 'L07' THEN PRINO END) AS L07, MAX(CASE WHEN KEY = 'L08' THEN PRINO END) AS L08, MAX(CASE WHEN KEY = 'L09' THEN PRINO END) AS L09, MAX(CASE WHEN KEY = 'L10' THEN PRINO END) AS L10
+		     , MAX(CASE WHEN KEY = 'L11' THEN PRINO END) AS L11, MAX(CASE WHEN KEY = 'L12' THEN PRINO END) AS L12, MAX(CASE WHEN KEY = 'L13' THEN PRINO END) AS L13, MAX(CASE WHEN KEY = 'L14' THEN PRINO END) AS L14, MAX(CASE WHEN KEY = 'L15' THEN PRINO END) AS L15, MAX(CASE WHEN KEY = 'L16' THEN PRINO END) AS L16, MAX(CASE WHEN KEY = 'L17' THEN PRINO END) AS L17, MAX(CASE WHEN KEY = 'L18' THEN PRINO END) AS L18, MAX(CASE WHEN KEY = 'L19' THEN PRINO END) AS L19, MAX(CASE WHEN KEY = 'L20' THEN PRINO END) AS L20
+		     , MAX(CASE WHEN KEY = 'L21' THEN PRINO END) AS L21, MAX(CASE WHEN KEY = 'L22' THEN PRINO END) AS L22, MAX(CASE WHEN KEY = 'L23' THEN PRINO END) AS L23, MAX(CASE WHEN KEY = 'L24' THEN PRINO END) AS L24, MAX(CASE WHEN KEY = 'L25' THEN PRINO END) AS L25, MAX(CASE WHEN KEY = 'L26' THEN PRINO END) AS L26, MAX(CASE WHEN KEY = 'L27' THEN PRINO END) AS L27, MAX(CASE WHEN KEY = 'L28' THEN PRINO END) AS L28, MAX(CASE WHEN KEY = 'L29' THEN PRINO END) AS L29, MAX(CASE WHEN KEY = 'L30' THEN PRINO END) AS L30
+		     , MAX(CASE WHEN KEY = 'L31' THEN PRINO END) AS L31, MAX(CASE WHEN KEY = 'L32' THEN PRINO END) AS L32, MAX(CASE WHEN KEY = 'L33' THEN PRINO END) AS L33, MAX(CASE WHEN KEY = 'L34' THEN PRINO END) AS L34, MAX(CASE WHEN KEY = 'L35' THEN PRINO END) AS L35, MAX(CASE WHEN KEY = 'L36' THEN PRINO END) AS L36, MAX(CASE WHEN KEY = 'L37' THEN PRINO END) AS L37, MAX(CASE WHEN KEY = 'L38' THEN PRINO END) AS L38, MAX(CASE WHEN KEY = 'L39' THEN PRINO END) AS L39, MAX(CASE WHEN KEY = 'L40' THEN PRINO END) AS L40
+		     , MAX(CASE WHEN KEY = 'R01' THEN PRINO END) AS R01, MAX(CASE WHEN KEY = 'R02' THEN PRINO END) AS R02, MAX(CASE WHEN KEY = 'R03' THEN PRINO END) AS R03, MAX(CASE WHEN KEY = 'R04' THEN PRINO END) AS R04, MAX(CASE WHEN KEY = 'R05' THEN PRINO END) AS R05, MAX(CASE WHEN KEY = 'R06' THEN PRINO END) AS R06, MAX(CASE WHEN KEY = 'R07' THEN PRINO END) AS R07, MAX(CASE WHEN KEY = 'R08' THEN PRINO END) AS R08, MAX(CASE WHEN KEY = 'R09' THEN PRINO END) AS R09, MAX(CASE WHEN KEY = 'R10' THEN PRINO END) AS R10
+		     , MAX(CASE WHEN KEY = 'R11' THEN PRINO END) AS R11, MAX(CASE WHEN KEY = 'R12' THEN PRINO END) AS R12, MAX(CASE WHEN KEY = 'R13' THEN PRINO END) AS R13, MAX(CASE WHEN KEY = 'R14' THEN PRINO END) AS R14, MAX(CASE WHEN KEY = 'R15' THEN PRINO END) AS R15, MAX(CASE WHEN KEY = 'R16' THEN PRINO END) AS R16, MAX(CASE WHEN KEY = 'R17' THEN PRINO END) AS R17, MAX(CASE WHEN KEY = 'R18' THEN PRINO END) AS R18, MAX(CASE WHEN KEY = 'R19' THEN PRINO END) AS R19, MAX(CASE WHEN KEY = 'R20' THEN PRINO END) AS R20
+		     , MAX(CASE WHEN KEY = 'R21' THEN PRINO END) AS R21, MAX(CASE WHEN KEY = 'R22' THEN PRINO END) AS R22, MAX(CASE WHEN KEY = 'R23' THEN PRINO END) AS R23, MAX(CASE WHEN KEY = 'R24' THEN PRINO END) AS R24, MAX(CASE WHEN KEY = 'R25' THEN PRINO END) AS R25, MAX(CASE WHEN KEY = 'R26' THEN PRINO END) AS R26, MAX(CASE WHEN KEY = 'R27' THEN PRINO END) AS R27, MAX(CASE WHEN KEY = 'R28' THEN PRINO END) AS R28, MAX(CASE WHEN KEY = 'R29' THEN PRINO END) AS R29, MAX(CASE WHEN KEY = 'R30' THEN PRINO END) AS R30
+		     , MAX(CASE WHEN KEY = 'R31' THEN PRINO END) AS R31, MAX(CASE WHEN KEY = 'R32' THEN PRINO END) AS R32, MAX(CASE WHEN KEY = 'R33' THEN PRINO END) AS R33, MAX(CASE WHEN KEY = 'R34' THEN PRINO END) AS R34, MAX(CASE WHEN KEY = 'R35' THEN PRINO END) AS R35, MAX(CASE WHEN KEY = 'R36' THEN PRINO END) AS R36, MAX(CASE WHEN KEY = 'R37' THEN PRINO END) AS R37, MAX(CASE WHEN KEY = 'R38' THEN PRINO END) AS R38, MAX(CASE WHEN KEY = 'R39' THEN PRINO END) AS R39, MAX(CASE WHEN KEY = 'R40' THEN PRINO END) AS R40
+		  FROM (
+			   SELECT CTKEY
+					, STNBARCODE
+					, DIRTDIVCD || CELLNO AS KEY
+					, PRINO
+				 FROM TWORK_MST_STNWKCELL
+				WHERE CTKEY = #{ctkey}
+				  AND STNBARCODE = #{stnbarcode}
+			 ) AS pvt_src
+		 GROUP BY CTKEY
+	</select>
+
+	<select id="selectStationWkCellGroupNo" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationWkCellGroupNo */
+		SELECT CTKEY
+		     , STNBARCODE
+		     , ROWNO
+		     , MAX(GRPNO) AS GRPNO
+			 , MAX(GRPNO) AS ORG_GRPNO
+		  FROM TWORK_MST_STNWKCELL
+		 WHERE CTKEY = #{ctkey}
+		   AND STNBARCODE = #{stnbarcode}
+		 GROUP BY
+		       CTKEY
+		     , STNBARCODE
+		     , ROWNO
+		 ORDER BY ROWNO
+	</select>
+
+	<update id="updateStationWkCell">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationWkCell */
+		UPDATE TWORK_MST_STNWKCELL
+		   SET PRINO = #{prino}
+		     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+
+		<choose>
+			<when test='"Y".equals(checked)'>
+				AND STNBARCODE IN (
+					SELECT STNBARCODE FROM TWORK_MST_STN WHERE CTKEY = #{ctkey} AND STNDIVCD = '10'
+				)
+			</when>
+		   	<otherwise>
+				AND STNBARCODE = #{stnbarcode}
+			</otherwise>
+		</choose>
+
+		   AND DIRTDIVCD = #{dirtdivcd}
+		   AND CELLNO = #{cellno}
+	</update>
+
+	<update id="updateStationWkCellGroup">
+		/* wms-master-stationmgmt-sql-oracle.xml - updateStationWkCellGroup */
+		UPDATE TWORK_MST_STNWKCELL
+		   SET GRPNO = #{grpno}
+		     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+
+		<choose>
+			<when test='"Y".equals(checked)'>
+				AND STNBARCODE IN (
+					SELECT STNBARCODE FROM TWORK_MST_STN WHERE CTKEY = #{ctkey} AND STNDIVCD = '10'
+				)
+			</when>
+		   	<otherwise>
+				AND STNBARCODE = #{stnbarcode}
+			</otherwise>
+		</choose>
+
+		   AND ROWNO = #{rowno}
+	</update>
+
+	<select id="selectStationWkCellBarcodeList" resultType="camelMap">
+		/* wms-master-stationmgmt-sql-oracle.xml - selectStationWkCellBarcodeList */
+		SELECT CELLBARCODE
+			 , CELLNO
+		  FROM TWORK_MST_STNWKCELL
+		 WHERE CTKEY = #{ctkey}
+		   AND STNBARCODE = #{stnbarcode}
+
+		<choose>
+			<when test='"10".equals(reportType)'>
+				<if test="chkList != null and chkList.size > 0">
+					AND DIRTDIVCD || CELLNO IN
+					<foreach item="item" collection="chkList"  open="(" separator="," close=")">
+						#{item}
+					</foreach>
+				</if>
+			</when>
+			<when test='"20".equals(reportType)'>
+				<if test="chkList != null and chkList.size > 0">
+					AND CELLNO IN
+					<foreach item="item" collection="chkList"  open="(" separator="," close=")">
+						#{item}
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+			 AND 1 = 2
+			</otherwise>
+		</choose>
+
+		 ORDER BY
+		       DIRTDIVCD
+		     , CELLNO
+	</select>
+
+</mapper>

@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.mapper.DasBatchMapper">
+	<select id="getClassificationPlanWaveSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getClassificationPlanWaveSeq - 분류계획 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationPlanOrderSeq" resultType="camelMap">
+		/*  wif-das-batch-interface-sql-oracle.xml - getClassificationPlanOrderSeq - 분류계획 Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getClassificationPlanItemSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getClassificationPlanItemSeq - 분류계획 Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classifplan_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertClassificationPlanWave" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanWaveVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertClassificationPlanWave - 분류계획 WAVE INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_WA (
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,DASEQTYPE
+			,WKDATE
+			,WASNDEMP
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{dasEqType}
+			,#{wkDate}
+			,#{waSndEmp}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		)
+	</insert>
+
+	<insert id="insertClassificationPlanOrder" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanOrderVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertClassificationPlanOrder - 분류계획 ORDER INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,MIDGRP
+			,PCKGBOXSIZE
+			,DFSHPICEXISTYN
+			,WBLNO
+			,DPRTSPOTTMNLNM
+			,DPRTSPOTTMNLCD
+			,DESTSPOTTMNLNM
+			,DESTSPOTTMNLCD
+			,POSTOFICCD
+			,POSTOFICNM
+			,RGONTYPE
+			,HUBCD
+			,MDLCD
+			,DLVYEMPTYPECD
+			,DLVYEMPCD
+			,DLVYEMPNM
+			,PAY
+			,MEMO
+			,RCVPRSNADDR
+			,RCVPRSNADDR1
+			,RCVPRSNADDRABBR
+			,RCVPRSNNM
+			,RCVPRSNTEL
+			,RCVPRSNHP
+			,SENDPRSNADDR
+			,SENDPRSNNM
+			,SENDPRSNTEL
+			,SENDPRSNHP
+			,WEIGHT
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{midGrp}
+			,#{pckgBoxSize}
+			,#{dfShipIcExistYn}
+			,#{wblNo}
+			,#{dprtSpotTmnlNm}
+			,#{dprtSpotTmnlCd}
+			,#{destSpotTmnlNm}
+			,#{destSpotTmnlCd}
+			,#{postOficCd}
+			,#{postOficNm}
+			,#{rgonType}
+			,#{hubCd}
+			,#{mdlCd}
+			,#{dlvyEmpTypeCd}
+			,#{dlvyEmpCd}
+			,#{dlvyEmpNm}
+			,#{pay}
+			,#{memo}
+			,#{rcvPrsnAddr}
+			,#{rcvPrsnAddr1}
+			,#{rcvPrsnAddrAbbr}
+			,#{rcvPrsnNm}
+			,#{rcvPrsnTel}
+			,#{rcvPrsnHp}
+			,#{sendPrsnAddr}
+			,#{sendPrsnNm}
+			,#{sendPrsnTel}
+			,#{sendPrsnhp}
+			,#{weight}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		)
+	</insert>
+
+	<insert id="insertClassificationPlanItem" parameterType="com.daiso.wif.rest.in.das.classifplan.vo.DasClassificationPlanItemVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertClassificationPlanItem - 분류계획 ITEM INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_classifplan_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_CLASSIFPLAN_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,ORDQTY
+			,LCKEY
+			,DFSHPICYN
+			,ORD
+			,INSERTURKEY
+			,INSERTDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{ordQty}
+			,#{lcKey}
+			,#{dfShpIcYn}
+			,#{ord}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		)
+	</insert>
+
+	<update id="updateClassificationPlanWaveResponse">
+		/* wif-das-batch-interface-sql-oracle.xml - updateClassificationPlanWaveResult - DAS 분류계획 송신 실적 UPDATE SQL */
+		UPDATE TWIF_DAS_CLASSIFPLAN_WA
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+	</update>
+
+	<update id="updateWmsClassificationPlanWaveResponse">
+		/* wif-das-interface-sql-oracle.xml - updateWmsClassificationPlanWaveResponse - DAS 분류계획 송신 실적 WMS UPDATE SQL */
+		UPDATE TWORK_INFO_WA_HD
+		SET WAWKSTATUSCD = #{waWkStatusCd}
+		,UPDATEDATE 	= #{sysdate}
+		,UPDATEURKEY = #{surkey}
+		WHERE CTKEY 		= #{ctKey}
+		AND OWKEY 		= #{owKey}
+		AND WAHDKEY 		= #{waHdKey}
+	</update>
+
+	<insert id="insertDasMidLocDsnWave" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnWaveVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnWave - DAS 중분류DAS 로케이션 지정 Wave INSERT SQL */
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,DASEQTYPE
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{dasEqType}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasMidLocDsnSmlStn" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnSmlStnVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnSmlStn - DAS 중분류DAS 로케이션 지정 Small Station INSERT SQL */
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_SMLSTN
+		(
+			WASEQ
+			,SMLSTNSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,SMLSTN
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{smlStnSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{smlStn}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertDasMidLocDsnMidCell" parameterType="com.daiso.wif.rest.in.das.midlocation.vo.MidLocDsnMidCellVO">
+		/* wif-das-batch-interface-sql-oracle.xml - insertDasMidLocDsnMidCell - DAS 중분류DAS 로케이션 지정 Middle Cell INSERT SQL */
+		<selectKey keyProperty="midCellSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_midloc_dsn_midcell') AS MID_CELL_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_MIDLOC_DSN_MIDCELL
+		(
+			WASEQ
+			,SMLSTNSEQ
+			,MIDCELLSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,SMLSTN
+			,MIDCELLBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{smlStnSeq}
+			,#{midCellSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{smlStn}
+			,#{midCellBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<select id="getDasMidLocDsnWaveSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnWaveSeq - DAS 중분류DAS 로케이션 지정 Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getDasMidLocDsnSmlStnSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnSmlStnSeq - DAS 중분류DAS 로케이션 지정 Small Station Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_smlstn') AS SML_STN_SEQ
+	</select>
+
+	<select id="getDasMidLocDsnMidCellSeq" resultType="camelMap">
+		/* wif-das-batch-interface-sql-oracle.xml - getDasMidLocDsnMidCellSeq - DAS 중분류DAS 로케이션 지정 Middle Cell Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_midloc_dsn_midcell') AS MID_CELL_SEQ
+	</select>
+
+	<update id="updateDasMidLocDsnWaveResponse">
+		/* wif-das-batch-interface-sql-oracle.xml - updateDasMidLocDsnWaveResponse -  DAS 중분류DAS 로케이션 지정 Wave 응답 업데이트 UPDATE SQL */
+		UPDATE TWIF_DAS_MIDLOC_DSN_WA
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+		   AND WAHDKEY		= #{waHdKey}
+		   AND CTKEY        = #{ctKey}
+		   AND OWKEY        = #{owKey}
+	</update>
+
+	<update id="updateValidContents" parameterType="map">
+		/* wif-das-batch-interface-sql-oracle.xml - updateValidContents - Validation Result UPDATE SQL */
+		UPDATE ${tableName}
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+	</update>
+
+</mapper>

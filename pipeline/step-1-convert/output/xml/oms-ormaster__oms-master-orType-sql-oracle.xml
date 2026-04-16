@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OrTypeMapper">
+	
+	<select id="selectOrTypeCount" resultType="java.lang.Integer" >
+		/* oms-master-orType-sql-oracle.xml selectOrTypeCount */
+        SELECT COUNT(1)
+          FROM TORDER_MST_ORTYPE A
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="selectOrTypeList" resultType="camelMap" >
+		/* oms-master-orType-sql-oracle.xml selectOrTypeList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT '0' AS CHK
+				     , A.OWKEY
+				     , O.OWNM AS OWKEYNM
+				     , A.ORDERTYPECD AS SERVERORDERTYPECD
+				     , A.ORDERTYPECD
+				     , A.ORDERTYPENM
+				     , COALESCE(A.IBYN, 'N') AS IBYN
+				     , COALESCE(A.OBYN, 'N') AS OBYN
+				     , A.ORDERAT
+				     , A.WMSIBTYPE
+				     , A.WMSOBTYPE
+				     , A.TMSOBTYPE
+				     , COALESCE(A.SOYN, 'N') AS SOYN
+				     , COALESCE(A.STOCKYN, 'N') AS STOCKYN
+				     , COALESCE(A.WMSORDERCREATEYN, 'N') AS WMSORDERCREATEYN
+				     , COALESCE(A.TMSORDERCREATEYN, 'N') AS TMSORDERCREATEYN
+					 , COALESCE(A.WMSYN, 'N') AS WMSYN
+					 , COALESCE(A.TMSPERFMANSYN, 'N') AS TMSPERFMANSYN
+					 , COALESCE(A.WMSPERFMANSYN, 'N') AS WMSPERFMANSYN
+					 , A.PERFMANSTYPE
+					 , COALESCE(A.ORDERSEPYN, 'N') AS ORDERSEPYN
+					 , COALESCE(A.ICCOMBINATYN, 'N') AS ICCOMBINATYN
+				     , 'Y' AS IS_OWSPCVERIFICATION
+				     , COALESCE(A.OPENORDERYN, 'N') AS OPENORDERYN
+					 , COALESCE(STATYN, 'N') AS STATYN
+					 , COALESCE(POCALINCYN, 'N') AS POCALINCYN
+				     , COALESCE(A.DELYN, 'N') AS DELYN
+				     , COALESCE(A.EOSENDTYPE, 'AUTO') AS EOSENDTYPE
+				     , A.INSERTDATE
+				     , A.INSERTURKEY
+				     , A.UPDATEDATE
+				     , A.UPDATEURKEY
+				     --, COALESCE(A.UNSETYN, 'N') AS UNSETYN
+					 --, COALESCE(A.ICUT_CHK_BY_CT_YN, 'N') AS ICUT_CHK_BY_CT_YN
+				     --, COALESCE(A.DLDAYYN, 'N') AS DLDAYYN
+				     --, A.OWSPCVERIFICATION
+				  FROM TORDER_MST_ORTYPE A
+				  LEFT JOIN TORDER_MST_OW O 
+				    ON A.OWKEY = O.OWKEY
+				 WHERE 1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				       AND #{SEARCH_CONDITION}
+				</if>
+				<if test="owkey != null">
+		    	  	   AND A.OWKEY = #{owkey}
+		    	</if>	
+		    	<if test="orTypeCd != null">
+		    	  	   AND A.ORDERTYPECD = #{orTypeCd}
+		    	</if>	
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY LPAD(A.ORDERTYPECD::TEXT, 20, '0')
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>		
+	
+	<select id="selectOrTypeDt" resultType="camelMap" >
+		/* oms-master-orType-sql-oracle.xml selectOrTypeDt */
+		SELECT '0' AS CHK
+		     , M.OWKEY
+		     , #{hddtdiv} AS HDDTDIV
+		     , M.ORDERTYPECD
+		     , M.ORDERTYPENM
+		     , A.COLUMN_NAME AS COCOLUMN
+		     , COALESCE(B.COMMENTS, A.COLUMN_NAME) AS COCOLUMNCOMMENT
+		     , COALESCE(C.REQRDYN, 'N') AS REQRDYN
+		     , C.DEFVAL
+		     , C.CDRFRNCTYPE
+		     , C.CDRFRNCVAL
+		     , COALESCE(C.DELYN, 'N') AS DELYN
+		     , C.INSERTDATE
+		     , C.INSERTURKEY
+		     , C.UPDATEDATE
+		     , C.UPDATEURKEY
+		  FROM TORDER_MST_ORTYPE M
+		  JOIN USER_TAB_COLUMNS A
+		    ON A.TABLE_NAME = #{tableName}
+		  LEFT JOIN USER_COL_COMMENTS B
+		    ON A.TABLE_NAME = B.TABLE_NAME
+		   AND A.COLUMN_NAME = B.COLUMN_NAME
+		  LEFT JOIN TORDER_INFO_CO_CHK C  
+		    ON M.OWKEY = C.OWKEY
+		   AND M.ORDERTYPECD = C.ORDERTYPECD 
+		   AND C.HDDTDIV = #{hddtdiv}
+		   AND A.COLUMN_NAME = C.COCOLUMN          
+		 WHERE M.OWKEY = #{owkey}
+		   AND M.ORDERTYPECD = #{orTypeCd}
+		 ORDER BY A.COLUMN_ID
+	</select>
+	
+	<select id="selectOwspcCodes" resultType="camelMap" >
+		/* oms-master-orType-sql-oracle.xml selectOwspcCodes */
+		SELECT OWCDDTKEY AS FIELD1
+			 , OWCDDTKEY||':'||OWCDDTNM AS FIELD2
+			 , '1' AS CHK			 
+		FROM TADMIN_MST_OWCD_DT
+		WHERE OWKEY = #{owkey}
+		  AND OWCDHDKEY = 'OMSCODE98'
+		  AND LAKEY = #{lakey}
+		  AND DELYN = 'N'
+		ORDER BY OWCDDTORDER
+	</select>
+
+	<select id="checkOrTypeInfo" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_MST_ORTYPE	
+    	 WHERE OWKEY = #{owkey}
+    	   AND ORDERTYPECD = #{ordertypecd}
+	</select>	
+	
+	<select id="checkOrTypeDt" resultType="java.lang.Integer" >
+	/* oms-master-orType-sql-oracle.xml checkOrTypeDt */
+		SELECT COUNT(1)
+		  FROM TORDER_INFO_CO_CHK	
+    	 WHERE OWKEY = #{owkey}
+    	   AND ORDERTYPECD = #{ordertypecd}	
+    	   AND HDDTDIV = #{hddtdiv}
+    	   AND COCOLUMN = #{cocolumn}
+	</select>
+	
+	<select id="selectOrTypeInfoList" resultType="com.daiso.oms.ormaster.vo.OrderTypeVO" >
+	/* oms-master-orType-sql-oracle.xml selectOrTypeInfoList */
+		SELECT A.ORDERTYPECD
+		     , A.ORDERTYPENM
+		     , A.ORDERAT
+		     , A.WMSIBTYPE
+		     , A.WMSOBTYPE
+		     , A.PERFMANSTYPE
+		     , COALESCE(A.WMSPERFMANSYN, 'N') AS WMSPERFMANSYN
+		     , COALESCE(A.WMSORDERCREATEYN, 'N') AS WMSORDERCREATEYN
+		     , COALESCE(A.POCALINCYN, 'N') AS POCALINCYN
+		     , COALESCE(A.OPENORDERYN, 'N') AS OPENORDERYN
+		     , COALESCE(A.IBYN, 'N') AS IBYN
+		     , COALESCE(A.OBYN, 'N') AS OBYN
+		     , COALESCE(A.SOYN, 'N') AS SOYN
+		     , COALESCE(A.EOSENDTYPE, 'AUTO') AS EOSENDTYPE
+		  FROM TORDER_MST_ORTYPE A
+		 WHERE DELYN = 'N'
+	</select>
+	
+	<insert id="insertOrType">
+	/* oms-master-orType-sql-oracle.xml insertOrType */
+		INSERT INTO TORDER_MST_ORTYPE
+		(
+		      OWKEY
+		    , ORDERTYPECD
+		    , ORDERTYPENM
+		    , IBYN
+		    , OBYN
+			, ORDERAT
+		    , SOYN
+		    , WMSORDERCREATEYN
+		    , TMSORDERCREATEYN
+		    , WMSIBTYPE
+		    , WMSOBTYPE
+		    , TMSOBTYPE
+		    , WMSPERFMANSYN
+			, TMSPERFMANSYN
+			, OPENORDERYN
+			, PERFMANSTYPE
+			, POCALINCYN
+		    , STATYN
+		    , DELYN
+		    , EOSENDTYPE
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		    <!--
+			, SPLITYN
+			, COMBINATIONYN
+			, ICUT_CHK_BY_CT_YN
+		    , STOCKYN
+		    , SETYN
+		    , UNSETYN
+		    , WMSYN
+		    , TMSYN
+		    , TMSOBTYPE
+		    , DLDAYYN
+		    , OWSPCVERIFICATION
+			-->
+		)
+		VALUES
+		(
+		      #{owkey}
+		    , #{ordertypecd}
+		    , #{ordertypenm}
+		    , #{ibyn}
+		    , #{obyn}
+			, #{orderat}
+		    , #{soyn}
+		    , #{wmsordercreateyn}
+		    , #{tmsordercreateyn}
+		    , #{wmsibtype}
+		    , #{wmsobtype}
+		    , #{tmsobtype}
+		    , #{wmsperfmansyn}
+			, #{tmsperfmansyn}
+			, #{openorderyn}
+			, #{perfmanstype}
+		    , #{pocalincyn}
+		    , #{statyn}
+		    , #{delyn}
+		    , #{eosendtype}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+	
+	<insert id="insertOrTypeDt">
+	/* oms-master-orType-sql-oracle.xml insertOrTypeDt */
+		INSERT INTO TORDER_INFO_CO_CHK
+		(
+		      OWKEY
+		    , ORDERTYPECD -- OR_TYPE_CD
+		    , HDDTDIV -- HDGB
+		    , COCOLUMN
+		    , REQRDYN -- ISMANDATORY
+		    , DEFVAL -- DEFAULT_VALUE
+		    , CDRFRNCTYPE -- CODE_REF_TYPE
+		    , CDRFRNCVAL -- CODE_REF_VALUE
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		VALUES 
+		(
+		      #{owkey}
+		    , #{ordertypecd}
+		    , #{hddtdiv}
+		    , #{cocolumn}
+		    , #{reqrdyn}
+		    , #{defval}
+		    , #{cdrfrnctype}
+		    , #{cdrfrncval}
+		    , #{delyn}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+	
+	<update id="updateOrType">
+	/* oms-master-orType-sql-oracle.xml updateOrType */
+		UPDATE TORDER_MST_ORTYPE
+		   SET ORDERTYPENM      = #{ordertypenm} -- OR_TYPE_NAME
+		     , IBYN             = #{ibyn}      
+		     , OBYN             = #{obyn}
+		     , ORDERAT          = #{orderat} -- ORDER_ATTR
+		     , SOYN             = #{soyn}
+		     , WMSORDERCREATEYN = #{wmsordercreateyn}
+		     , TMSORDERCREATEYN = #{tmsordercreateyn}
+		     , WMSIBTYPE        = #{wmsibtype} -- IBHDTYPE    
+		     , WMSOBTYPE        = #{wmsobtype} -- OBHDTYPE
+		     , TMSOBTYPE        = #{tmsobtype} -- TMSOBHDTYPE
+		     , WMSPERFMANSYN    = #{wmsperfmansyn} -- WMSPERFORMANCEYN
+			 , TMSPERFMANSYN    = #{tmsperfmansyn} -- TMSPERFORMANCEYN
+			 , OPENORDERYN      = #{openorderyn}
+			 , PERFMANSTYPE     = #{perfmanstype} -- PERFORMANCETYPE
+			 , POCALINCYN  = #{pocalincyn}
+			 , STATYN  = #{statyn}
+			 , EOSENDTYPE  = #{eosendtype}
+		     , DELYN            = #{delyn}
+		     , UPDATEDATE       = #{sysdate}
+		     , UPDATEURKEY      = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ORDERTYPECD = #{ordertypecd}
+	</update>
+	
+	<update id="updateOrTypeDt">
+	/* oms-master-orType-sql-oracle.xml updateOrTypeDt */
+		UPDATE TORDER_INFO_CO_CHK
+		   SET REQRDYN     = #{reqrdyn} -- ISMANDATORY
+		     , DEFVAL      = #{defval} -- DEFAULT_VALUE
+		     , CDRFRNCTYPE = #{cdrfrnctype} -- CODE_REF_TYPE
+		     , CDRFRNCVAL  = #{cdrfrncval} -- CODE_REF_VALUE
+		     , DELYN       = #{delyn}
+		     , UPDATEDATE  = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND ORDERTYPECD = #{ordertypecd}
+		   AND HDDTDIV = #{hddtdiv}
+		   AND COCOLUMN = #{cocolumn}
+	</update>
+	
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.ShipmentTmsMapper">
+	
+	<update id="updateTShipmentDtQty">
+		UPDATE TT_SHPM_DETL_T SET
+		    QTY=#{alqty}
+		WHERE SHPMNO=#{shpmno}
+		  AND SHPMDETLID=#{shpmdetlid} 
+	</update>
+	
+	<update id="ifUpdateQtyOnTtShmpDeltT">
+		UPDATE 	TT_SHPM_DETL_T 
+		   SET	QTY=#{qty}
+		 WHERE 	SHPMDETLID = #{shpmdetlid} 
+		 	AND SHPMNO = #{shpmno}
+	</update>
+	
+	<update id="updateTtShpmTHdYn">
+		UPDATE TT_SHPM_T 
+		   SET HDTY='N'
+		 WHERE 	
+		       SHPMID = #{shpmid} 
+	</update>
+		
+	<update id="updateTtShpmLegTHdYn">
+		UPDATE TT_SHPM_LEG_T 
+		   SET HDTY='N'
+		 WHERE 	
+		 	   SHPMID = #{shpmid} 
+	</update>		
+
+	<!-- tms sql id => processShipmentQtyUpdate -->
+	<update id="updateShipmentQty">	
+			UPDATE TT_SHPM_T SET
+					DCLVAL = #{dclval},
+					ODRVAL = #{odrval},
+					VOL = #{vol},
+					WGT = #{wgt},
+					QTY = #{qty},
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(hdty)" >
+					HDTY = #{hdty},
+				</if>
+					UPDATEDATE = #{sysdate},
+					UPDATEURKEY = #{surkey}
+			WHERE  SHPMID = #{shpmid}
+	</update>
+	
+	<!-- tms sql id => processShipmentLegQtyUpdate -->
+	<update id="updateShipmentLegQty">
+			UPDATE TT_SHPM_LEG_T SET
+					DCLVAL = #{dclval},
+					ODRVAL = #{odrval},
+					VOL = #{vol},
+					WGT = #{wgt},
+					QTY = #{qty},
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(hdty)" >
+					HDTY = #{hdty},
+				</if>
+					UPDATEDATE = #{sysdate},
+					UPDATEURKEY = #{surkey}
+			WHERE SHPMLEGID = #{shpmlegid}
+	</update>
+	
+	<!-- tms sql id => processLoadUpdate -->
+    <update id="updateLoadSumByTotPce">
+		UPDATE TT_LOAD_T A SET
+		    TOTPCE = (SELECT SUM(qty) 
+		                 FROM TT_SHPM_LEG_T
+		                WHERE LDLEGID=A.LDLEGID)
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}		                
+		WHERE LDLEGID=#{ldlegid}  
+    </update>	
+ 
+     <update id="procUpdateLoadQtyVOl" statementType="CALLABLE" parameterType="java.util.HashMap">
+    	CALL SP_LOAD_QTY_VOL_UPDATE(
+    				  #{shpmno,mode=IN,jdbcType=VARCHAR}
+    				,'WMS'
+    				, #{result,mode=OUT,jdbcType=VARCHAR}
+    				)
+    </update>
+	
+	<select id="selectShmpDetlTIfData" resultType="camelMap">        
+		SELECT  B.SHPMDETLID
+		        ,B.ITEMCD
+		        ,B.SHPMID
+		        ,A.SHPMNO
+		        ,B.QTY
+		  FROM  TT_SHPM_T A
+		       ,TT_SHPM_DETL_T B
+		 WHERE  A.SHPMID = B.SHPMID
+		   AND  A.SHPMNO = #{shpmno}
+		   AND  B.ATTRIBUTE2 = #{attribute2}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(itemcd)" >
+		   AND  B.ITEMCD = #{itemcd} 
+		 </if>
+	</select>
+    	
+</mapper>	

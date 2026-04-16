@@ -1,0 +1,768 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.PkOrdMapper">
+
+	<sql id="selectPkOrdSql">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrdSql - 피킹지시 - 출고주문 정보 조회 SQL */
+		SELECT 0 AS CHK /*체크박스*/
+			 , OBHD.CTKEY /*센터코드*/
+			 , OBHD.OWKEY /*화주사코드*/
+			 , OBHD.OBHDKEY /*출고공통코드*/
+			 , OBHD.OBORDKEY /*출고주문번호*/
+			 , OBHD.ORHDKEY /*S/O 주문번호*/
+			 , OBHD.EXTERNORDERKEY /*고객주문번호*/
+			 , OBHD.OBHDDAY /*출고예정일자*/
+			 , OBHD.OBHDTYPECD /*출고헤더유형코드*/
+			 , OBHD.OBSTATUSCD /*출고상태코드*/
+			 , TO_CHAR(TO_DATE(OBHD.OBREQDATE, 'YYYYMMDDHH24MISS'),'YYYYMMDD') AS OBREQDAY /*출고요청일자*/
+			 , OBHD.INSERTURKEY /*입력자*/
+			 , OBHD.INSERTDATE /*입력일시*/
+			 , OBHD.UPDATEURKEY /*수정자*/
+			 , OBHD.UPDATEDATE /*수정일시*/
+			 , CT.CTNM /*센터명*/
+			 , TOCT.CTKEY AS TOCTKEY /*TO센터코드*/
+			 , TOCT.CTNM AS TOCTNM /*TO센터명*/
+		  FROM TWORK_INFO_OB_HD OBHD/*출고공통정보*/
+		 INNER JOIN TWORK_INFO_OB_DT OBDT /*출고상세정보*/
+			ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+		INNER JOIN TWORK_MST_CT CT /*센터마스터*/
+		 	ON OBHD.CTKEY = CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_CT TOCT /*센터마스터(TO)*/
+		    ON OBHD.TOCTKEY = TOCT.CTKEY
+		  LEFT OUTER JOIN TWORK_INFO_WA_DT WADT /*웨이브상세*/
+			ON OBHD.CTKEY = WADT.CTKEY
+		   AND OBHD.OWKEY = WADT.OWKEY
+		   AND OBHD.OBHDKEY = WADT.OBHDKEY
+		 WHERE OBHD.OBSTATUSCD = '10' /*05:부분할당 10:할당*/ -- 25.07.31 할당(10)인 것만 조회되게 수정
+		   AND (OBDT.ALQTY - OBDT.PKISTQTY) <![CDATA[>]]> 0 /*(할당수량 – 피킹지시수량) > 0*/
+		   AND WADT.WAHDKEY IS NULL
+		   AND COALESCE(OBHD.DLVRYPRGRSTATUSCD, '00') = (CASE OBHDTYPECD WHEN '30' THEN '00' ELSE '30' END)
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+		   AND #{SEARCH_CONDITION}
+		</if>
+		 GROUP BY OBHD.CTKEY /*센터코드*/
+				, OBHD.OWKEY /*화주사코드*/
+				, OBHD.OBHDKEY /*출고공통코드*/
+				, OBHD.OBORDKEY /*출고주문번호*/
+				, OBHD.ORHDKEY /*S/O 주문번호*/
+				, OBHD.EXTERNORDERKEY /*고객주문번호*/
+				, OBHD.OBHDDAY /*출고예정일자*/
+				, OBHD.OBHDTYPECD /*출고헤더유형코드*/
+				, OBHD.OBSTATUSCD /*출고상태코드*/
+				, OBHD.OBREQDATE /*출고요청일시*/
+				, OBHD.INSERTURKEY /*입력자*/
+				, OBHD.INSERTDATE /*입력일시*/
+				, OBHD.UPDATEURKEY /*수정자*/
+				, OBHD.UPDATEDATE /*수정일시*/
+				, CT.CTNM /*센터명*/
+				, TOCT.CTKEY /*TO센터코드*/
+				, TOCT.CTNM /*TO센터명*/
+		 ORDER BY OBHD.OBHDKEY
+	</sql>
+
+	<select id="selectPkOrdCount" resultType="java.lang.Integer">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrdCount - 피킹지시 - 출고주문 정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectPkOrdSql"/>
+		)
+	</select>
+
+	<select id="selectPkOrd" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrd - 피킹지시 - 출고주문 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+				<include refid="selectPkOrdSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectPkOrdDtlSql">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrdDtlSql - 피킹지시 - 출고주문 상세정보 조회 SQL */
+		SELECT 0 AS CHK 					/*체크박스*/
+			 , OBDT.CTKEY 					/*센터코드*/
+			 , OBDT.OWKEY 					/*화주사코드*/
+			 , ALDT.OBHDKEY 				/*출고공통코드*/
+			 , ALDT.OBDTKEY 				/*출고상세코드*/
+			 , ALDT.ALSEQ 					/*할당순번*/
+			 , OBDT.OBDTSTATUSCD 			/*출고상세상태코드*/
+			 , ASRT.ASRTMASICKEY		 	/*아소트 모상품 코드*/
+			 , ASRTIC.ICNM AS ASRTMASICNM	/*아소트 모상품 명*/
+			 , IC.ASRTYN					/*아소트여부*/
+			 , ALDT.ICKEY					/*상품코드*/
+			 , IC.ICNM						/*상품명*/
+			 , AR.ARNM						/*구역명*/
+			 , ALDT.LCKEY					/*로케이션코드*/
+			 , ALDT.IVATKEY					/*재고속성코드*/
+			 , ALDT.UOM						/*상품단위유형*/
+			 , OBDT.EXPCTQTY				/*예정수량*/
+			 , ALDT.ALQTY					/*할당수량*/
+			 , OBDT.PKQTY					/*피킹수량*/
+			 , ALDT.INSERTURKEY 		  	/*입력자*/
+			 , ALDT.INSERTDATE 			  	/*입력일시*/
+			 , ALDT.UPDATEURKEY 		  	/*수정자*/
+			 , ALDT.UPDATEDATE 			  	/*수정일시*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고공통정보*/
+		 INNER JOIN TWORK_INFO_OB_DT OBDT /*출고상세정보*/
+			ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+		 INNER JOIN TWORK_INFO_AL_DT ALDT /*할당상세정보*/
+			ON OBDT.CTKEY = ALDT.CTKEY
+		   AND OBDT.OWKEY = ALDT.OWKEY
+		   AND OBDT.OBHDKEY = ALDT.OBHDKEY
+		   AND OBDT.OBDTKEY = ALDT.OBDTKEY
+		 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+			ON ALDT.CTKEY = IC.CTKEY
+		   AND ALDT.OWKEY = IC.OWKEY
+		   AND ALDT.ICKEY = IC.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ASRT ASRT /*아소트정보*/
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTDTICKEY
+		   AND IC.ASRTYN = 'Y'
+		  LEFT OUTER JOIN TWORK_MST_IC ASRTIC /*상품마스터(아소트)*/
+			ON ASRT.CTKEY = ASRTIC.CTKEY
+		   AND ASRT.OWKEY = ASRTIC.OWKEY
+		   AND ASRT.ASRTMASICKEY = ASRTIC.ICKEY
+		  LEFT OUTER JOIN TWORK_INFO_WA_DT WADT /*웨이브상세*/
+			ON OBHD.CTKEY = WADT.CTKEY
+		   AND OBHD.OWKEY = WADT.OWKEY
+		   AND OBHD.OBHDKEY = WADT.OBHDKEY
+		  LEFT OUTER JOIN TWORK_MST_LC LC /*로케이션마스터*/
+			ON ALDT.CTKEY = LC.CTKEY
+		   AND ALDT.LCKEY = LC.LCKEY
+		  LEFT OUTER JOIN TWORK_MST_AR AR /*구역마스터*/
+			ON LC.CTKEY = AR.CTKEY
+		   AND LC.ARKEY = AR.ARKEY
+		 WHERE OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.OBHDKEY = #{obhdkey}
+		   AND OBDT.OBDTSTATUSCD = '10' /*05:부분할당 10:할당*/ -- 25.07.31 할당(10)인 것만 조회되게 수정
+		   AND (OBDT.ALQTY - OBDT.PKISTQTY) <![CDATA[>]]> 0 /*(할당수량 – 피킹지시수량) > 0*/
+		   AND ALDT.PIHDKEY IS NULL
+		   AND ALDT.PIDTKEY IS NULL
+		   AND WADT.WAHDKEY IS NULL
+		 GROUP BY
+			   OBDT.CTKEY 					/*센터코드*/
+			 , OBDT.OWKEY 					/*화주사코드*/
+			 , ALDT.OBHDKEY 				/*출고공통코드*/
+			 , ALDT.OBDTKEY 				/*출고상세코드*/
+			 , ALDT.ALSEQ 					/*할당순번*/
+			 , OBDT.OBDTSTATUSCD 			/*출고상세상태코드*/
+			 , ASRT.ASRTMASICKEY		 	/*아소트 모상품 코드*/
+			 , ASRTIC.ICNM					/*아소트 모상품 명*/
+			 , IC.ASRTYN					/*아소트여부*/
+			 , ALDT.ICKEY					/*상품코드*/
+			 , IC.ICNM						/*상품명*/
+			 , AR.ARNM						/*구역명*/
+			 , ALDT.LCKEY					/*로케이션코드*/
+			 , ALDT.IVATKEY					/*재고속성코드*/
+			 , ALDT.UOM						/*상품단위유형*/
+			 , OBDT.EXPCTQTY				/*예정수량*/
+			 , ALDT.ALQTY					/*할당수량*/
+			 , OBDT.PKQTY					/*피킹수량*/
+			 , ALDT.INSERTURKEY 		  	/*입력자*/
+			 , ALDT.INSERTDATE 			  	/*입력일시*/
+			 , ALDT.UPDATEURKEY 		  	/*수정자*/
+			 , ALDT.UPDATEDATE 			  	/*수정일시*/
+		 ORDER BY
+			   ALDT.OBDTKEY
+	</sql>
+
+	<select id="selectPkOrdDtlCount" resultType="java.lang.Integer">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrdDtlCount - 피킹지시 - 출고주문 상세정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectPkOrdDtlSql"/>
+		)
+	</select>
+
+	<select id="selectPkOrdDtl" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - selectPkOrdDtl - 피킹지시 - 출고주문 상세정보 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectPkOrdDtlSql"/>
+		)
+		 ORDER BY
+			   OBHDKEY
+			 , CAST(OBDTKEY AS NUMERIC)
+	</select>
+
+	<select id="pkAlDtInfoListSelect" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - pkAlDtInfoListSelect - 피킹지시 - 주문 피킹 작업 지시 - 할당 상세 정보 조회 */
+		SELECT OBHD.CTKEY /*센터코드*/
+			 , OBHD.OWKEY /*화주코드*/
+			 , OBDT.ICKEY /*상품코드*/
+			 , ALDT.LCKEY /*로케이션코드*/
+			 , ALDT.CELLKEY /*셀코드*/
+			 , ALDT.IVATKEY /*재고속성코드*/
+			 , ALDT.ALQTY AS EXPCTQTY /*예정수량*/
+			 , ALDT.ALSEQ /*할당순번*/
+			 , OBDT.CNFRMQTY /*피킹확정수량*/
+			 , OBDT.UOM /*상품단위유형*/
+			 , OBDT.ICUNITKEY /*물품단위코드*/
+			 , ALDT.LCKEY AS FROMLCKEY /*FROM 로케이션코드*/
+			 , ALDT.CELLKEY AS FROMCELLKEY /*FROM 셀코드*/
+			 , 'PICKTO' AS TOLCKEY /*TO 로케이션코드*/
+			 , 'PICKTO' AS TOCELLKEY /*TO 셀코드*/
+			 , OBHD.OBHDKEY /*출고번호(출고공통코드)*/
+			 , OBDT.OBDTKEY /*출고상세번호(출고상세코드)*/
+			 , '' AS IBHDKEY /*입고상세코드*/
+			 , '' AS IBDTKEY /*입고공통코드*/
+			 , OBDT.OBDTSTATUSCD /*작업상태*/
+			 , NULL AS PI_GRP
+			 , NULL AS IVQTY
+			 , NULL AS TTQTY
+			 , NULL AS AVQTY
+			 , TO_CHAR(TO_DATE(OBHD.OBREQDATE, 'YYYYMMDDHH24MISS'),'YYYYMMDD') AS OBREQDAY /*출고요청일자*/
+			 , OBHD.WAHDKEY
+			 , COALESCE(OBDT.ROBSORTERICYN, IC.ROBSORTERICYN) AS ROBSORTERICYN /*로봇소터여부*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고공통정보*/
+		 INNER JOIN TWORK_INFO_OB_DT OBDT /*출고상세정보*/
+			ON OBHD.CTKEY = OBDT.CTKEY
+		   AND OBHD.OWKEY = OBDT.OWKEY
+		   AND OBHD.OBHDKEY = OBDT.OBHDKEY
+		 INNER JOIN TWORK_INFO_AL_DT ALDT /*할당상세정보*/
+			ON OBDT.CTKEY = ALDT.CTKEY
+		   AND OBDT.OWKEY = ALDT.OWKEY
+		   AND OBDT.OBHDKEY = ALDT.OBHDKEY
+		   AND OBDT.OBDTKEY = ALDT.OBDTKEY
+		 INNER JOIN TWORK_MST_IC IC
+		    ON OBDT.CTKEY = IC.CTKEY
+		   AND OBDT.OWKEY = IC.OWKEY
+		   AND OBDT.ICKEY = IC.ICKEY
+		 WHERE 1=1
+	<choose>
+		<when test='pkdivcd.equals("10")'>
+		   AND OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.OBHDKEY = #{obhdkey}
+<!--			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey) AND @com.kns.framework.util.StringUtil@isNotEmpty(alseq)">-->
+<!--		   AND OBDT.OBDTKEY = #{obdtkey}-->
+<!--		   AND ALDT.ALSEQ = #{alseq}-->
+<!--			</if>-->
+		   AND OBHD.WAHDKEY IS NULL
+		</when>
+		<when test='pkdivcd.equals("20")'>
+		   AND OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.WAHDKEY = #{wahdkey}
+		</when>
+		<when test='pkdivcd.equals("30")'>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+				<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+			   (OBHD.CTKEY = #{item.ctkey}
+			   AND OBHD.OWKEY = #{item.owkey}
+			   AND OBHD.WAHDKEY = #{item.wahdkey})
+				</foreach>
+			</if>
+		</when>
+		<otherwise>
+		   AND 1=2
+		</otherwise>
+	</choose>
+		   AND OBHD.OBSTATUSCD = '10' /*출고상세상태:부분할당(05) 할당완료(10)*/
+		   AND COALESCE(OBHD.DLVRYPRGRSTATUSCD, '00') = (CASE OBHDTYPECD WHEN '30' THEN '00' ELSE '30' END)
+		   AND ALDT.PIHDKEY IS NULL
+		   AND ALDT.PIDTKEY IS NULL
+		 ORDER BY
+			   OBHD.OBHDKEY ASC
+			 , CAST(OBDT.OBDTKEY AS NUMERIC) ASC
+	</select>
+
+	<select id="pkHdKeySelect" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - pkHdKeySelect - 피킹지시 - 주문 피킹 작업 지시 - 피킹 헤더키 정보 조회 */
+		SELECT PIDT.CTKEY /*센터코드*/
+			 , PIDT.OWKEY /*화주사*/
+			 , PIDT.PIHDKEY /*피킹헤더코드*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+		 INNER JOIN TWORK_INFO_PI_HD PIHD /*피킹 헤더 정보*/
+		    ON OBHD.CTKEY = PIHD.CTKEY
+		   AND OBHD.OWKEY = PIHD.OWKEY
+		   AND OBHD.PIHDKEY = PIHD.PIHDKEY
+		 INNER JOIN TWORK_INFO_PI_DT PIDT /*피킹 상세 정보*/
+		    ON PIHD.CTKEY = PIDT.CTKEY
+		   AND PIHD.OWKEY = PIDT.OWKEY
+		   AND PIHD.PIHDKEY = PIDT.PIHDKEY
+		 WHERE 1=1
+	<choose>
+		<when test='pkdivcd.equals("10")'>
+		   AND PIHD.CTKEY = #{ctkey}
+		   AND PIHD.OWKEY = #{owkey}
+		   AND OBHD.OBHDKEY = #{obhdkey}
+		   AND PIHD.PKDIVCD = '10' /*10:오더별 20:총량*/
+		</when>
+		<when test='pkdivcd.equals("20")'>
+		   AND OBHD.CTKEY = #{ctkey}
+		   AND OBHD.OWKEY = #{owkey}
+		   AND OBHD.WAHDKEY = #{wahdkey}
+		</when>
+		<when test='pkdivcd.equals("30")'>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+				<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+			   (OBHD.CTKEY = #{item.ctkey}
+			   AND OBHD.OWKEY = #{item.owkey}
+			   AND OBHD.WAHDKEY = #{item.wahdkey})
+				</foreach>
+			</if>
+		</when>
+		<otherwise>
+		   AND 1=2
+		</otherwise>
+	</choose>
+		 GROUP BY
+		       PIDT.CTKEY
+		     , PIDT.OWKEY
+		     , PIDT.PIHDKEY
+	</select>
+
+	<select id="pkDtKeySelect" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - pkDtKeySelect - 피킹지시 - 주문 피킹 작업 지시 - 피킹 상세키 정보 조회 */
+		SELECT DISTINCT PIDTKEY
+		  FROM TWORK_INFO_AL_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND CELLKEY = #{cellkey}
+		   AND IVATKEY = #{ivatkey}
+		   AND UOM = #{uom}
+		   AND PIDTKEY IS NOT NULL
+	</select>
+
+	<update id="pkDtUpdate">
+		/* wms-outbound-pkord-sql-oracle.xml - pkDtUpdate - 피킹지시 - 주문 피킹 작업 지시 - 피킹상세 업데이트 */
+		UPDATE TWORK_INFO_PI_DT
+		   SET EXPCTQTY = EXPCTQTY + #{expctqty}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND CELLKEY = #{cellkey}
+		   AND IVATKEY = #{ivatkey}
+		   AND UOM = #{uom}
+	</update>
+
+	<update id="alDtUpdate">
+		/* wms-outbound-pkord-sql-oracle.xml - alDtUpdate - 피킹지시 - 주문 피킹 작업 지시 - 할당 상세정보(피킹헤더코드, 피킹상세코드) 업데이트 */
+		UPDATE TWORK_INFO_AL_DT
+		   SET PIHDKEY = #{pihdkey}
+		     , PIDTKEY = #{pidtkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+		   AND ALSEQ = #{alseq}
+	</update>
+
+	<insert id="pkDtInsert">
+		/* wms-outbound-pkord-sql-oracle.xml - pkDtInsert - 피킹지시 - 주문 피킹 작업 지시 - 피킹 상세 저장 */
+	   INSERT INTO TWORK_INFO_PI_DT
+	   (      CTKEY /*센터 코드*/
+			, OWKEY /*화주 코드*/
+			, PIHDKEY /*피킹 헤더 코드*/
+			, PIDTKEY /*피킹 상세 코드*/
+			, PKDTWKSTATUSCD /*피킹 상세 작업 상태 코드*/
+			, ICKEY /*상품 코드*/
+			, IVATKEY /*재고 속성 코드*/
+			, LCKEY /*로케이션 코드*/
+			, CELLKEY /*셀코드*/
+			, ICUNITKEY /*상품 단위 코드*/
+			, UOM /*상품 단위 유형*/
+			, EXPCTQTY /*예정 수량*/
+			, CNFRMQTY /*확정 수량*/
+			, FROMLCKEY /*FROM 로케이션 코드*/
+			, FROMCELLKEY /*FROM 셀 코드*/
+			, TOLCKEY /*TO 로케이션 코드*/
+			, TOCELLKEY /*TO 셀 코드*/
+			, OBHDKEY /*출고 공통 코드*/
+			, OBDTKEY /*출고 상세 코드*/
+			, PKCNFRMDATE /*피킹 확정 일시*/
+			, PKCNFRMURKEY /*피킹 확정자*/
+			, INSERTDATE /*입력 일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+			, ROBSORTERICYN /*로봇소터여부*/
+	   ) VALUES (
+			  #{ctkey} /*센터 코드*/
+			, #{owkey} /*화주 코드*/
+			, #{pihdkey} /*피킹 헤더 코드*/
+			, #{pidtkey} /*피킹 상세 코드*/
+			, #{pkdtwkstatuscd} /*피킹상세 작업상태 코드 00:작업대상*/
+			, #{ickey} /*상품 코드*/
+			, #{ivatkey} /*재고 속성 코드*/
+			, #{lckey} /*로케이션 코드*/
+			, #{lckey} /*셀코드 2025.06.18 cellkey에서 lckey로 요청에 의해 수정*/
+			, #{icunitkey} /*상품 단위 코드*/
+			, #{uom} /*상품 단위 유형*/
+			, #{expctqty} /*예정 수량*/
+			, #{cnfrmqty} /*확정 수량*/
+			, #{fromlckey} /*FROM 로케이션 코드*/
+			, #{fromcellkey} /*FROM 셀 코드*/
+			, #{tolckey} /*TO 로케이션 코드*/
+			, #{tocellkey} /*TO 셀 코드*/
+			, #{obhdkey} /*출고 공통 코드*/
+			, #{obdtkey} /*출고 상세 코드*/
+			, #{pkcnfrmdate} /*피킹 확정 일시*/
+			, #{pkcnfrmurkey} /*피킹 확정자*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+			, #{robsortericyn} /*로봇소터여부*/
+	   )
+	</insert>
+
+	<update id="pkObDtUpdate">
+		/* wms-outbound-pkord-sql-oracle.xml - pkObDtUpdate - 피킹지시 - 주문 피킹 작업 지시 - 출고 상세정보(상태, 피킹지시수량) 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = '20' /*20:피킹지시*/
+			 , PKISTQTY 	= PKISTQTY + #{expctqty}
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<insert id="pkHdInsert">
+		/* wms-outbound-pkord-sql-oracle.xml - pkHdInsert - 피킹지시 - 주문 피킹 작업 지시 - 피킹 헤더 저장 */
+		INSERT INTO TWORK_INFO_PI_HD
+		(
+			   CTKEY /*센터 코드*/
+			 , OWKEY /*화주 코드*/
+			 , PIHDKEY /*피킹 헤더 코드*/
+			 , PKDIVCD /*피킹 구분 코드*/
+			 , PIHDNM /*피킹 헤더 명*/
+			 , PKWKSTATUSCD /*피킹 작업 상태 코드*/
+			 , OBREQDAY /*출고번호의 출고요청일자*/
+			 , INSERTDATE /*입력일시*/
+			 , INSERTURKEY /*입력자*/
+			 , UPDATEDATE /*수정일시*/
+			 , UPDATEURKEY /*수정자*/
+			 , WAHDKEY /*웨이브 공통 코드*/
+			 , OBHDKEY /*릴리즈코드*/
+		) VALUES (
+			   #{ctkey} /*센터 코드*/
+			 , #{owkey} /*화주 코드*/
+			 , #{pihdkey} /*피킹 헤더 코드*/
+			 , #{pkdivcd} /*피킹 구분 코드*/
+			 , (CASE #{pkdivcd} WHEN '10' THEN #{obordkey} ELSE '' END) /*피킹 헤더 명*/
+			 , '00' /*피킹작업상태 코드*/
+			 , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || '000000' /*출고번호의 출고요청일자*/
+			 , #{sysdate} /*입력일시*/
+			 , #{surkey} /*입력자*/
+			 , #{sysdate} /*수정일시*/
+			 , #{surkey} /*수정자*/
+			 , #{wahdkey} /*웨이브 공통 코드*/
+			 , (CASE #{pkdivcd} WHEN '10' THEN #{obhdkey} ELSE '' END) /*릴리즈코드*/
+		)
+	</insert>
+
+	<update id="pkObHdUpdate">
+		/* wms-outbound-pkord-sql-oracle.xml - pkObHdUpdate - 피킹지시 - 주문 피킹 작업 지시 - 출고 정보(상태) 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = '20' /*20:피킹지시*/
+			 , PIHDKEY = #{pihdkey}
+			 , PKOBHDKEY = OBHDKEY
+			 , OBWKISTURKEY = #{surkey}
+			 , OBWKDATE = #{sysdate}
+		     , UPDATEDATE   = #{sysdate}
+		     , UPDATEURKEY  = #{surkey}
+		 WHERE 1=1
+	<choose>
+		<when test='pkdivcd.equals("10")'>
+		   AND CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		</when>
+		<when test='pkdivcd.equals("20")'>
+		   AND CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		</when>
+		<when test='pkdivcd.equals("30")'>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+				<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+			   (CTKEY = #{item.ctkey}
+			   AND OWKEY = #{item.owkey}
+			   AND WAHDKEY = #{item.wahdkey})
+				</foreach>
+			</if>
+		</when>
+		<otherwise>
+		   AND 1=2
+		</otherwise>
+	</choose>
+	</update>
+
+	<select id="pkHdNmSelect" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - pkHdNmSelect - 피킹지시 - 피킹 헤더명 조회 */
+		SELECT WA.CTKEY
+			 , WA.OWKEY
+			 , #{pihdkey} AS PIHDKEY
+			 , SUBSTR(MAX(WA.WAHDDAY),-4) ||' '|| CD1.CTCDDTNM ||' '|| MAX(WA.WARND) || '회차' ||' ' || STRING_AGG(CD2.CTCDDTNM, '/' ORDER BY CD2.CTCDDTNM) AS PIHDNM
+		  FROM TWORK_INFO_WA_HD WA
+		 INNER JOIN TWORK_MST_CTCD_DT CD1
+			ON WA.CTKEY = CD1.CTKEY
+		   AND CD1.CTCDDTKEY = #{pkdivcd}
+		   AND CD1.CTCDHDKEY = 'PKDIVCD'
+		 INNER JOIN TWORK_MST_CTCD_DT CD2
+			ON WA.CTKEY = CD2.CTKEY
+		   AND WA.WKTYPECD = CD2.CTCDDTKEY
+		   AND CD2.CTCDHDKEY = 'WKTYPECD'
+		 WHERE 1=1
+	<choose>
+		<when test='pkdivcd.equals("20")'>
+		   AND WA.CTKEY = #{ctkey}
+		   AND WA.OWKEY = #{owkey}
+		   AND WA.WAHDKEY = #{wahdkey}
+		</when>
+		<when test='pkdivcd.equals("30")'>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+				<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+			   (WA.CTKEY = #{item.ctkey}
+			   AND WA.OWKEY = #{item.owkey}
+			   AND WA.WAHDKEY = #{item.wahdkey})
+				</foreach>
+			</if>
+		</when>
+		<otherwise>
+		   AND 1=2
+		</otherwise>
+	</choose>
+		 GROUP BY
+			   WA.CTKEY
+			 , WA.OWKEY
+			 , CD1.CTCDDTNM
+	</select>
+
+	<insert id="pkHdNmUpdate">
+		/* wms-outbound-pkord-sql-oracle.xml - pkHdNmUpdate - 피킹지시 - 피킹 헤더명 업데이트 */
+		UPDATE TWORK_INFO_PI_HD
+		   SET PIHDNM = #{pihdnm}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND PIHDKEY = #{pihdkey}
+	</insert>
+
+	<select id="pkWaListSelect" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - pkWaListSelect - 피킹지시 - 총량 피킹 상세 테이블에 저장할 데이터 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.PIHDKEY /*피킹헤더코드*/
+			 , OD.ICKEY /*상품코드*/
+			 , AL.IVATKEY /*재고속성코드*/
+			 , AL.LCKEY /*로케이션코드*/
+			 , AL.CELLKEY /*셀코드*/
+			 , AL.UOM /*단위*/
+			 , SUM(AL.ALQTY) AS EXPCTQTY /*예정수량*/
+			 , 0 AS CNFRMQTY /*확정수량*/
+			 , 0 AS DISPQTY /*분배 수량*/
+			 , SUM(CASE WHEN OH.WKTYPECD = 'RW' THEN AL.ALQTY ELSE 0 END) AS RSEXPCTQTY
+			 , 0 AS RSCNFRMQTY
+			 , SUM(CASE WHEN OH.WKTYPECD = 'DW' THEN AL.ALQTY ELSE 0 END) AS DASEXPCTQTY
+			 , 0 AS DASCNFRMQTY
+			 , 'N' AS PKIMPSYN /*피킹불가여부*/
+			 , '00' AS PKWKSTATUSCD /* 피킹작업상태코드*/
+			 , '' AS PKCNFRMDATE /*피킹확정일시*/
+			 , '' AS PKCNFRMURKEY /*피킹확정자*/
+			 , COALESCE(OD.ROBSORTERICYN, IC.ROBSORTERICYN) AS ROBSORTERICYN /*로봇소터여부*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+		    ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_INFO_AL_DT AL
+		    ON OD.CTKEY = AL.CTKEY
+		   AND OD.OWKEY = AL.OWKEY
+		   AND OD.OBHDKEY = AL.OBHDKEY
+		   AND OD.OBDTKEY = AL.OBDTKEY
+		 INNER JOIN TWORK_MST_IC IC
+		    ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		 WHERE 1=1
+		<choose>
+			<when test='pkdivcd.equals("20")'>
+			   AND OH.CTKEY = #{ctkey}
+			   AND OH.OWKEY = #{owkey}
+			   AND OH.WAHDKEY = #{wahdkey}
+			</when>
+			<when test='pkdivcd.equals("30")'>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+					<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+				   (OH.CTKEY = #{item.ctkey}
+				   AND OH.OWKEY = #{item.owkey}
+				   AND OH.WAHDKEY = #{item.wahdkey})
+					</foreach>
+				</if>
+			</when>
+			<otherwise>
+			   AND 1=2
+			</otherwise>
+		</choose>
+		 GROUP BY
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.PIHDKEY
+			 , OD.ICKEY /*상품코드*/
+			 , AL.IVATKEY /*재고속성코드*/
+			 , AL.LCKEY /*로케이션코드*/
+			 , AL.CELLKEY /*셀코드*/
+			 , AL.UOM /*단위*/
+			 , OD.ROBSORTERICYN /*로봇소터여부*/
+			 , IC.ROBSORTERICYN /*로봇소터여부*/
+	</select>
+
+	<insert id="pkPiTotInsert">
+		/* wms-outbound-pkord-sql-oracle.xml - pkPiTotInsert - 피킹지시 - 총량 피킹 상세 테이블에 데이터 저장 */
+		INSERT INTO TWORK_INFO_PI_TOT_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, PIHDKEY /*피킹헤더코드*/
+			, ICKEY /*상품코드*/
+			, IVATKEY /*재고속성코드*/
+			, LCKEY /*로케이션코드*/
+			, CELLKEY /*셀코드*/
+			, UOM /*단위*/
+			, EXPCTQTY /*예정수량*/
+			, CNFRMQTY /*확정수량*/
+			, DISPQTY /*분배 수량*/
+			, PKIMPSYN /*피킹불가여부*/
+			, PKWKSTATUSCD /*피킹작업상태코드*/
+			, PKCNFRMDATE /*피킹확정일시*/
+			, PKCNFRMURKEY /*피킹확정자*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+			, ROBSORTERICYN /*로봇소터여부*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{ickey} /*상품코드*/
+			, #{ivatkey} /*재고속성코드*/
+			, #{lckey} /*로케이션코드*/
+			, #{cellkey} /*셀코드*/
+			, #{uom} /*단위*/
+			, #{expctqty} /*예정수량*/
+			, #{cnfrmqty} /*확정수량*/
+			, #{dispqty} /*분배 수량*/
+			, #{pkimpsyn} /*피킹불가여부*/
+			, #{pkwkstatuscd} /*피킹확정일시*/
+			, #{pkcnfrmdate} /*피킹확정일시*/
+			, #{pkcnfrmurkey} /*피킹확정자*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+			, #{robsortericyn} /*로봇소터여부*/
+		)
+	</insert>
+
+	<insert id="pkPiIntgInsert">
+		/* wms-outbound-pkord-sql-oracle.xml - pkPiIntgInsert - 피킹지시 - 통합 피킹 상세 테이블에 데이터 저장 */
+		INSERT INTO TWORK_INFO_PI_INTG_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, PIHDKEY /*피킹헤더코드*/
+			, ICKEY /*상품코드*/
+			, LCKEY /*로케이션코드*/
+			, CELLKEY /*셀코드*/
+			, UOM /*단위*/
+			, RSEXPCTQTY /*로봇 예정 수량*/
+			, RSCNFRMQTY /*로봇 확정 수량*/
+			, DASEXPCTQTY /*DAS 예정 수량*/
+			, DASCNFRMQTY /*DAS 확정 수량*/
+			, PKWKSTATUSCD /*피킹작업상태코드*/
+			, PKCNFRMDATE /*피킹확정일시*/
+			, PKCNFRMURKEY /*피킹확정자*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{ickey} /*상품코드*/
+			, #{lckey} /*로케이션코드*/
+			, #{cellkey} /*셀코드*/
+			, #{uom} /*단위*/
+			, #{rsexpctqty} /*로봇예정수량*/
+			, #{rscnfrmqty} /*로봇확정수량*/
+			, #{dasexpctqty} /*로봇예정수량*/
+			, #{dascnfrmqty} /*로봇확정수량*/
+			, #{pkwkstatuscd} /*피킹작업상태*/
+			, #{pkcnfrmdate} /*피킹확정일시*/
+			, #{pkcnfrmurkey} /*피킹확정자*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectWahdByPiTotOrd" resultType="camelMap">
+		/* wms-outbound-pkord-sql-oracle.xml - selectWahdByPiTotOrd - 피킹지시 - 총량피킹지시 시 웨이브정보 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WKTYPECD
+		FROM TWORK_INFO_WA_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND WAHDKEY = #{wahdkey}
+	</select>
+
+	<update id="pkWaHdupdate">
+		/* wms-outbound-pkord-sql-oracle.xml - pkWaHdupdate - 피킹지시 - 웨이브 헤더 상태값 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET WAWKSTATUSCD = '40'
+			 , PIHDKEY = #{pihdkey}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE 1=1
+	<choose>
+		<when test='pkdivcd.equals("20")'>
+		   AND CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		</when>
+		<when test='pkdivcd.equals("30")'>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list)">
+				<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+			   (CTKEY = #{item.ctkey}
+			   AND OWKEY = #{item.owkey}
+			   AND WAHDKEY = #{item.wahdkey})
+				</foreach>
+			</if>
+		</when>
+		<otherwise>
+		   AND 1=2
+		</otherwise>
+	</choose>
+	</update>
+</mapper>

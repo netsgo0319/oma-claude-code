@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.RoleMapper">
+	
+	<select id="selectRoleCount" resultType="java.lang.Integer" >
+		/* adm-role-sql-oracle.xml - selectRoleCount */
+		SELECT COUNT(1)  
+		  FROM TADMIN_MST_RO
+		  <where>				 
+			  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			      #{SEARCH_CONDITION}
+			  </if>
+		  </where>
+	</select> 
+	
+	<select id="selectRole" resultType="camelMap" >
+		/* adm-role-sql-oracle.xml - selectRole */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+						SELECT '0' AS CHK
+						       ,ROKEY
+						       ,RONM
+						       ,INSERTDATE
+						       ,UPDATEDATE
+						       , INSERTURKEY
+ 							   , UPDATEURKEY
+						  FROM TADMIN_MST_RO
+						  <where>
+							  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+							      #{SEARCH_CONDITION}
+							  </if>
+						  </where>
+					<choose>
+						<when test='sortValue !=null and sortValue != ""'>	
+							<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+							</if>
+							<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+							</if>	
+						</when>	
+						<otherwise>
+							ORDER BY UPDATEDATE DESC
+						</otherwise>
+					</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<insert id="insertTAdminMstRo">
+		/* adm-role-sql-oracle.xml - insertTAdminMstRo */
+		INSERT INTO TADMIN_MST_RO (
+			 ROKEY
+			 ,RONM
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,UPDATEURKEY
+			 ,UPDATEDATE
+		) VALUES ( 
+			 #{rokey}
+			 ,#{ronm}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+		)	
+	</insert>
+	
+	<update id="updateTAdminMstRo">
+		/* adm-role-sql-oracle.xml - updateTAdminMstRo */
+		UPDATE TADMIN_MST_RO 
+		   SET RONM = #{ronm}
+			   ,UPDATEURKEY = #{surkey}
+			   ,UPDATEDATE = #{sysdate}
+		 WHERE ROKEY = #{rokey}
+	</update>
+	
+	
+	<delete id="deleteTAdminMstRo">
+		/* adm-role-sql-oracle.xml - deleteTAdminMstRo */
+		DELETE 
+		  FROM TADMIN_MST_RO
+		 WHERE ROKEY = #{rokey}
+	</delete>
+</mapper>	

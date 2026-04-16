@@ -1,0 +1,691 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.IbOrderReportNewMapper">
+
+	<!-- Tab01: 주문별 현황 - 상단 그리드 (입고예정일자 + 입고유형별 집계) -->
+	<sql id="selectIbOrderSql">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrderSql - 입고현황 - 주문별 현황 */
+		WITH EXPCT AS (
+			/* 입고예정: IB_HD + IB_DT + IC */
+			SELECT HD.CTKEY, HD.OWKEY, SUBSTR(HD.IBEXPCTDATE, 1, 8) AS IBEXPCTDATE, HD.IBHDTYPECD, HD.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.EXPCTQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 모상품인 경우 ASRT 마스터에서 예정 자상품 수 조회 */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN
+				     (SELECT COUNT(DISTINCT ASRTDTICKEY) FROM TWORK_MST_ASRT
+				      WHERE CTKEY = DT.CTKEY AND OWKEY = DT.OWKEY AND ASRTMASICKEY = DT.ICKEY)
+				   ELSE 0 END) AS JA_SKU
+				 /* 예정EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY ELSE 0 END) AS EXPCTQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS EXPCTAMT
+			  FROM TWORK_INFO_IB_HD HD
+			 INNER JOIN TWORK_INFO_IB_DT DT
+				ON HD.CTKEY = DT.CTKEY AND HD.OWKEY = DT.OWKEY AND HD.IBHDKEY = DT.IBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE HD.CTKEY = #{ctkey} AND HD.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			   AND HD.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			   AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+                AND HD.IBSTATUSCD = #{ibstatuscd}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+                AND HD.IBHDKEY = #{ibhdkey}
+            </if>
+			 GROUP BY HD.CTKEY, HD.OWKEY, SUBSTR(HD.IBEXPCTDATE, 1, 8), HD.IBHDTYPECD, HD.IBHDKEY
+		),
+		IBCF AS (
+			/* 입하(입고): IB_DT 기준 IBQTY 집계 */
+			SELECT DT.CTKEY, DT.OWKEY, DT.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 입하EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY ELSE 0 END) AS IBQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS IBAMT
+			  FROM TWORK_INFO_IB_DT DT
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE DT.CTKEY = #{ctkey} AND DT.OWKEY = #{owkey}
+			 GROUP BY DT.CTKEY, DT.OWKEY, DT.IBHDKEY
+		),
+		PLCM AS (
+			/* 적치: PLCM_DT → IBCF_CNTR → IBCF_DT → IB_DT + IC */
+			SELECT P.CTKEY, P.OWKEY, P.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 적치EA: 일반상품 + 자상품만 (모상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY END) AS CNFRMQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY * COALESCE(IC.SLPRC, 0) END) AS CNFRMAMT
+			  FROM TWORK_INFO_IB_PLCM_DT P
+			 INNER JOIN TWORK_INFO_IBCF_CNTR CF
+				ON P.CTKEY = CF.CTKEY AND P.OWKEY = CF.OWKEY AND P.IBHDKEY = CF.IBHDKEY
+			   AND P.IBDTKEY = CF.IBDTKEY AND P.IBCFSEQNO = CF.IBCFSEQNO AND P.CNTRNO = CF.CNTRNO AND P.ICKEY = CF.ICKEY
+			 INNER JOIN TWORK_INFO_IBCF_DT CFD
+				ON CF.CTKEY = CFD.CTKEY AND CF.OWKEY = CFD.OWKEY AND CF.IBHDKEY = CFD.IBHDKEY
+			   AND CF.IBDTKEY = CFD.IBDTKEY AND CF.IBCFSEQNO = CFD.IBCFSEQNO
+			 INNER JOIN TWORK_INFO_IB_DT DT
+				ON CFD.CTKEY = DT.CTKEY AND CFD.OWKEY = DT.OWKEY AND CFD.IBHDKEY = DT.IBHDKEY AND CFD.IBDTKEY = DT.IBDTKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE P.CTKEY = #{ctkey} AND P.OWKEY = #{owkey}
+			 GROUP BY P.CTKEY, P.OWKEY, P.IBHDKEY
+		)
+		SELECT E.IBEXPCTDATE AS ibexpctdate
+			 , E.IBHDTYPECD AS ibtype
+			 , (SELECT CTCDDTNM FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{ctkey} AND CTCDHDKEY='IBHDTYPECD' AND CTCDDTKEY = E.IBHDTYPECD 
+LIMIT 1) AS obctnm
+			 /* 입고예정 정보 (IB_DT 기준) */
+			 , SUM(E.MO_SKU) AS planskumother
+			 , SUM(E.JA_SKU) AS planskuchild
+			 , SUM(E.EXPCTQTY) AS planea
+			 , SUM(E.EXPCTAMT) AS planamt
+			 /* 입하 정보 (IB_DT 기준) */
+			 , COALESCE(SUM(I.MO_SKU), 0) AS inskumother
+			 , COALESCE(SUM(I.JA_SKU), 0) AS inskuchild
+			 , COALESCE(SUM(I.IBQTY), 0) AS inea
+			 , COALESCE(SUM(I.IBAMT), 0) AS inamt
+			 /* SKU진척률 = 입하 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN SUM(E.MO_SKU) = 0 THEN 0
+			        ELSE ROUND(COALESCE(SUM(I.MO_SKU), 0) / SUM(E.MO_SKU) * 100, 2)
+			   END AS inskurate
+			 /* EA진척률 = 입하EA / 입고예정EA * 100 */
+			 , CASE WHEN SUM(E.EXPCTQTY) = 0 THEN 0
+			        ELSE ROUND(COALESCE(SUM(I.IBQTY), 0) / SUM(E.EXPCTQTY) * 100, 2)
+			   END AS inearate
+			 /* 적치 정보 (PLCM_DT 기준) */
+			 , COALESCE(SUM(P.MO_SKU), 0) AS putskumother
+			 , COALESCE(SUM(P.JA_SKU), 0) AS putskuchild
+			 , COALESCE(SUM(P.CNFRMQTY), 0) AS putea
+			 , COALESCE(SUM(P.CNFRMAMT), 0) AS putamt
+			 /* SKU진척률 = 적치 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN SUM(E.MO_SKU) = 0 THEN 0
+			        ELSE ROUND(COALESCE(SUM(P.MO_SKU), 0) / SUM(E.MO_SKU) * 100, 2)
+			   END AS putskurate
+			 /* EA진척률 = 적치EA / 입고예정EA * 100 */
+			 , CASE WHEN SUM(E.EXPCTQTY) = 0 THEN 0
+			        ELSE ROUND(COALESCE(SUM(P.CNFRMQTY), 0) / SUM(E.EXPCTQTY) * 100, 2)
+			   END AS putearate
+		  FROM EXPCT E
+		  LEFT JOIN IBCF I ON E.CTKEY = I.CTKEY AND E.OWKEY = I.OWKEY AND E.IBHDKEY = I.IBHDKEY
+		  LEFT JOIN PLCM P ON E.CTKEY = P.CTKEY AND E.OWKEY = P.OWKEY AND E.IBHDKEY = P.IBHDKEY
+		 GROUP BY E.IBEXPCTDATE, E.IBHDTYPECD
+	</sql>
+
+	<select id="selectIbOrderCount" resultType="java.lang.Integer">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrderCount */
+		SELECT COUNT(1) FROM (
+		<include refid="selectIbOrderSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrder" resultType="camelMap">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrder */
+		SELECT * FROM (
+			<include refid="selectIbOrderSql"/>
+		)
+		ORDER BY ibexpctdate DESC, ibtype
+	</select>
+
+	<!-- Tab01: 주문별 현황 - 하단 그리드 (입고번호별 상세) -->
+	<sql id="selectIbOrderDetailSql">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrderDetailSql - 입고현황 - 주문별 상세 */
+		WITH EXPCT AS (
+			/* 입고예정: IB_HD + IB_DT + IC (IBHDKEY별 집계) */
+			SELECT HD.CTKEY, HD.OWKEY, SUBSTR(HD.IBEXPCTDATE, 1, 8) AS IBEXPCTDATE
+				 , HD.IBHDTYPECD, HD.IBSTATUSCD, HD.FRCTKEY, HD.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.EXPCTQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 모상품인 경우 ASRT 마스터에서 예정 자상품 수 조회 */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN
+				     (SELECT COUNT(DISTINCT ASRTDTICKEY) FROM TWORK_MST_ASRT
+				      WHERE CTKEY = DT.CTKEY AND OWKEY = DT.OWKEY AND ASRTMASICKEY = DT.ICKEY)
+				   ELSE 0 END) AS JA_SKU
+				 /* 예정EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY ELSE 0 END) AS EXPCTQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS EXPCTAMT
+			  FROM TWORK_INFO_IB_HD HD
+			 INNER JOIN TWORK_INFO_IB_DT DT
+				ON HD.CTKEY = DT.CTKEY AND HD.OWKEY = DT.OWKEY AND HD.IBHDKEY = DT.IBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE HD.CTKEY = #{ctkey} AND HD.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdate)">
+			   AND HD.IBEXPCTDATE BETWEEN #{ibexpctdate} || '000000' AND #{ibexpctdate} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			   AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			   AND HD.IBSTATUSCD = #{ibstatuscd}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			   AND HD.IBHDKEY = #{ibhdkey}
+			</if>
+			 GROUP BY HD.CTKEY, HD.OWKEY, SUBSTR(HD.IBEXPCTDATE, 1, 8), HD.IBHDTYPECD, HD.IBSTATUSCD, HD.FRCTKEY, HD.IBHDKEY
+		),
+		IBCF AS (
+			/* 입하(입고): IB_DT 기준 IBQTY 집계 (IBHDKEY별) */
+			SELECT DT.CTKEY, DT.OWKEY, DT.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 입하EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY ELSE 0 END) AS IBQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS IBAMT
+			  FROM TWORK_INFO_IB_DT DT
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE DT.CTKEY = #{ctkey} AND DT.OWKEY = #{owkey}
+			 GROUP BY DT.CTKEY, DT.OWKEY, DT.IBHDKEY
+		),
+		PLCM AS (
+			/* 적치: PLCM_DT → IBCF_CNTR → IBCF_DT → IB_DT + IC (IBHDKEY별 집계) */
+			SELECT P.CTKEY, P.OWKEY, P.IBHDKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 적치EA: 일반상품 + 자상품만 (모상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY END) AS CNFRMQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY * COALESCE(IC.SLPRC, 0) END) AS CNFRMAMT
+			  FROM TWORK_INFO_IB_PLCM_DT P
+			 INNER JOIN TWORK_INFO_IBCF_CNTR CF
+				ON P.CTKEY = CF.CTKEY AND P.OWKEY = CF.OWKEY AND P.IBHDKEY = CF.IBHDKEY
+			   AND P.IBDTKEY = CF.IBDTKEY AND P.IBCFSEQNO = CF.IBCFSEQNO AND P.CNTRNO = CF.CNTRNO AND P.ICKEY = CF.ICKEY
+			 INNER JOIN TWORK_INFO_IBCF_DT CFD
+				ON CF.CTKEY = CFD.CTKEY AND CF.OWKEY = CFD.OWKEY AND CF.IBHDKEY = CFD.IBHDKEY
+			   AND CF.IBDTKEY = CFD.IBDTKEY AND CF.IBCFSEQNO = CFD.IBCFSEQNO
+			 INNER JOIN TWORK_INFO_IB_DT DT
+				ON CFD.CTKEY = DT.CTKEY AND CFD.OWKEY = DT.OWKEY AND CFD.IBHDKEY = DT.IBHDKEY AND CFD.IBDTKEY = DT.IBDTKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			 WHERE P.CTKEY = #{ctkey} AND P.OWKEY = #{owkey}
+			 GROUP BY P.CTKEY, P.OWKEY, P.IBHDKEY
+		)
+		SELECT ROW_NUMBER() OVER(ORDER BY E.IBEXPCTDATE DESC, E.IBHDTYPECD, E.IBHDKEY) AS no
+			 , (SELECT CTCDDTNM FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{ctkey} AND CTCDHDKEY='IBHDTYPECD' AND CTCDDTKEY = E.IBHDTYPECD 
+LIMIT 1) AS ibtypename
+			 , E.IBEXPCTDATE AS ibexpctdate
+			 , E.IBSTATUSCD AS ibdtstatuscd
+			 , E.FRCTKEY AS frctkey
+			 , (SELECT CTNM FROM TWORK_MST_CT WHERE CTKEY = E.FRCTKEY 
+LIMIT 1) AS frctname
+			 , E.IBHDKEY AS ibhdkey
+			 /* 입고예정 정보 */
+			 , E.MO_SKU AS planskumother
+			 , E.JA_SKU AS planskuchild
+			 , E.EXPCTQTY AS planea
+			 , E.EXPCTAMT AS planamt
+			 /* 입하 정보 */
+			 , COALESCE(I.MO_SKU, 0) AS inskumother
+			 , COALESCE(I.JA_SKU, 0) AS inskuchild
+			 , COALESCE(I.IBQTY, 0) AS inea
+			 , COALESCE(I.IBAMT, 0) AS inamt
+			 /* SKU진척률 = 입하 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN E.MO_SKU = 0 THEN 0
+			        ELSE ROUND(COALESCE(I.MO_SKU, 0) / E.MO_SKU * 100, 2)
+			   END AS inskurate
+			 , CASE WHEN E.EXPCTQTY = 0 THEN 0
+			        ELSE ROUND(COALESCE(I.IBQTY, 0) / E.EXPCTQTY * 100, 2)
+			   END AS inearate
+			 /* 적치 정보 */
+			 , COALESCE(P.MO_SKU, 0) AS putskumother
+			 , COALESCE(P.JA_SKU, 0) AS putskuchild
+			 , COALESCE(P.CNFRMQTY, 0) AS putea
+			 , COALESCE(P.CNFRMAMT, 0) AS putamt
+			 /* SKU진척률 = 적치 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN E.MO_SKU = 0 THEN 0
+			        ELSE ROUND(COALESCE(P.MO_SKU, 0) / E.MO_SKU * 100, 2)
+			   END AS putskurate
+			 , CASE WHEN E.EXPCTQTY = 0 THEN 0
+			        ELSE ROUND(COALESCE(P.CNFRMQTY, 0) / E.EXPCTQTY * 100, 2)
+			   END AS putearate
+		  FROM EXPCT E
+		  LEFT JOIN IBCF I ON E.CTKEY = I.CTKEY AND E.OWKEY = I.OWKEY AND E.IBHDKEY = I.IBHDKEY
+		  LEFT JOIN PLCM P ON E.CTKEY = P.CTKEY AND E.OWKEY = P.OWKEY AND E.IBHDKEY = P.IBHDKEY
+	</sql>
+
+	<select id="selectIbOrderDetailCount" resultType="java.lang.Integer">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrderDetailCount */
+		SELECT COUNT(1) FROM (
+		<include refid="selectIbOrderDetailSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderDetail" resultType="camelMap">
+		/* wms-report-IbOrderReportNew.xml - selectIbOrderDetail */
+		SELECT * FROM (
+			<include refid="selectIbOrderDetailSql"/>
+		)
+		ORDER BY ibexpctdate DESC, ibtypename, ibhdkey
+	</select>
+
+	<!-- Tab02: 아소트 현황 - 입고예정일자/입고유형별 집계 -->
+	<sql id="selectAsrtOrderSql">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrderSql - 아소트 현황 */
+		WITH BASE AS (
+			SELECT
+				  HD.CTKEY
+				, HD.OWKEY
+				, HD.IBHDKEY
+				, HD.IBHDTYPECD AS IBTYPE
+				, SUBSTR(HD.IBEXPCTDATE,1,8) AS IBEXPCTDATE
+				, DT.IBDTKEY
+				, COALESCE(DT.EXPCTQTY, 0) AS EXPCTQTY
+				, COALESCE(DT.ASRTWKQTY, 0) AS ASRTWKQTY
+				, DT.ASRTWKTGTYN
+				, DT.UPRIBDTKEY
+				, COALESCE(IC.SLPRC, 0) AS SLPRC
+				/* 모상품인 경우 아소트 마스터에서 예정 자상품 SKU 수 */
+				, CASE WHEN DT.ASRTWKTGTYN = 'Y' THEN
+				    (SELECT COUNT(DISTINCT ASRTDTICKEY)
+				     FROM TWORK_MST_ASRT
+				     WHERE CTKEY = DT.CTKEY AND OWKEY = DT.OWKEY
+				       AND ASRTMASICKEY = DT.ICKEY)
+				  ELSE 0 END AS PLAN_JA_CNT
+			FROM TWORK_INFO_IB_HD HD
+			JOIN TWORK_INFO_IB_DT DT
+			  ON HD.CTKEY   = DT.CTKEY
+			 AND HD.OWKEY   = DT.OWKEY
+			 AND HD.IBHDKEY = DT.IBHDKEY
+			JOIN TWORK_MST_IC IC
+			  ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			WHERE HD.CTKEY = #{ctkey}
+			  AND HD.OWKEY = #{owkey}
+			  AND (DT.ASRTWKTGTYN = 'Y' OR DT.UPRIBDTKEY IS NOT NULL)
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			  AND HD.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			  AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+                AND HD.IBSTATUSCD = #{ibstatuscd}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+                AND HD.IBHDKEY = #{ibhdkey}
+            </if>
+		),
+		PLCM AS (
+			/* 적치: 자상품(UPRIBDTKEY IS NOT NULL)만 */
+			SELECT
+				  P.CTKEY
+				, P.OWKEY
+				, P.IBHDKEY
+				, P.IBDTKEY
+				, SUM(COALESCE(P.CNFRMQTY, 0)) AS PLCM_QTY
+			FROM TWORK_INFO_IB_PLCM_DT P
+			JOIN TWORK_INFO_IBCF_CNTR CF
+			  ON P.CTKEY = CF.CTKEY AND P.OWKEY = CF.OWKEY AND P.IBHDKEY = CF.IBHDKEY
+			 AND P.IBDTKEY = CF.IBDTKEY AND P.IBCFSEQNO = CF.IBCFSEQNO AND P.CNTRNO = CF.CNTRNO AND P.ICKEY = CF.ICKEY
+			JOIN TWORK_INFO_IBCF_DT CFD
+			  ON CF.CTKEY = CFD.CTKEY AND CF.OWKEY = CFD.OWKEY AND CF.IBHDKEY = CFD.IBHDKEY
+			 AND CF.IBDTKEY = CFD.IBDTKEY AND CF.IBCFSEQNO = CFD.IBCFSEQNO
+			JOIN TWORK_INFO_IB_DT DT
+			  ON CFD.CTKEY = DT.CTKEY AND CFD.OWKEY = DT.OWKEY AND CFD.IBHDKEY = DT.IBHDKEY AND CFD.IBDTKEY = DT.IBDTKEY
+			WHERE DT.UPRIBDTKEY IS NOT NULL
+			GROUP BY P.CTKEY, P.OWKEY, P.IBHDKEY, P.IBDTKEY
+		)
+		SELECT
+			  B.IBEXPCTDATE AS ibexpctdate
+			, B.IBTYPE AS ibtype
+			, (SELECT CTCDDTNM FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{ctkey} AND CTCDHDKEY='IBHDTYPECD' AND CTCDDTKEY = B.IBTYPE 
+LIMIT 1) AS obctnm
+			/* 입고예정 정보: 아소트 대상 모상품/생성 예정 자상품 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) AS planmosku
+			, SUM(B.PLAN_JA_CNT) AS planjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) AS planea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY * B.SLPRC ELSE 0 END) AS planamt
+			/* 아소트 작업: 모상품 수, 생성된 자상품 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) AS workmosku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) AS workjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL THEN B.ASRTWKQTY ELSE 0 END) AS workea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL THEN B.ASRTWKQTY * B.SLPRC ELSE 0 END) AS workamt
+			/* SKU 진척률 = 생성된 모상품 / 예정 모상품 * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) * 100, 2)
+			  END AS workskurate
+			/* EA 진척률 = 생성된 모상품 EA / 모상품 예정EA * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.ASRTWKQTY ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) * 100, 2)
+			  END AS workearate
+			/* 아소트 적치: 자상품 적치 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND COALESCE(P.PLCM_QTY, 0) > 0 THEN 1 ELSE 0 END) AS putjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) ELSE 0 END) AS putea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) * B.SLPRC ELSE 0 END) AS putamt
+			/* 적치 SKU 진척률 = 적치된 자상품 / 생성된 자상품 * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN 1 ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND COALESCE(P.PLCM_QTY, 0) > 0 THEN 1 ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN 1 ELSE 0 END) * 100, 2)
+			  END AS putskurate
+			/* 적치 EA 진척률 = 적치EA / 생성된 자상품 EA * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN B.ASRTWKQTY ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN B.ASRTWKQTY ELSE 0 END) * 100, 2)
+			  END AS putearate
+		FROM BASE B
+		LEFT JOIN PLCM P
+		  ON B.CTKEY   = P.CTKEY
+		 AND B.OWKEY   = P.OWKEY
+		 AND B.IBHDKEY = P.IBHDKEY
+		 AND B.IBDTKEY = P.IBDTKEY
+		GROUP BY B.IBEXPCTDATE, B.IBTYPE
+	</sql>
+
+	<select id="selectAsrtOrderCount" resultType="java.lang.Integer">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrderCount */
+		SELECT COUNT(1) FROM (
+		<include refid="selectAsrtOrderSql"/>
+		)
+	</select>
+
+	<select id="selectAsrtOrder" resultType="camelMap">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrder */
+		SELECT * FROM (
+			<include refid="selectAsrtOrderSql"/>
+		)
+		ORDER BY ibexpctdate, ibtype
+	</select>
+
+	<!-- Tab02: 아소트 현황 - 입고번호별 상세 -->
+	<sql id="selectAsrtOrderDetailSql">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrderDetailSql - 아소트 상세 */
+		WITH BASE AS (
+			SELECT
+				  HD.CTKEY
+				, HD.OWKEY
+				, HD.IBHDKEY
+				, HD.IBHDTYPECD AS IBTYPE
+				, SUBSTR(HD.IBEXPCTDATE,1,8) AS IBEXPCTDATE
+				, HD.IBSTATUSCD
+				, HD.FRCTKEY
+				, DT.IBDTKEY
+				, COALESCE(DT.EXPCTQTY, 0) AS EXPCTQTY
+				, COALESCE(DT.ASRTWKQTY, 0) AS ASRTWKQTY
+				, DT.ASRTWKTGTYN
+				, DT.UPRIBDTKEY
+				, COALESCE(IC.SLPRC, 0) AS SLPRC
+				/* 모상품인 경우 아소트 마스터에서 예정 자상품 SKU 수 */
+				, CASE WHEN DT.ASRTWKTGTYN = 'Y' THEN
+				    (SELECT COUNT(DISTINCT ASRTDTICKEY)
+				     FROM TWORK_MST_ASRT
+				     WHERE CTKEY = DT.CTKEY AND OWKEY = DT.OWKEY
+				       AND ASRTMASICKEY = DT.ICKEY)
+				  ELSE 0 END AS PLAN_JA_CNT
+			FROM TWORK_INFO_IB_HD HD
+			JOIN TWORK_INFO_IB_DT DT
+			  ON HD.CTKEY   = DT.CTKEY
+			 AND HD.OWKEY   = DT.OWKEY
+			 AND HD.IBHDKEY = DT.IBHDKEY
+			JOIN TWORK_MST_IC IC
+			  ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			WHERE HD.CTKEY = #{ctkey}
+			  AND HD.OWKEY = #{owkey}
+			  AND (DT.ASRTWKTGTYN = 'Y' OR DT.UPRIBDTKEY IS NOT NULL)
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdate)">
+			  AND HD.IBEXPCTDATE BETWEEN #{ibexpctdate} || '000000' AND #{ibexpctdate} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			  AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			  AND HD.IBSTATUSCD = #{ibstatuscd}
+			</if>
+		),
+		PLCM AS (
+			/* 적치: 자상품(UPRIBDTKEY IS NOT NULL)만 */
+			SELECT
+				  P.CTKEY
+				, P.OWKEY
+				, P.IBHDKEY
+				, P.IBDTKEY
+				, SUM(COALESCE(P.CNFRMQTY, 0)) AS PLCM_QTY
+			FROM TWORK_INFO_IB_PLCM_DT P
+			JOIN TWORK_INFO_IBCF_CNTR CF
+			  ON P.CTKEY = CF.CTKEY AND P.OWKEY = CF.OWKEY AND P.IBHDKEY = CF.IBHDKEY
+			 AND P.IBDTKEY = CF.IBDTKEY AND P.IBCFSEQNO = CF.IBCFSEQNO AND P.CNTRNO = CF.CNTRNO AND P.ICKEY = CF.ICKEY
+			JOIN TWORK_INFO_IBCF_DT CFD
+			  ON CF.CTKEY = CFD.CTKEY AND CF.OWKEY = CFD.OWKEY AND CF.IBHDKEY = CFD.IBHDKEY
+			 AND CF.IBDTKEY = CFD.IBDTKEY AND CF.IBCFSEQNO = CFD.IBCFSEQNO
+			JOIN TWORK_INFO_IB_DT DT
+			  ON CFD.CTKEY = DT.CTKEY AND CFD.OWKEY = DT.OWKEY AND CFD.IBHDKEY = DT.IBHDKEY AND CFD.IBDTKEY = DT.IBDTKEY
+			WHERE DT.UPRIBDTKEY IS NOT NULL
+			GROUP BY P.CTKEY, P.OWKEY, P.IBHDKEY, P.IBDTKEY
+		)
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY B.IBEXPCTDATE, B.IBTYPE, B.IBHDKEY) AS no
+			, B.IBTYPE AS ibtype
+			, (SELECT CTCDDTNM FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{ctkey} AND CTCDHDKEY='IBHDTYPECD' AND CTCDDTKEY = B.IBTYPE 
+LIMIT 1) AS ibtypename
+			, B.IBEXPCTDATE AS ibexpctdate
+			, B.IBSTATUSCD AS ibstatus
+			, (SELECT CTCDDTNM FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{ctkey} AND CTCDHDKEY='IBSTATUSCD' AND CTCDDTKEY = B.IBSTATUSCD 
+LIMIT 1) AS ibstatusname
+			, (SELECT CTNM FROM TWORK_MST_CT WHERE CTKEY = B.FRCTKEY) AS frctname
+			, B.IBHDKEY AS ibhdkey
+			/* 입고예정 정보: 아소트 대상 모상품/생성 예정 자상품 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) AS planmosku
+			, SUM(B.PLAN_JA_CNT) AS planjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) AS planea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY * B.SLPRC ELSE 0 END) AS planamt
+			/* 아소트 작업: 모상품 수, 생성된 자상품 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) AS workmosku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) AS workjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKQTY > 0 THEN B.ASRTWKQTY ELSE 0 END) AS workea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND B.ASRTWKQTY > 0 THEN B.ASRTWKQTY * B.SLPRC ELSE 0 END) AS workamt
+			/* SKU 진척률 = 생성된 모상품 / 예정 모상품 * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' AND B.ASRTWKQTY > 0 THEN 1 ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN 1 ELSE 0 END) * 100, 2)
+			  END AS workskurate
+			/* EA 진척률 = 생성된 모상품 EA / 모상품 예정EA * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) = 0 THEN 0
+              ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.ASRTWKQTY ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NULL AND B.ASRTWKTGTYN = 'Y' THEN B.EXPCTQTY ELSE 0 END) * 100, 2)
+              END AS workearate
+			/* 아소트 적치: 자상품 적치 */
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND COALESCE(P.PLCM_QTY, 0) > 0 THEN 1 ELSE 0 END) AS putjasku
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) ELSE 0 END) AS putea
+			, SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) * B.SLPRC ELSE 0 END) AS putamt
+			/* 적치 SKU 진척률 = 적치된 자상품 / 생성된 자상품 * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN 1 ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL AND COALESCE(P.PLCM_QTY, 0) > 0 THEN 1 ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN 1 ELSE 0 END) * 100, 2)
+			  END AS putskurate
+			/* 적치 EA 진척률 = 적치EA / 생성된 자상품 EA * 100 */
+			, CASE WHEN SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN B.ASRTWKQTY ELSE 0 END) = 0 THEN 0
+				   ELSE ROUND(SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN COALESCE(P.PLCM_QTY, 0) ELSE 0 END) / SUM(CASE WHEN B.UPRIBDTKEY IS NOT NULL THEN B.ASRTWKQTY ELSE 0 END) * 100, 2)
+			  END AS putearate
+		FROM BASE B
+		LEFT JOIN PLCM P
+		  ON B.CTKEY   = P.CTKEY
+		 AND B.OWKEY   = P.OWKEY
+		 AND B.IBHDKEY = P.IBHDKEY
+		 AND B.IBDTKEY = P.IBDTKEY
+		GROUP BY B.IBTYPE, B.IBEXPCTDATE, B.IBSTATUSCD, B.FRCTKEY, B.IBHDKEY
+	</sql>
+
+	<select id="selectAsrtOrderDetailCount" resultType="java.lang.Integer">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrderDetailCount */
+		SELECT COUNT(1) FROM (
+		<include refid="selectAsrtOrderDetailSql"/>
+		)
+	</select>
+
+	<select id="selectAsrtOrderDetail" resultType="camelMap">
+		/* wms-report-IbOrderReportNew.xml - selectAsrtOrderDetail */
+		SELECT * FROM (
+			<include refid="selectAsrtOrderDetailSql"/>
+		)
+		ORDER BY ibexpctdate, ibtype, ibhdkey
+	</select>
+
+	<!-- Tab03: 상세현황 - 존/구역별 집계 (상품 마스터의 대표 로케이션 기준) -->
+	<sql id="selectIbDetailSql">
+		/* wms-report-IbOrderReportNew.xml - selectIbDetailSql - 상세현황 - 존/구역별 */
+		/* TWORK_MST_AR의 P/H 모든 구역을 기준으로 펼쳐서 각 구역별 입고 진척율 표시 */
+		/* IC.LCKEY가 NULL이거나 LC 매핑이 안 되거나 P/H존이 아니면 '-' 행으로 집계 */
+		WITH AR_BASE AS (
+			/* P/H 존의 모든 구역 목록 + 미매핑용 '-' 행 */
+			SELECT ZNKEY, ARKEY
+			  FROM TWORK_MST_AR
+			 WHERE CTKEY = #{ctkey} AND ZNKEY IN ('P', 'H')
+			UNION ALL
+			SELECT '-' AS ZNKEY, '-' AS ARKEY
+		),
+		EXPCT AS (
+			/* 입고예정: IB_DT + IC + LC(대표로케이션) - 구역별 집계 */
+			SELECT CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END AS ZNKEY
+				 , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END AS ARKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.EXPCTQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 모상품인 경우 ASRT 마스터에서 예정 자상품 수 조회 */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN
+				     (SELECT COUNT(DISTINCT ASRTDTICKEY) FROM TWORK_MST_ASRT
+				      WHERE CTKEY = DT.CTKEY AND OWKEY = DT.OWKEY AND ASRTMASICKEY = DT.ICKEY)
+				   ELSE 0 END) AS JA_SKU
+				 /* 예정EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY ELSE 0 END) AS EXPCTQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.EXPCTQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS EXPCTAMT
+			  FROM TWORK_INFO_IB_DT DT
+			 INNER JOIN TWORK_MST_IC IC
+			    ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			  LEFT JOIN TWORK_MST_LC L
+			    ON IC.CTKEY = L.CTKEY AND IC.LCKEY = L.LCKEY  /* 상품 마스터의 대표 로케이션 (LEFT JOIN) */
+			 INNER JOIN TWORK_INFO_IB_HD HD
+			    ON DT.CTKEY = HD.CTKEY AND DT.OWKEY = HD.OWKEY AND DT.IBHDKEY = HD.IBHDKEY
+			 WHERE DT.CTKEY = #{ctkey} AND DT.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			   AND HD.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			   AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+			 GROUP BY CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END
+			        , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END
+		),
+		IBCF AS (
+			/* 입하(입고): IB_DT + IC + LC(대표로케이션) 기준 IBQTY 집계 */
+			SELECT CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END AS ZNKEY
+				 , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END AS ARKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL, IBQTY > 0) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND DT.IBQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 입하EA: 일반상품 + 모상품만 (자상품 제외하여 중복 방지) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY ELSE 0 END) AS IBQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL THEN DT.IBQTY * COALESCE(IC.SLPRC, 0) ELSE 0 END) AS IBAMT
+			  FROM TWORK_INFO_IB_DT DT
+			 INNER JOIN TWORK_MST_IC IC
+			    ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			  LEFT JOIN TWORK_MST_LC L
+			    ON IC.CTKEY = L.CTKEY AND IC.LCKEY = L.LCKEY  /* 상품 마스터의 대표 로케이션 (LEFT JOIN) */
+			 INNER JOIN TWORK_INFO_IB_HD HD
+			    ON DT.CTKEY = HD.CTKEY AND DT.OWKEY = HD.OWKEY AND DT.IBHDKEY = HD.IBHDKEY
+			 WHERE DT.CTKEY = #{ctkey} AND DT.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			   AND HD.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			   AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+			 GROUP BY CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END
+			        , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END
+		),
+		PLCM AS (
+			/* 적치: PLCM_DT → IBCF_CNTR → IBCF_DT → IB_DT + IC + LC(대표로케이션) */
+			SELECT CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END AS ZNKEY
+				 , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END AS ARKEY
+				 /* 모SKU: 일반상품 + 아소트 모상품 (UPRIBDTKEY IS NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS MO_SKU
+				 /* 자SKU: 아소트 자상품 (UPRIBDTKEY IS NOT NULL) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NOT NULL AND P.CNFRMQTY > 0 THEN 1 ELSE 0 END) AS JA_SKU
+				 /* 적치EA: 일반상품 + 자상품만 (모상품이 아소트 대상이면 제외) */
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY END) AS CNFRMQTY
+				 , SUM(CASE WHEN DT.UPRIBDTKEY IS NULL AND DT.ASRTWKTGTYN = 'Y' THEN 0 ELSE P.CNFRMQTY * COALESCE(IC.SLPRC, 0) END) AS CNFRMAMT
+			  FROM TWORK_INFO_IB_PLCM_DT P
+			 INNER JOIN TWORK_INFO_IBCF_CNTR CF
+			    ON P.CTKEY = CF.CTKEY AND P.OWKEY = CF.OWKEY AND P.IBHDKEY = CF.IBHDKEY
+			   AND P.IBDTKEY = CF.IBDTKEY AND P.IBCFSEQNO = CF.IBCFSEQNO AND P.CNTRNO = CF.CNTRNO AND P.ICKEY = CF.ICKEY
+			 INNER JOIN TWORK_INFO_IBCF_DT CFD
+			    ON CF.CTKEY = CFD.CTKEY AND CF.OWKEY = CFD.OWKEY AND CF.IBHDKEY = CFD.IBHDKEY
+			   AND CF.IBDTKEY = CFD.IBDTKEY AND CF.IBCFSEQNO = CFD.IBCFSEQNO
+			 INNER JOIN TWORK_INFO_IB_DT DT
+			    ON CFD.CTKEY = DT.CTKEY AND CFD.OWKEY = DT.OWKEY AND CFD.IBHDKEY = DT.IBHDKEY AND CFD.IBDTKEY = DT.IBDTKEY
+			 INNER JOIN TWORK_MST_IC IC
+			    ON DT.CTKEY = IC.CTKEY AND DT.OWKEY = IC.OWKEY AND DT.ICKEY = IC.ICKEY
+			  LEFT JOIN TWORK_MST_LC L
+			    ON IC.CTKEY = L.CTKEY AND IC.LCKEY = L.LCKEY  /* 상품 마스터의 대표 로케이션 (LEFT JOIN) */
+			 INNER JOIN TWORK_INFO_IB_HD HD
+			    ON DT.CTKEY = HD.CTKEY AND DT.OWKEY = HD.OWKEY AND DT.IBHDKEY = HD.IBHDKEY
+			 WHERE P.CTKEY = #{ctkey} AND P.OWKEY = #{owkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			   AND HD.IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdtypecd)">
+			   AND HD.IBHDTYPECD = #{ibhdtypecd}
+			</if>
+			 GROUP BY CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ZNKEY ELSE '-' END
+			        , CASE WHEN IC.LCKEY IS NOT NULL AND L.LCKEY IS NOT NULL AND L.ZNKEY IN ('P', 'H') THEN L.ARKEY ELSE '-' END
+		)
+		SELECT #{ibexpctdateFrom} AS ibexpctdate
+			 , B.ZNKEY AS znkey
+			 , B.ARKEY AS arkey
+			 /* 입고예정 정보 */
+			 , COALESCE(E.MO_SKU, 0) AS expctmascnt
+			 , COALESCE(E.JA_SKU, 0) AS expctdtcnt
+			 , COALESCE(E.EXPCTQTY, 0) AS expctqty
+			 , COALESCE(E.EXPCTAMT, 0) AS expslprc
+			 /* 입하 정보 */
+			 , COALESCE(I.MO_SKU, 0) AS ibmascnt
+			 , COALESCE(I.JA_SKU, 0) AS ibdtcnt
+			 , COALESCE(I.IBQTY, 0) AS ibqty
+			 , COALESCE(I.IBAMT, 0) AS ibslprc
+			 /* SKU진척률 = 입하 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN COALESCE(E.MO_SKU, 0) = 0 THEN 0
+			        ELSE ROUND(COALESCE(I.MO_SKU, 0) / E.MO_SKU * 100, 1)
+			   END AS ibskuprc
+			 /* EA진척률 = 입하EA / 입고예정EA * 100 */
+			 , CASE WHEN COALESCE(E.EXPCTQTY, 0) = 0 THEN 0
+			        ELSE ROUND(COALESCE(I.IBQTY, 0) / E.EXPCTQTY * 100, 1)
+			   END AS ibeaprc
+			 /* 적치 정보 */
+			 , COALESCE(P.MO_SKU, 0) AS cnfrmmascnt
+			 , COALESCE(P.JA_SKU, 0) AS cnfrmdtcnt
+			 , COALESCE(P.CNFRMQTY, 0) AS cnfrmqty
+			 , COALESCE(P.CNFRMAMT, 0) AS cnfrmslprc
+			 /* SKU진척률 = 적치 모SKU / 입고예정 모SKU * 100 */
+			 , CASE WHEN COALESCE(E.MO_SKU, 0) = 0 THEN 0
+			        ELSE ROUND(COALESCE(P.MO_SKU, 0) / E.MO_SKU * 100, 1)
+			   END AS cnfrmskuprc
+			 /* EA진척률 = 적치EA / 입고예정EA * 100 */
+			 , CASE WHEN COALESCE(E.EXPCTQTY, 0) = 0 THEN 0
+			        ELSE ROUND(COALESCE(P.CNFRMQTY, 0) / E.EXPCTQTY * 100, 1)
+			   END AS cnfrmeaprc
+		  FROM AR_BASE B
+		  LEFT JOIN EXPCT E ON B.ZNKEY = E.ZNKEY AND B.ARKEY = E.ARKEY
+		  LEFT JOIN IBCF I ON B.ZNKEY = I.ZNKEY AND B.ARKEY = I.ARKEY
+		  LEFT JOIN PLCM P ON B.ZNKEY = P.ZNKEY AND B.ARKEY = P.ARKEY
+	</sql>
+
+	<select id="selectIbDetailCount" resultType="java.lang.Integer">
+		/* wms-report-IbOrderReportNew.xml - selectIbDetailCount */
+		SELECT COUNT(1) FROM (
+		<include refid="selectIbDetailSql"/>
+		)
+	</select>
+
+	<select id="selectIbDetail" resultType="camelMap">
+		/* wms-report-IbOrderReportNew.xml - selectIbDetail */
+		SELECT * FROM (
+			<include refid="selectIbDetailSql"/>
+		)
+		ORDER BY CASE WHEN znkey = '-' THEN 2 ELSE 1 END, znkey DESC, arkey
+	</select>
+
+</mapper>

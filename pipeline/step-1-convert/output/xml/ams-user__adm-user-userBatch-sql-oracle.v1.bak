@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.api.in.mapper.UserApiMapper">
+
+	<insert id="mergeErpUserInfo">
+		/* adm-user-user-sql-oracle.xml - mergeErpUserInfo */
+		 MERGE INTO TADMIN_MST_UR UR
+		 USING (
+				SELECT URKEY
+					 , URNM
+					 , CASE GENDERTYPE WHEN '1' THEN 'F' WHEN '3' THEN 'M' ELSE GENDERTYPE END AS GENDERTYPE
+					 , JOINDAY
+					 , QUITDAY
+					 , CASE EMPLOYTYPE WHEN '정규' THEN '1' WHEN '연봉' THEN '2' WHEN '임시' THEN '3' ELSE EMPLOYTYPE END AS EMPLOYTYPE
+					 , CASE WRKTYPE WHEN '1' THEN 'Y' WHEN '9' THEN 'N' ELSE WRKTYPE END AS WRKTYPE
+					 , DEPTKEY
+					 , DEPTNM
+				  FROM TADMIN_EAI_USR_BATCH
+				 WHERE TRN_ID = #{trnId}
+				 GROUP BY URKEY
+						, URNM
+						, GENDERTYPE
+						, JOINDAY
+						, QUITDAY
+						, EMPLOYTYPE
+						, WRKTYPE
+						, DEPTKEY
+						, DEPTNM
+			 ) IN_UR
+			ON (
+				UR.URKEY = IN_UR.URKEY
+			 )
+		  WHEN MATCHED THEN
+		UPDATE
+		   SET UR.URNM        = IN_UR.URNM
+			 , UR.GENDERTYPE  = IN_UR.GENDERTYPE
+			 , UR.JOINDAY     = IN_UR.JOINDAY
+			 , UR.QUITDAY     = IN_UR.QUITDAY
+			 , UR.EMPLOYTYPE  = IN_UR.EMPLOYTYPE
+			 , UR.WRKTYPE     = IN_UR.WRKTYPE
+			 , UR.DEPTKEY     = IN_UR.DEPTKEY
+			 , UR.DEPTNM      = IN_UR.DEPTNM
+			 , UR.UPDATEDATE  = #{sysdate}
+			 , UR.UPDATEURKEY = #{interfaceUrkey}
+		  WHEN NOT MATCHED THEN
+		INSERT (
+			   UR.URKEY
+			 , UR.URNM
+			 , UR.URPW
+			 , UR.EXP
+			 , UR.GENDERTYPE
+			 , UR.JOINDAY
+			 , UR.QUITDAY
+			 , UR.EMPLOYTYPE
+			 , UR.WRKTYPE
+			 , UR.DEPTKEY
+			 , UR.DEPTNM
+			 , UR.INSERTDATE
+			 , UR.INSERTURKEY
+			 , UR.UPDATEDATE
+			 , UR.UPDATEURKEY
+			 )
+		VALUES (
+               IN_UR.URKEY
+			 , IN_UR.URNM
+			 , #{urpw}
+			 , '203912312359'
+			 , IN_UR.GENDERTYPE
+			 , IN_UR.JOINDAY
+			 , IN_UR.QUITDAY
+			 , IN_UR.EMPLOYTYPE
+			 , IN_UR.WRKTYPE
+			 , IN_UR.DEPTKEY
+			 , IN_UR.DEPTNM
+			 , #{sysdate}
+			 , #{interfaceUrkey}
+			 , #{sysdate}
+			 , #{interfaceUrkey}
+			 )
+	</insert>
+
+	<update id="updateUserErpStatus">
+		/* adm-user-user-sql-oracle.xml - updateUserErpStatus */
+		UPDATE TADMIN_EAI_USR_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+
+</mapper>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.OutboundOrderCloseMapper">
+
+	<!--출고마감 인터페이스 송신 대상 조회-->
+	<select id="selectOutboundHeaderListForInterfaceSend" resultType="camelMap">
+		/* OutboundOrderCloseMapper.xml - selectOutboundHeaderListForInterfaceSend - 출고마감 인터페이스 송신 대상 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBORDKEY
+			,ORHDKEY
+			,DLVRYCORPCD
+			,WBLNO
+			,OBSTATUSCD
+			,COALESCE(WKTYPECD, 'ET') AS WKTYPECD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDTYPECD IN ('10', '20')  /* 일반출고, 교환출고 */
+		AND OBSTATUSCD IN ('60','65','70') /* 출고상태 : 60(미출고), 65(부분출고), 70(출고완료) */
+		AND OBDDLNSNDRSLTCD = '00' /* 출고마감송신결과코드 : 00(대기) */
+		AND OBCNFRMDATE IS NOT NULL
+		ORDER BY TO_DATE(OBCNFRMDATE, 'YYYYMMDDHH24MISS')
+		LIMIT 50
+	</select>
+
+	<!--출고마감 인터페이스 자동송신 대상 출고마감송신결과코드 '10'(진행중) 으로 변경-->
+	<update id="updateOutboundHeaderInterfaceSendPrcs">
+		/* OutboundOrderCloseMapper.xml - updateOutboundHeaderInterfaceSendPrcs - 출고마감 인터페이스 자동송신 대상 출고마감송신결과코드 '10'(진행중) 으로 변경 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBDDLNSNDRSLTCD = '10'
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = 'BATCH'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY IN
+		<foreach collection="obHdList" item="item" open="(" separator="," close=")">
+			#{item.obhdkey}
+		</foreach>
+	</update>
+
+	<!--출고상세 / 출고마감 인터페이스 송신 대상 조회-->
+	<select id="selectOutboundDetailListForInterfaceSend" resultType="com.daiso.batch.biz.wms.dto.OutboundOrderCloseRequestDTO$OutboundOrderCloseDetailDTO">
+		/* OutboundOrderCloseMapper.xml - selectOutboundDetailListForInterfaceSend - 출고상세 / 출고마감 인터페이스 송신 대상 조회 */
+		SELECT
+			ORDTKEY
+			,OBCNFRMDATE
+			,CASE
+				WHEN INITQTY <![CDATA[ > ]]> CNFRMQTY THEN '03'
+				ELSE NULL END AS NISCD
+			,ICKEY
+			,UOM
+			,INITQTY AS EXPCTQTY
+			,CNFRMQTY
+		FROM TWORK_INFO_OB_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<!--출고헤더 인터페이스 송신결과 저장-->
+	<update id="updateOutboundHeaderIfSendResultCd">
+		/* OutboundOrderCloseMapper.xml - updateOutboundHeaderIfSendResultCd - 출고헤더 인터페이스 송신결과 저장 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBDDLNSNDRSLTCD = #{obddlnsndrsltcd}
+			 , OBDDLNSNDRSLTMSG = #{obddlnsndrsltmsg}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+</mapper>

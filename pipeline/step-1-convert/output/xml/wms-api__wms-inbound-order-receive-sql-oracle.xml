@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InboundOrderReceiveApiMapper">
+
+	<!--입고 헤더 수신 인터페이스 조회-->
+	<select id="selectInterfaceInboundHeaderReceive" parameterType="inboundOrderReceiveRequestDTO" resultType="camelMap">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectInterfaceInboundHeaderReceive - 입고 헤더 수신 인터페이스 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , EXTORDERKEY
+			 , REQORDERNO
+			 , IBHDDATE
+			 , IBHDTYPECD
+			 , ACKEY
+			 , ACNAME
+			 , CMT1
+			 , CMT2
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_IB_HD_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!--입고 헤더 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundHeaderReceive" >
+		/* wms-inbound-order-receive-sql-oracle.xml - deleteInterfaceInboundHeaderReceive - 입고 헤더 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_IB_HD_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 상세 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundDetailReceive" >
+		/* wms-inbound-order-receive-sql-oracle.xml - deleteInterfaceInboundDetailReceive - 입고 상세 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_IB_DT_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 헤더 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundHeaderReceive" parameterType="inboundOrderReceiveRequestDTO">
+		/* wms-inbound-order-receive-sql-oracle.xml - insertInterfaceInboundHeaderReceive - 입고 헤더 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_IB_HD_RCV
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, EXTORDERKEY
+			, REQORDERNO
+			, IBHDDATE
+			, IBHDTYPECD
+			, ACKEY
+			, ACNAME
+			, CMT1
+			, CMT2
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{orhdkey}
+			,#{extorderkey}
+			,#{reqorderno}
+			,#{ibhddate}
+			,#{ibhdtypecd}
+			,#{ackey}
+			,#{acname}
+			,#{cmt1}
+			,#{cmt2}
+			,'N'
+			,NULL
+			,#{sysdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--입고 상세 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundDetailReceive" parameterType="inboundOrderReceiveDetailDTO">
+		/* wms-inbound-order-receive-sql-oracle.xml - insertInterfaceInboundDetailReceive - 입고 상세 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_IB_DT_RCV
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, ORDTKEY
+			, EXTORDERKEY
+			, EXPORDERLINENO
+			, DLVYCNTRUNIT
+			, REQORDERUNIT
+			, ICKEY
+			, INITQTY
+			, EXPCTQTY
+			, UOM
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{orhdkey}
+			,#{ordtkey}
+			,#{extorderkey}
+			,#{exporderlineno}
+			,#{dlvycntrunit}
+			,#{reqorderunit}
+			,#{ickey}
+			,#{initqty}
+			,#{expctqty}
+			,#{uom}
+			,'N'
+			,NULL
+			,#{sysdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--입고 헤더 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundHeaderList" parameterType="inboundOrderReceiveRequestDTO" resultType="camelMap">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectInterfaceInboundHeaderList - 입고 헤더 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , EXTORDERKEY
+			 , REQORDERNO
+			 , IBHDDATE
+			 , IBHDTYPECD
+			 , ACKEY
+			 , ACNAME
+			 , CMT1
+			 , CMT2
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_IB_HD_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND PRCSYN = 'N'
+		   AND TO_DATE(RCVDATE, 'YYYYMMDDHH24MISS') + INTERVAL '1' DAY <![CDATA[ > ]]> CURRENT_TIMESTAMP
+	</select>
+
+	<!--입고 상세 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundDetailList" resultType="camelMap">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectInterfaceInboundDetailList - 입고 상세 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , ORDTKEY
+			 , EXTORDERKEY
+			 , EXPORDERLINENO
+			 , DLVYCNTRUNIT
+			 , REQORDERUNIT
+			 , ICKEY
+			 , INITQTY
+			 , EXPCTQTY
+			 , UOM
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_IB_DT_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!-- 입고 헤더 조회 -->
+	<select id="selectInboundHeaderCount" resultType="integer">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectInboundHeaderCount - 입고 헤더 조회 */
+	   SELECT COUNT(*)
+		 FROM TWORK_INFO_IB_HD
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!--입고 헤더 삭제-->
+	<delete id="deleteInboundHeader" >
+		/* wms-inbound-order-receive-sql-oracle.xml - deleteInboundHeader - 입고 헤더 삭제 */
+		DELETE FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 상세 삭제-->
+	<delete id="deleteInboundDetail">
+		/* wms-inbound-order-receive-sql-oracle.xml - deleteInboundDetail - 입고 상세 삭제 */
+		DELETE FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!-- 상품 조회-->
+	<select id="selectMstIc" resultType="camelMap">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectMstIc - 상품 조회 */
+		SELECT *
+		 FROM TWORK_MST_IC
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</select>
+
+	<!--입고 상세 수신 인터페이스 - 아소트 조회-->
+	<select id="selectMstAsrt" resultType="integer">
+		/* wms-inbound-order-receive-sql-oracle.xml - selectMstAsrt - 입고 상세 수신 인터페이스 - 아소트 조회 */
+		SELECT COUNT(*)
+		  FROM (
+				SELECT ASRT.CTKEY
+					 , ASRT.OWKEY
+					 , ASRT.ASRTMASICKEY AS ICKEY
+					 , 'Y' AS ASRTWKTGTYN
+					 , IO.ICKEY AS IOICKEY
+				  FROM TWORK_MST_ASRT ASRT
+				  LEFT OUTER JOIN TWORK_MST_IC IO
+					ON ASRT.ASRTDTICKEY = IO.ICKEY
+				   AND IO.MASICYN = 'Y'
+				 WHERE ASRT.QTY > 0
+				   AND IO.ICKEY IS NULL
+				 GROUP BY ASRT.CTKEY
+					 , ASRT.OWKEY
+					 , ASRT.ASRTMASICKEY
+					 , IO.ICKEY
+				HAVING COUNT(1) > 1
+				)
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<!--입고 주문 정보 상세 등록-->
+	<insert id="insertInboundOrderDetail">
+		/* wms-inbound-order-receive-sql-oracle.xml - insertInboundOrderDetail - 입고 주문 정보 상세 등록 */
+		INSERT INTO TWORK_INFO_IB_DT
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, IBDTKEY
+			, UPRIBDTKEY
+			, ICKEY
+			, SBKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXPCTQTY
+			, IBQTY
+			, CNFRMQTY
+			, DMGQTY
+			, FOODDMGQTY
+			, DFCQTY
+			, DONAQTY
+			, NONQTY
+			, DSPSQTY
+			, RJQTY
+			, UOM
+			, CPAMT
+			, PRDCTDATE
+			, EXPDATE
+			, ORHDKEY
+			, ORDTKEY
+			, EXTORDERKEY
+			, EXPORDERLINENO
+			, SLPRCAMT
+			, IBNISRSNCD
+			, IBNISDTRSNCONT
+			, CLAIMSNDYN
+			, CLAIMRSNCONT
+			, ORGCHITNO
+			, ORGCHITDATE
+			, ACKEY
+			, ORGCHITSEQNO
+			, ICTMPRDIVCD
+			, DCKEY
+			, ILBHSKEY
+			, IBCNFRMPRCSDATE
+			, IBCNFRMURKEY
+			, IBDDLNDATE
+			, IBDDLNURKEY
+			, UPDATEKEY
+			, WKCHNLCD
+			, IBDTSTATUSCD
+			, WEIGHT
+			, PLCMSTATUSCD
+			, ASRTMASICKEY
+			, ASRTWKTGTYN
+			, ASRTWKCOMPLYN
+			, ASRTWKQTY
+			, FILEKEY
+			, RIDMGRSNCD
+			, RIDFCRSNCONT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{ibdtkey}
+			, #{upribdtkey}
+			, #{ickey}
+			, #{sbkey}
+			, COALESCE(#{icunitkey}, #{ickey})
+			, #{initqty}
+			, #{expctqty}
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, #{uom}
+			, #{cpamt}
+			, #{prdctdate}
+			, #{expdate}
+			, #{orhdkey}
+			, #{ordtkey}
+			, #{extorderkey}
+			, #{exporderlineno}
+			, #{slprcamt}
+			, #{ibnisrsncd}
+			, #{ibnisdtrsncont}
+			, 'N'
+			, #{claimrsncont}
+			, #{orgchitno}
+			, #{orgchitdate}
+			, #{ackey}
+			, #{orgchitseqno}
+			, #{ictmprdivcd}
+			, #{dckey}
+			, #{ilbhskey}
+			, #{ibcnfrmprcsdate}
+			, #{ibcnfrmurkey}
+			, #{ibddlndate}
+			, #{ibddlnurkey}
+			, #{updatekey}
+			, #{wkchnlcd}
+			, #{ibdtstatuscd}
+			, 0
+			, #{plcmstatuscd}
+			, #{asrtmasickey}
+			, #{asrtwktgtyn}
+			, 'N'
+			, 0
+			, #{filekey}
+			, #{ridmgrsncd}
+			, #{ridfcrsncont}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+    )
+	</insert>
+
+	<!--입고 주문 정보 헤더 등록-->
+	<insert id="insertInboundOrderHeader">
+		/* wms-inbound-order-receive-sql-oracle.xml - insertInboundOrderHeader - 입고 주문 정보 헤더 등록 */
+		INSERT INTO TWORK_INFO_IB_HD
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, IBHDTYPECD
+			, IBHDDATE
+			, IBEXPCTDATE
+			, ACKEY
+			, ACNM
+			, IBCNFRMDATE
+			, IBDDLNDATE
+			, CUSTORDNO
+			, ORHDKEY
+			, EXTORDERKEY
+			, REQORDERNO
+			, B2BOBCNFRMYN
+			, CLAIMSNDYN
+			, CLAIMRSNCONT
+			, DLVRYCORPCD
+			, WBLNO
+			, RETSHIPDLVRYCORPCD
+			, RETSHIPWBLNO
+			, POHDKEY
+			, OBHDKEY
+			, OBWBLNO
+			, STORE_KEY
+			, DCKEY
+			, FRCTKEY
+			, IBDDLNURKEY
+			, RIRSNCD
+			, RIDTRSNCONT
+			, RECALLERNM
+			, RECALLERZIPCD
+			, RECALLERADDR1
+			, RECALLERADDR2
+			, RECALLERTELNO1
+			, RECALLERTELNO2
+			, FILEKEY
+			, IBSTATUSCD
+			, RISBMSTATUSCD
+			, RIPRGRSTATUSCD
+			, RIHOLDRSNCD
+			, RIHOLDDTCONT
+			, CMT1
+			, CMT2
+			, UPDATEKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{ibhdtypecd}
+			, SUBSTR(#{ibhddate}||'000000',1,14)
+			, SUBSTR(#{ibhddate}||'000000',1,14)
+			, #{ackey}
+			, #{acname}
+			, #{ibcnfrmdate}
+			, #{ibddlndate}
+			, #{custordno}
+			, #{orhdkey}
+			, #{extorderkey}
+			, #{reqorderno}
+			, 'N'
+			, 'N'
+			, #{claimrsncont}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, #{retshipdlvrycorpcd}
+			, #{retshipwblno}
+			, #{pohdkey}
+			, #{obhdkey}
+			, #{obwblno}
+			, #{storeKey}
+			, #{dckey}
+			, #{frctkey}
+			, #{ibddlnurkey}
+			, #{rirsncd}
+			, #{ridtrsncont}
+			, #{recallernm}
+			, #{recallerzipcd}
+			, #{recalleraddr1}
+			, #{recalleraddr2}
+			, #{recallertelno1}
+			, #{recallertelno2}
+			, #{filekey}
+			, #{ibstatuscd}
+			, #{risbmstatuscd}
+			, #{riprgrstatuscd}
+			, #{riholdrsncd}
+			, #{riholddtcont}
+			, #{cmt1}
+			, #{cmt2}
+			, #{updatekey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 헤더 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundHeaderReceive">
+		UPDATE TWORK_INTF_IB_HD_RCV
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!--입고 상세 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundDetailReceive">
+		UPDATE TWORK_INTF_IB_DT_RCV
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+</mapper>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.NisProcStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <select id="selectNisProcStatusCount" resultType="java.lang.Integer">
+        /* wms-report-nisProcStatus-sql-oracle.xml - selectNisProcStatusCount - 결품처리 현황 - 결품처리 현황 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectNisProcStatusSql"/>
+        )
+    </select>
+
+    <select id="selectNisProcStatusList" resultType="camelMap">
+        /* wms-report-nisProcStatus-sql-oracle.xml - selectNisProcStatusList - 결품처리 현황 - 결품처리 현황 조회 리스트 */
+        <include refid="sql_pagingTop"/>
+        SELECT * FROM (
+            <include refid="selectNisProcStatusSql"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id ="selectNisProcStatusSql">
+        SELECT    OBHD.CTKEY /*센터 코드*/
+        , OBHD.OWKEY /*화주 코드*/
+        , WAHD.WAHDDAY /*웨이브 작업일자*/
+        , WAHD.WARND /*웨이브 차수*/
+        , OBHD.WKTYPECD /*작업유형*/
+        , OBHD.OBSTATUSCD /*작업상태*/
+        , OBHD.OBORDKEY /*주문번호*/
+        , NISHD.OBHDKEY /*릴리즈코드*/
+        , OBHD.WBLNO /*송장번호*/
+        , NISDT.ICKEY /*상품코드*/
+        , IC.ICNM /*상품명*/
+        , SUM(NISDT.NISQTY) AS NISQTY /*결품수량*/
+        , NISHD.CNFRMURKEY /*확정자*/
+        , NISHD.CNFRMDATE /*확정일시*/
+        FROM TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+        INNER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+        ON NISHD.CTKEY = NISDT.CTKEY
+        AND NISHD.OWKEY = NISDT.OWKEY
+        AND NISHD.OBNISNO = NISDT.OBNISNO
+        INNER JOIN TWORK_INFO_OB_HD OBHD
+        ON NISDT.CTKEY = OBHD.CTKEY
+        AND NISDT.OWKEY = OBHD.OWKEY
+        AND (NISDT.OBHDKEY = OBHD.OBHDKEY
+        OR NISDT.OBHDKEY = OBHD.PREOBHDKEY)
+        INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+        ON NISDT.CTKEY = IC.CTKEY
+        AND NISDT.OWKEY = IC.OWKEY
+        AND NISDT.ICKEY = IC.ICKEY
+        INNER JOIN TWORK_INFO_WA_HD WAHD /*웨이브 헤더*/
+        ON OBHD.CTKEY = WAHD.CTKEY
+        AND OBHD.OWKEY = WAHD.OWKEY
+        AND OBHD.WAHDKEY = WAHD.WAHDKEY
+        WHERE NISDT.CTKEY = #{ctkey}
+        AND NISDT.OWKEY = #{owkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+        </if>
+        GROUP BY  OBHD.CTKEY /*센터 코드*/
+        , OBHD.OWKEY /*화주 코드*/
+        , WAHD.WAHDDAY /*웨이브 작업일자*/
+        , WAHD.WARND /*웨이브 차수*/
+        , OBHD.WKTYPECD /*작업유형*/
+        , OBHD.OBSTATUSCD /*작업상태*/
+        , OBHD.OBORDKEY /*주문번호*/
+        , NISHD.OBHDKEY /*릴리즈코드*/
+        , OBHD.WBLNO /*송장번호*/
+        , NISDT.ICKEY /*상품코드*/
+        , IC.ICNM /*상품명*/
+        , NISHD.CNFRMURKEY /*확정자*/
+        , NISHD.CNFRMDATE /*확정일시*/
+        ORDER BY
+        NISDT.ICKEY /*상품 코드*/
+    </sql>
+</mapper>

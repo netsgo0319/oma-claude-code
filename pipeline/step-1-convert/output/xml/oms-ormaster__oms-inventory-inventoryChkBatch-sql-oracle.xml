@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.InventoryApiMapper">
+
+	<insert id="insertIntfIvInfoMalToOms">
+		/* oms-inventory-inventoryChkBatch-sql-oracle.xml - insertIntfIvInfoMalToOms */
+		INSERT INTO TORDER_INTF_MAL_REALTIMESTOCK
+		(
+			  ICKEY
+            , OLNICKEY
+            , REQUESTDT
+            , IFID
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+		) VALUES (
+	      	  #{ickey}
+            , #{olnickey}
+            , #{requestDt}
+            , #{interfaceId}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		)
+	</insert>
+
+	<insert id="insertIntfIvStatusOmsToWms" parameterType = "com.daiso.oms.api.out.dto.IvAvReqOutDTO$itemRsVO">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - insertIntfIvStatusOmsToWms */
+		INSERT INTO TORDER_INTF_WMS_REQORDERIV
+		(
+			  CTKEY
+            , OWKEY
+            , ICKEY
+            , AVQTY
+            , UNUSEQTY
+            , REQUESTDT
+            , IFID
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+		) VALUES (
+	      	  #{ctkey}
+            , #{owkey}
+            , #{ickey}
+            , #{avqty}
+            , #{navqty}
+            , #{requestdt}
+            , #{ifid}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		)
+	</insert>
+
+	<select id="selectOlnickeyByIckeys" resultType="camelMap">
+		SELECT  IC.ICKEY                         /* 모상품 */
+			  , ASRT.ASRTKEY                     /* 자상품 */
+			  , SUM(IV.AVQTY) AS AVQTY
+		FROM TORDER_MST_IC IC
+		INNER JOIN TORDER_MST_ICXCT ICXCT
+				ON IC.OWKEY = ICXCT.OWKEY
+			   AND IC.ICKEY = ICXCT.ICKEY
+		LEFT JOIN TORDER_MST_ASRT ASRT
+			   ON IC.OWKEY = ASRT.OWKEY
+			  AND IC.ICKEY = ASRT.ASRTREPKEY
+		LEFT OUTER JOIN TORDER_INTF_WMS_REQORDERIV IV
+				ON ICXCT.OWKEY = IV.OWKEY
+			   AND ICXCT.CTKEY = IV.CTKEY
+			   AND ICXCT.ICKEY = IV.ICKEY
+		WHERE IFID = #{ifid}
+		GROUP BY IC.ICKEY, ASRT.ASRTKEY
+	</select>
+
+	<insert id="insertIntfIvDdlnWmsToOms">
+		/* oms-inventory-inventoryChkBatch-sql-oracle.xml - insertIntfIvDdlnWmsToOms */
+		INSERT INTO TORDER_INTF_WMS_STOCKDDLN
+		(
+			OWKEY
+          , CTKEY
+          , ICKEY
+          , AVQTY
+          , OBEXPCTQTY
+          , REQUESTDT
+          , IFID
+          , INSERTDATE
+          , INSERTURKEY
+          , UPDATEDATE
+          , UPDATEURKEY
+
+		) VALUES (
+
+		    #{owkey}
+          , #{ctkey}
+          , #{ickey}
+          , #{avqty}
+          , #{obexpctqty}
+          , #{requestDt}
+          , #{interfaceId}
+          , #{sysdate}
+          , #{interfaceUrkey}
+          , #{sysdate}
+          , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<select id="selectSendMalIvDdlnInfo" resultType="camelMap">
+		/* oms-inventory-inventoryChkBatch-sql-oracle.xml - selectSendMalIvDdlnInfo */
+		SELECT  IC.ICKEY                                /* 모상품 */
+			  , COALESCE(ASRT.ASRTKEY, IC.ICKEY) AS OLNICKEY  /* 자상품 */
+			  , SUM(AVQTY) AVQTY
+		      , SUM(OBEXPCTQTY) AS OBEXPCTQTY
+		FROM TORDER_INTF_WMS_STOCKDDLN IV
+		LEFT JOIN TORDER_MST_IC IC
+			   ON IV.OWKEY = IC.OWKEY
+			  AND IV.ICKEY = IC.ICKEY
+		LEFT JOIN TORDER_MST_ICXCT ICXCT
+			   ON IV.OWKEY = ICXCT.OWKEY
+			  AND IV.CTKEY = ICXCT.CTKEY
+			  AND IV.ICKEY = ICXCT.ICKEY
+		LEFT JOIN TORDER_MST_ASRT ASRT
+			   ON IC.OWKEY = ASRT.OWKEY
+			  AND IC.ICKEY = ASRT.ASRTREPKEY
+
+		WHERE IFID = #{ifid}
+		GROUP BY IC.ICKEY, ASRT.ASRTKEY
+	</select>
+
+	<insert id="insertIntfIvDdlnOmsToMal">
+		/* oms-inventory-inventoryChkBatch-sql-oracle.xml - insertIntfIvDdlnOmsToMal */
+		INSERT INTO TORDER_INTF_MAL_STOCKDDLN
+		(
+			ICKEY
+		  , OLNICKEY
+          , AVQTY
+          , OBEXPCTQTY
+          , REQUESTDT
+          , IFID
+          , INSERTDATE
+          , INSERTURKEY
+          , UPDATEDATE
+          , UPDATEURKEY
+
+		) VALUES (
+		    #{ickey}
+		  , #{olnickey}
+          , #{avqty}
+          , #{obexpctqty}
+          , #{requestDt}
+          , #{interfaceId}
+          , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          , #{interfaceUrkey}
+          , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          , #{interfaceUrkey}
+		)
+	</insert>
+</mapper>

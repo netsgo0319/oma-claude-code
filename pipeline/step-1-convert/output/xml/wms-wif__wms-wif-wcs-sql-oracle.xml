@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.wif.mapper.WcsIfMapper">
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<select id="selectLocMstSendListCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectLocMstSendListCount 로케이션마스터 송신 Count 조회(WEB) */
+		SELECT COUNT(1)
+		  FROM TWIF_WCS_LOCMST_SYNC TWLS
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectLocMstSendList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-cmm-sql-oracle.xml - selectLocMstSendList 로케이션마스터 송신 조회(WEB) */
+		SELECT   '0' AS CHK
+				,TWLS.WCSSEQ
+				,TWLS.CTKEY
+				,TWLS.OWKEY
+				,TWLS.TOTLOCDELYN
+				,TWLS.LCKEY
+				,TWLS.ARKEY
+				,TWLS.ICKEY
+				,TWLS.ICBRCD
+				,TWLS.PAKBRCD
+				,TWLS.CTNBRCD
+				,TWLS.ICNM
+				,TWLS.DELYN
+				,TWLS.IFCD
+				,TWLS.WIFIFID
+				,TWLS.IFID
+				,TWLS.IFREQDT
+				,TWLS.IFTYPE
+		        ,CDDT.CTCDDTNM AS IFTYPENM
+				,TWLS.IFSRCMODULE
+				,TWLS.IFTGTMODULE
+				,TWLS.IFSTATUS
+		        ,CDDT1.CTCDDTNM AS IFSTATUSNM
+				,TWLS.IFERRCD
+				,TWLS.IFERRMSG
+				,TWLS.IFPRCSDATE
+				,TWLS.ORD
+				,TWLS.INSERTDATE
+				,TWLS.INSERTURKEY
+				,TWLS.UPDATEDATE
+				,TWLS.UPDATEURKEY
+				,TCIL.REQDATA
+				,TCIL.RESDATA
+				,TWLS.IFRETRYYN
+				,TWLS.IFRETRYIFID
+		  FROM TWIF_WCS_LOCMST_SYNC TWLS
+		  LEFT OUTER JOIN TWIF_CMM_INTERFACE_LOG TCIL
+			ON TWLS.IFID = TCIL.IFID
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON TWLS.CTKEY  		= CDDT.CTKEY
+		   AND TWLS.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON TWLS.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND TWLS.IFSTATUS 	= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY TWLS.WCSSEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectPickToteSendCount" resultType="java.lang.Integer">
+		/* wms-wif-cmm-sql-oracle.xml - selectPickToteSendCount 피킹토트 정보 송신 COUNT 조회(WEB) */
+		SELECT COUNT(1)
+		  FROM TWIF_WCS_PKCOMPL TWP
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectPickToteSendList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-cmm-sql-oracle.xml - selectPickToteSendList 피킹토트 정보 송신 LIST 조회(WEB) */
+		SELECT   '0' AS CHK
+				,TWP.WCSSEQ
+				,TWP.CTKEY
+				,CT.CTNM
+				,TWP.OWKEY
+				,OW.OWNM
+				,TWP.TOTEBRCD
+				,TWP.DASBRLOC
+				,TWP.WIFIFID
+				,TWP.IFID
+				,TWP.IFREQDT
+				,TWP.IFTYPE
+		        ,CDDT.CTCDDTNM AS IFTYPENM
+				,TWP.IFSRCMODULE
+				,TWP.IFTGTMODULE
+				,TWP.IFSTATUS
+		        ,CDDT1.CTCDDTNM AS IFSTATUSNM
+				,TWP.IFERRCD
+				,TWP.IFERRMSG
+				,TWP.IFPRCSDATE
+				,TWP.ORD
+				,TWP.INSERTDATE
+				,TWP.INSERTURKEY
+				,TWP.UPDATEDATE
+				,TWP.UPDATEURKEY
+				,TWP.IFRETRYYN
+				,TWP.IFRETRYIFID
+		  FROM TWIF_WCS_PKCOMPL TWP
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON TWP.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON TWP.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON TWP.CTKEY  		= CDDT.CTKEY
+		   AND TWP.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON TWP.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND TWP.IFSTATUS 	= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY TWP.WCSSEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+</mapper>

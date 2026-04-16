@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapItemsExpiartionDateByShiptoPartyMapper">
+	<insert id="insertBatchTable" >
+		/* SapItemsExpiartionDateByShiptoPartyMapper.xml insertBatchTable 전송대상keep */
+		INSERT INTO TWORK_BATCH_STORE_IC_EXPIRE
+		(	
+			 BASEDT /*기준일자 */
+			,OWKEY /*화주 코드*/
+			,STORE_KEY /*배송처코드*/
+			,ICKEY /*상품코드*/
+			,EXPIREDATE /*유통기한*/
+			,PROCESSYN /*처리여부*/
+			,BAT_EXEC_ID /*배치실행 ID*/
+			,INSERTDATE 
+			,INSERTURKEY
+			,UPDATEDATE 
+			,UPDATEURKEY
+		)
+		SELECT A.OUTBOUNDDT 
+			  ,A.OWKEY
+			  ,A.STORE_KEY
+			  ,A.ICKEY
+			  ,MAX(SUBSTR(A.EXPIREDATE ,1, 8))
+			  ,'N'
+			  ,#{batExecId}
+			  ,#{interfaceDate}
+              ,#{btchNm}
+              ,#{interfaceDate}
+              ,#{btchNm}
+          FROM TWORK_INFO_STORE_IC_EXPIRE A
+          LEFT JOIN TWORK_BATCH_STORE_IC_EXPIRE B
+            ON A.OUTBOUNDDT = B.BASEDT
+           AND A.OWKEY = B.OWKEY
+           AND A.STORE_KEY = B.STORE_KEY
+           AND A.ICKEY = B.ICKEY  
+           AND B.PROCESSYN = 'N'         
+		  WHERE A.OUTBOUNDDT = #{baseDt}
+		   AND  A.OWKEY  = #{owkey}
+		   AND B.BATCHKEY IS NULL 
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+           AND  A.CTKEY = #{ctkey}
+		</if>		   
+		 GROUP BY   A.OWKEY,A.STORE_KEY ,A.ICKEY  , A.OUTBOUNDDT 
+	</insert>
+	
+	<select id="selectTransList"  resultType="com.daiso.batch.biz.oms.vo.SapItemsExpiartionDateByShiptoPartyResultVO">
+		/* SapItemsExpiartionDateByShiptoPartyMapper.xml selectTransList */
+		SELECT  STORE_KEY /*배송처코드*/
+		   	  , ICKEY /*상품코드*/
+		  	  , EXPIREDATE AS  EXPIREDATE /*유통기한*/
+		  	  , BASEDT
+		  	  , BAT_EXEC_ID
+		  	  , BATCHKEY
+		 FROM TWORK_BATCH_STORE_IC_EXPIRE
+		 WHERE BASEDT = #{baseDt}
+		   AND OWKEY  = #{owkey} 		   
+		   AND PROCESSYN = 'N'
+    </select>
+   
+</mapper>

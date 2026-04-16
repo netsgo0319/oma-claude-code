@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.HanjinDlvryDbMapper">
+
+	<!-- 한진택배 주문등록 프로시저 호출 -->
+	<update id="insertCstOrdMtrV2" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-hanjinDlvryDb-sql-oracle.xml - insertCstOrdMtrV2 - 한진택배 주문등록 프로시저 호출 */
+		{
+			CALL INSERT_CST_ORD_MTR_V2 (
+				#{EDICD,mode=IN,jdbcType=VARCHAR}
+				, #{OBHDKEY,mode=IN,jdbcType=VARCHAR}
+				, #{WBLNO,mode=IN,jdbcType=VARCHAR}
+				, #{DLVYDIV,mode=IN,jdbcType=VARCHAR}
+				, #{SVCDIV,mode=IN,jdbcType=VARCHAR}
+				, #{CNTRCTNO,mode=IN,jdbcType=VARCHAR}
+				, #{COLCTREQDAY,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNZIPCD,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNADDR1,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNADDR2,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNNM,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNTELNO,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNTELNO2,mode=IN,jdbcType=VARCHAR}
+				, #{SNDPRSNPICHNM,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNZIPCD,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNADDR1,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNADDR2,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNNM,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNTELNO,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNTELNO2,mode=IN,jdbcType=VARCHAR}
+				, #{RCPPRSNPICHNM,mode=IN,jdbcType=VARCHAR}
+				, #{DLVYMSG,mode=IN,jdbcType=VARCHAR}
+				, #{REPICNM,mode=IN,jdbcType=VARCHAR}
+				, #{BOXQTY,mode=IN,jdbcType=NUMERIC}
+				, #{PAYMTTYPE,mode=IN,jdbcType=VARCHAR}
+				, #{BOXTYPE,mode=IN,jdbcType=VARCHAR}
+				, #{MEMO1,mode=IN,jdbcType=VARCHAR}
+				, #{MEMO2,mode=IN,jdbcType=VARCHAR}
+				, #{MEMO3,mode=IN,jdbcType=VARCHAR}
+				, #{MEMO4,mode=IN,jdbcType=VARCHAR}
+				, NULL /*내품가*/
+				, #{O_YN,mode=OUT,jdbcType=VARCHAR}
+				, #{O_SQLCODE,mode=OUT,jdbcType=VARCHAR}
+				, #{O_ERRM,mode=OUT,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+
+	<select id="selectCstOrdMtrV2Seq" resultType="java.lang.String">
+		/* wms-outbound-hanjinDlvryDb-sql-oracle.xml - selectCstOrdMtrV2Seq - 한진택배 접수SEQ 조회 */
+		SELECT MAX(COM_SEQ) AS SBMSEQ
+		  FROM CST_ORD_MTR_VW_V2
+		 WHERE COM_ORD_NUM = #{OBHDKEY}
+		   AND COM_WBL_NUM = #{WBLNO}
+	</select>
+</mapper>

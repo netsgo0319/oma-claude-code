@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.ItemGroupMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectItemGroup">
+		FROM
+			TWORK_MST_ICGR A
+		LEFT OUTER JOIN TWORK_MST_CT B
+			ON B.CTKEY = A.CTKEY
+		LEFT OUTER JOIN TWORK_MST_OW C
+			ON C.OWKEY = A.OWKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectItemGroupCount" resultType="java.lang.Integer">
+		/* wms-master-itemgroup-sql-oracle.xml - selectItemGroupCount */
+		SELECT
+		    COUNT(1)
+		<include refid="sql_selectItemGroup"/>
+	</select>
+
+	<select id="selectItemGroup" resultType="camelMap">
+		/* wms-master-itemgroup-sql-oracle.xml - selectItemGroup */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.CTKEY
+		    , B.CTNM
+		    , A.OWKEY
+			, C.OWNM
+			, A.ICGRPKEY
+			, A.ICGRPNM
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		<include refid="sql_selectItemGroup"/>
+		ORDER BY UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+	<resultMap id="selectItemGroupMap" type="java.util.HashMap">
+		<result property="updateurkey" column="UPDATEURKEY" />	
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />	
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="icgrtype" column="ICGRTYPE" />
+		<result property="icgrtype_desc" column="ICGRTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="icgrname" column="ICGRNAME" />	
+		<result property="icgrkey" column="ICGRKEY" />	
+		<result property="closdate" column="CLOSDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="owkey" column="OWKEY" />	
+		<result property="owname" column="OWNAME" />
+		<result property="ctkey" column="CTKEY" />	
+	</resultMap>
+	
+	<select id="selectPkItemGroup" resultMap="selectItemGroupMap">
+		SELECT
+		A.CTKEY
+		, B.CTNAME
+		, A.OWKEY
+		, C.OWNAME
+		, A.ICGRKEY
+		, A.CLOSDATE
+		, A.INSERTDATE
+		, A.INSERTURKEY
+		, A.UPDATEDATE
+		, A.UPDATEURKEY
+<include refid="sql_selectItemGroup"/>
+	       AND  A.OWKEY = #{owkey}
+	       AND  A.ICGRKEY = #{icgrkey}
+           AND 	A.ICGRTYPE = #{icgrtype}
+   
+	</select>
+
+	<update id="updateTWorkMstIcgr" >
+		UPDATE 	TWORK_MST_ICGR 
+		SET		UPDATEURKEY	= #{surkey}
+				,UPDATEDATE	= #{sysdate}
+	    WHERE	OWKEY = #{owkey}
+	    AND		ICGRKEY	= #{icgrkey}
+        AND 	ICGRTYPE = #{icgrtype}
+        AND 	CTKEY = #{ctkey}
+	</update>	 
+</mapper>	

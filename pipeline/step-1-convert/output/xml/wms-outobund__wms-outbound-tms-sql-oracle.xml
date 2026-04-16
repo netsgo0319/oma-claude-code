@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.tms.mapper.TmsManagerMapper">
+
+
+    <select id="selectShpmDetlVolAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectShpmDetlVolAdjustlList - 수량 및 볼륨 조정을 위한 주문상세 목록 조회 **/
+    	SELECT
+    		LDLEGID,
+  			SHPMNO,
+  			SHPMDETLID,
+  			COALESCE(SUM(T.QTY), 0) AS RCVDQTY,
+  			COALESCE(SUM(T.DCLVAL), 0) AS DCLVAL,
+  			COALESCE(SUM(T.ODRVAL), 0) AS ODRVAL,
+  			T.WDTH * T.LEN * T.HGHT * COALESCE(SUM(T.QTY), 0)  AS RCVDVOL,
+  			T.WGT * COALESCE(SUM(T.QTY), 0) AS RCVDWGT
+		FROM
+		(
+		SELECT
+		    ROLL.LDLEGID,
+		    ROLL.SHPMNO,
+		    SD.SHPMID,
+		    SD.SHPMDETLID,
+		    SD.ITEMCD,
+		    (COALESCE(ROLL.QTY, 0) * TO_NUMBER (COALESCE(SD.ATTRIBUTE6, 0))) AS DCLVAL,
+	        (COALESCE(ROLL.QTY, 0) * TO_NUMBER (COALESCE(SD.ATTRIBUTE7, 0))) AS ODRVAL,
+		    COALESCE(ROLL.QTY, 0) AS QTY,
+		    COALESCE(SD.WGT, 0) AS WGT,
+		    COALESCE(SD.WDTH, 0) AS WDTH,
+		    COALESCE(SD.LEN, 0) AS LEN,
+		    COALESCE(SD.HGHT, 0) AS HGHT
+		FROM
+		    TT_SHPM_LEG_T LEG
+		    INNER JOIN TT_SHPM_DETL_T SD
+		        ON SD.SHPMNO = LEG.SHPMNO AND SD.SHPMID = LEG.SHPMID
+		    LEFT JOIN TT_SHPM_DETL_ROLL_T ROLL
+		        ON LEG.SHPMNO = ROLL.SHPMNO AND LEG.LDLEGID = ROLL.LDLEGID AND SD.SHPMDETLID = ROLL.SHPMDETLID
+		WHERE LEG.LDLEGID = #{ldlegid}
+		) T WHERE LDLEGID IS NOT NULL
+		GROUP BY LDLEGID, SHPMNO, SHPMDETLID ,T.WDTH, T.LEN, T.HGHT, T.WGT
+    </select>
+
+     <select id="selectShpmLegVolAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectShpmLegVolAdjustlList - 배차조정을 위한 주문실행 목록 조회**/
+    	 SELECT SL.LDLEGID,
+            SL.SHPMNO,
+            SL.SHPMID,
+            SUM (SD.QTY) AS QTY,
+            SUM (SD.WGT) AS WGT,
+            SUM (SD.VOL) AS VOL,
+            SUM (SD.RCVDQTY) AS RCVDQTY,
+            SUM (SD.RCVDVOL) AS RCVDVOL,
+            SUM (SD.RCVDWGT) AS RCVDWGT,
+            SUM (SD.ODRVAL) AS ODRVAL,
+            SUM (SD.DCLVAL) AS DCLVAL
+       FROM TT_SHPM_DETL_T SD, TT_SHPM_LEG_T SL, TT_SHPM_T SH
+      WHERE SL.SHPMID = SD.SHPMID
+        AND SL.SHPMID = SH.SHPMID
+        AND SD.SHPMNO = SL.SHPMNO
+        AND SD.SHPMNO = SH.SHPMNO
+        AND SH.SHPMID = SD.SHPMID
+        AND SL.LDLEGID = #{ldlegid}
+      GROUP BY SL.LDLEGID, SL.SHPMNO, SL.SHPMID
+    </select>
+
+     <select id="selectLoadVolAdjustlList" resultType="camelMap" >
+	 /** wms-outbound-tms-sql-oracle.xml - selectLoadVolAdjustlList - 배차조정을 위한 배차 목록 조회 **/
+    	 SELECT SL.LDLEGID,
+           SUM (SL.QTY) AS QTY,
+           SUM (SL.RCVDWGT) AS WGT,
+           SUM (SL.VOL) AS VOL,
+           SUM((CASE WHEN CAST(SH.ATTRIBUTE2 AS NUMERIC) = 0 THEN SL.QTY
+                 ELSE CEIL(SL.QTY / CAST(SH.ATTRIBUTE2 AS NUMERIC))
+            END
+            )) AS ATTRIBUTE8,
+            SUM (SL.ODRVAL) AS ODRVAL,
+            SUM (SL.DCLVAL) AS DCLVAL
+      FROM TT_SHPM_LEG_T SL, TT_SHPM_T SH
+     WHERE SL.LDLEGID = #{ldlegid}
+       AND SL.SHPMID = SH.SHPMID
+       AND SL.SHPMNO = SH.SHPMNO
+  	 GROUP BY SL.LDLEGID
+    </select>
+
+    <select id="selectStopVolAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectStopVolAdjustlList - 수량 및 볼륨 조정을 위한 경유지 목록 조회 **/
+    SELECT SL.LDLEGID,
+		   STOP.STOPID,
+           SUM (SL.QTY) AS QTY,
+           SUM (SL.RCVDWGT) AS WGT,
+           SUM (SL.VOL) AS VOL,
+           SUM (SL.ODRVAL) AS ODRVAL,
+           SUM (SL.DCLVAL) AS DCLVAL
+     FROM TT_SHPM_LEG_T SL, TT_STOP_T STOP
+     WHERE SL.LDLEGID = #{ldlegid}
+       AND SL.DFTDESTSHPGLOCCD = STOP.SHPGLOCCD
+       AND SL.LDLEGID = STOP.LDLEGID
+  	 GROUP BY SL.LDLEGID, STOP.STOPID
+    </select>
+
+    <select id="selectTargetAmount" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectTargetAmount - 가격조정을 위한 상품상세의 설정 조회 **/
+    	 SELECT
+    	 	SUM (CASE SD.ATTRIBUTE6 WHEN SD.ATTRIBUTE6 IS NULL THEN 0 ELSE CAST(SD.ATTRIBUTE6 AS NUMERIC) END) AS V_EA_DCLVAL,
+	        SUM (CASE SD.ATTRIBUTE7 WHEN SD.ATTRIBUTE7 IS NULL THEN 0 ELSE CAST(SD.ATTRIBUTE7 AS NUMERIC) END) AS V_EA_ODRVAL
+	     FROM TT_SHPM_DETL_T SD,
+	     	  TT_SHPM_DETL_ROLL_T ROLL
+	    WHERE ROLL.LDLEGID = #{ldlegid}
+	      AND SD.SHPMNO = ROLL.SHPMNO
+		  AND SD.SHPMDETLID = ROLL.SHPMDETLID
+    </select>
+
+    <update id="updateShpmDetlAmountAttr">
+		/** wms-outbound-tms-sql-oracle.xml - updateShpmDetlAmountAttr - 주문상세 판매가, 매가 정보 조정 **/
+    	UPDATE TT_SHPM_DETL_T DT
+    	SET   ATTRIBUTE6 = (DCLVAL / QTY)::TEXT
+    	    , ATTRIBUTE7 = (ODRVAL / QTY)::TEXT
+    	    , DT.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         	, DT.UPDATEURKEY = #{surkey}
+         WHERE QTY > 0
+           AND EXISTS (SELECT 1 FROM TT_SHPM_DETL_ROLL_T WHERE SHPMNO = DT.SHPMNO AND SHPMDETLID = DT.SHPMDETLID AND LDLEGID = #{ldlegid})
+    </update>
+
+	<select id="selectShpmDetlAmountAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectShpmDetlAmountAdjustlList - 가격조정을 위한 주문상세 목록 조회 **/
+    	SELECT SD.SHPMDETLID,
+              (SD.QTY * TO_NUMBER (COALESCE(SD.ATTRIBUTE6, 0))) AS DCLVAL,
+       		  (SD.QTY * TO_NUMBER (COALESCE(SD.ATTRIBUTE7, 0))) AS ODRVAL
+        FROM TT_SHPM_LEG_T SL, TT_SHPM_DETL_T SD
+		WHERE SL.SHPMID = SD.SHPMID
+		  AND SL.SHPMNO = SD.SHPMNO
+          AND SL.LDLEGID = #{ldlegid}
+  		GROUP BY SD.SHPMDETLID, SD.QTY, COALESCE(SD.ATTRIBUTE6, 0), COALESCE(SD.ATTRIBUTE7, 0)
+    </select>
+
+    <update id="updateShpmDetlAmount">
+		/** wms-outbound-tms-sql-oracle.xml - updateShpmDetlAmount - 주문상세 판매가, 매가 정보 조정 **/
+    	UPDATE TT_SHPM_DETL_T DT
+    	SET  DT.DCLVAL = #{dclval}
+           , DT.ODRVAL = #{odrval}
+           , DT.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+           , DT.UPDATEURKEY = #{surkey}
+        WHERE SHPMID = #{shpmid}
+    </update>
+
+     <select id="selectShpmLegAmountAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectShpmLegAmountAdjustlList - 가격조정을 위한 주문  조회 **/
+	 SELECT SL.LDLEGID,
+        SL.SHPMNO,
+        SL.SHPMID,
+        SUM (SD.ODRVAL) AS ODRVAL,
+        SUM (SD.DCLVAL) AS DCLVAL
+       FROM TT_SHPM_DETL_T SD,
+            TT_SHPM_LEG_T SL
+      WHERE SL.SHPMID = SD.SHPMID
+        AND SD.SHPMNO = SL.SHPMNO
+        AND SL.LDLEGID = #{ldlegid}
+	  GROUP BY SL.LDLEGID, SL.SHPMNO, SL.SHPMID
+    </select>
+
+    <update id="updateShpmLegAmount">
+		/** wms-outbound-tms-sql-oracle.xml - updateShpmLegAmount - 주문실행 판매가, 매가 정보 조정 **/
+    	UPDATE TT_SHPM_LEG_T SL
+    	SET   SL.ODRVAL = #{odrval}
+    	    , SL.DCLVAL = #{dclval}
+    	    , SL.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         	, SL.UPDATEURKEY = #{surkey}
+        WHERE LDLEGID = #{ldlegid}
+          AND SL.SHPMID = #{shpmid}
+          AND SL.SHPMNO = #{shpmno}
+    </update>
+
+    <update id="updateShpmAmount">
+		/** wms-outbound-tms-sql-oracle.xml - updateShpmAmount - 주문 판매가, 매가 정보 조정 **/
+    	UPDATE TT_SHPM_T SH
+    	SET   SH.ODRVAL = #{odrval}
+    	    , SH.DCLVAL = #{dclval}
+    	    , SH.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         	, SH.UPDATEURKEY = #{surkey}
+        WHERE SH.SHPMID = #{shpmid}
+          AND SH.SHPMNO = #{shpmno}
+    </update>
+
+     <select id="selectShpmLoadAmountAdjustlList" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectShpmLoadAmountAdjustlList - 가격조정을 위한 주문실행 조회 **/
+	 SELECT
+	 	SL.LDLEGID,
+	 	SUM (SL.ODRVAL) AS ODRVAL,
+	 	SUM (SL.DCLVAL) AS DCLVAL
+       FROM TT_SHPM_LEG_T SL
+      WHERE SL.LDLEGID = #{ldlegid}
+	  GROUP BY SL.LDLEGID
+    </select>
+
+    <update id="updateLoadAmount">
+		/** wms-outbound-tms-sql-oracle.xml - updateLoadAmount - 배차 판매가, 매가 정보 조정 **/
+    	UPDATE TT_LOAD_T LD
+    	SET   LD.ODRVAL = #{odrval}
+    	    , LD.DCLVAL = #{dclval}
+    	    , LD.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         	, LD.UPDATEURKEY = #{surkey}
+        WHERE LD.LDLEGID = #{ldlegid}
+    </update>
+
+    <select id="selectStopAmountAdjustlList" resultType="camelMap" >
+	  /** wms-outbound-tms-sql-oracle.xml - selectStopAmountAdjustlList - 가격조정을 위한 주문실행 조회 **/
+	  SELECT STOP.STOPID,
+        	 SUM (SL.ODRVAL) AS ODRVAL,
+        	 SUM (SL.DCLVAL) AS DCLVAL
+      FROM TT_SHPM_LEG_T SL,
+           TT_STOP_T STOP
+      WHERE SL.LDLEGID =  #{ldlegid}
+        AND SL.DFTDESTSHPGLOCCD = STOP.SHPGLOCCD
+        AND SL.LDLEGID = STOP.LDLEGID
+	  GROUP BY STOP.STOPID
+    </select>
+
+    <update id="updateStopAmount">
+		/** wms-outbound-tms-sql-oracle.xml - updateStopAmount - 경유지 판매가, 매가 정보 조정 **/
+    	UPDATE TT_STOP_T ST
+    	SET   ST.PICKODRVAL = #{odrval}
+    	    , ST.PICKDCLDVAL = #{dclval}
+    	    , ST.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         	, ST.UPDATEURKEY = #{surkey}
+        WHERE ST.STOPID = #{stopid}
+    </update>
+
+    <select id="selectObLdlegidStatus" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectObLdlegidStatus - 출고정보의 배차ID(가배차ID)로 전체 상태 체크 **/
+		SELECT COUNT(1) AS TOTAL_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS = '30' THEN 1 ELSE NULL END) AS PICK_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('65','70') THEN 1 ELSE NULL END) AS PICK_CONFIRM_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('80','90') THEN 1 ELSE NULL END) AS OB_CONFIRM_CNT
+		  FROM TWORK_INFO_OB_DT OD
+		 WHERE LDLEGID = #{ldlegid}
+	</select>
+
+	<select id="selectLdlegidOrderCheckMap" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectLdlegidOrderCheckMap - 배차ID로 WMS 작업대상 체크 **/
+		SELECT COUNT(1) AS TOTAL_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('00','98','99') THEN 1 ELSE NULL END) AS WRCREATE_CNT
+		  FROM TWORK_INFO_OB_HD OH
+		       INNER JOIN TWORK_INFO_OB_DT OD
+		         ON OH.CTKEY = OD.CTKEY
+		        AND OH.OWKEY = OD.OWKEY
+		        AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.LDLEGID = #{ldlegid}
+	</select>
+
+	<select id="selectLdlegidPickingCheck" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectLdlegidPickingCheck - 배차ID로 WMS,TMS 피킹완료 체크 **/
+		SELECT CASE WHEN T.TOTAL_CNT = T.PICK_CONFIRM_CNT THEN
+			               CASE WHEN NON_PICKCONFIRM_CNT = 0 AND NON_PICK_ROLL_CNT > 0 THEN '15'
+			                    WHEN NON_PICKCONFIRM_CNT = 0 AND NON_PICK_ROLL_CNT = 0 THEN '20'
+			                    ELSE '10'
+			               END
+                    ELSE '10'
+               END  AS WMWKSTATUS
+          FROM (
+				SELECT COUNT(CASE WHEN WM.PIQTY <![CDATA[<>]]> TM.PIQTY OR TM.PIQTY IS NULL THEN 1 ELSE NULL END) AS NON_PICKCONFIRM_CNT
+				     , COUNT(CASE WHEN WM.PIQTY <![CDATA[<>]]> TM.ROLL_PIQTY AND TM.PIQTY IS NOT NULL THEN 1 ELSE NULL END) AS NON_PICK_ROLL_CNT
+				     , SUM(WM.TOTAL_CNT) AS TOTAL_CNT
+				     , SUM(WM.PICK_CNT) AS PICK_CNT
+				     , SUM(WM.PICK_CONFIRM_CNT) AS PICK_CONFIRM_CNT
+				     , SUM(WM.OB_CONFIRM_CNT) AS OB_CONFIRM_CNT
+				  FROM (
+				        SELECT OD.ORHDKEY
+				             , OD.ORDTKEY
+				             , SUM(OD.PIQTY) AS PIQTY
+				             , COUNT(1) AS TOTAL_CNT
+						     , COUNT(CASE WHEN OD.WKSTATUS = '30' THEN 1 ELSE 0 END) AS PICK_CNT
+						     , COUNT(CASE WHEN OD.WKSTATUS IN ('65','70','80','90') THEN 1 ELSE NULL END) AS PICK_CONFIRM_CNT
+						     , COUNT(CASE WHEN OD.WKSTATUS IN ('80','90') THEN 1 ELSE NULL END) AS OB_CONFIRM_CNT
+				          FROM TWORK_INFO_OB_HD OH
+				               INNER JOIN
+				               TWORK_INFO_OB_DT OD
+				                 ON OH.CTKEY = OD.CTKEY
+				                AND OH.OWKEY = OD.OWKEY
+				                AND OH.OBHDKEY = OD.OBHDKEY
+				         WHERE OH.LDLEGID = #{ldlegid}
+				           AND OD.WKSTATUS NOT IN ('98','99')
+				         GROUP BY
+				               OD.ORHDKEY
+				             , OD.ORDTKEY
+				       ) WM
+				       LEFT OUTER JOIN
+				       (
+				        SELECT RT.SHPMNO   AS ORHDKEY
+				             , RT.ORDTKEY
+				             , SUM(RT.PIQTY) AS PIQTY
+				             , CASE WHEN LT.LOADING_UNIT = 'ROLL' THEN
+				                         SUM(CASE WHEN RT.ROLL_NUMBER IS NULL
+											<if test='@com.kns.framework.util.StringUtil@isNotEmpty(rollYn) and "NO".equals(rollYn)'>
+											AND COALESCE(RT.IC_ORDER_TYPE, '10') = '10'
+											</if>
+											THEN 0 ELSE PIQTY END)
+				                    WHEN LT.LOADING_UNIT = 'CBM' THEN
+				                         SUM(PIQTY)
+				               END AS ROLL_PIQTY
+				          FROM TT_SHPM_DETL_ROLL_T RT
+						       LEFT OUTER JOIN
+						       TT_LOAD_T LT
+						         ON RT.LDLEGID = LT.LDLEGID
+				         WHERE RT.LDLEGID = #{ldlegid}
+				         GROUP BY
+				               RT.SHPMNO
+				             , RT.ORDTKEY
+				             , LT.LOADING_UNIT
+				       ) TM
+				         ON WM.ORHDKEY = TM.ORHDKEY
+				        AND WM.ORDTKEY = TM.ORDTKEY
+               ) T
+	</select>
+
+    <select id="selectLdlegidStockOutStatus" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectLdlegidStockOutStatus - 배차ID로 전체 상태 체크 **/
+		SELECT COUNT(1) AS TOTAL_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS = '98' THEN 1 ELSE NULL END) AS STOCK_OUT_CNT
+		  FROM TWORK_INFO_OB_HD OH
+		       INNER JOIN TWORK_INFO_OB_DT OD
+		         ON OH.CTKEY = OD.CTKEY
+		        AND OH.OWKEY = OD.OWKEY
+		        AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.LDLEGID = #{ldlegid}
+		   AND OD.WKSTATUS <![CDATA[<>]]> '99'
+	</select>
+
+    <select id="selectLdlegidStatus" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectLdlegidStatus - 배차ID로 전체 상태 체크 **/
+		SELECT COUNT(1) AS TOTAL_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS = '30' THEN 1 ELSE NULL END) AS PICK_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('65','70') THEN 1 ELSE NULL END) AS PICK_CONFIRM_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('80','90') THEN 1 ELSE NULL END) AS OB_CONFIRM_CNT
+		  FROM TWORK_INFO_OB_HD OH
+		       INNER JOIN TWORK_INFO_OB_DT OD
+		         ON OH.CTKEY = OD.CTKEY
+		        AND OH.OWKEY = OD.OWKEY
+		        AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.LDLEGID = #{ldlegid}
+		   AND OD.WKSTATUS NOT IN ('98','99')
+	</select>
+
+    <select id="selectLdlegidStatusConfirm" resultType="camelMap">
+		/** wms-outbound-tms-sql-oracle.xml - selectLdlegidStatusConfirm - 배차ID로 전체 상태 체크 **/
+		SELECT COUNT(1) AS TOTAL_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS = '30' THEN 1 ELSE NULL END) AS PICK_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('65','70') AND RL.WMWKSTATUS = '20' THEN 1
+		                  ELSE NULL
+		             END) AS PICK_CONFIRM_CNT
+		     , COUNT(CASE WHEN OD.WKSTATUS IN ('80','90') AND RL.WMWKSTATUS = '30' THEN 1
+		                  ELSE NULL
+		             END) AS OB_CONFIRM_CNT
+		  FROM (
+		        SELECT RT.SHPMNO AS ORHDKEY
+		             , RT.ORDTKEY
+		             , MIN(RT.WMWKSTATUS) AS WMWKSTATUS
+		          FROM TT_SHPM_DETL_ROLL_T RT
+		               INNER JOIN TT_WKSTATUS_T WT
+		                 ON RT.LDLEGID = WT.LDLEGID
+		         WHERE RT.LDLEGID = #{ldlegid}
+		           AND RT.PIQTY > 0
+		           AND WT.WMWKSTATUS <![CDATA[<>]]> '30'  /* 이미 출고완료 처리된 배차 데이터는 제외 */
+		         GROUP BY
+		               RT.SHPMNO
+		             , RT.ORDTKEY
+		       ) RL
+		       INNER JOIN TWORK_INFO_OB_DT OD
+		         ON RL.ORHDKEY = OD.ORHDKEY
+		        AND RL.ORDTKEY = OD.ORDTKEY
+		 WHERE OD.WKSTATUS NOT IN ('98','99')
+	</select>
+
+	<update id="updateWkstatus">
+		/** wms-outbound-tms-sql-oracle.xml - updateWkstatus - 배차ID로 WMS상태 변경 **/
+		UPDATE TT_WKSTATUS_T
+		   SET WMWKSTATUS = #{wmwkstatus}
+    	     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          	 , UPDATEURKEY = #{surkey}
+		 WHERE LDLEGID = #{ldlegid}
+	</update>
+
+	<update id="updateRollWkstatus">
+		/** wms-outbound-tms-sql-oracle.xml - updateRollWkstatus - 배차ID로 롤테이너의 WMS상태 변경 **/
+		UPDATE TT_SHPM_DETL_ROLL_T
+		   SET WMWKSTATUS = #{wmwkstatus}
+    	     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          	 , UPDATEURKEY = #{surkey}
+		 WHERE LDLEGID = #{ldlegid}
+	</update>
+
+	<select id="procUpdateLoadQtyVOl" statementType="CALLABLE" parameterType="java.util.HashMap">
+	/** wms-outbound-tms-sql-oracle.xml - procUpdateLoadQtyVOl - 배차ID로 수량 및 가격 변경 반영 **/
+    	CALL SP_LOAD_QTY_VOL_UPDATE(
+      		#{ldlegid,mode=IN,jdbcType=VARCHAR}
+    		, #{rslt,mode=OUT,jdbcType=VARCHAR}
+    	)
+	</select>
+
+    <select id="selectInterfacekey">
+		/* wms-outbound-tms-sql-oracle.xml - selectInterfacekey */
+		SELECT nextval('seq_tt_if_result_t_001') AS INTERFACEKEY
+	</select>
+
+
+	<insert id="insertLoadList" parameterType="map">
+		/* wms-outbound-tms-sql-oracle.xml - insertLoadList */
+        INSERT INTO TT_IF_RESULT_T (
+			SEQ,
+			INTERFACEKEY,
+			CTKEY,
+			REQUESTDT,
+			LDLEGID,
+			TRPSEQNUM,
+			URKEY,
+			TRCNUM,
+			SEND_TYPE,
+			ITEMCD,
+			SO_HDKEY,
+			SO_DTKEY,
+			EXTERNORDERKEY,
+			EXTERNORDERDETAILKEY,
+			SHPGLOCCD,
+			DISP_NO,
+			DISP_NM,
+			STOPSEQNUM,
+			UOM,
+			QTY,
+			SUCCESSYN,
+			RESULTMESSAGE,
+			ERRMESSAGE,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+		SELECT
+			nextval('seq_tt_if_result_t') AS SEQ,
+			T.*
+		FROM
+		(
+		SELECT
+			#{interfacekey} AS INTERFACEKEY,
+			TL.CTKEY,                          /* 출고처리 센터 코드 */
+			COALESCE(#{requestdt}, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')) AS REQUESTDT, /* 요청일자 */
+			TL.LDLEGID,                        /* 배차번호 */
+			TL.TRPSEQNUM,                      /* 배송회차 */
+			TDT.URKEY, 						   /* 사용자ID */
+			TL.TRCNUM,                         /* 차량번호 */
+			#{sendType} AS SEND_TYPE,          /* 전송구분 (가전송, 피킹전송, 완료전송) */
+			TSD.ITEMCD,                        /* 상품코드 */
+			TSD.SHPMNO AS SO_HDKEY,            /* 출고예정정보 번호 */
+			TSD.ATTRIBUTE2 AS SO_DTKEY,        /* 출고예정정보 상세번호 */
+			TSD.ATTRIBUTE3 AS EXTERNORDERKEY,  /* 출고예정정보 번호 */
+			TSD.ATTRIBUTE4 AS EXTERNORDERDETAILKEY, /* 출고예정정보 상세번호 */
+			ST.SHPGLOCCD,                      /* 배송처코드 */
+			ST.DISP_NO,                        /* 진열사원 번호 */
+			ST.DISP_NM,                        /* 진열사원 명 */
+			ST.STOPSEQNUM,                     /* 배송순번 */
+			TSD.ATTRIBUTE8 AS UOM,             /* 수량 단위 */
+			COALESCE(SUM(ROLL.QTY / TSD.ICUTQTY), 0) AS QTY, /* 출고 수량 */
+			'' AS SUCCESSYN,                   /* 성공 여부 */
+			'' AS RESULTMESSAGE,               /* 결과 메시지 */
+			'' AS ERRMESSAGE,                  /* 오류 메시지 */
+			#{sysdate} AS INSERTDATE,
+			#{surkey} AS INSERTURKEY,
+			#{sysdate} AS UPDATEDATE,
+			#{surkey} AS UPDATEURKEY
+		FROM TT_LOAD_T TL
+		INNER JOIN TT_DRVR_T TDT ON TDT.DRVNO = TL.DRVNO AND TL.CTKEY = TDT.CTKEY
+		INNER JOIN TT_SHPM_LEG_T TSL ON TL.LDLEGID = TSL.LDLEGID
+		INNER JOIN TT_SHPM_DETL_T TSD ON TSD.SHPMID = TSL.SHPMID AND TSD.SHPMNO = TSL.SHPMNO
+		INNER JOIN TT_SHPM_DETL_ROLL_T ROLL ON ROLL.LDLEGID = TSL.LDLEGID AND ROLL.SHPMDETLID = TSD.SHPMDETLID AND TSD.SHPMNO = ROLL.SHPMNO
+		INNER JOIN TT_STOP_T ST ON TL.LDLEGID = ST.LDLEGID AND ST.DELYN = 'N' AND ST.PICKPCE <![CDATA[>]]> 0 AND STOPSEQNUM <![CDATA[>]]> 0 AND TSL.DFTDESTSHPGLOCCD = ST.SHPGLOCCD
+		WHERE TL.LDLEGID = #{ldlegid}
+		  AND TL.DELYN = 'N'
+		  AND TSL.DELYN = 'N'
+		  AND TSD.DELYN = 'N'
+		  AND ROLL.QTY > 0
+		GROUP BY
+			TL.CTKEY,                          /* 출고처리 센터 코드 */
+			TL.LDLEGID,                        /* 배차번호 */
+			TL.TRPSEQNUM,                      /* 배송회차 */
+			TDT.URKEY, 						   /* 사용자ID */
+			TL.TRCNUM,                         /* 차량번호 */
+			TSD.ITEMCD,                        /* 상품코드 */
+			TSD.SHPMNO,            /* 출고예정정보 번호 */
+			TSD.ATTRIBUTE2,        /* 출고예정정보 상세번호 */
+			TSD.ATTRIBUTE3,  /* 출고예정정보 번호 */
+			TSD.ATTRIBUTE4, /* 출고예정정보 상세번호 */
+			ST.SHPGLOCCD,                      /* 배송처코드 */
+			ST.DISP_NO,                        /* 진열사원 번호 */
+			ST.DISP_NM,                        /* 진열사원 명 */
+			ST.STOPSEQNUM,                     /* 배송순번 */
+			TSD.ATTRIBUTE8             /* 수량 단위 */
+		) T
+    </insert>
+
+
+    <!-- 배차 확정 시 주문 상태 UPDATE -->
+    <update id="updateShpmStatus">
+        /* tms-ld-plan-confirm-sql-oracle.xml - updateShpmStatus(배차 확정 시 주문 상태 UPDATE) */
+        UPDATE TT_SHPM_T
+           SET CUROPTLSTTID = #{sttcd}
+             , RETOPTLSTTID = (CASE WHEN CUROPTLSTTID = #{sttcd} THEN RETOPTLSTTID ELSE CUROPTLSTTID END)
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE SHPMID IN (SELECT SHPMID FROM TT_SHPM_LEG_T WHERE LDLEGID = #{ldlegid})
+    </update>
+
+
+
+    <!-- 배차 확정 시 실행주문 상태 UPDATE -->
+    <update id="updateShpmLegStatus">
+        /* tms-ld-plan-confirm-sql-oracle.xml - updateShpmLegStatus(배차 확정 시 실행주문 상태 UPDATE) */
+        UPDATE TT_SHPM_LEG_T
+           SET CUROPTLSTTID = #{legSttcd}
+             , RETOPTLSTTID = (CASE WHEN CUROPTLSTTID = #{legSttcd} THEN RETOPTLSTTID ELSE CUROPTLSTTID END)
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE LDLEGID = #{ldlegid}
+    </update>
+
+
+    <!-- 배차 확정 시 배차 상태 UPDATE -->
+    <update id="updateLoadStatus">
+        /* tms-ld-plan-confirm-sql-oracle.xml - updateLoadStatus(배차 확정 시 배차 상태 UPDATE) */
+        UPDATE TT_LOAD_T
+           SET CUROPTLSTTID = #{loadSttcd}
+             , RETOPTLSTTID = (CASE WHEN CUROPTLSTTID = #{loadSttcd} THEN RETOPTLSTTID ELSE CUROPTLSTTID END)
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE LDLEGID = #{ldlegid}
+    </update>
+
+
+    <!-- WMS 상태 테이블 UPDATE -->
+    <update id="updateWksStatus">
+        /* tms-ld-plan-confirm-sql-oracle.xml - updateWksStatus(WMS 상태 테이블 UPDATE) */
+        UPDATE TT_WKSTATUS_T
+           SET WKSTATUS = #{wkstatus}
+             , UPDATEDATE = #{sysdate}
+    		 , UPDATEURKEY = #{surkey}
+         WHERE LDLEGID = #{ldlegid}
+    </update>
+
+
+
+     <select id="selectAutoConfirmYn" resultType="camelMap" >
+	/** wms-outbound-tms-sql-oracle.xml - selectAutoConfirmYn - 자동확정 대상 배차 여부 조회 **/
+	 SELECT
+	 	COALESCE(AUTO_CONFIRM_YN, 'N') AS AUTO_CONFIRM_YN
+       FROM TT_LOAD_T
+      WHERE LDLEGID = #{ldlegid}
+    </select>
+</mapper>

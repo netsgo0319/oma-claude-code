@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.DailySumOutboundReport1Mapper">
+
+	<sql id="sql_selectDailySumOutboundReport1">
+        SELECT A.CTKEY																								/* 센터코드 */
+			 , C.CTNAME																								/* 센터명 */
+			 , A.OWKEY																								/* 화주코드 */
+			 , D.OWNAME																								/* 화주명 */
+			 , B.ICGRKEY																							/* 상품그룹코드 */
+			 , F.ICGRNAME																							/* 상품그룹명 */
+			 , E.VOLTYPE																							/* 상품(용적) 구분 */
+			 , SUM(B.EXQTY) AS TOTPOQTY																				/* 총 발주수량 */
+			 , SUM(B.CFQTY) AS TOTCFQTY																				/* 총 출고수량 */
+			 , SUM(B.EXQTY) - SUM(B.CFQTY) AS TOTRPQTY																/* 총 결품수량 */
+			 , DATE_TRUNC('day', SUM(B.EXQTY * B.COSTPRICE))::DATE AS TOTPOPRICE														/* 총 발주금액 */
+			 , DATE_TRUNC('day', SUM(B.CFQTY * B.COSTPRICE))::DATE AS TOTCFPRICE														/* 총 출고금액 */
+			 , DATE_TRUNC('day', SUM(B.EXQTY * B.COSTPRICE) - SUM(B.CFQTY * B.COSTPRICE))::DATE AS TOTRPPRICE							/* 총 결품금액 */
+			 , CASE WHEN SUM(B.EXQTY) = 0  THEN '0' || '%'
+					ELSE TO_CHAR(ROUND(SUM(B.CFQTY) / SUM(B.EXQTY) * 100, 2), 'FM9990.99') || '%'
+					END AS QTYRATE																					/* 수량 출고율 */
+			 , CASE WHEN SUM(B.EXQTY * B.COSTPRICE) = 0 THEN '0' || '%'
+					ELSE TO_CHAR(ROUND(SUM(B.CFQTY * B.COSTPRICE) / SUM(B.EXQTY * B.COSTPRICE) * 100, 2), 'FM9990.99') || '%'
+					END AS PRICERATE																				/* 금액 출고율 */
+		  FROM TWORK_INFO_OB_HD A
+		 INNER JOIN TWORK_INFO_OB_DT B
+				 ON B.CTKEY = A.CTKEY
+				AND B.OWKEY = A.OWKEY
+				AND B.OBHDKEY = A.OBHDKEY
+		 INNER JOIN TWORK_MST_CT C
+				 ON C.CTKEY = B.CTKEY
+		 INNER JOIN TWORK_MST_OW D
+				 ON D.OWKEY = B.OWKEY
+		 INNER JOIN TWORK_MST_IC E
+				 ON E.CTKEY = B.CTKEY
+				AND E.OWKEY = B.OWKEY
+				AND E.ICKEY = B.ICKEY
+		 INNER JOIN TWORK_MST_ICGR F
+				 ON F.CTKEY = A.CTKEY
+				AND F.ICGRKEY = B.ICGRKEY
+				AND F.ICGRTYPE = 'CATEGORY'
+		 WHERE A.OBHDTYPE IN ('10', '15', '70')	/* 10: DC일반 출고, 15: 일반 출고(CVS), 70: 긴급 출고 */
+		   AND A.LOGGRPCD = '1'					/* 1: 상온 */
+
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		 </if>
+
+		 GROUP BY A.CTKEY
+				, C.CTNAME
+				, A.OWKEY
+				, D.OWNAME
+				, B.ICGRKEY
+				, F.ICGRNAME
+				, E.VOLTYPE
+	</sql>
+	
+	<select id="selectCountDailySumOutboundReport1Count" resultType="java.lang.Integer">
+		SELECT 	COUNT(1)
+		  FROM	(			
+			<include refid="sql_selectDailySumOutboundReport1"/>
+		)
+	</select>
+
+	<select id="selectListDailySumOutboundReport1List" resultType="camelMap">
+		/* wms-report-dailysumoutboundreport1-sql-oracle.xml - selectListDailySumOutboundReport1List */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM	(			
+			<include refid="sql_selectDailySumOutboundReport1"/>
+		)				   
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>	
+
+</mapper>

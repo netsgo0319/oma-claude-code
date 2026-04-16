@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfTmsInbOrderMapper">
+	
+	<select id="selectInbReturnOrderToTms" resultType="camelMap">
+		SELECT A.LDLEGID
+		  FROM TT_SHPM_LEG_T A
+		      ,TWORK_INFO_IB_HD B 
+		 WHERE
+		       A.CTKEY = B.CTKEY
+		   AND B.IBHDKEY = A.SHPMNO
+		   AND A.LDLEGID IS NOT NULL
+		   AND B.CTKEY = #{ctkey}
+		   AND B.IBHDKEY = #{ibhdkey}	
+	</select>
+	
+</mapper>	

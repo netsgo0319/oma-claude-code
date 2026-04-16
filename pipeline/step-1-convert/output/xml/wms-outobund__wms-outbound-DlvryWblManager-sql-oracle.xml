@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.DlvryWblManagerMapper">
+
+	<!--택배사 운송장번호 대역 정보 조회-->
+	<select id="selectDlvryWblInfo" resultType="camelMap">
+		/* wms-outbound-DlvryWblManager-sql-oracle.xml.selectDlvryWblInfo 택배사 운송장번호 대역 정보 조회 */
+		SELECT
+			WBL.CTKEY
+			,WBL.OWKEY
+			,WBL.DLVRYCORPCD AS DLVRY_CORP_CD
+			,WBL.ISSUSEQ AS ISSU_SEQ
+			,WBL.WBLFROMNO AS WBL_FROM_NO
+			,WBL.WBLTONO AS WBL_TO_NO
+			,WBL.WBLCURRNO AS WBL_CURR_NO
+		FROM (SELECT
+				CTKEY
+				,OWKEY
+				,DLVRYCORPCD
+				,ISSUSEQ
+				,WBLFROMNO
+				,WBLTONO
+				,COALESCE(WBLCURRNO, WBLFROMNO) AS WBLCURRNO
+				,ROW_NUMBER() OVER (ORDER BY ISSUSEQ) AS RN
+			FROM TWORK_MST_DLVRYCORP_WBL
+			WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND DLVRYCORPCD = #{dlvryCorpCd}
+			AND DELYN = 'N'
+		) WBL
+		WHERE RN = 1
+		AND CAST(WBLCURRNO AS NUMERIC) + #{okCnt} <![CDATA[<=]]> CAST(WBLTONO AS NUMERIC)
+	</select>
+
+	<!--택배사 운송장번호 대역 사용 -->
+	<update id="updateDlvryWblInfo" parameterType="map">
+		/* wms-outbound-DlvryWblManager-sql-oracle.xml.updateDlvryWblInfo 택배사 운송장번호 대역 사용 */
+		<selectKey resultType="long" keyProperty="befWblCurrNo" order="BEFORE">
+			SELECT COALESCE(WBLCURRNO, WBLFROMNO) AS WBLCURRNO
+			FROM TWORK_MST_DLVRYCORP_WBL
+			WHERE CTKEY = #{ctkey}
+			AND OWKEY = #{owkey}
+			AND DLVRYCORPCD = #{dlvryCorpCd}
+			AND ISSUSEQ = #{issuSeq}
+			AND WBLFROMNO = #{wblFromNo}
+			AND WBLTONO = #{wblToNo}
+		</selectKey>
+
+		UPDATE TWORK_MST_DLVRYCORP_WBL
+		SET WBLCURRNO = CAST(COALESCE(WBLCURRNO, WBLFROMNO) AS NUMERIC) + #{okCnt}
+			,UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND DLVRYCORPCD = #{dlvryCorpCd}
+		AND ISSUSEQ = #{issuSeq}
+	</update>
+
+	<select id="selectDlvrycorpWblTsdnotirt" resultType="camelMap">
+		/* wms-outbound-DlvryWblManager-sql-oracle.xml - selectDlvrycorpWblTsdnotirt - 입고반품 - 운송장번호 임계치 알림율 조회 */
+		SELECT CASE WHEN DC.TSDNOTIRT <![CDATA[ <= ]]> ROUND((CAST(DW.WBLCURRNO AS NUMERIC) - CAST(DW.WBLFROMNO AS NUMERIC)) / NULLIF((CAST(DW.WBLTONO AS NUMERIC) - CAST(DW.WBLFROMNO AS NUMERIC)), 0) * 100,0) THEN 'Y'
+		  			ELSE 'N'
+		   			 END AS TSDNOTIYN  /* 임계치알림여부 */
+			 , DW.CTKEY  /* 센터코드 */
+			 , DW.OWKEY  /* 화주코드 */
+			 , DW.DLVRYCORPCD  /* 택배사코드 */
+			 , DC.TSDNOTIRT  /* 임계치알림율 */
+			 , DW.WBLCURRNO   /* 현재사용중인 운송장번호 */
+			 , ROUND((CAST(DW.WBLCURRNO AS NUMERIC) - CAST(DW.WBLFROMNO AS NUMERIC)) / NULLIF((CAST(DW.WBLTONO AS NUMERIC) - CAST(DW.WBLFROMNO AS NUMERIC)), 0) * 100,0) AS USERT /* 사용율 */
+			 , DW.TSDSENDYN /* 임계치전송여부 */
+		  FROM TWORK_MST_DLVRYCORP_WBL DW
+		 INNER JOIN TWORK_MST_DLVRYCORP DC
+			ON DW.CTKEY = DC.CTKEY
+		   AND DW.OWKEY = DC.OWKEY
+		  AND  DW.DLVRYCORPCD = DC.DLVRYCORPCD
+		 WHERE DW.CTKEY = #{ctkey}
+		   AND DW.DELYN = 'N'
+		   AND DC.DELYN = 'N'
+		   AND DW.DLVRYCORPCD = #{dlvryCorpCd}
+	</select>
+
+</mapper>

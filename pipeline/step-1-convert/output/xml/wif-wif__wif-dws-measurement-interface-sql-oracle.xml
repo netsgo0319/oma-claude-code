@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.dws.measurement.mapper.MeasurementMapper">
+	<select id="getDwsMeasurementSeq" resultType="camelMap">
+		/* wif-dws-measurement-interface-sql-oracle.xml - getDwsMeasurementSeq - 체적기 I/F테이블 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_dws_measmrslt') AS DWS_SEQ
+	</select>
+
+	<insert id="insertMeasurementResult">
+		/* wif-dws-measurement-interface-sql-oracle.xml - insertMeasurementResult - 체적기 I/F 테이블 등록 SQL */
+		INSERT INTO TWIF_DWS_MEASMRSLT
+		(
+			DWSSEQ
+			,CTKEY
+			,OWKEY
+			,SITEID
+			,ICBRCD
+			,BOXTYPE
+			,CMT
+			,WIDTH
+			,DEPTH
+			,HEIGHT
+			,WEIGHT
+			,VOLUMN
+			,DFSHPMTRYN
+			,ONLPCKGBUFFYN
+			,ONLPCKGROBYN
+			,PCKGOVLPYN
+			,PCKGOVLPWIDTH
+			,PCKGOVLPDEPTH
+			,PCKGOVLPHEIGHT
+			,COMPINFO
+			,CREATEDATE
+			,FOLDYN
+			,QRBRCDATTACHYN
+			,POLYBAGPCKGYN
+			,HIGHFRQNCYDMGYN
+			,UDC1
+			,UDC2
+			,UDC3
+			,UDC4
+			,UDC5
+			,UDC6
+			,UDC7
+			,UDC8
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{dwsSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{siteId}
+			,#{icBrcd}
+			,#{boxType}
+			,#{cmt}
+			,COALESCE(#{width}, 0)
+			,COALESCE(#{depth}, 0)
+			,COALESCE(#{height}, 0)
+			,COALESCE(#{weight}, 0)
+			,COALESCE(#{volumn}, 0)
+			,COALESCE(UPPER(#{dfShpMtrYn}), 'N')
+			,COALESCE(UPPER(#{onlPckgBuffYn}), 'N')
+			,COALESCE(UPPER(#{onlPckgRobYn}), 'N')
+			,COALESCE(UPPER(#{pckgOvlpYn}), 'N')
+			,COALESCE(#{pckgOvlpWidth}, 0)
+			,COALESCE(#{pckgOvlpDepth}, 0)
+			,COALESCE(#{pckgOvlpHeight}, 0)
+			,#{compInfo}
+			,#{createDate}
+			,COALESCE(UPPER(#{foldYn}), 'N')
+			,COALESCE(UPPER(#{qrBrcdAttachYn}), 'N')
+			,COALESCE(UPPER(#{polyBagPckgYn}), 'N')
+			,COALESCE(UPPER(#{highFrqncyDmgYn}), 'N')
+			,#{udc1}
+			,#{udc2}
+			,#{udc3}
+			,#{udc4}
+			,#{udc5}
+			,#{udc6}
+			,#{udc7}
+			,#{udc8}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<update id="updateInterfaceStatusDwsResult">
+		/* wif-dws-measurement-interface-sql-oracle.xml - updateInterfaceStatusDwsResult - Async I/F 처리결과 UPDATE SQL */
+		UPDATE ${tableName}
+		   SET  IFSTATUS	= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= #{ifErrMsg}
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE DWSSEQ 		= #{dwsSeq}
+	</update>
+</mapper>

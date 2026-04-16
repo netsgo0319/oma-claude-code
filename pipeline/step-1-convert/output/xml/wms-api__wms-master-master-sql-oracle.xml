@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.MasterApiMapper">
+
+	<select id="selectInterfaceCenterCount" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-master-sql-oracle.xml - selectInterfaceCenterCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_CT_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+	</select>
+
+	<insert id="insertInterfaceCenter" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO">
+		/* wms-master-master-sql-oracle.xml - insertInterfaceCenter */
+		INSERT INTO TWORK_INTF_CT_RCV (
+			   CTKEY			/* 센터코드 */
+			 , CTNM				/* 센터명 */
+			 , CTTYPECD			/* 센터유형 */
+			 , REGNO			/* 사업자등록번호 */
+			 , CNTRYCD			/* 국가코드 */
+			 , ZIPCD			/* 우편번호 */
+			 , ADDR1			/* 주소1 */
+			 , ADDR2			/* 주소2 */
+			 , TELNO			/* 전화번호 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{ctname}
+			 , #{cttype}
+			 , #{regno}
+			 , #{countrycode}
+			 , #{zipcode}
+			 , #{address1}
+			 , #{address2}
+			 , #{tel}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceCenter" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO">
+		/* wms-master-master-sql-oracle.xml - updateInterfaceCenter */
+		UPDATE TWORK_INTF_CT_RCV
+		   SET UPDATEDATE = #{sysdate}				/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}				/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}			/* 처리여부 */
+					, PRCSDATE = #{sysdate}			/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, CTNM = #{ctname}				/* 센터명 */
+					, CTTYPECD = #{cttype}			/* 센터유형 */
+					, REGNO = #{regno}				/* 사업자등록번호 */
+					, CNTRYCD = #{countrycode}		/* 국가코드 */
+					, ZIPCD = #{zipcode}			/* 우편번호 */
+					, ADDR1 = #{address1}			/* 주소1 */
+					, ADDR2 = #{address2}			/* 주소2 */
+					, TELNO = #{tel}				/* 전화번호 */
+					, DELYN = #{delyn}				/* 삭제여부 */
+					, PRCSYN = #{prcsyn}			/* 처리여부 */
+					, PRCSDATE = null				/* 처리일시 */
+					, RCVDATE = #{sysdate}			/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE CTKEY = #{ctkey}						/* 센터코드 */
+	</update>
+
+	<select id="selectTworkMstCtCount" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-master-sql-oracle.xml - selectTworkMstCtCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_CT
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+	</select>
+
+	<insert id="insertTworkMstCt" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO">
+		/* wms-master-master-sql-oracle.xml - insertTworkMstCt */
+		INSERT INTO TWORK_MST_CT (
+			   CTKEY			/* 센터 코드 */
+			 , CTNM				/* 센터명 */
+			 , CTTYPECD			/* 센터 유형 코드 */
+			 , REGNO			/* 사업자등록번호 */
+			 , CNTRYCD			/* 국가코드 */
+			 , ZIPCD			/* 우편번호 */
+			 , ADDR1			/* 주소1 */
+			 , ADDR2			/* 주소2 */
+			 , TELNO			/* 전화번호 */
+			 , CLOSDATE			/* 종료일시 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+		       #{ctkey}
+			 , #{ctname}
+			 , #{cttype}
+			 , #{regno}
+			 , #{countrycode}
+			 , #{zipcode}
+			 , #{address1}
+			 , #{address2}
+			 , #{tel}
+			 , #{closdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstCt" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO">
+		/* wms-master-master-sql-oracle.xml - updateTworkMstCt */
+		UPDATE TWORK_MST_CT
+		   SET CTNM = #{ctname}				/* 센터명 */
+			 , CTTYPECD = #{cttype}			/* 센터 유형 코드 */
+			 , REGNO = #{regno}				/* 사업자등록번호 */
+			 , CNTRYCD = #{countrycode}		/* 국가코드 */
+			 , ZIPCD = #{zipcode}			/* 우편번호 */
+			 , ADDR1 = #{address1}			/* 주소1 */
+			 , ADDR2 = #{address2}			/* 주소2 */
+			 , TELNO = #{tel}				/* 전화번호 */
+			 , CLOSDATE	= #{closdate}		/* 종료일시 */
+		     , UPDATEDATE = #{sysdate}		/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}		/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+	</update>
+
+	<delete id="deleteTworkMstCt" parameterType="com.daiso.wms.api.in.dto.CenterRequestDTO">
+		/* wms-master-master-sql-oracle.xml - deleteTworkMstCt */
+		DELETE
+		  FROM TWORK_MST_CT
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+	</delete>
+
+	<select id="selectInterfaceOwnerCount" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-master-sql-oracle.xml - selectInterfaceOwnerCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_OW_RCV
+		 WHERE OWKEY = #{owkey}					/* 화주코드 */
+	</select>
+
+	<insert id="insertInterfaceOwner" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO">
+		/* wms-master-master-sql-oracle.xml - insertInterfaceOwner */
+		INSERT INTO TWORK_INTF_OW_RCV (
+			   OWKEY		/* 화주코드 */
+			 , OWNM			/* 화주명 */
+			 , REGNO		/* 사업자등록번호 */
+			 , CNTRYCD		/* 국가코드 */
+			 , STATE		/* 주 */
+			 , CITY			/* 도시 */
+			 , ZIPCD		/* 우편번호 */
+			 , ADDR1		/* 주소1 */
+			 , ADDR2		/* 주소2 */
+			 , TELNO1		/* 전화번호1 */
+			 , TELNO2		/* 전화번호2 */
+			 , FAXNO		/* 팩스번호 */
+			 , EMAIL		/* 이메일 */
+			 , CONTACT		/* 담당자 */
+			 , CEO			/* 대표이사 */
+			 , DELYN		/* 삭제여부 */
+			 , PRCSYN		/* 처리여부 */
+			 , PRCSDATE		/* 처리일시 */
+			 , RCVDATE		/* 수신일시 */
+			 , INSERTDATE	/* 입력일시 */
+			 , INSERTURKEY	/* 입력자 */
+			 , UPDATEDATE	/* 수정일시 */
+			 , UPDATEURKEY	/* 수정자 */
+			 )
+		VALUES (
+			   #{owkey}
+			 , #{ownm}
+			 , #{regno}
+			 , #{cntrycd}
+			 , #{state}
+			 , #{city}
+			 , #{zipcd}
+			 , #{addr1}
+			 , #{addr2}
+			 , #{telno1}
+			 , #{telno2}
+			 , #{faxno}
+			 , #{email}
+			 , #{contact}
+			 , #{ceo}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceOwner" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO">
+		/* wms-master-master-sql-oracle.xml - updateInterfaceOwner */
+		UPDATE TWORK_INTF_OW_RCV
+		   SET UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = #{sysdate}		/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, OWNM = #{ownm}			/* 화주명 */
+					, REGNO = #{regno}			/* 사업자등록번호 */
+					, CNTRYCD = #{cntrycd}		/* 국가코드 */
+					, STATE = #{state}			/* 주 */
+					, CITY = #{city}			/* 도시 */
+					, ZIPCD = #{zipcd}			/* 우편번호 */
+					, ADDR1 = #{addr1}			/* 주소1 */
+					, ADDR2 = #{addr2}			/* 주소2 */
+					, TELNO1 = #{telno1}		/* 전화번호1 */
+					, TELNO2 = #{telno2}		/* 전화번호2 */
+					, FAXNO = #{faxno}			/* 팩스번호 */
+					, EMAIL = #{email}			/* 이메일 */
+					, CONTACT = #{contact}		/* 담당자 */
+					, CEO = #{ceo}				/* 대표이사 */
+					, DELYN = #{delyn}			/* 삭제여부 */
+					, PRCSYN = #{prcsyn}		/* 처리여부 */
+					, PRCSDATE = null			/* 처리일시 */
+					, RCVDATE = #{sysdate}		/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE OWKEY = #{owkey}					/* 화주코드 */
+	</update>
+
+	<select id="selectTworkMstOwCount" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-master-sql-oracle.xml - selectTworkMstOwCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_OW
+		 WHERE OWKEY = #{owkey}		/* 화주코드 */
+	</select>
+
+	<insert id="insertTworkMstOw" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO">
+		/* wms-master-master-sql-oracle.xml - insertTworkMstOw */
+		INSERT INTO TWORK_MST_OW (
+			   OWKEY			/* 화주코드 */
+			 , OWNM				/* 화주명 */
+			 , REGNO			/* 사업자등록번호 */
+			 , CNTRYCD			/* 국가코드 */
+			 , STATE			/* 주/도 */
+			 , CITY				/* 도시 */
+			 , ZIPCD			/* 우편번호코드 */
+			 , ADDR1			/* 주소1 */
+			 , ADDR2			/* 주소2 */
+			 , TELNO1			/* 전화번호1 */
+			 , TELNO2			/* 전화번호2 */
+			 , FAXNO			/* 팩스번호 */
+			 , EMAIL			/* 이메일 */
+			 , CONTACT			/* 담당자 */
+			 , CEO				/* 대표이사 */
+			 , CLOSDATE			/* 종료일시 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+		       #{owkey}
+			 , #{ownm}
+			 , #{regno}
+			 , #{cntrycd}
+			 , #{state}
+			 , #{city}
+			 , #{zipcd}
+			 , #{addr1}
+			 , #{addr2}
+			 , #{telno1}
+			 , #{telno2}
+			 , #{faxno}
+			 , #{email}
+			 , #{contact}
+			 , #{ceo}
+			 , #{closdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstOw" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO">
+		/* wms-master-master-sql-oracle.xml - updateTworkMstOw */
+		UPDATE TWORK_MST_OW
+		   SET OWNM = #{ownm}			/* 화주명 */
+			 , REGNO = #{regno}			/* 사업자등록번호 */
+			 , CNTRYCD = #{cntrycd}		/* 국가코드 */
+			 , STATE = #{state}			/* 주/도 */
+			 , CITY = #{city}			/* 도시 */
+			 , ZIPCD = #{zipcd}			/* 우편번호코드 */
+			 , ADDR1 = #{addr1}			/* 주소1 */
+			 , ADDR2 = #{addr2}			/* 주소2 */
+			 , TELNO1 = #{telno1}		/* 전화번호1 */
+			 , TELNO2 = #{telno2}		/* 전화번호2 */
+			 , FAXNO = #{faxno}			/* 팩스번호 */
+			 , EMAIL = #{email}			/* 이메일 */
+			 , CONTACT = #{contact}		/* 담당자 */
+			 , CEO = #{ceo}				/* 대표이사 */
+			 , CLOSDATE = #{closdate}	/* 종료일시 */
+		     , UPDATEDATE = #{sysdate}	/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}	/* 수정사용자 */
+		 WHERE OWKEY = #{owkey}			/* 화주코드 */
+	</update>
+
+	<delete id="deleteTworkMstOw" parameterType="com.daiso.wms.api.in.dto.OwnerRequestDTO">
+		/* wms-master-master-sql-oracle.xml - deleteTworkMstOw */
+		DELETE
+		  FROM TWORK_MST_OW
+		 WHERE OWKEY = #{owkey}			/* 화주코드 */
+	</delete>
+
+</mapper>

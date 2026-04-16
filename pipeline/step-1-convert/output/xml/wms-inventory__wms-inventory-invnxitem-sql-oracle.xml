@@ -1,0 +1,1921 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnBySumMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectItemByInvn">
+        WITH CTG AS
+        (
+        SELECT h.CTKEY
+             , h.OWKEY
+             , h.root_ctgkey AS CTG1KEY
+             , MAX(CASE WHEN h.CTGLV = '1' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG1NM
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGKEY END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2KEY
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2NM
+             , h.CTGKEY AS CTG3KEY
+             , h.CTGNM  AS CTG3NM
+            FROM (
+                WITH RECURSIVE ctg_tree AS (
+                    SELECT CTGKEY, CTGNM, CTGLV, UPRCTGKEY, CTKEY, OWKEY,
+                           CTGKEY AS root_ctgkey, 1 AS lvl
+                      FROM TWORK_MST_CTG
+                     WHERE CTGLV = '1'
+                    UNION ALL
+                    SELECT c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY, c.CTKEY, c.OWKEY,
+                           t.root_ctgkey, t.lvl + 1
+                      FROM TWORK_MST_CTG c
+                     INNER JOIN ctg_tree t
+                        ON c.UPRCTGKEY = t.CTGKEY
+                       AND c.CTKEY = t.CTKEY
+                       AND c.OWKEY = t.OWKEY
+                     WHERE t.lvl <![CDATA[ < ]]> 3
+                )
+                SELECT * FROM ctg_tree
+            ) h
+        )
+		SELECT CTKEY
+			 , CTNM
+			 , OWKEY
+			 , OWNM
+			 , CTG1NM
+			 , CTG2NM
+			 , CTG3NM
+			 , ASRTMASICKEY
+			 , ASRTMASICNM
+			 , COALESCE(ASRTDTICKEY, ASRTMASICKEY) AS ASRTDTICKEY
+			 , COALESCE(ASRTDTICNM, ASRTMASICNM) AS ASRTDTICNM
+			 , ASRTYN
+			 , ROBSORTERICYN
+			 , PKOTICYN
+			 , POABLEYN
+			 , SALESTATUSCD
+			 , DSPYN
+			 , DLVRYYN
+			 , OLNPKOTYN
+			 , UNICYN
+			 , INNQTY
+			 , CTNQTY
+			 , CPPQTY
+			 , SLPRC
+			 , SUM(AVZNTOTQTY) AS AVZNTOTQTY								/* 가용존 총수량 */
+			 , SUM(AVZNAVQTY) AS AVZNAVQTY									/* 가용존 가용수량 */
+			 , SUM(AVZNALQTY) AS AVZNALQTY									/* 가용존 할당수량 */
+			 , SUM(AVZNHOLDQTY) AS AVZNHOLDQTY								/* 가용존 보류수량 */
+		     , TRUNC(SUM(AVZNTOTQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNTOTQTY				/* 가용존 총수량(카톤) */
+			 , TRUNC(SUM(AVZNAVQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNAVQTY					/* 가용존 가용수량(카톤) */
+			 , TRUNC(SUM(AVZNALQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNALQTY					/* 가용존 할당수량(카톤) */
+			 , TRUNC(SUM(AVZNHOLDQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNHOLDQTY				/* 가용존 보류수량(카톤) */
+			 , TRUNC(SUM(AVZNTOTQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTTOTQTY		/* 가용존 총수량(팔레트) */
+			 , TRUNC(SUM(AVZNAVQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTAVQTY		/* 가용존 가용수량(팔레트) */
+			 , TRUNC(SUM(AVZNALQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTALQTY		/* 가용존 할당수량(팔레트) */
+			 , TRUNC(SUM(AVZNHOLDQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTHOLDQTY	/* 가용존 보류수량(팔레트) */
+			 , (SUM(AVZNTOTQTY) * SLPRC) AS AVZNSLPRC						/* 가용존 판매금액 */
+			 , SUM(NAVZNTOTQTY) AS NAVZNTOTQTY								/* 불용존 총수량 */
+			 , SUM(NAVZNAVQTY) AS NAVZNAVQTY								/* 불용존 가용수량 */
+			 , SUM(NAVZNALQTY) AS NAVZNALQTY								/* 불용존 할당수량 */
+			 , SUM(NAVZNHOLDQTY) AS NAVZNHOLDQTY							/* 불용존 보류수량 */
+			 , TRUNC(SUM(NAVZNTOTQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNTOTQTY				/* 불용존 총수량(카톤) */
+			 , TRUNC(SUM(NAVZNAVQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNAVQTY					/* 불용존 가용수량(카톤) */
+			 , TRUNC(SUM(NAVZNALQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNALQTY					/* 불용존 할당수량(카톤) */
+			 , TRUNC(SUM(NAVZNHOLDQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNHOLDQTY				/* 불용존 보류수량(카톤) */
+			 , TRUNC(SUM(NAVZNTOTQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTTOTQTY		/* 불용존 총수량(팔레트) */
+			 , TRUNC(SUM(NAVZNAVQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTAVQTY		/* 불용존 가용수량(팔레트) */
+			 , TRUNC(SUM(NAVZNALQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTALQTY		/* 불용존 할당수량(팔레트) */
+			 , TRUNC(SUM(NAVZNHOLDQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTHOLDQTY	/* 불용존 보류수량(팔레트) */
+			 , (SUM(NAVZNTOTQTY) * SLPRC) AS NAVZNSLPRC						/* 불용존 판매금액 */
+			 , '이력보기' AS HISTORY
+			FROM (
+					SELECT IVLC.CTKEY													/* 센터코드 */
+						 , CT.CTNM														/* 센터명 */
+						 , IVLC.OWKEY													/* 화주코드 */
+						 , OW.OWNM														/* 화주명 */
+						 , CTG.CTG1NM													/* 대분류 카테고리명 */
+						 , CTG.CTG2NM													/* 중분류 카테고리명 */
+						 , CTG.CTG3NM													/* 소분류 카테고리명 */
+						 , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY			/* (모)상품코드 */
+						 , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM				/* (모)상품명 */
+						 , ASTDTL.ASRTDTICKEY											/* (자)상품코드 */
+						 , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+								ELSE '' END AS ASRTDTICNM								/* (자)상품명 */
+						 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN								/* 아소트여부 */
+						 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN 					/* 로봇소터가능상품여부 */
+						 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN							/* 덕용상품여부 */
+						 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN							/* 발주가능 여부 */
+						 , IC.SALESTATUSCD												/* 판매상태코드 */
+						 , COALESCE(IC.DSPYN, 'N') AS DSPYN									/* 전시여부 */
+						 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN								/* 택배여부 */
+						 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN							/* 온라인덕용여부 */
+						 , COALESCE(IC.UNICYN, 'N') AS UNICYN								/* 미취급여부 */
+						 , ICUT_INN.ICUNITQTY AS INNQTY									/* 중포 입수 */
+						 , ICUT_CTN.ICUNITQTY AS CTNQTY									/* 카톤 입수 */
+						 , ICUT_CTN.CPPQTY AS CPPQTY									/* CPP */
+						 , IC.SLPRC 													/* 판매가 */
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.TOTQTY ELSE 0 END AS AVZNTOTQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.AVQTY ELSE 0 END AS AVZNAVQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.ALQTY ELSE 0 END AS AVZNALQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.HOLDQTY ELSE 0 END AS AVZNHOLDQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.TOTQTY END AS NAVZNTOTQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.AVQTY END AS NAVZNAVQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.ALQTY END AS NAVZNALQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.HOLDQTY END AS NAVZNHOLDQTY
+					  FROM TWORK_INFO_IVATXLC IVLC
+					 INNER JOIN TWORK_MST_CT CT
+						ON CT.CTKEY = IVLC.CTKEY
+					 INNER JOIN TWORK_MST_OW OW
+						ON OW.OWKEY = IVLC.OWKEY
+					 INNER JOIN TWORK_MST_IC IC
+						ON IC.CTKEY = IVLC.CTKEY
+					   AND IC.OWKEY = IVLC.OWKEY
+					   AND IC.ICKEY = IVLC.ICKEY
+					 INNER JOIN CTG
+						ON CTG.CTKEY = IC.CTKEY
+					   AND CTG.OWKEY = IC.OWKEY
+					   AND CTG.CTG3KEY = IC.CTGKEY
+					 INNER JOIN TWORK_INFO_IVAT IV
+						ON IV.CTKEY = IVLC.CTKEY
+					   AND IV.OWKEY = IVLC.OWKEY
+					   AND IV.IVATKEY = IVLC.IVATKEY
+					 INNER JOIN TWORK_MST_LC LC
+						ON LC.CTKEY = IVLC.CTKEY
+					   AND LC.LCKEY = IVLC.LCKEY
+					 INNER JOIN TWORK_MST_ZN ZN
+						ON ZN.CTKEY = IVLC.CTKEY
+					   AND ZN.ZNKEY = LC.ZNKEY
+					 INNER JOIN TWORK_MST_AR AR
+						ON AR.CTKEY = IVLC.CTKEY
+					   AND AR.ZNKEY = LC.ZNKEY
+					   AND AR.ARKEY = LC.ARKEY
+                      LEFT JOIN (
+                                 SELECT AST.CTKEY
+                                      , AST.OWKEY
+                                      , AST.ASRTMASICKEY
+                                      , AST.ASRTDTICKEY
+                                   FROM TWORK_MST_ASRT AST
+                                        INNER JOIN
+                                        (
+                                         SELECT CTKEY
+                                              , OWKEY
+                                              , ASRTMASICKEY
+                                           FROM TWORK_MST_ASRT
+                                          WHERE QTY > 0
+                                          GROUP BY
+                                                CTKEY
+                                              , OWKEY
+                                              , ASRTMASICKEY
+                                         HAVING COUNT(1) > 1
+                                        ) ASTM
+                                          ON AST.CTKEY = ASTM.CTKEY
+                                         AND AST.OWKEY = ASTM.OWKEY
+                                         AND AST.ASRTMASICKEY = ASTM.ASRTMASICKEY
+                                ) ASTDTL
+                       ON ASTDTL.CTKEY = IVLC.CTKEY
+                      AND ASTDTL.OWKEY = IVLC.OWKEY
+                      AND ASTDTL.ASRTDTICKEY = IVLC.ICKEY
+                      LEFT JOIN (
+                           SELECT AST.CTKEY
+                                , AST.OWKEY
+                                , AST.ASRTMASICKEY
+                                , IC.ICNM AS ASRTMASICNM
+                             FROM TWORK_MST_ASRT AST
+                            INNER JOIN TWORK_MST_IC IC
+                               ON IC.CTKEY = AST.CTKEY
+                              AND IC.OWKEY = AST.OWKEY
+                              AND IC.ICKEY = AST.ASRTMASICKEY
+                            WHERE AST.QTY > 0
+                            GROUP BY AST.CTKEY
+                                , AST.OWKEY
+                                , AST.ASRTMASICKEY
+                                , IC.ICNM
+                           HAVING COUNT(1) > 1
+                         ) ASTMST
+                        ON ASTMST.CTKEY = IVLC.CTKEY
+                       AND ASTMST.OWKEY = IVLC.OWKEY
+                       AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+
+
+
+					  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+						ON ICUT_INN.CTKEY = IC.CTKEY
+					   AND ICUT_INN.OWKEY = IC.OWKEY
+					   AND ICUT_INN.ICKEY = IC.ICKEY
+					   AND ICUT_INN.ICUNITTYPECD = 'INN'
+					  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+						ON ICUT_CTN.CTKEY = IC.CTKEY
+					   AND ICUT_CTN.OWKEY = IC.OWKEY
+					   AND ICUT_CTN.ICKEY = IC.ICKEY
+					   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+					  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+						ON ICBC.CTKEY = IC.CTKEY
+					   AND ICBC.OWKEY = IC.OWKEY
+					   AND ICBC.ICKEY = IC.ICKEY
+					   AND ICBC.UOM = IC.UOM
+					   AND ICBC.USEYN = 'Y'
+
+					<where>
+						AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+							AND #{SEARCH_CONDITION}
+						</if>
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+							AND (
+								(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICKEY ELSE IVLC.ICKEY END) IN
+					  			<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+									#{item}
+								</foreach>
+
+							    OR
+
+								ASTDTL.ASRTDTICKEY IN
+								<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+									#{item}
+								</foreach>
+                            )
+						</if>
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(schicnm)">
+							AND (
+                            	(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICNM ELSE IC.ICNM END) LIKE '%' || #{schicnm} || '%'
+							    OR
+								(CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM ELSE '' END) LIKE '%' || #{schicnm} || '%'
+                            )
+						</if>
+
+					</where>
+		   )
+		 GROUP BY
+			   CTKEY
+			 , CTNM
+			 , OWKEY
+			 , OWNM
+			 , CTG1NM
+			 , CTG2NM
+			 , CTG3NM
+			 , ASRTMASICKEY
+			 , ASRTMASICNM
+			 , ASRTDTICKEY
+			 , ASRTDTICNM
+			 , ASRTYN
+			 , ROBSORTERICYN
+			 , PKOTICYN
+			 , POABLEYN
+			 , SALESTATUSCD
+			 , DSPYN
+			 , DLVRYYN
+			 , OLNPKOTYN
+			 , UNICYN
+			 , INNQTY
+			 , CTNQTY
+			 , CPPQTY
+			 , SLPRC
+		 ORDER BY
+		       CTKEY
+			 , OWKEY
+			 , ASRTMASICKEY
+			 , ASRTDTICKEY
+	</sql>
+
+	<select id="selectItemByInvnCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectItemByInvnCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectItemByInvn"/>
+			 )
+	</select>
+
+	<select id="selectItemByInvnList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectItemByInvnList */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectItemByInvn"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectItemByInvnExcelList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectItemByInvnExcelList */
+		SELECT CTKEY
+			 , CTNM
+			 , OWKEY
+			 , OWNM
+			 , CTG1NM
+			 , CTG2NM
+			 , CTG3NM
+			 , ASRTMASICKEY
+			 , ASRTMASICNM
+			 , COALESCE(ASRTDTICKEY, ASRTMASICKEY) AS ASRTDTICKEY
+			 , COALESCE(ASRTDTICNM, ASRTMASICNM) AS ASRTDTICNM
+			 , ASRTYN
+			 , ROBSORTERICYN
+			 , PKOTICYN
+			 , POABLEYN
+			 , SALESTATUSCD
+			 , DSPYN
+			 , DLVRYYN
+			 , OLNPKOTYN
+			 , UNICYN
+			 , INNQTY
+			 , CTNQTY
+			 , CPPQTY
+			 , SLPRC
+			 , SUM(AVZNTOTQTY) AS AVZNTOTQTY								/* 가용존 총수량 */
+			 , SUM(AVZNAVQTY) AS AVZNAVQTY									/* 가용존 가용수량 */
+			 , SUM(AVZNALQTY) AS AVZNALQTY									/* 가용존 할당수량 */
+			 , SUM(AVZNHOLDQTY) AS AVZNHOLDQTY								/* 가용존 보류수량 */
+		     , TRUNC(SUM(AVZNTOTQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNTOTQTY				/* 가용존 총수량(카톤) */
+			 , TRUNC(SUM(AVZNAVQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNAVQTY					/* 가용존 가용수량(카톤) */
+			 , TRUNC(SUM(AVZNALQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNALQTY					/* 가용존 할당수량(카톤) */
+			 , TRUNC(SUM(AVZNHOLDQTY) / NULLIF(CTNQTY, 0), 2) AS AVZNINNHOLDQTY				/* 가용존 보류수량(카톤) */
+			 , TRUNC(SUM(AVZNTOTQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTTOTQTY		/* 가용존 총수량(팔레트) */
+			 , TRUNC(SUM(AVZNAVQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTAVQTY		/* 가용존 가용수량(팔레트) */
+			 , TRUNC(SUM(AVZNALQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTALQTY		/* 가용존 할당수량(팔레트) */
+			 , TRUNC(SUM(AVZNHOLDQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS AVZNPLTHOLDQTY	/* 가용존 보류수량(팔레트) */
+			 , (SUM(AVZNTOTQTY) * SLPRC) AS AVZNSLPRC						/* 가용존 판매금액 */
+			 , SUM(NAVZNTOTQTY) AS NAVZNTOTQTY								/* 불용존 총수량 */
+			 , SUM(NAVZNAVQTY) AS NAVZNAVQTY								/* 불용존 가용수량 */
+			 , SUM(NAVZNALQTY) AS NAVZNALQTY								/* 불용존 할당수량 */
+			 , SUM(NAVZNHOLDQTY) AS NAVZNHOLDQTY							/* 불용존 보류수량 */
+			 , TRUNC(SUM(NAVZNTOTQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNTOTQTY				/* 불용존 총수량(카톤) */
+			 , TRUNC(SUM(NAVZNAVQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNAVQTY					/* 불용존 가용수량(카톤) */
+			 , TRUNC(SUM(NAVZNALQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNALQTY					/* 불용존 할당수량(카톤) */
+			 , TRUNC(SUM(NAVZNHOLDQTY) / NULLIF(CTNQTY, 0), 2) AS NAVZNINNHOLDQTY				/* 불용존 보류수량(카톤) */
+			 , TRUNC(SUM(NAVZNTOTQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTTOTQTY		/* 불용존 총수량(팔레트) */
+			 , TRUNC(SUM(NAVZNAVQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTAVQTY		/* 불용존 가용수량(팔레트) */
+			 , TRUNC(SUM(NAVZNALQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTALQTY		/* 불용존 할당수량(팔레트) */
+			 , TRUNC(SUM(NAVZNHOLDQTY) / NULLIF(CTNQTY * CPPQTY, 0), 2) AS NAVZNPLTHOLDQTY	/* 불용존 보류수량(팔레트) */
+			 , (SUM(NAVZNTOTQTY) * SLPRC) AS NAVZNSLPRC						/* 불용존 판매금액 */
+			FROM (
+					SELECT IVLC.CTKEY													/* 센터코드 */
+						 , CT.CTNM														/* 센터명 */
+						 , IVLC.OWKEY													/* 화주코드 */
+						 , OW.OWNM														/* 화주명 */
+						 , CTG.CTG1NM													/* 대분류 카테고리명 */
+						 , CTG.CTG2NM													/* 중분류 카테고리명 */
+						 , CTG.CTG3NM													/* 소분류 카테고리명 */
+						 , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY			/* (모)상품코드 */
+						 , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM				/* (모)상품명 */
+						 , ASTDTL.ASRTDTICKEY											/* (자)상품코드 */
+						 , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+								ELSE '' END AS ASRTDTICNM								/* (자)상품명 */
+						 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN								/* 아소트여부 */
+						 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN 					/* 로봇소터가능상품여부 */
+						 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN							/* 덕용상품여부 */
+						 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN							/* 발주가능 여부 */
+						 , CD1.CTCDDTNM AS SALESTATUSCD									/* 판매상태코드 */
+						 , COALESCE(IC.DSPYN, 'N') AS DSPYN									/* 전시여부 */
+						 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN								/* 택배여부 */
+						 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN							/* 온라인덕용여부 */
+						 , COALESCE(IC.UNICYN, 'N') AS UNICYN								/* 미취급여부 */
+						 , COALESCE(ICUT_INN.ICUNITQTY, 0) AS INNQTY							/* 중포 입수 */
+						 , COALESCE(ICUT_CTN.ICUNITQTY, 0) AS CTNQTY							/* 카톤 입수 */
+						 , COALESCE(ICUT_CTN.CPPQTY, 0) AS CPPQTY							/* CPP */
+						 , IC.SLPRC 													/* 판매가 */
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.TOTQTY ELSE 0 END AS AVZNTOTQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.AVQTY ELSE 0 END AS AVZNAVQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.ALQTY ELSE 0 END AS AVZNALQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.HOLDQTY ELSE 0 END AS AVZNHOLDQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.TOTQTY END AS NAVZNTOTQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.AVQTY END AS NAVZNAVQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.ALQTY END AS NAVZNALQTY
+						 , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.HOLDQTY END AS NAVZNHOLDQTY
+					  FROM TWORK_INFO_IVATXLC IVLC
+					 INNER JOIN TWORK_MST_CT CT
+						ON CT.CTKEY = IVLC.CTKEY
+					 INNER JOIN TWORK_MST_OW OW
+						ON OW.OWKEY = IVLC.OWKEY
+					 INNER JOIN TWORK_MST_IC IC
+						ON IC.CTKEY = IVLC.CTKEY
+					   AND IC.OWKEY = IVLC.OWKEY
+					   AND IC.ICKEY = IVLC.ICKEY
+					 INNER JOIN (
+						   SELECT CTG1.CTKEY
+								, CTG1.OWKEY
+								, CTG1.CTGKEY AS CTG1KEY
+								, CTG1.CTGNM AS CTG1NM
+								, CTG2.CTGKEY AS CTG2KEY
+								, CTG2.CTGNM AS CTG2NM
+								, CTG3.CTGKEY AS CTG3KEY
+								, CTG3.CTGNM AS CTG3NM
+							 FROM TWORK_MST_CTG CTG1
+							INNER JOIN TWORK_MST_CTG CTG2
+							   ON CTG2.CTKEY = CTG1.CTKEY
+							  AND CTG2.OWKEY = CTG1.OWKEY
+							  AND CTG2.UPRCTGKEY = CTG1.CTGKEY
+							  AND CTG2.CTGLV = '2'
+							INNER JOIN TWORK_MST_CTG CTG3
+							   ON CTG3.CTKEY = CTG2.CTKEY
+							  AND CTG3.OWKEY = CTG2.OWKEY
+							  AND CTG3.UPRCTGKEY = CTG2.CTGKEY
+							  AND CTG3.CTGLV = '3'
+							WHERE CTG1.CTGLV = '1'
+						 ) CTG
+						ON CTG.CTKEY = IC.CTKEY
+					   AND CTG.OWKEY = IC.OWKEY
+					   AND CTG.CTG3KEY = IC.CTGKEY
+					 INNER JOIN TWORK_INFO_IVAT IV
+						ON IV.CTKEY = IVLC.CTKEY
+					   AND IV.OWKEY = IVLC.OWKEY
+					   AND IV.IVATKEY = IVLC.IVATKEY
+					 INNER JOIN TWORK_MST_LC LC
+						ON LC.CTKEY = IVLC.CTKEY
+					   AND LC.LCKEY = IVLC.LCKEY
+					 INNER JOIN TWORK_MST_ZN ZN
+						ON ZN.CTKEY = IVLC.CTKEY
+					   AND ZN.ZNKEY = LC.ZNKEY
+					 INNER JOIN TWORK_MST_AR AR
+						ON AR.CTKEY = IVLC.CTKEY
+					   AND AR.ZNKEY = LC.ZNKEY
+					   AND AR.ARKEY = LC.ARKEY
+					  LEFT JOIN TWORK_MST_ASRT ASTDTL
+						ON ASTDTL.CTKEY = IC.CTKEY
+					   AND ASTDTL.OWKEY = IC.OWKEY
+					   AND ASTDTL.ASRTDTICKEY = IC.ICKEY
+					   AND ASTDTL.QTY <![CDATA[ > ]]> 0
+					   AND IC.ASRTYN = 'Y'
+					  LEFT JOIN (
+						   SELECT AST.CTKEY
+								, AST.OWKEY
+								, AST.ASRTMASICKEY
+								, IC.ICNM AS ASRTMASICNM
+							 FROM TWORK_MST_ASRT AST
+							INNER JOIN TWORK_MST_IC IC
+							   ON IC.CTKEY = AST.CTKEY
+							  AND IC.OWKEY = AST.OWKEY
+							  AND IC.ICKEY = AST.ASRTMASICKEY
+							WHERE IC.ASRTYN = 'Y'
+							GROUP BY
+								  AST.CTKEY
+								, AST.OWKEY
+								, AST.ASRTMASICKEY
+								, IC.ICNM
+						 ) ASTMST
+						ON ASTMST.CTKEY = ASTDTL.CTKEY
+					   AND ASTMST.OWKEY = ASTDTL.OWKEY
+					   AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+					  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+						ON ICUT_INN.CTKEY = IC.CTKEY
+					   AND ICUT_INN.OWKEY = IC.OWKEY
+					   AND ICUT_INN.ICKEY = IC.ICKEY
+					   AND ICUT_INN.ICUNITTYPECD = 'INN'
+					  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+						ON ICUT_CTN.CTKEY = IC.CTKEY
+					   AND ICUT_CTN.OWKEY = IC.OWKEY
+					   AND ICUT_CTN.ICKEY = IC.ICKEY
+					   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+					  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+						ON ICBC.CTKEY = IC.CTKEY
+					   AND ICBC.OWKEY = IC.OWKEY
+					   AND ICBC.ICKEY = IC.ICKEY
+					   AND ICBC.UOM = IC.UOM
+					   AND ICBC.USEYN = 'Y'
+					  LEFT JOIN (
+							SELECT B.CTKEY
+								 , B.CTCDHDKEY
+								 , B.CTCDDTKEY
+								 , B.CTCDDTNM
+							  FROM TWORK_MST_CTCD_HD A
+							 INNER JOIN TWORK_MST_CTCD_DT B
+								ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+							<where>
+								AND A.DELYN = 'N'
+								AND B.DELYN = 'N'
+
+								<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+										AND B.LAKEY = #{lakey}
+								</if>
+
+								AND A.CTCDHDKEY = 'CD_00203'
+							</where>
+						 ) CD1
+						ON CD1.CTKEY = IC.CTKEY
+					   AND CD1.CTCDHDKEY = 'CD_00203'
+					   AND CD1.CTCDDTKEY = IC.SALESTATUSCD
+
+					<where>
+						AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+							AND #{SEARCH_CONDITION}
+						</if>
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+							AND (
+								(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICKEY ELSE IVLC.ICKEY END) IN
+					  			<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+									#{item}
+								</foreach>
+
+							    OR
+
+								ASTDTL.ASRTDTICKEY IN
+								<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+									#{item}
+								</foreach>
+                            )
+						</if>
+
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(schicnm)">
+							AND (
+                            	(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICNM ELSE IC.ICNM END) LIKE '%' || #{schicnm} || '%'
+							    OR
+								(CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM ELSE '' END) LIKE '%' || #{schicnm} || '%'
+                            )
+						</if>
+
+					</where>
+		   )
+		 GROUP BY
+			   CTKEY
+			 , CTNM
+			 , OWKEY
+			 , OWNM
+			 , CTG1NM
+			 , CTG2NM
+			 , CTG3NM
+			 , ASRTMASICKEY
+			 , ASRTMASICNM
+			 , ASRTDTICKEY
+			 , ASRTDTICNM
+			 , ASRTYN
+			 , ROBSORTERICYN
+			 , PKOTICYN
+			 , POABLEYN
+			 , SALESTATUSCD
+			 , DSPYN
+			 , DLVRYYN
+			 , OLNPKOTYN
+			 , UNICYN
+			 , INNQTY
+			 , CTNQTY
+			 , CPPQTY
+			 , SLPRC
+		 ORDER BY
+		       CTKEY
+			 , OWKEY
+			 , ASRTMASICKEY
+			 , ASRTDTICKEY
+	</select>
+
+	<sql id="sql_selectLocByInvn">
+        WITH CTG AS
+        (
+        SELECT h.CTKEY
+             , h.OWKEY
+             , h.root_ctgkey AS CTG1KEY
+             , MAX(CASE WHEN h.CTGLV = '1' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG1NM
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGKEY END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2KEY
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2NM
+             , h.CTGKEY AS CTG3KEY
+             , h.CTGNM  AS CTG3NM
+            FROM (
+                WITH RECURSIVE ctg_tree AS (
+                    SELECT CTGKEY, CTGNM, CTGLV, UPRCTGKEY, CTKEY, OWKEY,
+                           CTGKEY AS root_ctgkey, 1 AS lvl
+                      FROM TWORK_MST_CTG
+                     WHERE CTGLV = '1'
+                    UNION ALL
+                    SELECT c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY, c.CTKEY, c.OWKEY,
+                           t.root_ctgkey, t.lvl + 1
+                      FROM TWORK_MST_CTG c
+                     INNER JOIN ctg_tree t
+                        ON c.UPRCTGKEY = t.CTGKEY
+                       AND c.CTKEY = t.CTKEY
+                       AND c.OWKEY = t.OWKEY
+                     WHERE t.lvl <![CDATA[ < ]]> 3
+                )
+                SELECT * FROM ctg_tree
+            ) h
+        )
+		SELECT IVLC.CTKEY																/* 센터 코드 */
+			 , IVLC.OWKEY																/* 화주 코드 */
+			 , CT.CTNM																	/* 센터명 */
+			 , LC.ZNKEY																	/* 존 코드 */
+			 , ZN.ZNNM																	/* 존명 */
+			 , LC.ARKEY																	/* 구역 코드 */
+			 , AR.ARNM																	/* 구역명 */
+			 , LC.LCKEY																	/* 로케이션 코드 */
+			 , LC.ICARDIVCD																/* 상품구역구분 */
+			 , LC.ICPLCMDIVCD															/* 상품적치구분 */
+			 , CTG.CTG1KEY																/* 대분류 */
+			 , CTG.CTG1NM																/* 대분류명 */
+			 , CTG.CTG2KEY																/* 중분류 */
+			 , CTG.CTG2NM																/* 중분류명 */
+			 , CTG.CTG3KEY																/* 소분류 */
+			 , CTG.CTG3NM																/* 소분류명 */
+			 , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY						/* (모)상품코드 */
+			 , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM							/* (모)상품명 */
+			 , COALESCE(ASTDTL.ASRTDTICKEY, COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY)) AS ASRTDTICKEY	/* (자)상품코드 */
+			 , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+					ELSE COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) END AS ASRTDTICNM				/* (자)상품명 */
+			 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN											/* 아소트여부 */
+			 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN 								/* 로봇소터가능상품여부 */
+			 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN										/* 덕용상품여부 */
+			 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN										/* 발주가능 여부 */
+			 , IC.SALESTATUSCD															/* 판매상태코드 */
+			 , COALESCE(IC.DSPYN, 'N') AS DSPYN												/* 전시여부 */
+			 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN											/* 택배여부 */
+			 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN										/* 온라인덕용여부 */
+			 , COALESCE(IC.UNICYN, 'N') AS UNICYN											/* 미취급여부 */
+			 , ICUT_INN.ICUNITQTY AS INNQTY												/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY												/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY												/* CPP */
+			 , IC.SLPRC 																/* 판매가 */
+			 , IVLC.TOTQTY																/* 총수량 */
+			 , IVLC.AVQTY																/* 가용수량 */
+			 , IVLC.ALQTY																/* 할당수량 */
+			 , IVLC.HOLDQTY																/* 보류수량 */
+			 , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNTOTQTY						/* 총수량(카톤) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNAVQTY							/* 가용수량(카톤) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNALQTY							/* 할당수량(카톤) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNHOLDQTY						/* 보류수량(카톤) */
+			 , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTTOTQTY		/* 총수량(팔레트) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTAVQTY		/* 가용수량(팔레트) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTALQTY		/* 할당수량(팔레트) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTHOLDQTY	/* 보류수량(팔레트) */
+			 , (IVLC.TOTQTY * IC.SLPRC) AS INVNSLPRC									/* 재고금액 */
+			 , '이력보기' AS HISTORY
+		  FROM (
+			   SELECT IVLC.CTKEY
+					, IVLC.OWKEY
+					, IVLC.LCKEY
+					, IVLC.ICKEY
+					, SUM(IVLC.TOTQTY) AS TOTQTY
+					, SUM(IVLC.AVQTY) AS AVQTY
+					, SUM(IVLC.ALQTY) AS ALQTY
+					, SUM(IVLC.HOLDQTY) AS HOLDQTY
+				 FROM TWORK_INFO_IVATXLC IVLC
+				 INNER JOIN TWORK_INFO_IVAT IV
+					ON IV.CTKEY = IVLC.CTKEY
+				   AND IV.OWKEY = IVLC.OWKEY
+				   AND IV.IVATKEY = IVLC.IVATKEY
+				GROUP BY IVLC.CTKEY
+					, IVLC.OWKEY
+					, IVLC.LCKEY
+					, IVLC.ICKEY
+			 ) IVLC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+          LEFT JOIN (
+                     SELECT AST.CTKEY
+                          , AST.OWKEY
+                          , AST.ASRTMASICKEY
+                          , AST.ASRTDTICKEY
+                       FROM TWORK_MST_ASRT AST
+                            INNER JOIN
+                            (
+                             SELECT CTKEY
+                                  , OWKEY
+                                  , ASRTMASICKEY
+                               FROM TWORK_MST_ASRT
+                              WHERE QTY > 0
+                              GROUP BY
+                                    CTKEY
+                                  , OWKEY
+                                  , ASRTMASICKEY
+                             HAVING COUNT(1) > 1
+                            ) ASTM
+                              ON AST.CTKEY = ASTM.CTKEY
+                             AND AST.OWKEY = ASTM.OWKEY
+                             AND AST.ASRTMASICKEY = ASTM.ASRTMASICKEY
+                    ) ASTDTL
+           ON ASTDTL.CTKEY = IVLC.CTKEY
+          AND ASTDTL.OWKEY = IVLC.OWKEY
+          AND ASTDTL.ASRTDTICKEY = IVLC.ICKEY
+		  LEFT JOIN (
+			   SELECT AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM AS ASRTMASICNM
+				 FROM TWORK_MST_ASRT AST
+				INNER JOIN TWORK_MST_IC IC
+				   ON IC.CTKEY = AST.CTKEY
+				  AND IC.OWKEY = AST.OWKEY
+				  AND IC.ICKEY = AST.ASRTMASICKEY
+				WHERE AST.QTY > 0
+				GROUP BY AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM
+               HAVING COUNT(1) > 1
+			 ) ASTMST
+			ON ASTMST.CTKEY = IVLC.CTKEY
+		   AND ASTMST.OWKEY = IVLC.OWKEY
+		   AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = IVLC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = IVLC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN CTG
+			ON CTG.CTKEY = IVLC.CTKEY
+		   AND CTG.OWKEY = IVLC.OWKEY
+		   AND CTG.CTG3KEY = IC.CTGKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IVLC.CTKEY
+		   AND ICUT_INN.OWKEY = IVLC.OWKEY
+		   AND ICUT_INN.ICKEY = IVLC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IVLC.CTKEY
+		   AND ICUT_CTN.OWKEY = IVLC.OWKEY
+		   AND ICUT_CTN.ICKEY = IVLC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		   AND ICBC.USEYN = 'Y'
+
+		<where>
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICKEY ELSE IVLC.ICKEY END) IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+
+					OR
+
+					ASTDTL.ASRTDTICKEY IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+				)
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(schicnm)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICNM ELSE IC.ICNM END) LIKE '%' || #{schicnm} || '%'
+					OR
+					(CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM ELSE '' END) LIKE '%' || #{schicnm} || '%'
+				)
+			</if>
+		</where>
+
+		 ORDER BY
+			   IVLC.CTKEY
+			 , IVLC.OWKEY
+			 , IVLC.LCKEY
+		     , IVLC.ICKEY
+	</sql>
+
+	<select id="selectLocByInvnCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectLocByInvnCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectLocByInvn"/>
+			 )
+	</select>
+
+	<select id="selectLocByInvnList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectLocByInvnList */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectLocByInvn"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectLocByInvnExcelList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectLocByInvnExcelList */
+		  WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+
+				AND A.CTCDHDKEY IN ('ICARDIVCD', 'ICPLCMDIVCD', 'CD_00203')
+			</where>
+		)
+		SELECT IVLC.CTKEY																/* 센터 코드 */
+			 , IVLC.OWKEY																/* 화주 코드 */
+			 , CT.CTNM																	/* 센터명 */
+			 , LC.ZNKEY																	/* 존 코드 */
+			 , ZN.ZNNM																	/* 존명 */
+			 , LC.ARKEY																	/* 구역 코드 */
+			 , AR.ARNM																	/* 구역명 */
+			 , LC.LCKEY																	/* 로케이션 코드 */
+			 , CD1.CTCDDTNM AS ICARDIVCD																/* 상품구역구분 */
+			 , CD2.CTCDDTNM AS ICPLCMDIVCD															/* 상품적치구분 */
+			 , CTG.CTG1KEY																/* 대분류 */
+			 , CTG.CTG1NM																/* 대분류명 */
+			 , CTG.CTG2KEY																/* 중분류 */
+			 , CTG.CTG2NM																/* 중분류명 */
+			 , CTG.CTG3KEY																/* 소분류 */
+			 , CTG.CTG3NM																/* 소분류명 */
+			 , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY						/* (모)상품코드 */
+			 , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM							/* (모)상품명 */
+			 , COALESCE(ASTDTL.ASRTDTICKEY, COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY)) AS ASRTDTICKEY	/* (자)상품코드 */
+			 , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+					ELSE COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) END AS ASRTDTICNM				/* (자)상품명 */
+			 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN											/* 아소트여부 */
+			 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN 								/* 로봇소터가능상품여부 */
+			 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN										/* 덕용상품여부 */
+			 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN										/* 발주가능 여부 */
+			 , CD3.CTCDDTNM AS SALESTATUSCD												/* 판매상태코드 */
+			 , COALESCE(IC.DSPYN, 'N') AS DSPYN												/* 전시여부 */
+			 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN											/* 택배여부 */
+			 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN										/* 온라인덕용여부 */
+			 , COALESCE(IC.UNICYN, 'N') AS UNICYN											/* 미취급여부 */
+			 , ICUT_INN.ICUNITQTY AS INNQTY												/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY												/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY												/* CPP */
+			 , IC.SLPRC 																/* 판매가 */
+			 , IVLC.TOTQTY																/* 총수량 */
+			 , IVLC.AVQTY																/* 가용수량 */
+			 , IVLC.ALQTY																/* 할당수량 */
+			 , IVLC.HOLDQTY																/* 보류수량 */
+			 , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNTOTQTY						/* 총수량(카톤) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNAVQTY							/* 가용수량(카톤) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNALQTY							/* 할당수량(카톤) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNHOLDQTY						/* 보류수량(카톤) */
+			 , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTTOTQTY		/* 총수량(팔레트) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTAVQTY		/* 가용수량(팔레트) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTALQTY		/* 할당수량(팔레트) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTHOLDQTY	/* 보류수량(팔레트) */
+			 , (IVLC.TOTQTY * IC.SLPRC) AS INVNSLPRC									/* 재고금액 */
+			 , '이력보기' AS HISTORY
+		  FROM (
+			   SELECT IVLC.CTKEY
+					, IVLC.OWKEY
+					, IVLC.LCKEY
+					, IVLC.ICKEY
+					, SUM(IVLC.TOTQTY) AS TOTQTY
+					, SUM(IVLC.AVQTY) AS AVQTY
+					, SUM(IVLC.ALQTY) AS ALQTY
+					, SUM(IVLC.HOLDQTY) AS HOLDQTY
+				 FROM TWORK_INFO_IVATXLC IVLC
+				 INNER JOIN TWORK_INFO_IVAT IV
+					ON IV.CTKEY = IVLC.CTKEY
+				   AND IV.OWKEY = IVLC.OWKEY
+				   AND IV.IVATKEY = IVLC.IVATKEY
+				GROUP BY IVLC.CTKEY
+					, IVLC.OWKEY
+					, IVLC.LCKEY
+					, IVLC.ICKEY
+			 ) IVLC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+-- 				   AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+		  LEFT JOIN TWORK_MST_ASRT ASTDTL
+			ON ASTDTL.CTKEY = IVLC.CTKEY
+		   AND ASTDTL.OWKEY = IVLC.OWKEY
+		   AND ASTDTL.ASRTDTICKEY = IVLC.ICKEY
+		   AND ASTDTL.QTY <![CDATA[ > ]]> 0
+-- 				   AND ASTDTL.DELYN <![CDATA[ <> ]]> 'Y'
+		   AND IC.ASRTYN = 'Y'
+		  LEFT JOIN (
+			   SELECT AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM AS ASRTMASICNM
+				 FROM TWORK_MST_ASRT AST
+				INNER JOIN TWORK_MST_IC IC
+				   ON IC.CTKEY = AST.CTKEY
+				  AND IC.OWKEY = AST.OWKEY
+				  AND IC.ICKEY = AST.ASRTMASICKEY
+				WHERE IC.ASRTYN = 'Y'
+-- 						  AND IC.DELYN <![CDATA[ <> ]]> 'Y'
+-- 						  AND AST.DELYN <![CDATA[ <> ]]> 'Y'
+				GROUP BY AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM
+			 ) ASTMST
+			ON ASTMST.CTKEY = IVLC.CTKEY
+		   AND ASTMST.OWKEY = IVLC.OWKEY
+		   AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = IVLC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = IVLC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN (
+			   SELECT CTG1.CTKEY
+					, CTG1.OWKEY
+					, CTG1.CTGKEY AS CTG1KEY
+					, CTG1.CTGNM AS CTG1NM
+					, CTG2.CTGKEY AS CTG2KEY
+					, CTG2.CTGNM AS CTG2NM
+					, CTG3.CTGKEY AS CTG3KEY
+					, CTG3.CTGNM AS CTG3NM
+				 FROM TWORK_MST_CTG CTG1
+				INNER JOIN TWORK_MST_CTG CTG2
+				   ON CTG2.CTKEY = CTG1.CTKEY
+				  AND CTG2.OWKEY = CTG1.OWKEY
+				  AND CTG2.UPRCTGKEY = CTG1.CTGKEY
+				  AND CTG2.CTGLV = '2'
+-- 						  AND CTG2.DELYN <![CDATA[ <> ]]> 'Y'
+				INNER JOIN TWORK_MST_CTG CTG3
+				   ON CTG3.CTKEY = CTG2.CTKEY
+				  AND CTG3.OWKEY = CTG2.OWKEY
+				  AND CTG3.UPRCTGKEY = CTG2.CTGKEY
+				  AND CTG3.CTGLV = '3'
+-- 						  AND CTG3.DELYN <![CDATA[ <> ]]> 'Y'
+				WHERE CTG1.CTGLV = '1'
+-- 						  AND CTG1.DELYN <![CDATA[ <> ]]> 'Y'
+			 ) CTG
+			ON CTG.CTKEY = IVLC.CTKEY
+		   AND CTG.OWKEY = IVLC.OWKEY
+		   AND CTG.CTG3KEY = IC.CTGKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IVLC.CTKEY
+		   AND ICUT_INN.OWKEY = IVLC.OWKEY
+		   AND ICUT_INN.ICKEY = IVLC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IVLC.CTKEY
+		   AND ICUT_CTN.OWKEY = IVLC.OWKEY
+		   AND ICUT_CTN.ICKEY = IVLC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		   AND ICBC.USEYN = 'Y'
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = IC.CTKEY
+		   AND CD1.CTCDHDKEY = 'ICPLCMDIVCD'
+		   AND CD1.CTCDDTKEY = LC.ICPLCMDIVCD
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = IC.CTKEY
+		   AND CD2.CTCDHDKEY = 'ICARDIVCD'
+		   AND CD2.CTCDDTKEY = LC.ICARDIVCD
+		  LEFT JOIN T_CODE CD3
+			ON CD3.CTKEY = IC.CTKEY
+		   AND CD3.CTCDHDKEY = 'CD_00203'
+		   AND CD3.CTCDDTKEY = IC.SALESTATUSCD
+
+		<where>
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICKEY ELSE IVLC.ICKEY END) IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+
+					OR
+
+					ASTDTL.ASRTDTICKEY IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+				)
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(schicnm)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICNM ELSE IC.ICNM END) LIKE '%' || #{schicnm} || '%'
+					OR
+					(CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM ELSE '' END) LIKE '%' || #{schicnm} || '%'
+				)
+			</if>
+		</where>
+
+		 ORDER BY
+			   IVLC.CTKEY
+			 , IVLC.OWKEY
+			 , IVLC.LCKEY
+		     , IVLC.ICKEY
+	</select>
+
+	<sql id="sql_selectIvatByInvn">
+        WITH CTG AS
+        (
+        SELECT h.CTKEY
+             , h.OWKEY
+             , h.root_ctgkey AS CTG1KEY
+             , MAX(CASE WHEN h.CTGLV = '1' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG1NM
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGKEY END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2KEY
+             , MAX(CASE WHEN h.CTGLV = '2' THEN h.CTGNM END)
+                    OVER (PARTITION BY h.root_ctgkey) AS CTG2NM
+             , h.CTGKEY AS CTG3KEY
+             , h.CTGNM  AS CTG3NM
+            FROM (
+                WITH RECURSIVE ctg_tree AS (
+                    SELECT CTGKEY, CTGNM, CTGLV, UPRCTGKEY, CTKEY, OWKEY,
+                           CTGKEY AS root_ctgkey, 1 AS lvl
+                      FROM TWORK_MST_CTG
+                     WHERE CTGLV = '1'
+                    UNION ALL
+                    SELECT c.CTGKEY, c.CTGNM, c.CTGLV, c.UPRCTGKEY, c.CTKEY, c.OWKEY,
+                           t.root_ctgkey, t.lvl + 1
+                      FROM TWORK_MST_CTG c
+                     INNER JOIN ctg_tree t
+                        ON c.UPRCTGKEY = t.CTGKEY
+                       AND c.CTKEY = t.CTKEY
+                       AND c.OWKEY = t.OWKEY
+                     WHERE t.lvl <![CDATA[ < ]]> 3
+                )
+                SELECT * FROM ctg_tree
+            ) h
+        )
+		SELECT '0' AS CHK
+             , IVLC.CTKEY																/* 센터 코드 */
+			 , IVLC.OWKEY																/* 화주 코드 */
+			 , CT.CTNM																	/* 센터명 */
+			 , LC.ZNKEY																	/* 존 코드 */
+			 , ZN.ZNNM																	/* 존명 */
+			 , LC.ARKEY																	/* 구역 코드 */
+			 , AR.ARNM																	/* 구역명 */
+			 , LC.LCKEY																	/* 로케이션 코드 */
+             , COALESCE(IVLC.IVINVSTGTYN, 'N') AS IVINVSTGTYN                                 /* 재고조사대상여부 */
+		     , LC.IVCNTRMGMTYN															/* 재고용기관리여부 */
+			 , IVLC.IVSERIALNO															/* 재고시리얼번호 */
+			 , IVLC.IVSERIALNO AS ORGIVSERIALNO											/* 재고시리얼번호 - 용기 변경용 */
+			 , LC.ICARDIVCD																/* 상품구역구분 */
+			 , LC.ICPLCMDIVCD															/* 상품적치구분 */
+			 , CTG.CTG1KEY																/* 대분류 */
+			 , CTG.CTG1NM																/* 대분류명 */
+			 , CTG.CTG2KEY																/* 중분류 */
+			 , CTG.CTG2NM																/* 중분류명 */
+			 , CTG.CTG3KEY																/* 소분류 */
+			 , CTG.CTG3NM																/* 소분류명 */
+             , IVLC.ICKEY                                                               /* 재고의 상품코드 */
+			 , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY						/* (모)상품코드 */
+			 , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM							/* (모)상품명 */
+			 , COALESCE(ASTDTL.ASRTDTICKEY, COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY)) AS ASRTDTICKEY	/* (자)상품코드 */
+			 , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+					ELSE COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) END AS ASRTDTICNM				/* (자)상품명 */
+			 , IC.LCKEY	AS REPLCKEY														/* 대표로케이션 */
+			 , IVLC.IVATKEY																/* 재고속성코드 */
+			 , COALESCE(IC.ASRTYN, 'N') AS ASRTYN											/* 아소트여부 */
+			 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN 								/* 로봇소터가능상품여부 */
+			 , COALESCE(IC.PKOTICYN, 'N') AS PKOTICYN										/* 덕용상품여부 */
+			 , COALESCE(IC.POABLEYN, 'N') AS POABLEYN										/* 발주가능 여부 */
+			 , IC.SALESTATUSCD															/* 판매상태코드 */
+			 , COALESCE(IC.DSPYN, 'N') AS DSPYN												/* 전시여부 */
+			 , COALESCE(IC.DLVRYYN, 'N') AS DLVRYYN											/* 택배여부 */
+			 , COALESCE(IC.OLNPKOTYN, 'N') AS OLNPKOTYN										/* 온라인덕용여부 */
+			 , COALESCE(IC.UNICYN, 'N') AS UNICYN											/* 미취급여부 */
+			 , IV.EXPDATE																/* 유통기한 */
+             , IC.OBIMPSCRITRT                                                          /* 출고불가 기준율 */
+             , CASE WHEN IV.EXPDATE IS NOT NULL AND IC.EXPCKYN = 'Y' THEN
+                                                                      TO_CHAR((TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD') - EXPCNVRSNDAYS::INTEGER) + (EXPCNVRSNDAYS * (IC.OBIMPSCRITRT / 100))::INTEGER,'YYYYMMDD')
+                    ELSE ''
+               END AS OBIMPSCRITDT                                                      /* 출고불가 기준일 */
+             , CASE WHEN ZN.ZNTYPECD = '10' AND IC.EXPCKYN = 'Y' THEN
+                                                                CASE WHEN TO_CHAR((TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD') - EXPCNVRSNDAYS::INTEGER) + (EXPCNVRSNDAYS * (IC.OBIMPSCRITRT / 100))::INTEGER,'YYYYMMDD') <![CDATA[ > ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y'
+                                                                     ELSE 'N'
+                                                                END
+                    WHEN ZN.ZNTYPECD = '10' AND IC.EXPCKYN = 'N' THEN 'Y'
+                    ELSE 'N'
+               END AS OBIMPSYN                                                          /* 출고불가 여부 */
+			 , ICUT_INN.ICUNITQTY AS INNQTY												/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY												/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY												/* CPP */
+			 , IC.SLPRC 																/* 판매가 */
+			 , IVLC.TOTQTY																/* 총수량 */
+			 , IVLC.AVQTY																/* 가용수량 */
+			 , IVLC.ALQTY																/* 할당수량 */
+			 , IVLC.HOLDQTY																/* 보류수량 */
+		     , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNTOTQTY						/* 총수량(카톤) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNAVQTY							/* 가용수량(카톤) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNALQTY							/* 할당수량(카톤) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0), 2) AS INNHOLDQTY						/* 보류수량(카톤) */
+			 , TRUNC(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTTOTQTY		/* 총수량(팔레트) */
+			 , TRUNC(IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTAVQTY		/* 가용수량(팔레트) */
+			 , TRUNC(IVLC.ALQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTALQTY		/* 할당수량(팔레트) */
+			 , TRUNC(IVLC.HOLDQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 2) AS PLTHOLDQTY	/* 보류수량(팔레트) */
+			 , (IVLC.TOTQTY * IC.SLPRC) AS INVNSLPRC									/* 재고금액 */
+			 , IVLC.INSERTDATE															/* 입력 일시 */
+			 , IVLC.INSERTURKEY															/* 입력 사용자 ID */
+			 , IVLC.UPDATEDATE															/* 수정 일시 */
+			 , IVLC.UPDATEURKEY															/* 수정 사용자 ID */
+			 , '이력보기' AS HISTORY
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+          LEFT JOIN (
+                     SELECT AST.CTKEY
+                          , AST.OWKEY
+                          , AST.ASRTMASICKEY
+                          , AST.ASRTDTICKEY
+                       FROM TWORK_MST_ASRT AST
+                            INNER JOIN
+                            (
+                             SELECT CTKEY
+                                  , OWKEY
+                                  , ASRTMASICKEY
+                               FROM TWORK_MST_ASRT
+                              WHERE QTY > 0
+                              GROUP BY
+                                    CTKEY
+                                  , OWKEY
+                                  , ASRTMASICKEY
+                             HAVING COUNT(1) > 1
+                            ) ASTM
+                              ON AST.CTKEY = ASTM.CTKEY
+                             AND AST.OWKEY = ASTM.OWKEY
+                             AND AST.ASRTMASICKEY = ASTM.ASRTMASICKEY
+                    ) ASTDTL
+           ON ASTDTL.CTKEY = IVLC.CTKEY
+          AND ASTDTL.OWKEY = IVLC.OWKEY
+          AND ASTDTL.ASRTDTICKEY = IVLC.ICKEY
+		  LEFT JOIN (
+			   SELECT AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM AS ASRTMASICNM
+				 FROM TWORK_MST_ASRT AST
+				INNER JOIN TWORK_MST_IC IC
+				   ON IC.CTKEY = AST.CTKEY
+				  AND IC.OWKEY = AST.OWKEY
+				  AND IC.ICKEY = AST.ASRTMASICKEY
+				WHERE AST.QTY > 0
+				GROUP BY AST.CTKEY
+					, AST.OWKEY
+					, AST.ASRTMASICKEY
+					, IC.ICNM
+               HAVING COUNT(1) > 1
+			 ) ASTMST
+			ON ASTMST.CTKEY = IVLC.CTKEY
+		   AND ASTMST.OWKEY = IVLC.OWKEY
+           AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = IVLC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = IVLC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN CTG
+			ON CTG.CTKEY = IVLC.CTKEY
+		   AND CTG.OWKEY = IVLC.OWKEY
+		   AND CTG.CTG3KEY = IC.CTGKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IVLC.CTKEY
+		   AND ICUT_INN.OWKEY = IVLC.OWKEY
+		   AND ICUT_INN.ICKEY = IVLC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IVLC.CTKEY
+		   AND ICUT_CTN.OWKEY = IVLC.OWKEY
+		   AND ICUT_CTN.ICKEY = IVLC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		   AND ICBC.USEYN = 'Y'
+		  LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+			ON IMMT.CTKEY = IVLC.CTKEY
+
+		<where>
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICKEY ELSE IVLC.ICKEY END) IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+
+					OR
+
+					ASTDTL.ASRTDTICKEY IN
+					<foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+						#{item}
+					</foreach>
+				)
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(schicnm)">
+				AND (
+					(CASE WHEN ASTMST.ASRTMASICKEY IS NOT NULL THEN ASTMST.ASRTMASICNM ELSE IC.ICNM END) LIKE '%' || #{schicnm} || '%'
+					OR
+					(CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM ELSE '' END) LIKE '%' || #{schicnm} || '%'
+				)
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(expimmticyn)">
+				AND IC.EXPCKYN = 'Y'
+			    <choose>
+					<when test='"Y".equals(expimmticyn)'>
+			    		AND #{sysdate} BETWEEN TO_CHAR(
+								  TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD')
+								- IC.EXPCNVRSNDAYS::INTEGER
+								+ TRUNC(IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0) / 100))::INTEGER, 'YYYYMMDD') || '000000' AND IV.EXPDATE
+					</when>
+					<when test='"N".equals(expimmticyn)'>
+						AND TO_CHAR(
+								  TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD')
+								- IC.EXPCNVRSNDAYS::INTEGER
+								+ TRUNC(IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0) / 100))::INTEGER, 'YYYYMMDD') || '000000' <![CDATA[ >= ]]> #{sysdate}
+					</when>
+				</choose>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obimpsicyn)">
+				AND IC.EXPCKYN = 'Y'
+			    <choose>
+					<when test='"Y".equals(obimpsicyn)'>
+			    		AND #{sysdate} BETWEEN TO_CHAR(
+								  TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD')
+								- IC.EXPCNVRSNDAYS::INTEGER
+								+ TRUNC(IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0) / 100))::INTEGER, 'YYYYMMDD') || '000000' AND IV.EXPDATE
+					</when>
+					<when test='"N".equals(obimpsicyn)'>
+						AND TO_CHAR(
+								  TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD')
+								- IC.EXPCNVRSNDAYS::INTEGER
+								+ TRUNC(IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0) / 100))::INTEGER, 'YYYYMMDD') || '000000' <![CDATA[ >= ]]> #{sysdate}
+					</when>
+				</choose>
+			</if>
+
+		</where>
+
+	</sql>
+
+	<select id="selectIvatByInvnCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectIvatByInvnCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectIvatByInvn"/>
+			 )
+	</select>
+
+	<select id="selectIvatByInvnList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectIvatByInvnList */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectIvatByInvn"/>
+
+		 ORDER BY
+			   IVLC.CTKEY
+			 , IVLC.OWKEY
+			 , IVLC.LCKEY
+			 , ASTMST.ASRTMASICKEY
+		 	 , ASTDTL.ASRTDTICKEY
+		 	 , IVLC.ICKEY
+			 , IVLC.IVATKEY
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectInvnHistoryList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectInvnHistoryList */
+		SELECT IVHS.CTKEY			/* 센터 코드 */
+			 , IVHS.OWKEY			/* 화주 코드 */
+			 , IVHS.IVCHGDATE		/* 재고변경일시 */
+			 , IVHS.IVHSKEY			/* 재고 이력 코드 */
+			 , IVHS.IVHSTYPECD		/* 재고 이력 유형 코드 */
+			 , IVHS.ICKEY			/* 상품 코드 */
+			 , IC.ICNM				/* 상품 코드 */
+			 , IVHS.IVATKEY			/* 재고 속성 코드 */
+			 , IVHS.FRLCKEY			/* FROM 로케이션 코드 */
+			 , IVHS.FRIVSERIALNO	/* FROM 재고시리얼번호 */
+			 , IVHS.FRIVSERIALDIVCD	/* FROM재고시리얼구분코드 */
+			 , IVHS.FRBFCHGQTY		/* FROM변경전수량 */
+			 , IVHS.TOLCKEY			/* TO 로케이션 코드 */
+			 , IVHS.TOIVSERIALNO	/* TO재고시리얼번호 */
+			 , IVHS.TOIVSERIALDIVCD	/* TO재고시리얼구분코드 */
+			 , IVHS.TOBFCHGQTY		/* TO변경전수량 */
+			 , IVHS.PRDCTDATE		/* 생산일시 */
+			 , IVHS.EXPDATE			/* 유통기한일시 */
+			 , IVHS.TCDCDIVCD		/* TCDC구분코드 */
+			 , IVHS.QTY				/* 수량 */
+			 , IVHS.WEIGHT			/* 무게 */
+			 , IVHS.ICUNITKEY		/* 물품 단위 코드 */
+			 , IVHS.UOM				/* 단위(UOM) */
+			 , IVHS.IBCNFRMDATE		/* 입고 확정 일시 */
+			 , IVHS.ICTMPRDIVCD		/* 상품온도구분코드 */
+			 , IVHS.IVMOVERSNCD		/* 재고이동사유코드 */
+			 , IVHS.IVMOVEDTCONT	/* 재고이동상세내용 */
+			 , IVHS.EXPTRSNCD		/* 반출사유코드 */
+			 , IVHS.EXPTRSNDTCONT	/* 반출사유상세내용 */
+			 , IVHS.IBHDKEY			/* 입고주문번호 */
+			 , IVHS.IBDTKEY			/* 입고주문상세번호 */
+			 , IVHS.OBHDKEY			/* 릴리즈코드 */
+			 , IVHS.OBDTKEY			/* 릴리즈상세코드 */
+			 , IVHS.TAHDKEY			/* TASK 헤더 번호 */
+			 , IVHS.TADTKEY			/* TASK 상세 번호 */
+			 , IVHS.PIHDKEY			/* 피킹헤더번호 */
+			 , IVHS.PIDTKEY			/* 피킹상세번호 */
+			 , IVHS.CMT				/* 비고 */
+			 , IVHS.INSERTDATE		/* 입력 일시 */
+			 , IVHS.INSERTURKEY		/* 입력 사용자 ID */
+			 , IVHS.UPDATEDATE		/* 수정 일시 */
+			 , IVHS.UPDATEURKEY		/* 수정 사용자 ID */
+		  FROM TWORK_INFO_IVHS IVHS
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVHS.CTKEY
+		   AND IC.OWKEY = IVHS.OWKEY
+		   AND IC.ICKEY = IVHS.ICKEY
+		 WHERE IVHS.CTKEY = #{ctkey}
+		   AND IVHS.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND SUBSTR(IVHS.IVCHGDATE,1,8) BETWEEN #{ivchgfrdate} AND #{ivchgtodate}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+			AND IVHS.ICKEY = #{ickey}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+			AND IVHS.TOLCKEY = #{lckey}
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ivhstypecd)">
+			AND IVHS.IVHSTYPECD = #{ivhstypecd}
+		</if>
+
+		 ORDER BY IVHS.INSERTDATE DESC
+
+	</select>
+
+	<sql id="sql_selectImmtIvat">
+		SELECT A.CTKEY
+			 , A.CTNM
+		     , A.OWKEY
+			 , A.EXPDATE
+			 , A.IMMTIVCRITRT												/* 임박재고 기준율 */
+			 , COUNT(DISTINCT A.ICKEY) AS SKUCNT
+			 , SUM(A.TOTQTY) AS TOTQTY
+			 , SUM(A.TOTQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNTOTQTY
+			 , SUM(A.TOTQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPTOTQTY
+		     , SUM(A.IBQTY) AS IBQTY
+			 , SUM(A.IBQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNIBQTY
+			 , SUM(A.IBQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPIBQTY
+			 , SUM(A.OBQTY) AS OBQTY
+			 , SUM(A.OBQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNOBQTY
+			 , SUM(A.OBQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPOBQTY
+			 , SUM(A.DEFQTY) AS DEFQTY
+			 , SUM(A.DEFQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNDEFQTY
+			 , SUM(A.DEFQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPDEFQTY
+			 , SUM(A.DMGQTY) AS DMGQTY
+			 , SUM(A.DMGQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNDMGQTY
+			 , SUM(A.DMGQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPDMGQTY
+			 , SUM(A.RTNQTY) AS RTNQTY
+			 , SUM(A.RTNQTY / NULLIF(ICTP.ICUNITQTY, 0)) AS CTNRTNQTY
+			 , SUM(A.RTNQTY / NULLIF(ICTP.ICUNITQTY * ICTP.CPPQTY, 0)) AS CPPRTNQTY
+			 , SUM(A.IVPRC) AS IVPRC
+		  FROM (
+				SELECT IVLC.CTKEY														/* 센터코드 */
+					 , CT.CTNM															/* 센터명 */
+					 , IVLC.OWKEY
+					 , IVLC.ICKEY
+                     , IMMT.IMMTIVCRITRT												/* 임박재고 기준율 */
+					 , IC.ICUNITKEY
+					 , IV.EXPDATE														/* 유통기한 */
+                     , IC.EXPCNVRSNDAYS                                                 /* 생산일자 유통기한 전환 기준일 */
+					 , IVLC.TOTQTY														/* 총수량 */
+					 , (CASE WHEN ZN.ZNTYPECD = '20' THEN IVLC.TOTQTY ELSE 0 END) AS IBQTY										/* 입고수량 (적치대기 존) */
+					 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY ELSE 0 END)AS OBQTY	/* 출고가능 (보관 존), 로케이션제한구분코드가 (사용가능, 입고금지) */
+					 , (CASE WHEN ZNTYPECD IN ('130', '150') THEN IVLC.TOTQTY ELSE 0 END) AS DEFQTY								/* 불량수량 (센터내불량,센터내기부 존) */
+					 , (CASE WHEN ZNTYPECD = '110' THEN IVLC.TOTQTY ELSE 0 END) AS DMGQTY										/* 파손수량 (센터내파손 존) */
+					 , (CASE WHEN ZNTYPECD IN ('120', '140', '100', '160', '90') THEN IVLC.TOTQTY ELSE 0 END) AS RTNQTY			/* 반품수량 (고객반품불량,고객반품기부, 고객반품파손, 고객반품식품파손, 고객반품 존*/
+					 , (IVLC.TOTQTY * IC.SLPRC) AS IVPRC								/* 재고금액 */
+				  FROM TWORK_INFO_IVATXLC IVLC
+				 INNER JOIN TWORK_MST_CT CT
+					ON CT.CTKEY = IVLC.CTKEY
+				 INNER JOIN TWORK_MST_OW OW
+					ON OW.OWKEY = IVLC.OWKEY
+				 INNER JOIN TWORK_MST_IC IC
+					ON IC.CTKEY = IVLC.CTKEY
+				   AND IC.OWKEY = IVLC.OWKEY
+				   AND IC.ICKEY = IVLC.ICKEY
+				 INNER JOIN TWORK_INFO_IVAT IV
+					ON IV.CTKEY = IVLC.CTKEY
+				   AND IV.OWKEY = IVLC.OWKEY
+				   AND IV.IVATKEY = IVLC.IVATKEY
+				 INNER JOIN TWORK_MST_LC LC
+					ON LC.CTKEY = IVLC.CTKEY
+				   AND LC.LCKEY = IVLC.LCKEY
+				 INNER JOIN TWORK_MST_ZN ZN
+					ON ZN.CTKEY = LC.CTKEY
+				   AND ZN.ZNKEY = LC.ZNKEY
+				 INNER JOIN TWORK_MST_AR AR
+					ON AR.CTKEY = LC.CTKEY
+				   AND AR.ZNKEY = LC.ZNKEY
+				   AND AR.ARKEY = LC.ARKEY
+				  LEFT JOIN TWORK_MST_ICBARCODE ICBC
+					ON ICBC.CTKEY = IC.CTKEY
+				   AND ICBC.OWKEY = IC.OWKEY
+				   AND ICBC.ICKEY = IC.ICKEY
+				   AND ICBC.UOM = IC.UOM
+				   AND ICBC.USEYN = 'Y'
+                 INNER JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+                    ON IMMT.CTKEY = IC.CTKEY
+        		<where>
+					AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+					AND IC.EXPCKYN = 'Y'
+                    AND TO_CHAR(TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD') - COALESCE(IC.EXPCNVRSNDAYS, 0)::INTEGER + ( COALESCE(IC.EXPCNVRSNDAYS, 0) *  (IMMT.IMMTIVCRITRT / 100) )::INTEGER,'YYYYMMDD') <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+			 ) A
+		 INNER JOIN TWORK_MST_ICUTXTYPE ICTP
+			ON ICTP.CTKEY = A.CTKEY
+		   AND ICTP.OWKEY = A.OWKEY
+		   AND ICTP.ICKEY = A.ICKEY
+		   AND ICTP.ICUNITKEY = A.ICUNITKEY
+		   AND ICTP.ICUNITTYPECD = 'CTN'
+		 GROUP BY
+			   A.CTKEY
+			 , A.CTNM
+			 , A.OWKEY
+			 , A.EXPDATE
+			 , A.IMMTIVCRITRT
+
+	</sql>
+
+	<select id="selectImmtInvnCount" resultType="java.lang.Integer">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectImmtIvat"/>
+			 )
+	</select>
+
+	<select id="selectImmtInvnList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnList */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectImmtIvat"/>
+
+		 ORDER BY
+			   A.CTKEY
+ 	 		 , A.EXPDATE
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectImmtInvnDetailList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnDetailList */
+		SELECT IV.EXPDATE
+			 , TRUNC(((TO_DATE(SUBSTR(((CASE WHEN IC.EXPCKTYPECD = 'E' THEN IV.EXPDATE WHEN IC.EXPCKTYPECD = 'P' THEN TO_CHAR(TO_DATE(IV.PRDCTDATE, 'YYYYMMDD') + EXPCNVRSNDAYS::INTEGER, 'YYYYMMDD') END)), 1, 8), 'YYYYMMDD') - TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD'), 'YYYYMMDD')) / EXPCNVRSNDAYS) * 100) AS IMMTDATE
+			 , IVLC.CTKEY
+			 , IVLC.OWKEY
+			 , IVLC.ICKEY
+			 , IC.ICNM
+			 , ICBC.BARCODE
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , IVLC.LCKEY
+			 , ICUT_INN.ICUNITQTY AS INNQTY									/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY									/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY									/* CPP */
+			 , IVLC.TOTQTY
+			 , IVLC.TOTQTY / ICUT_CTN.ICUNITQTY AS CTNTOTQTY
+			 , IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0) AS CPPTOTQTY
+			 , A.TOTQTY AS LCTOTQTY
+			 , A.CTNTOTQTY AS LCCTNTOTQTY
+			 , A.CPPTOTQTY AS LCCPPTOTQTY
+		     , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY ELSE 0 END) AS AVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY, 0) ELSE 0 END) AS CTNAVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0) ELSE 0 END) AS CPPAVQTY
+			 , IC.SLPRC
+			 , (IVLC.TOTQTY * IC.SLPRC) AS IVPRC
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IC.CTKEY
+		   AND ICBC.OWKEY = IC.OWKEY
+		   AND ICBC.ICKEY = IC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		   AND ICBC.USEYN = 'Y'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IC.CTKEY
+		   AND ICUT_INN.OWKEY = IC.OWKEY
+		   AND ICUT_INN.ICKEY = IC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IC.CTKEY
+		   AND ICUT_CTN.OWKEY = IC.OWKEY
+		   AND ICUT_CTN.ICKEY = IC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN (
+				SELECT IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+					 , SUM(IVLC.TOTQTY) AS TOTQTY
+					 , SUM(IVLC.TOTQTY / NULLIF(CTN.ICUNITQTY, 0)) AS CTNTOTQTY
+					 , SUM(IVLC.TOTQTY / NULLIF(CTN.ICUNITQTY * CTN.CPPQTY, 0)) AS CPPTOTQTY
+				  FROM TWORK_INFO_IVATXLC IVLC
+				 INNER JOIN (
+						SELECT IVLC.CTKEY
+							 , IVLC.OWKEY
+							 , IVLC.LCKEY
+						  FROM TWORK_INFO_IVATXLC IVLC
+						 INNER JOIN TWORK_MST_IC IC
+							ON IC.CTKEY = IVLC.CTKEY
+						   AND IC.OWKEY = IVLC.OWKEY
+						   AND IC.ICKEY = IVLC.ICKEY
+						 INNER JOIN TWORK_INFO_IVAT IV
+							ON IV.CTKEY = IVLC.CTKEY
+						   AND IV.OWKEY = IVLC.OWKEY
+						   AND IV.IVATKEY = IVLC.IVATKEY
+						 WHERE IVLC.CTKEY = #{ctkey}
+						   AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+						   AND IC.EXPCKYN = 'Y'
+						   AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+						   AND IV.EXPDATE = #{expdate}
+						 GROUP BY IVLC.CTKEY
+							 , IVLC.OWKEY
+							 , IVLC.LCKEY
+					  ) A
+					ON A.CTKEY = IVLC.CTKEY
+				   AND A.OWKEY = IVLC.OWKEY
+				   AND A.LCKEY = IVLC.LCKEY
+				  LEFT JOIN TWORK_MST_ICUTXTYPE CTN	/* 중포 */
+					ON CTN.CTKEY = IVLC.CTKEY
+				   AND CTN.OWKEY = IVLC.OWKEY
+				   AND CTN.ICKEY = IVLC.ICKEY
+				   AND CTN.ICUNITTYPECD = 'CTN'
+				 WHERE IVLC.TOTQTY <![CDATA[ > ]]> 0
+				 GROUP BY IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+			 ) A
+			ON A.CTKEY = IVLC.CTKEY
+		   AND A.OWKEY = IVLC.OWKEY
+		   AND A.LCKEY = IVLC.LCKEY
+		 WHERE IVLC.CTKEY = #{ctkey}
+		   AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND IC.EXPCKYN = 'Y'
+		   AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+		   AND IV.EXPDATE = #{expdate}
+	</select>
+
+	<select id="selectImmtInvnDetailTab2List" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnDetailTab2List */
+		SELECT IMMT.IMMTIVCRITRT
+			 , IV.EXPDATE
+		     , TRUNC(((TO_DATE(SUBSTR(((CASE WHEN IC.EXPCKTYPECD = 'E' THEN IV.EXPDATE WHEN IC.EXPCKTYPECD = 'P' THEN TO_CHAR(TO_DATE(IV.PRDCTDATE, 'YYYYMMDD') + EXPCNVRSNDAYS::INTEGER, 'YYYYMMDD') END)), 1, 8), 'YYYYMMDD') - TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD'), 'YYYYMMDD')) / EXPCNVRSNDAYS) * 100) AS IMMTDATE
+			 , IVLC.CTKEY
+			 , IVLC.OWKEY
+			 , IVLC.ICKEY
+			 , IC.ICNM
+			 , ICBC.BARCODE
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , IVLC.LCKEY
+			 , ICUT_INN.ICUNITQTY AS INNQTY									/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY									/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY									/* CPP */
+			 , IVLC.TOTQTY
+			 , COALESCE(IVLC.TOTQTY / CASE ICUT_CTN.ICUNITQTY WHEN 0 THEN NULL ELSE ICUT_CTN.ICUNITQTY END, 0)
+			 , COALESCE(IVLC.TOTQTY / CASE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) WHEN 0 THEN NULL ELSE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) END, 0)
+			 , A.TOTQTY AS LCTOTQTY
+			 , A.CTNTOTQTY AS LCCTNTOTQTY
+			 , A.CPPTOTQTY AS LCCPPTOTQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY ELSE 0 END) AS AVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN (IVLC.AVQTY / CASE ICUT_CTN.ICUNITQTY WHEN 0 THEN NULL ELSE ICUT_CTN.ICUNITQTY END) ELSE 0 END) AS CTNAVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN COALESCE(IVLC.AVQTY / CASE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) WHEN 0 THEN NULL ELSE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) END, 0) ELSE 0 END) AS CPPAVQTY
+			 , IC.SLPRC
+			 , (IVLC.TOTQTY * IC.SLPRC) AS IVPRC
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+			ON IMMT.CTKEY = IVLC.CTKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IVLC.CTKEY
+		   AND ICBC.OWKEY = IVLC.OWKEY
+		   AND ICBC.ICKEY = IVLC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IVLC.CTKEY
+		   AND ICUT_INN.OWKEY = IVLC.OWKEY
+		   AND ICUT_INN.ICKEY = IVLC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IVLC.CTKEY
+		   AND ICUT_CTN.OWKEY = IVLC.OWKEY
+		   AND ICUT_CTN.ICKEY = IVLC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN (
+				SELECT IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+				     , IVLC.ICKEY
+					 , SUM(IVLC.TOTQTY) AS TOTQTY
+					 , SUM(IVLC.TOTQTY / CTN.ICUNITQTY) AS CTNTOTQTY
+					 , SUM(IVLC.TOTQTY / CASE CTN.ICUNITQTY * CTN.CPPQTY WHEN 0 THEN NULL ELSE CTN.ICUNITQTY * CTN.CPPQTY END) AS CPPTOTQTY
+				  FROM TWORK_INFO_IVATXLC IVLC
+				  LEFT JOIN TWORK_MST_ICUTXTYPE CTN	/* 중포 */
+					ON CTN.CTKEY = IVLC.CTKEY
+				   AND CTN.OWKEY = IVLC.OWKEY
+				   AND CTN.ICKEY = IVLC.ICKEY
+				   AND CTN.ICUNITTYPECD = 'CTN'
+				 WHERE IVLC.TOTQTY <![CDATA[ > ]]> 0
+				 GROUP BY IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+				 	 , IVLC.ICKEY
+			 ) A
+			ON A.CTKEY = IVLC.CTKEY
+		   AND A.OWKEY = IVLC.OWKEY
+		   AND A.LCKEY = IVLC.LCKEY
+		   AND A.ICKEY = IVLC.ICKEY
+		<where>
+		    AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+			AND IC.EXPCKYN = 'Y'
+			AND TO_CHAR(TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD') - COALESCE(IC.EXPCNVRSNDAYS, 0)::INTEGER + ( COALESCE(IC.EXPCNVRSNDAYS, 0) *  (IMMT.IMMTIVCRITRT / 100) )::INTEGER,'YYYYMMDD') <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		 ORDER BY
+			   IV.EXPDATE
+	</select>
+
+	<select id="selectImmtInvnDetailTab3List" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnDetailTab3List */
+		SELECT IC.OBIMPSCRITRT
+			 , IV.EXPDATE
+			 , TRUNC(((TO_DATE(SUBSTR(((CASE WHEN IC.EXPCKTYPECD = 'E' THEN IV.EXPDATE WHEN IC.EXPCKTYPECD = 'P' THEN TO_CHAR(TO_DATE(IV.PRDCTDATE, 'YYYYMMDD') + EXPCNVRSNDAYS::INTEGER, 'YYYYMMDD') END)), 1, 8), 'YYYYMMDD') - TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD'), 'YYYYMMDD')) / EXPCNVRSNDAYS) * 100) AS IMMTDATE
+		     , IVLC.CTKEY
+		     , IVLC.OWKEY
+		     , IVLC.ICKEY
+			 , IC.ICNM
+			 , ICBC.BARCODE
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , IVLC.LCKEY
+			 , ICUT_INN.ICUNITQTY AS INNQTY									/* 중포 입수 */
+			 , ICUT_CTN.ICUNITQTY AS CTNQTY									/* 카톤 입수 */
+			 , ICUT_CTN.CPPQTY AS CPPQTY									/* CPP */
+			 , IVLC.TOTQTY
+			 , COALESCE(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY, NULL), 0) AS CTNTOTQTY
+			 , COALESCE(IVLC.TOTQTY / NULLIF(ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY, 0), 0) AS CPPTOTQTY
+			 , A.TOTQTY AS LCTOTQTY
+			 , A.CTNTOTQTY AS LCCTNTOTQTY
+			 , A.CPPTOTQTY AS LCCPPTOTQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN IVLC.AVQTY ELSE 0 END) AS AVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN (IVLC.AVQTY / CASE ICUT_CTN.ICUNITQTY WHEN 0 THEN NULL ELSE ICUT_CTN.ICUNITQTY END) ELSE 0 END) AS CTNAVQTY
+			 , (CASE WHEN ZN.ZNTYPECD = '10' AND LC.LCLIMITDIVCD IN ('10', '30') THEN COALESCE(IVLC.AVQTY / CASE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) WHEN 0 THEN NULL ELSE (ICUT_CTN.ICUNITQTY * ICUT_CTN.CPPQTY) END, 0) ELSE 0 END) AS CPPAVQTY
+			 , IC.SLPRC
+			 , (IVLC.TOTQTY * IC.SLPRC) AS IVPRC
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		 INNER JOIN TWORK_INFO_IVAT IV
+			ON IV.CTKEY = IVLC.CTKEY
+		   AND IV.OWKEY = IVLC.OWKEY
+		   AND IV.IVATKEY = IVLC.IVATKEY
+		 INNER JOIN TWORK_MST_ICBARCODE ICBC
+			ON ICBC.CTKEY = IVLC.CTKEY
+		   AND ICBC.OWKEY = IVLC.OWKEY
+		   AND ICBC.ICKEY = IVLC.ICKEY
+		   AND ICBC.UOM = IC.UOM
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_INN	/* 중포 */
+			ON ICUT_INN.CTKEY = IVLC.CTKEY
+		   AND ICUT_INN.OWKEY = IVLC.OWKEY
+		   AND ICUT_INN.ICKEY = IVLC.ICKEY
+		   AND ICUT_INN.ICUNITTYPECD = 'INN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE ICUT_CTN	/* 카톤 */
+			ON ICUT_CTN.CTKEY = IVLC.CTKEY
+		   AND ICUT_CTN.OWKEY = IVLC.OWKEY
+		   AND ICUT_CTN.ICKEY = IVLC.ICKEY
+		   AND ICUT_CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN (
+				SELECT IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+				     , IVLC.ICKEY
+					 , SUM(IVLC.TOTQTY) AS TOTQTY
+					 , SUM(IVLC.TOTQTY / CTN.ICUNITQTY) AS CTNTOTQTY
+					 , SUM(IVLC.TOTQTY / CASE CTN.ICUNITQTY * CTN.CPPQTY WHEN 0 THEN NULL ELSE CTN.ICUNITQTY * CTN.CPPQTY END) AS CPPTOTQTY
+				  FROM TWORK_INFO_IVATXLC IVLC
+				  LEFT JOIN TWORK_MST_ICUTXTYPE CTN	/* 중포 */
+					ON CTN.CTKEY = IVLC.CTKEY
+				   AND CTN.OWKEY = IVLC.OWKEY
+				   AND CTN.ICKEY = IVLC.ICKEY
+				   AND CTN.ICUNITTYPECD = 'CTN'
+				 WHERE IVLC.TOTQTY <![CDATA[ > ]]> 0
+				 GROUP BY IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.LCKEY
+				 	 , IVLC.ICKEY
+			 ) A
+			ON A.CTKEY = IVLC.CTKEY
+		   AND A.OWKEY = IVLC.OWKEY
+		   AND A.LCKEY = IVLC.LCKEY
+		   AND A.ICKEY = IVLC.ICKEY
+		<where>
+		    AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+			AND IC.EXPCKYN = 'Y'
+			AND TO_CHAR((TO_DATE(SUBSTR(IV.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS::INTEGER) + TRUNC(IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::INTEGER, 'YYYYMMDD') <![CDATA[ <= ]]> TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		 ORDER BY
+			   IV.EXPDATE
+	</select>
+
+	<select id="selectImmtInvnCritInfo" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectImmtInvnCritInfo */
+		SELECT CTKEY
+		     , IMMTIVCRITRT
+		  FROM TWORK_MST_IMMT_IV_CRIT
+		 WHERE CTKEY = #{ctkey}
+	</select>
+
+	<update id="saveImmtInvnCritInfo">
+		/* wms-inventory-invnxitem-sql-oracle.xml - saveImmtInvnCritInfo */
+		UPDATE TWORK_MST_IMMT_IV_CRIT
+		   SET IMMTIVCRITRT = #{immtivcritrt}
+		     , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+	</update>
+
+    <update id="saveIvInvsTagetCancel">
+        /* wms-inventory-invnxitem-sql-oracle.xml - saveIvInvsTagetCancel */
+        UPDATE TWORK_INFO_IVATXLC
+           SET IVINVSTGTYN = 'N'
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND IVATKEY = #{ivatkey}
+           AND ICKEY = #{ickey}
+           AND LCKEY = #{lckey}
+    </update>
+
+	<select id="selectIvatxlcList" resultType="camelMap">
+		/* wms-inventory-invnxitem-sql-oracle.xml - selectIvatxlcList */
+		SELECT IVLC.CTKEY			/* 센터 코드 */
+		     , IVLC.OWKEY			/* 화주코드 */
+			 , LC.ZNKEY				/* 존 코드 */
+			 , LC.ARKEY				/* 구역 코드 */
+			 , IVLC.LCKEY			/* 로케이션 코드 */
+			 , IVLC.ICKEY			/* 상품코드 */
+			 , IVLC.IVATKEY			/* 재고속성코드 */
+			 , IVLC.IVSERIALNO		/* 용기번호 */
+			 , ZN.ZNTYPECD			/* 존 유형코드 */
+			 , LC.LCTYPECD			/* 로케이션 유형 코드 */
+			 , LC.LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			 , LC.ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			 , LC.IVATKEYMIXCGYN	/* 재고 속성 코드 혼재 여부 */
+			 , LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , IVLC.TOTQTY
+			 , IVLC.AVQTY
+			 , IVLC.ALQTY
+			 , IVLC.HOLDQTY
+		  FROM TWORK_INFO_IVATXLC IVLC
+		  JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IVLC.CTKEY
+		  JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IVLC.OWKEY
+		  JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = IVLC.CTKEY
+		   AND IC.OWKEY = IVLC.OWKEY
+		   AND IC.ICKEY = IVLC.ICKEY
+		  JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		  JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		  JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+
+		<where>
+			AND IVLC.CTKEY = #{ctkey}
+			AND IVLC.OWKEY = #{owkey}
+			AND IVLC.LCKEY = #{lckey}
+			AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+		</where>
+	</select>
+
+</mapper>

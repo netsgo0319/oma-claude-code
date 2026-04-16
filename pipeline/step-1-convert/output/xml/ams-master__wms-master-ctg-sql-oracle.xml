@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.CtgWmsMapper">
+
+	<insert id="insertTWorkMstCtg">
+		/* wms-master-ctg-sql-oracle.xml - insertTWorkMstCtg */
+		INSERT INTO TWORK_MST_CTG	(
+			 CTKEY
+			,OWKEY
+			,CTGKEY
+			,CTGLEVEL
+			,CTGNAME
+			,UPPERCTGKEY
+			,URKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,CLOSDATE
+			,ICGRKEY
+		 )
+		VALUES	(
+			 #{ctkey}
+			,#{owkey}
+			,#{ctgkey}
+			,#{ctglv}
+			,#{ctgnm}
+			,COALESCE(#{upperctgkey}, 'DIR')
+			,#{urkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+            ,#{closdate}
+			,#{icgrkey}
+		)	
+	</insert>	
+	
+	<delete id="deleteTWorkMstCtg">
+		/* wms-master-ctg-sql-oracle.xml - deleteTWorkMstCtg */
+		UPDATE  TWORK_MST_CTG
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{sysdate}
+		WHERE OWKEY 		 = #{owkey}
+		AND   CTGKEY   		 = #{ctgkey}
+		AND   CTGLEVEL 		 = #{ctglv}
+	</delete>
+	 
+</mapper>	

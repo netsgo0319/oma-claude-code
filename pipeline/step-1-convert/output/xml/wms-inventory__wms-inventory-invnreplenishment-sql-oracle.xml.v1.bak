@@ -1,0 +1,969 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnReplenishmentMapper">
+
+
+	<sql id="selectInvnMscReplenishmenRefSql">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectInvnMscReplenishmenRefSql - 재고 보충 조회  SQL */
+		SELECT 	A.*
+          FROM 	(
+			SELECT '0' AS CHK
+			     , IV.CTKEY
+				 , IV.OWKEY
+				 , IV.ICKEY 
+				 , IV.LCKEY 
+				 , IV.IVATKEY 
+				 , IV.ULCKEY 
+				 , IC.ICNAME 
+				 , IC.SPEC
+				 , IVAT.UOM
+				 , IV.TTQTY 
+				 , IV.AVQTY 
+				 , IV.TTQTY/ICUT.ICUTQTY AS TTQTY_UNIT
+				 , IV.AVQTY/ICUT.ICUTQTY AS AVQTY_UNIT
+				 , IVAT.EXPIREDATE
+				 , CASE WHEN REP.WKSTATUS = '10' OR REP.WKSTATUS = '30' THEN COALESCE(REP.REQQTY, 0)
+				 		ELSE 0 END AS REQQTY
+				 , CASE WHEN REP.WKSTATUS = '10' OR REP.WKSTATUS = '30' THEN COALESCE(REP.REQQTY, 0)/ICUT.ICUTQTY
+				 		ELSE 0 END AS REQQTY_UNIT
+				 , COALESCE(REP.REQQTY, 0) AS ORG_REQQTY
+				 , COALESCE(REP.REQQTY, 0)/ICUT.ICUTQTY AS ORG_REQQTY_UNIT
+				 , COALESCE(REP.DELIQTY, 0) AS DELIQTY
+				 , COALESCE(REP.DELIQTY, 0)/ICUT.ICUTQTY AS DELIQTY_UNIT
+				 , REP.WKSTATUS
+				 , ICUT.ICUTQTY
+				 , REP.REQ_NUMBER
+				 , REP.IF_STATUS
+				 , REP.IF_STATUS_MSG
+				 , IV.IVATSTATUS
+				 , IC.MSCSTORETYPE
+		         , IC.WRHOUS_SE
+				 , IV.INSERTDATE
+			     , IV.INSERTURKEY
+			     , IV.UPDATEDATE
+			     , IV.UPDATEURKEY
+			  FROM TWORK_INFO_IVATXLCXULC IV
+			 INNER JOIN TWORK_INFO_IVAT IVAT
+			  	ON IV.CTKEY = IVAT.CTKEY
+			   AND IV.OWKEY = IVAT.OWKEY
+			   AND IV.ICKEY = IVAT.ICKEY
+			   AND IV.IVATKEY = IVAT.IVATKEY
+			 INNER JOIN TWORK_MST_IC IC
+			    ON IV.CTKEY = IC.CTKEY
+			   AND IV.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+			  	ON IC.CTKEY = ICUT.CTKEY
+			   AND IC.OWKEY = ICUT.OWKEY
+			   AND IC.ICUTKEY = ICUT.ICUTKEY
+			   AND ICUT.ICUTTYPE = IVAT.UOM
+			  LEFT OUTER JOIN TWORK_INFO_REPLENISHMENT_REQ REP
+			  	ON IV.CTKEY = REP.CTKEY
+			   AND IV.OWKEY = REP.OWKEY
+			   AND IV.ICKEY = REP.ICKEY
+			   AND IV.IVATKEY = REP.IVATKEY
+			   AND IV.ULCKEY = REP.ULCKEY
+			 INNER JOIN TWORK_MST_LC TMLC
+			    ON IV.CTKEY = TMLC.CTKEY
+			   AND IV.LCKEY = TMLC.LCKEY
+			 WHERE TMLC.LCSTORTYPE = '40'
+		) A
+		 WHERE 	1=1
+		   AND AVQTY <![CDATA[ > ]]> 0
+		   AND MSCSTORETYPE = 'BOX'
+		   AND WRHOUS_SE = 'ATMC'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	       AND  #{SEARCH_CONDITION}
+		</if>    
+	</sql>
+
+
+
+
+	<select id="selectInvnMscReplenishment" resultType="camelMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnMscReplenishmenRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY OWKEY , ICKEY, LCKEY, EXPIREDATE    
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectInvnMscReplenishmentCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectInvnMscReplenishmenRefSql"/>
+		  ) 
+	</select>
+	
+	<select id="selectInvnReplenishmentReq" resultType="camelMap" >
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectInvnReplenishmentReq - 재고 보충 요청 조회  SQL */
+		SELECT A.CTKEY
+		     , A.OWKEY
+		     , A.ICKEY
+		     , A.LCKEY
+		     , A.IVATKEY
+		     , A.ULCKEY
+		     , A.REQ_NUMBER
+		     , A.REQ_NUMBER 	AS ORG_REQ_NUMBER
+		     , #{reqqty} 	AS REQQTY
+		     , #{deliqty}	AS DELIQTY
+		     , #{rejqty} 	AS REJQTY
+		     , #{canqty} 	AS CANQTY
+		     , #{abaqty} 	AS ABAQTY
+		     , A.WKSTATUS
+		     , A.IF_STATUS
+		     , A.IF_STATUS_MSG
+		     , A.COMMENTS
+		     , B.LOGGRPCD
+		     , A.INSERTDATE
+		     , A.INSERTURKEY
+		     , A.UPDATEDATE
+		     , A.UPDATEURKEY
+		  FROM TWORK_INFO_REPLENISHMENT_REQ A
+		 INNER JOIN TWORK_MST_IC B
+		    ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		 WHERE 1=1
+	<choose>
+		<when test='reqNumber ==null or reqNumber == ""'>	
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.ICKEY = #{ickey}
+		   AND A.LCKEY = #{lckey}
+		   AND A.IVATKEY = #{ivatkey}
+		   AND A.ULCKEY = #{ulckey}
+		</when>	
+		<otherwise>
+		   AND A.REQ_NUMBER = #{reqNumber}
+		</otherwise>
+	</choose>		  
+	</select>
+	
+	<select id="selectInfoIvatxlcxulcStatus" resultType="camelMap" >
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectInfoIvatxlcxulcStatus - 재고 조회  SQL */
+		SELECT IVATSTATUS
+			 , TTQTY
+			 , AVQTY
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}		   
+	</select>
+	
+	<insert id="insertInvnReplenishmentReq">
+		/* wms-inventory-invnreplenishment-sql-oracle.xml - insertInvnReplenishmentReq - 재고 보충 요청 정보 등록  SQL */
+		INSERT INTO TWORK_INFO_REPLENISHMENT_REQ 
+			   (
+			     CTKEY
+			   , OWKEY
+			   , ICKEY
+			   , LCKEY
+			   , IVATKEY
+			   , ULCKEY
+			   , REQ_NUMBER
+			   , REQQTY
+			   , DELIQTY
+			   , REJQTY
+			   , CANQTY
+			   , ABAQTY
+			   , WKSTATUS
+			   , IF_STATUS
+			   , IF_STATUS_MSG
+			   , COMMENTS
+			   , INSERTDATE
+			   , INSERTURKEY
+			   , UPDATEDATE
+			   , UPDATEURKEY
+			   ) VALUES (
+			     #{ctkey}
+			   , #{owkey}  
+			   , #{ickey}
+			   , #{lckey}
+			   , #{ivatkey}
+			   , #{ulckey}
+			   , #{reqNumber}
+			   , #{reqqty}
+			   , #{deliqty}
+			   , #{rejqty}
+			   , #{canqty}
+			   , #{abaqty}
+			   , #{reqWkstatus}
+			   , #{ifStatus}
+			   , #{ifStatusMsg}
+			   , #{comments}
+			   , #{sysdate}
+			   , #{surkey}
+			   , #{sysdate}
+			   , #{surkey}
+			   )
+	</insert>
+	
+	<update id="updateInvnReplenishmentReq">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - updateInvnReplenishmentReq - 재고 보충 요청 정보 수정  SQL */
+		 UPDATE TWORK_INFO_REPLENISHMENT_REQ
+		    SET REQQTY			= #{reqqty}
+			  , DELIQTY			= #{deliqty}
+			  , REJQTY			= #{rejqty}
+			  , CANQTY			= #{canqty}
+			  , ABAQTY			= #{abaqty} 
+			  , WKSTATUS		= #{reqWkstatus}
+			  , IF_STATUS	  	= #{ifStatus}
+			  , IF_STATUS_MSG 	= #{ifStatusMsg}
+			  , REQ_NUMBER 		= #{reqNumber}
+			  , UPDATEDATE		= #{sysdate}
+			  , UPDATEURKEY		= #{surkey}
+		  WHERE 1=1
+		<choose>
+			<when test='orgReqNumber ==null || orgReqNumber == ""'>	
+			   AND CTKEY = #{ctkey}
+			   AND OWKEY = #{owkey}
+			   AND ICKEY = #{ickey}
+			   AND LCKEY = #{lckey}
+			   AND IVATKEY = #{ivatkey}
+			   AND ULCKEY = #{ulckey}
+			</when>	
+			<otherwise>
+			   AND REQ_NUMBER = #{orgReqNumber}
+			</otherwise>
+		</choose>
+	</update>
+	
+	<select id="selectInfoIvatxlcxulcCount" resultType="java.lang.Integer" >
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectInfoIvatxlcxulcCount - 재고 조회  SQL */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}		   
+	</select>
+	
+	<update id="updateIvatxlcxulcIncreQty">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - updateIvatxlcxulcIncreQty - 재고 수량 추가  SQL */
+		UPDATE TWORK_INFO_IVATXLCXULC
+		   SET TTQTY = COALESCE(TTQTY, 0) + COALESCE(#{deliqty}, 0)
+		     , AVQTY = COALESCE(AVQTY, 0) + COALESCE(#{deliqty}, 0)
+		     , ALQTY = COALESCE(ALQTY, 0) + COALESCE(#{alqty}, 0)
+		     , PIQTY = COALESCE(PIQTY, 0) + COALESCE(#{piqty}, 0)
+		     , PAQTY = COALESCE(PAQTY, 0) + COALESCE(#{paqty}, 0)
+		     , LOQTY = COALESCE(LOQTY, 0) + COALESCE(#{loqty}, 0)
+		     , HOQTY = COALESCE(HOQTY, 0) + COALESCE(#{hoqty}, 0)
+		     , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}
+	</update>
+	
+	<update id="updateIvatxlcxulcDecreQty">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - updateIvatxlcxulcDecreQty - 재고 수량 추가  SQL */
+		UPDATE TWORK_INFO_IVATXLCXULC
+		   SET TTQTY = COALESCE(TTQTY, 0) - COALESCE(#{deliqty}, 0)
+		     , AVQTY = COALESCE(AVQTY, 0) - COALESCE(#{deliqty}, 0)
+		     , ALQTY = COALESCE(ALQTY, 0) + COALESCE(#{alqty}, 0)
+		     , PIQTY = COALESCE(PIQTY, 0) + COALESCE(#{piqty}, 0)
+		     , PAQTY = COALESCE(PAQTY, 0) + COALESCE(#{paqty}, 0)
+		     , LOQTY = COALESCE(LOQTY, 0) + COALESCE(#{loqty}, 0)
+		     , HOQTY = COALESCE(HOQTY, 0) + COALESCE(#{hoqty}, 0)
+		     , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY = #{lckey}
+	</update>
+	
+	<insert id="insertIvatxlcxulcQty">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - insertIvatxlcxulcQty - 재고 등록  SQL */
+    	INSERT INTO TWORK_INFO_IVATXLCXULC   
+		(
+		  CTKEY      
+		, IVATKEY    
+		, LCKEY      
+		, ULCKEY     
+		, OWKEY      
+		, ICKEY      
+		, TTQTY      
+		, AVQTY      
+		, ALQTY      
+		, PIQTY      
+		, PAQTY      
+		, LOQTY      
+		, HOQTY      
+		, IVATSTATUS 
+		, LOGGRPCD
+		, INSERTDATE 
+		, INSERTURKEY
+		, UPDATEDATE 
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{ctkey}              
+		, #{ivatkey}           
+		, #{lckey}            
+		, #{ulckey}                               
+		, #{owkey}           
+		, #{ickey}                
+		, COALESCE(#{deliqty}, 0)
+		, COALESCE(#{deliqty}, 0)
+		, '0'                                   
+		, '0'              
+		, '0'                                   
+		, '0'                                   
+		, '0'                                   
+		, '10'        
+		, #{loggrpcd}                   
+		, #{sysdate}
+		, #{surkey}
+		, #{sysdate}
+		, #{surkey}
+		)
+    </insert>
+    
+    <select id="selectIvat" resultType="camelMap">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectIvat - 재고 정보 조회 SQL */
+		SELECT *
+		  FROM TWORK_INFO_IVAT A
+		 INNER JOIN TWORK_INFO_IVATXLCXULC B
+		    ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		   AND A.IVATKEY = B.IVATKEY 
+		 INNER JOIN TWORK_MST_IC C
+		    ON A.CTKEY = C.CTKEY
+		   AND A.ICKEY = C.ICKEY
+		 WHERE A.CTKEY            = #{ctkey}
+           AND A.OWKEY            = #{owkey}
+           AND B.LCKEY 			  = #{lckey}
+           AND A.IVATKEY 		  = #{ivatkey}
+           
+	</select>
+	
+	<update id="callSpIcIvatReplenishmentBefore" statementType="CALLABLE" parameterType="java.util.HashMap">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - callSpIcIvatReplenishmentBefore - 보충 조회 프로시저 SQL */
+    	{
+    		CALL SP_IC_IVAT_REPLENISHMENT_BEFORE(
+				 #{ctkey,mode=IN,jdbcType=VARCHAR}
+			   , #{owkey,mode=IN,jdbcType=VARCHAR}
+			   , #{urkey,mode=IN,jdbcType=VARCHAR}
+			)
+		}
+	</update>
+	
+	<select id="selectReplenishmentBefore" resultType="camelMap">
+	/* wms-inventory-invnreplenishment-sql-oracle.xml - selectReplenishmentBefore - 보충지시 조회 SQL */
+		SELECT CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , LCKEY
+			 , IVATKEY
+			 , ULCKEY
+			 , UOM
+			 , QTY
+			 , UNITQTY
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INFO_REPLENISHMENT_BEFORE
+         WHERE CTKEY            = #{ctkey}
+           AND OWKEY            = #{owkey}
+	</select>
+
+	<resultMap id="invnReplenishmentRefMap" type="java.util.HashMap">
+		<result property="owkey" column="OWKEY" />
+		<result property="owname" column="OWNAME" />
+		<result property="ickey" column="ICKEY" />
+		<result property="spec"  column="SPEC" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctname" column="CTNAME" />
+		<result property="icname" column="ICNAME" />
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="piznkey" column="PIZNKEY" />
+		<result property="minqty" column="MINQTY" />
+		<result property="maxqty" column="MAXQTY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="calmaxqty" column="CALMAXQTY" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="fr_lckey_avqty" column="FR_LCKEY_AVQTY" />
+		<result property="cal_fr_lckey_avqty" column="CAL_FR_LCKEY_AVQTY" />
+		<result property="to_lckey_avqty" column="TO_LCKEY_AVQTY" />
+		<result property="fr_lckey" column="FR_LCKEY" />
+		<result property="bundlekey" column="BUNDLEKEY" />
+		<result property="ivatkey" column="IVATKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="ta_hdkey" column="TA_HDKEY" />
+		<result property="ta_dtkey" column="TA_DTKEY" />
+		<result property="qty" column="QTY" />
+		<result property="wkstatus" column="WKSTATUS" />
+		<result property="wkstatus_desc" column="WKSTATUS_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="ta_dttype" column="TA_DTTYPE" />
+		<result property="ta_dttype_desc" column="TA_DTTYPE_DESC" typeHandler="CodeDescTypeHandler"/>		
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="fr_ivatkey" column="FR_IVATKEY" />
+		<result property="reasontype" column="REASONTYPE" />
+		<result property="reasontype_desc" column="REASONTYPE_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="wahdkey" column="WAHDKEY" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="urkey" column="URKEY" />
+		<result property="urkey_desc" column="URKEY_DESC" typeHandler="UrMstDescTypeHandler"/>
+		<result property="piznkey" column="PIZNKEY"/>
+		<result property="piznname" column="PIZNNAME"/>
+	</resultMap>
+	
+	<resultMap id="invnReplenishmentMap" type="java.util.HashMap" extends="invnReplenishmentRefMap" >
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeTypeHandler"  />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler"  />
+		<result property="shelflifedate" column="SHELFLIFEDATE" typeHandler="GmtDateTimeTypeHandler"  />
+		<result property="ta_startdate" column="TA_STARTDATE" typeHandler="GmtDateTimeTypeHandler"  />
+		<result property="ta_enddate" column="TA_ENDDATE" typeHandler="GmtDateTimeTypeHandler"  />
+	</resultMap>
+	 
+
+	<resultMap id="invnReplenishmentExcelMap" type="java.util.HashMap" extends="invnReplenishmentRefMap" >
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateFormatTypeHandler"  />
+		<result property="shelflifedate" column="SHELFLIFEDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="ta_startdate" column="TA_STARTDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="ta_enddate" column="TA_ENDDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+	</resultMap> 
+	
+	<sql id="selectInvnReplenishmentRefSql">
+		SELECT 	A.*
+          FROM 	(
+			SELECT 	A.OWKEY 
+					,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+					,A.ICKEY 
+					,D.ICNAME
+					,D.SPEC
+					,A.LCKEY AS TO_LCKEY
+					,K.PIZNKEY
+					,A.MINQTY AS MINQTY
+					,A.MAXQTY AS MAXQTY
+					,COALESCE((A.MAXQTY - COALESCE(F.AVQTY, 0)), 0) AS CALMAXQTY
+					,A.UOM 
+					,A.CTKEY || ';' || 'ICUTTYPE'|| ';' || A.UOM AS UOM_DESC 
+					,B.PRODUCTDATE 
+					,B.EXPIREDATE
+					,(C.AVQTY + C.HOQTY) AS FR_LCKEY_AVQTY
+					,(C.AVQTY + C.HOQTY) AS CAL_FR_LCKEY_AVQTY
+					,H.ICUTQTY
+					,COALESCE(F.AVQTY, 0)  AS TO_LCKEY_AVQTY
+					,A.ICKEY || A.LCKEY AS BUNDLEKEY
+					,C.LCKEY AS FR_LCKEY
+					,CASE WHEN D.SHELFLIFECODETYPE = 'PRODUCTDATE_NOTUSE' 
+						THEN B.PRODUCTDATE
+				      	ELSE B.EXPIREDATE
+					END  AS SHELFLIFEDATE
+					,A.CTKEY
+					,(SELECT CTNAME FROM TWORK_MST_CT CT WHERE CT.CTKEY = A.CTKEY) AS CTNAME
+					,B.IVATKEY
+					,A.ICUTKEY
+                    ,I.ACKEY
+                    ,I.ACNAME
+                    ,J.URKEY
+                    ,J.URKEY AS URKEY_DESC
+                    ,D.LOGGRPCD
+                    ,#{ctkey} || ';' || 'LOGGRPCD' || ';' || D.LOGGRPCD AS LOGGRPCD_DESC	                              
+		  	  FROM 	TWORK_MST_LCXIC A 
+					,TWORK_INFO_IVAT B
+					,TWORK_INFO_IVATXLCXULC C  
+					,TWORK_MST_IC D 
+					,TWORK_MST_LC E 
+                    ,(  
+	                    SELECT 	TB1.CTKEY, TB1.OWKEY, TB1.ICKEY, TB1.LCKEY, SUM(AVQTY) AS AVQTY
+                     	  FROM 	(
+	                        SELECT A.CTKEY,
+	                           A.OWKEY,
+	                           A.ICKEY,
+	                           A.LCKEY,
+	                           SUM (A.AVQTY) AS AVQTY
+	                         FROM TWORK_INFO_IVATXLCXULC A,
+	                           TWORK_MST_LCXIC B
+	                        WHERE     A.CTKEY = #{ctkey}
+	                           AND A.CTKEY = B.CTKEY
+	                           AND A.OWKEY = B.OWKEY
+	                           AND A.LCKEY = B.LCKEY
+	                           AND A.ICKEY = B.ICKEY
+	                        GROUP BY A.CTKEY, A.OWKEY, A.ICKEY, A.LCKEY
+	                        UNION ALL
+	                        SELECT CTKEY, OWKEY, ICKEY, TO_LCKEY, COALESCE(SUM(QTY), 0) AS TAQTY
+	                         FROM TWORK_INFO_TA_DT 
+	                        WHERE CTKEY = #{ctkey}  
+	                            AND TA_DTTYPE IN ('40', '90')
+	                            AND WKSTATUS = '00'
+	                        GROUP BY CTKEY, OWKEY, ICKEY, TO_LCKEY
+	                        ) TB1
+	                    GROUP BY TB1.CTKEY, TB1.OWKEY, TB1.ICKEY, TB1.LCKEY
+                    ) F
+					,TWORK_MST_ICUT G 
+					,TWORK_MST_ICUTXTYPE H
+					,TWORK_MST_AC I
+					,TWORK_MST_ACXUR J 
+					,TWORK_MST_LC K
+					,TWORK_INFO_IB_DT L
+			 WHERE
+					A.CTKEY = B.CTKEY
+			   AND 	A.OWKEY = B.OWKEY 
+			   AND  A.ICKEY = B.ICKEY
+			   AND  B.CTKEY = C.CTKEY
+			   AND  B.OWKEY = C.OWKEY
+			   AND  B.IVATKEY = C.IVATKEY
+			   AND  A.CTKEY = D.CTKEY
+			   AND  A.OWKEY = D.OWKEY
+			   AND  A.ICKEY = D.ICKEY
+			   AND  C.CTKEY = E.CTKEY 
+			   AND  C.LCKEY = E.LCKEY 
+			   AND  E.LCTYPE = '90'
+			   AND  A.CTKEY = F.CTKEY(+)
+			   AND  A.OWKEY = F.OWKEY(+)
+			   AND  A.LCKEY = F.LCKEY(+)
+			   AND  A.ICKEY = F.ICKEY(+)
+			   AND  A.MINQTY > COALESCE(F.AVQTY, 0)
+			   AND  A.CTKEY = G.CTKEY
+			   AND  A.OWKEY = G.OWKEY
+			   AND  A.ICUTKEY = G.ICUTKEY
+			   AND  A.CTKEY = H.CTKEY
+			   AND  A.OWKEY = H.OWKEY
+			   AND  A.ICUTKEY = H.ICUTKEY
+			   AND  A.UOM = H.ICUTTYPE
+			   AND  (C.AVQTY + C.HOQTY) > 0 
+               <!-- AND  D.CTKEY = I.CTKEY(+)
+               AND  D.ACKEY = I.ACKEY(+)
+               AND  D.OWKEY = I.OWKEY(+) -->
+               AND  D.CTKEY = J.CTKEY(+)
+               AND  D.ACKEY = J.ACKEY(+)
+               AND  D.LOGGRPCD = J.LOGGRPCD(+)
+               AND  D.OWKEY = J.OWKEY(+)
+               AND  G.CLOSDATE >= #{CLOSDATE, typeHandler=GmtDateTimeTypeHandler }
+		       AND  A.CTKEY = #{ctkey}
+		       AND  A.LCKEY != C.LCKEY 	
+		       AND A.CTKEY = K.CTKEY
+		       AND A.LCKEY = K.LCKEY
+		       AND B.CTKEY = L.CTKEY
+		       AND B.IVATKEY = L.TO_IVATKEY
+		       AND I.CTKEY = L.CTKEY
+		       AND I.OWKEY = L.OWKEY
+		       AND I.ACKEY = L.ACKEY	       
+		) A
+		 WHERE 	1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	       AND  #{SEARCH_CONDITION}
+		</if>    
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+	       AND  A.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+	       AND  A.ICKEY = #{ickey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)" >
+	       AND  A.TO_LCKEY = #{to_lckey}
+		</if>                  
+	</sql>
+	
+	<select id="selectInvnReplenishment" resultMap="invnReplenishmentMap">
+		<include refid="selectInvnReplenishmentRefSql"/>
+		 ORDER BY A.BUNDLEKEY ,A.SHELFLIFEDATE ,A.FR_LCKEY
+		                     
+	</select>
+
+	<select id="selectInvnReplenishmentCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		  FROM  (
+		  	<include refid="selectInvnReplenishmentRefSql"/>   
+		)
+	</select>
+	
+	<select id="selectInvnReplenishmentExcel" resultMap="invnReplenishmentExcelMap">
+		<include refid="selectInvnReplenishmentRefSql"/>                     
+		 ORDER BY 
+		 	A.BUNDLEKEY
+		 	,A.SHELFLIFEDATE
+		 	,A.FR_LCKEY
+	</select>	
+	
+	<sql id="selectTaskInvnReplenishmentRefSql">
+		SELECT *
+		  FROM (
+				SELECT  A.CTKEY 
+						,(SELECT CTNAME FROM TWORK_MST_CT CT WHERE CT.CTKEY = A.CTKEY) AS CTNAME
+						,A.TA_HDKEY
+						,A.TA_DTKEY
+						,A.OWKEY
+						,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+						,A.WKSTATUS
+						,A.CTKEY || ';' || 'TA_WKSTATUS'|| ';' || A.WKSTATUS AS WKSTATUS_DESC  
+						,A.TA_DTTYPE
+						,A.CTKEY || ';' || 'TA_DTTYPE'|| ';' || A.TA_DTTYPE AS TA_DTTYPE_DESC  
+						,A.ICKEY
+						,B.ICNAME
+						,B.SPEC
+						,A.TO_LCKEY
+						,A.QTY / D.ICUTQTY AS QTY
+						,A.FR_LCKEY
+						,A.UOM
+						,A.CTKEY || ';' || 'ICUTTYPE'|| ';' || A.UOM AS UOM_DESC
+						,D.ICUTQTY
+						,A.LOGGRPCD
+						,A.CTKEY || ';' || 'LOGGRPCD'|| ';' || A.LOGGRPCD AS LOGGRPCD_DESC 
+						,A.FR_IVATKEY
+						,A.TA_STARTDATE
+						,A.TA_ENDDATE
+						,A.REASONTYPE
+						,A.CTKEY || ';' || 'REASONTYPE'|| ';' || A.REASONTYPE AS REASONTYPE_DESC 
+						,A.WAHDKEY
+		                ,E.ACKEY
+		                ,E.ACNAME
+		                ,F.URKEY
+		                ,F.URKEY AS URKEY_DESC
+		                ,H.PIZNKEY
+		                ,H.PIZNNAME                              
+				  FROM  TWORK_INFO_TA_DT A
+						,TWORK_MST_IC  B
+						,TWORK_MST_ICUT C 
+						,TWORK_MST_ICUTXTYPE D
+		                ,TWORK_MST_AC E
+		                ,TWORK_MST_ACXUR F
+		                ,TWORK_MST_LC G
+		                ,TWORK_MST_PIZN H
+		                ,TWORK_MST_LC I
+				 WHERE
+					    A.CTKEY = B.CTKEY
+				   AND  A.OWKEY = B.OWKEY
+				   AND  A.ICKEY = B.ICKEY
+				   AND  A.CTKEY = C.CTKEY
+				   AND  A.OWKEY = C.OWKEY
+				   AND  A.ICUTKEY = C.ICUTKEY
+				   AND  A.CTKEY = D.CTKEY
+				   AND  A.OWKEY = D.OWKEY
+				   AND  A.ICUTKEY = D.ICUTKEY
+				   AND  A.UOM = D.ICUTTYPE
+				   AND  A.TA_DTTYPE IN ('40','90')
+		           AND  B.CTKEY = E.CTKEY(+)
+		           AND  B.ACKEY = E.ACKEY(+)
+		           AND  B.OWKEY = E.OWKEY(+)
+		           AND  B.CTKEY = F.CTKEY(+)
+		           AND  B.ACKEY = F.ACKEY(+)
+                   AND  B.LOGGRPCD = F.LOGGRPCD(+)
+                   AND  B.OWKEY = F.OWKEY(+)
+		           AND A.CTKEY  = G.CTKEY
+		           AND A.FR_LCKEY = G.LCKEY
+		           AND A.CTKEY = I.CTKEY
+		           AND A.TO_LCKEY = I.LCKEY
+		           AND I.CTKEY = H.CTKEY(+)
+		           AND I.PIZNKEY = H.PIZNKEY(+)
+				   AND C.CLOSDATE >= #{closdate}
+				   AND A.CTKEY = #{ctkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   AND 	#{SEARCH_CONDITION}
+				</if>		  
+		  )
+	</sql>	
+	
+	
+	<select id="selectTaskInvnReplenishment" resultMap="invnReplenishmentMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectTaskInvnReplenishmentRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY TA_HDKEY , TA_DTKEY DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+
+	</select>
+
+	<select id="selectTaskInvnReplenishmentCount" resultType="java.lang.Integer" >
+		SELECT  COUNT(1)
+		  FROM  (
+			<include refid="selectTaskInvnReplenishmentRefSql"/>
+		  )
+	</select>	
+	
+	<select id="selectTaskInvnReplenishmentExcel" resultMap="invnReplenishmentExcelMap">
+		<include refid="selectTaskInvnReplenishmentRefSql"/>
+		 ORDER BY 
+		 	TA_HDKEY 
+		 	,TA_DTKEY DESC 		
+	</select>
+    <resultMap id="selectInvnReplenishmentReportHDMap" type="camelMap">
+		<result property="owkey" column="OWKEY" />
+		<result property="owname" column="OWNAME" />
+		<result property="ta_hdkey" column="TA_HDKEY" />
+		<result property="ta_dttype" column="TA_DTTYPE" typeHandler="CodeDescTypeHandler" />
+		<result property="piznkey" column="PIZNKEY" />
+		<result property="piznname" column="PIZNNAME" />
+		<result property="urname" column="URNAME" />
+		<result property="urkey" column="URKEY" />
+		<result property="ctkey" column="CTKEY" />
+	</resultMap> 
+
+	<select id="selectInvnReplenishmentReportHD" resultMap="selectInvnReplenishmentReportHDMap">
+	        SELECT A.OWKEY
+	        	  ,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+	              ,A.TA_HDKEY
+	              ,A.CTKEY || ';' || 'TA_DTTYPE'|| ';' || A.TA_DTTYPE AS TA_DTTYPE
+	              ,C.PIZNKEY AS PIZNKEY
+	              ,COALESCE(C.PIZNNAME, 'NA') AS PIZNNAME
+			      ,#{urname} as URNAME
+			      ,#{urkey} as URKEY
+	              ,A.CTKEY
+	          FROM TWORK_INFO_TA_DT A  
+	              ,TWORK_MST_LC B
+	              ,TWORK_MST_PIZN C                          
+	         WHERE
+	               A.CTKEY = #{ctkey}
+	           AND A.WKSTATUS = '00'
+	           AND A.TA_DTTYPE IN ('40','90')   
+	           AND A.CTKEY = B.CTKEY
+	           AND A.TO_LCKEY = B.LCKEY
+	           AND B.CTKEY = C.CTKEY(+) 
+	           AND B.PIZNKEY = C.PIZNKEY(+)
+				<if test="ta_dtkeyList != null and ta_dtkeyList.size() > 0" >
+			       AND 	A.TA_HDKEY IN 
+					<foreach item="ta_dtkeyList" index="index" collection="ta_dtkeyList" open="(" separator="," close=")">
+						#{ta_dtkeyList}
+					</foreach>
+				</if>	
+	      GROUP BY A.CTKEY
+	              ,A.OWKEY
+	              ,A.TA_HDKEY
+	              ,A.TA_DTTYPE
+	              ,C.PIZNKEY 
+	              ,C.PIZNNAME 
+	      ORDER BY A.TA_HDKEY
+	      		  ,A.OWKEY
+	              ,C.PIZNKEY	
+	</select>	
+
+	<resultMap id="selectInvnReplenishmentReportDTMap" type="camelMap">
+		<result property="to_lckey" column="TO_LCKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="spec" column="SPEC" />
+		<result property="fr_lckey" column="FR_LCKEY" />
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="baesu" column="BAESU" />
+		<result property="uom" column="UOM" typeHandler="CodeDescTypeHandler"/>
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ta_hdkey" column="TA_HDKEY" />
+		<result property="ta_dttype" column="TA_DTTYPE" typeHandler="CodeDescTypeHandler" />
+		<result property="piznkey" column="PIZNKEY" />
+		<result property="piznname" column="PIZNNAME" />
+		<result property="urkey" column="URKEY" typeHandler="UrMstDescTypeHandler"/>
+		<result property="shelflifecodetype" column="SHELFLIFECODETYPE" />
+		<result property="product_expiredate" column="PRODUCT_EXPIREDATE" />
+	</resultMap> 
+
+	<select id="selectInvnReplenishmentReportDT" resultMap="selectInvnReplenishmentReportDTMap">
+	        SELECT  COALESCE(I.LCKEYDISP, A.TO_LCKEY) AS TO_LCKEY
+	               ,A.ICKEY
+	               ,B.ICNAME
+	               ,B.SPEC
+	               ,COALESCE(E.LCKEYDISP, A.FR_LCKEY) AS FR_LCKEY
+	               ,D.ICUTQTY
+	               ,A.QTY / D.ICUTQTY AS BAESU
+	               ,A.CTKEY || ';' || 'ICUTTYPE'|| ';' || A.UOM AS UOM
+	               ,A.CTKEY
+	               ,A.OWKEY
+	               ,A.TA_HDKEY
+	               ,A.CTKEY || ';' || 'TA_DTTYPE'|| ';' || A.TA_DTTYPE AS TA_DTTYPE
+	               ,F.PIZNKEY
+	               ,F.PIZNNAME
+	               ,G.URKEY
+	               ,'E' SHELFLIFECODETYPE 
+	               ,H.EXPIREDATE  AS PRODUCT_EXPIREDATE
+	          FROM TWORK_INFO_TA_DT A
+	              ,TWORK_MST_IC  B
+	              ,TWORK_MST_ICUT C 
+	              ,TWORK_MST_ICUTXTYPE D
+	              ,TWORK_MST_LC E
+	              ,TWORK_MST_PIZN F 
+	              ,TWORK_MST_ACXUR G
+	              ,TWORK_INFO_IVAT H
+	              ,TWORK_MST_LC I
+	         WHERE
+		                A.CTKEY = #{ctkey}
+		       AND  A.TA_DTTYPE IN ('40','90')
+		       AND  C.CLOSDATE >= #{closdate}
+		       AND  A.WKSTATUS = '00'
+		   		<if test="ta_dtkeyList != null and ta_dtkeyList.size() > 0" >
+			       AND 	A.TA_HDKEY IN 
+					<foreach item="ta_dtkeyList" index="index" collection="ta_dtkeyList" open="(" separator="," close=")">
+						#{ta_dtkeyList}
+					</foreach>
+				</if>	             
+	           AND A.CTKEY = B.CTKEY
+	           AND A.OWKEY = B.OWKEY
+	           AND A.ICKEY = B.ICKEY
+	           AND A.CTKEY = C.CTKEY
+	           AND A.ICUTKEY = C.ICUTKEY
+	           AND A.CTKEY = D.CTKEY
+	           AND A.ICUTKEY = D.ICUTKEY
+	           AND A.UOM = D.ICUTTYPE  
+	           AND A.CTKEY = E.CTKEY
+	           AND A.TO_LCKEY = E.LCKEY
+	           AND E.CTKEY = F.CTKEY(+)
+	           AND E.PIZNKEY = F.PIZNKEY(+)
+	           AND B.CTKEY = G.CTKEY(+)
+	           AND B.ACKEY = G.ACKEY(+)
+               AND B.LOGGRPCD = G.LOGGRPCD(+)
+               AND B.OWKEY = G.OWKEY(+)
+	           AND A.CTKEY = H.CTKEY
+	           AND A.OWKEY = H.OWKEY
+	           AND A.FR_IVATKEY = H.IVATKEY
+	           AND A.CTKEY = I.CTKEY
+	           AND A.FR_LCKEY = I.LCKEY
+	      ORDER BY A.TA_HDKEY
+	      		  ,A.CTKEY
+	              ,A.OWKEY
+	              ,F.PIZNKEY
+	              ,A.FR_LCKEY
+	              ,A.TO_LCKEY
+	              ,A.ICKEY	
+	</select>
+
+	<select id="selectUrgentReplenishment" resultType="taskDtVO">		
+			SELECT TB1.CTKEY, TB1.OWKEY, TB1.ICKEY, TB1.ICUTKEY
+			    , TB1.LCKEY AS FR_LCKEY
+			    , TB2.LCKEY AS TO_LCKEY
+			    , TB1.IVATKEY AS FR_IVATKEY
+			    , TB1.EXQTY - COALESCE(TB3.TAQTY, 0) AS QTY
+			    , TB2.UOM, TB4.ICUTQTY
+			    , TB1.LOGGRPCD
+			    , TB1.WAHDKEY
+			 FROM ( 
+			    SELECT A.CTKEY, A.OWKEY, A.ICKEY, A.ICUTKEY, A.LCKEY, A.IVATKEY, A.ULCKEY, SUM(A.EXQTY) AS EXQTY
+			          ,A.LOGGRPCD, C.WAHDKEY
+			     FROM TWORK_INFO_PI_DT A
+			        , TWORK_MST_LCXIC B
+			        , TWORK_INFO_WA_DT C
+			    WHERE A.CTKEY=#{ctkey}
+			        AND A.WKSTATUS='00'
+			        AND A.CTKEY=B.CTKEY(+)
+			        AND A.LCKEY=B.LCKEY(+)
+			        AND A.OWKEY=B.OWKEY(+)
+			        AND A.ICKEY=B.ICKEY(+)
+			        AND B.CTKEY IS NULL
+				    AND A.CTKEY=C.CTKEY
+				    AND A.OBHDKEY=C.OBHDKEY		        
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)" >
+					AND C.WAHDKEY = #{wahdkey} 
+			</if>	
+			<if test="listWahdkey != null and listWahdkey.size() > 0" >
+					AND C.WAHDKEY IN 
+				<foreach item="listWahdkey" index="index" collection="listWahdkey"
+					open="(" separator="," close=")">
+					#{listWahdkey}
+				</foreach>						 
+			</if>								        
+			    GROUP BY A.CTKEY, A.OWKEY, A.ICKEY, A.ICUTKEY, A.LCKEY, A.IVATKEY, A.ULCKEY, A.LOGGRPCD, C.WAHDKEY
+			   ) TB1
+			   , TWORK_MST_LCXIC TB2
+			   , (
+			    SELECT CTKEY, OWKEY, ICKEY, FR_LCKEY, FR_IVATKEY, SUM(QTY) AS TAQTY
+			     FROM TWORK_INFO_TA_DT
+			    WHERE CTKEY=#{ctkey}
+			        AND TA_DTTYPE='90'
+			        AND WKSTATUS='00'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)" >
+					AND WAHDKEY = #{wahdkey} 
+			</if>
+			<if test="listWahdkey2 != null and listWahdkey2.size() > 0" >
+					AND WAHDKEY IN 
+				<foreach item="listWahdkey2" index="index" collection="listWahdkey2"
+					open="(" separator="," close=")">
+					#{listWahdkey2}
+				</foreach>						 
+			</if>							        
+			    GROUP BY CTKEY, OWKEY, ICKEY, FR_LCKEY, FR_IVATKEY
+			    ) TB3
+			   , TWORK_MST_ICUTXTYPE TB4
+			   , TWORK_INFO_IVATXLCXULC TB5
+			WHERE TB1.CTKEY=TB2.CTKEY
+			    AND TB1.OWKEY=TB2.OWKEY
+			    AND TB1.ICKEY=TB2.ICKEY
+			    AND TB1.CTKEY=TB3.CTKEY(+)
+			    AND TB1.OWKEY=TB3.OWKEY(+)
+			    AND TB1.LCKEY=TB3.FR_LCKEY(+)
+			    AND TB1.IVATKEY = TB3.FR_IVATKEY(+)
+			    AND TB2.CTKEY=TB4.CTKEY
+			    AND TB2.OWKEY=TB4.OWKEY
+			    AND TB2.ICUTKEY=TB4.ICUTKEY
+			    AND TB2.UOM=TB4.ICUTTYPE
+                AND TB1.CTKEY=TB5.CTKEY
+                AND TB1.IVATKEY=TB5.IVATKEY
+                AND TB1.LCKEY=TB5.LCKEY
+                AND TB1.ULCKEY=TB5.ULCKEY
+                AND TB1.OWKEY=TB5.OWKEY
+                AND TB1.ICKEY=TB5.ICKEY			    
+		<![CDATA[	
+			    AND TB1.EXQTY - COALESCE(TB3.TAQTY, 0) > 0
+		]]>
+	</select>		
+	
+	
+	<select id="selectListTadtkeyListForReport" resultType="java.lang.String" >
+		SELECT  A.TA_DTKEY AS TA_DTKEY
+		  FROM  TWORK_INFO_TA_DT A
+				,TWORK_MST_IC  B
+				,TWORK_MST_ICUT C 
+				,TWORK_MST_ICUTXTYPE D
+		 WHERE
+			    A.CTKEY = B.CTKEY
+		   AND  A.OWKEY = B.OWKEY
+		   AND  A.ICKEY = B.ICKEY
+		   AND  A.CTKEY = C.CTKEY
+		   AND  A.ICUTKEY = C.ICUTKEY
+		   AND  A.CTKEY = D.CTKEY
+		   AND  A.ICUTKEY = D.ICUTKEY
+		   AND  A.UOM = D.ICUTTYPE
+		   AND  A.WKSTATUS = '00'
+		   AND  A.TA_DTTYPE IN ('40','90')
+		   AND  C.CLOSDATE >= #{closdate}
+		   AND  A.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_dtkeyList)" > 
+		   AND 	A.TA_DTKEY IN
+				<foreach item="ta_dtkeyList" index="index" collection="ta_dtkeyList" open="(" separator="," close=")">
+					#{ta_dtkeyList}
+			  	</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+	</select>
+</mapper>	

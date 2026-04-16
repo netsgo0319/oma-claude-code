@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfIcomWmsOrderMapper">
+
+	<select id="selectInbConfirmIfData" resultType="camelMap">
+        SELECT B.WKSTATUS
+              ,A.IBCONFIRMDATE
+              ,B.EXQTY  
+              ,B.CFQTY AS CFQTY
+              ,B.RJQTY AS RJQTY  
+              ,B.COSTPRICE
+              ,B.SALEPRICE
+              ,A.IBHDKEY
+              ,B.IBDTKEY
+              ,B.IBNRCD
+              ,A.UDF1
+              ,A.WKSTATUS AS WKSTATUS_HD
+              ,A.ACKEY
+              ,B.RJQTY AS IBRJQTY
+              ,B.IMGHDKEY AS IBNRIMGKEY
+              ,B.CFQTY AS IBCFGQTY
+              ,B.AJQTY 
+              ,B.GAPREASONCD
+              ,A.CTKEY
+              ,A.IBHDTYPE
+          FROM TWORK_INFO_IB_HD A 
+              ,TWORK_INFO_IB_DT B
+         WHERE 
+               A.CTKEY = B.CTKEY
+           AND A.IBHDKEY = B.IBHDKEY
+		   AND A.CTKEY = #{ctkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND B.IBDTKEY = #{ibdtkey}	
+	</select>
+
+
+	<select id="selectInbConfirmIfDataList" resultType="camelMap">
+        SELECT B.WKSTATUS
+              ,A.IBCONFIRMDATE
+              ,B.EXQTY  
+              ,B.CFQTY AS CFQTY
+              ,B.RJQTY AS RJQTY  
+              ,B.COSTPRICE
+              ,B.SALEPRICE
+              ,A.IBHDKEY
+              ,B.IBDTKEY
+              ,B.IBNRCD
+              ,A.UDF1
+              ,A.WKSTATUS AS WKSTATUS_HD
+              ,A.ACKEY
+              ,B.RJQTY AS IBRJQTY
+              ,B.IMGHDKEY AS IBNRIMGKEY
+              ,B.CFQTY AS IBCFGQTY
+              ,B.AJQTY 
+              ,B.GAPREASONCD
+              ,A.CTKEY
+              ,A.IBHDTYPE
+          FROM TWORK_INFO_IB_HD A 
+              ,TWORK_INFO_IB_DT B
+         WHERE 
+               A.CTKEY = B.CTKEY
+           AND A.IBHDKEY = B.IBHDKEY
+		   AND A.CTKEY = #{ctkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+	</select>	
+
+	<resultMap id="obOrderIfDataMap" type="java.util.HashMap">
+		 <result property="exqty" column="EXQTY" />
+		 <result property="cfqty" column="CFQTY" />
+		 <result property="costprice" column="COSTPRICE" />
+		 <result property="saleprice" column="SALEPRICE" />
+		 <result property="obhdkey" column="OBHDKEY" />
+		 <result property="obdtkey" column="OBDTKEY" />
+		 <result property="obrscd" column="OBRSCD" />
+		 <result property="obconfirmdate" column="OBCONFIRMDATE" />
+		 <result property="wkstatus" column="WKSTATUS" />
+		 <result property="wkstatus_hd" column="WKSTATUS_HD" />
+ 	</resultMap>
+
+	<select id="selectObOrderConfirmIfData" resultMap="obOrderIfDataMap">
+		SELECT B.EXQTY
+		      ,B.CFQTY
+		      ,B.COSTPRICE
+		      ,B.SALEPRICE
+		      ,B.OBHDKEY
+		      ,B.OBDTKEY
+		      ,B.OBRSCD
+		      ,A.OBCONFIRMDATE
+		      ,B.WKSTATUS
+		      ,A.WKSTATUS AS WKSTATUS_HD
+		  FROM TWORK_INFO_OB_HD A 
+		      ,TWORK_INFO_OB_DT B 
+		 WHERE 
+		       A.CTKEY = B.CTKEY
+		   AND A.OBHDKEY = B.OBHDKEY
+		   AND B.WKSTATUS BETWEEN '81' AND '90'
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OBHDKEY = #{obhdkey}
+		   AND B.OBDTKEY = #{obdtkey}	
+	</select>	
+	
+	<select id="selectObOrderIfData" resultMap="obOrderIfDataMap">
+		SELECT  OBHDKEY
+				,OBDTKEY
+				,EXQTY
+		  FROM  TWORK_INFO_OB_DT B 
+		 WHERE 
+		        CTKEY = #{ctkey}
+		   AND  OBHDKEY = #{obhdkey}
+		   AND  OBDTKEY = #{obdtkey}	
+	</select>
+	
+	<resultMap id="selectInbDataGapDataMap" type="java.util.HashMap">
+		 <result property="ibhdkey" column="IBHDKEY" />
+		 <result property="ibdtkey" column="IBDTKEY" />
+		 <result property="externorderkey" column="EXTERNORDERKEY" />
+		 <result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		 <result property="store_key" column="STORE_KEY" />
+		 <result property="ackey" column="ACKEY" />
+		 <result property="ctgkey" column="CTGKEY" />
+		 <result property="ickey" column="ICKEY" />
+		 <result property="taxyn" column="TAXYN" />
+		 <result property="costprice" column="COSTPRICE" />
+		 <result property="saleprice" column="SALEPRICE" />
+		 <result property="exqty" column="EXQTY" />
+		 <result property="exqty" column="EXQTY" />
+		 <result property="ajqty" column="AJQTY" />
+		 <result property="gapreasoncd" column="GAPREASONCD" />
+		 <result property="externorderkey" column="EXTERNORDERKEY" />
+		 <result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		 <result property="ibconfirmdate" column="IBCONFIRMDATE" />
+		 <result property="loggrpcd" column="LOGGRPCD" />
+		 <result property="dckey" column="DCKEY" />
+		 <result property="icgrkey" column="ICGRKEY" />
+		 <result property="gapseqno" column="GAPSEQNO" />
+		 <result property="gapreasoncd" column="GAPREASONCD" />
+		 <result property="cfqty" column="CFQTY" />
+		 <result property="icutqty" column="ICUTQTY" />
+		 <result property="orgchitid" column="ORGCHITID" />
+		 <result property="ctkey" column="CTKEY" />
+ 	</resultMap>
+
+	<select id="selectInbDataGapData" resultMap="selectInbDataGapDataMap">
+		SELECT 
+		       B.IBHDKEY
+		      ,B.IBDTKEY
+		      ,A.STORE_KEY
+		      ,COALESCE(A.ACKEY, C.ACKEY) AS ACKEY
+		      ,B.ICKEY
+		      ,C.TAXYN
+		      ,B.COSTPRICE
+		      ,B.SALEPRICE
+		      ,B.EXQTY
+		      ,B.AJQTY
+		      ,B.CFQTY
+		      ,B.GAPREASONCD
+		      ,B.EXTERNORDERKEY
+		      ,B.EXTERNORDERLINENUM
+		      ,A.IBCONFIRMDATE
+              ,A.LOGGRPCD
+              ,A.DCKEY
+              ,B.ICGRKEY
+              ,COALESCE((
+              	SELECT MAX(B.GAPSEQNO)
+              	  FROM TWORK_INFO_IB_DT IBDT 
+              	 WHERE 
+              	 	  IBDT.CTKEY = B.CTKEY
+              	  AND IBDT.IBHDKEY = B.IBHDKEY
+              	  AND IBDT.IBDTKEY LIKE SUBSTR(B.IBDTKEY,1,1) || '%' 
+              ), 0) AS GAPSEQNO
+              ,B.GAPREASONCD
+              ,FN_GET_CTGKEY_LV(C.CTKEY , C.OWKEY , C.CTGKEY) AS CTGKEY
+              ,D.ICUTQTY
+              ,B.ORGCHITID
+              ,A.CTKEY
+		  FROM TWORK_INFO_IB_HD A
+		      ,TWORK_INFO_IB_DT B
+		      ,TWORK_MST_IC C
+		      ,TWORK_MST_ICUTXTYPE D 
+		 WHERE
+		       A.CTKEY = B.CTKEY 
+		   AND A.IBHDKEY = B.IBHDKEY
+		   AND B.CTKEY = C.CTKEY
+		   AND B.OWKEY = C.OWKEY
+		   AND B.ICKEY = C.ICKEY
+		   AND B.ICUTKEY = D.ICUTKEY
+		   AND B.CTKEY = D.CTKEY
+		   AND D.ICUTTYPE = 'EA'
+		   AND B.IBHDKEY = #{ibhdkey}
+		   AND B.IBDTKEY = #{ibdtkey}
+		   AND A.CTKEY = #{ctkey}
+	</select>
+	
+</mapper>	

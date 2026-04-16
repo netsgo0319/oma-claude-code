@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.InXOutboundStatusMapper">
+
+	<select id="selectInXOutboundStatusList" resultType="camelMap">
+		/* oms-report-InXOutboundStatus-sql-oracle.xml selectInXOutboundStatusList */
+		SELECT TBL.CTKEY
+		     , CT.CTNM
+			 , TBL.OWKEY
+		     , OW.OWNM
+			 , TBL.IBOBYN
+			 , ORMAP.EXTERN_OR_TYPE_NM
+			 , TBL.OR_HDDATE
+			 , MAX(TBL.EXTORDERTYPECD) AS EXTORDERTYPECD
+			 , SUM(TBL.TOTALCNT) AS TOTALCNT
+			 , SUM(TBL.COMPLETECNT) AS COMPLETECNT
+			 , SUM(TBL.NONCOMPLETECNT) AS NONCOMPLETECNT
+			 , SUM(TBL.SAP_SEND_SEND_SUC) AS SAP_SUCCESS
+			 , SUM(TBL.SAP_SEND_FAIL) AS SAP_FAILED
+		FROM		(SELECT SO.IBOBYN
+						  , SO.CTKEY
+						  , SO.OWKEY
+						  , SO.OR_HDDATE
+						  , SO.EXTERN_OR_TYPE_CD AS EXTORDERTYPECD
+						  , SO.TOTALCNT
+						  , SO.COMPLETECNT
+						  , SO.TOTALCNT - SO.COMPLETECNT AS NONCOMPLETECNT
+						  , SO.SAP_SEND_SEND_SUC
+						  , SO.SAP_SEND_FAIL
+					 FROM (SELECT CASE WHEN ORTP.IBYN = 'Y' THEN '01' ELSE '02' END AS IBOBYN
+								, A.CTKEY
+								, A.OWKEY
+								, MAPP.EXTERN_OR_TYPE_CD
+								, A.OR_HDDATE
+								, MAX(A.OR_TYPE_CD) AS OR_TYPE_CD
+								, COUNT(1) AS TOTALCNT
+								, SUM(CASE WHEN A.OR_TYPE_CD = MAPP.OR_TYPE_CD AND A.WKSTATUS = #{soCompleteWkstatus} THEN 1 ELSE 0 END) AS COMPLETECNT
+								, SUM(CASE WHEN COALESCE(CH.SAPTRANSFAILYN, 'N')<![CDATA[<>]]>'N' THEN 1 ELSE 0 END) AS SAP_SEND_FAIL
+								, SUM(CASE WHEN CH.WKSTATUS=#{coSendWkstatus} AND COALESCE(CH.SAPTRANSFAILYN, 'N')='N' THEN 1 ELSE 0 END) AS SAP_SEND_SEND_SUC
+						   FROM TORDER_INFO_SO_HD A
+						   LEFT OUTER JOIN TORDER_MST_ORTYPE ORTP
+						     ON A.OWKEY = ORTP.OWKEY
+							AND A.OR_TYPE_CD = ORTP.OR_TYPE_CD
+						   LEFT JOIN TORDER_INFO_CO_HD CH
+						     ON A.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY
+						    AND A.OWKEY = CH.OWKEY	
+						   LEFT OUTER JOIN TORDER_INFO_ORTYPE_MAPPING MAPP
+							 ON CH.OWKEY = MAPP.OWKEY
+                            AND CH.OR_TYPE_CD = MAPP.OR_TYPE_CD
+                            AND CH.EXTORDERTYPECD = MAPP.EXTERN_OR_TYPE_CD
+						    AND MAPP.DELYN ='N'
+						   WHERE A.WKSTATUS != #{soCancelWkstatus}
+						     AND A.OWKEY = #{owkey}
+							 AND A.OR_HDDATE BETWEEN #{orHddateFr} AND  #{orHddateTo}
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+								AND EXISTS (
+									SELECT 1
+									FROM TORDER_INFO_SO_DT DT
+									WHERE ICKEY IN (
+									<foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+										#{ickey}
+									</foreach>
+									)
+									AND DT.OR_HDDATE BETWEEN #{orHddateFr} AND  #{orHddateTo}
+									AND A.SO_HDKEY = DT.SO_HDKEY
+								)
+							</if>
+						   GROUP BY CASE WHEN ORTP.IBYN = 'Y' THEN '01' ELSE '02' END, A.CTKEY , A.OWKEY , MAPP.EXTERN_OR_TYPE_CD , A.OR_HDDATE) SO
+							  ) TBL
+		LEFT OUTER JOIN TADMIN_MST_CT CT
+					 ON TBL.CTKEY = CT.CTKEY
+		LEFT OUTER JOIN TADMIN_MST_OW OW
+					 ON TBL.OWKEY = OW.OWKEY
+		LEFT OUTER JOIN TORDER_MST_EXTERN ORMAP
+					 ON TBL.OWKEY = ORMAP.OWKEY
+					AND TBL.EXTORDERTYPECD = ORMAP.EXTERN_OR_TYPE_CD
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		GROUP BY TBL.IBOBYN , CT.CTNM , OW.OWNM, TBL.OR_HDDATE ,TBL.EXTORDERTYPECD, TBL.CTKEY , TBL.OWKEY  , ORMAP.EXTERN_OR_TYPE_NM
+		ORDER BY TBL.OR_HDDATE
+	</select>
+</mapper>
+	

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.ams.master.mapper.ImageTransferMapper">
+
+    <select id="selectImgList" resultType="com.daiso.batch.biz.ams.master.dto.BatchImgDTO">
+		/* ImageTransferMapper.xml selectImgList */
+        SELECT CTKEY
+            ,  ICKEY
+            ,  FILEPATH
+            ,  FILENM
+            ,  'N' AS IMG_DOWN_CHK
+          FROM TADMIN_ICIMG_META_BATCH
+         WHERE DOWNLOADYN = 'N'
+           AND ROWNUM <![CDATA[ <= ]]> 2000
+    </select>
+</mapper>

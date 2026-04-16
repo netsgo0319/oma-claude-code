@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.BoxLabelMgmtMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectBoxLabelMgmt">
+		  FROM TWORK_HIST_BOXLBL BL
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = BL.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectBoxLabelMgmtCount" resultType="java.lang.Integer">
+		/* wms-master-boxlabelmgmt-sql-oracle.xml - selectBoxLabelMgmtCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectBoxLabelMgmt"/>
+	</select>
+
+	<select id="selectBoxLabelMgmtList" resultType="camelMap">
+		/* wms-master-boxlabelmgmt-sql-oracle.xml - selectBoxLabelMgmtList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+		     , BL.CTKEY
+		     , CT.CTNM
+			 , BL.BOXLBLNO
+			 , BL.PBLCTDATE
+			 , BL.PRYN
+			 , BL.INSERTDATE
+			 , BL.INSERTURKEY
+			 , BL.UPDATEDATE
+		  	 , BL.UPDATEURKEY
+		<include refid="sql_selectBoxLabelMgmt"/>
+
+		 ORDER BY BL.BOXLBLNO DESC
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<insert id="insertBoxLabel">
+		/* wms-master-boxlabelmgmt-sql-oracle.xml - insertBoxLabel */
+		INSERT INTO TWORK_HIST_BOXLBL (
+			   CTKEY
+			 , BOXLBLNO
+			 , PBLCTDATE
+			 , PRYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{boxlblno}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{pryn}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , #{surkey}
+		     )
+	</insert>
+
+	<select id="selectCreateBoxLabelList" resultType="camelMap">
+		/* wms-master-boxlabelmgmt-sql-oracle.xml - selectCreateBoxLabelList */
+		SELECT '1' AS CHK
+		     , BL.CTKEY
+			 , CT.CTNM
+			 , BL.BOXLBLNO
+			 , BL.PBLCTDATE
+			 , BL.PRYN
+			 , BL.INSERTDATE
+			 , BL.INSERTURKEY
+			 , BL.UPDATEDATE
+			 , BL.UPDATEURKEY
+		  FROM TWORK_HIST_BOXLBL BL
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = BL.CTKEY
+		 WHERE BL.CTKEY = #{ctkey}
+		   AND BL.BOXLBLNO IN (
+				<foreach collection="lblnoList" item="item" separator=",">
+					#{item}
+				</foreach>
+			 )
+	</select>
+
+	<update id="updateBoxLabelPrintYn">
+		/* wms-master-boxlabelmgmt-sql-oracle.xml - selectCreateBoxLabelList */
+		UPDATE TWORK_HIST_BOXLBL
+		   SET PRYN = #{pryn}
+			 , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXLBLNO = #{boxlblno}
+	</update>
+
+</mapper>

@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.AsrtWorkMapper">
+
+	<sql id="selectAsrtWksql">
+		/* wms-inbound-asrtwork-sql-oracle.xml - selectAsrtWksql - 아소트 입고 정보  SQL */
+		SELECT '0' AS CHK
+			 , CTKEY
+			 , CTNM
+			 , OWKEY
+			 , OWNM
+			 , IBHDKEY
+			 , IBDTKEY
+			 , IBEXPCTDATE
+			 , ICKEY
+			 , ICNM
+			 , EXPCTQTY_UNIT
+			 , IBQTY_UNIT
+			 , EXPCTQTY
+			 , IBQTY
+			 , ASRTWKTGTYN
+			 , ASRTWKCOMPLYN
+			 , ASRTWKQTY
+			 , UPRIBDTKEY
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		 FROM (
+				SELECT A.CTKEY
+					 , D.CTNM
+					 , A.OWKEY
+					 , C.OWNM
+					 , A.IBHDKEY
+					 , B.IBDTKEY
+					 , A.IBEXPCTDATE
+					 , CASE WHEN B.EXPCTQTY > 0 THEN ROUND(B.EXPCTQTY / COALESCE(G.ICUNITQTY, 1),2)
+							ELSE B.EXPCTQTY END AS EXPCTQTY_UNIT
+					 , CASE WHEN B.IBQTY > 0 THEN ROUND(B.IBQTY / COALESCE(G.ICUNITQTY, 1),2)
+							ELSE B.IBQTY END AS IBQTY_UNIT
+					 , B.EXPCTQTY
+					 , B.IBQTY
+					 , A.IBHDTYPECD
+					 , A.IBSTATUSCD
+					 , B.ICKEY
+					 , E.ICNM
+					 , B.ASRTWKTGTYN
+					 , COALESCE(B.ASRTWKCOMPLYN, 'N') AS ASRTWKCOMPLYN
+					 , B.ASRTWKQTY
+					 , B.UPRIBDTKEY
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN TWORK_INFO_IB_DT B
+					ON A.CTKEY = B.CTKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_OW C
+					ON B.OWKEY = C.OWKEY
+				 INNER JOIN TWORK_MST_CT D
+					ON A.CTKEY = D.CTKEY
+				 INNER JOIN TWORK_MST_IC E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND B.ICKEY = E.ICKEY
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE G
+					ON B.CTKEY = G.CTKEY
+				   AND B.OWKEY = G.OWKEY
+				   AND B.ICKEY = G.ICKEY
+				   AND B.UOM = G.ICUNITTYPECD
+			 	) A
+		  WHERE A.IBSTATUSCD != '99'
+		    AND A.ASRTWKTGTYN = 'Y'
+			AND A.UPRIBDTKEY IS NULL
+			AND A.IBQTY > 0
+			AND A.CTKEY = COALESCE(#{CTKEY}, #{sctkey})
+			AND A.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(IBEXPCTDATE_FROM) and @com.kns.framework.util.StringUtil@isNotEmpty(IBEXPCTDATE_TO)" >
+			AND A.IBEXPCTDATE BETWEEN #{IBEXPCTDATE_FROM} AND #{IBEXPCTDATE_TO}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(BARCODE)" >
+			AND EXISTS (
+						SELECT 1
+						  FROM TWORK_MST_ICBARCODE X
+						 WHERE X.CTKEY = A.CTKEY
+						   AND X.OWKEY = A.OWKEY
+						   AND X.ICKEY = A.ICKEY
+						   AND X.USEYN = 'Y'
+						   AND X.BARCODE = #{BARCODE}
+			)
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICNM)" >
+			AND A.ICNM LIKE '%'|| #{ICNM} ||'%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ASRTWKCOMPLYN)" >
+			AND A.ASRTWKCOMPLYN = #{ASRTWKCOMPLYN}
+		</if>
+		<if test="ickeyList != null and ickeyList.size > 0">
+			<foreach collection="ickeyList" item="ickey" open=" AND A.ICKEY IN (" separator="," close=")">
+				#{ickey}
+			</foreach>
+		</if>
+
+	</sql>
+
+	<select id="selectAsrtWkCount" resultType="java.lang.Integer" >
+	/* wms-inbound-asrtWk-sql-oracle.xml - selectAsrtWkCount - 아소트 입고 정보 건수 조회 */
+		SELECT  COUNT(1)
+		  FROM (
+			<include refid="selectAsrtWksql"/>
+		  )
+	</select>
+	
+	<select id="selectAsrtWk" resultType="camelMap">
+	/* wms-inbound-asrtWk-sql-oracle.xml - selectAsrtWk - 아소트 입고 정보 조회 */
+			<include refid="selectAsrtWksql"/>
+			ORDER BY UPDATEDATE DESC
+	</select>
+
+	<select id="selectAsrtmasickey" resultType="camelMap">
+		/* wms-inbound-asrtWk-sql-oracle.xml - selectAsrtmasickey - 아소트 상품 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , D.BARCODE
+			 , B.LCKEY
+			 , A.IBQTY AS IBQTY
+             , A.IBQTY - A.ASRTWKQTY AS ASRTEXPCTQTY
+			 , CASE WHEN A.IBQTY <![CDATA[ > ]]> 0 THEN ROUND((A.IBQTY - A.ASRTWKQTY) / COALESCE(F.ICUNITQTY, 1),2)
+					ELSE A.IBQTY END AS INNQTY
+			 , 'TXT_NON' AS COLOR
+			 , 'TXT_NON' AS DESIGN
+			 , 'TXT_NON' AS CHRT
+			 , B.IMGURL
+			 , 0 AS ASRTWKQTY
+			 , (SELECT MIN(PRDCTDATE) FROM TWORK_INFO_IBCF_DT WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND IBHDKEY = #{ibhdkey} AND IBDTKEY = #{ibdtkey}) AS PRDCTDATE
+			 , (SELECT MIN(EXPDATE) FROM TWORK_INFO_IBCF_DT WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND IBHDKEY = #{ibhdkey} AND IBDTKEY = #{ibdtkey}) AS EXPDATE
+			 , B.EXPCKYN
+			 , B.EXPCKTYPECD
+			 , F.ICUNITQTY
+			 , A.ASRTWKQTY AS TOTAL_ASRTWKQTY
+			 , (
+				SELECT MAX(CNTRNO)
+				  FROM TWORK_INFO_IBCF_DT
+				 WHERE CTKEY = A.CTKEY
+				   AND OWKEY = A.OWKEY
+				   AND IBHDKEY = A.IBHDKEY
+				   AND IBDTKEY = A.IBDTKEY
+				) AS CNTRNO
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND A.ICKEY = D.ICKEY
+		   AND A.UOM = D.UOM
+		   AND D.USEYN = 'Y'
+		  LEFT OUTER JOIN TWORK_MST_LC E
+			ON A.CTKEY = E.CTKEY
+		   AND B.LCKEY = E.LCKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE F
+			ON A.CTKEY = F.CTKEY
+		   AND A.OWKEY = F.OWKEY
+		   AND A.ICKEY = F.ICKEY
+		   AND F.ICUNITTYPECD = 'INN'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTKEY = #{ibdtkey}
+		   AND A.ICKEY = #{ickey}
+	</select>
+
+	<select id="selectAsrtdtickey" resultType="camelMap">
+		/* wms-inbound-asrtWk-sql-oracle.xml - selectAsrtdtickey - 아소트 상품 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , D.BARCODE
+			 , B.LCKEY
+			 , E.ARKEY
+			 , C.COLOR
+			 , C.DESIGN
+			 , C.CHRT
+			 , C.QTY
+			 , C.IMGURL
+			 , C.ASRTDTICKEY
+			 , F.ICNM  AS ASRTDTICNM
+			 , 0 AS ASRTWKQTY
+			 , G.ICUNITQTY
+			 , (
+				SELECT MAX(CNTRNO)
+				  FROM TWORK_INFO_IBCF_DT
+				 WHERE CTKEY = A.CTKEY
+				   AND OWKEY = A.OWKEY
+				   AND IBHDKEY = A.IBHDKEY
+				   AND IBDTKEY = A.IBDTKEY
+				) AS CNTRNO
+			 , E.RACKNO
+			 , E.ROWNO
+			 , E.TIERNO
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_MST_ASRT C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.ICKEY = C.ASRTMASICKEY
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND B.ICKEY = C.ASRTDTICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND D.UOM = 'EA'
+		   AND C.ASRTDTICKEY  = D.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_LC E
+			ON A.CTKEY = E.CTKEY
+		   AND B.LCKEY = E.LCKEY
+		 INNER JOIN TWORK_MST_IC F
+			ON A.CTKEY = F.CTKEY
+		   AND A.OWKEY = F.OWKEY
+		   AND C.ASRTDTICKEY = F.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE G
+			ON A.CTKEY = G.CTKEY
+		   AND A.OWKEY = G.OWKEY
+		   AND A.ICKEY = G.ICKEY
+		   AND G.ICUNITTYPECD = 'INN'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTKEY = #{ibdtkey}
+		   AND A.ICKEY = #{ickey}
+	</select>
+
+	<update id="updateIbDtIbqty">
+		/* wms-inbound-asrtWk-sql-oracle.xml - updateIbDtIbqty - 아소트 작업 수량   */
+		UPDATE TWORK_INFO_IB_DT
+		   SET ASRTWKQTY 	 = ASRTWKQTY + #{asrtwkqty}
+			 , ASRTWKCOMPLYN = (
+								SELECT CASE WHEN IBQTY = SUM(ASRTWKQTY) + #{asrtwkqty} THEN 'Y'
+											ELSE 'N' END
+								  FROM TWORK_INFO_IB_DT
+								 WHERE IBHDKEY = #{ibhdkey}
+								   AND IBDTKEY = #{ibdtkey}
+								 GROUP BY CTKEY, OWKEY, IBHDKEY, IBDTKEY, IBQTY
+								)
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND IBDTKEY 		= #{ibdtkey}
+	</update>
+
+	<select id="selectIbdtAsrtCntCheck" resultType="biginteger">
+		/* wms-inbound-asrtWk-sql-oracle.xml - selectIbdtAsrtCntCheck - 입고 상세 아소트 상품 생성내역 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND UPRIBDTKEY	= #{ibdtkey}
+		   AND ICKEY 		= #{ickey}
+	</select>
+
+	<select id="selectAsrtWorkMstIc" resultType="camelMap">
+		/* wms-inbound-asrtWk-sql-oracle.xml - selectAsrtWorkMstIc - 상품 마스터 조회  */
+		SELECT A.*
+			 , B.WEIGHT
+			 , COALESCE(B.ICUNITQTY, 1) AS ICUNITQTY
+		  FROM TWORK_MST_IC A
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		   AND B.ICUNITTYPECD = COALESCE(#{icunittypecd}, 'INN')
+		 WHERE A.CTKEY 		= #{ctkey}
+		   AND A.OWKEY 		= #{owkey}
+		   AND A.ICKEY 		= #{ickey}
+	</select>
+
+	<insert id="insertAsrtdticIbdt"  parameterType="ibOrderDtVO">
+	/* wms-inbound-asrtWk-sql-oracle.xml - insertAsrtdticIbdt - 아소트 자상품 입고 상세 생성  */
+	 INSERT INTO TWORK_INFO_IB_DT
+		  ( CTKEY
+		  , OWKEY
+		  , IBHDKEY
+		  , IBDTKEY
+		  , UPRIBDTKEY
+		  , ICKEY
+		  , SBKEY
+		  , ICUNITKEY
+		  , INITQTY
+		  , EXPCTQTY
+		  , IBQTY
+		  , CNFRMQTY
+		  , DMGQTY
+		  , RJQTY
+		  , UOM
+		  , CPAMT
+		  , PRDCTDATE
+		  , EXPDATE
+		  , ORHDKEY
+		  , ORDTKEY
+		  , EXTORDERKEY
+		  , EXPORDERLINENO
+		  , SLPRCAMT
+		  , IBNISRSNCD
+		  , IBNISDTRSNCONT
+		  , ORGCHITNO
+		  , ORGCHITSEQNO
+		  , ORGCHITDATE
+		  , ACKEY
+		  , ICTMPRDIVCD
+		  , DCKEY
+		  , ILBHSKEY
+		  , IBCNFRMPRCSDATE
+		  , IBCNFRMURKEY
+		  , IBDDLNDATE
+		  , IBDDLNURKEY
+		  , UPDATEKEY
+		  , WKCHNLCD
+		  , IBDTSTATUSCD
+		  , WEIGHT
+		  , ASRTMASICKEY
+		  , ASRTWKTGTYN
+		  , ASRTWKCOMPLYN
+		  , ASRTWKQTY
+		  , PLCMSTATUSCD
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		  ) VALUES
+		  ( #{ctkey}
+		  , #{owkey}
+		  , #{ibhdkey}
+		  , (
+			 SELECT COALESCE (
+					(
+						SELECT MAX(IBDTKEY::INTEGER) + 1 AS UPRIBDTKEY
+						  FROM TWORK_INFO_IB_DT
+						 WHERE IBHDKEY = #{ibhdkey}
+						   AND UPRIBDTKEY = #{ibdtkey}
+					) ,
+					(
+						SELECT MAX(IBDTKEY::INTEGER) + 1 AS UPRIBDTKEY
+						  FROM TWORK_INFO_IB_DT
+						 WHERE IBHDKEY = #{ibhdkey}
+						  AND IBDTKEY = #{ibdtkey}
+					)
+				)
+			)
+		  , #{upribdtkey}
+		  , #{ickey}
+		  , #{sbkey}
+		  , #{icunitkey}
+		  , #{initqty}
+		  , #{expctqty}
+		  , #{ibqty}
+		  , #{cnfrmqty}
+		  , #{dmgqty}
+		  , #{rjqty}
+		  , #{uom}
+		  , #{cpamt}
+		  , #{prdctdate}
+		  , #{expdate}
+		  , #{orhdkey}
+		  , #{ordtkey}
+		  , #{extorderkey}
+		  , #{exporderlineno}
+		  , #{slprcamt}
+		  , #{ibnisrsncd}
+		  , #{ibnisdtrsncont}
+		  , #{orgchitno}
+		  , #{orgchitseqno}
+		  , #{orgchitdate}
+		  , #{ackey}
+		  , #{ictmprdivcd}
+		  , #{dckey}
+		  , #{ilbhskey}
+		  , #{ibcnfrmprcsdate}
+		  , #{ibcnfrmurkey}
+		  , #{ibddlndate}
+		  , #{ibddlnurkey}
+		  , #{updatekey}
+		  , #{wkchnlcd}
+		  , #{ibdtstatuscd}
+		  , #{weight}
+		  , #{asrtmasickey}
+		  , #{asrtwktgtyn}
+		  , #{asrtwkcomplyn}
+		  , #{asrtwkqty}
+		  , #{plcmstatuscd}
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		  )
+	</insert>
+
+	<select id="selectIbdtByUpribdtkeyAndIckey" resultType="camelMap">
+		/* wms-inbound-asrtWk-sql-oracle.xml - selectIbdtByUpribdtkeyAndIckey - 입고 상세 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND UPRIBDTKEY	= #{upribdtkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+			AND ICKEY 		= #{ickey}
+		</if>
+
+	</select>
+
+	<update id="updateIbDtAsrtdt">
+		/* wms-inbound-asrtWk-sql-oracle.xml - updateIbDtAsrtdt - 입고 상세 아소트 자상품 수량 수정 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET INITQTY  	= INITQTY 	+ 	#{asrtwkqty}
+			 , EXPCTQTY 	= EXPCTQTY 	+ 	#{asrtwkqty}
+			 , IBQTY  		= IBQTY 	+ 	#{asrtwkqty}
+			 , IBDTSTATUSCD	= #{ibdtstatus}
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND IBDTKEY 		= #{ibdtkey}
+	</update>
+
+	<delete id="deleteIbdtArtdtickey">
+		/* wms-inbound-asrtWk-sql-oracle.xml - deleteIbdtArtdtickey - 입고 상세 아소트 자상품 삭제 */
+		DELETE FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY 	 = #{ctkey}
+		   AND OWKEY 	 = #{owkey}
+		   AND IBHDKEY 	 = #{ibhdkey}
+		   AND UPRIBDTKEY = #{ibdtkey}
+	</delete>
+
+</mapper>

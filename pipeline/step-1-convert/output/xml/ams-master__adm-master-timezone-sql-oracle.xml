@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.master.mapper.TimeZoneMapper">
+
+	<select id="selectTimezoneHd" resultType="camelMap" >
+		/* adm-master-timezone-sql-oracle.xml - selectTimezoneHd */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		        SELECT '0' AS CHK,
+		               TZKEY,
+		               UTCOFFSET,
+		               INSERTDATE,
+		               UPDATEDATE,
+		               INSERTURKEY,
+			 		   UPDATEURKEY
+		          FROM TADMIN_MST_TZ_HD
+			    <where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					 	   #{SEARCH_CONDITION}
+					</if>
+					<if test="tzkey != null">
+			    	  	   AND TZKEY = #{tzkey}
+			    	</if>		
+				</where>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY UPDATEDATE DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+  
+	<select id="selectTimezoneCountHd" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - selectTimezoneCountHd */
+        SELECT COUNT(1)
+          FROM TADMIN_MST_TZ_HD
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+			<if test="tzkey != null">
+				AND TZKEY = #{tzkey}
+			</if>
+		</where>
+	</select>
+	
+	<select id="selectTimezoneDtl" resultType="camelMap">
+		/* adm-master-timezone-sql-oracle.xml - selectTimezoneDtl */
+		 SELECT '0' AS CHK
+		       ,TB1.TZKEY			AS TZKEY
+		       ,TB2.CONTINENTCD		AS CONTINENTCD
+		       ,TB2.CNTRYCD			AS CNTRYCD
+		       ,TB2.CITYCD			AS CITYCD
+		       ,TB2.DISPLAYMSG		AS DISPLAYMSG
+		       ,TB2.INSERTDATE		AS INSERTDATE
+		       ,TB2.UPDATEDATE		AS UPDATEDATE
+		       ,TB2.INSERTURKEY
+			   ,TB2.UPDATEURKEY
+		 FROM TADMIN_MST_TZ_HD TB1
+		 INNER JOIN TADMIN_MST_TZ_DT TB2
+		 		 ON TB1.TZKEY = TB2.TZKEY
+		 WHERE TB1.TZKEY = #{tzkey}
+		 ORDER BY UPDATEDATE DESC
+	</select>
+	
+	<select id="selectTimezoneCountDtl" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - selectTimezoneCountDtl */
+		 SELECT COUNT(1)
+		 FROM TADMIN_MST_TZ_HD TB1
+		 INNER JOIN TADMIN_MST_TZ_DT TB2
+		 		 ON TB1.TZKEY = TB2.TZKEY
+		 WHERE 1 = 1
+           <if test="tzkey != null">
+		   	AND TB1.TZKEY = #{tzkey}
+		   </if>
+	</select>
+
+	<select id="checkTimezoneInfoHd" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - checkTimezoneInfoHd */
+			SELECT COUNT(1)
+			  FROM TADMIN_MST_TZ_HD
+	    	 	WHERE TZKEY = #{tzkey}				 
+	</select>	
+	
+	<select id="checkTimezoneContinentDtl" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - checkTimezoneContinentDtl */
+			SELECT COUNT(1)
+			  FROM TADMIN_MST_TZ_DT
+			  WHERE TZKEY = #{tzkey}
+ 	    	 <if test="tzkey != null">
+	    	 	AND TZKEY = #{tzkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkTimezoneCountryDtl" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - checkTimezoneCountryDtl */
+			SELECT COUNT(1)
+			  FROM TADMIN_MST_TZ_DT
+			  WHERE TZKEY = #{tzkey}
+ 	    	 <if test="tzkey != null">
+	    	 	AND TZKEY = #{tzkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkTimezoneCityDtl" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - checkTimezoneCityDtl */
+			SELECT COUNT(1)
+			  FROM TADMIN_MST_TZ_DT
+			  WHERE TZKEY = #{tzkey}
+ 	    	 <if test="tzkey != null">
+	    	 	AND TZKEY = #{tzkey}
+	    	 </if>					 
+	</select>
+	
+	<select id="checkTimezoneInfoDtl" resultType="java.lang.Integer" >
+		/* adm-master-timezone-sql-oracle.xml - checkTimezoneInfoDtl */
+			SELECT COUNT(1)
+			  FROM TADMIN_MST_TZ_DT
+			  WHERE TZKEY = #{tzkey}
+	    	 <if test="continentcd != null">
+	    	 	AND CONTINENTCD = #{continentcd}
+	    	 </if>
+	    	 <if test="cntrycd != null">
+	    	 	AND CNTRYCD = #{cntrycd}
+	    	 </if>
+	    	 <if test="citycd != null">
+	    	 	AND CITYCD = #{citycd}
+	    	 </if>				 
+	</select>	
+	
+	<insert id="insertTimezoneInfoHd">
+		/* adm-master-timezone-sql-oracle.xml - insertTimezoneInfoHd */
+		INSERT INTO TADMIN_MST_TZ_HD
+		(
+		      TZKEY
+		    , UTCOFFSET
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{tzkey}
+		    ,#{utcoffset}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	<insert id="insertTimezoneInfoDtl">
+		/* adm-master-timezone-sql-oracle.xml - insertTimezoneInfoDtl */
+		INSERT INTO TADMIN_MST_TZ_DT
+		(
+			  TZKEY
+		    , CONTINENTCD
+		    , CNTRYCD
+		    , CITYCD
+		    , DISPLAYMSG
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{tzkey}
+		    ,#{continentcd}
+		    ,#{cntrycd}
+		    ,#{citycd}
+		    ,#{displaymsg}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	<update id="updateTimezoneInfoHd">
+		/* adm-master-timezone-sql-oracle.xml - updateTimezoneInfoHd */
+		UPDATE TADMIN_MST_TZ_HD
+		   SET UTCOFFSET   = #{utcoffset}
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE TZKEY        = #{tzkey}
+	</update>
+			
+	<update id="updateTimezoneInfoDtl">
+		/* adm-master-timezone-sql-oracle.xml - updateTimezoneInfoDtl */
+		UPDATE TADMIN_MST_TZ_DT
+		   SET DISPLAYMSG 	  = #{displaymsg}
+			  ,UPDATEDATE     = #{sysdate}
+			  ,UPDATEURKEY    = #{surkey}
+		 WHERE TZKEY          = #{tzkey}
+		 	AND CONTINENTCD   = #{continentcd}
+		 	AND CNTRYCD	      = #{cntrycd}
+		 	AND CITYCD 	      = #{citycd}
+	</update>
+	
+	<delete id="deleteTimezoneInfoHd">
+		/* adm-master-timezone-sql-oracle.xml - deleteTimezoneInfoHd */
+		DELETE FROM TADMIN_MST_TZ_HD
+		 WHERE TZKEY = #{tzkey}
+	</delete>
+		
+	<delete id="deleteTimezoneInfoDtl">
+		/* adm-master-timezone-sql-oracle.xml - deleteTimezoneInfoDtl */
+		DELETE FROM TADMIN_MST_TZ_DT
+		 WHERE TZKEY = #{tzkey}
+	   	  <if test="continentcd != null">
+	    	 AND CONTINENTCD = #{continentcd}
+	      </if>
+	      <if test="cntrycd != null">
+	      	 AND CNTRYCD = #{cntrycd}
+	      </if>
+	      <if test="citycd != null">
+	    	 AND CITYCD = #{citycd}
+	    </if>				 
+	</delete>
+			
+</mapper>
+	

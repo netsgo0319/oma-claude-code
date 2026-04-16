@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.StrategyMapper">
+
+	<resultMap id="selectStrategyHdMap" type="java.util.HashMap">
+		<result property="chk" 				column="CHK" />
+  		<result property="ctkey" 			column="CTKEY" />
+  		<result property="stghdkey" 		column="STGHDKEY" />	
+  		<result property="stghddesc" 		column="STGHDDESC" />	
+  		<result property="stgtype_desc" 	column="STGTYPE_DESC" />
+		<result property="inserturkey" 		column="INSERTURKEY" />	
+  		<result property="insertdate" 		column="INSERTDATE"/>	
+  		<result property="updateurkey" 		column="UPDATEURKEY" />	
+  		<result property="updatedate" 		column="UPDATEDATE"/>
+	</resultMap>
+	
+	<select id="selectStrategyHd" resultMap="selectStrategyHdMap">
+	/* wms-ctmaster-strategy-sql-oracle.xml - selectStrategyHd - 전략 헤더 조회  SQL */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT	'0' AS CHK
+			        ,CTKEY
+					,STGHDKEY
+				 	,STGHDDESC
+				 	<!-- ,#{ctkey} || ';' || 'STGTYPE' || ';' || STGTYPE AS STGTYPE_DESC --> 
+				 	,FN_GET_WMS_CTCD_NAME(#{ctkey}, 'STGTYPE', STGTYPE, 'KOR') AS STGTYPE_DESC
+				  	,INSERTDATE
+				  	,INSERTURKEY
+			  		,UPDATEDATE
+			  		,UPDATEURKEY						  					  
+			  FROM	TWORK_INFO_STG_HD
+			  WHERE
+	  	   						CTKEY = #{ctkey}
+				 	<if test="stghdkey != null"> 
+				 		AND STGHDKEY = #{stghdkey}
+				 	</if>							 
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					    AND #{SEARCH_CONDITION}
+					</if>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	
+	<select id="selectStrategyHdCount" resultType="java.lang.Integer" >
+	/* wms-ctmaster-strategy-sql-oracle.xml - selectStrategyHdCount - 전략 헤더 건수 조회  SQL */
+		SELECT	COUNT(1)  
+		  FROM	TWORK_INFO_STG_HD
+		  WHERE
+    	  	   CTKEY = #{ctkey} 
+		 	<if test="stghdkey != null"> 
+		 		AND STGHDKEY = #{stghdkey}
+		 	</if>							 
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			    AND #{SEARCH_CONDITION}
+			</if>
+	</select>
+	
+	
+	<insert id="insertTWorkInfoStgHd" >
+	/* wms-ctmaster-strategy-sql-oracle.xml - insertTWorkInfoStgHd - 전략 헤더 등록  SQL */	
+		INSERT INTO TWORK_INFO_STG_HD
+				(
+					CTKEY
+			       ,STGHDKEY
+			       ,STGHDDESC
+			       ,STGTYPE
+			       ,INSERTDATE
+			       ,INSERTURKEY
+			       ,UPDATEDATE
+			       ,UPDATEURKEY			      	
+			    ) 
+			    VALUES 
+			    (
+			    	#{ctkey}
+					,#{stghdkey}
+					,#{stghddesc}
+					,#{stgtype}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+	
+ 	
+ 	<update id="updateTWorkInfoStgHd">
+ 	/* wms-ctmaster-strategy-sql-oracle.xml - updateTWorkInfoStgHd - 전략 헤더 수정  SQL */
+ 		UPDATE	TWORK_INFO_STG_HD
+ 		   SET	UPDATEDATE  		= #{sysdate}
+		        ,UPDATEURKEY 		= #{surkey}
+		        ,STGHDDESC    		= #{stghddesc}
+		        ,STGTYPE        	= #{stgtype}
+		 WHERE	STGHDKEY 			= #{stghdkey}
+		   AND 	CTKEY   	     	= #{ctkey}		
+ 	</update>	
+ 	
+ 	
+ 	<delete id="deleteTWorkInfoStgHd">	
+ 	/* wms-ctmaster-strategy-sql-oracle.xml - deleteTWorkInfoStgHd - 전략 헤더 삭제  SQL */
+			DELETE 
+			 FROM	TWORK_INFO_STG_HD
+			WHERE	STGHDKEY = #{stghdkey}
+			  AND 	CTKEY  = #{ctkey}
+	</delete>
+	
+	
+	<select id="selectTWorkInfoStgDtCount" resultType="java.lang.Integer">
+	/* wms-ctmaster-strategy-sql-oracle.xml - selectTWorkInfoStgDtCount - 전략 상세 건수 조회 SQL */
+		SELECT	COUNT(1)	
+		FROM	TWORK_INFO_STG_DT
+		WHERE	STGHDKEY = #{stghdkey}
+		AND 	CTKEY 	 = #{ctkey}
+		<if test="stgkey != null"> 
+		AND		STGKEY	= #{stgkey}
+		</if>
+		<if test="exeprty != null"> 
+		AND		EXEPRTY	= #{exeprty}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(stgtype)" >
+			AND STGTYPE = #{stgtype}
+		</if>
+	</select>
+	
+	
+	
+	<resultMap id="selectTWorkInfoStgDtMap" type="java.util.HashMap">
+		<result property="chk" 				column="CHK" />
+  		<result property="ctkey" 			column="CTKEY" />
+  		<result property="stghdkey" 		column="STGHDKEY" />
+  		<result property="after_stgkey" 	column="AFTER_STGKEY" />		
+  		<result property="stgkey" 			column="STGKEY" />	
+  		<result property="exeprty" 			column="EXEPRTY" />
+  		<result property="stgtype" 			column="STGTYPE" />
+  		<result property="stgtype_desc" 	column="STGTYPE_DESC" />
+  		<result property="stgdtdesc" 		column="STGDTDESC" />
+  		<result property="inserturkey" 		column="INSERTURKEY" />	
+  		<result property="insertdate" 		column="INSERTDATE"/>	
+  		<result property="updateurkey" 		column="UPDATEURKEY" />	
+  		<result property="updatedate" 		column="UPDATEDATE"/>
+	</resultMap> 
+	<select id="selectTWorkInfoStgDt" resultMap="selectTWorkInfoStgDtMap">
+	/* wms-ctmaster-strategy-sql-oracle.xml - selectTWorkInfoStgDt - 전략 상세 조회 SQL */
+		SELECT	'0' AS CHK
+		        ,CTKEY
+				,STGHDKEY
+				,AFTER_STGKEY
+				,STGKEY
+				,EXEPRTY
+				,STGTYPE
+				,FN_GET_WMS_CTCD_NAME(#{ctkey}, 'STGTYPE', STGTYPE, 'KOR') AS STGTYPE_DESC
+				,STGDTDESC
+				,INSERTDATE
+		       	,INSERTURKEY
+		       	,UPDATEDATE
+		       	,UPDATEURKEY	
+		FROM	TWORK_INFO_STG_DT
+		WHERE	STGHDKEY = #{stghdkey}
+		AND 	CTKEY 	 = #{ctkey}	
+		<if test="stgkey != null"> 
+		AND		STGKEY	= #{stgkey}
+		</if>
+		<if test="exeprty != null"> 
+		AND		EXEPRTY	= #{exeprty}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(stgtype)" >
+			AND STGTYPE = #{stgtype}
+		</if>
+		ORDER BY EXEPRTY ASC
+	</select>
+	
+	<insert id="insertTWorkInfoStgDt" >	
+	/* wms-ctmaster-strategy-sql-oracle.xml - insertTWorkInfoStgDt - 전략 상세 등록 SQL */
+		INSERT INTO TWORK_INFO_STG_DT
+				(
+					CTKEY
+			       ,STGHDKEY
+			       ,STGKEY
+			       ,EXEPRTY
+			       ,STGTYPE
+			       ,STGDTDESC
+			       ,INSERTDATE
+			       ,INSERTURKEY
+			       ,UPDATEDATE
+			       ,UPDATEURKEY			      	
+			    ) 
+			    VALUES 
+			    (
+			    	#{ctkey}
+					,#{stghdkey}
+					,#{stgkey}
+					,#{exeprty}
+					,#{stgtype}
+					,#{stgdtdesc}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+	
+ 	
+ 	<update id="updateTWorkInfoStgDt">
+ 	/* wms-ctmaster-strategy-sql-oracle.xml - updateTWorkInfoStgDt - 전략 상세 수정 SQL */
+ 		UPDATE	TWORK_INFO_STG_DT
+ 		   SET	UPDATEDATE  		= #{sysdate}
+		        ,UPDATEURKEY 		= #{surkey}
+		        ,STGDTDESC    		= #{stgdtdesc}
+		        ,STGTYPE        	= #{stgtype}
+		 WHERE	STGHDKEY 			= #{stghdkey}		 
+		 AND	STGKEY				= #{stgkey}
+		 AND	EXEPRTY				= #{exeprty}
+		 AND 	CTKEY   	     	= #{ctkey}
+ 	</update>	
+ 	
+ 	
+ 	<delete id="deleteTWorkInfoStgDt">	
+ 	/* wms-ctmaster-strategy-sql-oracle.xml - deleteTWorkInfoStgDt - 전략 상세 삭제 SQL */
+		DELETE 
+		 FROM	TWORK_INFO_STG_DT
+		WHERE	STGHDKEY 			= #{stghdkey}
+		 AND	STGKEY				= #{stgkey}
+		 AND	EXEPRTY				= #{exeprty}
+		 AND 	CTKEY   	     	= #{ctkey}
+	</delete>
+	
+	<select id="selectTWorkInfoStgDtat" resultType="camelMap">
+	/* wms-ctmaster-strategy-sql-oracle.xml - selectTWorkInfoStgDtat - 전략 상세 속성정보 조회  SQL */
+		SELECT	CTKEY
+				,STGHDKEY
+				,STGKEY
+				,EXEPRTY
+				,STGDTKEY
+				,ATKEY
+				,VALUE1
+				,VALUE2
+				,INSERTDATE
+		       	,INSERTURKEY
+		       	,UPDATEDATE
+		       	,UPDATEURKEY	
+		FROM	TWORK_INFO_STG_DTAT
+		WHERE	STGHDKEY = #{stghdkey}
+		AND 	CTKEY    = #{ctkey}
+		<if test="stgkey != null"> 
+		AND		STGKEY	= #{stgkey}
+		</if>
+		<if test="exeprty != null"> 
+		AND		EXEPRTY	= #{exeprty}
+		</if>
+	</select>
+
+	<insert id="insertTWorkInfoStgDtat" >	
+	/* wms-ctmaster-strategy-sql-oracle.xml - insertTWorkInfoStgDtat - 전략 상세 속성정보 등록  SQL */
+		INSERT INTO TWORK_INFO_STG_DTAT
+				(
+					CTKEY
+			       ,STGHDKEY
+			       ,STGKEY
+			       ,EXEPRTY
+			       ,STGDTKEY
+			       ,ATKEY
+			       ,VALUE1
+			       ,VALUE2
+			       ,INSERTDATE
+			       ,INSERTURKEY
+			       ,UPDATEDATE
+			       ,UPDATEURKEY			      	
+			    ) 
+			    VALUES 
+			    (
+			    	#{ctkey} 
+					,#{stghdkey}
+					,#{stgkey}
+					,#{exeprty}
+					,#{stgdtkey}
+					,#{atkey}
+					,#{value1}
+					,#{value2}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+
+ 	<delete id="deleteTWorkInfoStgDtat">
+ 	/* wms-ctmaster-strategy-sql-oracle.xml - deleteTWorkInfoStgDtat - 전략 상세 속성정보 삭제  SQL */
+		DELETE 
+		 FROM	TWORK_INFO_STG_DTAT
+		WHERE	STGHDKEY 			= #{stghdkey}
+		 AND	STGKEY				= #{stgkey}
+		 AND	EXEPRTY				= #{exeprty}
+		<if test="stgdtkey != null"> 
+		 AND	STGDTKEY			= #{stgdtkey}
+		</if>
+		 AND 	CTKEY		  		= #{ctkey}
+	</delete>
+	
+</mapper>

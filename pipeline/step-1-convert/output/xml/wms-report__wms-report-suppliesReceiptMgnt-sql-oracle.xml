@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.SuppliesReceiptMgntMapper">
+
+	<resultMap id="selectSuppliesReceiptMgntMap" type="java.util.HashMap">
+		<result property="subul_yymm" 	column="SUBUL_YYMM"/>		
+		<result property="ctkey" 			column="CTKEY" />
+		<result property="loggrpcd" 		column="LOGGRPCD" />
+		<result property="loggrpcd_desc" 	column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="owkey" 			column="OWKEY" />
+		<result property="owname" 			column="OWNAME" />
+		<result property="ickey" 			column="ICKEY" />
+		<result property="icname" 			column="ICNAME" />
+		<result property="spec" 			column="SPEC" />
+		<result property="ackey" 			column="ACKEY" />		
+		<result property="acname" 			column="ACNAME" />
+		<result property="icgrkey" 			column="ICGRKEY" />
+		<result property="icgrname" 		column="ICGRNAME" />
+		<result property="carryover_qty" 	column="CARRYOVER_QTY" />
+		<result property="inb_invqty" 		column="INB_INVQTY" />
+		<result property="out_invqty" 		column="OUT_INVQTY" />
+		<result property="ri_costprice" 	column="RI_COSTPRICE" />
+		<result property="adj_invqty" 		column="ADJ_INVQTY" />
+		<result property="closing_invqty" 	column="CLOSING_INVQTY" />
+		<result property="insertdate" 		column="INSERTDATE"/>
+		<result property="inserturkey" 		column="INSERTURKEY" />
+		<result property="updatedate" 		column="UPDATEDATE"/>
+		<result property="updateurkey" 		column="UPDATEURKEY" />						   	
+	</resultMap>
+	
+	 <sql id="seletSuppliesReceiptMgntSql">
+	 	SELECT   SUBSTR(TO1.SUBUL_YYMM,1,4) || '-' || SUBSTR(TO1.SUBUL_YYMM,5,2) || '-01' AS SUBUL_YYMM1
+	 		    ,TO1.SUBUL_YYMM AS SUBUL_YYMM
+		        ,TO1.CTKEY
+		        ,TO1.LOGGRPCD
+		        ,TO1.CTKEY ||';'|| 'LOGGRPCD' ||';'|| TO1.LOGGRPCD AS LOGGRPCD_DESC
+		        ,TO1.OWKEY
+		        ,(SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = TO1.OWKEY) AS OWNAME
+		        ,TO1.ICKEY
+		        ,TO1.ICNAME
+		        ,(SELECT B.SPEC FROM TWORK_MST_IC B WHERE B.CTKEY = TO1.CTKEY AND B.OWKEY = TO1.OWKEY AND B.ICKEY = TO1.ICKEY) SPEC
+		        ,TO1.ACKEY
+		        ,TO1.ACNAME
+		        ,TO1.ICGRKEY
+		        ,TO1.ICGRNAME
+		        ,TO1.CARRYOVER_QTY
+		        ,TO1.INB_INVQTY
+		        ,TO1.OUT_INVQTY
+		        ,TO1.ADJ_INVQTY
+		        ,TO1.CLOSING_INVQTY
+		        ,TO1.INSERTDATE         
+			    ,TO1.INSERTURKEY       
+			    ,TO1.UPDATEDATE      
+			    ,TO1.UPDATEURKEY    
+		FROM TWORK_INFO_IVST_SUPPLIES TO1
+		WHERE TO1.CTKEY = #{ctkey}
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	     AND #{SEARCH_CONDITION}
+		 </if> 
+	 </sql>
+	
+	<select id="selectSuppliesReceiptMgntCount" resultType="java.lang.Integer">		
+		SELECT COUNT(1)
+		FROM(   
+		    	<include refid="seletSuppliesReceiptMgntSql"/>
+			)
+	</select>
+  
+	<select id="selectSuppliesReceiptMgnt" resultMap="selectSuppliesReceiptMgntMap" >   
+	#{GRIDPAGING_ROWNUMTYPE_TOP}
+	    <include refid="seletSuppliesReceiptMgntSql"/> 					  
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY TO1.UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectSuppliesReceiptMgntSum" resultMap="selectSuppliesReceiptMgntMap" >
+	SELECT   SUM(TOT1.CARRYOVER_QTY)        AS CARRYOVER_QTY                                              /* 전일  재고 수량 */
+	        ,SUM(TOT1.INB_INVQTY)    		AS INB_INVQTY 												  /* 입고 수량        */
+	        ,SUM(TOT1.OUT_INVQTY)           AS OUT_INVQTY                                                 /* 출고  수량       */                 
+	        ,SUM(TOT1.ADJ_INVQTY)           AS ADJ_INVQTY                                                 /*재고 조정 수량    */ 
+	        ,SUM(TOT1.CLOSING_INVQTY)       AS CLOSING_INVQTY                                             /* 마감 재고 수량  */
+	       
+	FROM(
+		<include refid="seletSuppliesReceiptMgntSql"/>
+	) TOT1
+	</select>
+				
+	<insert id="insertSuppliesReceipt">
+	<![CDATA[
+		INSERT INTO TWORK_INFO_IVST_SUPPLIES 
+		(		
+		    SUBUL_YYMM,
+		    CTKEY,
+		    LOGGRPCD,
+		    OWKEY,
+		    ICKEY,
+		    ACKEY,
+		    ICNAME,
+		    ACNAME,
+		    ICGRKEY,
+		    ICGRNAME,
+		    CARRYOVER_QTY,
+		    CARRYOVER_COSTPRICE,
+		    INB_INVQTY,
+		    INB_COSTPRICE,
+		    OUT_INVQTY,
+		    OUT_COSTPRICE,
+		    REPLACE_INVQTY,
+		    REPLACE_COSTPRICE,
+		    ADJ_INVQTY,
+		    ADJ_COSTPRICE,
+		    CLOSING_INVQTY,
+		    CLOSING_COSTPRICE,
+		    INSERTDATE,
+		    INSERTURKEY,
+		    UPDATEDATE,
+		    UPDATEURKEY
+		) VALUES (
+		 #{subul_yymm}
+		,#{ctkey}
+		,#{loggrpcd}
+		,#{owkey}
+		,#{ickey}
+		,#{ackey}
+		,#{icname}		
+		,#{acname}
+		,#{icgrkey}
+		,#{icgrname}
+		,#{carryover_qty}
+		,'0'
+		,#{inb_invqty}
+		,'0'
+		,#{oub_invqty}
+		,'0'
+		,'0'
+		,'0'
+		,'0'
+		,'0'
+		,'0'
+		,'0'
+		,#{sysdate}
+	  	,#{surkey}
+	  	,#{sysdate}
+      	,#{surkey}
+		)]]>
+	</insert>
+
+	<update id="updateSuppliesReceipt">
+		UPDATE TWORK_INFO_IVST_SUPPLIES 
+				SET  ACKEY 				= #{ackey}
+			       ,ACNAME 				= #{acname}
+			       ,ICGRKEY				= #{icgrkey}
+			       ,ICGRNAME 			= #{icgrname}
+			       ,CARRYOVER_QTY 		= #{carryover_qty}
+			       ,INB_INVQTY 			= #{inb_invqty}
+			       ,INB_COSTPRICE 		= #{inb_costprice}			       
+		    	   ,OUT_INVQTY 			= #{out_invqty}
+		    	   ,OUT_COSTPRICE   	= #{out_costprice}
+		           ,REPLACE_INVQTY  	= #{replace_invqty}
+		    	   ,REPLACE_COSTPRICE   = #{replace_costprice}
+		    	   ,ADJ_INVQTY          = #{adj_invqty}
+		    	   ,ADJ_COSTPRICE		= #{adj_costprice}
+		           ,CLOSING_INVQTY      = #{closing_invqty}
+		           ,CLOSING_COSTPRICE   = #{closing_costprice}
+				   ,UPDATEDATE 			= #{sysdate}
+			   	   ,UPDATEURKEY 		= #{surkey}
+			WHERE 
+			SUBUL_YYMM  = #{subul_yymm} 
+			AND CTKEY = #{ctkey} 
+			AND LOGGRPCD = #{loggrpcd} 
+			AND OWKEY = #{owkey} 
+			AND ICKEY = #{ickey}
+	
+	</update>
+	
+	<delete id="deleteSuppliesReceipt">
+	DELETE FROM TWORK_INFO_IVST_SUPPLIES
+	WHERE 
+			SUBUL_YYMM  	= #{subul_yymm} 
+			AND CTKEY 		= #{ctkey} 
+			AND LOGGRPCD    = #{loggrpcd}
+		    AND ICKEY 		= #{ickey}	
+	</delete>
+	
+	<!-- 상품 수불 삭제(마감일자) -->
+	<delete id = "deleteSuppliesReceiptMonth">
+		DELETE FROM TWORK_INFO_IVST_SUPPLIES
+		WHERE SUBUL_YYMM = SUBSTR(TO_CHAR((TO_DATE(#{subul_yymm} || '01', 'YYYYMMDD') + (1) * INTERVAL '1 month'), 'yyyymm'),1,6)
+		  AND CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}		
+		  
+	</delete>
+	
+	<!-- 수불 집계 -->
+	<insert id = "insertSuppliesReceiptCloseMonth">
+	INSERT INTO TWORK_INFO_IVST_SUPPLIES 
+		(		
+		    SUBUL_YYMM,
+		    CTKEY,
+		    LOGGRPCD,
+		    OWKEY,
+		    ICKEY,
+		    ACKEY,
+		    ICNAME,
+		    ACNAME,
+		    ICGRKEY,
+		    ICGRNAME,
+		    CARRYOVER_QTY,
+		    CARRYOVER_COSTPRICE,
+		    INB_INVQTY,
+		    INB_COSTPRICE,
+		    OUT_INVQTY,
+		    OUT_COSTPRICE,
+		    REPLACE_INVQTY,
+		    REPLACE_COSTPRICE,
+		    ADJ_INVQTY,
+		    ADJ_COSTPRICE,
+		    CLOSING_INVQTY,
+		    CLOSING_COSTPRICE,
+		    INSERTDATE,
+		    INSERTURKEY,
+		    UPDATEDATE,
+		    UPDATEURKEY
+		)(
+		 	SELECT TO_CHAR((TO_DATE(#{subul_yymm} || '01', 'YYYYMMDD') + (1) * INTERVAL '1 month'), 'yyyymm') AS SUBUL_YYMM, CTKEY, LOGGRPCD, OWKEY, ICKEY, ACKEY, ICNAME, ACNAME, ICGRKEY, ICGRNAME,
+                 SUM(COALESCE(CARRYOVER_QTY, 0) + COALESCE(INB_INVQTY, 0) - COALESCE(OUT_INVQTY, 0) + COALESCE(REPLACE_INVQTY, 0)
+                 + COALESCE(ADJ_INVQTY, 0)) AS CLOSING_INVQTY
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 , '0'
+                 ,SUM(COALESCE(carryover_qty, 0) + COALESCE(inb_invqty, 0) - COALESCE(out_invqty, 0) + COALESCE(replace_invqty, 0) + COALESCE(adj_invqty, 0))
+                 , '0'
+                 ,#{sysdate}
+			  	 ,#{surkey}
+			  	 ,#{sysdate}
+		      	 ,#{surkey}
+                 FROM TWORK_INFO_IVST_SUPPLIES IVS
+                 WHERE SUBUL_YYMM = #{subul_yymm}
+                    AND OWKEY     = #{owkey}
+                    AND CTKEY     = #{ctkey}
+                    <!--  AND LOGGRPCD  = #{loggrpcd}-->
+                                        
+                 GROUP BY SUBUL_YYMM, CTKEY, LOGGRPCD, OWKEY, ICKEY, ACKEY, ICNAME, ACNAME, ICGRKEY, ICGRNAME
+           )
+	</insert>
+	
+	<update id="updateSuppliesReceiptReplaceInvqty">
+	
+	 UPDATE TWORK_INFO_IVST_SUPPLIES IVS 
+	 		SET REPLACE_INVQTY =
+                 COALESCE((
+                 SELECT A.CFQTY
+                 FROM  TWORK_INFO_SP_HD A
+			          ,TWORK_INFO_SP_DT B
+			          ,TWORK_MST_IC     C    
+			      WHERE 1=1
+		            AND A.CTKEY = IVS.CTKEY
+		            AND A.OWKEY = IVS.OWKEY
+			        AND A.WKSTATUS = '90'
+			        AND A.LOGGRPCD = IVS.LOGGRPCD	        
+		            AND A.SPCONFIRMDATE BETWEEN TO_CHAR(TO_DATE((IVS.SUBUL_YYMM || '01'),'YYYYMMDD') - 1,'YYYYMMDD') || '150000'  
+		            AND TO_CHAR((DATE_TRUNC('month', TO_DATE(IVS.SUBUL_YYMM || '01', 'YYYYMMDD')) + INTERVAL '1 month - 1 day')::DATE, 'YYYYMMDD') || '145959'            
+			        AND A.CTKEY    = B.CTKEY
+			        AND A.SP_HDKEY = B.SP_HDKEY
+			        AND B.CTKEY    = C.CTKEY
+			        AND B.OWKEY    = C.OWKEY
+			        AND B.ICKEY    = C.ICKEY
+		            AND C.ICKEY = IVS.ICKEY
+		            AND C.ICGRKEY=IVS.ICGRKEY
+		            ), 0)
+            WHERE SUBUL_YYMM = #{subul_yymm}
+            	AND LOGGRPCD = #{loggrpcd}
+            	AND CTKEY  = #{ctkey}
+	            AND OWKEY  = #{owkey}
+            
+	</update>
+</mapper>	

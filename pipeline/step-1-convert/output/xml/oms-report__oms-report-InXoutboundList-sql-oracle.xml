@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.InXOutboundListMapper">
+
+	<select id="selectInXOutboundCount" resultType="java.lang.Integer">
+		/* oms-report-inXOutboundList-sql-oracle.xml selectInXOutboundCount */
+		SELECT COUNT(1)
+		FROM TORDER_INFO_SO_HD A
+		LEFT OUTER JOIN TORDER_INFO_CO_HD B
+		  ON A.OWKEY = B.OWKEY
+		 AND A.CUSTOMERORDERKEY = B.CUSTOMERORDERKEY
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+			INNER JOIN (
+				SELECT MAX(X.SO_HDKEY) AS SO_HDKEY /*S/O번호*/
+					 , X.OWKEY
+				FROM TORDER_INFO_SO_DT X
+				WHERE X.OWKEY = #{owkey}
+				  AND X.OR_HDDATE BETWEEN #{orHddateFr} AND  #{orHddateTo}
+				  AND X.ICKEY IN
+			<foreach item="ickey" index="index" collection="ickey"  open="(" separator="," close=")">
+				#{ickey}
+			</foreach>
+			GROUP BY X.OWKEY, X.SO_HDKEY
+			) IC
+			ON A.OWKEY = IC.OWKEY AND A.SO_HDKEY = IC.SO_HDKEY
+		</if>
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orType)" >
+				AND  A.OR_TYPE_CD IN
+				<foreach item="orType" index="index" collection="orType"    open="(" separator="," close=")">
+					#{orType}
+				</foreach>
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+				AND  A.WKSTATUS != #{cancelYn}
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "N".equals(isCancel)'>
+				AND  A.WKSTATUS = #{cancelYn}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectInXOutboundList" resultType="camelMap">
+		/* oms-report-inXOutboundList-sql-oracle.xml selectInXOutboundList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.SO_HDKEY
+			 , A.WKSTATUS AS SOSTATUS
+			 , CASE WHEN COALESCE(B.SAPTRANSFAILYN, 'N') <![CDATA[<>]]> 'N' THEN 'NONCOMPLETE'
+			        WHEN COALESCE(B.SAPTRANSFAILYN, 'N') = 'N' AND B.WKSTATUS=#{coSendWkstatus} THEN 'COMPLETE' 
+			 		ELSE NULL END AS SAPTRANSFAILYN
+			 , A.OWKEY
+			 , C.OWNM
+			 , A.OR_TYPE_CD
+			 , A.OR_HDDATE
+			 , A.ACKEY
+			 , D.ACNM AS ACNAME
+			 , B.WKSTATUS AS COSTATUS
+			 , A.DELIVERY_KEY
+			 , F.ACNM AS DELIVERY_NAME
+			 , A.STORE_KEY
+			 , G.ACNM AS STORE_NAME
+		     , A.EXTERNORDERKEY
+		     , A.REF_DELIVERY_NO
+		     , B.INTERFACE_ID
+			 , A.ORDER_ERROR_CD
+			 , A.ORDER_ERROR_COMMENTS
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TORDER_INFO_SO_HD A
+			LEFT OUTER JOIN TORDER_INFO_CO_HD B
+						 ON A.OWKEY = B.OWKEY
+						AND A.CUSTOMERORDERKEY = B.CUSTOMERORDERKEY
+			LEFT OUTER JOIN TADMIN_MST_OW C
+						 ON A.OWKEY = C.OWKEY
+			LEFT OUTER JOIN TADMIN_MST_CUSTOMER D
+						 ON A.OWKEY = D.OWKEY
+						AND A.ACKEY = D.ACKEY
+			LEFT OUTER JOIN TADMIN_MST_CUSTOMER F
+						 ON A.OWKEY = F.OWKEY
+						AND A.DELIVERY_KEY = F.ACKEY
+			LEFT OUTER JOIN TADMIN_MST_CUSTOMER G
+						 ON A.OWKEY = G.OWKEY
+						AND A.STORE_KEY = G.ACKEY
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+			INNER JOIN (
+				SELECT MAX(X.SO_HDKEY) AS SO_HDKEY /*S/O번호*/
+					 , X.OWKEY
+				FROM TORDER_INFO_SO_DT X
+				WHERE X.OWKEY = #{owkey}
+				  AND X.OR_HDDATE BETWEEN #{orHddateFr} AND  #{orHddateTo}
+				  AND X.ICKEY IN
+			<foreach item="ickey" index="index" collection="ickey"  open="(" separator="," close=")">
+				#{ickey}
+			</foreach>
+			GROUP BY X.OWKEY, X.SO_HDKEY
+			) IC
+			ON A.OWKEY = IC.OWKEY AND A.SO_HDKEY = IC.SO_HDKEY
+		</if>
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orType)" >
+				AND  A.OR_TYPE_CD IN
+				<foreach item="orType" index="index" collection="orType"    open="(" separator="," close=")">
+					#{orType}
+				</foreach>
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+				AND  A.WKSTATUS != #{cancelYn}
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "N".equals(isCancel)'>
+				AND  A.WKSTATUS = #{cancelYn}
+			</if>
+		</where>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInXOutboundDetailList" resultType="camelMap">
+		/* oms-report-inXOutboundList-sql-oracle.xml selectInXOutboundDetailList */
+		SELECT A.SO_HDKEY
+			 , A.SO_DTKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , A.UOM
+			 , C.CTKEY
+			 , D.CTNM
+			 , A.INITQTY
+			 , TRUNC(COALESCE(A.EXQTY, 0) /
+					 CASE WHEN ICUT.ICUNITQTY = 0 THEN 1 ELSE COALESCE(ICUT.ICUNITQTY, 1) END , 3)  AS OR_EXQTY
+			 , TRUNC(COALESCE(A.CFQTY, 0) /
+					 CASE WHEN ICUT.ICUNITQTY = 0 THEN 1 ELSE COALESCE(ICUT.ICUNITQTY, 1) END , 3)  AS OR_CFQTY
+			 , A.EXQTY
+			 , A.CFQTY
+			 , ICUT.ICUNITQTY AS QTYUOM
+			 , A.TOTALWEIGHT/1000 AS TOTALWEIGHT
+			 , CASE A.TOTALWEIGHT WHEN A.TOTALWEIGHT IS NULL THEN '' ELSE 'KG' END AS WEIGHTUNIT
+			 , A.VOLUME
+			 , A.VOLUMEUNIT
+			 , A.LOGGRPCD
+			 , A.REFERENCEKEY
+			 , A.REFERENCEDTKEY
+			 , E.UPDATEDATE AS TMS_UPDATEDATE
+			 , F.TRPSEQNUM
+			 , F.VEHICLENUM
+			 , F.DCKEY
+			 , A.COMMENTS
+		     , A.WKSTATUS AS SO_STATUS
+			 , A.CUSTOMERORDERKEY
+			 , A.CUSTOMERORDERDTKEY
+		     , CO.WKSTATUS AS CO_STATUS
+			 , A.ORDER_ERROR_CD
+			 , A.ORDER_ERROR_COMMENTS
+			 , A.EXTERNORDERKEY
+		     , A.EXTERNORDERDETAILKEY
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TORDER_INFO_SO_DT A
+			 LEFT OUTER JOIN TADMIN_MST_IC B
+						  ON A.OWKEY = B.OWKEY
+						 AND A.ICKEY = B.ICKEY
+			 INNER JOIN TORDER_INFO_SO_HD C
+					 ON A.OWKEY 	= C.OWKEY
+					AND A.SO_HDKEY 	= C.SO_HDKEY
+			 LEFT OUTER JOIN TADMIN_MST_CT D
+						  ON C.CTKEY = D.CTKEY
+			 LEFT OUTER JOIN TORDER_INFO_WMS_PERFORMANCE E
+						  ON A.OWKEY 	= E.OWKEY
+						 AND A.SO_HDKEY 	= E.SO_HDKEY
+						 AND A.SO_DTKEY 	= E.SO_DTKEY
+						 AND E.DELYN 	= 'N'
+			 LEFT OUTER JOIN TORDER_INFO_TMS_PERFORMANCE F
+					      ON A.OWKEY 	= F.OWKEY
+					     AND A.SO_HDKEY 	= F.SO_HDKEY
+					     AND A.SO_DTKEY 	= F.SO_DTKEY
+					     AND F.DELYN 	= 'N'
+			 LEFT OUTER JOIN TADMIN_MST_IC IC
+						  ON A.OWKEY = IC.OWKEY
+						 AND A.ICKEY = IC.ICKEY
+			 LEFT JOIN TADMIN_MST_ICUTXTYPE ICUT
+					 ON IC.OWKEY 	= ICUT.OWKEY
+		  			AND IC.ICUNITKEY 	= ICUT.ICUNITKEY
+		 			AND A.UOM 		= ICUT.ICUNITTYPE
+			 LEFT JOIN TORDER_INFO_CO_DT CO
+					 ON A.OWKEY = CO.OWKEY
+					AND A.CUSTOMERORDERKEY = CO.CUSTOMERORDERKEY
+					AND A.CUSTOMERORDERDTKEY = CO.CUSTOMERORDERDTKEY
+		WHERE A.OWKEY = #{owkey}
+		  AND A.SO_HDKEY = #{soHdkey}
+		ORDER BY LPAD(SO_DTKEY::TEXT, 20, 0)
+	</select>
+</mapper>
+	

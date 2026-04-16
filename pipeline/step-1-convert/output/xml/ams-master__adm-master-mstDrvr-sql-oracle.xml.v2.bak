@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.MstDrvrMapper">
+
+	<select id="selectMstDrvrCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		FROM
+             (
+             	SELECT
+					  DR.DRVNO
+					 ,DR.MOBILENO
+					 ,DR.DRVNM
+					 ,DR.URKEY
+					 ,DR.CTKEY
+			    	 ,DR.LOGGRPCD
+			    	 ,DR.DCKEY
+			 		 ,DR.ICGRKEY
+					 ,DR.FILENAME
+					 ,DR.PSNNO
+					 ,DR.CARRCD
+					 ,(SELECT CARR.CARRNM FROM TADMIN_MST_CARR CARR WHERE CARR.CARRCD = DR.CARRCD) AS CARRNM
+					 ,DR.ENTEDATE
+					 ,DR.BRTHDATE
+					 ,DR.ADDR
+					 ,DR.TEL
+					 ,DR.EMPYN
+					 ,DR.REGID
+					 ,DR.DRVLICNO
+					 ,DR.EMPIDNO
+					 ,DR.STTCD
+					 ,DR.CAREER
+					 ,DR.DOCKKEY
+				     ,DR.DELYN
+				     ,DR.INSERTDATE
+				     ,DR.UPDATEDATE
+				     ,DR.INSERTURKEY
+				     ,DR.UPDATEURKEY
+				     ,CASE DR.FILENAME WHEN DR.FILENAME IS NULL THEN 'N' ELSE 'Y' END AS SMIMG
+				     ,B.TMCD_DTNAME AS LOGGRPCDNAME
+				     ,C.TMCD_DTNAME AS DELYNNAME
+				     ,D.TMCD_DTNAME AS EMPYNNAME
+				     ,E.TMCD_DTNAME AS DCKEYNAME
+				     ,F.TMCD_DTNAME AS ICGRKEYNAME
+					 ,CT.CTNAME
+				  FROM
+					  TT_DRVR_T DR
+				  INNER JOIN TT_MST_CT CT
+				     	  ON DR.CTKEY = CT.CTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'LOGGRPCD' AND LAKEY = #{slakey}) B
+							   ON DR.LOGGRPCD 	= B.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'YESORNO' AND LAKEY = #{slakey}) C
+							   ON DR.DELYN 		= C.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'YESORNO' AND LAKEY = #{slakey}) D
+							   ON DR.EMPYN 		= D.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'DCKEY' AND LAKEY = #{slakey}) E
+							   ON DR.DCKEY 		= E.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'ICGRKEY' AND LAKEY = #{slakey}) F
+							   ON DR.ICGRKEY 		= F.TMCD_DTKEY
+		      	<where>
+			        AND DR.DELYN = 'N'
+			        <choose>
+				        <when test='workType eq "UPDATE" '>
+							AND 1=1 AND DR.MOBILENO  = #{originmobileno}
+					 	</when>
+					 	<otherwise>
+					 	    <if test="mobileno != null">
+					 			AND 2=2 AND DR.MOBILENO  = #{mobileno}
+					 		</if>
+					 	</otherwise>
+				 	</choose>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_DIVLOGGRPCD)" >
+					    AND #{SEARCH_DIVLOGGRPCD}
+					</if>
+				</where>
+			 ) A
+			 WHERE 1=1
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			 </if>
+	</select>
+
+	<select id="selectMstDrvrList" resultType="camelMap" >
+		/* adm-master-mstDrvr-sql-oracle.xml - selectMstDrvrList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.*
+		  FROM (
+				SELECT
+					 '0' AS CHK
+					 ,DR.DRVNO
+					 ,DR.MOBILENO
+					 ,DR.DRVNM
+					 ,DR.URKEY
+					 ,CT.CTKEY
+					 ,DR.LOGGRPCD
+					 ,'LOGGRPCD' ||';' || DR.LOGGRPCD AS LOGGRPCD_DESC
+					 ,DR.DCKEY
+					 ,DR.ICGRKEY
+					 ,DR.FILENAME
+					 ,DR.PSNNO
+					 ,DR.CARRCD
+					 ,(SELECT CARR.CARRNM FROM TADMIN_MST_CARR CARR WHERE CARR.CARRCD = DR.CARRCD) AS CARRNM
+					 ,DR.ENTEDATE
+					 ,DR.BRTHDATE
+					 ,DR.ADDR
+					 ,REPLACE(DR.TEL,'-','') AS TEL
+					 ,DR.EMPYN
+					 ,DR.REGID
+					 ,SUBSTR(DR.DRVLICNO,0,6)||'******'||SUBSTR(DR.DRVLICNO,13,15) AS DRVLICNO
+					 ,DR.EMPIDNO
+					 ,DR.STTCD
+					 ,DR.CAREER
+					 ,DR.DOCKKEY
+					 ,DR.DELYN
+					 ,DR.INSERTDATE
+					 ,DR.UPDATEDATE
+					 ,DR.INSERTURKEY
+					 ,DR.UPDATEURKEY
+					 ,CASE DR.FILENAME WHEN DR.FILENAME IS NULL THEN 'N' ELSE 'Y' END AS SMIMG
+					 ,B.TMCD_DTNAME AS LOGGRPCDNAME
+					 ,C.TMCD_DTNAME AS DELYNNAME
+					 ,D.TMCD_DTNAME AS EMPYNNAME
+					 ,E.TMCD_DTNAME AS DCKEYNAME
+					 ,F.TMCD_DTNAME AS ICGRKEYNAME
+					 ,CT.CTNAME
+				  FROM TT_DRVR_T DR
+				  INNER JOIN TT_MST_CT CT
+				     	  ON DR.CTKEY = CT.CTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'LOGGRPCD' AND LAKEY = #{slakey}) B
+							   ON DR.LOGGRPCD 	= B.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'YESORNO' AND LAKEY = #{slakey}) C
+							   ON DR.DELYN 		= C.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'YESORNO' AND LAKEY = #{slakey}) D
+							   ON DR.EMPYN 		= D.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'DCKEY' AND LAKEY = #{slakey}) E
+							   ON DR.DCKEY 		= E.TMCD_DTKEY
+				  LEFT OUTER JOIN (SELECT TMCD_DTNAME, TMCD_DTKEY FROM TT_MST_TMCD_DT WHERE TMCD_HDKEY = 'ICGRKEY' AND LAKEY = #{slakey}) F
+							   ON DR.ICGRKEY 		= F.TMCD_DTKEY
+				  <where>
+					AND DR.DELYN = 'N'
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_DIVLOGGRPCD)" >
+						AND #{SEARCH_DIVLOGGRPCD}
+					</if>
+			 	</where>
+				) A
+				WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>
+						<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+						</if>
+					</when>
+					<!--각 화면별 Default 정렬 컬럼으로 수정. 특별히 없으면 UPDATEDATE DESC 기본-->
+					<otherwise>
+						ORDER BY COALESCE(A.UPDATEDATE, A.INSERTDATE) DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+</mapper>

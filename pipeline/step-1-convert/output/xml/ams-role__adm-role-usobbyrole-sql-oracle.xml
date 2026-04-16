@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.UsobByRoleMapper">
+	
+	<select id="selectTAdminMstRoxusobgt" resultType="camelMap" >
+		/* adm-role-usobbyrole-sql-oracle.xml - selectTAdminMstRoxusobgt */
+		SELECT ROKEY
+		       ,APKEY
+		       ,USKEY
+		       ,USOBTYPE
+		  FROM TADMIN_MST_ROXUSOBGT
+		 <where>
+		 	<choose>
+				<when test="apkey != null and uskey != null">
+					ROKEY = #{rokey}
+		    		AND APKEY = #{apkey}
+		    		AND USKEY = #{uskey}
+				</when>
+				<otherwise>
+					ROKEY = #{rokey}
+				</otherwise>
+			</choose>
+		 </where>
+	</select>
+	
+	<delete id="deleteTAdminMstRoxusobgt">
+		/* adm-role-usobbyrole-sql-oracle.xml - deleteTAdminMstRoxusobgt */
+		DELETE 
+		  FROM TADMIN_MST_ROXUSOBGT
+		 WHERE ROKEY = #{rokey}
+		   AND APKEY = #{apkey}
+		   AND USKEY = #{uskey}
+		   AND USOBTYPE = #{usobtype}
+	</delete>
+</mapper>	

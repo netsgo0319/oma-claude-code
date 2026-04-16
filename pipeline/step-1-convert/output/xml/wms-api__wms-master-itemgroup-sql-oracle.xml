@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.api.in.mapper.ItemgroupApiMapper">
+
+	<select id="selectInterfaceItempgroupCount" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-itemgroup-sql-oracle.xml - selectInterfaceItempgroupCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_ICGRP_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ICGRPKEY = #{icgrpkey}			/* 상품그룹코드 */
+	</select>
+
+	<insert id="insertInterfaceItempgroup" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO">
+		/* wms-master-itemgroup-sql-oracle.xml - insertInterfaceItempgroup */
+		INSERT INTO TWORK_INTF_ICGRP_RCV (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , ICGRPKEY			/* 상품그룹코드 */
+			 , ICGRPTYPECD		/* 상품그룹유형코드 */
+			 , ICGRPNM			/* 상품그룹명 */
+			 , CLOSDATE			/* 종료일시 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{icgrpkey}
+			 , #{icgrptypecd}
+			 , #{icgrpnm}
+			 , SUBSTR(#{closdate}, 1, 14)
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceItempgroup" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO">
+		/* wms-master-itemgroup-sql-oracle.xml - updateInterfaceItempgroup */
+		UPDATE TWORK_INTF_ICGRP_RCV
+		   SET UPDATEDATE = #{sysdate}							/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}							/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}						/* 처리여부 */
+					, PRCSDATE = #{sysdate}						/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, ICGRPTYPECD = #{icgrptypecd}				/* 상품그룹유형코드 */
+					, ICGRPNM = #{icgrpnm}						/* 상품그룹명 */
+					, CLOSDATE = SUBSTR(#{closdate}, 1, 14)		/* 종료일시 */
+					, DELYN = #{delyn}							/* 삭제여부 */
+					, PRCSYN = #{prcsyn}						/* 처리여부 */
+					, PRCSDATE = null							/* 처리일시 */
+					, RCVDATE = #{sysdate}						/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}							/* 센터코드 */
+		   AND OWKEY = #{owkey}							/* 화주코드 */
+		   AND ICGRPKEY = #{icgrpkey}					/* 상품그룹코드 */
+	</update>
+
+	<select id="selectTworkMstIcgrCount" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-itemgroup-sql-oracle.xml - selectTworkMstIcgrCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ICGR
+		 WHERE CTKEY = #{ctkey}				/* 센터코드 */
+		   AND OWKEY = #{owkey}				/* 화주코드 */
+		   AND ICGRPKEY = #{icgrpkey}		/* 상품그룹코드 */
+	</select>
+
+	<insert id="insertTworkMstIcgr" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO">
+		/* wms-master-itemgroup-sql-oracle.xml - insertTworkMstIcgr */
+		INSERT INTO TWORK_MST_ICGR (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+			 , ICGRPKEY			/* 물품 그룹 코드 */
+			 , ICGRPTYPECD		/* 물품 그룹 유형 */
+			 , ICGRPNM			/* 물품 그룹명 */
+			 , CLOSDATE			/* 종료 일시 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{icgrpkey}
+			 , #{icgrptypecd}
+			 , #{icgrpnm}
+			 , SUBSTR(#{closdate}, 1, 14)
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstIcgr" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO">
+		/* wms-master-itemgroup-sql-oracle.xml - updateTworkMstIcgr */
+		UPDATE TWORK_MST_ICGR
+		   SET ICGRPTYPECD = #{icgrptypecd}		/* 물품 그룹 유형 */
+			 , ICGRPNM = #{icgrpnm}				/* 물품 그룹명 */
+			 , CLOSDATE = SUBSTR(#{closdate}, 1, 14)	/* 종료 일시 */
+		     , UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ICGRPKEY = #{icgrpkey}			/* 상품그룹코드 */
+	</update>
+
+	<delete id="deleteTworkMstIcgr" parameterType="com.daiso.wms.api.in.dto.ItemgroupRequestDTO">
+		/* wms-master-itemgroup-sql-oracle.xml - deleteTworkMstIcgr */
+		DELETE
+		  FROM TWORK_MST_ICGR
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ICGRPKEY = #{icgrpkey}			/* 상품그룹코드 */
+	</delete>
+
+</mapper>

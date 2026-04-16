@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.MenuBtnByUserMapper">
+    <select id="selectMenuList" resultType="camelMap" >
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectMenuList */
+       SELECT *
+         FROM (
+                SELECT A.MEKEY
+                     , C.DISPLAYMSG AS MENM
+                     , A.APKEY
+                     , A.EQTYPE
+                     , A.MELVL
+                     , A.USKEY
+                     , CASE WHEN A.USKEY IN ('0', 'DIR')
+                            THEN NULL
+                            ELSE CASE (
+                                 SELECT COUNT(1)
+                                   FROM TADMIN_MST_MEBTN E
+                                  WHERE A.MEKEY = E.MEKEY
+                            ) WHEN 0 THEN 'N' ELSE 'Y' END
+                        END AS BTNURYN
+                  FROM (
+                        WITH RECURSIVE deleted_tree AS (
+                            SELECT A.MEKEY, A.MENM, A.UPRMEKEY, A.EQTYPE, A.USEYN, A.APKEY, A.USKEY, A.MEORDER
+                            FROM TADMIN_MST_ME A
+                            WHERE A.DELYN = 'Y'
+                            UNION ALL
+                            SELECT m.MEKEY, m.MENM, m.UPRMEKEY, m.EQTYPE, m.USEYN, m.APKEY, m.USKEY, m.MEORDER
+                            FROM TADMIN_MST_ME m
+                            INNER JOIN deleted_tree d ON m.UPRMEKEY = d.MEKEY
+                        ),
+                        active_menu AS (
+                            SELECT A.MEKEY, A.MENM, A.UPRMEKEY, A.EQTYPE, A.USEYN, A.APKEY, A.USKEY, A.MEORDER
+                            FROM TADMIN_MST_ME A
+                            WHERE 1=1
+                                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                                    AND #{SEARCH_CONDITION}
+                                </if>
+                            EXCEPT
+                            SELECT MEKEY, MENM, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MEORDER
+                            FROM deleted_tree
+                        ),
+                        menu_hier AS (
+                            SELECT MEKEY, MENM, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MEORDER,
+                                   0 AS MELVL,
+                                   ARRAY[MEORDER::TEXT, MEKEY] AS sort_path
+                            FROM active_menu
+                            WHERE UPRMEKEY = '0'
+                            UNION ALL
+                            SELECT am.MEKEY, am.MENM, am.UPRMEKEY, am.EQTYPE, am.USEYN, am.APKEY, am.USKEY, am.MEORDER,
+                                   mh.MELVL + 1,
+                                   mh.sort_path || am.MEORDER::TEXT || am.MEKEY
+                            FROM active_menu am
+                            INNER JOIN menu_hier mh ON am.UPRMEKEY = mh.MEKEY
+                        )
+                        SELECT MEKEY, MENM, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MELVL, sort_path
+                        FROM menu_hier
+                        ORDER BY sort_path
+                  ) A
+         INNER JOIN TADMIN_MST_MULAAPMSG_HD B
+                 ON B.MULAAPMSGHDKEY = A.MENM
+         INNER JOIN TADMIN_MST_MULAAPMSG_DT C
+                 ON B.MULAAPMSGHDKEY = C.MULAAPMSGHDKEY
+                AND C.MSGTYPE = 'MENU'
+                AND C.LAKEY = #{slakey}
+         INNER JOIN TADMIN_MST_URSCR D
+                 ON A.USKEY = D.USKEY
+                AND A.APKEY = D.APKEY
+         WHERE A.MELVL >= 0
+        ) A
+         <where>
+             <if test="@com.kns.framework.util.StringUtil@isNotEmpty(btnuryn)">
+                 AND (A.BTNURYN IS NULL OR A.BTNURYN = #{btnuryn})
+             </if>
+             <if test="@com.kns.framework.util.StringUtil@isNotEmpty(mekey)">
+                 AND A.MEKEY = #{mekey}
+             </if>
+         </where>
+    </select>
+
+    <select id="selectMenuByBtnList" resultType="camelMap">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectMenuByBtnList */
+        SELECT '0' AS CHK
+            ,  MEKEY
+            ,  BTNKEY
+            ,  BTNNM
+            ,  CMT
+            ,  INSERTDATE
+            ,  INSERTURKEY
+            ,  UPDATEDATE
+            ,  UPDATEURKEY
+            ,  (SELECT COUNT(1)
+                  FROM TADMIN_MST_MEBTNUR B
+                 WHERE A.MEKEY = B.MEKEY
+                   AND A.BTNKEY = B.BTNKEY
+                ) AS USERCNT
+          FROM TADMIN_MST_MEBTN A
+         WHERE MEKEY = #{mekey}
+         ORDER BY TO_NUMBER(SUBSTR(BTNKEY, POSITION('BTN' IN BTNKEY)+3))
+    </select>
+
+    <select id="selectBtnUserList" resultType="camelMap">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectBtnUserList */
+        SELECT '0' AS CHK
+            ,  MEBTNUR.MEKEY
+            ,  MEBTNUR.BTNKEY
+            ,  MEBTNUR.URKEY
+            ,  UR.URNM
+            ,  UR.URTYP
+            ,  UR.URGRKEY
+            ,  URGR.URGRNM
+            ,  MEBTNUR.INSERTDATE
+            ,  MEBTNUR.INSERTURKEY
+            ,  MEBTNUR.UPDATEDATE
+            ,  MEBTNUR.UPDATEURKEY
+          FROM TADMIN_MST_MEBTNUR MEBTNUR
+          INNER JOIN TADMIN_MST_UR UR
+                  ON UR.DELYN = 'N'
+                 AND MEBTNUR.URKEY = UR.URKEY
+          INNER JOIN TADMIN_MST_URGR URGR
+                  ON URGR.URGRKEY = UR.URGRKEY
+         WHERE MEBTNUR.MEKEY = #{mekey}
+           AND MEBTNUR.BTNKEY = #{btnkey}
+    </select>
+
+    <select id="selectDupMenuByBtnCount" resultType="java.lang.Integer">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectDupMenuByBtnCount */
+        SELECT COUNT(1)
+          FROM TADMIN_MST_MEBTN
+         WHERE MEKEY = #{mekey}
+           AND BTNKEY = #{btnkey}
+    </select>
+
+    <insert id="insertMenuByBtn">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - insertMenuByBtn */
+        INSERT INTO TADMIN_MST_MEBTN (
+              MEKEY
+            , BTNKEY
+            , BTNNM
+            , CMT
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+        ) VALUES (
+              #{mekey}
+            , #{btnkey}
+            , #{btnnm}
+            , #{cmt}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+    <update id="updateMenuByBtn">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - updateMenuByBtn */
+        UPDATE TADMIN_MST_MEBTN
+           SET UPDATEDATE = #{sysdate}
+            ,  UPDATEURKEY = #{surkey}
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(btnnm)">
+                , BTNNM = #{btnnm}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(cmt)">
+                , CMT = #{cmt}
+            </if>
+         WHERE MEKEY = #{mekey}
+           AND BTNKEY = #{btnkey}
+    </update>
+
+    <delete id="deleteMenuByBtn">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - deleteMenuByBtn */
+        DELETE FROM TADMIN_MST_MEBTN
+        WHERE MEKEY = #{mekey}
+          AND BTNKEY = #{btnkey}
+    </delete>
+
+    <select id="selectDupMenuBtnByUserCount" resultType="java.lang.Integer">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectDupMenuBtnByUserCount */
+        SELECT COUNT(1)
+          FROM TADMIN_MST_MEBTNUR
+         WHERE MEKEY = #{mekey}
+           AND BTNKEY = #{btnkey}
+           AND URKEY = #{urkey}
+    </select>
+
+    <insert id="insertMenuBtnByUser">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - insertMenuBtnByUser */
+        INSERT INTO TADMIN_MST_MEBTNUR (
+              MEKEY
+            , BTNKEY
+            , URKEY
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+        ) VALUES (
+              #{mekey}
+            , #{btnkey}
+            , #{urkey}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+    <delete id="deleteMenuBtnByUser">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - deleteMenuBtnByUser */
+        DELETE FROM TADMIN_MST_MEBTNUR
+        WHERE MEKEY = #{mekey}
+          AND BTNKEY = #{btnkey}
+          <if test="@com.kns.framework.util.StringUtil@isNotEmpty(urkey)">
+              AND URKEY = #{urkey}
+          </if>
+    </delete>
+
+    <select id="selectMenuBtnByUserCount" resultType="java.lang.Integer">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - selectMenuBtnByUserCount */
+        SELECT COUNT(1)
+          FROM TADMIN_MST_MEBTNUR
+         WHERE MEKEY = #{mekey}
+           AND BTNKEY = #{btnkey}
+    </select>
+
+    <select id="getUserBtnAuthList" resultType="java.lang.String">
+        /* adm-role-menubtnbyuser-sql-oracle.xml - getUserBtnAuthList */
+        SELECT BTNKEY
+          FROM TADMIN_MST_MEBTNUR
+         WHERE URKEY = #{surkey}
+    </select>
+	
+</mapper>	

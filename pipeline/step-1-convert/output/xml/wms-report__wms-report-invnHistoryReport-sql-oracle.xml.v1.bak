@@ -1,0 +1,988 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.InvnHistoryReportMapper">
+
+	<sql id="sql_selectInvnHistoryReport">
+			SELECT A.*
+			  FROM (
+					SELECT A.CTKEY
+					     , A.OWKEY
+					     , A.ICKEY
+					     , A.ICNM
+					     , CASE WHEN SUM(A.OMS_ORD_0) + SUM(A.OMS_ORD_2)    	   + SUM(A.OMS_ORD_3)  - SUM(A.OMS_ORD_5) - SUM(A.OMS_ORD_6) 			 <![CDATA[ < ]]> SUM(A.WMS_INVN_1) + SUM(A.WMS_INVN_2)
+					     			THEN 'WMS재고 ' || ((SUM(A.WMS_INVN_1) + SUM(A.WMS_INVN_2)) - (SUM(A.OMS_ORD_0) + SUM(A.OMS_ORD_2) + SUM(A.OMS_ORD_3)  - SUM(A.OMS_ORD_5) - SUM(A.OMS_ORD_6)))::TEXT || 'EA 많음'
+					     		WHEN SUM(A.OMS_ORD_0) + SUM(A.OMS_ORD_2)    	   + SUM(A.OMS_ORD_3)  - SUM(A.OMS_ORD_5) - SUM(A.OMS_ORD_6) > SUM(A.WMS_INVN_1) + SUM(A.WMS_INVN_2)
+					     		 	THEN 'OMS재고 ' || ((SUM(A.OMS_ORD_0)    + SUM(A.OMS_ORD_2)  + SUM(A.OMS_ORD_3) - SUM(A.OMS_ORD_5) - SUM(A.OMS_ORD_6)) - (SUM(A.WMS_INVN_1) + SUM(A.WMS_INVN_2)))::TEXT || 'EA 많음'
+					     		ELSE ''
+					     		END WMS_ERROR
+					     , CASE WHEN SUM(A.WMS_INVN_1) = SUM(A.WMS_INVN_3) AND SUM(A.WMS_INVN_4) = SUM(A.WMS_INVN_3) AND SUM(A.WMS_INVN_1) = SUM(A.WMS_INVN_4)
+					     		THEN ''
+					     		ELSE 'WCS재고 차이 발생'
+					     		END WCS_ERROR
+					     , SUM(A.OMS_ORD_0)  + SUM(A.OMS_ORD_2) + SUM(A.OMS_ORD_3) - SUM(A.OMS_ORD_5) - SUM(A.OMS_ORD_6) AS OMS_DEADLINE_INVN /* OMS마감재고 */
+					     , SUM(A.WMS_INVN_1) + SUM(A.WMS_INVN_2) AS WMS_TOT_INVN	/* WMS총재고 				*/
+					     , SUM(A.WMS_INVN_2) AS WMS_INVN_2  						/* WMS수동창고				*/
+						 , SUM(A.WMS_INVN_1) AS WMS_INVN_1  						/* WMS자동창고              */
+						 , SUM(A.WMS_INVN_3) AS WMS_INVN_3  						/* WMS 요청 자동창고 재고   */
+						 , SUM(A.WMS_INVN_4) AS WMS_INVN_4  						/* WCS 누적 재고            */
+						 , SUM(A.OMS_ORD_1) AS OMS_ORD_1							/* 입고중(WMS전송)          */
+						 , SUM(A.OMS_ORD_2) AS OMS_ORD_2							/* WMS입고완료(SAP전송전)   */
+						 , SUM(A.OMS_ORD_3) AS OMS_ORD_3							/* WMS입고완료(SAP전송완료) */
+						 , SUM(A.OMS_ORD_4) AS OMS_ORD_4							/* 출고중(WMS전송)          */
+						 , SUM(A.OMS_ORD_5) AS OMS_ORD_5							/* WMS출고완료(SAP전송전)   */
+						 , SUM(A.OMS_ORD_6) AS OMS_ORD_6							/* WMS출고완료(SAP전송완료) */
+						 , SUM(A.WMS_ORD_1) AS WMS_ORD_1							/* 입고예정                 */
+						 , SUM(A.WMS_ORD_2) AS WMS_ORD_2							/* 검수완료                 */
+						 , SUM(A.WMS_ORD_3) AS WMS_ORD_3							/* 적치완료                 */
+						 , SUM(A.WMS_ORD_4) AS WMS_ORD_4							/* 출고예정                 */
+						 , SUM(A.WMS_ORD_5) AS WMS_ORD_5							/* 출고할당                 */
+						 , SUM(A.WMS_ORD_6) AS WMS_ORD_6							/* 출고피킹                 */
+						 , SUM(A.WMS_ORD_7) AS WMS_ORD_7							/* 출고확정                 */
+						 , SUM(A.WMS_ORD_8) AS WMS_ORD_8							/* 출고결품                 */
+					  FROM (
+							  SELECT TIC.CTKEY
+								   , TIC.OWKEY
+								   , TIC.ICKEY
+								   , IC.ICNM
+								   , TIC.TTQTY AS OMS_ORD_0
+								   , 0 AS OMS_ORD_1
+								   , 0 AS OMS_ORD_2
+								   , 0 AS OMS_ORD_3
+								   , 0 AS OMS_ORD_4
+								   , 0 AS OMS_ORD_5
+								   , 0 AS OMS_ORD_6
+								   , 0 AS WMS_ORD_1
+								   , 0 AS WMS_ORD_2
+								   , 0 AS WMS_ORD_3
+								   , 0 AS WMS_ORD_4							
+								   , 0 AS WMS_ORD_5
+								   , 0 AS WMS_ORD_6
+								   , 0 AS WMS_ORD_7
+								   , 0 AS WMS_ORD_8
+								   , 0 AS WMS_INVN_1
+								   , 0 AS WMS_INVN_2
+								   , 0 AS WMS_INVN_3
+								   , 0 AS WMS_INVN_4
+								   , 0 AS WMS_INVN_5
+								   , '' AS LCKEY
+								 FROM TWORK_TOTAL_INVN_CNT TIC
+								INNER JOIN TWORK_MST_IC 	IC
+								   ON TIC.CTKEY = IC.CTKEY
+								  AND TIC.OWKEY = IC.OWKEY
+								  AND TIC.ICKEY = IC.ICKEY
+								  AND IC.DELYN = 'N'
+								WHERE TIC.CTKEY = #{CTKEY}
+			  			   	      AND TIC.OWKEY = #{OWKEY}
+								  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+								  AND TIC.ICKEY = #{ICKEY}
+								  </if>
+								  AND TIC.TTQTY > 0
+								UNION ALL
+								/* OMS 주문 */
+								SELECT CH.CTKEY
+									 , CH.OWKEY
+									 , CD.ICKEY
+							         , IC.ICNAME
+							         , 0 AS OMS_ORD_0
+									 , SUM(CASE WHEN CH.OR_TYPE_CD IN ('10', '30', '70', '75') 	   AND CH.WKSTATUS = 'ING'		/* 입고중(WMS전송)				*/
+									 				THEN COALESCE(CD.ORDERQTY, 0) * ICUT.ICUNITQTY
+							         			ELSE 0
+							         		END) OMS_ORD_1
+									 , SUM(CASE WHEN CH.OR_TYPE_CD IN ('10', '30', '70', '75') 	   AND CH.WKSTATUS = 'COMPLETE'	/* WMS입고완료(SAP전송전)		*/
+									 				THEN COALESCE(SD.CFQTY, 0)
+							         			ELSE 0
+							         		END) OMS_ORD_2
+									 , SUM(CASE WHEN CH.OR_TYPE_CD IN ('10', '30', '70', '75') 	   AND CH.WKSTATUS = 'SEND'		/* WMS입고완료(SAP전송완료) 	*/
+									 				THEN COALESCE(SD.CFQTY, 0)
+							         			ELSE 0
+							         		END) OMS_ORD_3
+									, SUM(CASE WHEN CH.OR_TYPE_CD NOT IN ('10', '30', '70', '75')  AND CH.WKSTATUS = 'ING'		/* 출고중(WMS전송)		 		*/
+									 				THEN COALESCE(CD.ORDERQTY, 0) * ICUT.ICUNITQTY
+							         			ELSE 0
+							         		END) OMS_ORD_4
+									 , SUM(CASE WHEN CH.OR_TYPE_CD NOT IN ('10', '30', '70', '75') AND CH.WKSTATUS = 'COMPLETE'	/* WMS출고완료(SAP전송전) 		*/
+							         				THEN COALESCE(SD.CFQTY, 0)
+							         			ELSE 0
+							         		END) OMS_ORD_5
+									 , SUM(CASE WHEN CH.OR_TYPE_CD NOT IN ('10', '30', '70', '75') AND CH.WKSTATUS = 'SEND'		/* WMS출고완료(SAP전송완료)		*/
+							         				THEN COALESCE(SD.CFQTY, 0)
+							         			ELSE 0
+							         		END) OMS_ORD_6
+									, 0 AS WMS_ORD_1
+									, 0 AS WMS_ORD_2
+									, 0 AS WMS_ORD_3
+									, 0 AS WMS_ORD_4
+									, 0 AS WMS_ORD_5
+									, 0 AS WMS_ORD_6
+									, 0 AS WMS_ORD_7
+									, 0 AS WMS_ORD_8
+								 	, 0 AS WMS_INVN_1
+								 	, 0 AS WMS_INVN_2
+								 	, 0 AS WMS_INVN_3
+								 	, 0 AS WMS_INVN_4
+								 	, 0 AS WMS_INVN_5
+								 	, '' AS LCKEY
+							    FROM TORDER_INFO_CO_HD 				CH
+							   INNER JOIN TORDER_INFO_CO_DT 		CD
+							      ON CD.OWKEY 			   = CH.OWKEY
+							     AND CD.CUSTOMERORDERKEY   = CH.CUSTOMERORDERKEY
+							   INNER JOIN TORDER_INFO_SO_DT 		SD
+							      ON CD.OWKEY 			   = SD.OWKEY
+							     AND CD.CUSTOMERORDERKEY   = SD.CUSTOMERORDERKEY
+							     AND CD.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+							     AND SD.OR_CANCEL_YN = 'N'
+							   INNER JOIN TWORK_MST_IC 	IC
+								  ON CH.CTKEY = IC.CTKEY
+								 AND CD.OWKEY = IC.OWKEY
+								 AND CD.ICKEY = IC.ICKEY
+								 AND IC.DELYN = 'N'
+							   INNER JOIN TADMIN_MST_ICUTXTYPE ICUT
+							      ON CD.OWKEY   = ICUT.OWKEY
+							     AND IC.ICUTKEY = ICUT.ICUNITKEY
+							     AND CD.UNIT    = ICUT.ICUNITTYPE
+							   WHERE CH.CTKEY = #{CTKEY}
+			 			   	     AND CH.OWKEY = #{OWKEY}
+				 			     <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+								 AND CD.ICKEY = #{ICKEY}
+							     </if>
+			 			   	     AND CH.DELIVERY_HD_DT >= TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD')
+							     AND CH.WKSTATUS != 'CANCEL'
+							   GROUP BY CH.CTKEY, CH.OWKEY, CD.ICKEY, IC.ICNAME
+							UNION ALL
+							/* WMS 입고 주문 */
+							SELECT A.CTKEY
+								 , A.OWKEY
+								 , B.ICKEY
+					             , IC.ICNAME
+					             , 0 AS OMS_ORD_0
+								 , 0 AS OMS_ORD_1
+								 , 0 AS OMS_ORD_2
+								 , 0 AS OMS_ORD_3
+								 , 0 AS OMS_ORD_4
+								 , 0 AS OMS_ORD_5
+								 , 0 AS OMS_ORD_6
+								 , SUM(CASE WHEN B.CFQTY + B.STQTY = 0 THEN B.EXQTY			/* 입고예정 */
+								            ELSE 0
+								       END) AS WMS_ORD_1
+								 , SUM(CASE WHEN B.CFQTY = 0 AND B.STQTY > 0 THEN B.STQTY	/* 검수완료 */
+								            ELSE 0
+								       END) AS WMS_ORD_2
+								 , SUM(CASE WHEN B.CFQTY > 0 THEN B.CFQTY					/* 적치완료 */
+								            ELSE 0
+								       END) AS WMS_ORD_3
+								 , 0 AS WMS_ORD_4
+								 , 0 AS WMS_ORD_5
+								 , 0 AS WMS_ORD_6
+								 , 0 AS WMS_ORD_7
+								 , 0 AS WMS_ORD_8
+								 , 0 AS WMS_INVN_1
+								 , 0 AS WMS_INVN_2
+								 , 0 AS WMS_INVN_3
+								 , 0 AS WMS_INVN_4
+								 , 0 AS WMS_INVN_5
+								 , '' AS LCKEY
+						    FROM TWORK_INFO_IB_HD 	   A
+						   INNER JOIN TWORK_INFO_IB_DT B
+						      ON A.CTKEY   = B.CTKEY
+						     AND A.OWKEY   = B.OWKEY
+			 			     AND A.IBHDKEY = B.IBHDKEY
+						   INNER JOIN TWORK_MST_IC 		IC
+						      ON A.CTKEY = IC.CTKEY
+						     AND A.OWKEY = IC.OWKEY
+						     AND B.ICKEY = IC.ICKEY
+						     AND IC.DELYN = 'N'
+						   WHERE A.CTKEY = #{CTKEY}
+			 			     AND A.OWKEY = #{OWKEY}
+			 			     <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+							 AND B.ICKEY = #{ICKEY}
+							 </if>		 			     
+						   	 AND A.IBHDDATE >= RPAD(TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD'), 14, 0)
+						     AND B.WKSTATUS != '99'
+						   GROUP BY A.CTKEY, A.OWKEY, B.ICKEY, IC.ICNAME
+						   UNION ALL
+						   /* WMS 출고 주문 */
+							SELECT A.CTKEY
+								 , A.OWKEY
+								 , B.ICKEY
+					             , IC.ICNAME
+					             , 0 AS OMS_ORD_0
+								 , 0 AS OMS_ORD_1
+								 , 0 AS OMS_ORD_2
+								 , 0 AS OMS_ORD_3
+								 , 0 AS OMS_ORD_4
+								 , 0 AS OMS_ORD_5
+								 , 0 AS OMS_ORD_6
+								 , 0 AS WMS_ORD_1
+								 , 0 AS WMS_ORD_2
+								 , 0 AS WMS_ORD_3
+								 , SUM(CASE WHEN B.PIQTY + B.CFQTY + B.ALQTY = 0 AND B.WKSTATUS != '98'	/* 출고예정 */
+								 			THEN B.EXQTY
+								            ELSE 0
+								       END) AS WMS_ORD_4
+								 , SUM(CASE WHEN B.PIQTY + B.CFQTY = 0 AND B.ALQTY > 0		/* 출고할당 */
+								 			THEN B.ALQTY
+								            ELSE 0
+								       END) AS WMS_ORD_5
+								 , SUM(CASE WHEN B.CFQTY = 0 AND B.PIQTY > 0				/* 출고피킹 */ 
+								 		    THEN B.PIQTY
+								            ELSE 0
+								       END) AS WMS_ORD_6
+								 , SUM(CASE WHEN B.CFQTY > 0 THEN B.CFQTY					/* 출고확정 */
+								            ELSE 0
+								       END) AS WMS_ORD_7
+								 , SUM(CASE WHEN B.WKSTATUS = '98' THEN B.EXQTY				/* 출고결품 */
+								            ELSE 0
+								       END) AS WMS_ORD_8
+								 , 0 AS WMS_INVN_1
+								 , 0 AS WMS_INVN_2
+								 , 0 AS WMS_INVN_3
+								 , 0 AS WMS_INVN_4
+								 , 0 AS WMS_INVN_5
+								 , '' AS LCKEY
+						    FROM TWORK_INFO_OB_HD 	   A
+						   INNER JOIN TWORK_INFO_OB_DT B
+						      ON A.CTKEY   = B.CTKEY
+						     AND A.OWKEY   = B.OWKEY
+			 			     AND A.OBHDKEY = B.OBHDKEY
+						   INNER JOIN TWORK_MST_IC 		IC
+						      ON A.CTKEY = IC.CTKEY
+						     AND A.OWKEY = IC.OWKEY
+						     AND B.ICKEY = IC.ICKEY
+						     AND IC.DELYN = 'N'
+						   WHERE A.CTKEY = #{CTKEY}
+			 			     AND A.OWKEY = #{OWKEY}
+			 			     <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+							 AND B.ICKEY = #{ICKEY}
+							 </if>
+						   	 AND A.OBHDDATE >= RPAD(TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD'), 14, 0)
+						     AND B.WKSTATUS != '99'
+						   GROUP BY A.CTKEY, A.OWKEY, B.ICKEY, IC.ICNAME
+						   UNION ALL
+							  /* WMS 수동/자동 창고 재고 */
+							  SELECT A.CTKEY
+							       , A.OWKEY 
+							  	   , A.ICKEY
+							       , B.ICNAME
+							       , 0 AS OMS_ORD_0
+								   , 0 AS OMS_ORD_1
+								   , 0 AS OMS_ORD_2
+								   , 0 AS OMS_ORD_3
+								   , 0 AS OMS_ORD_4
+								   , 0 AS OMS_ORD_5
+								   , 0 AS OMS_ORD_6
+								   , 0 AS WMS_ORD_1
+								   , 0 AS WMS_ORD_2
+								   , 0 AS WMS_ORD_3
+								   , 0 AS WMS_ORD_4							
+								   , 0 AS WMS_ORD_5
+								   , 0 AS WMS_ORD_6
+								   , 0 AS WMS_ORD_7
+								   , 0 AS WMS_ORD_8
+								   , CASE WHEN A.LCKEY 	   IN ('MSC', 'ASRS', 'ETC') THEN SUM(A.TTQTY) 
+								   		  ELSE 0
+								   		  END WMS_INVN_1	/* 자동창고 */
+								   , CASE WHEN A.LCKEY NOT IN ('MSC', 'ASRS', 'ETC') THEN SUM(A.TTQTY) 
+								   		  ELSE 0
+								   		  END WMS_INVN_2	/* 수동창고 */
+								   , 0 AS WMS_INVN_3
+								   , 0 AS WMS_INVN_4
+								   , 0 AS WMS_INVN_5
+								   , '' AS LCKEY
+							    FROM TWORK_INFO_IVATXLCXULC A
+							   INNER JOIN TWORK_MST_IC B
+							      ON A.CTKEY = B.CTKEY
+							     AND A.OWKEY = B.OWKEY
+							     AND A.ICKEY = B.ICKEY
+							     AND B.DELYN = 'N'
+						       WHERE A.CTKEY = #{CTKEY}
+			 			         AND A.OWKEY = #{OWKEY}
+			 			         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+			 			         AND A.ICKEY = #{ICKEY}
+			 			         </if>
+							     AND A.TTQTY > 0
+							   GROUP BY A.CTKEY, A.OWKEY, A.ICKEY, B.ICNAME, A.LCKEY
+							UNION ALL
+							/* WMS 요청 자동창고 재고 */
+							SELECT SIVWCS.CTKEY
+							     , SIVWCS.OWKEY 
+								 , RIVWCS.CODE AS ICKEY
+								 , IC.ICNAME
+								 , 0 AS OMS_ORD_0
+								 , 0 AS OMS_ORD_1
+								 , 0 AS OMS_ORD_2
+								 , 0 AS OMS_ORD_3
+								 , 0 AS OMS_ORD_4
+								 , 0 AS OMS_ORD_5
+								 , 0 AS OMS_ORD_6
+								 , 0 AS WMS_ORD_1
+								 , 0 AS WMS_ORD_2
+								 , 0 AS WMS_ORD_3
+								 , 0 AS WMS_ORD_4
+								 , 0 AS WMS_ORD_5
+								 , 0 AS WMS_ORD_6
+								 , 0 AS WMS_ORD_7
+								 , 0 AS WMS_ORD_8
+								 , 0 AS WMS_INVN_1
+								 , 0 AS WMS_INVN_2
+								 , SUM(RIVWCS.QUANTITY_VALUE * ICUTXTYPE.ICUTQTY) AS WMS_INVN_3
+								 , 0 AS WMS_INVN_4
+								 , 0 AS WMS_INVN_5
+								 , '' AS LCKEY
+							  FROM TWORK_INTF_RIVWCS RIVWCS
+							 INNER JOIN (
+										SELECT CTKEY, OWKEY, IV_NUMBER
+										  FROM (
+													SELECT ROW_NUMBER() OVER(ORDER BY SIVWCS.S_IV_SEQ DESC) ROW_NUM
+														 , SIVWCS.CTKEY
+														 , SIVWCS.OWKEY
+													     , SIVWCS.S_IV_SEQ
+														 , SIVWCS.IV_NUMBER
+													  FROM TWORK_INTF_SIVWCS SIVWCS
+											         WHERE SIVWCS.CTKEY = #{CTKEY}
+								 			           AND SIVWCS.OWKEY = #{OWKEY}												  
+												   AND SIVWCS.SUCCEEDED = 'true'
+												   AND SIVWCS.INSERTDATE >= RPAD(TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD'), 14, 0)
+												 ) A
+											WHERE ROW_NUM = 1
+							 			) SIVWCS
+								ON RIVWCS.IV_NUMBER = SIVWCS.IV_NUMBER
+							   AND RIVWCS.INSERTDATE >= RPAD(TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD'), 14, 0)
+							 INNER JOIN TWORK_MST_IC 		IC
+							    ON SIVWCS.CTKEY = IC.CTKEY
+							   AND SIVWCS.OWKEY = IC.OWKEY
+							   AND RIVWCS.CODE 	= IC.ICKEY
+							   AND IC.DELYN = 'N'
+							 INNER JOIN TWORK_MST_ICUTXTYPE ICUTXTYPE
+							    ON IC.CTKEY	  	= ICUTXTYPE.CTKEY
+							   AND IC.OWKEY	  	= ICUTXTYPE.OWKEY
+							   AND IC.ICUTKEY	= ICUTXTYPE.ICUTKEY
+							   AND RIVWCS.QUANTITY_UNIT = ICUTXTYPE.ICUTTYPE
+							 WHERE 1=1
+							 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+							   AND RIVWCS.CODE = #{ICKEY}
+							 </if>						   
+							 GROUP BY SIVWCS.CTKEY, SIVWCS.OWKEY, RIVWCS.CODE, IC.ICNAME
+							UNION ALL
+							/* WCS 누적 재고 */				
+							SELECT TWC.CTKEY
+								 , TWC.OWKEY
+								 , TWC.ICKEY
+								 , IC.ICNAME
+								 , 0 AS OMS_ORD_0
+								 , 0 AS OMS_ORD_1
+								 , 0 AS OMS_ORD_2
+								 , 0 AS OMS_ORD_3
+								 , 0 AS OMS_ORD_4
+								 , 0 AS OMS_ORD_5
+								 , 0 AS OMS_ORD_6
+								 , 0 AS WMS_ORD_1
+								 , 0 AS WMS_ORD_2
+								 , 0 AS WMS_ORD_3
+								 , 0 AS WMS_ORD_4							
+								 , 0 AS WMS_ORD_5
+								 , 0 AS WMS_ORD_6
+								 , 0 AS WMS_ORD_7
+								 , 0 AS WMS_ORD_8
+								 , 0 AS WMS_INVN_1
+								 , 0 AS WMS_INVN_2
+								 , 0 AS WMS_INVN_3
+								 , TWC.EA_QTY AS WMS_INVN_4
+								 , 0 AS WMS_INVN_5
+								 , '' AS LCKEY
+							  FROM TWORK_TOTAL_WCSINVN_CNT TWC
+							 INNER JOIN TWORK_MST_IC 		IC
+							    ON TWC.CTKEY = IC.CTKEY
+							   AND TWC.OWKEY = IC.OWKEY
+							   AND TWC.ICKEY = IC.ICKEY
+							   AND IC.DELYN = 'N'
+							 WHERE TWC.CTKEY = #{CTKEY}
+							   AND TWC.OWKEY = #{OWKEY}
+							 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+							   AND TWC.ICKEY = #{ICKEY}
+							 </if>
+			  	  )A
+				  GROUP BY A.CTKEY
+					     , A.OWKEY
+					     , A.ICKEY
+					     , A.ICNM
+			) A
+			WHERE 1 = 1
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTKEY)" >
+			   AND A.CTKEY = #{CTKEY}
+			 </if>
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY)" >
+			   AND A.OWKEY = #{OWKEY}
+			 </if>
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)" >
+			   AND A.ICKEY = #{ICKEY}
+			 </if>
+			 <if test='@com.kns.framework.util.StringUtil@isNotEmpty(ERROR_INVN)'>
+			   AND EXISTS (
+					SELECT 1
+					  FROM (
+						SELECT CTKEY
+							 , OWKEY
+							 , ICKEY			 AS ICKEY
+						 	 , CASE WHEN SUM(CFQTY1) - SUM(WAS_AVQTY) + SUM(CFQTY3) = SUM(CFQTY3) THEN '0'
+						 	 		WHEN 0 <![CDATA[ < ]]> SUM(CFQTY1) - SUM(WAS_AVQTY) + SUM(CFQTY3) THEN '(+)' || (SUM(CFQTY1) - SUM(WAS_AVQTY) + SUM(CFQTY3))::TEXT
+						 	 		WHEN 0 > SUM(CFQTY1) - SUM(WAS_AVQTY) + SUM(CFQTY3) THEN '(-)' || (SUM(CFQTY1) - SUM(WAS_AVQTY) + SUM(CFQTY3))::TEXT
+						 	 		ELSE '0'
+						 	 	END ERROR_INVN
+						  FROM (
+								SELECT CH.CTKEY
+									 , CH.OWKEY
+									 , CD.ICKEY
+									 , SUM(CASE WHEN OR_TYPE_CD IN ('10', '30', '70', '75') AND CH.WKSTATUS 	= 'COMPLETE'
+									 				THEN  COALESCE(SD.CFQTY, 0)
+												WHEN OR_TYPE_CD IN ('10', '30', '70', '75') AND CH.WKSTATUS 	= 'SEND'
+									 				THEN  COALESCE(SD.CFQTY, 0)
+						             			WHEN OR_TYPE_CD NOT IN ('10', '30', '70', '75') AND CH.WKSTATUS = 'COMPLETE'
+						             				THEN -COALESCE(SD.CFQTY, 0)
+						             			WHEN OR_TYPE_CD NOT IN ('10', '30', '70', '75') AND CH.WKSTATUS = 'SEND'
+						             				THEN -COALESCE(SD.CFQTY, 0)
+						             			ELSE 0
+						             		END) CFQTY1
+						        	, 0 AS CFQTY3
+									, 0 AS WAS_AVQTY
+						        FROM TORDER_INFO_CO_DT 		CD
+						       INNER JOIN TORDER_INFO_CO_HD CH
+						          ON CD.OWKEY = CH.OWKEY
+						         AND CD.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY
+						       INNER JOIN TORDER_INFO_SO_DT SD
+						          ON CD.OWKEY 			   = SD.OWKEY
+						         AND CD.CUSTOMERORDERKEY   = SD.CUSTOMERORDERKEY
+						         AND CD.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+						         AND SD.OR_CANCEL_YN = 'N'
+						       INNER JOIN TADMIN_MST_IC 	IC
+						          ON CD.OWKEY = IC.OWKEY
+						         AND CD.ICKEY = IC.ICKEY
+						       INNER JOIN TADMIN_MST_ICUTXTYPE ICUT
+						          ON CD.OWKEY   = ICUT.OWKEY
+						         AND IC.ICUTKEY = ICUT.ICUNITKEY
+						         AND CD.UNIT    = ICUT.ICUNITTYPE
+						       WHERE CH.WKSTATUS != 'CANCEL'
+						       GROUP BY CH.CTKEY,CH.OWKEY, CD.ICKEY, IC.ICNM
+						UNION ALL
+							SELECT CH.CTKEY
+								 , CH.OWKEY
+								 , CD.ICKEY
+								 , 0 AS CFQTY1
+					        	 , SUM(COALESCE(CD.ORDERQTY, 0) * ICUT.ICUNITQTY) AS CFQTY3
+								 , 0 AS WAS_AVQTY	
+					        FROM TORDER_INFO_CO_DT 		CD
+					       INNER JOIN TORDER_INFO_CO_HD CH
+					          ON CD.OWKEY = CH.OWKEY
+					         AND CD.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY
+					       INNER JOIN TORDER_INFO_SO_DT SD
+					          ON CD.OWKEY 			  = SD.OWKEY
+					         AND CD.CUSTOMERORDERKEY   = SD.CUSTOMERORDERKEY
+					         AND CD.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+					         AND SD.OR_CANCEL_YN = 'N'
+					       INNER JOIN TADMIN_MST_IC 	IC
+					          ON CD.OWKEY = IC.OWKEY
+					         AND CD.ICKEY = IC.ICKEY
+					       INNER JOIN TADMIN_MST_ICUTXTYPE ICUT
+					          ON CD.OWKEY   = ICUT.OWKEY
+					         AND IC.ICUTKEY = ICUT.ICUNITKEY
+					         AND CD.UNIT    = ICUT.ICUNITTYPE
+					       WHERE CH.WKSTATUS = 'ING'
+				     		 AND OR_TYPE_CD IN ('10', '30', '70', '75')
+					       GROUP BY CH.CTKEY,CH.OWKEY, CD.ICKEY
+						UNION ALL
+						  /*  WMS재고 */
+						  SELECT A.CTKEY
+							   , A.OWKEY
+							   , A.ICKEY
+						       , 0 AS CFQTY1
+							   , 0 AS CFQTY3
+							   , SUM(A.TTQTY) AS WAS_AVQTY
+						    FROM TWORK_INFO_IVATXLCXULC A
+						   INNER JOIN TWORK_MST_IC B
+						      ON A.CTKEY = B.CTKEY
+						     AND A.OWKEY = B.OWKEY
+						     AND A.ICKEY = B.ICKEY
+						   INNER JOIN TWORK_MST_ICUT C
+						      ON B.CTKEY = C.CTKEY
+						     AND B.OWKEY = C.OWKEY
+						     AND B.ICUTKEY = C.ICUTKEY
+						   INNER JOIN TWORK_INFO_IVAT H
+						      ON A.CTKEY = H.CTKEY
+						     AND A.IVATKEY = H.IVATKEY
+						   INNER JOIN TWORK_MST_ICUTXTYPE D
+						      ON B.CTKEY = D.CTKEY
+						     AND B.OWKEY = D.OWKEY
+						     AND B.ICUTKEY = D.ICUTKEY
+						     AND H.UOM = D.ICUTTYPE
+						   WHERE A.TTQTY > 0 
+						   GROUP BY A.CTKEY, A.OWKEY, A.ICKEY
+						) A
+						GROUP BY CTKEY, OWKEY, ICKEY
+					  ) B
+					  WHERE 1=1
+					 <if test='@com.kns.framework.util.StringUtil@isNotEmpty(ERROR_INVN) and ERROR_INVN == "Y"' >
+					    AND B.ERROR_INVN = '0'
+					 </if>
+					 <if test='@com.kns.framework.util.StringUtil@isNotEmpty(ERROR_INVN) and ERROR_INVN == "N"' >
+					    AND B.ERROR_INVN <![CDATA[ <> ]]> '0' 
+					 </if>
+					    AND B.CTKEY = A.CTKEY
+					    AND B.OWKEY = A.OWKEY
+					    AND B.ICKEY = A.ICKEY
+			   		)
+			 </if>
+	</sql>
+
+	<select id="selectInvnHistoryReportCount" resultType="java.lang.Integer">
+		/* InvnHistoryReportMapper - selectInvnHistoryReportCount : 상품별 재고현황 COUNT 조회 */	
+		SELECT COUNT(1)
+		  FROM (
+		       <include refid="sql_selectInvnHistoryReport"/>
+		       )
+	</select>
+
+	<select id="selectInvnHistoryReportList" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectInvnHistoryReportList : 상품별 재고현황 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.*
+		  FROM (
+		       <include refid="sql_selectInvnHistoryReport"/>
+		       ) A
+		 ORDER BY ICKEY
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnHistoryIBBOList" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectInvnHistoryIBBOList : 상품별 재고현황 입출고 탭 조회 */
+		SELECT OR_TYPE.FIELD3       AS OR_TYPE
+		     , DELIVERY_HD_DT
+		     , COSTATUS.ORCD_DTNAME AS ORCD_DTNAME
+		     , ORDERQTY
+		     , CFQTY
+		     , WKSTATUS
+		     , CONFIRMDATE
+		     , QTYA
+		     , QTYB
+		     , QTYC
+		     , QTYD
+		     , ICUTQTY
+		     , ICKEY
+		     , ICNAME
+		     , ORHDKEY
+		     , ORDTKEY
+		     , IBHDKEY
+		     , IBDTKEY
+		     , CUSTOMERORDERKEY
+		     , CUSTOMERORDERDTKEY
+		     , EXTERNORDERKEY
+		     , EXTERNORDERDETAILKEY
+		     , CTKEY
+		     , OWKEY
+		  FROM (
+		    SELECT CD.ICKEY
+		         , IC.ICNAME
+		         , CH.DELIVERY_HD_DT
+		         , CH.OR_TYPE_CD
+		         , CH.OWORDERTYPE
+		         , CH.WKSTATUS AS STATUS
+		         , COALESCE(CD.ORDERQTY, 0) * ICUT.ICUTQTY AS ORDERQTY
+		         , COALESCE(SD.CFQTY, 0) AS CFQTY
+		         , CASE WHEN COALESCE(A.IBCONFIRMDATE, ' ') = ' ' THEN P.IBCONFIRMDATE ELSE A.IBCONFIRMDATE END AS CONFIRMDATE
+		         , WKSTATUS.CTCD_DTNAME AS WKSTATUS
+		         , B.EXQTY AS QTYA
+		         , B.STQTY AS QTYB
+		         , B.CFQTY AS QTYC
+		         , CASE WHEN B.RJQTY <![CDATA[ <= ]]>  0 THEN 0 WHEN B.EXQTY <![CDATA[ < ]]>  B.CFQTY THEN (B.EXQTY - B.CFQTY) ELSE B.RJQTY END AS QTYD
+		         , E.ICUTQTY
+		         , B.ORHDKEY
+		         , B.ORDTKEY
+		         , A.IBHDKEY
+		         , B.IBDTKEY
+		         , CH.CUSTOMERORDERKEY
+		         , CD.CUSTOMERORDERDTKEY
+		         , CH.EXTERNORDERKEY
+		         , CD.EXTERNORDERDETAILKEY
+		         , CH.CTKEY
+		         , CH.OWKEY
+	            FROM TORDER_INFO_CO_HD CH
+	           INNER JOIN TORDER_INFO_CO_DT      CD
+	              ON CH.OWKEY = CD.OWKEY
+	             AND CH.CUSTOMERORDERKEY = CD.CUSTOMERORDERKEY
+	           INNER JOIN TORDER_INFO_SO_DT SD
+	              ON CD.OWKEY              = SD.OWKEY
+	             AND CD.CUSTOMERORDERKEY   = SD.CUSTOMERORDERKEY
+	             AND CD.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+	             AND SD.OR_CANCEL_YN = 'N'
+	           INNER JOIN TWORK_MST_IC     IC
+	              ON CH.CTKEY = IC.CTKEY
+	             AND CD.OWKEY = IC.OWKEY
+	             AND CD.ICKEY = IC.ICKEY
+	           INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+	              ON CH.CTKEY   = ICUT.CTKEY
+	             AND CD.OWKEY   = ICUT.OWKEY
+	             AND IC.ICUTKEY = ICUT.ICUTKEY
+	             AND CD.UNIT    = ICUT.ICUTTYPE
+	           INNER JOIN TWORK_INFO_IB_DT B
+	              ON CH.CTKEY = B.CTKEY
+	             AND SD.OWKEY = B.OWKEY
+	             AND SD.SO_HDKEY = B.ORHDKEY
+	             AND SD.SO_DTKEY = B.ORDTKEY
+	           INNER JOIN TWORK_INFO_IB_HD A
+	              ON B.ORHDKEY = A.ORHDKEY
+	             AND B.CTKEY = A.CTKEY
+	             AND B.OWKEY = A.OWKEY
+	           INNER JOIN TWORK_MST_IC C
+	              ON B.CTKEY = C.CTKEY
+	             AND B.OWKEY = C.OWKEY
+	             AND B.ICKEY = C.ICKEY
+	             AND C.DELYN = 'N'
+	           INNER JOIN TWORK_MST_ICUTXTYPE E
+	              ON B.CTKEY   = E.CTKEY
+	             AND B.OWKEY   = E.OWKEY
+	             AND B.ICUTKEY = E.ICUTKEY
+	             AND B.UOM     = E.ICUTTYPE
+		    LEFT OUTER JOIN (
+		                      SELECT CTKEY
+		                           , OWKEY
+		                           , IBHDKEY
+		                           , IBDTKEY
+		                           , MAX(EXPIREDATE) AS EXPIREDATE
+		                           , MAX(IBCONFIRMDATE) AS IBCONFIRMDATE
+		                        FROM TWORK_INFO_IBCF_DT
+                               WHERE CTKEY = #{ctkey}
+                                 AND OWKEY = #{owkey}
+		                       GROUP BY CTKEY, OWKEY, IBHDKEY, IBDTKEY 
+		                      ) P
+		    ON A.CTKEY   = P.CTKEY
+		   AND A.OWKEY   = P.OWKEY
+		   AND A.IBHDKEY = P.IBHDKEY
+		   AND B.IBDTKEY = P.IBDTKEY
+		 INNER JOIN TWORK_MST_CTCD_DT WKSTATUS
+		    ON B.CTKEY     = WKSTATUS.CTKEY
+		   AND B.WKSTATUS  = WKSTATUS.CTCD_DTKEY
+		   AND WKSTATUS.CTCD_HDKEY = 'IB_WKSTATUS'
+		   AND WKSTATUS.LAKEY = 'KOR'   
+		 WHERE CH.CTKEY = #{ctkey}
+	   	   AND CH.OWKEY = #{owkey}
+	   	   AND CD.ICKEY = #{ickey}
+	   	   AND CH.DELIVERY_HD_DT >= TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD')
+		   AND CH.CANCEL_YN = 'N'
+           AND CH.OR_TYPE_CD IN ('10', '30', '70', '75')
+		UNION ALL
+		    SELECT CD.ICKEY
+		         , IC.ICNAME
+		         , CH.DELIVERY_HD_DT
+		         , CH.OR_TYPE_CD
+		         , CH.OWORDERTYPE
+		         , CH.WKSTATUS AS STATUS
+		         , COALESCE(CD.ORDERQTY, 0) * ICUT.ICUTQTY AS ORDERQTY
+		         , COALESCE(SD.CFQTY, 0) AS CFQTY
+		         , OD.OBCONFIRMDATE AS CONFIRMDATE          /* 출고확정일자       	*/
+		         , WKSTATUS.CTCD_DTNAME AS WKSTATUS         /* 상세 작업상태      	*/
+		         , COALESCE(OD.EXQTY, 0) AS QTYA          		/* 예정수량(낱개) 		*/
+		         , COALESCE(OD.ALQTY, 0) AS QTYB          		/* 할당수량(낱개) 		*/
+		         , COALESCE(OD.PIQTY, 0) AS QTYC          		/* 피킹수량(낱개) 		*/
+		         , COALESCE(OD.CFQTY, 0) AS QTYD          		/* 확정수량(낱개) 		*/
+		         , ICUT.ICUTQTY    AS ICUTQTY
+		         , OD.ORHDKEY                   			/* S/O 주문번호     	*/
+		         , OD.ORDTKEY                   			/* S/O 주문상세번호   	*/
+		         , OD.OBHDKEY                   			/* 출고번호         	*/
+		         , OD.OBDTKEY                   			/* 출고상세번호       	*/
+		         , CH.CUSTOMERORDERKEY
+		         , CD.CUSTOMERORDERDTKEY
+		         , CH.EXTERNORDERKEY
+		         , CD.EXTERNORDERDETAILKEY
+		         , OD.CTKEY                     			/* 센터코드         	*/
+		         , OD.OWKEY                     			/* 화주사          		*/
+	            FROM TORDER_INFO_CO_HD CH
+	           INNER JOIN TORDER_INFO_CO_DT      CD
+	              ON CH.OWKEY = CD.OWKEY
+	             AND CH.CUSTOMERORDERKEY = CD.CUSTOMERORDERKEY
+	           INNER JOIN TORDER_INFO_SO_DT SD
+	              ON CD.OWKEY              = SD.OWKEY
+	             AND CD.CUSTOMERORDERKEY   = SD.CUSTOMERORDERKEY
+	             AND CD.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+	             AND SD.OR_CANCEL_YN = 'N'
+	           INNER JOIN TWORK_MST_IC     IC
+	              ON CH.CTKEY = IC.CTKEY
+	             AND CD.OWKEY = IC.OWKEY
+	             AND CD.ICKEY = IC.ICKEY
+	           INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+	              ON CD.OWKEY   = ICUT.OWKEY
+	             AND IC.ICUTKEY = ICUT.ICUTKEY
+	             AND CD.UNIT    = ICUT.ICUTTYPE
+	           INNER JOIN TWORK_INFO_OB_DT OD
+	              ON CH.CTKEY = OD.CTKEY
+	             AND SD.OWKEY = OD.OWKEY
+	             AND SD.SO_HDKEY = OD.ORHDKEY
+	             AND SD.SO_DTKEY = OD.ORDTKEY
+	           INNER JOIN TWORK_INFO_OB_HD OH
+	              ON OD.ORHDKEY = OH.ORHDKEY
+	             AND OD.CTKEY = OH.CTKEY
+	             AND OD.OWKEY = OH.OWKEY
+	           INNER JOIN TWORK_MST_CT CT
+	              ON CT.CTKEY = OD.CTKEY
+	           INNER JOIN TWORK_MST_OW OW
+	              ON OW.OWKEY = OD.OWKEY
+	           INNER JOIN TWORK_MST_IC IC
+	              ON IC.CTKEY = OD.CTKEY
+	             AND IC.OWKEY = OD.OWKEY
+	             AND IC.ICKEY = OD.ICKEY
+	           INNER JOIN TWORK_MST_ICUTXTYPE ICUT_TYPE
+	              ON ICUT_TYPE.CTKEY = IC.CTKEY
+	             AND ICUT_TYPE.OWKEY = IC.OWKEY
+	             AND ICUT_TYPE.ICUTTYPE = OD.UOM
+	           INNER JOIN TWORK_MST_CTCD_DT WKSTATUS
+	              ON OD.CTKEY     = WKSTATUS.CTKEY
+	             AND OD.WKSTATUS  = WKSTATUS.CTCD_DTKEY
+	             AND WKSTATUS.CTCD_HDKEY = 'OB_WKSTATUS'
+	             AND WKSTATUS.LAKEY = 'KOR'
+		       WHERE CH.CTKEY = #{ctkey}
+		         AND CH.OWKEY = #{owkey}
+		         AND CD.ICKEY = #{ickey}
+                 AND CH.DELIVERY_HD_DT >= TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD')
+                 AND CH.CANCEL_YN = 'N'
+                 AND CH.OR_TYPE_CD NOT IN ('10', '30', '70', '75')
+		) A
+		INNER JOIN (
+		        SELECT B.EXTERN_OR_TYPE_NM AS FIELD2
+		            ,  A.OR_TYPE_CD || ' : '|| C.OR_TYPE_NAME || '[' || B.EXTERN_OR_TYPE_NM || ']' AS FIELD3
+		            ,  A.OR_TYPE_CD
+		            , A.EXTERN_OR_TYPE_CD
+		          FROM TORDER_INFO_ORTYPE_MAPPING A
+		         INNER JOIN TORDER_MST_EXTERN B
+		            ON A.OWKEY = B.OWKEY
+		           AND A.EXTERN_OR_TYPE_CD = B.EXTERN_OR_TYPE_CD
+		         INNER JOIN TORDER_MST_ORTYPE C
+		            ON A.OWKEY = C.OWKEY
+		           AND A.OR_TYPE_CD = C.OR_TYPE_CD
+		         WHERE A.DELYN = 'N'
+		           AND A.OWKEY = 'DAISO'
+		) OR_TYPE
+		ON A.OR_TYPE_CD = OR_TYPE.OR_TYPE_CD
+		AND A.OWORDERTYPE = OR_TYPE.EXTERN_OR_TYPE_CD
+		INNER JOIN (
+		    SELECT ORCD_DTNAME, ORCD_DTKEY
+		      FROM TORDER_MST_ORCD_DT 
+		     WHERE ORCD_HDKEY = 'COSTATUS'
+		) COSTATUS
+		ON A.STATUS = COSTATUS.ORCD_DTKEY 
+		ORDER BY A.DELIVERY_HD_DT ASC
+	</select>
+
+	<select id="selectInvnHistoryLocList" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectInvnHistoryLocList : 상품별 재고현황 로케이션(자동) 탭 조회 */
+		SELECT A.CTKEY
+           , A.OWKEY
+		   , A.ICKEY
+		   , A.LCKEY
+		   , A.EXPIREDATE
+		   , A.UOM
+		   , COALESCE(SUM(A.WMS_INVN), 0) 	AS WMS_INVN
+		   , COALESCE(SUM(A.WCS_INVN_01), 0) 	AS WCS_INVN_01
+		   , COALESCE(SUM(A.WCS_INVN_02), 0) 	AS WCS_INVN_02
+		   , COALESCE(SUM(A.WMS_INVN_EA_01), 0) 	AS WMS_INVN_EA_01
+		   , COALESCE(SUM(A.WCS_INVN_EA_01), 0) 	AS WCS_INVN_EA_01
+		   , COALESCE(SUM(A.WCS_INVN_EA_02), 0) 	AS WCS_INVN_EA_02
+	 	 FROM (
+			  SELECT A.CTKEY
+	               , A.OWKEY
+	               , A.LCKEY
+				   , A.ICKEY
+				   , B.EXPIREDATE
+				   , A.IVATKEY
+				   , ROUND(COALESCE(A.TTQTY, 0) / COALESCE(E.ICUTQTY, 1), 2) AS WMS_INVN
+				   , A.TTQTY AS WMS_INVN_EA_01
+				   , 0 		 AS WCS_INVN_01
+				   , 0 		 AS WCS_INVN_EA_01
+				   , 0 		 AS WCS_INVN_02
+				   , 0 		 AS WCS_INVN_EA_02
+			       , B.UOM 	 AS UOM
+				FROM TWORK_INFO_IVATXLCXULC A
+			   INNER JOIN TWORK_INFO_IVAT   B
+		          ON A.CTKEY   = B.CTKEY
+		     	 AND A.OWKEY   = B.OWKEY
+		     	 AND A.IVATKEY = B.IVATKEY
+			   INNER JOIN TWORK_MST_IC 		IC
+			      ON A.CTKEY = IC.CTKEY
+			     AND A.OWKEY = IC.OWKEY
+			     AND A.ICKEY = IC.ICKEY
+			     AND IC.DELYN  = 'N'				     	 
+	  		   INNER JOIN TWORK_MST_ICUTXTYPE E
+	  	 		  ON A.CTKEY    = E.CTKEY
+	  			 AND A.OWKEY    = E.OWKEY
+	  			 AND IC.ICUTKEY = E.ICUTKEY
+	  			 AND B.UOM 	    = E.ICUTTYPE
+			   WHERE A.CTKEY = #{ctkey}
+			     AND A.OWKEY = #{owkey}
+			     AND B.ICKEY = #{ickey}
+		     	 AND A.TTQTY > 0
+		     	 AND A.LCKEY IN('ASRS', 'MSC', 'ETC')
+		       UNION ALL
+			  SELECT #{ctkey}			AS CTKEY
+				   , #{owkey}			AS OWKEY
+				   , B.LOCATION_CODE  	AS LCKEY
+				   , B.CODE 			AS ICKEY
+				   , REPLACE(B.EFFECTIVE_DATE, '-', '') || '000000' AS EXPIREDATE
+				   , NULL 			    AS IVATKEY
+				   , 0 	  			    AS WMS_INVN
+				   , 0 					AS WMS_INVN_EA_01
+			       , B.QUANTITY_VALUE   AS WCS_INVN_01
+			       , B.QUANTITY_VALUE * E.ICUTQTY AS WCS_INVN_EA_01
+			       , 0 					AS WCS_INVN_02
+			       , 0 				    AS WCS_INVN_EA_02
+			       , B.QUANTITY_UNIT    AS UOM
+			    FROM TWORK_INFO_STOCKSTATUS_REQ A
+			   INNER JOIN TWORK_INTF_RIVWCS 	B
+			      ON A.IV_NUMBER = B.IV_NUMBER
+			   INNER JOIN TWORK_MST_IC D
+	  	 		  ON A.CTKEY   = D.CTKEY
+	  			 AND A.OWKEY   = D.OWKEY
+	  			 AND B.CODE    = D.ICKEY
+	  			 AND D.DELYN  = 'N'
+	  		   INNER JOIN TWORK_MST_ICUTXTYPE E
+	  	 		  ON A.CTKEY   = E.CTKEY
+	  			 AND A.OWKEY   = E.OWKEY
+	  			 AND D.ICUTKEY = E.ICUTKEY
+	  			 AND B.QUANTITY_UNIT = E.ICUTTYPE
+			   WHERE A.REQUEST_DATE = TO_CHAR(DATE_TRUNC('day', CURRENT_TIMESTAMP)::DATE, 'YYYYMMDD')
+			     AND A.CTKEY = #{ctkey}
+			     AND B.CODE  = #{ickey}
+			     AND B.QUANTITY_VALUE > 0
+			     AND 0 <![CDATA[ < ]]> (SELECT COUNT(*) FROM TWORK_INTF_RIVWCS RIVWCS WHERE STATUS IN('HEADTAIL', 'TAIL') AND RIVWCS.IV_NUMBER = B.IV_NUMBER)
+	           UNION ALL
+			  SELECT TWC.CTKEY
+				   , TWC.OWKEY
+				   , LOCATION_CODE  AS LCKEY
+				   , TWC.ICKEY
+				   , EFFECTIVE_DATE
+				   , TWC.IVATKEY
+		 		   , 0 				AS WMS_INVN
+		 		   , 0 				AS WMS_INVN_EA_01
+				   , 0 				AS WCS_INVN_01
+				   , 0 				AS WCS_INVN_EA_01
+				   , QUANTITY_VALUE AS WCS_INVN_02
+				   , TWC.EA_QTY 	AS WCS_INVN_EA_02
+				   , QUANTITY_UNIT  AS UOM
+			  FROM TWORK_TOTAL_WCSINVN_CNT TWC
+			 INNER JOIN TWORK_MST_IC 		IC
+			    ON TWC.CTKEY = IC.CTKEY
+			   AND TWC.OWKEY = IC.OWKEY
+			   AND TWC.ICKEY = IC.ICKEY
+			   AND IC.DELYN  = 'N'
+			 WHERE TWC.CTKEY = #{ctkey}
+			   AND TWC.OWKEY = #{owkey}
+			   AND TWC.ICKEY = #{ickey}
+			   AND TWC.EA_QTY > 0
+			  ) A
+  		  GROUP BY A.CTKEY, A.OWKEY, A.ICKEY, A.LCKEY, A.EXPIREDATE, A.UOM		
+	</select>
+	
+	<select id="selectInvnHistoryManualLocList" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectInvnHistoryManualLocList : 상품별 재고현황 로케이션(수동) 탭 조회 */
+		  SELECT A.CTKEY
+               , A.OWKEY
+               , A.LCKEY
+			   , A.ICKEY
+			   , B.EXPIREDATE
+			   , A.IVATKEY
+			   , ROUND(COALESCE(A.TTQTY, 0) / COALESCE(E.ICUTQTY, 1), 2) AS WMS_INVN_UNIT
+			   , A.TTQTY AS WMS_INVN_EA
+		       , B.UOM 	 AS UOM
+			FROM TWORK_INFO_IVATXLCXULC A
+		   INNER JOIN TWORK_INFO_IVAT   B
+	          ON A.CTKEY   	= B.CTKEY
+	     	 AND A.OWKEY   	= B.OWKEY
+	     	 AND A.IVATKEY 	= B.IVATKEY
+		   INNER JOIN TWORK_MST_IC 		IC
+		      ON A.CTKEY 	= IC.CTKEY
+		     AND A.OWKEY 	= IC.OWKEY
+		     AND A.ICKEY 	= IC.ICKEY
+		     AND IC.DELYN 	= 'N'				     	 
+  		   INNER JOIN TWORK_MST_ICUTXTYPE E
+  	 		  ON A.CTKEY    = E.CTKEY
+  			 AND A.OWKEY    = E.OWKEY
+  			 AND IC.ICUTKEY = E.ICUTKEY
+  			 AND B.UOM 	    = E.ICUTTYPE
+		   WHERE A.CTKEY = #{ctkey}
+		     AND A.OWKEY = #{owkey}
+		     AND B.ICKEY = #{ickey}
+	     	 AND A.TTQTY > 0
+	     	 AND A.LCKEY NOT IN('ASRS', 'MSC', 'ETC')	
+	</select>
+
+	<select id="selectWcsIBReceiveInfo" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectWcsIBReceiveInfo : WCS인터페이스 입고 송수신 결과 집계 조회 */
+		SELECT DISTINCT 
+		       MAX(T.TOTAL_CNT)				    	AS IB_TOTAL_CNT
+		     , SUM(T.ORDER_SUCCEEDED) 				AS IB_ORDER_SUCCEEDED
+		     , SUM(T.ORDER_FAIL)	 				AS IB_ORDER_FAIL
+		     , SUM(T.ORDER_RESULT_SUCCEEDED)		AS IB_ORDER_RESULT_SUCCEEDED
+		     , SUM(T.ORDER_RESULT_FAIL)	 			AS IB_ORDER_RESULT_FAIL
+		     , SUM(T.ORDER_NOT_RECEIVED) 			AS IB_ORDER_NOT_RECEIVED
+		     , SUM(T.CANCEL_ORDER_SUCCEEDED)		AS IB_CANCEL_ORDER_SUCCEEDED
+			 , SUM(T.CANCEL_ORDER_FAIL)				AS IB_CANCEL_ORDER_FAIL
+		     , SUM(T.CANCEL_ORDER_RESULT_SUCCEEDED)	AS IB_CANCEL_ORDER_RESULT_SUCCEEDED
+		     , SUM(T.CANCEL_ORDER_RESULT_FAIL)	 	AS IB_CANCEL_ORDER_RESULT_FAIL
+		     , SUM(T.CANCEL_ORDER_NOT_RECEIVED)		AS IB_CANCEL_ORDER_NOT_RECEIVED
+		 FROM (
+		 		SELECT SIBWCS.IB_SEQ
+		             , SIBWCS.HDKEY
+		             , SIBWCS.LICENSE_PLATE_NUMBER
+		             , SIBWCS.IB_NUMBER
+		             , SIBWCS.REQ_TYPE_CD
+		             , SIBWCS.OWKEY
+		             , SIBWCS.CTKEY
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'C' AND SIBWCS.SUCCEEDED = 'true'   THEN 1 ELSE 0 END ORDER_SUCCEEDED
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'C' AND SIBWCS.SUCCEEDED = 'false'  THEN 1 ELSE 0 END ORDER_FAIL
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'C' AND RIBWCS.STATUS = 'COMPLETED' THEN 1 ELSE 0 END ORDER_RESULT_SUCCEEDED
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'C' AND RIBWCS.STATUS = 'REJECTED'  THEN 1 ELSE 0 END ORDER_RESULT_FAIL
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'C' AND SIBWCS.SUCCEEDED = 'true' 
+		             									  AND RIBWCS.STATUS IS NULL 	  THEN 1 ELSE 0 END ORDER_NOT_RECEIVED
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'D' AND SIBWCS.SUCCEEDED = 'true'   THEN 1 ELSE 0 END CANCEL_ORDER_SUCCEEDED
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'D' AND SIBWCS.SUCCEEDED = 'false'  THEN 1 ELSE 0 END CANCEL_ORDER_FAIL
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'D' AND RIBWCS.STATUS = 'DELETED'   THEN 1 ELSE 0 END CANCEL_ORDER_RESULT_SUCCEEDED
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'D' AND SIBWCS.SUCCEEDED = 'false'  THEN 1 ELSE 0 END CANCEL_ORDER_RESULT_FAIL
+		             , CASE WHEN SIBWCS.REQ_TYPE_CD = 'D' AND SIBWCS.SUCCEEDED = 'true' 	 
+		             									  AND RIBWCS.STATUS IS NULL 	  THEN 1 ELSE 0 END CANCEL_ORDER_NOT_RECEIVED
+					 , COUNT(*) OVER() AS TOTAL_CNT
+		        FROM (SELECT IB_NUMBER
+		                   , MAX(CTKEY) 				AS CTKEY
+		                   , MAX(OWKEY) 				AS OWKEY
+		                   , MAX(REQ_TYPE_CD)			AS REQ_TYPE_CD
+		                   , MAX(IB_SEQ) 				AS IB_SEQ
+		                   , MAX(HDKEY) 				AS HDKEY
+		                   , MAX(LICENSE_PLATE_NUMBER) 	AS LICENSE_PLATE_NUMBER
+		                   , MAX(SUCCEEDED) 			AS SUCCEEDED
+		               FROM TWORK_INTF_SIBWCS
+		              WHERE 1 = 1
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTKEY_COND)">
+						AND CTKEY = #{CTKEY_COND}
+						</if>
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY_COND)">
+						AND OWKEY = #{OWKEY_COND}
+						</if>
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_COND)">
+						AND INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+						</if>
+		              GROUP BY IB_NUMBER
+		              ) SIBWCS
+		     LEFT OUTER JOIN TWORK_INTF_RIBWCS RIBWCS
+		             ON SIBWCS.IB_SEQ = RIBWCS.IB_SEQ
+		     ) T
+	</select>
+
+	<select id="selectWcsOBReceiveInfo" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectWcsOBReceiveInfo : WCS인터페이스 출고 송수신 결과 집계 조회 */
+	</select>
+
+	<select id="selectWcsRMReceiveInfo" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectWcsRMReceiveInfo : WCS인터페이스 보충 송수신 결과 집계 조회 */
+	</select>
+
+	<select id="selectWcsIVMMReceiveInfo" resultType="camelMap">
+		/* InvnHistoryReportMapper - selectWcsIVMMReceiveInfo : WCS인터페이스 재고이동 송수신 결과 집계 조회 */
+	</select>	
+</mapper>

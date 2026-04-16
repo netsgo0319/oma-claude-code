@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.B2blabelApiMapper">
+
+	<!--b2b 출고 수신 인터페이스 조회-->
+	<select id="selectInterfaceB2blabelReceive" parameterType="b2blabelRequestDTO">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - selectInterfaceB2blabelReceive - b2b 출고 수신 인터페이스 조회 */
+		SELECT DLV_BOX_NO
+			 , DLV_BOX_BCD
+			 , WRK_DATE
+			 , GI_DATE
+			 , BATCH_NO
+			 , SHOP_CD
+			 , REC_WHS_COD
+			 , WHS_COD
+			 , EQMT_TYP_CD
+			 , GI_ORD_NO
+			 , ITM_CD
+			 , LOAD_QTY
+			 , ITM_PKG_UNIT_CD
+			 , FLR_TBL_NO
+			 , LOT_NO
+			 , DLV_BOX_CTNR_NO
+			 , DLV_PLT_CTNR_NO
+			 , LCS_RT_FUL_RT_NO
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_B2B_OB_LABEL
+		 WHERE DLV_BOX_NO = #{dlvBoxNo}
+		   AND DLV_BOX_BCD = #{dlvBoxBcd}
+		   AND ITM_CD = #{itmCd}
+	</select>
+
+	<!--b2b 출고 수신 인터페이스 삭제-->
+	<select id="deleteInterfaceB2blabelReceive" parameterType="b2blabelRequestDTO">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - deleteInterfaceB2blabelReceive - b2b 출고 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_B2B_OB_LABEL
+		 WHERE DLV_BOX_NO = #{dlvBoxNo}
+		   AND DLV_BOX_BCD = #{dlvBoxBcd}
+		   AND ITM_CD = #{itmCd}
+	</select>
+
+	<!--b2b 출고 수신 인터페이스 등록-->
+	<insert id="insertInterfaceB2blabelReceive" parameterType="b2blabelRequestDTO">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - insertInterfaceB2blabelReceive - b2b 출고 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_B2B_OB_LABEL
+		(
+			  DLV_BOX_NO
+			, DLV_BOX_BCD
+			, WRK_DATE
+			, GI_DATE
+			, BATCH_NO
+			, SHOP_CD
+			, REC_WHS_COD
+			, WHS_COD
+			, EQMT_TYP_CD
+			, GI_ORD_NO
+			, ITM_CD
+			, LOAD_QTY
+			, ITM_PKG_UNIT_CD
+			, FLR_TBL_NO
+			, LOT_NO
+			, DLV_BOX_CTNR_NO
+			, DLV_PLT_CTNR_NO
+			, LCS_RT_FUL_RT_NO
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			  #{dlvBoxNo}
+			, #{dlvBoxBcd}
+			, #{wrkDate}
+			, #{giDate}
+			, #{batchNo}
+			, #{shopCd}
+			, #{recWhsCod}
+			, #{whsCod}
+			, #{eqmtTypCd}
+			, #{giOrdNo}
+			, #{itmCd}
+			, #{loadQty}
+			, #{itmPkgUnitCd}
+			, #{flrTblNo}
+			, #{lotNo}
+			, #{dlvBoxCtnrNo}
+			, #{dlvPltCtnrNo}
+			, #{lcsRtFulRtNo}
+			, 'N'
+			, NULL
+			, #{sysdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--b2b 출고 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceB2blabelList" parameterType="b2blabelRequestDTO" resultType="camelMap">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - selectInterfaceB2blabelList - b2b 출고 수신 인터페이스 - 등록 대상 조회 */
+		SELECT OL.OBLABELSEQNO
+			 , OL.DLV_BOX_NO
+			 , OL.DLV_BOX_BCD AS BOXLABELNO
+			 , OL.WRK_DATE
+			 , OL.GI_DATE AS DLVYDAY
+			 , OL.BATCH_NO
+			 , OL.SHOP_CD
+			 , OL.REC_WHS_COD AS CTKEY
+			 , OL.WHS_COD
+			 , OL.EQMT_TYP_CD
+			 , OL.GI_ORD_NO AS EXTORDERKEY
+			 , OL.ITM_CD AS ICKEY
+			 , OL.LOAD_QTY AS QTY
+			 , OL.ITM_PKG_UNIT_CD AS UOM
+			 , OL.FLR_TBL_NO
+			 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN CASE SUBSTR(OL.LOT_NO, 1, 8) WHEN '99991231' THEN NULL ELSE SUBSTR(OL.LOT_NO, 1, 8) END
+					ELSE NULL END AS EXPDATE
+			 , OL.DLV_BOX_CTNR_NO
+			 , OL.DLV_PLT_CTNR_NO
+			 , OL.LCS_RT_FUL_RT_NO AS CNTRLABELNO
+			 , OL.INSERTDATE
+			 , OL.INSERTURKEY
+			 , OL.UPDATEDATE
+			 , OL.UPDATEURKEY
+		  FROM TWORK_INTF_B2B_OB_LABEL OL
+		 INNER JOIN TWORK_MST_IC IC
+			ON OL.REC_WHS_COD = IC.CTKEY
+		   AND OL.ITM_CD = IC.ICKEY
+		 WHERE OL.PRCSYN = 'N'
+		   AND TO_DATE(OL.RCVDATE, 'YYYYMMDDHH24MISS') + INTERVAL '1' DAY <![CDATA[ > ]]> CURRENT_TIMESTAMP
+	</select>
+
+	<!--B2b 출고라벨 조회-->
+	<select id="selectB2blabelCount" resultType="integer">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - selectB2blabelCount - B2b 출고라벨 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_B2B_OB_LABEL
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXLABELNO = #{boxlabelno}
+		   AND SHMISTNO = #{extorderkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<!--B2b 출고라벨 삭제-->
+	<delete id="deleteB2blabel" >
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - deleteB2blabel - B2b 출고라벨 조회 */
+		DELETE FROM TWORK_INFO_B2B_OB_LABEL
+		 WHERE CTKEY = #{ctkey}
+		   AND BOXLABELNO = #{boxlabelno}
+		   AND SHMISTNO = #{extorderkey}
+		   AND ICKEY = #{ickey}
+	</delete>
+
+	<!--b2b 출고 수신 인터페이스 - 입고 상세 조회-->
+	<select id="selectIbdtMap" resultType="camelMap">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - selectIbdtMap - b2b 출고 수신 인터페이스 - 입고 상세 조회 */
+		SELECT IBHDKEY
+			 , IBDTKEY
+			 , OWKEY
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND EXTORDERKEY = #{extorderkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<!--b2b 출고 라벨 정보 등록-->
+	<insert id="insertB2blabel">
+		/* wms-inbound-b2blabel-receive-sql-oracle.xml - insertB2blabel - b2b 출고 라벨 정보 등록 */
+		INSERT INTO TWORK_INFO_B2B_OB_LABEL
+		(
+			CTKEY
+			, OWKEY
+			, BOXLABELNO
+			, DLVYDAY
+			, SHMISTNO
+			, REGDATE
+			, IBHDKEY
+			, IBDTKEY
+			, ICKEY
+			, QTY
+			, UOM
+			, EXPDATE
+			, AFCHGEXPDATE
+			, CNTRLABELNO
+			, CNTRLABELDIVCD
+			, IBCFSEQNO
+			, IBQTY
+			, PRCSYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{boxlabelno}
+			, #{dlvyday}
+			, #{extorderkey}
+			, #{sysdate}
+			, #{ibhdkey}
+			, #{ibdtkey}
+			, #{ickey}
+			, #{qty}
+			, #{uom}
+			, #{expdate}
+			, NULL
+			, #{cntrlabelno}
+			, CASE SUBSTR(#{cntrlabelno}, 1, 1) WHEN 'R' THEN '10' WHEN 'P' THEN '20' ELSE '30' END
+			, NULL
+			, 0
+			, 'N'
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--b2b 출고 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceB2blabelReceive">
+		UPDATE TWORK_INTF_B2B_OB_LABEL
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE OBLABELSEQNO = #{oblabelseqno}
+	</update>
+
+</mapper>

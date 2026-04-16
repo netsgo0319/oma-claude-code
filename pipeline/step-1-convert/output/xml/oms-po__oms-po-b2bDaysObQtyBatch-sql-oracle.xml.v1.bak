@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.PoB2bDaysObQtyApiMapper">
+
+	<insert id="insertErpPoB2bDaysObQtyIntf">
+		/* oms-po-poB2bDaysObQty-sql-oracle.xml - insertErpPoB2bDaysObQtyIntf */
+		MERGE INTO TORDER_INFO_B2BAVGOBQTY_REQORDER B2B
+		USING
+		(
+		    SELECT CTKEY
+                 , ICKEY
+                 , CRITDAY
+                 , AVQTY
+                 , PREIBQTY
+                 , IBEXPCTDAY
+                 , IBEXPCTQTY
+                 , AVGOBQTY
+		   FROM TORDER_EAI_B2BAVGOBQTY_BATCH
+		   WHERE TRN_ID = #{trnId}
+		) IN_B2B
+		ON
+		(
+		       IN_B2B.CTKEY   = B2B.CTKEY
+		   AND IN_B2B.ICKEY   = B2B.ICKEY
+		   AND IN_B2B.CRITDAY = B2B.CRITDAY
+		)
+		WHEN MATCHED THEN
+		   UPDATE SET
+		      B2B.AVQTY       = IN_B2B.AVQTY
+            , B2B.PREIBQTY    = IN_B2B.PREIBQTY
+            , B2B.IBEXPCTDAY  = IN_B2B.IBEXPCTDAY
+            , B2B.IBEXPCTQTY  = IN_B2B.IBEXPCTQTY
+            , B2B.AVGOBQTY    = IN_B2B.AVGOBQTY
+			, B2B.UPDATEDATE  = #{sysdate}
+	        , B2B.UPDATEURKEY = #{interfaceUrkey}
+	    WHEN NOT MATCHED THEN
+		   INSERT
+		   (
+		        B2B.CTKEY
+              , B2B.ICKEY
+              , B2B.CRITDAY
+              , B2B.AVQTY
+              , B2B.PREIBQTY
+              , B2B.IBEXPCTDAY
+              , B2B.IBEXPCTQTY
+              , B2B.AVGOBQTY
+		      , B2B.INSERTDATE
+		      , B2B.INSERTURKEY
+		      , B2B.UPDATEDATE
+		      , B2B.UPDATEURKEY
+		   )
+		   VALUES
+		   (
+		        IN_B2B.CTKEY
+              , IN_B2B.ICKEY
+              , IN_B2B.CRITDAY
+              , IN_B2B.AVQTY
+              , IN_B2B.PREIBQTY
+              , IN_B2B.IBEXPCTDAY
+              , IN_B2B.IBEXPCTQTY
+              , IN_B2B.AVGOBQTY
+	          , #{sysdate}
+	          , #{interfaceUrkey}
+	          , #{sysdate}
+	          , #{interfaceUrkey}
+		)
+	</insert>
+
+	<update id="updateIntfErpStatus">
+		/* oms-master-poB2bDaysObQty-sql-oracle.xml - updateIntfErpStatus */
+		UPDATE TORDER_EAI_B2BAVGOBQTY_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID <![CDATA[ <= ]]> #{trnId}
+		   AND SND_DATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD' )
+	</update>
+
+</mapper>
+	

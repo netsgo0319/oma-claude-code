@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.item.mapper.ItemCtCppMapper">
+
+    <select id="selectItemCtCppList" resultType="camelMap">
+		/* ItemCtCppMapper.xml selectItemCtCppList */
+        SELECT TRN_ID
+             , CTKEY
+             , ICKEY
+             , CPP
+             , ICUNITQTY
+             , IPCWEIGHT
+             , IPCVOL
+             , CARTWEIGHT
+             , CARTVOL
+             , PLTROW
+             , PLTCOL
+        FROM TORDER_EAI_ICUTXCTPLT_BATCH
+        WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+          AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+        ORDER BY TRN_ID , SND_NO, SND_ROW
+    </select>    
+</mapper>

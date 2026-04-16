@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.api.in.mapper.UserApiMapper">
+
+	<insert id="mergeErpUserInfo">
+		/* adm-user-user-sql-oracle.xml - mergeErpUserInfo */
+		INSERT INTO TADMIN_MST_UR (
+			URKEY, URNM, URPW, EXP, GENDERTYPE,
+			JOINDAY, QUITDAY, EMPLOYTYPE, WRKTYPE,
+			DEPTKEY, DEPTNM,
+			INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+		)
+		SELECT URKEY
+			 , URNM
+			 , #{urpw}
+			 , '203912312359'
+			 , CASE GENDERTYPE WHEN '1' THEN 'F' WHEN '3' THEN 'M' ELSE GENDERTYPE END AS GENDERTYPE
+			 , JOINDAY
+			 , QUITDAY
+			 , CASE EMPLOYTYPE WHEN '정규' THEN '1' WHEN '연봉' THEN '2' WHEN '임시' THEN '3' ELSE EMPLOYTYPE END AS EMPLOYTYPE
+			 , CASE WRKTYPE WHEN '1' THEN 'Y' WHEN '9' THEN 'N' ELSE WRKTYPE END AS WRKTYPE
+			 , DEPTKEY
+			 , DEPTNM
+			 , #{sysdate}
+			 , #{interfaceUrkey}
+			 , #{sysdate}
+			 , #{interfaceUrkey}
+		  FROM TADMIN_EAI_USR_BATCH
+		 WHERE TRN_ID = #{trnId}
+		 GROUP BY URKEY, URNM, GENDERTYPE, JOINDAY, QUITDAY,
+				  EMPLOYTYPE, WRKTYPE, DEPTKEY, DEPTNM
+		ON CONFLICT (URKEY) DO UPDATE SET
+			URNM = EXCLUDED.URNM,
+			GENDERTYPE = EXCLUDED.GENDERTYPE,
+			JOINDAY = EXCLUDED.JOINDAY,
+			QUITDAY = EXCLUDED.QUITDAY,
+			EMPLOYTYPE = EXCLUDED.EMPLOYTYPE,
+			WRKTYPE = EXCLUDED.WRKTYPE,
+			DEPTKEY = EXCLUDED.DEPTKEY,
+			DEPTNM = EXCLUDED.DEPTNM,
+			UPDATEDATE = EXCLUDED.UPDATEDATE,
+			UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+
+	<update id="updateUserErpStatus">
+		/* adm-user-user-sql-oracle.xml - updateUserErpStatus */
+		UPDATE TADMIN_EAI_USR_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+
+</mapper>

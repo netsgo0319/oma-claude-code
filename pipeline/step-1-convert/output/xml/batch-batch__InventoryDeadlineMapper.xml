@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.InventoryDeadlineMapper">
+	
+	<!-- 재고정보 조회 -->
+	<select id="selectInventoryQty" resultType="com.daiso.batch.biz.wms.dto.InventoryDeadlineRequestDTO$InventoryDeadlineDetailDTO">
+		/* InventoryDeadlineMapper.selectInventoryQty 재고정보 조회 */
+		WITH OB AS (
+					SELECT OD.CTKEY
+                         , OD.OWKEY
+						 , OD.ICKEY
+						 , SUM(OD.EXPCTQTY) AS OBEXPCTQTY
+					  FROM TWORK_INFO_OB_HD OH
+                           INNER JOIN
+                           TWORK_INFO_OB_DT OD
+                             ON OH.CTKEY = OD.CTKEY
+                            AND OH.OWKEY = OD.OWKEY
+                            AND OH.OBHDKEY = OD.OBHDKEY
+					 WHERE OH.CTKEY = #{ctkey}
+					   AND OH.OWKEY = #{owkey}
+					   AND OD.ALQTY = 0
+					   AND OD.OBDTSTATUSCD = '00'
+                       AND SUBSTR(OH.OBHDDAY,1,8) BETWEEN TO_CHAR((CURRENT_TIMESTAMP + (-1) * INTERVAL '1 month'),'YYYYMMDD') AND TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '5 days','YYYYMMDD')
+					 GROUP BY OD.CTKEY, OD.OWKEY, OD.ICKEY
+		), ORD AS (
+		           SELECT T.OWKEY
+		                , T.ICKEY
+		                , T.OBEXPCTQTY
+		             FROM (
+		                   SELECT SD.OWKEY
+		                        , SD.ICKEY
+		                        , SUM(SD.INITQTY) AS OBEXPCTQTY
+		                     FROM TORDER_INFO_SO_HD SH
+                                  INNER JOIN
+                                  TORDER_INFO_SO_DT SD
+                                    ON SH.OWKEY = SD.OWKEY
+                                   AND SH.SOHDKEY = SD.SOHDKEY
+		                    WHERE SH.OWKEY = #{owkey}
+                              AND SUBSTR(SH.DLVYEXPCTDAY,1,8) BETWEEN TO_CHAR((CURRENT_TIMESTAMP + (-1) * INTERVAL '1 month'),'YYYYMMDD') AND TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '5 days','YYYYMMDD')
+                              AND SD.WKSTATUS IN ('00','15')  /* 작업생성, 분배오류 */
+                              AND SH.ORDERTYPECD IN ('90','100')
+                            GROUP BY
+                                  SD.OWKEY
+                                , SD.ICKEY
+		                  ) T
+		            WHERE T.OBEXPCTQTY > 0
+        )
+		SELECT IV.OWKEY  /* 화주코드 */
+			 , IV.ICKEY  /* 상품코드 */
+			 , IV.TOTQTY AS AVQTY  /* 가용수량 */
+			 , COALESCE(OB.OBEXPCTQTY, 0) + COALESCE(ORD.OBEXPCTQTY, 0) + COALESCE(IV.ALQTY, 0) AS OBEXPCTQTY   /* 출고예정수량 */
+		  FROM (
+				SELECT IVLC.CTKEY
+					 , IVLC.OWKEY
+					 , IVLC.ICKEY
+                     , SUM(CASE WHEN ( IC.EXPCKYN = 'N' OR (IC.EXPCKYN = 'Y' AND TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS  * (OBIMPSCRITRT/100)),0),'YYYYMMDD') <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD'))) THEN IVLC.TOTQTY ELSE 0 END) AS TOTQTY
+					 , SUM(CASE WHEN ( IC.EXPCKYN = 'N' OR (IC.EXPCKYN = 'Y' AND TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS  * (OBIMPSCRITRT/100)),0),'YYYYMMDD') <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD'))) THEN IVLC.AVQTY ELSE 0 END) AS AVQTY
+                     , SUM(CASE WHEN ( IC.EXPCKYN = 'N' OR (IC.EXPCKYN = 'Y' AND TO_CHAR(TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS + ROUND((IC.EXPCNVRSNDAYS  * (OBIMPSCRITRT/100)),0),'YYYYMMDD') <![CDATA[ >= ]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD'))) THEN IVLC.ALQTY ELSE 0 END) AS ALQTY
+				  FROM TWORK_INFO_IVATXLC IVLC
+				 INNER JOIN TWORK_MST_LC LC
+					ON IVLC.CTKEY = LC.CTKEY
+				   AND IVLC.LCKEY = LC.LCKEY
+				   AND LC.LCTYPECD = '90'          /* 로케이션유형코드 - 보관 */
+				 INNER JOIN TWORK_MST_ZN ZN
+					ON LC.CTKEY = ZN.CTKEY
+				   AND LC.ZNKEY = ZN.ZNKEY
+				   AND ZN.ZNTYPECD = '10'          /* 존유형코드 - 보관존 */
+                 INNER JOIN TWORK_INFO_IVAT IVAT
+                    ON IVLC.CTKEY = IVAT.CTKEY
+                   AND IVLC.OWKEY = IVAT.OWKEY
+                   AND IVLC.IVATKEY = IVAT.IVATKEY
+                 INNER JOIN TWORK_MST_IC IC
+                    ON IVLC.CTKEY = IC.CTKEY
+                   AND IVLC.OWKEY = IC.OWKEY
+                   AND IVLC.ICKEY = IC.ICKEY
+				 WHERE IVLC.CTKEY = #{ctkey}
+				   AND IVLC.OWKEY = #{owkey}
+				   AND IVLC.IVSTATUSCD = '10'	   /* 재고상태코드 - 정상 */
+				 GROUP BY IVLC.CTKEY , IVLC.OWKEY , IVLC.ICKEY
+			  ) IV
+		   LEFT OUTER JOIN OB
+			ON IV.CTKEY = OB.CTKEY
+		   AND IV.OWKEY = OB.OWKEY
+		   AND IV.ICKEY = OB.ICKEY
+          LEFT OUTER JOIN ORD
+            ON IV.OWKEY = ORD.OWKEY
+           AND IV.ICKEY = ORD.ICKEY
+	</select>
+
+</mapper>

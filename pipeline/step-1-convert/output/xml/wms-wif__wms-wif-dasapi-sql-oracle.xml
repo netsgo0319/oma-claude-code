@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.wif.in.mapper.DasApiMapper">
+	<!--DAS 분류TOTE 맵핑정보 수신 정보 UPDATE-->
+	<update id="updateOutboundHeaderClassIfCntrBarcode" parameterType="com.daiso.wms.api.wif.dto.DasClassifToteMappingRequestDTO$DasClassificationToteListReqDTO">
+		/* wms-wif-dasapi-sql-oracle.xml - updateOutboundHeaderClassIfCntrBarcode - 출고상세 / 출고마감 IF 송신 데이터 조회 */
+		UPDATE TWORK_INFO_OB_HD
+		SET CLASSIFCNTRBARCODE = #{classifToteBrcd}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obHdKey}
+	</update>
+
+	<!--출고헤더 처리여부 확인 BY 분류TOTE 마감 수신-->
+	<select id="selectOutboundHeaderByDasToteClose" parameterType="com.daiso.wms.api.wif.dto.DasClassifToteCloseRequestDTO$ToteListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOutboundHeaderByDasToteClose - 출고헤더 처리여부 확인 BY 분류TOTE 마감 수신 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBSTATUSCD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctKey}
+		AND OWKEY = #{owKey}
+		AND OBHDKEY = #{obHdKey}
+	</select>
+
+	<!--출고상세 UPDATE BY 분류TOTE 마감 수신-->
+	<update id="updateOutboundDetailByDasToteClose" parameterType="com.daiso.wms.api.wif.dto.DasClassifToteCloseRequestDTO$ToteListDTO$ItemListDTO">
+		/* wms-wif-dasapi-sql-oracle.xml - updateOutboundDetailByDasToteClose - 출고상세 UPDATE BY 분류TOTE 마감 수신 */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = #{obDtStatusCd}
+			,CLASSIFSQTY = CLASSIFSQTY + #{qty}
+		WHERE CTKEY = #{ctKey}
+		AND OWKEY = #{owKey}
+		AND OBHDKEY = #{obHdKey}
+		AND ICKEY = #{icKey}
+	</update>
+
+	<!--출고헤더 UPDATE BY 분류TOTE 마감 수신-->
+	<update id="updateOutboundHeaderStatusCdByDasToteClose" parameterType="com.daiso.wms.api.wif.dto.DasClassifToteCloseRequestDTO$ToteListDTO">
+		/* wms-wif-dasapi-sql-oracle.xml - updateOutboundHeaderStatusCdByDasToteClose - 출고헤더 UPDATE BY 분류TOTE 마감 수신 */
+		UPDATE TWORK_INFO_OB_HD
+		SET OBSTATUSCD = #{obStatusCd}
+			,CLASSIFWKDATE = #{prcsTime}
+			,CLASSIFWKURKEY = #{userId}
+		WHERE CTKEY = #{ctKey}
+		AND OWKEY = #{owKey}
+		AND OBHDKEY = #{obHdKey}
+	</update>
+
+	<!--출고헤더 조회 BY 로봇DAS 포장박스 추가-->
+	<select id="selectOutboundHeaderByRobDasBoxAdd" parameterType="com.daiso.wms.api.wif.dto.RobDasAddboxRequestDTO$OrderListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOutboundHeaderByRobDasBoxAdd - 출고헤더 조회 BY 로봇DAS 포장박스 추가 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBSTATUSCD
+		    ,DLVRYCORPCD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctKey}
+		AND OWKEY = #{owKey}
+		AND OBHDKEY = #{obHdKey}
+		AND WKTYPECD = 'RW' /* 2026-01-26 KJH 덕용 로봇박스추가 불가 */
+	</select>
+
+	<!--신규 릴리즈코드 조회 BY 로봇DAS 박스추가-->
+	<select id="selectOubboundHeaderByPreObHdKey" parameterType="com.daiso.wms.api.wif.dto.RobDasAddboxRequestDTO$OrderListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOubboundHeaderByPreObHdKey - 신규 릴리즈코드 조회 BY 로봇DAS 박스추가 */
+		SELECT
+			OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			,OH.WBLNO
+			,BOX.BOXNM
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_MST_BOX BOX
+				ON OH.CTKEY = BOX.CTKEY
+				AND OH.RECOMBOXBARCODE = BOXBARCODE
+		WHERE OH.CTKEY = #{ctKey}
+		AND OH.OWKEY = #{owKey}
+		AND OH.PREOBHDKEY = #{obHdKey}
+	</select>
+
+	<!--출고상세 조회 BY 로봇DAS 포장박스 추가-->
+	<select id="selectOutboundDetailByRobDasBoxAdd" parameterType="com.daiso.wms.api.wif.dto.RobDasAddboxRequestDTO$OrderListDTO$ItemListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOutboundDetailByRobDasBoxAdd - 출고상세 조회 BY 로봇DAS 포장박스 추가 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.OBHDKEY
+			,OD.OBDTKEY
+			,OD.EXPCTQTY
+			,OD.ICKEY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OD.CTKEY = #{ctKey}
+		AND OD.OWKEY = #{owKey}
+		AND OD.OBHDKEY = #{obHdKey}
+		AND OD.ICKEY = #{icKey}
+	</select>
+
+	<!--출고상세 UPDATE BY 로봇DAS (분류수량 +)-->
+	<update id="updateOutboundDetailByRobDas">
+		/* wms-wif-dasapi-sql-oracle.xml - updateOutboundDetailByRobDas - 출고상세 UPDATE BY 로봇DAS (분류수량 +) */
+		UPDATE TWORK_INFO_OB_DT
+		SET OBDTSTATUSCD = #{obdtstatuscd}
+			,CLASSIFSQTY = CLASSIFSQTY + #{topakqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<!--출고헤더 조회 BY 로봇DAS 출고완료-->
+	<select id="selectOutboundHeaderByRobDasBoxPackingComplete" parameterType="com.daiso.wms.api.wif.dto.RobDasPackCompleteReqDTO$OrderListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOutboundHeaderByRobDasBoxPackingComplete - 출고헤더 조회 BY 로봇DAS 출고완료 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,OBSTATUSCD
+			,PREOBHDKEY
+			,WKTYPECD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctKey}
+		AND OWKEY = #{owKey}
+		AND OBHDKEY = #{obHdKey}
+	</select>
+
+	<!--출고상세 조회 BY 로봇DAS 출고완료-->
+	<select id="selectOutboundDetailByRobDasBoxPackingComplete" parameterType="com.daiso.wms.api.wif.dto.RobDasPackCompleteReqDTO$OrderListDTO$ItemListDTO" resultType="camelMap">
+		/* wms-wif-dasapi-sql-oracle.xml - selectOutboundDetailByRobDasBoxPackingComplete - 출고상세 조회 BY 로봇DAS 출고완료 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.OBHDKEY
+			,OD.OBDTKEY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+				AND OH.OWKEY = OD.OWKEY
+				AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OD.CTKEY = #{ctKey}
+		AND OD.OWKEY = #{owKey}
+		AND OD.OBHDKEY = #{obHdKey}
+		AND OD.ICKEY = #{icKey}
+	</select>
+</mapper>

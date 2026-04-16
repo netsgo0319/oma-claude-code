@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.StoreMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectStore">
+		FROM TWORK_MST_STORE A
+		LEFT OUTER JOIN TWORK_MST_CT B
+			ON B.CTKEY = A.CTKEY
+		LEFT OUTER JOIN TWORK_MST_OW C
+			ON C.OWKEY = A.OWKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+				AND	A.CTKEY = #{ctkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND	A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)">
+				AND	A.DCKEY = #{dckey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(storeKey)">
+				AND	A.STORE_KEY = #{storeKey}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectStoreCount" resultType="java.lang.Integer">
+		/* wms-master-store-sql-oracle.xml - selectStoreCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectStore"/>
+	</select>
+
+	<select id="selectStoreList" resultType="camelMap">
+		/* wms-master-store-sql-oracle.xml - selectStore */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.CTKEY
+		    , B.CTNAME
+			, A.OWKEY
+			, C.OWNAME
+			, A.STORE_KEY
+			, A.STORE_NAME
+			, A.OLD_STORE_KEY
+			, A.TEL1
+			, A.TEL2
+			, A.ADDRESS1
+			, A.ADDRESS2
+			, A.STARTDATE
+			, A.CLOSEDATE
+			, A.LDG_TIME
+			, A.UNLDG_TIME
+			, A.FCTYPE
+			, A.OWNER_NAME
+			, A.DCKEY
+			, A.REGDATE
+			, A.REGNO
+			, A.KTG_AREA_CD
+			, A.URKEY AS SV_CD
+			, A.SV_NM
+			, A.SV_TEL
+			, A.ADDRID
+			, A.DLDAY
+			, A.ZIPCODE
+			, A.ISMANAGESTORE
+		    , A.CUST_GRADE
+			, A.MAXOVERQTY
+			, A.DELYN
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		<include refid="sql_selectStore"/>
+		ORDER BY
+			A.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectStore" resultType="camelMap">
+	/* wms-master-store-sql-oracle.xml - selectMapStore */
+		SELECT
+			  A.CTKEY
+		    , A.OWKEY
+			, A.LOGGRPCD
+			, A.DCKEY
+			, A.STORE_KEY
+			, A.STORE_NAME
+			, A.TEL1
+			, A.FCTYPE
+			, A.OLD_STORE_KEY
+			, A.OWNER_NAME
+			, A.STARTDATE
+			, A.REGDATE
+			, A.REGNO
+			, A.DLDAY
+			, A.KTG_AREA_CD
+			, A.DELYN
+			, A.ADDRID
+			, A.CLOSDATE
+			, A.LDG_TIME
+			, A.UNLDG_TIME
+			, A.ZIPCODE
+			, A.ADDRESS1
+			, A.ADDRESS2
+			, A.MAXOVERQTY
+			, A.ISMANAGESTORE
+		FROM TWORK_MST_STORE A
+		WHERE A.CTKEY = #{ctkey}
+		AND	A.OWKEY = #{owkey}
+		AND	A.DCKEY = #{dckey}
+		AND	A.STORE_KEY = #{storeKey}
+	</select>
+	
+	<update id="updateStore">
+		UPDATE
+		    TWORK_MST_STORE
+		SET
+			  MAXOVERQTY = #{maxoverqty}
+			, ISMANAGESTORE = #{ismanagestore}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND DCKEY = #{dckey}
+		AND STORE_KEY = #{storeKey}
+	</update>
+
+</mapper>	

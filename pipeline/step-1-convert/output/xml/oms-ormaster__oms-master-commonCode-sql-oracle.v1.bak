@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.ormaster.mapper.CommonCodeAdminMapper">
+
+	<select id="selectTOrderMstComHd" resultType="camelMap" >
+		/* oms-master-commonCode-sql-oracle.xml - selectTOrderMstComHd */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , OWKEY
+		     , COMHDKEY
+		     , COMHDNM
+		     , INSERTSYSTM
+		     , WMSIFYN
+		     , TMSIFYN
+		     , DELYN
+		     , INSERTDATE
+		     , INSERTURKEY
+		     , UPDATEDATE
+		     , UPDATEURKEY
+		FROM TORDER_MST_COM_HD
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+			<if test="comhdkey != null">
+				AND COMHDKEY = #{comhdkey}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC , COMHDKEY ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+  
+	<select id="selectTOrderMstComHdCount" resultType="java.lang.Integer" >
+		/* oms-master-commonCode-sql-oracle.xml - selectTOrderMstComHdCount */
+        SELECT count(1)
+          FROM TORDER_MST_COM_HD
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="selectTOrderMstComDt" resultType="camelMap">
+		/* oms-master-commonCode-sql-oracle.xml - selectTOrderMstComDt */
+		SELECT TB2.OWKEY
+		     , TB1.COMHDKEY
+		     , TB1.COMHDNM
+		     , TB2.COMDTKEY
+		     , TB2.INSERTSYSTM
+		     , TB2.COMDTNM
+		     , TB2.WMSMAPVAL
+		     , TB2.TMSMAPVAL
+		     , TB2.DTKEYORD
+		     , TB2.DELYN
+		     , TB2.CMT
+		     , TB2.LAKEY
+			 , TB1.DELYN AS HDDELYN
+		     , TB2.INSERTDATE
+		     , TB2.INSERTURKEY
+		     , TB2.UPDATEDATE
+		     , TB2.UPDATEURKEY
+		     , TB2.VAL
+		FROM TORDER_MST_COM_HD TB1
+		   JOIN TORDER_MST_COM_DT TB2
+		     ON TB1.OWKEY = TB2.OWKEY
+		    AND TB1.COMHDKEY = TB2.COMHDKEY
+		    AND TB1.INSERTSYSTM = TB2.INSERTSYSTM
+		    AND TB1.COMHDKEY = #{comhdkey}
+		<if test="owkey != null">
+			AND TB1.OWKEY = #{owkey}
+		</if>
+		<if test="insertsystm != null">
+			AND TB2.INSERTSYSTM = #{insertsystm}
+		</if>
+		<if test="comdtkey != null">
+			AND TB2.COMDTKEY = #{comdtkey}
+		</if>
+		<if test="delyn != null">
+			AND TB2.DELYN = #{delyn}
+		</if>
+		ORDER BY CASE WHEN TB2.LAKEY = 'KOR' THEN 0 ELSE 1 END, TB2.LAKEY, TB2.DTKEYORD ASC
+	</select>
+	
+	<select id="selectTOrderMstComDtCount"  resultType="java.lang.Integer" >
+		/* oms-master-commonCode-sql-oracle.xml - selectTOrderMstComDtCount */
+		SELECT COUNT(1)
+		FROM
+		(
+		SELECT TB1.COMHDKEY
+		     , TB2.COMDTKEY
+		     , TB2.COMDTNM
+		     , TB2.WMSMAPVAL
+		     , TB2.TMSMAPVAL
+		     , TB2.DTKEYORD
+		     , TB2.CMT
+		     , TB2.LAKEY
+		     , TB2.INSERTDATE
+		     , TB2.INSERTURKEY
+		     , TB2.UPDATEDATE
+		     , TB2.UPDATEURKEY
+		FROM TORDER_MST_COM_HD TB1
+		   JOIN TORDER_MST_COM_DT TB2
+		     ON TB1.COMHDKEY = TB2.COMHDKEY
+		    AND TB1.COMHDKEY = #{comhdkey}
+		<if test="comdtkey != null">
+			AND TB2.COMDTKEY = #{comdtkey}
+		</if>
+		<if test="delyn != null">
+			AND TB2.DELYN = #{delyn}
+		</if>
+		)
+	</select>
+	
+	<select id="checkCommonCodeInfo" resultType="java.lang.Integer" >
+		/* oms-master-commonCode-sql-oracle.xml - checkCommonCodeInfo */
+		SELECT count(1)
+		FROM TORDER_MST_COM_HD
+		<if test="comhdkey != null">
+		WHERE COMHDKEY = #{comhdkey}
+		</if>
+	</select>	
+	
+	<select id="checkDetailCommonCodeInfo" resultType="java.lang.Integer" >
+		/* oms-master-commonCode-sql-oracle.xml - checkDetailCommonCodeInfo */
+		SELECT count(1)
+		FROM TORDER_MST_COM_DT
+		WHERE COMHDKEY = #{comhdkey}
+		<if test="comdtkey != null">
+		  AND COMDTKEY = #{comdtkey}
+		</if>
+		<if test="lakey != null">
+		  AND LAKEY = #{lakey}
+		</if>
+	</select>	
+	
+	<insert id="insertCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - insertCommonCodeInfo */
+		INSERT INTO TORDER_MST_COM_HD
+		(
+		    OWKEY
+		  , COMHDKEY
+		  , INSERTSYSTM
+		  , COMHDNM
+		  , WMSIFYN
+		  , TMSIFYN
+		  , DELYN
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)
+		VALUES
+		(
+			#{owkey}
+		  , #{comhdkey}
+		  , #{insertsystm}
+		  , #{comhdnm}
+		  , #{wmsifyn}
+		  , #{tmsifyn}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+	
+	<insert id="insertDetailCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - insertDetailCommonCodeInfo */
+		INSERT INTO TORDER_MST_COM_DT
+		(
+		    OWKEY
+		  , COMHDKEY
+		  , COMDTKEY
+		  , INSERTSYSTM
+		  , LAKEY
+		  , DTKEYORD
+		  , COMDTNM
+		  , VAL
+		  , WMSMAPVAL
+		  , TMSMAPVAL
+		  , CMT
+		  , DELYN
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{comhdkey}
+		  , #{comdtkey}
+		  , #{insertsystm}
+		  , #{lakey}
+		  , #{dtkeyord}
+		  , #{comdtnm}
+		  , #{val}
+		  , #{wmsmapval}
+		  , #{tmsmapval}
+		  , #{cmt}
+		  , COALESCE(#{delyn}, 'N')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+	
+	<update id="updateCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - updateCommonCodeInfo */
+		UPDATE TORDER_MST_COM_HD
+		SET COMHDNM      = #{comhdnm}
+		  , WMSIFYN      = #{wmsifyn}
+		  , TMSIFYN      = #{tmsifyn}
+		  , DELYN        = #{delyn}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COMHDKEY    = #{comhdkey}
+		  AND INSERTSYSTM = #{insertsystm}
+	</update>
+			
+	<update id="updateDetailCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - updateDetailCommonCodeInfo */
+		UPDATE TORDER_MST_COM_DT
+		SET DTKEYORD      = #{dtkeyord}
+		  , COMDTNM       = #{comdtnm}
+		  , VAL    		  = #{val}
+		  , WMSMAPVAL     = #{wmsmapval}
+		  , TMSMAPVAL     = #{tmsmapval}
+		  , CMT           = #{cmt}
+		  , DELYN         = #{delyn}
+		  , UPDATEDATE    = #{sysdate}
+		  , UPDATEURKEY   = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COMHDKEY    = #{comhdkey}
+		  AND INSERTSYSTM = #{insertsystm}
+	      AND COMDTKEY    = #{comdtkey}
+	      AND LAKEY       = #{lakey}
+	</update>
+	
+	<delete id="deleteCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - deleteCommonCodeInfo */
+		UPDATE TORDER_MST_COM_HD
+		SET DELYN        = #{delyn}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COMHDKEY    = #{comhdkey}
+		  AND INSERTSYSTM = #{insertsystm}
+	</delete>
+		
+	<delete id="deleteDetailCommonCodeInfo">
+		/* oms-master-commonCode-sql-oracle.xml - deleteDetailCommonCodeInfo */
+		UPDATE TORDER_MST_COM_DT
+		SET DELYN       = #{delyn}
+		  , UPDATEDATE  = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COMHDKEY    = #{comhdkey}
+		  AND INSERTSYSTM = #{insertsystm}
+	      AND COMDTKEY    = #{comdtkey}
+	      AND LAKEY       = #{lakey}
+	</delete>
+
+	<select id="selectTorderMstCtgBatchList" resultType="com.daiso.oms.item.vo.ItemCtgVO" >
+		/* oms-master-commonCode-sql-oracle.xml - selectTorderMstCtgBatchList */
+		SELECT COMHDKEY
+		     , CASE WHEN LENGTH(COMDTKEY) = '4' THEN '3'
+		            WHEN LENGTH(COMDTKEY) = '2' THEN '2'
+		            WHEN LENGTH(COMDTKEY) = '1' THEN '1'
+		       END CTGLV
+		     , CASE WHEN LENGTH(COMDTKEY) = '4' THEN SUBSTR(COMDTKEY, 0, 2)
+		            WHEN LENGTH(COMDTKEY) = '2' THEN SUBSTR(COMDTKEY, 0, 1)
+		            WHEN LENGTH(COMDTKEY) = '1' THEN NULL
+		       END UPPERKEY
+		FROM TORDER_EAI_COMCD_BATCH
+		WHERE COMHDKEY = 'CTG_1000'
+		  AND TRN_ID = #{trnId}
+	</select>
+
+</mapper>
+	

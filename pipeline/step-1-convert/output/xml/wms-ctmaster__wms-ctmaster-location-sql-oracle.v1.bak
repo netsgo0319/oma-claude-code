@@ -1,0 +1,752 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.ctmaster.mapper.LocationMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectLocation">
+		SELECT '0' AS CHK
+		     , LC.CTKEY				/* 센터 코드 */
+			 , CT.CTNM				/* 센터명 */
+			 , LC.LCKEY				/* 로케이션 코드 */
+			 , LC.CMT				/* 비고 */
+			 , LC.LCTYPECD			/* 로케이션 유형 코드 */
+			 , LC.LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			 , LC.LCSTORGTYPECD		/* 로케이션 보관 유형 코드 */
+			 , STRING_AGG(LCD.DSBTGRADECD, ',' ORDER BY LCD.CTCDDTORD) AS DSBTGRADECD		/* 물류등급코드 */
+-- 			 , LISTAGG((SELECT CTCDDTNM
+-- 					 	  FROM TWORK_MST_CTCD_HD HD
+-- 					 	 INNER JOIN TWORK_MST_CTCD_DT DT
+-- 					 	    ON DT.CTKEY = HD.CTKEY
+-- 					 	   AND DT.CTCDHDKEY = HD.CTCDHDKEY
+-- 					 	 WHERE HD.CTKEY = LC.CTKEY
+-- 					 	   AND HD.CTCDHDKEY = 'CTDSBTGRADECD'
+-- 					 	   AND DT.CTCDDTKEY = LCD.DSBTGRADECD), ',') AS DSBTGRADECD		/* 물류등급코드 */
+			 , LC.ZNKEY				/* 존코드 */
+			 , ZN.ZNNM				/* 존명 */
+			 , LC.ARKEY				/* 구역 코드 */
+			 , LC.RACKNO			/* 랙번호 */
+			 , LC.ROWNO				/* 행번호 */
+			 , LC.TIERNO			/* 단번호 */
+			 , LC.SPLNO				/* 분할번호 */
+			 , LC.ALTMTARNO			/* 배정구역번호 */
+			 , LC.ALTMTALENO		/* 배정통로번호 */
+			 , LC.ALEBARCODE		/* 통로바코드 */
+			 , LC.WIDTH				/* 가로 */
+			 , LC.DEPTH				/* 세로 */
+			 , LC.HEIGHT			/* 높이 */
+			 , LC.CBMSTARTRNG		/* CBM시작범위 */
+			 , LC.CBMCLOSRNG		/* CBM종료범위 */
+			 , LC.ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			 , LC.IVATKEYMIXCGYN	/* 재고 속성 코드 혼재 여부 */
+			 , LC.FIXYN				/* 고정여부 */
+			 , LC.LCLIMITDIVCD		/* 로케이션제한구분코드 */
+		     , LC.ICPLCMDIVCD		/* 상품적치구분코드 */
+		     , LC.ICARDIVCD			/* 상품구역구분코드 */
+		 	 , LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , LC.INSERTDATE		/* 입력 일시 */
+			 , LC.INSERTURKEY		/* 입력 사용자 ID */
+			 , LC.UPDATEDATE		/* 수정 일시 */
+			 , LC.UPDATEURKEY		/* 수정 사용자 ID */
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN (
+		  	   SELECT LCD.CTKEY
+					, LCD.LCKEY
+					, LCD.DSBTGRADECD
+					, CDDT.CTCDDTORD
+				 FROM TWORK_MST_LC_DSBTGRADE LCD
+				INNER JOIN TWORK_MST_CTCD_DT CDDT
+				   ON CDDT.CTKEY = LCD.CTKEY
+				  AND CDDT.CTCDHDKEY = 'CTDSBTGRADECD'
+				  AND CDDT.CTCDDTKEY = LCD.DSBTGRADECD
+				INNER JOIN TWORK_MST_CTCD_HD CDHD
+				   ON CDHD.CTKEY = CDDT.CTKEY
+				  AND CDHD.CTCDHDKEY = CDDT.CTCDHDKEY
+			 ) LCD
+			ON LCD.CTKEY = LC.CTKEY
+		   AND LCD.LCKEY = LC.LCKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dsbtgradecdList)">
+				AND EXISTS (
+						   SELECT 1
+						     FROM TWORK_MST_LC_DSBTGRADE
+						    WHERE LCKEY = LC.LCKEY
+						      AND DSBTGRADECD IN
+							<foreach collection="dsbtgradecdList" item="item" separator="," open="(" close=")">
+								#{item}
+							</foreach>
+				         )
+			</if>
+		</where>
+
+		GROUP BY LC.CTKEY			/* 센터 코드 */
+			, CT.CTNM				/* 센터명 */
+			, LC.LCKEY				/* 로케이션 코드 */
+			, LC.CMT				/* 비고 */
+			, LC.LCTYPECD			/* 로케이션 유형 코드 */
+			, LC.LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			, LC.LCSTORGTYPECD		/* 로케이션 보관 유형 코드 */
+		    , LC.ZNKEY				/* 존코드 */
+		    , ZN.ZNNM				/* 존명 */
+			, LC.ARKEY				/* 구역 코드 */
+			, LC.RACKNO				/* 랙번호 */
+			, LC.ROWNO				/* 행번호 */
+			, LC.TIERNO				/* 단번호 */
+			, LC.SPLNO				/* 분할번호 */
+			, LC.ALTMTARNO			/* 배정구역번호 */
+			, LC.ALTMTALENO			/* 배정통로번호 */
+			, LC.ALEBARCODE			/* 통로바코드 */
+			, LC.WIDTH				/* 가로 */
+			, LC.DEPTH				/* 세로 */
+			, LC.HEIGHT				/* 높이 */
+			, LC.CBMSTARTRNG		/* CBM시작범위 */
+			, LC.CBMCLOSRNG			/* CBM종료범위 */
+			, LC.ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			, LC.IVATKEYMIXCGYN		/* 재고 속성 코드 혼재 여부 */
+			, LC.FIXYN				/* 고정여부 */
+			, LC.LCLIMITDIVCD		/* 로케이션제한구분코드 */
+			, LC.ICPLCMDIVCD		/* 상품적치구분코드 */
+			, LC.ICARDIVCD			/* 상품구역구분코드 */
+			, LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			, LC.INSERTDATE			/* 입력 일시 */
+			, LC.INSERTURKEY		/* 입력 사용자 ID */
+			, LC.UPDATEDATE			/* 수정 일시 */
+			, LC.UPDATEURKEY		/* 수정 사용자 ID */
+	</sql>
+
+	<select id="selectLocationCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationCount */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectLocation"/>
+			 )
+
+	</select>
+
+	<select id="selectLocationList" resultType="camelMap">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationList */
+		<include refid="sql_pagingTop"/>
+
+		<include refid="sql_selectLocation"/>
+
+		 ORDER BY
+			   LC.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectLocationExcelList" resultType="camelMap">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationExcelList */
+		  WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+
+				AND A.CTCDHDKEY IN ('LCTYPECD', 'LCHOLDTYPECD', 'LCSTORGTYPECD', 'CTDSBTGRADECD', 'YESORNO', 'LCLIMITDIVCD', 'ICPLCMDIVCD', 'ICARDIVCD')
+			</where>
+		)
+		SELECT LC.CTKEY				/* 센터 코드 */
+			 , CT.CTNM				/* 센터명 */
+			 , LC.LCKEY				/* 로케이션 코드 */
+			 , LC.CMT				/* 비고 */
+			 , CD1.CTCDDTNM AS LCTYPECD			/* 로케이션 유형 코드 */
+			 , CD2.CTCDDTNM AS LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			 , CD3.CTCDDTNM AS LCSTORGTYPECD		/* 로케이션 보관 유형 코드 */
+			 , STRING_AGG(CD4.CTCDDTNM, ',' ORDER BY LCD.CTCDDTORD) AS DSBTGRADECD		/* 물류등급코드 */
+			 , LC.ZNKEY				/* 존코드 */
+			 , ZN.ZNNM				/* 존명 */
+			 , LC.ARKEY				/* 구역 코드 */
+			 , LC.RACKNO			/* 랙번호 */
+			 , LC.ROWNO				/* 행번호 */
+			 , LC.TIERNO			/* 단번호 */
+			 , LC.SPLNO				/* 분할번호 */
+			 , LC.ALTMTARNO			/* 배정구역번호 */
+			 , LC.ALTMTALENO		/* 배정통로번호 */
+			 , LC.ALEBARCODE		/* 통로바코드 */
+			 , LC.WIDTH				/* 가로 */
+			 , LC.DEPTH				/* 세로 */
+			 , LC.HEIGHT			/* 높이 */
+			 , LC.CBMSTARTRNG		/* CBM시작범위 */
+			 , LC.CBMCLOSRNG		/* CBM종료범위 */
+			 , CD5.CTCDDTNM AS ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			 , CD6.CTCDDTNM AS IVATKEYMIXCGYN	/* 재고 속성 코드 혼재 여부 */
+			 , CD7.CTCDDTNM AS FIXYN				/* 고정여부 */
+			 , CD8.CTCDDTNM AS LCLIMITDIVCD		/* 로케이션제한구분코드 */
+		     , CD9.CTCDDTNM AS ICPLCMDIVCD		/* 상품적치구분코드 */
+		     , CD10.CTCDDTNM AS ICARDIVCD			/* 상품구역구분코드 */
+		 	 , LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , LC.INSERTDATE		/* 입력 일시 */
+			 , LC.INSERTURKEY		/* 입력 사용자 ID */
+			 , LC.UPDATEDATE		/* 수정 일시 */
+			 , LC.UPDATEURKEY		/* 수정 사용자 ID */
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN (
+		  	   SELECT LCD.CTKEY
+					, LCD.LCKEY
+					, LCD.DSBTGRADECD
+					, CDDT.CTCDDTORD
+				 FROM TWORK_MST_LC_DSBTGRADE LCD
+				INNER JOIN TWORK_MST_CTCD_DT CDDT
+				   ON CDDT.CTKEY = LCD.CTKEY
+				  AND CDDT.CTCDHDKEY = 'CTDSBTGRADECD'
+				  AND CDDT.CTCDDTKEY = LCD.DSBTGRADECD
+				INNER JOIN TWORK_MST_CTCD_HD CDHD
+				   ON CDHD.CTKEY = CDDT.CTKEY
+				  AND CDHD.CTCDHDKEY = CDDT.CTCDHDKEY
+			 ) LCD
+			ON LCD.CTKEY = LC.CTKEY
+		   AND LCD.LCKEY = LC.LCKEY
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = LC.CTKEY
+		   AND CD1.CTCDHDKEY = 'LCTYPECD'
+		   AND CD1.CTCDDTKEY = LC.LCTYPECD
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = LC.CTKEY
+		   AND CD2.CTCDHDKEY = 'LCHOLDTYPECD'
+		   AND CD2.CTCDDTKEY = LC.LCHOLDTYPECD
+		  LEFT JOIN T_CODE CD3
+			ON CD3.CTKEY = LC.CTKEY
+		   AND CD3.CTCDHDKEY = 'LCSTORGTYPECD'
+		   AND CD3.CTCDDTKEY = LC.LCSTORGTYPECD
+		  LEFT JOIN T_CODE CD4
+			ON CD4.CTKEY = LC.CTKEY
+		   AND CD4.CTCDHDKEY = 'CTDSBTGRADECD'
+		   AND CD4.CTCDDTKEY = LCD.DSBTGRADECD
+		  LEFT JOIN T_CODE CD5
+			ON CD5.CTKEY = LC.CTKEY
+		   AND CD5.CTCDHDKEY = 'YESORNO'
+		   AND CD5.CTCDDTKEY = LC.ICKEYMIXCGYN
+		  LEFT JOIN T_CODE CD6
+			ON CD6.CTKEY = LC.CTKEY
+		   AND CD6.CTCDHDKEY = 'YESORNO'
+		   AND CD6.CTCDDTKEY = LC.IVATKEYMIXCGYN
+		  LEFT JOIN T_CODE CD7
+			ON CD7.CTKEY = LC.CTKEY
+		   AND CD7.CTCDHDKEY = 'YESORNO'
+		   AND CD7.CTCDDTKEY = LC.FIXYN
+		  LEFT JOIN T_CODE CD8
+			ON CD8.CTKEY = LC.CTKEY
+		   AND CD8.CTCDHDKEY = 'LCLIMITDIVCD'
+		   AND CD8.CTCDDTKEY = LC.LCLIMITDIVCD
+		  LEFT JOIN T_CODE CD9
+			ON CD9.CTKEY = LC.CTKEY
+		   AND CD9.CTCDHDKEY = 'ICPLCMDIVCD'
+		   AND CD9.CTCDDTKEY = LC.ICPLCMDIVCD
+		  LEFT JOIN T_CODE CD10
+			ON CD10.CTKEY = LC.CTKEY
+		   AND CD10.CTCDHDKEY = 'ICARDIVCD'
+		   AND CD10.CTCDDTKEY = LC.ICARDIVCD
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dsbtgradecdList)">
+				AND EXISTS (
+						   SELECT 1
+						     FROM TWORK_MST_LC_DSBTGRADE
+						    WHERE LCKEY = LC.LCKEY
+						      AND DSBTGRADECD IN
+							<foreach collection="dsbtgradecdList" item="item" separator="," open="(" close=")">
+								#{item}
+							</foreach>
+				         )
+			</if>
+		</where>
+
+		GROUP BY LC.CTKEY			/* 센터 코드 */
+			, CT.CTNM				/* 센터명 */
+			, LC.LCKEY				/* 로케이션 코드 */
+			, LC.CMT				/* 비고 */
+			, CD1.CTCDDTNM			/* 로케이션 유형 코드 */
+			, CD2.CTCDDTNM			/* 로케이션 보류 유형 코드 */
+			, CD3.CTCDDTNM			/* 로케이션 보관 유형 코드 */
+		    , LC.ZNKEY				/* 존코드 */
+		    , ZN.ZNNM				/* 존명 */
+			, LC.ARKEY				/* 구역 코드 */
+			, LC.RACKNO				/* 랙번호 */
+			, LC.ROWNO				/* 행번호 */
+			, LC.TIERNO				/* 단번호 */
+			, LC.SPLNO				/* 분할번호 */
+			, LC.ALTMTARNO			/* 배정구역번호 */
+			, LC.ALTMTALENO			/* 배정통로번호 */
+			, LC.ALEBARCODE			/* 통로바코드 */
+			, LC.WIDTH				/* 가로 */
+			, LC.DEPTH				/* 세로 */
+			, LC.HEIGHT				/* 높이 */
+			, LC.CBMSTARTRNG		/* CBM시작범위 */
+			, LC.CBMCLOSRNG			/* CBM종료범위 */
+			, CD5.CTCDDTNM			/* 상품 코드 혼재 여부 */
+			, CD6.CTCDDTNM			/* 재고 속성 코드 혼재 여부 */
+			, CD7.CTCDDTNM			/* 고정여부 */
+			, CD8.CTCDDTNM			/* 로케이션제한구분코드 */
+			, CD9.CTCDDTNM			/* 상품적치구분코드 */
+			, CD10.CTCDDTNM			/* 상품구역구분코드 */
+			, LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			, LC.INSERTDATE			/* 입력 일시 */
+			, LC.INSERTURKEY		/* 입력 사용자 ID */
+			, LC.UPDATEDATE			/* 수정 일시 */
+			, LC.UPDATEURKEY		/* 수정 사용자 ID */
+		 ORDER BY
+			   LC.UPDATEDATE DESC
+	</select>
+
+	<select id="selectLocation" resultType="camelMap">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocation */
+		SELECT '0' AS CHK
+		     , LC.CTKEY				/* 센터 코드 */
+			 , CT.CTNM				/* 센터명 */
+		     , LC.ZNKEY				/* 존 코드 */
+		     , ZN.ZNNM				/* 존명 */
+			 , LC.LCKEY				/* 로케이션 코드 */
+			 , LC.CMT				/* 비고 */
+			 , LC.LCTYPECD			/* 로케이션 유형 코드 */
+			 , LC.LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			 , LC.LCSTORGTYPECD		/* 로케이션 보관 유형 코드 */
+			 , STRING_AGG(LCD.DSBTGRADECD, ',' ORDER BY LCD.CTCDDTORD) AS DSBTGRADECD		/* 물류등급코드 */
+		     , LC.ICTMPRDIVCD		/* 상품온도구분 */
+			 , LC.ARKEY				/* 구역 코드 */
+		     , AR.ARNM				/* 구역명 */
+			 , LC.LCDIVNO			/* 로케이션구분번호 */
+		     , LC.FLOOR				/* 층번호 */
+			 , LC.RACKNO			/* 랙번호 */
+			 , LC.ROWNO				/* 행번호 */
+			 , LC.TIERNO			/* 단번호 */
+			 , LC.SPLNO				/* 분할번호 */
+			 , LC.SPLQTYDIVCD		/* 분할수 */
+			 , LC.ALTMTARNO			/* 배정구역번호 */
+			 , LC.ALTMTALENO		/* 배정통로번호 */
+			 , LC.ALEBARCODE		/* 통로바코드 */
+			 , LC.WIDTH				/* 가로 */
+			 , LC.DEPTH				/* 세로 */
+			 , LC.HEIGHT			/* 높이 */
+			 , LC.CBMSTARTRNG		/* CBM시작범위 */
+			 , LC.CBMCLOSRNG		/* CBM종료범위 */
+			 , LC.ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			 , LC.IVATKEYMIXCGYN	/* 재고 속성 코드 혼재 여부 */
+			 , LC.FIXYN				/* 고정여부 */
+			 , LC.LCLIMITDIVCD		/* 로케이션제한구분코드 */
+		     , LC.ICARDIVCD			/* 상품구역구분코드 */
+			 , LC.ICPLCMDIVCD		/* 상품적치구분코드 */
+			 , LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , LC.INSERTDATE		/* 입력 일시 */
+			 , LC.INSERTURKEY		/* 입력 사용자 ID */
+			 , LC.UPDATEDATE		/* 수정 일시 */
+			 , LC.UPDATEURKEY		/* 수정 사용자 ID */
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		  LEFT JOIN (
+		  	   SELECT LCD.CTKEY
+					, LCD.LCKEY
+					, LCD.DSBTGRADECD
+					, CDDT.CTCDDTORD
+				 FROM TWORK_MST_LC_DSBTGRADE LCD
+				INNER JOIN TWORK_MST_CTCD_DT CDDT
+				   ON CDDT.CTKEY = LCD.CTKEY
+				  AND CDDT.CTCDHDKEY = 'CTDSBTGRADECD'
+				  AND CDDT.CTCDDTKEY = LCD.DSBTGRADECD
+				INNER JOIN TWORK_MST_CTCD_HD CDHD
+				   ON CDHD.CTKEY = CDDT.CTKEY
+				  AND CDHD.CTCDHDKEY = CDDT.CTCDHDKEY
+			 ) LCD
+			ON LCD.CTKEY = LC.CTKEY
+		   AND LCD.LCKEY = LC.LCKEY
+		 WHERE LC.CTKEY = #{ctkey}
+		   AND LC.LCKEY = #{lckey}
+		 GROUP BY LC.CTKEY			/* 센터 코드 */
+			 , CT.CTNM				/* 센터명 */
+			 , LC.ZNKEY				/* 존 코드 */
+			 , ZN.ZNNM				/* 존명 */
+			 , LC.LCKEY				/* 로케이션 코드 */
+			 , LC.CMT				/* 비고 */
+			 , LC.LCTYPECD			/* 로케이션 유형 코드 */
+			 , LC.LCHOLDTYPECD		/* 로케이션 보류 유형 코드 */
+			 , LC.LCSTORGTYPECD		/* 로케이션 보관 유형 코드 */
+			 , LC.ICTMPRDIVCD		/* 상품온도구분 */
+			 , LC.ARKEY				/* 구역 코드 */
+			 , AR.ARNM				/* 구역명 */
+			 , LC.LCDIVNO			/* 로케이션구분번호 */
+			 , LC.FLOOR				/* 층번호 */
+			 , LC.RACKNO			/* 랙번호 */
+			 , LC.ROWNO				/* 행번호 */
+			 , LC.TIERNO			/* 단번호 */
+			 , LC.SPLNO				/* 분할번호 */
+		     , LC.SPLQTYDIVCD		/* 분할수 */
+			 , LC.ALTMTARNO			/* 배정구역번호 */
+			 , LC.ALTMTALENO		/* 배정통로번호 */
+			 , LC.ALEBARCODE		/* 통로바코드 */
+			 , LC.WIDTH				/* 가로 */
+			 , LC.DEPTH				/* 세로 */
+			 , LC.HEIGHT			/* 높이 */
+			 , LC.CBMSTARTRNG		/* CBM시작범위 */
+			 , LC.CBMCLOSRNG		/* CBM종료범위 */
+			 , LC.ICKEYMIXCGYN		/* 상품 코드 혼재 여부 */
+			 , LC.IVATKEYMIXCGYN	/* 재고 속성 코드 혼재 여부 */
+			 , LC.FIXYN				/* 고정여부 */
+			 , LC.LCLIMITDIVCD		/* 로케이션제한구분코드 */
+			 , LC.ICARDIVCD			/* 상품구역구분코드 */
+			 , LC.ICPLCMDIVCD		/* 상품적치구분코드 */
+			 , LC.IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , LC.INSERTDATE		/* 입력 일시 */
+			 , LC.INSERTURKEY		/* 입력 사용자 ID */
+			 , LC.UPDATEDATE		/* 수정 일시 */
+			 , LC.UPDATEURKEY		/* 수정 사용자 ID */
+	</select>
+
+	<select id="selectLocationDupCheck" resultType="java.lang.Integer">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationDupCheck */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC
+
+		<where>
+			AND CTKEY = #{ctkey}
+			AND LCKEY = #{lckey}
+		</where>
+	</select>
+
+	<select id="selectLocationUseCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationUseCheckCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IVATXLC
+		 WHERE CTKEY = #{ctkey}
+		   AND LCKEY = #{lckey}
+	</select>
+
+	<insert id="insertLocation">
+		/* wms-ctmaster-location-sql-oracle.xml - insertLocation */
+		INSERT INTO TWORK_MST_LC (
+			   CTKEY
+			 , ZNKEY
+			 , ARKEY
+			 , LCKEY
+			 , CMT
+			 , LCTYPECD
+			 , LCHOLDTYPECD
+			 , LCSTORGTYPECD
+			 , ICTMPRDIVCD
+			 , ICKEYMIXCGYN
+			 , IVATKEYMIXCGYN
+			 , FIXYN
+			 , LCLIMITDIVCD
+			 , LCDIVNO
+			 , FLOOR
+			 , RACKNO
+			 , ROWNO
+			 , TIERNO
+			 , SPLNO
+			 , SPLQTYDIVCD
+			 , ALTMTARNO
+			 , ALTMTALENO
+			 , ALEBARCODE
+			 , ICARDIVCD		/* 상품구역구분코드 */
+			 , ICPLCMDIVCD		/* 상품적치구분코드 */
+			 , IVCNTRMGMTYN		/* 재고용기관리여부 */
+			 , WIDTH
+			 , DEPTH
+			 , HEIGHT
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+		 	   #{ctkey}
+			 , #{znkey}
+			 , #{arkey}
+			 , #{lckey}
+			 , #{cmt}
+			 , #{lctypecd}
+			 , #{lcholdtypecd}
+			 , #{lcstorgtypecd}
+			 , #{ictmprdivcd}
+			 , #{ickeymixcgyn}
+			 , #{ivatkeymixcgyn}
+			 , #{fixyn}
+			 , #{lclimitdivcd}
+			 , #{lcdivno}
+			 , #{floor}
+			 , #{rackno}
+			 , #{rowno}
+			 , #{tierno}
+			 , #{splno}
+			 , #{splqtydivcd}
+			 , #{altmtarno}
+			 , #{altmtaleno}
+			 , #{alebarcode}
+			 , #{icardivcd}
+			 , #{icplcmdivcd}
+			 , #{ivcntrmgmtyn}
+			 , #{width}
+			 , #{depth}
+			 , #{height}
+			 , #{cbmstartrng}
+			 , #{cbmclosrng}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<insert id="insertLocDsbtgrade">
+		/* wms-ctmaster-location-sql-oracle.xml - insertLocDsbtgrade */
+		INSERT INTO TWORK_MST_LC_DSBTGRADE (
+			   CTKEY
+			 , LCKEY
+			 , DSBTGRADECD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+		 	   #{ctkey}
+			 , #{lckey}
+			 , #{dsbtgradecd}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateLocation">
+		/* wms-ctmaster-location-sql-oracle.xml - updateLocation */
+		UPDATE TWORK_MST_LC
+		   SET CMT = #{cmt}
+			 , LCTYPECD = #{lctypecd}
+			 , LCHOLDTYPECD = #{lcholdtypecd}
+			 , LCSTORGTYPECD = #{lcstorgtypecd}
+			 , ICTMPRDIVCD = #{ictmprdivcd}
+			 , ICKEYMIXCGYN = #{ickeymixcgyn}
+			 , IVATKEYMIXCGYN = #{ivatkeymixcgyn}
+			 , FIXYN = #{fixyn}
+			 , LCLIMITDIVCD = #{lclimitdivcd}
+			 , LCDIVNO = #{lcdivno}
+			 , FLOOR = #{floor}
+			 , RACKNO = #{rackno}
+			 , ROWNO = #{rowno}
+			 , TIERNO = #{tierno}
+			 , SPLNO = #{splno}
+			 , SPLQTYDIVCD = #{splqtydivcd}
+			 , ALTMTARNO = #{altmtarno}
+			 , ALTMTALENO = #{altmtaleno}
+			 , ALEBARCODE = #{alebarcode}
+			 , ICARDIVCD = #{icardivcd}
+			 , ICPLCMDIVCD = #{icplcmdivcd}
+			 , IVCNTRMGMTYN = #{ivcntrmgmtyn}
+			 , WIDTH = #{width}
+			 , DEPTH = #{depth}
+			 , HEIGHT = #{height}
+			 , CBMSTARTRNG = #{cbmstartrng}
+			 , CBMCLOSRNG = #{cbmclosrng}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND LCKEY = #{lckey}
+	</update>
+
+	<delete id="deleteLocDsbtgrade">
+		/* wms-ctmaster-location-sql-oracle.xml - deleteLocDsbtgrade */
+		DELETE
+		  FROM TWORK_MST_LC_DSBTGRADE
+		 WHERE CTKEY = #{ctkey}
+		   AND LCKEY = #{lckey}
+	</delete>
+
+	<delete id="deleteLocation">
+		/* wms-ctmaster-location-sql-oracle.xml - deleteLocation */
+		DELETE
+		  FROM TWORK_MST_LC
+		 WHERE CTKEY = #{ctkey}
+		   AND LCKEY = #{lckey}
+	</delete>
+
+	<select id="selectLocationLcstorgtypeList" resultType="camelMap">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationLcstorgtypeList */
+		SELECT '0' AS CHK
+			 , LC.CTKEY
+			 , LC.LCSTORGTYPECD
+			 , LC.CBMSTARTRNG
+			 , LC.CBMCLOSRNG
+		  FROM TWORK_MST_LC_STORGTYPE LC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		 INNER JOIN (
+			   SELECT B.CTKEY
+					, B.CTCDHDKEY
+					, B.CTCDDTKEY
+					, B.CTCDDTNM
+					, B.CTCDDTORD
+				 FROM TWORK_MST_CTCD_HD A
+				INNER JOIN TWORK_MST_CTCD_DT B
+				   ON B.CTKEY = A.CTKEY
+				  AND B.CTCDHDKEY = A.CTCDHDKEY
+				WHERE A.CTCDHDKEY = 'LCSTORGTYPECD'
+				  AND B.LAKEY = #{slakey}
+				  AND A.DELYN = 'N'
+				  AND B.DELYN = 'N'
+			 ) CTCD
+			ON CTCD.CTKEY = LC.CTKEY
+		   AND CTCD.CTCDDTKEY = LC.LCSTORGTYPECD
+		 WHERE LC.CTKEY = #{ctkey}
+		 ORDER BY CTCD.CTCDDTORD
+	</select>
+
+	<select id="selectLocationLcstorgtypeDupCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-location-sql-oracle.xml - selectLocationLcstorgtypeDupCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_LC_STORGTYPE
+		 WHERE CTKEY = #{ctkey}
+		   AND LCSTORGTYPECD = #{lcstorgtypecd}
+		 ORDER BY UPDATEDATE DESC
+	</select>
+
+	<insert id="insertLocationLcstorgtype">
+		/* wms-ctmaster-location-sql-oracle.xml - insertLocationLcstorgtype */
+		INSERT INTO TWORK_MST_LC_STORGTYPE (
+			   CTKEY
+			 , LCSTORGTYPECD
+			 , CBMSTARTRNG
+			 , CBMCLOSRNG
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{lcstorgtypecd}
+			 , COALESCE(#{cbmstartrng}, 0)
+			 , COALESCE(#{cbmclosrng}, 0)
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateLocationLcstorgtype">
+		/* wms-ctmaster-location-sql-oracle.xml - updateLocationLcstorgtype */
+		UPDATE TWORK_MST_LC_STORGTYPE
+		   SET CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND LCSTORGTYPECD = #{lcstorgtypecd}
+	</update>
+
+	<update id="updateTworkMstLcCbm">
+		/* wms-ctmaster-location-sql-oracle.xml - updateTworkMstLcCbm */
+		UPDATE TWORK_MST_LC
+		   SET CBMSTARTRNG = COALESCE(#{cbmstartrng}, 0)
+			 , CBMCLOSRNG = COALESCE(#{cbmclosrng}, 0)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND LCSTORGTYPECD = #{lcstorgtypecd}
+	</update>
+
+	<delete id="deleteLocationLcstorgtype">
+		/* wms-ctmaster-location-sql-oracle.xml - deleteLocationLcstorgtype */
+		DELETE
+		  FROM TWORK_MST_LC_STORGTYPE
+		 WHERE CTKEY = #{ctkey}
+		   AND LCSTORGTYPECD = #{lcstorgtypecd}
+	</delete>
+
+	<select id="selectIfSendLocationList" resultType="camelMap">
+		/* wms-ctmaster-location-sql-oracle.xml - selectIfSendLocationList */
+		SELECT LC.CTKEY
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , LC.LCKEY
+			 , LC.CBMSTARTRNG
+			 , LC.CBMCLOSRNG
+		     , #{useyn} AS USEYN
+			 , AR.ANSUNGB2BPOCTG
+			 , AR.NAMSAB2BPOCTG
+			 , AR.BUSANB2BPOCTG
+			 , AR.SEJONGB2BPOCTG
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 WHERE LC.CTKEY = #{ctkey}
+
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(lcList)">
+				AND LC.LCKEY IN (
+					<foreach collection="lcList" item="item" separator=",">
+						#{item.lckey}
+					</foreach>
+				  )
+			</when>
+			<otherwise>
+				AND 1 = 2
+			</otherwise>
+		</choose>
+
+	</select>
+
+</mapper>

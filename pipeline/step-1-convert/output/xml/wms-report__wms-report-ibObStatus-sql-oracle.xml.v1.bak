@@ -1,0 +1,1328 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.InXObStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <select id="selectinXObIcStatusCount" resultType="java.lang.Integer">
+        /* wms-report-selectinXObStatus-sql-oracle.xml - selectinXObIcStatusCount */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectinXObIcStatusSql"/>
+        )
+    </select>
+
+    <select id="selectinXObIcStatusList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-selectinXObStatus-sql-oracle.xml - selectinXObIcStatusList */
+            FROM (
+                <include refid="selectinXObIcStatusSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectinXObIcStatusSql">
+        SELECT * FROM (
+            SELECT
+                 COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) AS OWKEY
+                ,COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) AS CTKEY
+                ,COALESCE(G.ICKEY, E.ICKEY) AS ICKEYM
+                ,COALESCE(G.ICNM, E.ICNM) AS ICNMM
+                ,F.ASRTDTICKEY AS ICKEYA
+                ,(CASE WHEN F.ASRTMASICKEY IS NOT NULL THEN COALESCE(F.ASRTNM, E.ICNM) ELSE NULL END) AS ICNMA
+                ,CTG3.CTGNM AS LV1CTGNM
+                ,CTG2.CTGNM AS LV2CTGNM
+                ,CTG1.CTGNM AS LV3CTGNM
+                ,F.ACNM
+                ,E.SLPRC
+                ,E.ASRTYN
+                ,E.ROBSORTERICYN
+                ,E.EXPCKYN
+                ,E.PKOTICYN
+                ,COALESCE(CNFRMQTY_DM, 0) AS CNFRMQTYDM -- 입고EA/이고입고
+                ,COALESCE(CNFRMQTY_MV, 0) AS CNFRMQTYMV -- 입고EA/직납입고
+                ,COALESCE(CNFRMQTY_ET, 0) AS CNFRMQTYET -- 입고EA/기타입고
+                ,COALESCE(QTY_UP, 0) AS QTYUP
+                ,(COALESCE(CNFRMQTY_DM, 0) + COALESCE(CNFRMQTY_MV, 0) + COALESCE(CNFRMQTY_ET, 0) + COALESCE(QTY_UP, 0)) AS IBSUM
+                ,COALESCE(OB_DM_QTY, 0) AS OBDMQTY -- 출고EA/주문출고
+                ,COALESCE(OB_MV_QTY, 0) AS OBMVQTY -- 출고EA/이고출고
+                ,COALESCE(OB_ET_QTY, 0) AS OBETQTY -- 출고EA/기타출고
+                ,COALESCE(QTY_DOWN, 0) AS QTYDOWN
+                ,(COALESCE(OB_DM_QTY, 0) + COALESCE(OB_MV_QTY, 0) + COALESCE(OB_ET_QTY, 0) + COALESCE(QTY_DOWN, 0)) AS OBSUM
+                ,COALESCE(QTY_MIN, 0) AS BFIV -- 직전 재고
+                ,COALESCE(QTY_MIN, 0) + ((COALESCE(CNFRMQTY_DM, 0) + COALESCE(CNFRMQTY_MV, 0) + COALESCE(CNFRMQTY_ET, 0) + COALESCE(QTY_UP, 0))) - ((COALESCE(OB_DM_QTY, 0) + COALESCE(OB_MV_QTY, 0) + COALESCE(OB_ET_QTY, 0) + COALESCE(QTY_DOWN, 0))) AS TOTALIV
+                ,(COALESCE(QTY_MIN, 0) + ((COALESCE(CNFRMQTY_DM, 0) + COALESCE(CNFRMQTY_MV, 0) + COALESCE(CNFRMQTY_ET, 0) + COALESCE(QTY_UP, 0))) - ((COALESCE(OB_DM_QTY, 0) + COALESCE(OB_MV_QTY, 0) + COALESCE(OB_ET_QTY, 0) + COALESCE(QTY_DOWN, 0)))) - COALESCE(QTY_MIN, 0) AS DIFF
+                ,#{wrkStartDate} || '000000' AS TASKDATE
+            FROM (
+                -- (1) 직전 재고
+                SELECT  OWKEY,
+                        CTKEY,
+                        ICKEYA,
+                        SUM(CASE WHEN RANK_MIN = 1 THEN QTY WHEN RANK_MIN IS NULL AND RANK_MAX IS NULL THEN QTY ELSE 0 END) AS QTY_MIN,
+                        MIN(TASKDATE) AS TASKDATE
+                    FROM (
+                        SELECT  B.OWKEY,
+                        B.CTKEY,
+                        IVHSKEY,
+                        RANK_MIN,
+                        RANK_MAX,
+                        B.ICKEY ICKEYA,
+                        (CASE WHEN A.QTY IS NULL THEN B.AVQTY ELSE A.QTY END) QTY,
+                        B.LCKEY,
+                        TASKDATE
+                    FROM (
+                        SELECT * FROM (
+                            SELECT
+                                OWKEY,
+                                CTKEY,
+                                IVHSKEY,
+                                RANK_MIN,
+                                RANK_MAX,
+                                ICKEY AS ICKEYA,
+                                QTY,
+                                TOLCKEY,
+                                INSERTDATE AS TASKDATE
+                            FROM (
+                                SELECT  IVHS.OWKEY,
+                                    LC.CTKEY,
+                                    RANK() OVER (PARTITION BY TOLCKEY, ICKEY ORDER BY IVHSKEY) AS RANK_MIN,
+                                    RANK() OVER (PARTITION BY TOLCKEY, ICKEY ORDER BY IVHSKEY DESC) AS RANK_MAX,
+                                    IVHSKEY,
+                                    ICKEY,
+                                    TOBFCHGQTY + QTY AS QTY,
+                                    TOLCKEY,
+                                    IVHS.INSERTDATE
+                                FROM TWORK_INFO_IVHS IVHS, TWORK_MST_LC LC
+                                WHERE IVHS.CTKEY = LC.CTKEY
+                                AND IVHS.TOLCKEY = LC.LCKEY
+                                AND LC.LCTYPECD = '90'
+                            )
+                )
+                WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                    AND #{SEARCH_CONDITION}
+                </if>
+                AND (RANK_MIN = 1 OR RANK_MAX = 1)
+            ) A RIGHT OUTER JOIN (
+                SELECT  IVATXLC.OWKEY,
+                    LC.CTKEY,
+                    IVATXLC.ICKEY, LC.LCKEY, IVATXLC.AVQTY
+                FROM TWORK_INFO_IVATXLC IVATXLC, TWORK_MST_LC LC
+                WHERE IVATXLC.CTKEY = LC.CTKEY
+                AND IVATXLC.LCKEY = LC.LCKEY
+                AND LC.LCTYPECD = '90'
+            ) B
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.ICKEYA = B.ICKEY
+            AND A.TOLCKEY = B.LCKEY
+            )
+            GROUP BY OWKEY, CTKEY, ICKEYA
+        ) A
+        FULL OUTER JOIN (
+            -- 출고 현황
+            SELECT    CTKEY /*센터코드*/
+                , CTNM /*센터명*/
+                , OWKEY /*화주코드*/
+                , ICKEYA
+                , SUM(OB_DM_QTY) AS OB_DM_QTY /*출고EA/주문출고*/
+                , SUM(OB_MV_QTY) AS OB_MV_QTY /*출고EA/이고출고*/
+                , SUM(OB_ET_QTY) AS OB_ET_QTY /*출고EA/기타출고*/
+                , MIN(TASKDATE) AS TASKDATE
+            FROM (
+                SELECT * FROM (
+                SELECT    OH.CTKEY AS CTKEY /*센터코드*/
+                , CT.CTNM /*센터명*/
+                , OH.OWKEY /*화주코드*/
+                , IC_A.ICKEY AS ICKEYA
+                , CASE WHEN OH.OBHDTYPECD = '10' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_DM_QTY /*출고EA/주문출고*/
+                , CASE WHEN OH.OBHDTYPECD = '30' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_MV_QTY /*출고EA/이고출고*/
+                , CASE WHEN OH.OBHDTYPECD = '50' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_ET_QTY /*출고EA/기타출고*/
+                , OH.OBCNFRMDATE AS TASKDATE
+                FROM TWORK_INFO_OB_HD OH
+                INNER JOIN TWORK_INFO_OB_DT OD
+                ON OH.CTKEY = OD.CTKEY
+                AND OH.OWKEY = OD.OWKEY
+                AND OH.OBHDKEY = OD.OBHDKEY
+                INNER JOIN TWORK_MST_IC IC_A
+                ON OD.CTKEY = IC_A.CTKEY
+                AND OD.OWKEY = IC_A.OWKEY
+                AND OD.ICKEY = IC_A.ICKEY
+                INNER JOIN TWORK_MST_CT CT
+                ON OH.CTKEY = CT.CTKEY
+                WHERE OH.OBHDTYPECD IN ('10', '30', '50')
+                AND OH.OBSTATUSCD = '70'
+            ) WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND #{SEARCH_CONDITION}
+            </if>
+            ) A
+            GROUP BY
+                CTKEY   /*센터코드*/
+                , CTNM    /*센터명*/
+                , OWKEY   /*화주코드*/
+                , ICKEYA /*자품번*/
+        ) B
+        ON A.OWKEY = B.OWKEY
+        AND A.CTKEY = B.CTKEY
+        AND A.ICKEYA = B.ICKEYA
+        FULL OUTER JOIN (
+                -- 입고 현황
+                SELECT
+                    OWKEY,
+                    CTKEY,
+                    ICKEYA,
+                    SUM(CNFRMQTY_DM) AS CNFRMQTY_DM,
+                    SUM(CNFRMQTY_MV) AS CNFRMQTY_MV,
+                    SUM(CNFRMQTY_ET) AS CNFRMQTY_ET,
+                    MIN(TASKDATE) AS TASKDATE
+                FROM (
+                    SELECT *
+                    FROM (
+                        SELECT    A.CTKEY
+                                , L.CTNM
+                                , A.OWKEY
+                                , B.IBHDTYPECD
+                                , B.IBDDLNDATE AS TASKDATE
+                                , C.ICKEY AS ICKEYA
+                                , (CASE WHEN B.IBHDTYPECD = '30' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_DM
+                                , (CASE WHEN B.IBHDTYPECD = '40' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_MV
+                                , (CASE WHEN B.IBHDTYPECD = '50' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_ET
+                                , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y' ELSE 'N' END AS CLOSEYN
+                                , A.IBDTSTATUSCD
+                        FROM TWORK_INFO_IB_DT A
+                        INNER JOIN TWORK_INFO_IB_HD B
+                        ON A.CTKEY = B.CTKEY
+                        AND A.OWKEY = B.OWKEY
+                        AND A.IBHDKEY = B.IBHDKEY
+                        INNER JOIN TWORK_MST_IC C
+                        ON A.CTKEY = C.CTKEY
+                        AND A.OWKEY = C.OWKEY
+                        AND A.ICKEY = C.ICKEY
+                        INNER JOIN TWORK_MST_CT L
+                        ON A.CTKEY = L.CTKEY
+                    ) A
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                        AND #{SEARCH_CONDITION}
+                    </if>
+                    AND IBHDTYPECD IN ('30', '40', '50')
+                    AND IBDTSTATUSCD = '91'
+                    AND CLOSEYN = 'Y'
+                ) GROUP BY
+                    OWKEY,
+                    CTKEY,
+                    ICKEYA
+        ) C
+        ON A.OWKEY = C.OWKEY
+        AND B.OWKEY = C.OWKEY
+        AND A.CTKEY = C.CTKEY
+        AND B.CTKEY = C.CTKEY
+        AND A.ICKEYA = C.ICKEYA
+        AND B.ICKEYA = C.ICKEYA
+        FULL OUTER JOIN (
+            -- 재고조정 (증가, 감소)
+            SELECT  CTKEY,
+                OWKEY,
+                ICKEYA,
+                SUM(QTY_UP) AS QTY_UP,
+                SUM(QTY_DOWN) AS QTY_DOWN,
+                MIN(TASKDATE) AS TASKDATE
+            FROM (
+                SELECT * FROM (
+                    SELECT A.CTKEY
+                            , H.CTNM
+                            , A.OWKEY
+                            , I.ICKEY AS ICKEYA
+                            , CASE WHEN A.IVHSTYPECD = '130' THEN A.QTY ELSE 0 END AS QTY_UP
+                            , CASE WHEN A.IVHSTYPECD = '140' THEN A.QTY ELSE 0 END AS QTY_DOWN
+                            , A.IVHSTYPECD
+                            , A.IVCHGDATE AS TASKDATE
+                    FROM TWORK_INFO_IVHS A
+                    LEFT OUTER JOIN TWORK_MST_LC B
+                    ON A.CTKEY = B.CTKEY
+                    AND A.FRLCKEY = B.LCKEY
+                    LEFT OUTER JOIN TWORK_MST_ZN C
+                    ON B.CTKEY = C.CTKEY
+                    AND B.ZNKEY = C.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_AR D
+                    ON B.CTKEY = D.CTKEY
+                    AND B.ARKEY = D.ARKEY
+                    AND B.ZNKEY = D.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_LC E
+                    ON A.CTKEY = E.CTKEY
+                    AND A.TOLCKEY = E.LCKEY
+                    LEFT OUTER JOIN TWORK_MST_ZN F
+                    ON E.CTKEY = F.CTKEY
+                    AND E.ZNKEY = F.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_AR G
+                    ON E.CTKEY = G.CTKEY
+                    AND E.ARKEY = G.ARKEY
+                    AND E.ZNKEY = G.ZNKEY
+                    INNER JOIN TWORK_MST_CT H
+                    ON A.CTKEY = H.CTKEY
+                    INNER JOIN TWORK_MST_IC I
+                    ON A.CTKEY = I.CTKEY
+                    AND A.OWKEY = I.OWKEY
+                    AND A.ICKEY = I.ICKEY
+                )
+                WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                    AND #{SEARCH_CONDITION}
+                </if>
+                AND ( IVHSTYPECD IN ('130', '140'))
+            )
+            GROUP BY CTKEY,
+                    OWKEY,
+                    ICKEYA
+        ) D
+        ON A.OWKEY = D.OWKEY
+            AND B.OWKEY = D.OWKEY
+            AND C.OWKEY = D.OWKEY
+            AND A.CTKEY = D.CTKEY
+            AND B.CTKEY = D.CTKEY
+            AND C.CTKEY = D.CTKEY
+            AND A.ICKEYA = D.ICKEYA
+            AND B.ICKEYA = D.ICKEYA
+            AND C.ICKEYA = D.ICKEYA
+            INNER JOIN TWORK_MST_IC E -- 자
+            ON COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) = E.OWKEY
+            AND COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) = E.CTKEY
+            AND COALESCE(COALESCE(COALESCE(A.ICKEYA, B.ICKEYA), C.ICKEYA), D.ICKEYA) = E.ICKEY
+            LEFT JOIN TWORK_MST_ASRT F
+            ON COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) = F.OWKEY
+            AND COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) = F.CTKEY
+            AND COALESCE(COALESCE(COALESCE(A.ICKEYA, B.ICKEYA), C.ICKEYA), D.ICKEYA) = F.ASRTDTICKEY
+            AND E.ICKEY = F.ASRTDTICKEY
+            LEFT JOIN TWORK_MST_IC G
+            ON G.CTKEY = F.CTKEY
+            AND G.OWKEY = F.OWKEY
+            AND G.ICKEY = F.ASRTMASICKEY
+            INNER JOIN TWORK_MST_CTG CTG1
+            ON COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) = CTG1.CTKEY
+            AND COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) = CTG1.OWKEY
+            AND E.CTGKEY = CTG1.CTGKEY
+            AND CTG1.CTGLV = '3'
+            INNER JOIN TWORK_MST_CTG CTG2
+            ON COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) = CTG2.CTKEY
+            AND COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) = CTG2.OWKEY
+            AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+            AND CTG2.CTGLV = '2'
+            INNER JOIN TWORK_MST_CTG CTG3
+            ON COALESCE(COALESCE(COALESCE(A.CTKEY, B.CTKEY), C.CTKEY), D.CTKEY) = CTG3.CTKEY
+            AND COALESCE(COALESCE(COALESCE(A.OWKEY, B.OWKEY), C.OWKEY), D.OWKEY) = CTG3.OWKEY
+            AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+            AND CTG3.CTGLV = '1'
+            INNER JOIN TWORK_MST_AC F
+            ON E.ACKEY = F.ACKEY
+        )
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+            AND CTKEY = #{ctkey}
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate)">
+            AND TASKDATE = #{wrkStartDate} || '000000'
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+            AND (ICKEYM IN (#{ickeyArr}) OR ICKEYA IN (#{ickeyArr}))
+        </if>
+    </sql>
+
+    <select id="selectinXObIcXMonthStatusCount" resultType="java.lang.Integer">
+        /* wms-report-selectinXObIcXMonthStatusList-sql-oracle.xml - selectinXObIcXMonthStatusCount */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectinXObIcXMonthStatusSql"/>
+        )
+    </select>
+
+    <select id="selectinXObIcXMonthStatusList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-selectinXObIcXMonthStatusList-sql-oracle.xml - selectinXObIcXMonthStatusList */
+            FROM (
+                <include refid="selectinXObIcXMonthStatusSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectinXObIcXMonthStatusSql">
+        SELECT
+            COALESCE(A.OWKEY, B.OWKEY) OWKEY,
+            COALESCE(A.CTKEY, B.CTKEY) CTKEY,
+            COALESCE(A.ICKEYM, B.ICKEYM) ICKEYM,
+            COALESCE(A.ICNMM, B.ICNMM) ICNMM,
+            COALESCE(A.ICKEYA, B.ICKEYA) ICKEYA,
+            CNFRMQTYDM01, CNFRMQTYMV01, CNFRMQTYET01, QTYUP01, IBSUM01, OBDMQTY01, OBMVQTY01, OBETQTY01, QTYDOWN01, OBSUM01, SUM01,
+            CNFRMQTYDM02, CNFRMQTYMV02, CNFRMQTYET02, QTYUP02, IBSUM02, OBDMQTY02, OBMVQTY02, OBETQTY02, QTYDOWN02, OBSUM02, SUM02,
+            CNFRMQTYDM03, CNFRMQTYMV03, CNFRMQTYET03, QTYUP03, IBSUM03, OBDMQTY03, OBMVQTY03, OBETQTY03, QTYDOWN03, OBSUM03, SUM03,
+            CNFRMQTYDM04, CNFRMQTYMV04, CNFRMQTYET04, QTYUP04, IBSUM04, OBDMQTY04, OBMVQTY04, OBETQTY04, QTYDOWN04, OBSUM04, SUM04,
+            CNFRMQTYDM05, CNFRMQTYMV05, CNFRMQTYET05, QTYUP05, IBSUM05, OBDMQTY05, OBMVQTY05, OBETQTY05, QTYDOWN05, OBSUM05, SUM05,
+            CNFRMQTYDM06, CNFRMQTYMV06, CNFRMQTYET06, QTYUP06, IBSUM06, OBDMQTY06, OBMVQTY06, OBETQTY06, QTYDOWN06, OBSUM06, SUM06,
+            CNFRMQTYDM07, CNFRMQTYMV07, CNFRMQTYET07, QTYUP07, IBSUM07, OBDMQTY07, OBMVQTY07, OBETQTY07, QTYDOWN07, OBSUM07, SUM07,
+            CNFRMQTYDM08, CNFRMQTYMV08, CNFRMQTYET08, QTYUP08, IBSUM08, OBDMQTY08, OBMVQTY08, OBETQTY08, QTYDOWN08, OBSUM08, SUM08,
+            CNFRMQTYDM09, CNFRMQTYMV09, CNFRMQTYET09, QTYUP09, IBSUM09, OBDMQTY09, OBMVQTY09, OBETQTY09, QTYDOWN09, OBSUM09, SUM09,
+            CNFRMQTYDM10, CNFRMQTYMV10, CNFRMQTYET10, QTYUP10, IBSUM10, OBDMQTY10, OBMVQTY10, OBETQTY10, QTYDOWN10, OBSUM10, SUM10,
+            CNFRMQTYDM11, CNFRMQTYMV11, CNFRMQTYET11, QTYUP11, IBSUM11, OBDMQTY11, OBMVQTY11, OBETQTY11, QTYDOWN11, OBSUM11, SUM11,
+            CNFRMQTYDM12, CNFRMQTYMV12, CNFRMQTYET12, QTYUP12, IBSUM12, OBDMQTY12, OBMVQTY12, OBETQTY12, QTYDOWN12, OBSUM12, SUM12,
+            CNFRMQTYDM13, CNFRMQTYMV13, CNFRMQTYET13, QTYUP13, IBSUM13, OBDMQTY13, OBMVQTY13, OBETQTY13, QTYDOWN13, OBSUM13, SUM13,
+            CNFRMQTYDM14, CNFRMQTYMV14, CNFRMQTYET14, QTYUP14, IBSUM14, OBDMQTY14, OBMVQTY14, OBETQTY14, QTYDOWN14, OBSUM14, SUM14,
+            CNFRMQTYDM15, CNFRMQTYMV15, CNFRMQTYET15, QTYUP15, IBSUM15, OBDMQTY15, OBMVQTY15, OBETQTY15, QTYDOWN15, OBSUM15, SUM15,
+            CNFRMQTYDM16, CNFRMQTYMV16, CNFRMQTYET16, QTYUP16, IBSUM16, OBDMQTY16, OBMVQTY16, OBETQTY16, QTYDOWN16, OBSUM16, SUM16,
+            CNFRMQTYDM17, CNFRMQTYMV17, CNFRMQTYET17, QTYUP17, IBSUM17, OBDMQTY17, OBMVQTY17, OBETQTY17, QTYDOWN17, OBSUM17, SUM17,
+            CNFRMQTYDM18, CNFRMQTYMV18, CNFRMQTYET18, QTYUP18, IBSUM18, OBDMQTY18, OBMVQTY18, OBETQTY18, QTYDOWN18, OBSUM18, SUM18,
+            CNFRMQTYDM19, CNFRMQTYMV19, CNFRMQTYET19, QTYUP19, IBSUM19, OBDMQTY19, OBMVQTY19, OBETQTY19, QTYDOWN19, OBSUM19, SUM19,
+            CNFRMQTYDM20, CNFRMQTYMV20, CNFRMQTYET20, QTYUP20, IBSUM20, OBDMQTY20, OBMVQTY20, OBETQTY20, QTYDOWN20, OBSUM20, SUM20,
+            CNFRMQTYDM21, CNFRMQTYMV21, CNFRMQTYET21, QTYUP21, IBSUM21, OBDMQTY21, OBMVQTY21, OBETQTY21, QTYDOWN21, OBSUM21, SUM21,
+            CNFRMQTYDM22, CNFRMQTYMV22, CNFRMQTYET22, QTYUP22, IBSUM22, OBDMQTY22, OBMVQTY22, OBETQTY22, QTYDOWN22, OBSUM22, SUM22,
+            CNFRMQTYDM23, CNFRMQTYMV23, CNFRMQTYET23, QTYUP23, IBSUM23, OBDMQTY23, OBMVQTY23, OBETQTY23, QTYDOWN23, OBSUM23, SUM23,
+            CNFRMQTYDM24, CNFRMQTYMV24, CNFRMQTYET24, QTYUP24, IBSUM24, OBDMQTY24, OBMVQTY24, OBETQTY24, QTYDOWN24, OBSUM24, SUM24,
+            CNFRMQTYDM25, CNFRMQTYMV25, CNFRMQTYET25, QTYUP25, IBSUM25, OBDMQTY25, OBMVQTY25, OBETQTY25, QTYDOWN25, OBSUM25, SUM25,
+            CNFRMQTYDM26, CNFRMQTYMV26, CNFRMQTYET26, QTYUP26, IBSUM26, OBDMQTY26, OBMVQTY26, OBETQTY26, QTYDOWN26, OBSUM26, SUM26,
+            CNFRMQTYDM27, CNFRMQTYMV27, CNFRMQTYET27, QTYUP27, IBSUM27, OBDMQTY27, OBMVQTY27, OBETQTY27, QTYDOWN27, OBSUM27, SUM27,
+            CNFRMQTYDM28, CNFRMQTYMV28, CNFRMQTYET28, QTYUP28, IBSUM28, OBDMQTY28, OBMVQTY28, OBETQTY28, QTYDOWN28, OBSUM28, SUM28,
+            CNFRMQTYDM29, CNFRMQTYMV29, CNFRMQTYET29, QTYUP29, IBSUM29, OBDMQTY29, OBMVQTY29, OBETQTY29, QTYDOWN29, OBSUM29, SUM29,
+            CNFRMQTYDM30, CNFRMQTYMV30, CNFRMQTYET30, QTYUP30, IBSUM30, OBDMQTY30, OBMVQTY30, OBETQTY30, QTYDOWN30, OBSUM30, SUM30,
+            CNFRMQTYDM31, CNFRMQTYMV31, CNFRMQTYET31, QTYUP31, IBSUM31, OBDMQTY31, OBMVQTY31, OBETQTY31, QTYDOWN31, OBSUM31, SUM31,
+            CNFRMQTYDM, CNFRMQTYMV, CNFRMQTYET, QTYUP, IBSUM, OBDMQTY, OBMVQTY, OBETQTY, QTYDOWN, OBSUM,
+            SUMCUR AS CURIV,
+            SUMCUR-SUMTOT AS BFYMIV,
+            SUMYM AS DIFFIV
+        FROM
+        (
+            SELECT
+                OWKEY,
+                CTKEY,
+                ICKEYM,
+                MIN(ICNMM) AS ICNMM,
+                ICKEYA,
+                MIN(ICNMA) AS ICNMA,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN QTYUP ELSE 0 END) AS QTYUP01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN IBSUM ELSE 0 END) AS IBSUM01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN OBDMQTY ELSE 0 END) AS OBDMQTY01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN OBMVQTY ELSE 0 END) AS OBMVQTY01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN OBETQTY ELSE 0 END) AS OBETQTY01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN QTYDOWN ELSE 0 END) AS QTYDOWN01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN OBSUM ELSE 0 END) AS OBSUM01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '01' THEN IBSUM - OBSUM ELSE 0 END) AS SUM01,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN QTYUP ELSE 0 END) AS QTYUP02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN IBSUM ELSE 0 END) AS IBSUM02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN OBDMQTY ELSE 0 END) AS OBDMQTY02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN OBMVQTY ELSE 0 END) AS OBMVQTY02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN OBETQTY ELSE 0 END) AS OBETQTY02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN QTYDOWN ELSE 0 END) AS QTYDOWN02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN OBSUM ELSE 0 END) AS OBSUM02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '02' THEN IBSUM - OBSUM ELSE 0 END) AS SUM02,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN QTYUP ELSE 0 END) AS QTYUP03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN IBSUM ELSE 0 END) AS IBSUM03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN OBDMQTY ELSE 0 END) AS OBDMQTY03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN OBMVQTY ELSE 0 END) AS OBMVQTY03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN OBETQTY ELSE 0 END) AS OBETQTY03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN QTYDOWN ELSE 0 END) AS QTYDOWN03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN OBSUM ELSE 0 END) AS OBSUM03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '03' THEN IBSUM - OBSUM ELSE 0 END) AS SUM03,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN QTYUP ELSE 0 END) AS QTYUP04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN IBSUM ELSE 0 END) AS IBSUM04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN OBDMQTY ELSE 0 END) AS OBDMQTY04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN OBMVQTY ELSE 0 END) AS OBMVQTY04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN OBETQTY ELSE 0 END) AS OBETQTY04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN QTYDOWN ELSE 0 END) AS QTYDOWN04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN OBSUM ELSE 0 END) AS OBSUM04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '04' THEN IBSUM - OBSUM ELSE 0 END) AS SUM04,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN QTYUP ELSE 0 END) AS QTYUP05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN IBSUM ELSE 0 END) AS IBSUM05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN OBDMQTY ELSE 0 END) AS OBDMQTY05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN OBMVQTY ELSE 0 END) AS OBMVQTY05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN OBETQTY ELSE 0 END) AS OBETQTY05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN QTYDOWN ELSE 0 END) AS QTYDOWN05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN OBSUM ELSE 0 END) AS OBSUM05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '05' THEN IBSUM - OBSUM ELSE 0 END) AS SUM05,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN QTYUP ELSE 0 END) AS QTYUP06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN IBSUM ELSE 0 END) AS IBSUM06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN OBDMQTY ELSE 0 END) AS OBDMQTY06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN OBMVQTY ELSE 0 END) AS OBMVQTY06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN OBETQTY ELSE 0 END) AS OBETQTY06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN QTYDOWN ELSE 0 END) AS QTYDOWN06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN OBSUM ELSE 0 END) AS OBSUM06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '06' THEN IBSUM - OBSUM ELSE 0 END) AS SUM06,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN QTYUP ELSE 0 END) AS QTYUP07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN IBSUM ELSE 0 END) AS IBSUM07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN OBDMQTY ELSE 0 END) AS OBDMQTY07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN OBMVQTY ELSE 0 END) AS OBMVQTY07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN OBETQTY ELSE 0 END) AS OBETQTY07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN QTYDOWN ELSE 0 END) AS QTYDOWN07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN OBSUM ELSE 0 END) AS OBSUM07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '07' THEN IBSUM - OBSUM ELSE 0 END) AS SUM07,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN QTYUP ELSE 0 END) AS QTYUP08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN IBSUM ELSE 0 END) AS IBSUM08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN OBDMQTY ELSE 0 END) AS OBDMQTY08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN OBMVQTY ELSE 0 END) AS OBMVQTY08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN OBETQTY ELSE 0 END) AS OBETQTY08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN QTYDOWN ELSE 0 END) AS QTYDOWN08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN OBSUM ELSE 0 END) AS OBSUM08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '08' THEN IBSUM - OBSUM ELSE 0 END) AS SUM08,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN QTYUP ELSE 0 END) AS QTYUP09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN IBSUM ELSE 0 END) AS IBSUM09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN OBDMQTY ELSE 0 END) AS OBDMQTY09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN OBMVQTY ELSE 0 END) AS OBMVQTY09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN OBETQTY ELSE 0 END) AS OBETQTY09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN QTYDOWN ELSE 0 END) AS QTYDOWN09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN OBSUM ELSE 0 END) AS OBSUM09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '09' THEN IBSUM - OBSUM ELSE 0 END) AS SUM09,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN QTYUP ELSE 0 END) AS QTYUP10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN IBSUM ELSE 0 END) AS IBSUM10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN OBDMQTY ELSE 0 END) AS OBDMQTY10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN OBMVQTY ELSE 0 END) AS OBMVQTY10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN OBETQTY ELSE 0 END) AS OBETQTY10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN QTYDOWN ELSE 0 END) AS QTYDOWN10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN OBSUM ELSE 0 END) AS OBSUM10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '10' THEN IBSUM - OBSUM ELSE 0 END) AS SUM10,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN QTYUP ELSE 0 END) AS QTYUP11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN IBSUM ELSE 0 END) AS IBSUM11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN OBDMQTY ELSE 0 END) AS OBDMQTY11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN OBMVQTY ELSE 0 END) AS OBMVQTY11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN OBETQTY ELSE 0 END) AS OBETQTY11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN QTYDOWN ELSE 0 END) AS QTYDOWN11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN OBSUM ELSE 0 END) AS OBSUM11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '11' THEN IBSUM - OBSUM ELSE 0 END) AS SUM11,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN QTYUP ELSE 0 END) AS QTYUP12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN IBSUM ELSE 0 END) AS IBSUM12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN OBDMQTY ELSE 0 END) AS OBDMQTY12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN OBMVQTY ELSE 0 END) AS OBMVQTY12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN OBETQTY ELSE 0 END) AS OBETQTY12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN QTYDOWN ELSE 0 END) AS QTYDOWN12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN OBSUM ELSE 0 END) AS OBSUM12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '12' THEN IBSUM - OBSUM ELSE 0 END) AS SUM12,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN QTYUP ELSE 0 END) AS QTYUP13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN IBSUM ELSE 0 END) AS IBSUM13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN OBDMQTY ELSE 0 END) AS OBDMQTY13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN OBMVQTY ELSE 0 END) AS OBMVQTY13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN OBETQTY ELSE 0 END) AS OBETQTY13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN QTYDOWN ELSE 0 END) AS QTYDOWN13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN OBSUM ELSE 0 END) AS OBSUM13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '13' THEN IBSUM - OBSUM ELSE 0 END) AS SUM13,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN QTYUP ELSE 0 END) AS QTYUP14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN IBSUM ELSE 0 END) AS IBSUM14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN OBDMQTY ELSE 0 END) AS OBDMQTY14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN OBMVQTY ELSE 0 END) AS OBMVQTY14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN OBETQTY ELSE 0 END) AS OBETQTY14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN QTYDOWN ELSE 0 END) AS QTYDOWN14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN OBSUM ELSE 0 END) AS OBSUM14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '14' THEN IBSUM - OBSUM ELSE 0 END) AS SUM14,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN QTYUP ELSE 0 END) AS QTYUP15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN IBSUM ELSE 0 END) AS IBSUM15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN OBDMQTY ELSE 0 END) AS OBDMQTY15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN OBMVQTY ELSE 0 END) AS OBMVQTY15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN OBETQTY ELSE 0 END) AS OBETQTY15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN QTYDOWN ELSE 0 END) AS QTYDOWN15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN OBSUM ELSE 0 END) AS OBSUM15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '15' THEN IBSUM - OBSUM ELSE 0 END) AS SUM15,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN QTYUP ELSE 0 END) AS QTYUP16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN IBSUM ELSE 0 END) AS IBSUM16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN OBDMQTY ELSE 0 END) AS OBDMQTY16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN OBMVQTY ELSE 0 END) AS OBMVQTY16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN OBETQTY ELSE 0 END) AS OBETQTY16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN QTYDOWN ELSE 0 END) AS QTYDOWN16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN OBSUM ELSE 0 END) AS OBSUM16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '16' THEN IBSUM - OBSUM ELSE 0 END) AS SUM16,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN QTYUP ELSE 0 END) AS QTYUP17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN IBSUM ELSE 0 END) AS IBSUM17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN OBDMQTY ELSE 0 END) AS OBDMQTY17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN OBMVQTY ELSE 0 END) AS OBMVQTY17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN OBETQTY ELSE 0 END) AS OBETQTY17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN QTYDOWN ELSE 0 END) AS QTYDOWN17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN OBSUM ELSE 0 END) AS OBSUM17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '17' THEN IBSUM - OBSUM ELSE 0 END) AS SUM17,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN QTYUP ELSE 0 END) AS QTYUP18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN IBSUM ELSE 0 END) AS IBSUM18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN OBDMQTY ELSE 0 END) AS OBDMQTY18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN OBMVQTY ELSE 0 END) AS OBMVQTY18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN OBETQTY ELSE 0 END) AS OBETQTY18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN QTYDOWN ELSE 0 END) AS QTYDOWN18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN OBSUM ELSE 0 END) AS OBSUM18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '18' THEN IBSUM - OBSUM ELSE 0 END) AS SUM18,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN QTYUP ELSE 0 END) AS QTYUP19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN IBSUM ELSE 0 END) AS IBSUM19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN OBDMQTY ELSE 0 END) AS OBDMQTY19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN OBMVQTY ELSE 0 END) AS OBMVQTY19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN OBETQTY ELSE 0 END) AS OBETQTY19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN QTYDOWN ELSE 0 END) AS QTYDOWN19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN OBSUM ELSE 0 END) AS OBSUM19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '19' THEN IBSUM - OBSUM ELSE 0 END) AS SUM19,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN QTYUP ELSE 0 END) AS QTYUP20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN IBSUM ELSE 0 END) AS IBSUM20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN OBDMQTY ELSE 0 END) AS OBDMQTY20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN OBMVQTY ELSE 0 END) AS OBMVQTY20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN OBETQTY ELSE 0 END) AS OBETQTY20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN QTYDOWN ELSE 0 END) AS QTYDOWN20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN OBSUM ELSE 0 END) AS OBSUM20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '20' THEN IBSUM - OBSUM ELSE 0 END) AS SUM20,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN QTYUP ELSE 0 END) AS QTYUP21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN IBSUM ELSE 0 END) AS IBSUM21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN OBDMQTY ELSE 0 END) AS OBDMQTY21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN OBMVQTY ELSE 0 END) AS OBMVQTY21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN OBETQTY ELSE 0 END) AS OBETQTY21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN QTYDOWN ELSE 0 END) AS QTYDOWN21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN OBSUM ELSE 0 END) AS OBSUM21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '21' THEN IBSUM - OBSUM ELSE 0 END) AS SUM21,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN QTYUP ELSE 0 END) AS QTYUP22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN IBSUM ELSE 0 END) AS IBSUM22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN OBDMQTY ELSE 0 END) AS OBDMQTY22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN OBMVQTY ELSE 0 END) AS OBMVQTY22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN OBETQTY ELSE 0 END) AS OBETQTY22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN QTYDOWN ELSE 0 END) AS QTYDOWN22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN OBSUM ELSE 0 END) AS OBSUM22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '22' THEN IBSUM - OBSUM ELSE 0 END) AS SUM22,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN QTYUP ELSE 0 END) AS QTYUP23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN IBSUM ELSE 0 END) AS IBSUM23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN OBDMQTY ELSE 0 END) AS OBDMQTY23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN OBMVQTY ELSE 0 END) AS OBMVQTY23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN OBETQTY ELSE 0 END) AS OBETQTY23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN QTYDOWN ELSE 0 END) AS QTYDOWN23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN OBSUM ELSE 0 END) AS OBSUM23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '23' THEN IBSUM - OBSUM ELSE 0 END) AS SUM23,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN QTYUP ELSE 0 END) AS QTYUP24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN IBSUM ELSE 0 END) AS IBSUM24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN OBDMQTY ELSE 0 END) AS OBDMQTY24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN OBMVQTY ELSE 0 END) AS OBMVQTY24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN OBETQTY ELSE 0 END) AS OBETQTY24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN QTYDOWN ELSE 0 END) AS QTYDOWN24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN OBSUM ELSE 0 END) AS OBSUM24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '24' THEN IBSUM - OBSUM ELSE 0 END) AS SUM24,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN QTYUP ELSE 0 END) AS QTYUP25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN IBSUM ELSE 0 END) AS IBSUM25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN OBDMQTY ELSE 0 END) AS OBDMQTY25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN OBMVQTY ELSE 0 END) AS OBMVQTY25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN OBETQTY ELSE 0 END) AS OBETQTY25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN QTYDOWN ELSE 0 END) AS QTYDOWN25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN OBSUM ELSE 0 END) AS OBSUM25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '25' THEN IBSUM - OBSUM ELSE 0 END) AS SUM25,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN QTYUP ELSE 0 END) AS QTYUP26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN IBSUM ELSE 0 END) AS IBSUM26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN OBDMQTY ELSE 0 END) AS OBDMQTY26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN OBMVQTY ELSE 0 END) AS OBMVQTY26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN OBETQTY ELSE 0 END) AS OBETQTY26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN QTYDOWN ELSE 0 END) AS QTYDOWN26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN OBSUM ELSE 0 END) AS OBSUM26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '26' THEN IBSUM - OBSUM ELSE 0 END) AS SUM26,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN QTYUP ELSE 0 END) AS QTYUP27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN IBSUM ELSE 0 END) AS IBSUM27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN OBDMQTY ELSE 0 END) AS OBDMQTY27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN OBMVQTY ELSE 0 END) AS OBMVQTY27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN OBETQTY ELSE 0 END) AS OBETQTY27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN QTYDOWN ELSE 0 END) AS QTYDOWN27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN OBSUM ELSE 0 END) AS OBSUM27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '27' THEN IBSUM - OBSUM ELSE 0 END) AS SUM27,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN QTYUP ELSE 0 END) AS QTYUP28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN IBSUM ELSE 0 END) AS IBSUM28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN OBDMQTY ELSE 0 END) AS OBDMQTY28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN OBMVQTY ELSE 0 END) AS OBMVQTY28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN OBETQTY ELSE 0 END) AS OBETQTY28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN QTYDOWN ELSE 0 END) AS QTYDOWN28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN OBSUM ELSE 0 END) AS OBSUM28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '28' THEN IBSUM - OBSUM ELSE 0 END) AS SUM28,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN QTYUP ELSE 0 END) AS QTYUP29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN IBSUM ELSE 0 END) AS IBSUM29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN OBDMQTY ELSE 0 END) AS OBDMQTY29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN OBMVQTY ELSE 0 END) AS OBMVQTY29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN OBETQTY ELSE 0 END) AS OBETQTY29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN QTYDOWN ELSE 0 END) AS QTYDOWN29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN OBSUM ELSE 0 END) AS OBSUM29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '29' THEN IBSUM - OBSUM ELSE 0 END) AS SUM29,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN QTYUP ELSE 0 END) AS QTYUP30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN IBSUM ELSE 0 END) AS IBSUM30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN OBDMQTY ELSE 0 END) AS OBDMQTY30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN OBMVQTY ELSE 0 END) AS OBMVQTY30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN OBETQTY ELSE 0 END) AS OBETQTY30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN QTYDOWN ELSE 0 END) AS QTYDOWN30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN OBSUM ELSE 0 END) AS OBSUM30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '30' THEN IBSUM - OBSUM ELSE 0 END) AS SUM30,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN QTYUP ELSE 0 END) AS QTYUP31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN IBSUM ELSE 0 END) AS IBSUM31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN OBDMQTY ELSE 0 END) AS OBDMQTY31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN OBMVQTY ELSE 0 END) AS OBMVQTY31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN OBETQTY ELSE 0 END) AS OBETQTY31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN QTYDOWN ELSE 0 END) AS QTYDOWN31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN OBSUM ELSE 0 END) AS OBSUM31,
+                SUM(CASE WHEN TASKDAY = #{wrkYm} || '31' THEN IBSUM - OBSUM ELSE 0 END) AS SUM31,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN CNFRMQTYDM ELSE 0 END) AS CNFRMQTYDM,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN CNFRMQTYMV ELSE 0 END) AS CNFRMQTYMV,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN CNFRMQTYET ELSE 0 END) AS CNFRMQTYET,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN QTYUP ELSE 0 END) AS QTYUP,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN IBSUM ELSE 0 END) AS IBSUM,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN OBDMQTY ELSE 0 END) AS OBDMQTY,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN OBMVQTY ELSE 0 END) AS OBMVQTY,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN OBETQTY ELSE 0 END) AS OBETQTY,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN QTYDOWN ELSE 0 END) AS QTYDOWN,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN OBSUM ELSE 0 END) AS OBSUM,
+                SUM(CASE WHEN SUBSTR(TASKDAY, 0, 6) = #{wrkYm} THEN IBSUM-OBSUM ELSE 0 END) AS SUMYM,
+                SUM(IBSUM-OBSUM) AS SUMTOT
+            FROM (
+                SELECT
+                    COALESCE(COALESCE(B.OWKEY, C.OWKEY), D.OWKEY) AS OWKEY
+                    ,COALESCE(COALESCE(B.CTKEY, C.CTKEY), D.CTKEY) AS CTKEY
+                    ,COALESCE(G.ICKEY, E.ICKEY) AS ICKEYM
+                    ,COALESCE(G.ICNM, E.ICNM) AS ICNMM
+                    ,F.ASRTDTICKEY AS ICKEYA
+                    ,(CASE WHEN F.ASRTMASICKEY IS NOT NULL THEN COALESCE(F.ASRTNM, E.ICNM) ELSE NULL END) AS ICNMA
+                    ,COALESCE(CNFRMQTY_DM, 0) AS CNFRMQTYDM -- 입고EA/이고입고
+                    ,COALESCE(CNFRMQTY_MV, 0) AS CNFRMQTYMV -- 입고EA/직납입고
+                    ,COALESCE(CNFRMQTY_ET, 0) AS CNFRMQTYET -- 입고EA/기타입고
+                    ,COALESCE(QTY_UP, 0) AS QTYUP
+                    ,(COALESCE(CNFRMQTY_DM, 0) + COALESCE(CNFRMQTY_MV, 0) + COALESCE(CNFRMQTY_ET, 0) + COALESCE(QTY_UP, 0)) AS IBSUM
+                    ,COALESCE(OB_DM_QTY, 0) AS OBDMQTY -- 출고EA/주문출고
+                    ,COALESCE(OB_MV_QTY, 0) AS OBMVQTY -- 출고EA/이고출고
+                    ,COALESCE(OB_ET_QTY, 0) AS OBETQTY -- 출고EA/기타출고
+                    ,COALESCE(QTY_DOWN, 0) AS QTYDOWN
+                    ,(COALESCE(OB_DM_QTY, 0) + COALESCE(OB_MV_QTY, 0) + COALESCE(OB_ET_QTY, 0) + COALESCE(QTY_DOWN, 0)) AS OBSUM
+                    ,COALESCE(COALESCE(B.TASKDAY, C.TASKDAY), D.TASKDAY) AS TASKDAY
+                FROM (
+                    -- 출고 현황
+                    SELECT    CTKEY /*센터코드*/
+                            , CTNM /*센터명*/
+                            , OWKEY /*화주코드*/
+                            , ICKEYA
+                            , SUM(OB_DM_QTY) AS OB_DM_QTY /*출고EA/주문출고*/
+                            , SUM(OB_MV_QTY) AS OB_MV_QTY /*출고EA/이고출고*/
+                            , SUM(OB_ET_QTY) AS OB_ET_QTY /*출고EA/기타출고*/
+                            , TASKDAY
+                    FROM (
+                        SELECT * FROM (
+                            SELECT    OH.CTKEY AS CTKEY /*센터코드*/
+                                    , CT.CTNM /*센터명*/
+                                    , OH.OWKEY /*화주코드*/
+                                    , IC_A.ICKEY AS ICKEYA
+                                    , CASE WHEN OH.OBHDTYPECD = '10' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_DM_QTY /*출고EA/주문출고*/
+                                    , CASE WHEN OH.OBHDTYPECD = '30' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_MV_QTY /*출고EA/이고출고*/
+                                    , CASE WHEN OH.OBHDTYPECD = '50' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_ET_QTY /*출고EA/기타출고*/
+                                    , SUBSTR(OH.OBCNFRMDATE, 0, 8) AS TASKDAY
+                            FROM TWORK_INFO_OB_HD OH
+                            INNER JOIN TWORK_INFO_OB_DT OD
+                            ON OH.CTKEY = OD.CTKEY
+                            AND OH.OWKEY = OD.OWKEY
+                            AND OH.OBHDKEY = OD.OBHDKEY
+                            INNER JOIN TWORK_MST_IC IC_A
+                            ON OD.CTKEY = IC_A.CTKEY
+                            AND OD.OWKEY = IC_A.OWKEY
+                            AND OD.ICKEY = IC_A.ICKEY
+                            INNER JOIN TWORK_MST_CT CT
+                            ON OH.CTKEY = CT.CTKEY
+                            WHERE OH.OBHDTYPECD IN ('10', '30', '50')
+                            AND OH.OBSTATUSCD = '70'
+                        ) WHERE 1=1
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                            AND #{SEARCH_CONDITION}
+                        </if>
+                    ) A
+                    GROUP BY
+                    CTKEY   /*센터코드*/
+                    , CTNM    /*센터명*/
+                    , OWKEY   /*화주코드*/
+                    , ICKEYA /*자품번*/
+                    , TASKDAY /*일자*/
+                ) B
+                FULL OUTER JOIN (
+                    -- 입고 현황
+                    SELECT
+                        OWKEY,
+                        CTKEY,
+                        ICKEYA,
+                        SUM(CNFRMQTY_DM) AS CNFRMQTY_DM,
+                        SUM(CNFRMQTY_MV) AS CNFRMQTY_MV,
+                        SUM(CNFRMQTY_ET) AS CNFRMQTY_ET,
+                        TASKDAY
+                    FROM (
+                        SELECT *
+                        FROM (
+                            SELECT    A.CTKEY
+                                    , L.CTNM
+                                    , A.OWKEY
+                                    , B.IBHDTYPECD
+                                    , SUBSTR(B.IBDDLNDATE, 0, 8) AS TASKDAY
+                                    , C.ICKEY AS ICKEYA
+                                    , (CASE WHEN B.IBHDTYPECD = '30' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_DM
+                                    , (CASE WHEN B.IBHDTYPECD = '40' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_MV
+                                    , (CASE WHEN B.IBHDTYPECD = '50' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_ET
+                                    , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y' ELSE 'N' END AS CLOSEYN
+                                    , A.IBDTSTATUSCD
+                            FROM TWORK_INFO_IB_DT A
+                            INNER JOIN TWORK_INFO_IB_HD B
+                            ON A.CTKEY = B.CTKEY
+                            AND A.OWKEY = B.OWKEY
+                            AND A.IBHDKEY = B.IBHDKEY
+                            INNER JOIN TWORK_MST_IC C
+                            ON A.CTKEY = C.CTKEY
+                            AND A.OWKEY = C.OWKEY
+                            AND A.ICKEY = C.ICKEY
+                            INNER JOIN TWORK_MST_CT L
+                            ON A.CTKEY = L.CTKEY
+                        ) A
+                        WHERE 1=1
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                            AND #{SEARCH_CONDITION}
+                        </if>
+                        AND IBHDTYPECD IN ('30', '40', '50')
+                        AND IBDTSTATUSCD = '91'
+                        AND CLOSEYN = 'Y'
+                        AND TASKDAY IS NOT NULL
+                    ) GROUP BY
+                        OWKEY,
+                        CTKEY,
+                        ICKEYA,
+                        TASKDAY
+            ) C
+                ON B.OWKEY = C.OWKEY
+                AND B.CTKEY = C.CTKEY
+                AND B.ICKEYA = C.ICKEYA
+                AND B.TASKDAY = C.TASKDAY
+            FULL OUTER JOIN (
+                -- 재고조정 (증가, 감소)
+                SELECT  CTKEY,
+                        OWKEY,
+                        ICKEYA,
+                        SUM(QTY_UP) AS QTY_UP,
+                        SUM(QTY_DOWN) AS QTY_DOWN,
+                        TASKDAY
+                FROM (
+                    SELECT * FROM (
+                        SELECT A.CTKEY
+                        , H.CTNM
+                        , A.OWKEY
+                        , I.ICKEY AS ICKEYA
+                        , CASE WHEN A.IVHSTYPECD = '130' THEN A.QTY ELSE 0 END AS QTY_UP
+                        , CASE WHEN A.IVHSTYPECD = '140' THEN A.QTY ELSE 0 END AS QTY_DOWN
+                        , A.IVHSTYPECD
+                        , SUBSTR(A.IVCHGDATE, 0, 8) AS TASKDAY
+                        FROM TWORK_INFO_IVHS A
+                        LEFT OUTER JOIN TWORK_MST_LC B
+                        ON A.CTKEY = B.CTKEY
+                        AND A.FRLCKEY = B.LCKEY
+                        LEFT OUTER JOIN TWORK_MST_ZN C
+                        ON B.CTKEY = C.CTKEY
+                        AND B.ZNKEY = C.ZNKEY
+                        LEFT OUTER JOIN TWORK_MST_AR D
+                        ON B.CTKEY = D.CTKEY
+                        AND B.ARKEY = D.ARKEY
+                        AND B.ZNKEY = D.ZNKEY
+                        LEFT OUTER JOIN TWORK_MST_LC E
+                        ON A.CTKEY = E.CTKEY
+                        AND A.TOLCKEY = E.LCKEY
+                        LEFT OUTER JOIN TWORK_MST_ZN F
+                        ON E.CTKEY = F.CTKEY
+                        AND E.ZNKEY = F.ZNKEY
+                        LEFT OUTER JOIN TWORK_MST_AR G
+                        ON E.CTKEY = G.CTKEY
+                        AND E.ARKEY = G.ARKEY
+                        AND E.ZNKEY = G.ZNKEY
+                        INNER JOIN TWORK_MST_CT H
+                        ON A.CTKEY = H.CTKEY
+                        INNER JOIN TWORK_MST_IC I
+                        ON A.CTKEY = I.CTKEY
+                        AND A.OWKEY = I.OWKEY
+                        AND A.ICKEY = I.ICKEY
+                    )
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                        AND #{SEARCH_CONDITION}
+                    </if>
+                    AND ( IVHSTYPECD IN ('130', '140'))
+                )
+                GROUP BY CTKEY,
+                        OWKEY,
+                        ICKEYA,
+                        TASKDAY
+            ) D
+            ON  B.OWKEY = D.OWKEY
+            AND C.OWKEY = D.OWKEY
+            AND B.CTKEY = D.CTKEY
+            AND C.CTKEY = D.CTKEY
+            AND B.ICKEYA = D.ICKEYA
+            AND C.ICKEYA = D.ICKEYA
+            AND B.TASKDAY = D.TASKDAY
+            AND C.TASKDAY = D.TASKDAY
+            INNER JOIN TWORK_MST_IC E -- 자
+            ON COALESCE(COALESCE(B.OWKEY, C.OWKEY), D.OWKEY) = E.OWKEY
+            AND COALESCE(COALESCE(B.CTKEY, C.CTKEY), D.CTKEY) = E.CTKEY
+            AND COALESCE(COALESCE(B.ICKEYA, C.ICKEYA), D.ICKEYA) = E.ICKEY
+            LEFT JOIN TWORK_MST_ASRT F
+            ON COALESCE(COALESCE(B.OWKEY, C.OWKEY), D.OWKEY) = F.OWKEY
+            AND COALESCE(COALESCE(B.CTKEY, C.CTKEY), D.CTKEY) = F.CTKEY
+            AND COALESCE(COALESCE(B.ICKEYA, C.ICKEYA), D.ICKEYA) = F.ASRTDTICKEY
+            AND E.ICKEY = F.ASRTDTICKEY
+            LEFT JOIN TWORK_MST_IC G
+            ON G.CTKEY = F.CTKEY
+            AND G.OWKEY = F.OWKEY
+            AND G.ICKEY = F.ASRTMASICKEY
+            INNER JOIN TWORK_MST_AC F
+            ON E.ACKEY = F.ACKEY
+            )
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkYm)">
+                AND SUBSTR(TASKDAY, 0, 6) >= #{wrkYm}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+                AND (ICKEYM IN (#{ickeyArr}) OR ICKEYA IN (#{ickeyArr}))
+            </if>
+            GROUP BY OWKEY, CTKEY, ICKEYM, ICKEYA
+            ) A FULL OUTER JOIN (
+                SELECT CTKEY
+                    , OWKEY
+                    , ASRTMASICKEY AS ICKEYM
+                    , ASRTMASICNM AS ICNMM
+                    , ASRTDTICKEY AS ICKEYA
+                    , ASRTDTICNM AS ICNMA
+                    , SUM(AVZNTOTQTY) AS AVZNTOTQTY								/* 가용존 총수량 */
+                    , SUM(NAVZNTOTQTY) AS NAVZNTOTQTY								/* 불용존 총수량 */
+                    , SUM(AVZNTOTQTY) + SUM(NAVZNTOTQTY) AS SUMCUR               /* 총수량 */
+                FROM (
+                    SELECT IVLC.CTKEY													/* 센터코드 */
+                    , CT.CTNM														/* 센터명 */
+                    , IVLC.OWKEY													/* 화주코드 */
+                    , COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) AS ASRTMASICKEY			/* (모)상품코드 */
+                    , COALESCE(ASTMST.ASRTMASICNM, IC.ICNM) AS ASRTMASICNM				/* (모)상품명 */
+                    , ASTDTL.ASRTDTICKEY											/* (자)상품코드 */
+                    , CASE WHEN ASTDTL.ASRTDTICKEY IS NOT NULL THEN IC.ICNM
+                    ELSE '' END AS ASRTDTICNM								/* (자)상품명 */
+                    , CASE ZN.ZNTYPECD WHEN '10' THEN IVLC.TOTQTY ELSE 0 END AS AVZNTOTQTY      /* 가용존 총재고*/
+                    , CASE ZN.ZNTYPECD WHEN '10' THEN 0 ELSE IVLC.TOTQTY END AS NAVZNTOTQTY     /* 불용존 총재고*/
+                FROM TWORK_INFO_IVATXLC IVLC
+                INNER JOIN TWORK_MST_CT CT
+                ON CT.CTKEY = IVLC.CTKEY
+                INNER JOIN TWORK_MST_OW OW
+                ON OW.OWKEY = IVLC.OWKEY
+                INNER JOIN TWORK_MST_IC IC
+                ON IC.CTKEY = IVLC.CTKEY
+                AND IC.OWKEY = IVLC.OWKEY
+                AND IC.ICKEY = IVLC.ICKEY
+                INNER JOIN TWORK_INFO_IVAT IV
+                ON IV.CTKEY = IVLC.CTKEY
+                AND IV.OWKEY = IVLC.OWKEY
+                AND IV.IVATKEY = IVLC.IVATKEY
+                INNER JOIN TWORK_MST_LC LC
+                ON LC.CTKEY = IVLC.CTKEY
+                AND LC.LCKEY = IVLC.LCKEY
+                INNER JOIN TWORK_MST_ZN ZN
+                ON ZN.CTKEY = IVLC.CTKEY
+                AND ZN.ZNKEY = LC.ZNKEY
+                INNER JOIN TWORK_MST_AR AR
+                ON AR.CTKEY = IVLC.CTKEY
+                AND AR.ZNKEY = LC.ZNKEY
+                AND AR.ARKEY = LC.ARKEY
+                LEFT JOIN TWORK_MST_ASRT ASTDTL
+                ON ASTDTL.CTKEY = IC.CTKEY
+                AND ASTDTL.OWKEY = IC.OWKEY
+                AND ASTDTL.ASRTDTICKEY = IC.ICKEY
+                AND ASTDTL.QTY   >   0
+                AND IC.ASRTYN = 'Y'
+                LEFT JOIN (
+                SELECT AST.CTKEY
+                , AST.OWKEY
+                , AST.ASRTMASICKEY
+                , IC.ICNM AS ASRTMASICNM
+                FROM TWORK_MST_ASRT AST
+                INNER JOIN TWORK_MST_IC IC
+                ON IC.CTKEY = AST.CTKEY
+                AND IC.OWKEY = AST.OWKEY
+                AND IC.ICKEY = AST.ASRTMASICKEY
+                WHERE IC.ASRTYN = 'Y'
+                GROUP BY
+                AST.CTKEY
+                , AST.OWKEY
+                , AST.ASRTMASICKEY
+                , IC.ICNM
+                ) ASTMST
+                ON ASTMST.CTKEY = ASTDTL.CTKEY
+                AND ASTMST.OWKEY = ASTDTL.OWKEY
+                AND ASTMST.ASRTMASICKEY = ASTDTL.ASRTMASICKEY
+                WHERE  IVLC.TOTQTY  >  0
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                    AND ( IVLC.CTKEY = #{ctkey})
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)">
+                    AND ( COALESCE(ASTMST.ASRTMASICKEY, IVLC.ICKEY) IN #{ickeyArr} OR ASTDTL.ASRTDTICKEY IN #{ickeyArr} )
+                </if>
+        )
+        GROUP BY
+        CTKEY
+        , OWKEY
+        , ASRTMASICKEY
+        , ASRTMASICNM
+        , ASRTDTICKEY
+        , ASRTDTICNM
+        ) B ON A.OWKEY = B.OWKEY
+        AND A.CTKEY = B.CTKEY
+        AND A.ICKEYM = B.ICKEYM
+        AND COALESCE(A.ICKEYA, 1) = COALESCE(B.ICKEYA, 1)
+    </sql>
+
+    <select id="selectinXObPeriodMonthStatusCount" resultType="java.lang.Integer">
+        /* wms-report-selectinXObPeriodMonthStatusList-sql-oracle.xml - selectinXObPeriodMonthStatusCount */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectinXObPeriodMonthStatusSql"/>
+        )
+    </select>
+
+    <select id="selectinXObPeriodMonthStatusList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-selectinXObPeriodMonthStatusList-sql-oracle.xml - selectinXObPeriodMonthStatusList */
+            FROM (
+                <include refid="selectinXObPeriodMonthStatusSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectinXObPeriodMonthStatusSql">
+        SELECT
+                SUBSTR(B.TASKDATE, 0, 4) AS TASKYEAR,
+                SUBSTR(B.TASKDATE, 5, 2) AS TASKMONTH,
+                <if test='"20".equals(div)'>
+                    B.TASKDATE,
+                </if>
+                SUM(COALESCE(CNFRMQTYDM, 0)) AS CNFRMQTYDM,
+                SUM(COALESCE(CNFRMQTYMV, 0)) AS CNFRMQTYMV,
+                SUM(COALESCE(CNFRMQTYET, 0)) AS CNFRMQTYET,
+                SUM(COALESCE(QTYUP, 0)) AS QTYUP,
+                SUM(COALESCE(IBSUM, 0)) AS IBSUM,
+                SUM(COALESCE(IBSLPRC, 0)) AS IBSLPRC,
+                SUM(COALESCE(OBDMQTY, 0)) AS OBDMQTY,
+                SUM(COALESCE(OBMVQTY, 0)) AS OBMVQTY,
+                SUM(COALESCE(OBETQTY, 0)) AS OBETQTY,
+                SUM(COALESCE(QTYDOWN, 0)) AS QTYDOWN,
+                SUM(COALESCE(OBSUM, 0)) AS OBSUM,
+                SUM(COALESCE(OBSLPRC, 0)) AS OBSLPRC
+        FROM (
+            SELECT
+                 COALESCE(COALESCE(B.OWKEY, C.OWKEY), D.OWKEY) AS OWKEY
+                ,COALESCE(COALESCE(B.CTKEY, C.CTKEY), D.CTKEY) AS CTKEY
+                ,SUBSTR(COALESCE(COALESCE(B.TASKDATE, C.TASKDATE), D.TASKDATE), 0, 4) AS TASKYEAR
+                ,SUBSTR(COALESCE(COALESCE(B.TASKDATE, C.TASKDATE), D.TASKDATE), 5, 2) AS TASKMONTH
+                ,COALESCE(COALESCE(B.TASKDATE, C.TASKDATE), D.TASKDATE) AS TASKDATE
+                ,COALESCE(CNFRMQTY_DM, 0) AS CNFRMQTYDM -- 입고EA/이고입고
+                ,COALESCE(CNFRMQTY_MV, 0) AS CNFRMQTYMV -- 입고EA/직납입고
+                ,COALESCE(CNFRMQTY_ET, 0) AS CNFRMQTYET -- 입고EA/기타입고
+                ,COALESCE(QTY_UP, 0) AS QTYUP -- 입고EA/재고조정(입고)
+                ,(COALESCE(CNFRMQTY_DM, 0) + COALESCE(CNFRMQTY_MV, 0) + COALESCE(CNFRMQTY_ET, 0) + COALESCE(QTY_UP, 0)) AS IBSUM -- 입고EA/합계
+                ,COALESCE(IB_SLPRC, 0) + COALESCE(PRC_UP, 0) AS IBSLPRC -- 입고/총금액
+                ,COALESCE(OB_DM_QTY, 0) AS OBDMQTY -- 출고EA/주문출고
+                ,COALESCE(OB_MV_QTY, 0) AS OBMVQTY -- 출고EA/이고출고
+                ,COALESCE(OB_ET_QTY, 0) AS OBETQTY -- 출고EA/기타출고
+                ,COALESCE(QTY_DOWN, 0) AS QTYDOWN -- 출고EA/재고조정(출고)
+                ,(COALESCE(OB_DM_QTY, 0) + COALESCE(OB_MV_QTY, 0) + COALESCE(OB_ET_QTY, 0) + COALESCE(QTY_DOWN, 0)) AS OBSUM -- 출고EA/합계
+                ,COALESCE(OB_SLPRC, 0) + COALESCE(PRC_DOWN, 0) AS OBSLPRC -- 출고/총금액
+            FROM (
+                -- 출고 현황
+                SELECT    CTKEY /*센터코드*/
+                        , OWKEY /*화주코드*/
+                        , ICKEYA
+                        , SUM(OB_DM_QTY) AS OB_DM_QTY /*출고EA/주문출고*/
+                        , SUM(OB_MV_QTY) AS OB_MV_QTY /*출고EA/이고출고*/
+                        , SUM(OB_ET_QTY) AS OB_ET_QTY /*출고EA/기타출고*/
+                        , SUM(OB_SLPRC) AS OB_SLPRC
+                        , TASKDATE
+                FROM (
+                    SELECT * FROM (
+                        SELECT    OH.CTKEY AS CTKEY /*센터코드*/
+                                , CT.CTNM /*센터명*/
+                                , OH.OWKEY /*화주코드*/
+                                , IC_A.ICKEY AS ICKEYA
+                                , CASE WHEN OH.OBHDTYPECD = '10' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_DM_QTY /*출고EA/주문출고*/
+                                , CASE WHEN OH.OBHDTYPECD = '30' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_MV_QTY /*출고EA/이고출고*/
+                                , CASE WHEN OH.OBHDTYPECD = '50' AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY ELSE 0 END AS OB_ET_QTY /*출고EA/기타출고*/
+                                , CASE WHEN OH.OBHDTYPECD IN ('10', '30', '50') AND OD.CNFRMQTY > 0 THEN OD.CNFRMQTY * IC_A.SLPRC ELSE 0 END AS OB_SLPRC /*출고/총금액*/
+                                , SUBSTR(OH.OBCNFRMDATE, 0, 8) AS TASKDATE
+                        FROM TWORK_INFO_OB_HD OH
+                        INNER JOIN TWORK_INFO_OB_DT OD
+                        ON OH.CTKEY = OD.CTKEY
+                        AND OH.OWKEY = OD.OWKEY
+                        AND OH.OBHDKEY = OD.OBHDKEY
+                        INNER JOIN TWORK_MST_IC IC_A
+                        ON OD.CTKEY = IC_A.CTKEY
+                        AND OD.OWKEY = IC_A.OWKEY
+                        AND OD.ICKEY = IC_A.ICKEY
+                        INNER JOIN TWORK_MST_CT CT
+                        ON OH.CTKEY = CT.CTKEY
+                        WHERE OH.OBHDTYPECD IN ('10', '30', '50')
+                        AND OH.OBSTATUSCD = '70'
+                ) WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                    AND OWKEY = #{owkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                    AND CTKEY = #{ctkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                    AND TASKDATE BETWEEN #{wrkStartDate} AND #{wrkEndDate}
+                </if>
+            ) A
+            GROUP BY
+                  CTKEY   /*센터코드*/
+                , OWKEY   /*화주코드*/
+                , ICKEYA /*자품번*/
+                , TASKDATE
+            ) B FULL OUTER JOIN (
+                -- 입고 현황
+                SELECT
+                    OWKEY,
+                    CTKEY,
+                    ICKEYA,
+                    TASKDATE,
+                    SUM(CNFRMQTY_DM) AS CNFRMQTY_DM,
+                    SUM(CNFRMQTY_MV) AS CNFRMQTY_MV,
+                    SUM(CNFRMQTY_ET) AS CNFRMQTY_ET,
+                    SUM(IB_SLPRC) AS IB_SLPRC
+                FROM (
+                    SELECT *
+                    FROM (
+                        SELECT    A.CTKEY
+                                , L.CTNM
+                                , A.OWKEY
+                                , B.IBHDTYPECD
+                                , SUBSTR(B.IBDDLNDATE, 0, 8) AS TASKDATE
+                                , C.ICKEY AS ICKEYA
+                                , (CASE WHEN B.IBHDTYPECD = '30' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_DM
+                                , (CASE WHEN B.IBHDTYPECD = '40' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_MV
+                                , (CASE WHEN B.IBHDTYPECD = '50' THEN COALESCE(A.CNFRMQTY, 0) ELSE 0 END) AS CNFRMQTY_ET
+                                , (CASE WHEN B.IBHDTYPECD IN ('30', '40', '50') AND COALESCE(A.CNFRMQTY, 0) > 0 THEN COALESCE(A.CNFRMQTY, 0) * C.SLPRC ELSE 0 END) AS IB_SLPRC /*입고/총금액*/
+                                , CASE WHEN A.IBDTSTATUSCD = '91' THEN 'Y' ELSE 'N' END AS CLOSEYN
+                                , A.IBDTSTATUSCD
+                        FROM TWORK_INFO_IB_DT A
+                        INNER JOIN TWORK_INFO_IB_HD B
+                        ON A.CTKEY = B.CTKEY
+                        AND A.OWKEY = B.OWKEY
+                        AND A.IBHDKEY = B.IBHDKEY
+                        INNER JOIN TWORK_MST_IC C
+                        ON A.CTKEY = C.CTKEY
+                        AND A.OWKEY = C.OWKEY
+                        AND A.ICKEY = C.ICKEY
+                        INNER JOIN TWORK_MST_CT L
+                        ON A.CTKEY = L.CTKEY
+                    ) A
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                        AND OWKEY = #{owkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                        AND CTKEY = #{ctkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                        AND TASKDATE BETWEEN #{wrkStartDate} AND #{wrkEndDate}
+                    </if>
+                    AND IBHDTYPECD IN ('30', '40', '50')
+                    AND IBDTSTATUSCD = '91'
+                    AND CLOSEYN = 'Y'
+                ) GROUP BY
+                OWKEY,
+                CTKEY,
+                ICKEYA,
+                TASKDATE
+            ) C
+            ON B.OWKEY = C.OWKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.ICKEYA = C.ICKEYA
+            FULL OUTER JOIN (
+                -- 재고조정 (증가, 감소)
+                SELECT  CTKEY,
+                        OWKEY,
+                        ICKEYA,
+                        TASKDATE,
+                        SUM(QTY_UP) AS QTY_UP,
+                        SUM(QTY_DOWN) AS QTY_DOWN,
+                        SUM(PRC_UP) AS PRC_UP,
+                        SUM(PRC_DOWN) AS PRC_DOWN
+                FROM (
+                    SELECT * FROM (
+                        SELECT A.CTKEY
+                        , H.CTNM
+                        , A.OWKEY
+                        , I.ICKEY AS ICKEYA
+                        , CASE WHEN A.IVHSTYPECD = '130' THEN A.QTY ELSE 0 END AS QTY_UP
+                        , CASE WHEN A.IVHSTYPECD = '140' THEN A.QTY ELSE 0 END AS QTY_DOWN
+                        , CASE WHEN A.IVHSTYPECD = '130' THEN A.QTY * I.SLPRC ELSE 0 END AS PRC_UP
+                        , CASE WHEN A.IVHSTYPECD = '140' THEN A.QTY * I.SLPRC ELSE 0 END AS PRC_DOWN
+                        , A.IVHSTYPECD
+                        , SUBSTR(A.IVCHGDATE, 0, 8) AS TASKDATE
+                    FROM TWORK_INFO_IVHS A
+                    LEFT OUTER JOIN TWORK_MST_LC B
+                    ON A.CTKEY = B.CTKEY
+                    AND A.FRLCKEY = B.LCKEY
+                    LEFT OUTER JOIN TWORK_MST_ZN C
+                    ON B.CTKEY = C.CTKEY
+                    AND B.ZNKEY = C.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_AR D
+                    ON B.CTKEY = D.CTKEY
+                    AND B.ARKEY = D.ARKEY
+                    AND B.ZNKEY = D.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_LC E
+                    ON A.CTKEY = E.CTKEY
+                    AND A.TOLCKEY = E.LCKEY
+                    LEFT OUTER JOIN TWORK_MST_ZN F
+                    ON E.CTKEY = F.CTKEY
+                    AND E.ZNKEY = F.ZNKEY
+                    LEFT OUTER JOIN TWORK_MST_AR G
+                    ON E.CTKEY = G.CTKEY
+                    AND E.ARKEY = G.ARKEY
+                    AND E.ZNKEY = G.ZNKEY
+                    INNER JOIN TWORK_MST_CT H
+                    ON A.CTKEY = H.CTKEY
+                    INNER JOIN TWORK_MST_IC I
+                    ON A.CTKEY = I.CTKEY
+                    AND A.OWKEY = I.OWKEY
+                    AND A.ICKEY = I.ICKEY
+                    )
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                        AND OWKEY = #{owkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                        AND CTKEY = #{ctkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                        AND TASKDATE BETWEEN #{wrkStartDate} AND #{wrkEndDate}
+                    </if>
+                    AND ( IVHSTYPECD IN ('130', '140'))
+                )
+                GROUP BY CTKEY,
+                OWKEY,
+                ICKEYA,
+                TASKDATE
+            ) D ON B.OWKEY = D.OWKEY
+            AND C.OWKEY = D.OWKEY
+            AND B.CTKEY = D.CTKEY
+            AND C.CTKEY = D.CTKEY
+            AND B.ICKEYA = D.ICKEYA
+            AND C.ICKEYA = D.ICKEYA
+        ) A RIGHT OUTER JOIN
+        (
+            SELECT TO_CHAR(TASKDATE, 'YYYYMMDD') AS TASKDATE
+            FROM
+            (
+                SELECT
+                    TO_DATE(#{wrkStartDate},'YYYYMMDD') + LEVEL - 1 AS TASKDATE
+                CONNECT BY LEVEL <![CDATA[<]]>= (TO_DATE(#{wrkEndDate},'YYYYMMDD')
+                - TO_DATE(#{wrkStartDate},'YYYYMMDD') + 1)
+            ) b
+        ) B
+        ON A.TASKDATE = B.TASKDATE
+        WHERE 1=1
+        GROUP BY
+             SUBSTR(B.TASKDATE, 0, 4)
+            ,SUBSTR(B.TASKDATE, 5, 2)
+        <if test='"20".equals(div)'>
+            ,B.TASKDATE
+        </if>
+        ORDER BY
+             SUBSTR(B.TASKDATE, 0, 4)
+            ,SUBSTR(B.TASKDATE, 5, 2)
+        <if test='"20".equals(div)'>
+            ,B.TASKDATE
+        </if>
+    </sql>
+</mapper>

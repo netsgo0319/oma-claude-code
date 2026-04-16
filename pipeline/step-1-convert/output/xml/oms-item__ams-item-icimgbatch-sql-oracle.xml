@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.item.mapper.MataImgBatchMapper">
+
+		<insert id="insertIcImgMetaBatch" parameterType="map">
+		/* ams-item-icimgbatch-sql-oracle.xml - insertIcImgMetaBatch */
+			INSERT INTO TADMIN_ICIMG_META_BATCH
+			(
+				CTKEY,
+				ICKEY,
+				FILEPATH,
+				FILENM
+			)
+			SELECT
+					Z.CTKEY,
+					Y.ICKEY,
+					SUBSTR(X.RPS_IMG_URL, 1, INSTR(X.RPS_IMG_URL, '/', -1)) AS FILEPATH,
+					SUBSTR(X.RPS_IMG_URL, INSTR(X.RPS_IMG_URL, '/', -1) + 1) AS FILENM
+				FROM TORDER_INTF_MAL_IC X
+				JOIN TORDER_MST_IC Y
+				  ON X.ONLD_PD_NO = Y.ICKEY
+				 AND Y.OWKEY = #{owkey}
+				JOIN TORDER_MST_CT Z
+				  ON Z.MANAGEMENTYN = 'Y'
+				 AND Z.DELYN = 'N'
+				WHERE X.IFID = #{interfaceId}
+				  AND X.RPS_IMG_URL IS NOT NULL
+				  AND INSTR(X.RPS_IMG_URL, '/', -1) > 0
+				  AND NOT EXISTS (
+						SELECT 1
+						FROM TADMIN_ICIMG_META_BATCH B
+						WHERE B.CTKEY    = Z.CTKEY
+						  AND B.ICKEY    = Y.ICKEY
+						  AND B.FILEPATH = SUBSTR(X.RPS_IMG_URL, 1, INSTR(X.RPS_IMG_URL, '/', -1))
+						  AND B.FILENM   = SUBSTR(X.RPS_IMG_URL, INSTR(X.RPS_IMG_URL, '/', -1) + 1)
+				  )
+		</insert>
+</mapper>

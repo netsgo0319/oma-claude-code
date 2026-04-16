@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.sample.in.mapper.SampleOwnerMapper">
+    <update id="updateOwnerList">
+        /* sample-master-owner-sql-oracle.xml  updateCenterList */
+        UPDATE TORDER_MST_OW A
+        SET (  OWNM
+                , REGNO
+                , BIZTYPE
+                , BIZCTG
+                , CITY
+                , STATE
+                , TEL1
+                , TEL2
+                , FAX
+                , CONTACT
+                , CEO
+                , CNTRYCD
+                , ADDR1
+                , ADDR2
+                , ZIPCD
+                , UPDATEDATE
+                , UPDATEURKEY ) = (  SELECT  B.OWNM
+                                            , B.REGNO
+                                            , B.BIZTYPE
+                                            , B.BIZCTG
+                                            , B.CITY
+                                            , B.STATE
+                                            , B.TEL1
+                                            , B.TEL2
+                                            , B.FAX
+                                            , B.CONTACT
+                                            , B.CEO
+                                            , B.CNTRYCD
+                                            , B.ADDR1
+                                            , B.ADDR2
+                                            , B.ZIPCD
+                                            , #{sysdate}
+                                            , #{interfaceUrkey}
+                                       FROM TORDER_INTF_OW B
+                                       WHERE A.OWKEY = B.OWKEY
+                                         AND B.INTERFACEKEY = #{interfaceId}
+            )
+        WHERE A.DELYN = 'N'
+          AND EXISTS(
+            SELECT 1
+            FROM TORDER_INTF_OW C
+            WHERE A.OWKEY = C.OWKEY
+              AND C.INTERFACEKEY = #{interfaceId}
+        )
+    </update>
+
+    <insert id="insertOwnerList">
+        /* sample-master-owner-sql-oracle.xml  insertOwnerList */
+        INSERT INTO TORDER_MST_OW (
+                                    OWKEY
+                                  , OWNM
+                                  , REGNO
+                                  , BIZTYPE
+                                  , BIZCTG
+                                  , CITY
+                                  , STATE
+                                  , TEL1
+                                  , TEL2
+                                  , FAX
+                                  , CONTACT
+                                  , CEO
+                                  , CNTRYCD
+                                  , ADDR1
+                                  , ADDR2
+                                  , ZIPCD
+                                  , DELYN
+                                  , CLOSDATE
+                                  , INSERTDATE
+                                  , INSERTURKEY
+                                  , UPDATEDATE
+                                  , UPDATEURKEY
+        )
+        SELECT B.OWKEY
+             , B.OWNM
+             , B.REGNO
+             , B.BIZTYPE
+             , B.BIZCTG
+             , B.CITY
+             , B.STATE
+             , B.TEL1
+             , B.TEL2
+             , B.FAX
+             , B.CONTACT
+             , B.CEO
+             , B.CNTRYCD
+             , B.ADDR1
+             , B.ADDR2
+             , B.ZIPCD
+             , 'N'
+             , B.CLOSDATE
+             , #{sysdate}
+             , #{interfaceUrkey}
+             , #{sysdate}
+             , #{interfaceUrkey}
+        FROM TORDER_INTF_OW B
+                 LEFT OUTER JOIN TORDER_MST_OW A
+                                 ON B.OWKEY = A.OWKEY
+        WHERE B.INTERFACEKEY = #{interfaceId}
+          AND A.OWKEY IS NULL
+    </insert>
+
+
+</mapper>

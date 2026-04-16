@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.AcxctMapper">
+	<select id="selectAcxctCount" resultType="java.lang.Integer" >
+		/* adm-master-acxct-sql-oracle.xml  selectAcxctCount */
+		SELECT  COUNT(1)  
+		FROM 	(
+			SELECT	 A.REPACKEY
+					,(SELECT ACNM FROM TADMIN_MST_AC AC WHERE AC.OWKEY = A.OWKEY AND AC.ACKEY = A.REPACKEY) REPACNM
+					,A.ACKEY
+					,A.ACNM
+					,A.INSERTDATE
+					,A.INSERTURKEY
+					,A.UPDATEDATE
+					,A.UPDATEURKEY
+					,A.DELYN
+					,A.REPACTYPE
+					,'REP_ACTYPE' ||';'|| A.REPACTYPE AS REP_ACTYPE_DESC
+					,A.ASNUSEYN
+					,A.OWKEY
+					,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNM
+					,'YESORNO' ||';'|| A.DELYN AS DELYN_DESC
+					,'YESORNO' ||';'|| A.ASNUSEYN AS ASNUSEYN_DESC
+			FROM  TADMIN_MST_AC A
+		) A
+		<where>
+	       <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+		   </if>
+	   </where>
+	</select>
+	
+	<select id="selectAcxct" resultType="camelMap">
+		/* adm-master-acxct-sql-oracle.xml  selectAcxct */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT A.*
+			  FROM ( 
+				SELECT	 A.REPACKEY
+						,(SELECT ACNM FROM TADMIN_MST_AC AC WHERE AC.OWKEY = A.OWKEY AND AC.ACKEY = A.REPACKEY) REPACNM
+						,A.ACKEY
+						,A.ACNM
+				        ,A.ZIPCD
+				        ,A.ADDR1
+					    ,A.ADDR2
+						,A.INSERTDATE
+						,A.UPDATEDATE
+						,A.INSERTURKEY
+ 						,A.UPDATEURKEY
+						,A.DELYN
+						,A.REPACTYPE
+						,'REP_ACTYPE' ||';'|| A.REPACTYPE AS REP_ACTYPE_DESC
+						,A.ASNUSEYN
+						,A.OWKEY
+						,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = A.OWKEY) OWNM
+						,'YESORNO' ||';'|| A.DELYN AS DELYN_DESC
+						,'YESORNO' ||';'|| A.ASNUSEYN AS ASNUSEYN_DESC
+				FROM  TADMIN_MST_AC  A
+			) A
+			<where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY A.UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectDetailAcxct" resultType="camelMap">
+		/* adm-master-acxct-sql-oracle.xml  selectDetailAcxct */
+	/* 거래처별센터 디테일 */
+		SELECT A.*
+		  FROM (
+				SELECT	 B.ACKEY
+						,(SELECT ACNM FROM TADMIN_MST_AC AC WHERE B.OWKEY=AC.OWKEY AND AC.ACKEY = B.ACKEY) ACNM
+						,(SELECT ACNM FROM TADMIN_MST_AC AC WHERE B.OWKEY=AC.OWKEY AND AC.ACKEY = A.REPACKEY) REPACNM
+						,CTKEY
+						,(SELECT CTNM FROM TADMIN_MST_CT WHERE CTKEY = B.CTKEY) CTNM
+						,B.URKEY
+						,B.URNM
+						,B.STOREORDTYPE
+						,B.ACICGRTYPE
+						,B.ETCACICGRTYPE
+						,B.NEWYN
+						,B.ACXCTTEL1
+						,B.ACXCTTEL2
+						,B.POORDTYPE
+						,B.INSERTDATE
+						,B.UPDATEDATE
+						,B.INSERTURKEY
+ 						,B.UPDATEURKEY
+						,B.BHAULINGYN
+						,B.LDGTM
+						,B.UNLDGTM
+						,B.POLEADTM
+						,B.PODDLNTIME
+						,B.RNDKEY
+						,B.ICGRPKEY
+						,B.DELYN
+						,B.SCMCK
+						,B.SCMURKEY
+						,A.REPACTYPE
+						,B.CARPLT
+						,B.OWKEY
+						,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = B.OWKEY) AS OWNM
+						,A.REPACKEY
+				FROM 	TADMIN_MST_AC A
+				INNER JOIN TADMIN_MST_ACXCT B
+						ON A.ACKEY = B.ACKEY
+					   AND A.OWKEY = B.OWKEY
+				WHERE	A.OWKEY = #{owkey}
+				AND		A.ACKEY = #{ackey}
+				AND		B.DELYN = #{delyn}
+			) A
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+	</select>
+	
+	<select id="selectPkAcxct" resultType="camelMap">
+		/* adm-master-acxct-sql-oracle.xml  selectPkAcxct */
+		SELECT	 ACKEY
+				,(SELECT ACNM FROM TADMIN_MST_AC AC WHERE AC.OWKEY = A.OWKEY AND AC.ACKEY = A.ACKEY) ACNM
+				,CTKEY
+				,(SELECT CTNM FROM TADMIN_MST_CT WHERE CTKEY = A.CTKEY) CTNM
+				,URKEY
+				,URNM
+				,STOREORDTYPE
+				,'STOREORDTYPE' || ';' || STOREORDTYPE AS STOREORDTYPE_DESC
+				,ACICGRTYPE
+				,'ACICGRTYPE' || ';' || ACICGRTYPE AS ACICGRTYPE_DESC
+				,ETCACICGRTYPE
+				,'ETC_ACICGRTYPE' || ';' || ETCACICGRTYPE AS ETC_ACICGRTYPE_DESC
+				,NEWYN
+				,'NEWYN' || ';' || NEWYN AS NEWYN_DESC
+				,ACXCTTEL1
+				,ACXCTTEL2
+				,POORDTYPE
+				,'POORDTYPE' || ';' || POORDTYPE AS POORDTYPE_DESC
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+				,BHAULINGYN
+				,'BHAULINGYN' || ';' || BHAULINGYN AS BHAULINGYN_DESC
+				,LDGTM
+				,UNLDGTM
+				,POLEADTM
+				,PODDLNTIME
+				,RNDKEY
+				,ICGRPKEY
+				,DELYN
+				,SCMCK
+				,'YESORNO' ||';'|| A.SCMCK AS SCMCHECK_DESC
+				,SCMURKEY
+				,( SELECT B.REPACTYPE FROM TADMIN_MST_AC B WHERE A.OWKEY = B.OWKEY AND  B.ACKEY = A.ACKEY ) AS REP_ACTYPE
+                ,'REP_ACTYPE' ||';'|| ( SELECT B.REPACTYPE FROM TADMIN_MST_AC B WHERE A.OWKEY = B.OWKEY AND B.ACKEY = A.ACKEY ) AS REP_ACTYPE_DESC
+                ,CARPLT
+		FROM 	TADMIN_MST_ACXCT A
+		WHERE	ACKEY = #{ackey}
+		AND     CTKEY = #{ctkey}
+		AND     OWKEY = #{owkey}
+	</select>
+	
+	<update id="updateTAdminMstAcxct">
+		/* adm-master-acxct-sql-oracle.xml - updateTAdminMstAcxct */
+		UPDATE  TADMIN_MST_ACXCT
+		SET 
+			  URKEY               = #{urkey}
+			, URNM                = #{urnm}
+			, STOREORDTYPE        = #{storeordtype}
+			, ACICGRTYPE          = #{acicgrtype}
+			, ETCACICGRTYPE       = #{etcacicgrtype}
+			, NEWYN               = #{newyn}
+			, ACXCTTEL1           = #{acxcttel1}
+			, ACXCTTEL2           = #{acxcttel2}
+			, POORDTYPE           = #{poordtype}
+			, BHAULINGYN          = #{bhaulingyn}
+			, LDGTM               = #{ldgtm}
+			, UNLDGTM             = #{unldgtm}
+			, POLEADTM            = #{poleadtm}
+			, PODDLNTIME          = #{poddlntime}
+			, CARPLT              = #{carplt}
+			, UPDATEDATE   		  = #{sysdate}
+			, UPDATEURKEY  		  = #{surkey}
+		WHERE  
+			ACKEY = #{ackey}
+			AND OWKEY = #{owkey}
+			AND CTKEY = #{ctkey}
+			AND RNDKEY = #{rndkey}
+			AND ICGRPKEY = #{icgrpkey}
+	</update>
+	<update id="updateTWorkMstAcxct">
+		/* adm-master-acxct-sql-oracle.xml - updateTWorkMstAcxct */
+		UPDATE  TWORK_MST_AC
+		SET 
+			  URKEY               = #{urkey}
+			, URNAME              = #{urname}
+			, STOREORDTYPE        = #{storeordtype}
+			, ACICGRTYPE          = #{acicgrtype}
+			, ETC_ACICGRTYPE      = #{etc_acicgrtype}
+			, NEWYN               = #{newyn}
+			, POORDTYPE           = #{poordtype}
+			, BHAULINGYN          = #{bhaulingyn}
+			, LDG_TIME            = #{ldg_time}
+			, UNLDG_TIME          = #{unldg_time}
+			, POLEADTM            = #{poleadtm}
+			, POCLOSDATE          = #{poclosdate}
+			, UPDATEDATE   		  = #{sysdate}
+			, UPDATEURKEY  		  = #{surkey}
+		WHERE  
+		ACKEY = #{ackey}
+		AND CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+	</update>
+	
+	<delete id="deleteTAdminMstAcxct">
+		/* adm-master-acxct-sql-oracle.xml - deleteTAdminMstAcxct */
+		UPDATE  TADMIN_MST_ACXCT
+		SET      DELYN 				= 'Y'
+			, UPDATEDATE   		  = #{sysdate}
+			, UPDATEURKEY  		  = #{surkey}
+				
+		WHERE  
+			ACKEY = #{ackey}
+			AND OWKEY = #{owkey}
+			AND CTKEY = #{ctkey}
+			AND RNDKEY = #{rndkey}
+			AND ICGRPKEY = #{icgrpkey}
+	</delete>
+</mapper>

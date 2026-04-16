@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.StoreMapper">
+	
+	<select id="selectStore" resultType="camelMap">
+		/* adm-master-store-sql-oracle.xml - selectStore */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT '0' AS CHK
+				,C.OWKEY
+				,B.OWNM
+				,B.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+				,C.STOREKEY
+				,(SELECT COUNT(1) FROM TADMIN_MST_STOREXCT A  WHERE  1 = 1 AND A.DELYN = 'N' AND A.STOREKEY = C.STOREKEY) AS DTLCNT
+				,C.STORENM
+				,C.TEL1
+				,C.TEL2
+				,C.SCNM
+				,C.ADDR1
+				,C.ADDR2
+				,C.OWNM
+				,C.REGNO
+				,C.DELYN
+				,'YESORNO' ||';'|| C.DELYN AS DELYN_DESC
+				,C.INSERTDATE
+				,C.UPDATEDATE
+				,C.INSERTURKEY
+				,C.UPDATEURKEY
+				,C.ZIPCD
+				,C.ADDRID
+				,C.CLOSDATE
+			    ,C.CUSTGRADE
+				,C.SCMCK
+				,'YESORNO' ||';'|| C.SCMCK AS SCMCHECK_DESC
+				,C.SCMURKEY
+				,C.IFYN
+				,C.CUSTTYPE
+				,C.CUSTDTTYPE
+			FROM TADMIN_MST_STORE C
+				LEFT OUTER JOIN TADMIN_MST_OW B
+							 ON C.OWKEY = B.OWKEY
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   #{SEARCH_CONDITION}
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>
+				</when>
+				<otherwise>
+					ORDER BY C.UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectStoreCount" resultType="java.lang.Integer" >
+		/* adm-master-store-sql-oracle.xml - selectStoreCount */
+			SELECT COUNT(1)  
+			  FROM TADMIN_MST_STORE C
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   #{SEARCH_CONDITION}
+				</if>
+			</where>				
+	</select> 
+	<select id="selectPkCntTadminMstStorexct" resultType="java.lang.Integer" >
+		/* adm-master-store-sql-oracle.xml - selectPkCntTadminMstStorexct */
+		SELECT COUNT(1)  
+		  FROM TADMIN_MST_STOREXCT
+		 WHERE  STOREKEY = #{storekey}
+  		   AND  OWKEY     = #{owkey}
+ 		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+	   	</if>
+	   	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rndkey)" >
+			AND RNDKEY = #{rndkey}
+	  	</if>
+	</select> 
+	<insert id="insertTAdminMstStore">
+		/* adm-master-store-sql-oracle.xml - insertTAdminMstStore */
+		INSERT INTO TADMIN_MST_STORE
+		(
+			 OWKEY
+		    ,STOREKEY
+		    ,STORENM
+		    ,FCTYPE
+		    ,ADDR1
+		    ,ADDR2
+		    ,OWNM
+		    ,REGNO
+		    ,TEL1
+		    ,TEL2
+		    ,SCNM
+		    ,INSERTDATE
+		    ,INSERTURKEY
+		    ,UPDATEDATE
+		    ,UPDATEURKEY
+		    ,ZIPCD
+		    ,ADDRID
+		    ,CLOSDATE
+		    ,STORETYPE
+			,CUSTTYPE
+			,CUSTDTTYPE
+			,DELYN
+		) VALUES (
+	         #{owkey}
+	        ,#{storekey}
+	        ,#{storenm}
+	        ,'0'
+	        ,#{addr1}
+	        ,#{addr2}
+	        ,#{ownm}
+	        ,#{regno}
+	        ,#{tel1}
+	        ,#{tel2}
+	        ,#{scnm}
+	        ,#{sysdate}
+	        ,#{surkey}
+	        ,#{sysdate}
+	        ,#{surkey}
+	        ,#{zipced}
+	        ,#{addrid}
+	        ,SUBSTR(#{closdate}, 0, 14)
+	        ,'0'
+			,#{custtype}
+			,#{custdttype}
+			,#{delyn}
+		) 	
+	</insert>
+	
+	
+	
+	<insert id="mergeTtShpgLocT">
+		/* adm-master-store-sql-oracle.xml - mergeTtShpgLocT */
+		 MERGE INTO TT_SHPG_LOC_T ORI
+	        USING (SELECT #{storeKey} AS STORE_KEY,
+	                      #{storeName} AS STORE_NAME,
+	                      #{tel1} AS TEL1,
+	                      #{startdate} AS STARTDATE,
+	                      #{regdate} AS REGDATE,
+	                      #{ownerName} AS OWNER_NAME,
+	                      #{regno} AS REGNO,
+	                      #{tel2} AS TEL2,
+	                      #{sysdate} AS INSERTDATE,
+	                      #{surkey} AS INSERTURKEY,
+	                      #{sysdate} AS UPDATEDATE,
+	                      #{surkey} AS UPDATEURKEY,
+	                      #{addrid} AS ADDRID,
+	                      #{address1} AS ADDRESS1,
+	                      #{address2} AS ADDRESS2,
+	                      #{zipcode} AS ZIPCODE,
+	                      SUBSTR(#{closdate}, 0, 14) AS CLOSDATE,
+	                      #{delyn} AS DELYN) TRG
+	           ON (ORI.SHPGLOCCD = TRG.STORE_KEY)
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET ORI.SHPGLOCNM = TRG.STORE_NAME,
+	                 ORI.SHPGLOCTYPCD = '2',
+	                 ORI.ADDRID = TRG.ADDRID,
+	                 ORI.TELNO1 = TRG.TEL1,
+	                 ORI.TELNO2 = TRG.TEL2,
+	                 ORI.STTCD = TRG.DELYN,
+	                 ORI.DELYN = TRG.DELYN,
+	                 ORI.UPDATEDATE = TRG.UPDATEDATE,
+	                 ORI.UPDATEURKEY = TRG.UPDATEURKEY
+	   WHEN NOT MATCHED
+	   THEN
+	      INSERT     (ORI.SHPGLOCID,
+	                  ORI.SHPGLOCCD,
+	                  ORI.SHPGLOCNM,
+	                  ORI.SHPGLOCTYPCD,
+	                  ORI.ADDRID,
+	                  ORI.APPTNEEDYN,
+	                  ORI.TELNO1,
+	                  ORI.TELNO2,
+	                  ORI.STTCD,
+	                  ORI.DELYN,
+	                  ORI.INSERTDATE,
+	                  ORI.UPDATEDATE,
+	                  ORI.INSERTURKEY,
+	                  ORI.UPDATEURKEY)
+	          VALUES (nextval('seq_tt_shpg_loc_t'),
+	                  TRG.STORE_KEY,
+	                  TRG.STORE_NAME,
+	                  '2',
+	                  TRG.ADDRID,
+	                  'N',
+	                  TRG.TEL1,
+	                  TRG.TEL2,
+	                  'Y',
+	                  TRG.DELYN,
+	                  TRG.INSERTDATE,
+	                  TRG.UPDATEDATE,
+	                  TRG.INSERTURKEY,
+	                  TRG.UPDATEURKEY)
+	</insert>
+	
+	
+	<select id="selectPkStore" resultType="camelMap">
+		/* adm-master-store-sql-oracle.xml - selectPkStore */
+			SELECT
+				 A.OWKEY
+			    ,A.STOREKEY
+			    ,A.STORENM
+			    ,A.ZIPCD
+				,A.ZIPCD AS ZIPNO
+			    ,A.ADDR1
+			    ,A.ADDR1 AS LNMADRES
+			    ,A.ADDR2
+			    ,A.OWNM
+			    ,A.REGNO
+			    ,A.DELYN
+			    ,A.TEL1
+			    ,A.TEL2
+			    ,A.SCNM
+			    ,A.INSERTDATE
+			    ,A.INSERTURKEY
+			    ,A.UPDATEDATE
+			    ,A.UPDATEURKEY
+			    ,A.ADDRID
+			    ,A.CLOSDATE
+			    ,A.SCMCK
+				,A.SCMURKEY
+	            , B.ADDNT, COALESCE(B.UNIT, '') UNIT 
+	            , COALESCE(B.STNM, '') STNM
+	            , COALESCE(B.CTYNM, '') CTYNM 
+	            , COALESCE(B.ZIPCD, '') ZIPCD
+	            , COALESCE(B.CNTRYCD, '') CNTRYCD
+	            , COALESCE(B.STACD, '') STACD
+	            , B.SHPGLOCNM
+	            , B.LAT
+	            , B.LON
+	            , B.ADDRSTTCD
+				, A.CUSTTYPE
+				, A.CUSTDTTYPE
+				, A.IFYN
+			FROM TADMIN_MST_STORE A
+			LEFT OUTER JOIN TADMIN_MST_ADDR_T B
+			    		 ON A.ADDRID = B.ADDRID
+			INNER JOIN TADMIN_MST_OW C
+					ON A.OWKEY = C.OWKEY
+			WHERE 1=1   
+			AND		A.OWKEY = #{owkey}
+			AND     A.STOREKEY = #{storekey}
+	</select>
+	
+	
+	<select id="selectCeckStore" resultType="camelMap">
+		/* adm-master-store-sql-oracle.xml - selectCeckStore */
+			SELECT A.STOREKEY
+			FROM  TADMIN_MST_STORE A
+			LEFT OUTER JOIN TADMIN_MST_ADDR_T B
+						 ON A.ADDRID = B.ADDRID
+			WHERE 1=1   
+			AND     A.STOREKEY = #{storekey}
+	</select>
+	
+	<update id="updateTAdminMstStore">
+		/* adm-master-store-sql-oracle.xml - updateTAdminMstStore */
+		UPDATE TADMIN_MST_STORE
+		   SET   ZIPCD				= #{zipcd}
+				,ADDR1				= #{addr1}
+				,ADDR2				= #{addr2}
+				<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ifyn) and "N".equals(ifyn)'>
+		     	,STORENM				= #{storenm}
+			 	,TEL1					= #{tel1}
+			 	,TEL2					= #{tel2}
+			 	,SCNM					= #{scnm}
+			 	,OWNM					= #{ownm}
+			 	,REGNO					= #{regno}
+		   	    ,ADDRID					= #{addrid}
+				,DELYN 					= #{delyn}
+				,CUSTTYPE				= #{custtype}
+				,CUSTDTTYPE	    		= #{custdttype}
+				,CLOSDATE			= SUBSTR(#{closdate}, 0, 14)
+				</if>
+				,UPDATEDATE				= #{sysdate}
+				,UPDATEURKEY			= #{surkey}
+		WHERE STOREKEY = #{storekey}
+	       AND OWKEY     = #{owkey}
+		 	
+	</update>
+	
+	<update id="deleteTAdminMstStore">
+		/* adm-master-store-sql-oracle.xml - deleteTAdminMstStore */
+		UPDATE TADMIN_MST_STORE
+		   SET DELYN       = 'Y'
+			,  UPDATEDATE  = #{sysdate}
+			,  UPDATEURKEY = #{surkey}
+		 WHERE STOREKEY = #{storekey}
+		   AND OWKEY     = #{owkey}
+	</update> 
+	
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-master-store-sql-oracle.xml - selectTAdminMstCt */
+		SELECT '0' AS CHK
+		      ,CTKEY
+		      ,CTNM
+		      ,(
+		      	SELECT OWKEY FROM TADMIN_MST_OW WHERE OWKEY = #{owkey}
+		      ) AS OWKEY
+		  FROM TADMIN_MST_CT	
+		  WHERE DELYN = 'N'
+		    AND MANAGEMENTYN = 'Y'
+		 ORDER BY CTKEY
+	</select>
+
+	<select id="selectTAdminMstStorexct" resultType="camelMap">
+		/* adm-master-store-sql-oracle.xml - selectTAdminMstStorexct */
+		SELECT '0' AS CHK
+		      ,A.STOREKEY
+		      ,A.CTKEY
+		      ,B.CTNM
+              ,A.RNDKEY
+              ,A.ICGRPKEY
+              ,A.SCMCK
+			  ,A.SCMURKEY
+			  ,A.OWKEY
+		  FROM TADMIN_MST_STOREXCT A 
+		  INNER JOIN TADMIN_MST_CT B
+		  		  ON A.CTKEY = B.CTKEY
+		         AND B.DELYN = 'N'
+		  WHERE A.DELYN = 'N'
+			AND A.STOREKEY = #{storekey}
+		GROUP BY A.STOREKEY
+			  ,A.OWKEY
+		      ,A.CTKEY
+		      ,B.CTNM
+		      ,A.RNDKEY
+		      ,A.ICGRPKEY
+		      ,A.SCMCK
+			  ,A.SCMURKEY
+	  ORDER BY CTKEY		  
+	</select>	
+	
+	<insert id="insertTAdminMstStorexct">
+		/* adm-master-store-sql-oracle.xml - insertTAdminMstStorexct */
+		INSERT INTO TADMIN_MST_STOREXCT
+		(
+			  UPDATEURKEY
+			 ,UPDATEDATE
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,CTKEY
+			 ,STOREKEY
+			 ,RNDKEY
+			 ,ICGRPKEY
+			 ,OWKEY
+		 ) VALUES (
+			  #{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{ctkey}
+			 ,#{storekey}
+			 ,#{rndkey}
+			 ,'02'
+			 ,#{owkey}
+		 )	
+	</insert>
+	
+	<delete id="deleteTAdminMstStorexct">
+		/* adm-master-store-sql-oracle.xml - deleteTAdminMstStorexct */
+		UPDATE TADMIN_MST_STOREXCT
+		 SET DELYN = #{delyn}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		 WHERE 
+		 STOREKEY = #{storekey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(rndkey)" >
+			AND RNDKEY = #{rndkey}
+		   </if>
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrpkey)" >
+			AND ICGRPKEY = #{icgrpkey}
+		   </if>
+	</delete>
+
+</mapper>

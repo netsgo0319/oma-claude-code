@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.master.mapper.BoardMapper">
+	<select id="selectNoticeInfoList" resultType="camelMap" >
+		/* adm-board-sql-oracle.xml - selectNoticeInfoList */
+		/* Converted from: START WITH/CONNECT BY PRIOR with LEVEL to WITH RECURSIVE */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				WITH RECURSIVE notice_tree AS (
+					SELECT MSGNO, UPPERMSGNO, 1 AS depth FROM TADMIN_INFO_NOTICE WHERE COALESCE(UPPERMSGNO, '0') = '0'
+					UNION ALL
+					SELECT n.MSGNO, n.UPPERMSGNO, t.depth + 1 FROM TADMIN_INFO_NOTICE n INNER JOIN notice_tree t ON n.UPPERMSGNO = t.MSGNO
+				)
+				SELECT '0' AS CHK
+				     	, '0' AS ADD_CHECK
+			    	 	, A.INSERTDATE
+						, A.MSGNO
+						, CASE WHEN nt.depth > 1 THEN LPAD('&#9492;', nt.depth, ' ')||A.TITLE ELSE A.TITLE END AS TITLE_D
+						, A.TITLE
+						, A.CONTENT
+						, A.PARENTMSGNO
+						, A.UPPERMSGNO
+						, COALESCE(A.FILEYN, 'N') AS FILEYN
+						, C.URNM
+						, A.STARTDT
+						, A.ENDDT
+						, A.MSGTYPE
+						,'MSG_TYPE' || ';' || A.MSGTYPE AS MSG_TYPE_DESC
+						, A.OPENYN
+						, A.TARGET
+						, CASE WHEN A.ENDDT >= TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')THEN 'Y' ELSE 'N' END AS UDYN
+						, A.RIPPLECNT
+						, A.HITSCNT
+						, A.INSERTURKEY
+			   		  	, A.UPDATEDATE
+						, A.UPDATEURKEY
+						, CASE A.TARGET WHEN '3' THEN (SELECT MAX(URGR.URGRKEY)
+												 FROM TADMIN_MST_UR URGR ,TADMIN_INFO_NOTICE_TARGET NT
+												WHERE URGR.URKEY  = NT.TOLIST
+											 	  AND NT.MSGNO   = A.MSGNO
+											   ) ELSE '' END AS URGRKEY
+						, A.FILEKEY AS FILEKEY
+			FROM TADMIN_INFO_NOTICE A
+			INNER JOIN notice_tree nt ON nt.MSGNO = A.MSGNO
+			LEFT JOIN  TADMIN_MST_UR C
+					ON A.INSERTURKEY = C.URKEY
+			WHERE 1=1
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+							AND #{SEARCH_CONDITION}
+						</if>
+						<choose>
+							<when test='sortValue !=null and sortValue != ""'>
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>
+							</when>
+							<otherwise>
+								ORDER BY A.INSERTDATE DESC ,A.MSGNO DESC
+							</otherwise>
+						</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectNoticeCount" resultType="java.lang.Integer" >
+		/* adm-board-sql-oracle.xml - selectNoticeCount */
+		SELECT 	COUNT(1)
+		  FROM 	TADMIN_INFO_NOTICE	 A
+		 <where>
+			<if test="msgno != null">
+			   AND MSGNO = #{msgno}
+			</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				<choose>
+					<when test='startdt !=null and startdt != "" and enddt !=null and enddt != ""'>
+						AND (
+							(A.STARTDT <![CDATA[ >= ]]> #{startdt} AND A.ENDDT <![CDATA[ <= ]]>#{enddt})
+							OR
+							(A.ENDDT <![CDATA[ >= ]]> #{startdt} AND A.ENDDT <![CDATA[ <= ]]>#{enddt}	)
+						)
+					</when>
+					<otherwise>
+						<if test='startdt !=null and startdt != ""'>
+							AND A.STARTDT <![CDATA[ >= ]]> #{startdt}
+						</if>
+						<if test='endDt !=null and endDt != ""'>
+							AND A.ENDDT <![CDATA[ <= ]]>#{enddt}
+						</if>
+					</otherwise>
+				</choose>
+			 /* Converted from: START WITH COALESCE(UPPERMSGNO,'0')=0 CONNECT BY PRIOR MSGNO=UPPERMSGNO */
+			 AND MSGNO IN (
+				WITH RECURSIVE notice_tree2 AS (
+					SELECT MSGNO, UPPERMSGNO FROM TADMIN_INFO_NOTICE WHERE COALESCE(UPPERMSGNO, '0') = '0'
+					UNION ALL
+					SELECT n.MSGNO, n.UPPERMSGNO FROM TADMIN_INFO_NOTICE n INNER JOIN notice_tree2 t ON n.UPPERMSGNO = t.MSGNO
+				)
+				SELECT MSGNO FROM notice_tree2
+			 )
+			</where>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+							ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+							ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER SIBLINGS BY A.INSERTDATE DESC ,A.MSGNO DESC
+					</otherwise>
+				</choose>	 
+	</select>
+	
+	<select id="selectFileList" resultType="camelMap" >
+		/* adm-board-sql-oracle.xml - selectFileList */
+		SELECT A.FILEKEY
+			 , A.FILESEQ
+			 , A.FILEPATH
+			 , A.ORIGFILENM
+			 , A.SAVEFILENM
+			 , A.FILEEXTS
+			 , A.ORIGFILENM  || '.' || A.FILEEXTS AS FILE_NAME
+		FROM TADMIN_MST_FILE A
+			 INNER JOIN TADMIN_INFO_NOTICE B
+					 ON A.FILEKEY = B.FILEKEY
+		   	  		AND B.MSGNO = #{msgno}
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(filekey)">
+				AND A.FILEKEY = #{filekey}
+			</if>
+		</where>
+		ORDER BY A.FILESEQ
+	</select>
+
+	<select id="selectFileCount" resultType="java.lang.Integer" >
+		/* adm-board-sql-oracle.xml - selectFileList */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_FILE A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(filekey)">
+				AND FILEKEY = #{filekey}
+			</if>
+		</where>
+		ORDER BY FILESEQ
+	</select>
+
+	<select id="selectNoticeGrInfoList" resultType="camelMap">
+		/* adm-board-sql-oracle.xml - selectNoticeGrInfoList */
+		WITH T_ROLE AS (
+			SELECT
+				D.ROKEY
+			FROM TADMIN_MST_UR A
+					 INNER JOIN TADMIN_MST_URGR B
+								ON B.URGRKEY = A.URGRKEY
+					 INNER JOIN TADMIN_MST_URGRXROGT C
+								ON C.URGRKEY = B.URGRKEY
+					 INNER JOIN TADMIN_MST_RO D
+								ON D.ROKEY = C.ROKEY
+			 WHERE A.DELYN = 'N'
+			   AND A.URKEY = #{surkey}
+		), T_ROLE_CT AS (
+			SELECT DISTINCT
+				B.CTKEY, B.CTNM
+			  FROM
+				   TADMIN_MST_ROXCTGT A
+			  INNER JOIN  TADMIN_MST_CT B
+			  		  ON A.CTKEY = B.CTKEY
+			 WHERE B.DELYN = 'N'
+			   AND EXISTS (
+					SELECT 1 FROM T_ROLE WHERE ROKEY = A.ROKEY
+				   )
+		)
+	    SELECT CASE COALESCE(NT.CTKEY, '0') WHEN '0' THEN '0' ELSE '1' END AS CHK
+			 , A.CTKEY
+			 , A.CTNM
+		FROM T_ROLE_CT A
+		/* Converted from: REGEXP_SUBSTR + CONNECT BY LEVEL to unnest(string_to_array()) */
+		LEFT OUTER JOIN (
+		    SELECT TRIM(token) AS CTKEY
+		    FROM (
+					 SELECT CTKEY AS VALUE
+					 FROM TADMIN_INFO_NOTICE_TARGET
+		        	WHERE MSGNO = #{msgno}
+				 ) AS src
+			CROSS JOIN LATERAL unnest(string_to_array(src.VALUE, ',')) AS token
+		) NT
+		ON (NT.CTKEY = A.CTKEY)
+		ORDER BY A.CTKEY
+	</select>
+
+	<select id="selectNoticeUserDivList" resultType="camelMap">
+		SELECT CASE NT.URTYP WHEN NT.URTYP IS NULL THEN '0' ELSE '1' END AS CHK
+		     , A.ADCDDTKEY AS urtyp
+		FROM TADMIN_MST_ADCD_DT A
+		/* Converted from: REGEXP_SUBSTR + CONNECT BY LEVEL to unnest(string_to_array()) */
+		LEFT OUTER JOIN (
+		    SELECT TRIM(token) AS URTYP
+		    FROM (
+					 SELECT URTYP AS VALUE
+					 FROM TADMIN_INFO_NOTICE_TARGET
+		        	WHERE MSGNO = #{msgno}
+				 ) AS src
+			CROSS JOIN LATERAL unnest(string_to_array(src.VALUE, ',')) AS token
+		) NT
+		ON (NT.URTYP = A.ADCDDTKEY)
+		WHERE ADCDHDKEY = 'URTYP'
+		  AND LAKEY = #{slakey}
+	</select>
+	
+	<select id="selectNoticeUrGrInfoList" resultType="camelMap">
+		/* adm-board-sql-oracle.xml - selectNoticeUrGrInfoList */
+		   SELECT A.URKEY AS URGRKEY
+                 , CASE COALESCE(NT.TOLIST, '0') WHEN '0' THEN '0' ELSE '1' END AS CHK
+		         , B.NM_COMPANY
+		         , A.URNM AS URNAME
+                 , A.URGRKEY AS GR_KEY
+			FROM TADMIN_MST_UR A
+			INNER JOIN TPTL_INFO_JOIN_REQ B
+					ON(A.URKEY = B.URKEY)
+            LEFT OUTER JOIN TADMIN_INFO_NOTICE_TARGET NT
+                ON(A.URKEY = NT.TOLIST AND NT.MSGNO  = #{msgno})
+			WHERE 1=1
+			AND     COALESCE(A.URTYP, '-') <![CDATA[ <> ]]> '0'
+			AND     A.URGRKEY	= #{urgr}
+			AND     A.DELYN		= 'N'
+			ORDER BY URNM
+	</select>	
+	
+	<select id="selectDeleteNoticeCount" resultType="java.lang.Integer" >
+		/* adm-board-sql-oracle.xml - selectDeleteNoticeCount */
+			SELECT count(1)
+			  FROM TADMIN_INFO_NOTICE	
+	    	 WHERE MSGNO = #{msgno}
+	</select>	
+	
+	<insert id="insertNoticeInfo">
+		/* adm-board-sql-oracle.xml - insertNoticeInfo */
+		INSERT INTO TADMIN_INFO_NOTICE
+		(
+		     MSGNO
+		     , MSGTYPE
+		     , STARTDT
+		     , ENDDT
+		     , TITLE
+		     , CONTENT
+		     , TARGET
+		     , PARENTMSGNO
+		     , UPPERMSGNO
+		     , OPENYN
+		     , RIPPLECNT
+		     , FILEYN
+			 , FILEKEY
+   		     , INSERTDATE
+			 , INSERTURKEY
+   		  	 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES
+		(
+		      #{msgno}
+			, #{msgtype}
+			, #{startdt}
+			, #{enddt}
+			, #{title}
+			, #{content}
+			, #{target}
+			, COALESCE(#{parentmsgno}, 0)
+			, COALESCE(#{uppermsgno}, 0)
+			, COALESCE(#{openyn}, 'N')
+			, COALESCE(#{ripplecnt}, 0)
+			, #{fileyn}
+			, #{filekey}
+   		    ,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	<insert id="insertFileInfo" parameterType="com.kns.framework.vo.FileVO">
+		/* adm-board-sql-oracle.xml - insertFileInfo */
+		INSERT INTO TADMIN_MST_FILE
+		(
+		       FILEKEY
+		     , FILESEQ
+			 , APKEY
+			 , MEKEY
+		     , FILEPATH
+		     , ORIGFILENM
+			 , SAVEFILENM
+			 , FILESIZE
+			 , FILEEXTS
+   		     , INSERTDATE
+			 , INSERTURKEY
+   		  	 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES
+		(
+		      #{filekey}
+			, #{fileseq}
+			, #{apkey}
+			, #{mekey}
+			, #{filepath}
+			, #{origfilenm}
+			, #{savefilenm}
+			, #{filesize}
+			, #{fileexts}
+   		    , #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+	
+	
+	<update id="updateNoticeInfo">
+		/* adm-board-sql-oracle.xml - updateNoticeInfo */
+		UPDATE TADMIN_INFO_NOTICE
+		   SET CONTENT	= #{content}
+		   	 ,  TITLE	= #{title}
+		     , STARTDT	= #{startdt}
+		     , ENDDT	= #{enddt}
+		     , TARGET	= #{target}
+		     , OPENYN	= #{openyn}
+		     , FILEKEY = #{filekey}
+	     	<choose>
+	     			<when test='fileyn !=null and fileyn != ""'>
+						<if test='fileyn == "N" '>
+							, FILEYN     =(SELECT CASE COUNT(*) WHEN 0 THEN 'N' ELSE 'Y' END FROM TADMIN_MST_FILE WHERE FILEKEY = #{filekey})
+						</if>
+						<if test='fileyn == "Y" '>
+							 , FILEYN		= #{fileyn}
+						</if>
+					</when>	
+					<otherwise>						
+					</otherwise>
+			</choose>		    
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		WHERE MSGNO = #{msgno}
+	</update>
+	
+	<update id="insertNoticeReppleTarget">
+		/* adm-board-sql-oracle.xml - insertNoticeReppleTarget */
+		INSERT INTO TADMIN_INFO_NOTICE_TARGET
+		(
+			   MSGNO
+		     , TOLIST
+   		     , INSERTDATE
+			 , INSERTURKEY
+   		  	 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		SELECT 
+		      #{msgno}
+			, TOLIST
+   		    , #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		FROM TADMIN_INFO_NOTICE_TARGET
+ 		WHERE MSGNO = #{upperMsgNo}
+	</update>
+	
+	<update id="updateNoticeRepple">
+		/* adm-board-sql-oracle.xml - updateNoticeRepple */
+		UPDATE TADMIN_INFO_NOTICE
+		SET RIPPLECNT	= (SELECT COUNT(1) FROM TADMIN_INFO_NOTICE WHERE PARENTMSGNO =#{parentmsgno})
+		WHERE MSGNO = #{parentmsgno}
+	</update>
+	
+	<update id="deleteNoticeRepple">
+		/* adm-board-sql-oracle.xml - deleteNoticeRepple */
+		UPDATE TADMIN_INFO_NOTICE
+		SET RIPPLECNT	= (SELECT COUNT(1) FROM TADMIN_INFO_NOTICE WHERE PARENTMSGNO =#{parentmsgno})
+		WHERE MSGNO = #{parentmsgno}
+	</update>
+
+	<delete id="deleteFileInfo" parameterType="com.kns.framework.vo.FileVO">
+		/* adm-board-sql-oracle.xml - deleteFileInfo */
+		DELETE FROM TADMIN_MST_FILE
+		 WHERE FILEKEY  = #{filekey}
+		   AND FILESEQ   = #{fileseq}
+	</delete>
+	
+	<delete id="deleteFileAll">
+		/* adm-board-sql-oracle.xml - deleteFileAll */
+		DELETE FROM TADMIN_MST_FILE
+		 WHERE FILEKEY = #{filekey}
+	</delete>
+	
+	<delete id="deleteNoticeInfo">
+		/* adm-board-sql-oracle.xml - deleteNoticeInfo */
+		DELETE FROM TADMIN_INFO_NOTICE
+		 WHERE MSGNO  = #{msgno}
+	</delete>
+
+	<delete id="deleteNoticeReppleN">
+		/* adm-board-sql-oracle.xml - deleteNoticeReppleN */
+		/* Converted from: START WITH MSGNO=#{msgno} CONNECT BY PRIOR MSGNO=UPPERMSGNO */
+		DELETE FROM TADMIN_INFO_NOTICE
+		WHERE MSGNO IN (
+			WITH RECURSIVE reply_tree AS (
+				SELECT MSGNO, UPPERMSGNO FROM TADMIN_INFO_NOTICE WHERE MSGNO = #{msgno}
+				UNION ALL
+				SELECT n.MSGNO, n.UPPERMSGNO FROM TADMIN_INFO_NOTICE n INNER JOIN reply_tree t ON n.UPPERMSGNO = t.MSGNO
+			)
+			SELECT MSGNO FROM reply_tree
+			)
+
+	</delete>
+
+	<delete id="deleteNoticeTargetInfo">
+		/* adm-board-sql-oracle.xml - deleteNoticeTargetInfo */
+		DELETE FROM TADMIN_INFO_NOTICE_TARGET
+		 WHERE MSGNO  = #{msgno}
+	</delete>
+	
+	<insert id="insertNoticeTargetInfo">
+		/* adm-board-sql-oracle.xml - insertNoticeTargetInfo */
+		INSERT INTO TADMIN_INFO_NOTICE_TARGET
+		(
+			   MSGNO
+		     , TOLIST
+   		     , INSERTDATE
+			 , INSERTURKEY
+   		  	 , UPDATEDATE
+			 , UPDATEURKEY
+			 , CTKEY
+			 , URTYP
+		)
+		VALUES
+		(
+		      #{msgno}
+			, #{target}
+   		    , #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			, #{ctkeyStr}
+			, #{usrTypeStr}
+		)
+	</insert>
+
+	<select id="getMsgNo" resultType="java.lang.String">
+		/* adm-board-sql-oracle.xml - getMsgNo */
+		SELECT nextval('seq_tadmin_info_notice')
+	</select>
+
+	<select id="getFileKey" resultType="java.lang.String">
+		/* adm-board-sql-oracle.xml - getFileKey */
+		SELECT nextval('seq_tadmin_mst_file')
+	</select>
+</mapper>

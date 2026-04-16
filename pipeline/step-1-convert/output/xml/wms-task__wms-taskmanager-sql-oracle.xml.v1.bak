@@ -1,0 +1,670 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.task.mapper.TaskManagerMapper">
+
+	<resultMap id="taskDtVoMap" type="taskDtVO">
+		<result property="ctkey" column="ctkey"/>
+		<result property="ta_dtkey" column="ta_dtkey"/>
+		<result property="ta_dttype" column="ta_dttype"/>
+		<result property="owkey" column="owkey"/>
+		<result property="ickey" column="ickey"/>
+		<result property="fr_lckey" column="fr_lckey"/>
+		<result property="fr_ivatkey" column="fr_ivatkey"/>
+		<result property="fr_ulckey" column="fr_ulckey"/>
+		<result property="to_lckey" column="to_lckey"/>
+		<result property="to_ivatkey" column="to_ivatkey"/>
+		<result property="to_ulckey" column="to_ulckey"/>
+		<result property="qty" column="qty"/>
+		<result property="fr_qty" column="fr_qty"/>
+		<result property="cfqty" column="cfqty"/>
+		<result property="icutkey" column="icutkey"/>
+		<result property="uom" column="uom"/>
+		<result property="wkstatus" column="wkstatus"/>
+		<result property="urkey" column="urkey"/>
+		<result property="obhdkey" column="obhdkey"/>
+		<result property="obdtkey" column="obdtkey"/>
+		<result property="ibhdkey" column="ibhdkey"/>
+		<result property="ibdtkey" column="ibdtkey"/>
+		<result property="ta_hdkey" column="ta_hdkey"/>
+		<result property="pidtkey" column="pidtkey"/>
+		<result property="reasontype" column="reasontype"/>
+		<result property="taqty" column="taqty"/>
+		<result property="ta_dtdate" column="ta_dtdate"/>
+		<result property="lo_startdate" column="lo_startdate"/>
+		<result property="lo_enddate" column="lo_enddate"/>
+		<result property="ibnrcd" column="ibnrcd"/>
+		<result property="rjqty" column="rjqty"/>
+		<result property="icutqty" column="icutqty"/>
+		<result property="wahdkey" column="wahdkey"/>
+		<result property="loggrpcd" column="loggrpcd"/>
+		<result property="productdate" column="productdate"/>
+		<result property="expiredate" column="expiredate"/>
+		<result property="ta_startdate" column="ta_startdate"/>
+		<result property="ta_enddate" column="ta_enddate"/>
+		<result property="fr_ib_floor" column="fr_ib_floor"/>
+		<result property="to_ib_floor" column="to_ib_floor"/>
+		<result property="fr_lcstortype" column="fr_lcstortype"/>
+		<result property="to_lcstortype" column="to_lcstortype"/>
+	</resultMap>
+	
+	<insert id="insertTWorkInfoTaDt" parameterType="taskDtVO">
+		<![CDATA[
+		MERGE INTO TWORK_INFO_TA_DT DT
+			  USING DUAL
+		ON(
+			 DT.TA_DTKEY = (
+			 				SELECT MAX(TA_DTKEY)
+			 			    FROM TWORK_INFO_TA_DT
+			 			    WHERE CTKEY   = #{ctkey}
+			 			      AND IBHDKEY = #{ibhdkey}
+			 			      AND IBDTKEY = #{ibdtkey}
+			 			      AND QTY > 0	 
+			 				)
+		  
+		)
+		WHEN MATCHED THEN
+		UPDATE SET QTY = QTY +  #{qty}
+		WHEN NOT MATCHED THEN
+		INSERT (
+				 CTKEY     
+				,TA_DTKEY  
+				,TA_DTTYPE 
+				,OWKEY     
+				,ICKEY     
+				,FR_LCKEY  
+				,FR_IVATKEY
+				,FR_ULCKEY
+				,TO_LCKEY  
+				,TO_IVATKEY
+				,TO_ULCKEY
+				,QTY     
+				,FR_QTY  
+				,ICUTKEY
+				,FR_UOM   
+				,UOM       
+				,WKSTATUS  
+				,URKEY     
+				,OBHDKEY   
+				,OBDTKEY   
+				,IBHDKEY   
+				,IBDTKEY   
+				,TA_HDKEY  
+				,PIDTKEY
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+				,TA_DTDATE
+				,LO_STARTDATE
+				,LO_ENDDATE
+				,REASONTYPE
+				,RJQTY
+				,IBNRCD
+				,WAHDKEY
+				,LOGGRPCD
+				,PRODUCTDATE
+				,EXPIREDATE
+				,TA_STARTDATE
+				,TA_ENDDATE
+		        ,FR_LCSTORTYPE
+				,TO_LCSTORTYPE
+				,FR_IB_FLOOR
+				,TO_IB_FLOOR
+			) VALUES (
+				 #{ctkey}
+				,#{ta_dtkey}
+				,#{ta_dttype}
+				,#{owkey}
+				,#{ickey}
+				,#{fr_lckey}
+				,#{fr_ivatkey}
+				,#{fr_ulckey}
+				,#{to_lckey}
+				,#{to_ivatkey}
+				,#{to_ulckey}
+				,#{qty}
+				,#{fr_qty}
+				,#{icutkey}
+				,#{frUom}
+				,#{uom}
+				,#{wkstatus}
+				,#{surkey}
+				,#{obhdkey}
+				,#{obdtkey}
+				,#{ibhdkey}
+				,#{ibdtkey}
+				,#{ta_hdkey}
+				,#{pidtkey}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+		      	,#{sysdate}
+		      	,#{lo_startdate}
+		      	,#{lo_enddate}
+		      	,#{reasontype}
+		      	,#{rjqty}
+		      	,#{ibnrcd}
+		      	,#{wahdkey}
+		      	,#{loggrpcd}
+		      	,#{productdate}
+		      	,#{expiredate}
+		      	,#{ta_startdate}
+		      	,#{ta_enddate}
+				,#{fr_lcstortype}
+				,#{to_lcstortype}
+				,#{fr_ib_floor}
+				,#{to_ib_floor}
+			)
+		]]>
+	</insert>
+
+	<delete id="deleteTaDtByPk" parameterType="taskDtVO">
+		DELETE FROM TWORK_INFO_TA_DT
+		WHERE CTKEY = #{ctkey}
+		    AND TA_DTKEY = #{ta_dtkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_hdkey)">
+				AND TA_HDKEY = #{ta_hdkey}
+			</if>
+	</delete>
+
+	<update id="updateTaDtWkstatus" parameterType="taskDtVO">
+		UPDATE TWORK_INFO_TA_DT
+		   SET
+		     WKSTATUS = #{wkstatus}
+		    ,TA_STARTDATE = #{ta_startdate}
+		    ,URKEY = #{updateurkey}
+		    ,TA_ENDDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND TA_DTKEY = #{ta_dtkey}
+	</update>
+
+	<update id="updateTaDtQtyWkstatus" parameterType="taskDtVO">
+		UPDATE TWORK_INFO_TA_DT SET
+			<if test=" cfqty == 0 " >
+				QTY = QTY + #{qty}
+			</if>
+			<if test=" cfqty > 0 " >
+				QTY = #{cfqty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+				,WKSTATUS = #{wkstatus}
+			</if>
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND TA_DTKEY = #{ta_dtkey}
+	</update>
+
+	<update id="updateTaDtQtyUpdateWkstatus" parameterType="taskDtVO">
+		UPDATE TWORK_INFO_TA_DT SET
+			 UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+			<if test=" cfqty == 0 " >
+				,QTY = #{qty}
+			</if>
+			<if test=" cfqty > 0 " >
+				,QTY = #{cfqty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)" >
+				,TO_LCKEY = #{to_lckey}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+				,WKSTATUS = #{wkstatus}
+			</if>
+		WHERE CTKEY = #{ctkey}
+		    AND TA_DTKEY = #{ta_dtkey}
+	</update>
+
+	<update id="updateTaDtUpdateWkstatusXResaonType" parameterType="taskDtVO">
+   	  UPDATE TWORK_INFO_TA_DT
+   	     SET
+			 UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+			,WKSTATUS = #{wkstatus}
+			,REASONTYPE = #{reasontype}
+		WHERE CTKEY = #{ctkey}
+		    AND TA_DTKEY = #{ta_dtkey}
+	</update>
+
+	<delete id="deleteTaDtHd">
+		DELETE
+		  FROM TWORK_INFO_TA_DT
+		WHERE
+		      CTKEY = #{ctkey}
+   	      AND TA_HDKEY = #{ta_hdkey}
+	</delete>
+
+	<delete id="deleteTaHd">
+		DELETE
+		  FROM TWORK_INFO_TA_HD
+		WHERE
+		      CTKEY = #{ctkey}
+   	      AND TA_HDKEY = #{ta_hdkey}
+	</delete>
+
+
+	<update id="updateTaHdWkstatus">
+	   	 UPDATE TWORK_INFO_TA_HD
+	   	      SET
+		 		  WKSTATUS = #{wkstatus}
+				 ,UPDATEDATE = #{sysdate}
+				 ,UPDATEURKEY = #{updateurkey}
+			WHERE
+			      CTKEY = #{ctkey}
+	   	      AND TA_HDKEY = #{ta_hdkey}
+	</update>
+
+	<update id="updateTaHdWkstatusEndDate">
+   	   UPDATE TWORK_INFO_TA_DT
+   	      SET
+	 		  WKSTATUS = #{wkstatus}
+	 		 ,LO_ENDDATE = #{lo_enddate}
+			 ,UPDATEDATE = #{sysdate}
+			 ,UPDATEURKEY = #{updateurkey}
+		WHERE
+		      CTKEY = #{ctkey}
+   	      AND TA_HDKEY = #{ta_hdkey}
+	</update>
+
+	<update id="updateTaskDtPackToUlc" parameterType="taskDtVO">
+		<![CDATA[
+		UPDATE TWORK_INFO_TA_DT SET
+			TO_ULCKEY = #{to_ulckey}
+			,FR_ULCKEY = #{fr_ulckey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND OBHDKEY = #{obhdkey}
+		    AND OBDTKEY = #{obdtkey}
+		    AND TO_ULCKEY = 'NA'
+		]]>
+	</update>
+
+	<update id="updateTaskDtPackToClear" parameterType="taskDtVO">
+		<![CDATA[
+		UPDATE TWORK_INFO_TA_DT SET
+			TO_ULCKEY = 'NA'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND TO_ULCKEY = #{to_ulckey}
+		]]>	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+	    	AND OBHDKEY = #{obhdkey}
+	    </if>
+	    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey)" >
+	    	AND OBDTKEY = #{obdtkey}
+	    </if>	
+	    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_dttype)" >
+	    	AND TA_DTTYPE = #{ta_dttype}
+	    </if>		    	    
+	    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+	    	AND WKSTATUS = #{wkstatus}
+	    </if>	    			    
+	</update>	
+	
+	<select id="selectTaskDtbyPk" parameterType="taskDtVO" resultMap="taskDtVoMap">
+		SELECT CTKEY
+			,  TA_DTKEY
+			,  TA_DTTYPE
+			,  OWKEY
+			,  ICKEY
+			,  FR_LCKEY
+			,  FR_IVATKEY
+			,  FR_ULCKEY
+			,  TO_LCKEY
+			,  TO_IVATKEY
+			,  TO_ULCKEY
+			,  QTY
+			,  ICUTKEY
+			,  UOM
+			,  WKSTATUS
+			,  URKEY
+			,  OBHDKEY
+			,  OBDTKEY
+			,  IBHDKEY
+			,  IBDTKEY
+			,  TA_HDKEY
+			,  PIDTKEY
+			,  WAHDKEY
+			,  FR_QTY
+			,  REASONTYPE
+			,  IBNRCD
+			,  RJQTY
+			,  PONRCD
+			,  WAHDKEY
+			,  LOGGRPCD
+			,  FR_LCSTORTYPE
+			,  TO_LCSTORTYPE
+			,  FR_IB_FLOOR
+			,  TO_IB_FLOOR
+			,  WKQTY
+		 FROM TWORK_INFO_TA_DT
+		WHERE CTKEY = #{ctkey}
+		  AND TA_DTKEY = #{ta_dtkey}
+		  <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_hdkey)">
+			AND TA_HDKEY = #{ta_hdkey}
+		  </if>
+	</select>
+	
+	<select id="selectTaskHdbyPk" parameterType="taskHdVO" resultType="taskHdVO">
+		<![CDATA[			
+		SELECT  CTKEY
+				,TA_HDKEY
+				,OWKEY
+				,WKSTATUS
+				,LOGGRPCD
+				,CYCLEKEY
+				,CYCLETYP
+				,CYCLEFR
+				,CYCLETO
+				,CLOSDATE
+				,REMARK
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+		   FROM TWORK_INFO_TA_HD
+		  WHERE CTKEY = #{ctkey}
+		    AND TA_HDKEY = #{ta_hdkey}	 	 	
+		]]>		 	
+	</select>
+	
+	<select id="selectTaskDtList" parameterType="taskDtVO" resultMap="taskDtVoMap">
+		<![CDATA[			
+		SELECT CTKEY     
+			,TA_DTKEY  
+			,TA_DTTYPE 
+			,OWKEY     
+			,ICKEY     
+			,FR_LCKEY  
+			,FR_IVATKEY
+			,FR_ULCKEY
+			,TO_LCKEY  
+			,TO_IVATKEY
+			,TO_ULCKEY
+			,QTY       
+			,ICUTKEY   
+			,UOM       
+			,WKSTATUS  
+			,URKEY     
+			,OBHDKEY   
+			,OBDTKEY   
+			,IBHDKEY   
+			,IBDTKEY   
+			,TA_HDKEY  
+			,PIDTKEY
+			,WAHDKEY
+			,FR_QTY
+			,REASONTYPE
+			,IBNRCD
+			,RJQTY
+			,PONRCD
+			,WAHDKEY
+			,LOGGRPCD			
+		 FROM TWORK_INFO_TA_DT
+		]]>
+		<where>
+			CTKEY = #{ctkey}
+			AND QTY > 0
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_dttype)" >
+		    	AND TA_DTTYPE = #{ta_dttype}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		    	AND OWKEY = #{owkey}
+		    </if>	 
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+		    	AND ICKEY = #{ickey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_lckey)" >
+		    	AND FR_LCKEY = #{fr_lckey}
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(fr_ulckey) and fr_ulckey!="NULL"' >
+		    	AND FR_ULCKEY = #{fr_ulckey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_ivatkey)" >
+		    	AND FR_IVATKEY = #{fr_ivatkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)" >
+		    	AND TO_LCKEY = #{to_lckey}
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(to_ulckey) and to_ulckey!="NULL"' >
+		    	AND TO_ULCKEY = #{to_ulckey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_ivatkey)" >
+		    	AND TO_IVATKEY = #{to_ivatkey}
+		    </if>    		
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+		    	AND OBHDKEY = #{obhdkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey)" >
+		    	AND OBDTKEY = #{obdtkey}
+		    </if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+		    	AND IBHDKEY = #{ibhdkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibdtkey)" >
+		    	AND IBDTKEY = #{ibdtkey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pidtkey)" >
+		    	AND PIDTKEY = #{pidtkey}
+		    </if>			    	    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+		    	AND WKSTATUS = #{wkstatus}
+		    </if>
+			<if test="listWkstatus != null and listWkstatus.size > 0" >
+				AND WKSTATUS IN 
+				<foreach item="listWkstatus" index="index" collection="listWkstatus"
+					open="(" separator="," close=")">
+					#{listWkstatus}
+				</foreach>
+			</if>		    
+		</where>	
+		ORDER BY TA_DTKEY ASC	 				 	 	
+	</select>
+	
+	<delete id="deleteTaOrder" parameterType="taskDtVO">
+		DELETE 
+		  FROM TWORK_INFO_TA_DT
+		 WHERE 
+		        CTKEY = #{ctkey}
+		    AND OWKEY = #{owkey}
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+		    	AND OBHDKEY = #{obhdkey}
+		    	AND OBDTKEY = #{obdtkey}
+		    	
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+		    	AND IBHDKEY = #{ibhdkey}
+		    	AND IBDTKEY = #{ibdtkey}
+		    </if>
+	</delete>
+	
+
+	<delete id="deleteTaskFromAttribute" parameterType="taskDtVO">
+		DELETE 
+		  FROM TWORK_INFO_TA_DT
+		 WHERE 
+		        CTKEY = #{ctkey}
+		    AND OWKEY = #{owkey}
+		    AND TA_DTTYPE = #{ta_dttype}
+		    AND WKSTATUS = #{wkstatus}
+		    AND FR_LCKEY = #{fr_lckey}
+	    	AND FR_IVATKEY = #{fr_ivatkey}
+	</delete>
+
+	<insert id="insertTaskHd" parameterType="taskHdVO">
+		<selectKey keyColumn="ta_hdkey" keyProperty="ta_hdkey" order="BEFORE" resultType="String">
+			SELECT CASE WHEN #{taDtType} = '20' THEN 'TM'||TO_CHAR(CURRENT_TIMESTAMP,'YY')||LPAD(nextval('seq_twork_info_ta_hd')::TEXT, 8, '0')  /* 재고이동 */
+			            WHEN #{taDtType} = '70' THEN 'TI'||TO_CHAR(CURRENT_TIMESTAMP,'YY')||LPAD(nextval('seq_twork_info_ta_hd')::TEXT, 8, '0')  /* 재고조사 */
+			       END
+		</selectKey>
+		INSERT INTO TWORK_INFO_TA_HD 
+		(
+			 CTKEY
+			,TA_HDKEY
+			,OWKEY
+			,LOGGRPCD
+			,CYCLEKEY
+			,CYCLETYP
+			,CYCLEFR
+			,CYCLETO
+			,CLOSDATE
+			,REMARK
+			,CYCLEVIEW_YN
+			,COMMENTS
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES 
+		(
+			 #{ctkey}	
+			,#{ta_hdkey}
+			,#{owkey}
+			,#{loggrpcd}
+			,#{cyclekey}
+			,#{cycletyp}
+			,#{cyclefr}
+			,#{cycleto}
+			,#{closdate}
+			,#{remark}
+			,#{cycleview_yn}
+			,#{comments}
+		    ,#{sysdate}
+		  	,#{inserturkey}
+		  	,#{sysdate}
+	      	,#{updateurkey}
+		)
+	</insert>		
+	
+	<select id="selectTaskDtSumQty" parameterType="taskDtVO" resultType="bigDecimal">
+			SELECT SUM(QTY) AS QTY
+			 FROM TWORK_INFO_TA_DT
+			WHERE CTKEY = #{ctkey}
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_dttype)" >
+		    	AND TA_DTTYPE = #{ta_dttype}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		    	AND OWKEY = #{owkey}
+		    </if>	 
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+		    	AND ICKEY = #{ickey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_lckey)" >
+		    	AND FR_LCKEY = #{fr_lckey}
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(fr_ulckey) and fr_ulckey!="NULL"' >
+		    	AND FR_ULCKEY = #{fr_ulckey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(fr_ivatkey)" >
+		    	AND FR_IVATKEY = #{fr_ivatkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)" >
+		    	AND TO_LCKEY = #{to_lckey}
+		    </if>		    
+		    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(to_ulckey) and to_ulckey!="NULL"' >
+		    	AND TO_ULCKEY = #{to_ulckey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_ivatkey)" >
+		    	AND TO_IVATKEY = #{to_ivatkey}
+		    </if>    		
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)" >
+		    	AND OBHDKEY = #{obhdkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(obdtkey)" >
+		    	AND OBDTKEY = #{obdtkey}
+		    </if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+		    	AND IBHDKEY = #{ibhdkey}
+		    </if>
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibdtkey)" >
+		    	AND IBDTKEY = #{ibdtkey}
+		    </if>		    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pidtkey)" >
+		    	AND PIDTKEY = #{pidtkey}
+		    </if>			    	    
+		    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstatus)" >
+		    	AND WKSTATUS = #{wkstatus}
+		    </if>
+			<if test="listWkstatus != null and listWkstatus.size > 0" >
+				AND WKSTATUS IN 
+				<foreach item="listWkstatus" index="index" collection="listWkstatus"
+					open="(" separator="," close=")">
+					#{listWkstatus}
+				</foreach>
+			</if>
+	</select>
+
+	<select id="selectTaskDtCount" parameterType="taskHdVO" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_TA_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND TA_HDKEY = #{ta_hdkey}
+	</select>
+
+	<update id="updateTaskDtWkStatus" parameterType="taskDtVO">
+		UPDATE TWORK_INFO_TA_DT
+		SET
+			WKSTATUS = #{wkstatus}
+				, IF_STATUS = #{ifStatus}
+				, IF_STATUS_MSG = #{ifStatusMsg}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_startdate)">
+				, TA_STARTDATE = #{ta_startdate}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ta_enddate)">
+				, TA_ENDDATE = #{ta_enddate}
+			</if>
+		  	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cfqty)">
+				, WKQTY = #{cfqty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(qty) and qty != 0">
+				, QTY = #{qty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rjqty) and rjqty != 0">
+				, RJQTY = #{rjqty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(resQty)">
+				, RES_QTY = #{resQty}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(resIbFloor)">
+				, RES_IB_FLOOR = #{resIbFloor}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(to_lckey)">
+				, TO_LCKEY = #{to_lckey}
+				, TO_LCSTORTYPE = #{to_lcstortype}
+				, TO_IB_FLOOR = #{to_ib_floor}
+			</if>
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		  AND TA_DTKEY = #{ta_dtkey}
+		  AND TA_HDKEY = #{ta_hdkey}
+	</update>
+
+	<update id="updateTaskHdWkstatus">
+		UPDATE TWORK_INFO_TA_HD A
+		SET
+		      WKSTATUS = (SELECT CASE WHEN COUNT(1) = SUM(CASE WKSTATUS WHEN #{statusComplete} THEN 1 ELSE 0 END)
+									  THEN #{statusComplete}
+									  WHEN COUNT(1) > SUM(CASE WKSTATUS WHEN #{statusCreate} THEN 1 ELSE 0 END)
+									  THEN #{statusWork}
+									  ELSE #{statusCreate} END
+							FROM TWORK_INFO_TA_DT B
+							WHERE A.CTKEY = B.CTKEY
+							  AND A.TA_HDKEY = B.TA_HDKEY
+				  		)
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE A.CTKEY = #{ctkey}
+		  AND A.TA_HDKEY = #{taHdkey}
+	</update>
+
+</mapper>

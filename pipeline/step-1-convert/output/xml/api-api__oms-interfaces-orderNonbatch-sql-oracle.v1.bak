@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.api.order.in.mapper.DoRecvApiNonBatchMapper">
+
+	<!-- 일괄 복호화/암호화 -->
+    <select id="selectDecEncMalOrders" resultType="com.daiso.api.order.dto.ObOrderResponseMallDTO$OborderHdVO">
+    	/* oms-interfaces-orderNonbatch-sql-oracle selectDecEncMalOrders */
+    	WITH WITHKEY AS
+    	(
+    		SELECT #{deckey} AS DECKEY
+    		     , #{enckey} AS ENCKEY
+    	)
+    	SELECT ROWNUM
+    	     , ORGORDERKEY
+			 , DLVYMETHDCD
+			 , DLVYMETHDDTCD
+			 , CTKEY
+			 , MALORDERDIV
+			 , NISCNLRNGDIV
+			 , DLVYEXPCTDAY
+			 , ORDERISTDAY
+			 , PAYMTCOMPLDAY
+			 , BUYERZIPCD
+			 , RECPZIPCD
+			 , CMT
+			 , PARTERID
+			 , ADDCMT01
+			 , ADDCMT02
+			 , ADDCMT03
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(BUYER,        X.DECKEY), X.ENCKEY) AS BUYER
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(BUYERTEL01,   X.DECKEY), X.ENCKEY) AS BUYERTEL01
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(BUYERTEL02,   X.DECKEY), X.ENCKEY) AS BUYERTEL02
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(BUYERADDRHD,  X.DECKEY), X.ENCKEY) AS BUYERADDRHD
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(BUYERADDRDT,  X.DECKEY), X.ENCKEY) AS BUYERADDRDT
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(RECPNM,       X.DECKEY), X.ENCKEY) AS RECPNM
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(RECPTEL01,  X.DECKEY), X.ENCKEY) AS RECPTEL01
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(RECPTEL02,  X.DECKEY), X.ENCKEY) AS RECPTEL02
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(RECPADDRHD,  X.DECKEY), X.ENCKEY) AS RECPADDRHD
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(RECPADDRDT,  X.DECKEY), X.ENCKEY) AS RECPADDRDT
+			 , pkg_crypto$encrypt(PKG_CRYPTO.DECRYPT(ACCESSKEY,    X.DECKEY), X.ENCKEY) AS ACCESSKEY
+		FROM (
+			<foreach collection="orders" item="item" separator="UNION ALL">
+				SELECT #{item.orgorderkey} AS ORGORDERKEY    
+					 , #{item.dlvymethdcd} AS DLVYMETHDCD    
+					 , #{item.dlvymethddtcd} AS DLVYMETHDDTCD    
+					 , #{item.ctkey} AS CTKEY    
+					 , #{item.malorderdiv} AS MALORDERDIV    
+					 , #{item.niscnlrngdiv} AS NISCNLRNGDIV    
+					 , #{item.dlvyexpctday} AS DLVYEXPCTDAY    
+					 , #{item.orderistday} AS ORDERISTDAY    
+					 , #{item.paymtcomplday} AS PAYMTCOMPLDAY    
+					 , #{item.buyer} AS BUYER    
+					 , #{item.buyertel01} AS BUYERTEL01    
+					 , #{item.buyertel02} AS BUYERTEL02    
+					 , #{item.buyerzipcd} AS BUYERZIPCD    
+					 , #{item.buyeraddrhd} AS BUYERADDRHD    
+					 , #{item.buyeraddrdt} AS BUYERADDRDT    
+					 , #{item.recpnm} AS RECPNM    
+					 , #{item.recptel01} AS RECPTEL01    
+					 , #{item.recptel02} AS RECPTEL02    
+					 , #{item.recpzipcd} AS RECPZIPCD    
+					 , #{item.recpaddrhd} AS RECPADDRHD    
+					 , #{item.recpaddrdt} AS RECPADDRDT    
+					 , #{item.cmt} AS CMT    
+					 , #{item.parterid} AS PARTERID    
+					 , #{item.accesskey} AS ACCESSKEY    
+					 , #{item.addcmt01} AS ADDCMT01    
+					 , #{item.addcmt02} AS ADDCMT02    
+					 , #{item.addcmt03} AS ADDCMT03
+			</foreach>
+			 ) T
+			 , WITHKEY X
+    </select>
+</mapper>

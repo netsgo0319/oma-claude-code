@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfWcsMoniterMapper">
+
+	<sql id="sql_pagingTop">
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* FROM (
+		</if>
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+				) B
+				<include refid="sql_sort"/>
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</when>
+			<otherwise>
+				<include refid="sql_sort"/>
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_sort">
+		ORDER BY INSERTDATE DESC
+	</sql>
+
+	<sql id="sql_tWcsIfHistory">
+		<choose>
+			<when test="wcsIfCode == 'WCS_IF_001' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SCTGWCS    A	</when>
+
+			<when test="wcsIfCode == 'WCS_IF_002' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SICWCS_HD  A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_002' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SICWCS_DT  A	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SIBWCS.*
+					  FROM TWORK_INTF_SIBWCS SIBWCS
+					  LEFT OUTER JOIN TWORK_INTF_RIBWCS RIBWCS
+					    ON SIBWCS.IB_SEQ = RIBWCS.IB_SEQ
+			  		WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+					 	AND RIBWCS.IB_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+					 	AND RIBWCS.IB_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SIBWCS.SUCCEEDED = 'true'
+						AND RIBWCS.SUCCEEDED = 'true'
+						AND RIBWCS.STATUS    <![CDATA[ <> ]]> 'REJECTED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SIBWCS.SUCCEEDED = 'false' OR RIBWCS.SUCCEEDED = 'false' OR RIBWCS.STATUS = 'REJECTED')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'REQ_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_SIBICWCS   A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIBWCS     A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'RES_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_RIBICWCS   A	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SOBWCS.*
+					  FROM TWORK_INTF_SOBWCS SOBWCS
+					  LEFT OUTER JOIN TWORK_INTF_ROBWCS ROBWCS
+					    ON SOBWCS.OB_SEQ = ROBWCS.OB_SEQ
+					WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+						AND ROBWCS.OB_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+						AND ROBWCS.OB_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SOBWCS.SUCCEEDED = 'true'
+						AND ROBWCS.SUCCEEDED = 'true'
+						AND ROBWCS.STATUS    <![CDATA[ <> ]]> 'ABANDONED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SOBWCS.SUCCEEDED = 'false' OR ROBWCS.SUCCEEDED = 'false' OR ROBWCS.STATUS = 'ABANDONED')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'REQ_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_SOBICWCS   A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_ROBWCS  	  A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'RES_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_ROBICWCS   A	</when>
+
+			<when test="wcsIfCode == 'WCS_IF_005' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SRMWCS.*
+					  FROM TWORK_INTF_SRMWCS SRMWCS
+					  LEFT OUTER JOIN TWORK_INTF_RRMWCS RRMWCS
+					    ON SRMWCS.RM_SEQ = RRMWCS.RM_SEQ
+					<if test="WCS_RESULT_COND == 1">
+					 WHERE RRMWCS.RM_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+					 WHERE RRMWCS.RM_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SRMWCS.SUCCEEDED = 'true'
+						AND RRMWCS.SUCCEEDED = 'true'
+						AND RRMWCS.STATUS    <![CDATA[ <> ]]> 'ABANDONED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SRMWCS.SUCCEEDED = 'false' OR RRMWCS.SUCCEEDED = 'false' OR RRMWCS.STATUS = 'ABANDONED')
+					</if>
+				) A
+			</when>
+		    <when test="wcsIfCode == 'WCS_IF_005' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RRMWCS     A	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_006' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SIVMMWCS.*
+					  FROM TWORK_INTF_SIVMMWCS SIVMMWCS
+					  LEFT OUTER JOIN TWORK_INTF_RIVMMWCS RIVMMWCS
+					    ON SIVMMWCS.IVMM_SEQ = RIVMMWCS.IVMM_SEQ
+					WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+					   AND RIVMMWCS.IVMM_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+					   AND RIVMMWCS.IVMM_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SIVMMWCS.SUCCEEDED = 'true'
+						AND RIVMMWCS.SUCCEEDED = 'true'
+						AND RIVMMWCS.STATUS    <![CDATA[ <> ]]> 'ABANDONED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SIVMMWCS.SUCCEEDED = 'false' OR RIVMMWCS.SUCCEEDED = 'false' OR RIVMMWCS.STATUS = 'ABANDONED')
+					</if>
+				) A		    
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_006' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVMMWCS   A </when>
+
+		    <when test="wcsIfCode == 'WCS_IF_007' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SIVHDWCS.*
+					  FROM TWORK_INTF_SIVHDWCS SIVHDWCS
+					  LEFT OUTER JOIN TWORK_INTF_RIVHDWCS RIVHDWCS
+					    ON SIVHDWCS.IVHD_NUMBER = RIVHDWCS.IVHD_NUMBER
+			  		WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+					   AND RIVHDWCS.IVHD_NUMBER IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+					   AND RIVHDWCS.IVHD_NUMBER IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SIVHDWCS.SUCCEEDED = 'true'
+						AND RIVHDWCS.SUCCEEDED = 'true'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SIVHDWCS.SUCCEEDED = 'false' OR RIVHDWCS.SUCCEEDED = 'false')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_007' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVHDWCS   A	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_008' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVRVWCS   A </when>
+
+		    <when test="wcsIfCode == 'WCS_IF_010' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SIVWCS.*
+					  FROM (SELECT TIS.CTKEY
+								 , TIS.OWKEY
+								 , TIS.IV_NUMBER
+								 , TIS.LOCATION_CODE
+								 , TIS.SUCCEEDED
+								 , TIS.ERROR_VALUE
+								 , TIS.ERROR_REASON
+								 , TIS.WCS_INTERFACE_ID
+								 , TIS.WMS_INTERFACE_ID
+								 , TIS.INSERTDATE
+								 , TIS.INSERTURKEY
+								 , TIS.UPDATEDATE
+								 , TIS.UPDATEURKEY
+							FROM TWORK_INTF_SIVWCS TIS) SIVWCS
+					  LEFT OUTER JOIN TWORK_INTF_RIVWCS RIVWCS
+					    ON SIVWCS.IV_NUMBER = RIVWCS.IV_NUMBER
+					WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+						AND RIVWCS.IV_NUMBER IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+					 	AND RIVWCS.IV_NUMBER IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SIVWCS.SUCCEEDED = 'true'
+						AND RIVWCS.SUCCEEDED = 'true'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SIVWCS.SUCCEEDED = 'false' OR RIVWCS.SUCCEEDED = 'false')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_010' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVWCS     A </when>
+
+		    <when test="wcsIfCode == 'WCS_IF_009' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVMSCWCS  A </when>
+
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SIBWCS.*
+					  FROM TWORK_INTF_SIBWCS SIBWCS
+					  LEFT OUTER JOIN TWORK_INTF_RIBWCS RIBWCS
+					    ON SIBWCS.IB_SEQ = RIBWCS.IB_SEQ
+					WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+						AND RIBWCS.IB_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+						AND RIBWCS.IB_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SIBWCS.SUCCEEDED = 'true'
+						AND RIBWCS.SUCCEEDED = 'true'
+						AND RIBWCS.STATUS    <![CDATA[ <> ]]> 'REJECTED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SIBWCS.SUCCEEDED = 'false' OR RIBWCS.SUCCEEDED = 'false' OR RIBWCS.STATUS = 'REJECTED')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'REQ_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_SIBICWCS   A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIBWCS     A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'RES_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_RIBICWCS   A	</when>
+			<when test="wcsIfCode == 'WCS_IF_012' and grid == 'REQ_LEFT_GRID_FIELD'">
+				FROM (
+					SELECT DISTINCT SOBWCS.*
+					  FROM TWORK_INTF_SOBWCS SOBWCS
+					  LEFT OUTER JOIN TWORK_INTF_ROBUNITWCS ROBUNITWCS
+					    ON SOBWCS.OB_SEQ = ROBUNITWCS.OB_SEQ
+					WHERE 1 = 1
+					<if test="WCS_RESULT_COND == 1">
+						AND ROBUNITWCS.OB_SEQ IS NOT NULL
+					</if>
+					<if test="WCS_RESULT_COND == 2">
+						AND ROBUNITWCS.OB_SEQ IS NULL
+					</if>
+					<if test="SUCCEEDED_COND == 1">
+						AND SOBWCS.SUCCEEDED = 'true'
+						AND ROBUNITWCS.SUCCEEDED = 'true'
+						AND ROBUNITWCS.STATUS    <![CDATA[ <> ]]> 'ABANDONED'
+					</if>
+					<if test="SUCCEEDED_COND == 2">
+						AND (SOBWCS.SUCCEEDED = 'false' OR ROBUNITWCS.SUCCEEDED = 'false' OR ROBUNITWCS.STATUS = 'ABANDONED')
+					</if>
+				) A
+		    </when>
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'REQ_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_SOBICWCS   A	</when>
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'RES_LEFT_GRID_FIELD'">  FROM TWORK_INTF_ROBUNITWCS A </when>
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'RES_RIGHT_GRID_FIELD'"> FROM TWORK_INTF_ROBUNITPKWCS A </when>
+			<when test="wcsIfCode == 'WCS_IF_013' and grid == 'REQ_LEFT_GRID_FIELD'"> FROM TWORK_INTF_SICSWCS A </when>
+		</choose>
+	</sql>
+
+	<sql id="sql_tWcsIfHistoryWhere">
+		<choose>
+			<!-- <when test="wcsIfCode == 'WCS_IF_002' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SICWCS_HD  A	</when> -->
+		    <when test="wcsIfCode == 'WCS_IF_002' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IC_SEQ     = #{IC_SEQ} 	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.ORDER_TYPE = 'OD001'	  	</when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'REQ_RIGHT_GRID_FIELD'"> AND A.IB_SEQ     = #{IB_SEQ}   	</when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IB_SEQ 	= #{IB_SEQ}   	</when>
+		    <when test="wcsIfCode == 'WCS_IF_003' and grid == 'RES_RIGHT_GRID_FIELD'"> AND A.R_IB_SEQ   = #{R_IB_SEQ} 	</when>
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_004' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SOBWCS     A	</when> -->
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'REQ_RIGHT_GRID_FIELD'"> AND A.OB_SEQ     = #{OB_SEQ}	  	</when>
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.OB_SEQ  	= #{OB_SEQ}		</when>
+		    <when test="wcsIfCode == 'WCS_IF_004' and grid == 'RES_RIGHT_GRID_FIELD'"> AND A.R_OB_SEQ   = #{R_OB_SEQ}	</when>
+
+			<!-- <when test="wcsIfCode == 'WCS_IF_005' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SRMWCS     A	</when> -->
+		    <when test="wcsIfCode == 'WCS_IF_005' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.RM_SEQ  = #{RM_SEQ}	</when>
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_006' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SIVMMWCS   A </when> -->
+		    <when test="wcsIfCode == 'WCS_IF_006' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IVMM_SEQ = #{IVMM_SEQ}</when>
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_007' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SIVHDWCS   A	</when> -->
+		    <when test="wcsIfCode == 'WCS_IF_007' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IVHD_NUMBER = #{IVHD_NUMBER}</when>
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_008' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVRVWCS   A </when> -->
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_010' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_SIVWCS     A </when> -->
+		    <when test="wcsIfCode == 'WCS_IF_010' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IV_NUMBER 	= #{IV_NUMBER}	</when>
+
+		    <!-- <when test="wcsIfCode == 'WCS_IF_009' and grid == 'REQ_LEFT_GRID_FIELD'">  FROM TWORK_INTF_RIVMSCWCS  A </when> -->
+
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'REQ_LEFT_GRID_FIELD'">  AND (A.ORDER_TYPE = 'OD002' OR A.ORDER_TYPE = 'OD003')	</when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'REQ_RIGHT_GRID_FIELD'"> AND A.IB_SEQ     = #{IB_SEQ} 	</when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.IB_SEQ  = #{IB_SEQ} 	</when>
+		    <when test="wcsIfCode == 'WCS_IF_011' and grid == 'RES_RIGHT_GRID_FIELD'"> AND A.R_IB_SEQ   = #{R_IB_SEQ} 	</when>
+
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'REQ_RIGHT_GRID_FIELD'"> AND A.OB_SEQ       = #{OB_SEQ} </when>
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'RES_LEFT_GRID_FIELD'">  AND A.OB_SEQ       = #{OB_SEQ} </when>
+		    <when test="wcsIfCode == 'WCS_IF_012' and grid == 'RES_RIGHT_GRID_FIELD'"> AND A.R_OBUNIT_SEQ = #{R_OBUNIT_SEQ} </when>
+			<when test="wcsIfCode == 'WCS_IF_013' and grid == 'REQ_RIGHT_GRID_FIELD'"> AND A.ICS_NUMBER = #{ICS_NUMBER} </when>
+		</choose>
+	</sql>
+
+	<sql id="sql_tWcsIfHistorySearchCondition">
+		<if test="grid == 'REQ_LEFT_GRID_FIELD'">
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTKEY_COND)">
+				AND CTKEY = #{CTKEY_COND}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY_COND)">
+				AND OWKEY = #{OWKEY_COND}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_COND)">
+				AND INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(REQ_TYPE_CD_COND)">
+				AND REQ_TYPE_CD = (SELECT CTCD_DTVALUE FROM TWORK_MST_CTCD_DT WHERE CTKEY = #{CTKEY_COND} AND CTCD_HDKEY = 'WCS_REQ_TYPE' AND CTCD_DTKEY = #{REQ_TYPE_CD_COND})
+			</if>
+ 			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SUCCEEDED_COND)">
+				<choose>
+					<when test="wcsIfCode == 'WCS_IF_012' and grid == 'RES_LEFT_GRID_FIELD'">
+						<if test="SUCCEEDED_COND == 1">
+						    AND SUCCEEDED = 'true'
+						</if>
+						<if test="SUCCEEDED_COND == 2">
+						    AND (SUCCEEDED = 'false')
+						</if>
+					</when>
+					<otherwise>
+						<if test="SUCCEEDED_COND == 1">
+						    AND SUCCEEDED = 'true'
+						</if>
+						<if test="SUCCEEDED_COND == 2">
+						    AND (SUCCEEDED = 'false')
+						</if>
+					</otherwise>
+				</choose>
+			</if>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_01_COND)">
+			<choose>
+				<when test="wcsIfCode == 'WCS_IF_001' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.CODE 	  	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_002' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.CODE    	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_003' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.HDKEY   	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_004' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.OBHDKEY 	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_005' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.PRODUCT_CODE = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_006' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.TA_HDKEY 	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_007' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.CODE 	  	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_008' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.PRODUCT_CODE = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_010' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.CODE 		  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_009' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.PRODUCT_CODE = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_011' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.HDKEY   	  = #{SEARCH_01_COND} </when>
+				<when test="wcsIfCode == 'WCS_IF_012' and grid == 'REQ_LEFT_GRID_FIELD'">  AND A.OBHDKEY 	  = #{SEARCH_01_COND} </when>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectWcsIfHistoryCount" resultType="java.lang.Integer">
+		/* IfWcsMoniterMapper.selectWcsIfHistory - WCS인터페이스 이력 COUNT 조회 */
+		SELECT COUNT(1)
+			<include refid="sql_tWcsIfHistory"/>
+		 WHERE 1 = 1
+		<include refid="sql_tWcsIfHistoryWhere"/>
+		<include refid="sql_tWcsIfHistorySearchCondition"/>
+	</select>
+
+	<select id="selectWcsIfHistory" resultType="Map">
+		/* IfWcsMoniterMapper.selectWcsIfHistory - WCS인터페이스 이력 조회 */
+		<if test="grid == 'REQ_LEFT_GRID_FIELD'">
+			<include refid="sql_pagingTop"/>
+		</if>
+		SELECT '0' AS CHK
+		     , A.*
+		<include refid="sql_tWcsIfHistory"/>
+		 WHERE 1 = 1
+		<include refid="sql_tWcsIfHistoryWhere"/>
+		<include refid="sql_tWcsIfHistorySearchCondition"/>
+		<if test="grid == 'REQ_LEFT_GRID_FIELD'">
+		<include refid="sql_pagingBottom"/>
+		</if>
+	</select>
+
+	<select id="selectWcsMoniterTable" resultType="String">
+		/* IfWcsMoniterMapper.selectWcsMoniterTable - 넥사크로 그리드 테이블 조회 */
+		SELECT REGEXP_SUBSTR(CTCD_DTVALUE, '[^,]+', 1, LEVEL)
+		  FROM (SELECT CTCD_DTVALUE
+				  FROM TWORK_MST_CTCD_DT
+				 WHERE CTKEY 	  = '#{@com.daiso.wms.interfaces.common.WcsPropertyUtil@CTKEY}'
+				   AND CTCD_HDKEY = 'WCS_IF_LIST'
+				   AND CTCD_DTKEY = #{wcsIfCode}
+			   	)
+		 CONNECT BY LEVEL <![CDATA[ <= ]]> LENGTH(regexp_replace(CTCD_DTVALUE, '[^,]+')) + 1
+	</select>
+
+	<select id="selectWcsMoniterStatistics" resultType="camelMap">
+		/* IfWcsMoniterMapper.selectWcsMoniterStatistics - 인터페이스 모니터링 통계 */
+		SELECT MAX(CASE WHEN TB = 'SCTGWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SCTGWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SCTGWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SCTGWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SICWCS'  	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SICWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SICWCS' 		AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SICWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SIBWCS' 		AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SIBWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SIBWCS' 		AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SIBWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SRMWCS' 		AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SRMWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SRMWCS' 		AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SRMWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SOBWCS' 		AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SOBWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SOBWCS' 		AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SOBWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'UNITWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "UNITWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'UNITWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "UNITWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SIVMMWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SIVMMWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SIVMMWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SIVMMWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SIVHDWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SIVHDWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SIVHDWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SIVHDWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'RIVRVWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "RIVRVWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'RIVRVWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "RIVRVWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'SIVWCS' 		AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "SIVWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'SIVWCS' 		AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "SIVWCS_FAIL"
+			 , MAX(CASE WHEN TB = 'RIVMSCWCS' 	AND SUCCEEDED = 1 THEN CNT ELSE 0 END) AS "RIVMSCWCS_SUCCESS"
+			 , MAX(CASE WHEN TB = 'RIVMSCWCS' 	AND SUCCEEDED = 0 THEN CNT ELSE 0 END) AS "RIVMSCWCS_FAIL"
+		 FROM (
+			SELECT A.TB, A.SUCCEEDED, COUNT(*) AS CNT
+			  FROM (
+				 SELECT 'SCTGWCS' AS TB
+					  , CASE WHEN SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , INSERTDATE
+				  FROM TWORK_INTF_SCTGWCS
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				 SELECT 'SICWCS' AS TB
+					  , CASE WHEN SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , INSERTDATE
+				  FROM TWORK_INTF_SICWCS_HD
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				SELECT 'SIBWCS' AS TB
+				     , CASE WHEN TISIB.SUCCEEDED = 'true' OR TIRIB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					 , TISIB.INSERTDATE
+				  FROM TWORK_INTF_SIBWCS 			TISIB
+				  LEFT OUTER JOIN TWORK_INTF_RIBWCS TIRIB
+				    ON TISIB.IB_NUMBER = TIRIB.IB_NUMBER
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE TISIB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				 SELECT 'SRMWCS' AS TB
+				     , CASE WHEN TISIB.SUCCEEDED = 'true' OR TIRIB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					 , TISIB.INSERTDATE
+				  FROM TWORK_INTF_SRMWCS 			TISIB
+				  LEFT OUTER JOIN TWORK_INTF_RRMWCS TIRIB
+				    ON TISIB.RM_NUMBER = TIRIB.RM_NUMBER
+				 WHERE TISIB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 UNION ALL
+				 SELECT 'SOBWCS' AS TB
+				      , CASE WHEN TISOB.SUCCEEDED = 'true' OR TIROB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , TISOB.INSERTDATE
+				   FROM TWORK_INTF_SOBWCS TISOB
+				   LEFT OUTER JOIN TWORK_INTF_ROBWCS TIROB
+				     ON TISOB.OB_NUMBER = TIROB.OB_NUMBER
+				 WHERE TISOB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 UNION ALL
+				 SELECT 'UNITWCS' AS TB
+				      , CASE WHEN TISOB.SUCCEEDED = 'true' OR TIROB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , TISOB.INSERTDATE
+				   FROM TWORK_INTF_SOBWCS TISOB
+				   LEFT OUTER JOIN TWORK_INTF_ROBWCS TIROB
+				     ON TISOB.OB_NUMBER = TIROB.OB_NUMBER
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE TISOB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				 SELECT 'SIVMMWCS' AS TB
+				      , CASE WHEN TISOB.SUCCEEDED = 'true' OR TIROB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , TISOB.INSERTDATE
+				   FROM TWORK_INTF_SIVMMWCS TISOB
+				   LEFT OUTER JOIN TWORK_INTF_RIVMMWCS TIROB
+				     ON TISOB.IVMM_NUMBER = TIROB.IVMM_NUMBER
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE TISOB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				 SELECT 'SIVHDWCS' AS TB
+				      , CASE WHEN TISOB.SUCCEEDED = 'true' OR TIROB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , TISOB.INSERTDATE
+				   FROM TWORK_INTF_SIVHDWCS TISOB
+				   LEFT OUTER JOIN TWORK_INTF_RIVHDWCS TIROB
+				     ON TISOB.IVHD_NUMBER = TIROB.IVHD_NUMBER
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE TISOB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+ 				 SELECT 'RIVRVWCS' AS TB
+					  , CASE WHEN SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , INSERTDATE
+				  FROM TWORK_INTF_RIVRVWCS
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+				 SELECT 'SIVWCS' AS TB
+				      , CASE WHEN TISOB.SUCCEEDED = 'true' OR TIROB.SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , TISOB.INSERTDATE
+				   FROM TWORK_INTF_SIVWCS TISOB
+				   LEFT OUTER JOIN TWORK_INTF_RIVWCS TIROB
+				     ON TISOB.IV_NUMBER = TIROB.IV_NUMBER
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE TISOB.INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+				 UNION ALL
+ 				 SELECT 'RIVMSCWCS' AS TB
+					  , CASE WHEN SUCCEEDED = 'true' THEN 1 ELSE 0 END AS SUCCEEDED
+					  , INSERTDATE
+				  FROM TWORK_INTF_RIVMSCWCS
+				 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE_FROM)">
+				 WHERE INSERTDATE BETWEEN #{INSERTDATE_FROM} AND #{INSERTDATE_TO}
+				 </if>
+			  ) A
+			  GROUP BY A.TB, A.SUCCEEDED
+		)
+	</select>
+
+	<select id="selectOmsOb" resultType="Map">
+		/* IfWcsMoniterMapper.selectOmsOb - 출고오더 */
+		WITH MASTER_DATA AS
+		(
+		    SELECT ROW_NUMBER() OVER(ORDER BY HDDT, ACKEY, DELIVERYKEY) AS LV
+		         , TT.*
+		      FROM (
+		            SELECT TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS HDDT
+		                 , 'W9991100' AS CTKEY, NULL AS TO_CTKEY
+		                 , 'WELLFOOD-INCHEON' AS ACKEY, '2200056071' AS DELIVERYKEY
+		                 , 'RD05' AS OUT_ORTYPE
+		                 , '1111' AS SALES, '1111' AS DELIVERY
+		           ) TT
+		)
+		, ITEM_DATA AS
+		(
+		    SELECT ICKEY, QTY, UOM, DTKEY, OBCOST
+		         , ROW_NUMBER() OVER(ORDER BY DTKEY DESC) AS LASTKEY
+		      FROM (
+		            SELECT ICKEY, QTY, UOM, OBCOST
+		                 , ROW_NUMBER() OVER(ORDER BY ICKEY, QTY DESC) * 10 AS DTKEY
+		              FROM (
+		                    SELECT '510000008' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 1500 AS OBCOST UNION ALL
+		              		SELECT '510000374' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 306 AS OBCOST UNION ALL
+		              		SELECT '510000066' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 871 AS OBCOST  UNION ALL
+		              		SELECT '510000155' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 1500 AS OBCOST UNION ALL
+		              		SELECT '510000004' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 306 AS OBCOST UNION ALL
+		              		SELECT '510000001' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 871 AS OBCOST  UNION ALL
+		              		SELECT '510000003' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 1500 AS OBCOST UNION ALL
+		              		SELECT '510000111' AS ICKEY, ROUND(floor(random() * (5 - 2 + 1) + 2),0) AS QTY, 'BOX' AS UOM, 306 AS OBCOST
+		                   ) IT
+		           ) IIT
+		)
+		SELECT DTKEY
+		     , LV
+		     , CASE WHEN DTKEY=10 THEN '{"BODY":{"DATA_H":[' || OUT_MASTER || ']' ELSE NULL END AS OUT_MASTER
+		     , CASE WHEN DTKEY=10 THEN CHR(10)||',"DATA_D":[' ELSE ', ' END || OUT_DETAIL
+		       || CASE WHEN LASTKEY=1 THEN '] }}' ELSE NULL END AS OUT_DETAIL
+		  FROM (
+		        SELECT I.DTKEY
+		             , I.LASTKEY
+		             , T.LV
+		             , '{"INDI_NO"'||':'||'"'||T.OUT_EXTERNORDERKEY||'"'
+		               || ', "INDIPART_CD"'||':'||'"'||T.CTKEY||'"' || ', "REPPART_CD"'||':'||'"'||T.TO_CTKEY||'"'
+		               || ', "SCUST_CD"'||':'||'"'||T.ACKEY||'"' || ', "KUNNR"'||':'||'"'||T.DELIVERYKEY||'"'
+		               || ', "INDI_DATE"'||':'||'"'||T.HDDT||'"' || ', "PK_TYP"'||':'||'"'||T.OUT_ORTYPE||'"'
+		               || ', "ZPERNR"'||':'||'"'||T.SALES||'"' || ', "ZPERNR_DSM"'||':'||'"'||T.DELIVERY||'"'
+		               || ', "REF_DOC"'||':'||'"'||T.OUT_REFERENCEKEY||'"'
+		               || '}' AS OUT_MASTER
+		             , '{"INDI_NO"'||':'||'"'||T.OUT_EXTERNORDERKEY||'"' || ', "INDI_SEQ"'||':'||'"'||I.DTKEY||'"'
+		               || ', "INDIPART_CD"'||':'||'"'||T.CTKEY||'"' || ', "INDI_DATE"'||':'||'"'||T.HDDT||'"'
+		               || ', "ITEM_CD"'||':'||'"'||I.ICKEY||'"' || ', "SALES_UNIT"'||':'||'"'||II.ICUNITTYPE||'"'
+		               || ', "INDI_QTY"'||':'||'"'||I.QTY||'"' || ', "INDICNV_QTY"'||':'||'"'||(I.QTY * II.ICUTQTY)||'"'
+		               || ', "REF_DOC"'||':'||'"'||T.OUT_REFERENCEKEY||'"' || ', "REF_DOC_SEQ"'||':'||'"'||I.DTKEY||'"'
+		               || ', "ADJ_UCOST"'||':'||'"'||I.OBCOST||'"' || ', "INDI_AMT"'||':'||'"'||(I.QTY *II.ICUNITQTY* I.OBCOST)||'"'
+		               || '}'AS OUT_DETAIL
+		          FROM (
+		                SELECT M.LV
+		                     , M.HDDT, M.CTKEY, M.TO_CTKEY, M.ACKEY, M.DELIVERYKEY
+		                     , M.OUT_ORTYPE
+		                     , M.SALES, M.DELIVERY
+		                     , IM.EXTERNORDERKEY AS IN_EXTERNORDERKEY, IM.REFERENCEKEY AS IN_REFERENCEKEY
+		                     , OM.EXTERNORDERKEY AS OUT_EXTERNORDERKEY, OM.REFERENCEKEY AS OUT_REFERENCEKEY
+		                  FROM MASTER_DATA M
+		                  JOIN (SELECT CAST(MAX(B.EXTERNORDERKEY) AS NUMERIC) + A.LV AS EXTERNORDERKEY
+		                             , CAST(MAX(B.REFERENCEKEY) AS NUMERIC) + A.LV AS REFERENCEKEY
+		                             , A.LV
+		                          FROM MASTER_DATA A
+		                          JOIN TORDER_INFO_CO_HD B
+		                            ON B.OWKEY = 'WELLFOOD'
+		                           AND B.EXTERNORDERKEY LIKE '7%'
+		                           GROUP BY A.LV
+		                        ) IM ON M.LV = IM.LV
+		                  JOIN (SELECT CAST(MAX(B.EXTERNORDERKEY) AS NUMERIC) + A.LV AS EXTERNORDERKEY
+		                             , CAST(MAX(B.REFERENCEKEY) AS NUMERIC) + A.LV AS REFERENCEKEY
+		                             , A.LV
+		                          FROM MASTER_DATA A
+		                          JOIN TORDER_INFO_CO_HD B
+		                            ON B.OWKEY = 'WELLFOOD'
+		                           AND B.EXTERNORDERKEY LIKE '8%'
+		                           GROUP BY A.LV
+		                        ) OM ON M.LV = OM.LV
+		               ) T
+		          JOIN ITEM_DATA I  ON 1=1
+		          JOIN (
+		                SELECT *
+		                  FROM (
+		                        SELECT IC.ICKEY, IC.ICUNITKEY, IU.ICUNITTYPE, IU.ICUNITQTY
+		                             , RANK() OVER(PARTITION BY IC.ICUNITKEY ORDER BY IU.ICUNITORDER, IU.ICUNITQTY DESC, CASE IU.ICUNITTYPE WHEN 'BOL' THEN 1 ELSE 2 END) AS LV
+		                          FROM TADMIN_MST_IC IC
+		                          JOIN TADMIN_MST_ICUTXTYPE IU
+		                            ON IC.OWKEY = IU.OWKEY
+		                           AND IC.ICUNITKEY = IU.ICUNITKEY
+		                          JOIN ITEM_DATA ID
+		                            ON IC.ICKEY = ID.ICKEY
+		                           AND IU.ICUNITTYPE = ID.UOM
+		                         WHERE IC.OWKEY = 'WELLFOOD'
+		                       ) L
+		                 WHERE 1 = 1
+		               ) II
+		            ON I.ICKEY = II.ICKEY
+		           AND I.UOM = II.ICUNITTYPE
+		       ) TT
+		 ORDER BY TT.LV, TT.DTKEY
+	</select>
+
+	<select id="selectOmsIb" resultType="Map">
+		/* IfWcsMoniterMapper.selectOmsIb - 입고오더 */
+		WITH MASTER_DATA AS
+		(
+		    SELECT ROW_NUMBER() OVER(ORDER BY HDDT, ACKEY, DELIVERYKEY) AS LV
+		         , TT.*
+		      FROM (
+		            SELECT TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS HDDT
+		                 , 'W9991100' AS CTKEY, NULL AS TO_CTKEY
+		                 , 'WELLFOOD-INCHEON' AS ACKEY, '2200009578' AS DELIVERYKEY
+		                 , 'RD51' AS IN_ORTYPE
+		                 , '1111' AS SALES, '1111' AS DELIVERY
+		           ) TT
+		)
+		, ITEM_DATA AS
+		(
+		    SELECT ICKEY, QTY, DTKEY
+		         , ROW_NUMBER() OVER(ORDER BY DTKEY DESC) AS LASTKEY
+		      FROM (
+		            SELECT ICKEY, QTY
+		                 , ROW_NUMBER() OVER(ORDER BY ICKEY, QTY DESC) * 10 AS DTKEY
+		              FROM (
+		                    SELECT A.ICKEY
+		                         , COALESCE(B.LAYERPERPALLERT, 1) * COALESCE(B.QUANTYTYPERLAYESRS, 1) *
+		                           ROUND(floor(random() * (5 - 2 + 1) + 2),0)
+		                          -- * CASE WHEN A.ICKEY IN ('510004388','510000935') THEN 50 ELSE 1 END
+		                           AS QTY
+		                         , B.ICUTTYPE AS UOM
+		                      FROM TADMIN_MST_IC A
+		                         , TWORK_MST_ICUTXTYPE B
+		                     WHERE A.OWKEY = B.OWKEY
+		                       AND A.ICUTKEY = B.ICUTKEY
+		                       AND A.OWKEY = 'WELLFOOD'
+		                       AND B.CTKEY = 'W9991100'
+		                       AND B.ICUTTYPE = 'BOX'
+		                       AND A.ICKEY IN (
+												  '610000284'
+												, '610000285'
+												, '610000289'
+												, '610000290'
+												, '610000291'
+												, '610001271'
+												, '610001272'
+												, '610001171'
+												, '610001187'
+												, '610001838'
+												, '611000021'
+												, '610000941'
+												, '610000942'
+												, '611000112'
+												, '610001848'
+												, '610001849'
+												, '610001851'
+												, '610000896'
+												, '610001836'
+												, '610000278'
+												, '610001105'
+												, '511000234'
+												, '511000241'
+												, '511000242'
+												, '511000243'
+												, '511000257'
+												, '511000258'
+												, '511000381'
+												, '511000231'
+								 )
+		                   ) IT
+		           ) IIT
+		)
+		SELECT DTKEY
+		     , LV
+		     , CASE WHEN DTKEY=10 THEN '{"BODY":{"DATA_H":[' || IN_MASTER || ']' ELSE NULL END AS IN_MASTER
+		     , CASE WHEN DTKEY=10 THEN CHR(10)||',"DATA_D":[' ELSE ', ' END || IN_DETAIL
+		       || CASE WHEN LASTKEY=1 THEN '] }}' ELSE NULL END AS IN_DETAIL
+		  FROM (
+		        SELECT I.DTKEY
+		             , I.LASTKEY
+		             , T.LV
+		             , '{"ISS_NO"'||':'||'"'||T.IN_EXTERNORDERKEY||'"'
+		               || ', "REPPART_CD"'||':'||'"'||T.CTKEY||'"' || ', "ISSPART_CD"'||':'||'"'||T.TO_CTKEY||'"'
+		               || ', "ISS_DATE"'||':'||'"'||T.HDDT||'"' || ', "KUNNR"'||':'||'"'||T.DELIVERYKEY||'"'
+		               || ', "PA_TYP"'||':'||'"'||T.IN_ORTYPE||'"' || ', "REF_DOC"'||':'||'"'||T.IN_REFERENCEKEY||'"'
+		               || '}' AS IN_MASTER
+		             , '{"ISS_NO"'||':'||'"'||T.IN_EXTERNORDERKEY||'"' || ', "ISS_SEQ"'||':'||'"'||I.DTKEY||'"'
+		               || ', "REPPART_CD"'||':'||'"'||T.CTKEY||'"' || ', "ISSPART_CD"'||':'||'"'||T.TO_CTKEY||'"'
+		               || ', "ITEM_CD"'||':'||'"'||I.ICKEY||'"' || ', "SALES_UNIT"'||':'||'"'||II.ICUNITTYPE||'"'
+		               || ', "ISS_QTY"'||':'||'"'||I.QTY||'"' || ', "ISSCNV_QTY"'||':'||'"'||(I.QTY * II.ICUNITQTY)||'"'
+		               || ', "REF_DOC"'||':'||'"'||T.IN_REFERENCEKEY||'"' || ', "REF_DOC_SEQ"'||':'||'"'||I.DTKEY||'"'
+		               || '}'AS IN_DETAIL
+		          FROM (
+		                SELECT M.LV
+		                     , M.HDDT, M.CTKEY, M.TO_CTKEY, M.ACKEY, M.DELIVERYKEY
+		                     , M.IN_ORTYPE
+		                     , M.SALES, M.DELIVERY
+		                     , IM.EXTERNORDERKEY AS IN_EXTERNORDERKEY, IM.REFERENCEKEY AS IN_REFERENCEKEY
+		                     , OM.EXTERNORDERKEY AS OUT_EXTERNORDERKEY, OM.REFERENCEKEY AS OUT_REFERENCEKEY
+		                  FROM MASTER_DATA M
+		                  JOIN (SELECT CAST(MAX(B.EXTERNORDERKEY) AS NUMERIC) + A.LV AS EXTERNORDERKEY
+		                             , CAST(MAX(B.REFERENCEKEY) AS NUMERIC) + A.LV AS REFERENCEKEY
+		                             , A.LV
+		                          FROM MASTER_DATA A
+		                          JOIN TORDER_INFO_CO_HD B
+		                            ON B.OWKEY = 'WELLFOOD'
+		                           AND B.EXTERNORDERKEY LIKE '7%'
+		                           GROUP BY A.LV
+		                        ) IM ON M.LV = IM.LV
+		                  JOIN (SELECT CAST(MAX(B.EXTERNORDERKEY) AS NUMERIC) + A.LV AS EXTERNORDERKEY
+		                             , CAST(MAX(B.REFERENCEKEY) AS NUMERIC) + A.LV AS REFERENCEKEY
+		                             , A.LV
+		                          FROM MASTER_DATA A
+		                          JOIN TORDER_INFO_CO_HD B
+		                            ON B.OWKEY = 'WELLFOOD'
+		                           AND B.EXTERNORDERKEY LIKE '8%'
+		                           GROUP BY A.LV
+		                        ) OM ON M.LV = OM.LV
+		               ) T
+		          JOIN ITEM_DATA I  ON 1=1
+		          JOIN (
+		                SELECT *
+		                  FROM (
+		                        SELECT IC.ICKEY, IC.ICUNITKEY, IU.ICUNITTYPE, IU.ICUNITQTY
+		                             , RANK() OVER(PARTITION BY IC.ICUNITKEY ORDER BY IU.ICUNITORDER, IU.ICUNITQTY DESC, CASE IU.ICUNITTYPE WHEN 'BOL' THEN 1 ELSE 2 END) AS LV
+		                          FROM TADMIN_MST_IC IC
+		                          JOIN TADMIN_MST_ICUTXTYPE IU
+		                            ON IC.OWKEY = IU.OWKEY
+		                           AND IC.ICUNITKEY = IU.ICUNITKEY
+		                           AND IU.ICUNITORDER = 1
+		                         WHERE IC.OWKEY = 'WELLFOOD'
+		                           AND IC.ICKEY IN (SELECT ICKEY FROM ITEM_DATA)
+		                       ) L
+		                 WHERE L.LV = 1
+		               ) II
+		            ON I.ICKEY = II.ICKEY
+		       ) TT
+		 ORDER BY TT.LV, TT.DTKEY
+	</select>
+
+	<resultMap id="interfaceResult" type="camelMap">
+		<result property="REQDATA"  column="REQDATA"  javaType="java.lang.String" jdbcType="CLOB" />
+		<result property="RESDATA" column="RESDATA" javaType="java.lang.String" jdbcType="CLOB" />
+	</resultMap>
+
+	<select id="selectJsonData" resultMap="interfaceResult">
+		/* IfWcsMoniterMapper.selectJsonData - WCS인터페이스 모니텅리 JSON 조회 */
+		SELECT IFID
+			 , IFNM
+			 , TYPE
+			 , REQMODULE
+			 , REQDT
+			 , STATUS
+			 , STATUSCD
+			 , ISPROCESS
+			 , REQDATA
+			 , COALESCE(RESDATA, RRMSG) AS RESDATA
+			 , ERRMSG
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM INTERFACE_LOG
+		 WHERE IFID = #{interfaceId}
+	</select>
+
+	<select id="selectHeaderColumn" resultType="camelMap">
+		SELECT CTCD_DTKEY
+		     , CTCD_DTVALUE
+		FROM TWORK_MST_CTCD_DT
+		WHERE CTCD_HDKEY = 'WCS_IF_LIST'
+		  AND CTKEY = '#{@com.daiso.wms.interfaces.common.WcsPropertyUtil@CTKEY}'
+	</select>
+
+	<select id="selectWcsMoniterField" resultType="camelMap">
+		/* IfWcsMoniterMapper.selectWcsMoniterField - 넥사크로 그리드 헤더 조회 */
+		SELECT STRING_AGG(FIELD, ';' ORDER BY COLUMN_ID) AS FIELD
+		FROM (SELECT SUBSTR(A.TABLE_NAME, INSTR(A.TABLE_NAME, '_', 1, 2)+1, LENGTH(A.TABLE_NAME)) || '_' || A.COLUMN_NAME AS FIELD
+				, A.COLUMN_ID
+			FROM ALL_TAB_COLUMNS A
+			WHERE A.TABLE_NAME = #{tableNm}
+			ORDER BY A.TABLE_NAME, A.COLUMN_ID
+			)
+	</select>
+
+	<delete id="deleteWcsHistoryTable">
+		DELETE FROM #{tableName}
+		 WHERE #{keyName} = #{keyValue}
+	</delete>
+
+	<delete id="deleteWcsHistoryTableJoin">
+		DELETE FROM #{tableName} A
+		 WHERE EXISTS (
+               SELECT 1
+                 FROM #{joinTable} X
+                WHERE A.#{joinKey} = X.#{joinKey}
+                  AND X.#{keyName} = #{keyValue}
+               )
+	</delete>
+
+	<select id="selectRObunitSeq" resultType="camelMap">
+		SELECT DISTINCT R_OBUNIT_SEQ
+		  FROM TWORK_INTF_ROBUNITPKWCS
+		 WHERE ORDER_NUMBER = #{OB_NUMBER}
+	</select>
+
+	<insert id="saveInvnAdjList">
+		/* IfWcsInvnMapper.insertWcsInvnRevisionRes - WCS재고조정내역 추가 */
+		<selectKey keyProperty="R_IVRV_SEQ" resultType="int" order="BEFORE">
+			SELECT nextval('seq_twork_intf_rivrvwcs')
+		</selectKey>
+		INSERT INTO TWORK_INTF_RIVRVWCS
+		(
+			  R_IVRV_SEQ
+			, WCS_INTERFACE_ID
+			, WMS_INTERFACE_ID
+			, CTKEY
+			, OWKEY
+			, IVRV_NUMBER
+			, PRODUCT_CODE
+			, QUANTITY_VALUE
+			, QUANTITY_UNIT
+			, EFFECTIVE_DATE
+			, LOCATION_CODE
+			, REASON
+			, CARGO_LOCATION
+			, HOLD_STATUS
+			, LICENSE_PLATE_NUMBER
+			, SUCCEEDED
+			, ERROR_VALUE
+			, ERROR_REASON
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES(
+			  #{R_IVRV_SEQ}
+			, #{WCS_INTERFACE_ID}
+			, #{WMS_INTERFACE_ID}
+			, #{CTKEY}
+			, #{OWKEY}
+			, #{IVRV_NUMBER}
+			, #{PRODUCT_CODE}
+			, #{QUANTITY_VALUE}
+			, #{QUANTITY_UNIT}
+			, #{EFFECTIVE_DATE}
+			, #{LOCATION_CODE}
+			, #{REASON}
+			, #{CARGO_LOCATION}
+			, #{HOLD_STATUS}
+			, #{LICENSE_PLATE_NUMBER}
+			, #{SUCCEEDED}
+			, #{ERROR_VALUE}
+			, SUBSTRB(#{ERROR_REASON}, 0, 255)
+			, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			, 'WMS_ADJ'
+			, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+			, 'WMS_ADJ'
+		)
+	</insert>
+
+	<select id="selectItemExpiredate" resultType="camelMap">
+		/* IfWcsInvnMapper.selectItemExpiredate - WCS재고조정 상품유통기한조회 추가 */
+		SELECT A.ICKEY
+		     , A.UOM
+		     , A.IVATKEY
+			 , TO_CHAR(TO_DATE(SUBSTR(A.EXPIREDATE, 0, 8), 'YYYYMMDD'), 'YYYY-MM-DD') AS EXPIREDATE
+		FROM TWORK_INFO_IVAT A
+		WHERE A.CTKEY = #{ctkey}
+		  AND A.OWKEY = #{owkey}
+	</select>
+</mapper>

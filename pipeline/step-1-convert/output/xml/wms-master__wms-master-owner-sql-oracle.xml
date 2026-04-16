@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.OwnerMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectOwner">
+		FROM TWORK_MST_OW OW
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectOwnerCount" resultType="java.lang.Integer">
+		/* wms-master-owner-sql-oracle.xml - selectOwnerCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectOwner"/>
+	</select>
+
+	<select id="selectOwnerList" resultType="camelMap">
+		/* wms-master-owner-sql-oracle.xml - selectOwnerList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      OW.OWKEY
+			, OW.OWNM
+			, OW.REGNO
+			, OW.ADDR1
+			, OW.ADDR2
+			, OW.TELNO1
+			, OW.TELNO2
+		    , OW.CLOSDATE
+			, OW.INSERTDATE
+			, OW.INSERTURKEY
+			, OW.UPDATEDATE
+			, OW.UPDATEURKEY
+		<include refid="sql_selectOwner"/>
+		 ORDER BY
+			   OW.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+	
+</mapper>	

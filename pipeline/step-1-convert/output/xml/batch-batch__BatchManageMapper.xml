@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.common.mapper.BatchManageMapper">
+
+    <!-- 배치관리 목록 데이터 조회 -->
+    <select id="selectBatchManageInfo" parameterType="java.lang.String" resultType="com.daiso.batch.common.vo.BatchManageVO">
+        /* BatchManageMapper.selectBatchManageInfo */
+        SELECT APKEY
+             , BATID
+             , BATNM
+             , BATDESCRPT
+             , BATJOBCLASSNM
+             , BATEXECSTADATE
+             , BATEXECENDDATE
+             , CRONEXPSMETH
+             , BATPARAM
+             , ERRSNDCD
+             , BATEXECYN
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+          FROM BATCH_MANAGE
+        <where>
+            <if test="_parameter!= null and _parameter != ''">
+                AND BATID = #{value}
+            </if>
+        </where>
+    </select>
+
+    <!-- 배치관리 목록 데이터 조회 -->
+    <select id="selectBatchManageList" resultType="com.daiso.batch.common.vo.BatchManageVO">
+        /* BatchManageMapper.selectBatchManageList */
+        SELECT APKEY
+             , BATID
+             , BATNM
+             , BATDESCRPT
+             , BATJOBCLASSNM
+             , BATEXECSTADATE
+             , BATEXECENDDATE
+             , CRONEXPSMETH
+             , BATPARAM
+             , ERRSNDCD
+             , BATEXECYN
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+          FROM BATCH_MANAGE
+    </select>
+
+    <!-- 배치 로그 등록 -->
+    <insert id="insertBatchExeLog" parameterType="com.daiso.batch.common.vo.BatchResult">
+        /* BatchManageMapper.insertBatchExeLog */
+        INSERT INTO BATCH_LOG (
+                SEQ,
+                APKEY,
+                BATEXECID,
+                BATID,
+                ERRYN,
+                BATEXECDATE,
+                BATEXECLOG,
+                BATERRLOG,
+                BATCLOSDATE,
+                TARGETCNT,
+                SUCCESSCNT,
+                FAILCNT,
+                INSERTDATE,
+                INSERTURKEY,
+                UPDATEDATE,
+                UPDATEURKEY,
+                PARAM
+        )
+        VALUES (nextval('batch_log_seq'),
+                (SELECT APKEY FROM BATCH_MANAGE WHERE BATID = #{jobName}),
+                #{jobId},
+                #{jobName},
+                #{errYn},
+                TO_TIMESTAMP(#{startTime}, 'YYYY-MM-DD HH24:MI:SS.FF3'),
+                #{message},
+                #{errLog},
+                TO_TIMESTAMP(#{endTime}, 'YYYY-MM-DD HH24:MI:SS.FF3'),
+                #{targetCnt},
+                #{successCnt},
+                #{failCnt},
+                TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+                #{logUser},
+                TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+                #{logUser},
+                #{param}
+               )
+    </insert>
+
+</mapper>

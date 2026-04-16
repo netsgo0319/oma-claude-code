@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InboundOrderCancelApiMapper">
+
+	<!--입고 취소 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundCancelList" parameterType="inboundOrderCancelRequestDTO" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInterfaceInboundCancelList - 입고 취소 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , IBHDKEY
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!--입고 취소 수신 인터페이스 - 입고 정보 조회-->
+	<select id="selectInboundHeaderInfo" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInboundHeaderInfo - 입고 상세 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , IBSTATUSCD
+			 , IBHDTYPECD
+			 , RIPRGRSTATUSCD
+			 , CUSTORDNO
+			 , EXTORDERKEY
+             , ORHDKEY
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<!--입고 헤더 취소 처리 UPDATE-->
+	<update id="updaetInboundOrderHeader">
+		UPDATE TWORK_INFO_IB_HD
+		   SET IBSTATUSCD = '99'
+		<if test="ibhdtypecd == '50'">
+			 , RIPRGRSTATUSCD = #{riprgrstatuscd}
+		</if>
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</update>
+
+	<!--입고 상세 취소 처리UPDATE-->
+	<update id="updaetInboundOrderDetail">
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBDTSTATUSCD = '99'
+		<if test="ibhdtypecd == '50'">
+			, RIPRGRSTATUSCD = #{riprgrstatuscd}
+		</if>
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</update>
+
+	<!--운송장 내역 조회-->
+	<select id="selectInboundReturnWblno" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInboundReturnWblno - 운송장 내역 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND WBLNO = #{wblno}
+	</select>
+
+	<!--운송장 취소 처리 UPDATE-->
+	<update id="updaetInboundReturnWblno">
+		UPDATE TWORK_INFO_IBRET_WBLNO
+		   SET WBLPRGRSTATUSCD = '60'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND WBLNO = #{wblno}
+	</update>
+
+	<!--운송장 진행상태 Count 조회-->
+	<select id="selectInboundReturnWblprgrstatusCnt" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInboundReturnWblprgrstatusCnt - 운송장 진행상태 Count 조회 */
+		SELECT SUM(CASE WHEN WBLPRGRSTATUSCD = '10' THEN 1 ELSE 0 END) AS RETURN_CNT
+			 , SUM(CASE WHEN WBLPRGRSTATUSCD = '20' THEN 1 ELSE 0 END) AS REQ_CNT
+			 , SUM(CASE WHEN WBLPRGRSTATUSCD = '30' THEN 1 ELSE 0 END) AS PRGR_CNT
+			 , SUM(CASE WHEN WBLPRGRSTATUSCD = '40' THEN 1 ELSE 0 END) AS COMPL_CNT
+			 , SUM(CASE WHEN WBLPRGRSTATUSCD = '60' THEN 1 ELSE 0 END) AS CANCEL_CNT
+			 , COUNT(*) AS TOTAL_CNT
+		  FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY  = #{ctkey}
+		   AND OWKEY  = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<!-- 입고 상세 조회-->
+	<select id="selectInboundDetailInfo" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInboundDetailInfo - 입고 상세 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , DLVRYCORPCD
+			 , WBLNO
+			 , ICKEY
+		     , TRUNC(IBDTKEY::NUMERIC, -2) AS DTKEY
+             , COALESCE(IBQTY, 0) + COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS QTY  /* 수량(반품입고수량) */
+			 , IBQTY AS AVQTY  /* 가용(예정)수량 */
+             , COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS NAVQTY  /* 불용수량 */
+             , IBQTY       /* 정상입고수량 */
+             , DMGQTY      /* 파손수량 */
+             , FOODDMGQTY  /* 식품파손수량 */
+             , DFCQTY      /* 불량수량 */
+             , DONAQTY     /* 기부수량 */
+			 , ICADDYN
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<!--반품 운송장 접수 내역 조회-->
+	<select id="selectInboundReturnWblnoSbm" resultType="camelMap">
+		/* wms-inbound-order-cancel-sql-oracle.xml - selectInboundReturnWblnoSbm - 반품 운송장 접수 내역 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBRET_WBLNO_SBM
+		 WHERE CTKEY = #{ctkey}
+		   AND CLAIMNO = #{claimno}
+		   AND CUSTORDNO = #{custordno}
+	</select>
+
+</mapper>

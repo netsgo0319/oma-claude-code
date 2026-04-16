@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.InventoryStatusBatchMapper">
+
+	<insert id="insertIntfIvStatusOmsToWms" parameterType = "com.daiso.oms.api.out.dto.IvAvReqOutDTO$itemRsVO">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - insertIntfIvStatusOmsToWms */
+		INSERT INTO TORDER_INTF_WMS_REQORDERIV
+		(
+			  CTKEY
+            , OWKEY
+            , ICKEY
+            , AVQTY
+            , UNUSEQTY
+            , REQUESTDT
+            , IFID
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+		) VALUES (
+	      	  #{ctkey}
+            , #{owkey}
+            , #{ickey}
+            , #{avqty}
+            , #{navqty}
+            , #{requestdt}
+            , #{ifid}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		)
+	</insert>
+
+
+</mapper>
+	

@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.CtgMapper">
+
+	<select id="selectCtgCount" resultType="java.lang.Integer" >
+		/* adm-master-ctg-sql-oracle.xml - selectCtgCount */
+		SELECT 	COUNT(1)
+		FROM (
+			SELECT '0' AS CHK
+				 , T.OWKEY
+				 , OW.OWNM
+				 , T.CTGNM AS CTGTREE
+				 , T.CTGKEY
+				 , T.CTGLV AS CTGLEVEL
+				 , T.CTGNM
+				 , T.UPPERCTGKEY
+				 , MC.URKEY
+				 , MC.INSERTDATE
+				 , MC.UPDATEDATE
+				 , MC.INSERTURKEY
+				 , MC.UPDATEURKEY
+				 , MC.CLOSDATE
+				 , T.DELYN
+			FROM (	SELECT OWKEY
+					     , '0' AS CTGLV
+					     , ICGRPKEY AS CTGKEY
+					     , ICGRPNM AS CTGNM
+					     , NULL AS UPPERCTGKEY
+					     , 'N' AS DELYN
+				   	FROM TADMIN_MST_ICGR
+				   	WHERE OWKEY = #{owkey}
+				   	UNION ALL
+					SELECT OWKEY
+						 , CTGLV
+						 , CTGKEY
+						 , CTGNM
+						 , CASE WHEN CTGLV=1 THEN ICGRPKEY ELSE UPPERCTGKEY END AS UPPERCTGKEY
+						 , DELYN
+					FROM TADMIN_MST_CTG CT
+					WHERE CT.OWKEY = #{owkey}
+					  AND CT.DELYN = 'N') T
+			LEFT OUTER JOIN TADMIN_MST_CTG MC
+						 ON T.OWKEY = MC.OWKEY
+						AND T.CTGKEY = MC.CTGKEY
+			INNER JOIN TADMIN_MST_OW OW
+					ON T.OWKEY = OW.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		CONNECT BY PRIOR T.CTGKEY = T.UPPERCTGKEY
+		START WITH T.CTGLV = '0'
+		ORDER SIBLINGS BY MC.UPDATEDATE DESC , T.CTGKEY )
+	</select>
+	
+	<select id="selectCtg" resultType="camelMap">
+		/* adm-master-ctg-sql-oracle.xml - selectCtg */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+			 , T.OWKEY
+			 , OW.OWNM
+			 , T.CTGNM AS CTGTREE
+			 , T.CTGKEY
+			 , T.CTGLV AS CTGLEVEL
+			 , T.CTGNM
+			 , T.UPPERCTGKEY
+			 , MC.URKEY
+			 , T.INSERTDATE
+			 , T.UPDATEDATE
+			 , T.INSERTURKEY
+			 , T.UPDATEURKEY
+			 , T.CLOSDATE
+			 , T.DELYN
+		FROM (	SELECT OWKEY
+					 , '0' AS CTGLV
+					 , ICGRPKEY AS CTGKEY
+					 , ICGRPNM AS CTGNM
+					 , NULL AS UPPERCTGKEY
+					 , 'N' AS DELYN
+					 , INSERTDATE
+					 , UPDATEDATE
+					 , INSERTURKEY
+					 , UPDATEURKEY
+					 , CLOSDATE
+				FROM TADMIN_MST_ICGR
+				WHERE OWKEY = #{owkey}
+				UNION ALL
+				SELECT OWKEY
+					 , CTGLV
+					 , CTGKEY
+					 , CTGNM
+					 , CASE WHEN CTGLV=1 THEN ICGRPKEY ELSE UPPERCTGKEY END AS UPPERCTGKEY
+					 , DELYN
+					 , INSERTDATE
+					 , UPDATEDATE
+					 , INSERTURKEY
+					 , UPDATEURKEY
+					 , CLOSDATE
+				FROM TADMIN_MST_CTG CT
+				WHERE CT.OWKEY = #{owkey}
+				AND CT.DELYN = 'N') T
+			LEFT OUTER JOIN TADMIN_MST_CTG MC
+						 ON T.OWKEY = MC.OWKEY
+					    AND T.CTGKEY = MC.CTGKEY
+			INNER JOIN TADMIN_MST_OW OW
+					ON T.OWKEY = OW.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		CONNECT BY PRIOR T.CTGKEY = T.UPPERCTGKEY
+		START WITH T.CTGLV = '0'
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER SIBLINGS BY MC.UPDATEDATE DESC , T.CTGKEY
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkCtg" resultType="camelMap">
+		/* adm-master-ctg-sql-oracle.xml - selectPkCtg */
+		SELECT 	 OWKEY
+				,'OWKEY' || ';' || OWKEY AS OWKEY_DESC
+				,CTGKEY
+				,CTGLV
+				,'CTGLEVEL' || ';' || CTGLV AS CTGLEVEL_DESC
+				,CTGNM
+				,UPPERCTGKEY
+				,URKEY
+				,'URKEY' || ';' || URKEY AS URKEY_DESC
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,CLOSDATE
+				,DELYN
+				,'YESORNO' || ';' || DELYN AS DELYN_DESC
+		FROM 	TADMIN_MST_CTG
+		WHERE	OWKEY = #{owkey}
+		AND     CTGKEY = #{ctgkey}
+		AND     CTGLV = #{ctglevel}
+	</select>
+
+	<select id="selectPkCtgMap" resultType="camelMap">
+		/* adm-master-ctg-sql-oracle.xml - selectPkCtgMap */
+		SELECT OWKEY
+			 ,'OWKEY' || ';' || OWKEY AS OWKEY_DESC
+			 ,CTGKEY
+			 ,CTGLV
+			 ,'CTGLEVEL' || ';' || CTGLV AS CTGLEVEL_DESC
+			 ,CTGNM
+			 ,UPPERCTGKEY
+			 ,URKEY
+			 ,'URKEY' || ';' || URKEY AS URKEY_DESC
+			 ,INSERTDATE
+			 ,INSERTURKEY
+			 ,UPDATEDATE
+			 ,CLOSDATE
+			 ,DELYN
+			 ,'YESORNO' || ';' || DELYN AS DELYN_DESC
+		FROM 	TADMIN_MST_CTG
+		WHERE	OWKEY = #{owkey}
+		  AND     CTGKEY = #{ctgkey}
+		  AND     CTGLV = #{ctglevel}
+	</select>
+
+	<insert id="insertTAdminMstCtg">
+		/* adm-master-ctg-sql-oracle.xml - insertTAdminMstCtg */
+		INSERT INTO TADMIN_MST_CTG	(
+			 OWKEY
+			,CTGKEY
+			,CTGLV
+			,CTGNM
+			,UPPERCTGKEY
+			,URKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,CLOSDATE
+			,ICGRPKEY
+		 )
+		VALUES	(
+			 #{owkey}
+			,#{ctgkey}
+			,#{ctglv}
+			,#{ctgnm}
+			,COALESCE(#{upperctgkey}, 'DIR')
+			,#{urkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+            ,#{closdate}
+			,#{icgrpkey}
+		)	
+	</insert>	
+	
+	<update id="updateTAdminMstCtg">
+		/* adm-master-ctg-sql-oracle.xml - updateTAdminMstCtg */
+		UPDATE 	TADMIN_MST_CTG
+		   SET	 CTGNM 		  	  = #{ctgnm}
+				,UPPERCTGKEY 		  = #{upperctgkey}
+				,URKEY 				  = #{urkey}
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE OWKEY 		 = #{owkey}
+		AND   CTGKEY   		 = #{ctgkey}
+		AND   CTGLEV 		 = #{ctglv}
+	</update>
+	
+	<delete id="deleteTAdminMstCtg">
+		/* adm-master-ctg-sql-oracle.xml - deleteTAdminMstCtg */
+		UPDATE  TADMIN_MST_CTG
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{closdate}
+				,UPDATEDATE   		  = #{sysdate}
+				,UPDATEURKEY  		  = #{surkey}
+		WHERE OWKEY 		 = #{owkey}
+		AND   CTGKEY   		 = #{ctgkey}
+		AND   CTGLV 		 = #{ctglv}
+	</delete>
+	
+	<select id="selectCtkey" resultType="camelMap">
+		/* adm-master-ctg-sql-oracle.xml - selectCtkey */
+		SELECT CTKEY
+		FROM TADMIN_MST_CT
+		WHERE DELYN  = 'N'
+		  AND MANAGEMENTYN ='Y'
+	</select>
+
+	<select id="searchCtg" resultType="camelMap">
+		/* adm-master-ctg-sql-oracle.xml - searchCtg */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT
+		CTGKEY
+		,CTGNM
+		FROM 	TADMIN_MST_CTG
+		<where>
+			<if test='owkey != null and owkey != ""'>
+				<![CDATA[
+				AND  OWKEY = #{owkey}
+				 ]]>
+			</if>
+			<if test='searchValue != null and searchValue != ""'>
+				AND (CTGKEY LIKE '%' || #{searchValue} || '%' OR CTGNM LIKE '%' || #{searchValue} || '%')
+			</if>
+			<if test='searchLevel != null and searchLevel != ""'>
+				<![CDATA[
+				AND  CTGLV = #{searchLevel}
+				 ]]>
+			</if>
+			<if test='ctgkey != null and ctgkey != ""'>
+				<![CDATA[
+				AND  CTGKEY = #{ctgkey}
+				 ]]>
+			</if>
+		</where>
+
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+</mapper>	

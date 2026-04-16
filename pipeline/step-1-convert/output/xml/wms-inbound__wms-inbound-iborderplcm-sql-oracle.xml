@@ -1,0 +1,753 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.IbOrderPlcmMapper">
+
+	<sql id="selectIbOrderHdsql">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderHdsql - 입고적치 정보  SQL */
+		SELECT CHK
+			 , CTKEY
+			 , CTNM
+			 , OWKEY
+			 , IBHDTYPECD
+			 , IBHDKEY
+			 , IBEXPCTDATE
+			 , EXTORDERKEY
+             , REQORDERNO
+			 , ACKEY
+			 , OB_CTNM
+			 , ACNM
+			 , IBSTATUSCD
+			 , PLCMSTATUSCD
+			 , INITQTY_SKU
+			 , INITQTY
+			 , INITQTY_INN
+			 , INITQTY_CTN
+			 , INITQTY_PLT
+			 , INITQTY_SLPRC
+			 , EXPCTQTY_SKU
+			 , EXPCTQTY
+			 , EXPCTQTY_INN
+			 , EXPCTQTY_CTN
+			 , EXPCTQTY_PLT
+			 , EXPCTQTY_SLPRC
+			 , IBQTY_SKU
+			 , IBQTY
+			 , IBQTY_INN
+			 , IBQTY_CTN
+			 , IBQTY_PLT
+			 , IBQTY_SLPRC
+			 , CNFRMQTY_SKU
+			 , CNFRMQTY
+			 , CNFRMQTY_INN
+			 , CNFRMQTY_CTN
+			 , CNFRMQTY_PLT
+			 , CNFRMQTY_SLPRC
+			 , CLOSEYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , C.CTNM
+					 , A.OWKEY
+					 , A.IBHDTYPECD
+					 , A.IBHDKEY
+					 , A.IBEXPCTDATE
+					 , A.EXTORDERKEY
+                     , A.REQORDERNO
+					 , A.ACKEY
+					 , CASE WHEN IBHDTYPECD = '30' THEN A.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN IBHDTYPECD != '30' THEN A.ACNM
+							ELSE '' END AS ACNM
+					 , A.IBSTATUSCD
+					 , CASE WHEN SUM(CASE WHEN PLCMSTATUSCD = '10' THEN 1 ELSE 0 END) > 0 THEN '10'
+							WHEN MIN(PLCMSTATUSCD) = '00' AND MAX(PLCMSTATUSCD) = '00' THEN '00'
+							WHEN MIN(PLCMSTATUSCD) = '20' AND MAX(PLCMSTATUSCD) = '20' THEN '20'
+							 END AS PLCMSTATUSCD
+					 , COALESCE(SUM(INITQTY_SKU), 0) AS INITQTY_SKU
+					 , COALESCE(SUM(INITQTY), 0) AS INITQTY
+					 , COALESCE(ROUND(SUM(INITQTY_INN), 2), 0) AS INITQTY_INN
+					 , COALESCE(ROUND(SUM(INITQTY_CTN), 2), 0) AS INITQTY_CTN
+					 , COALESCE(ROUND(SUM(INITQTY_PLT), 2), 0) AS INITQTY_PLT
+					 , COALESCE(SUM(INITQTY_SLPRC), 0) AS INITQTY_SLPRC
+					 , COALESCE(SUM(EXPCTQTY_SKU), 0) AS EXPCTQTY_SKU
+					 , COALESCE(SUM(EXPCTQTY), 0) AS EXPCTQTY
+					 , COALESCE(ROUND(SUM(EXPCTQTY_INN), 2), 0) AS EXPCTQTY_INN
+					 , COALESCE(ROUND(SUM(EXPCTQTY_CTN), 2), 0) AS EXPCTQTY_CTN
+					 , COALESCE(ROUND(SUM(EXPCTQTY_PLT), 2), 0) AS EXPCTQTY_PLT
+					 , COALESCE(SUM(EXPCTQTY_SLPRC), 0) AS EXPCTQTY_SLPRC
+					 , COALESCE(SUM(IBQTY_SKU), 0) AS IBQTY_SKU
+					 , COALESCE(SUM(IBQTY), 0) AS IBQTY
+					 , COALESCE(ROUND(SUM(IBQTY_INN), 2), 0) AS IBQTY_INN
+					 , COALESCE(ROUND(SUM(IBQTY_CTN), 2), 0) AS IBQTY_CTN
+					 , COALESCE(ROUND(SUM(IBQTY_PLT), 2), 0) AS IBQTY_PLT
+					 , COALESCE(SUM(IBQTY_SLPRC), 0) AS IBQTY_SLPRC
+					 , COALESCE(SUM(CNFRMQTY_SKU), 0) AS CNFRMQTY_SKU
+					 , COALESCE(SUM(CNFRMQTY), 0) AS CNFRMQTY
+					 , COALESCE(ROUND(SUM(CNFRMQTY_INN), 2), 0) AS CNFRMQTY_INN
+					 , COALESCE(ROUND(SUM(CNFRMQTY_CTN), 2), 0) AS CNFRMQTY_CTN
+					 , COALESCE(ROUND(SUM(CNFRMQTY_PLT), 2), 0) AS CNFRMQTY_PLT
+					 , COALESCE(SUM(CNFRMQTY_SLPRC), 0) AS CNFRMQTY_SLPRC
+					 , CASE WHEN SUM(IBDTSTATUSCD) > 0 THEN 'N'
+							ELSE 'Y' END AS CLOSEYN
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN (
+								SELECT A.CTKEY
+									 , A.OWKEY
+									 , A.IBHDKEY
+									 , A.UPRIBDTKEY
+									 , CASE WHEN A.INITQTY > 0 THEN 1 ELSE 0 END AS INITQTY_SKU
+									 , A.INITQTY
+									 , A.INITQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS INITQTY_INN
+									 , A.INITQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS INITQTY_CTN
+									 , A.INITQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS INITQTY_PLT
+									 , A.INITQTY * B.SLPRC AS INITQTY_SLPRC
+									 , CASE WHEN A.EXPCTQTY > 0 THEN 1 ELSE 0 END AS EXPCTQTY_SKU
+									 , A.EXPCTQTY
+									 , A.EXPCTQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS EXPCTQTY_INN
+									 , A.EXPCTQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS EXPCTQTY_CTN
+									 , A.EXPCTQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS EXPCTQTY_PLT
+									 , A.EXPCTQTY * B.SLPRC AS EXPCTQTY_SLPRC
+									 , CASE WHEN A.IBQTY > 0 THEN 1 ELSE 0 END AS IBQTY_SKU
+									 , A.IBQTY
+									 , A.IBQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS IBQTY_INN
+									 , A.IBQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS IBQTY_CTN
+									 , A.IBQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS IBQTY_PLT
+									 , A.IBQTY * B.SLPRC AS IBQTY_SLPRC
+									 , CASE WHEN A.CNFRMQTY > 0 THEN 1 ELSE 0 END AS CNFRMQTY_SKU
+									 , A.CNFRMQTY
+									 , A.CNFRMQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0) AS CNFRMQTY_INN
+									 , A.CNFRMQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0) AS CNFRMQTY_CTN
+									 , A.CNFRMQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)) AS CNFRMQTY_PLT
+									 , A.CNFRMQTY * B.SLPRC AS CNFRMQTY_SLPRC
+									 , CASE WHEN A.IBDTSTATUSCD != '91' THEN 1
+											ELSE 0 END AS IBDTSTATUSCD
+									 , A.PLCMSTATUSCD
+								  FROM TWORK_INFO_IB_DT A
+								 INNER JOIN TWORK_MST_IC B
+									ON A.CTKEY = B.CTKEY
+								   AND A.OWKEY = B.OWKEY
+								   AND A.ICKEY = B.ICKEY
+								  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE C
+									ON A.CTKEY = C.CTKEY
+								   AND A.OWKEY = C.OWKEY
+								   AND B.ICUNITKEY = C.ICUNITKEY
+								   AND C.ICUNITTYPECD = 'INN'
+								  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+									ON A.CTKEY = D.CTKEY
+								   AND A.OWKEY = D.OWKEY
+								   AND B.ICUNITKEY = D.ICUNITKEY
+								   AND D.ICUNITTYPECD = 'CTN'
+						 ) B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_CT C
+					ON A.CTKEY = C.CTKEY
+				 WHERE A.IBSTATUSCD != '99'
+				   AND B.UPRIBDTKEY IS NULL
+				   AND A.IBHDTYPECD != '50'   /* 반품입고 */
+				 GROUP BY A.CTKEY, C.CTNM, A.OWKEY, A.IBHDTYPECD, A.IBHDKEY, A.IBEXPCTDATE, A.REQORDERNO, A.EXTORDERKEY, A.ACKEY, A.ACNM, A.IBSTATUSCD, A.INSERTDATE, A.INSERTURKEY, A.UPDATEDATE, A.UPDATEURKEY
+				)
+		  WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibexpctdateTo)">
+			AND IBEXPCTDATE BETWEEN #{ibexpctdateFrom} || '000000' AND #{ibexpctdateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibstatuscd)">
+			AND IBSTATUSCD = #{ibstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)">
+			AND IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(inserturkey)">
+			AND INSERTURKEY = #{inserturkey}
+		</if>
+
+	</sql>
+
+	<select id="selectIbOrderHdCount" resultType="java.lang.Integer" >
+	/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderHdCount - 입고적치 헤더 건수 조회 */
+		SELECT  COUNT(1)
+		  FROM (
+			<include refid="selectIbOrderHdsql"/>
+		  )
+	</select>
+	
+	<select id="selectIbOrderHd" resultType="camelMap">
+	/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderHd - 입고적치 헤더 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectIbOrderHdsql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectIbOrderDtsql">
+	/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderDtsql - 입고 적치 상세 조회  SQL */
+		SELECT *
+		  FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , B.CTNM
+					 , A.OWKEY
+					 , C.IBHDTYPECD
+					 , C.IBEXPCTDATE
+                     , A.ICKEY
+					 , CASE WHEN C.IBHDTYPECD = '30' THEN C.ACNM
+							ELSE '' END AS OB_CTNM
+					 , CASE WHEN C.IBHDTYPECD != '30' THEN C.ACNM
+							ELSE '' END AS ACNM
+					 , A.IBHDKEY
+					 , A.IBDTKEY
+                     , C.REQORDERNO
+					 , I.EXTORDERKEY
+					 , D.ACKEY AS IC_ACKEY
+					 , E.ACNM AS IC_ACNM
+					 , CASE WHEN F.ASRTDTICKEY IS NOT NULL AND I.UPRIBDTKEY IS NOT NULL THEN F.ASRTMASICKEY
+							ELSE A.ICKEY END AS ASRTMASICKEY
+					 , CASE WHEN F.ASRTDTICKEY IS NOT NULL AND I.UPRIBDTKEY IS NOT NULL THEN G.ICNM
+							ELSE D.ICNM END AS ASRTMASICNM
+					 , CASE WHEN F.ASRTDTICKEY IS NOT NULL AND I.UPRIBDTKEY IS NOT NULL THEN A.ICKEY
+							END AS ASRTDTICKEY
+					 , CASE WHEN F.ASRTDTICKEY IS NOT NULL AND I.UPRIBDTKEY IS NOT NULL THEN D.ICNM
+							END AS ASRTDTICNM
+					 , I.ASRTWKTGTYN AS ASRTYN
+					 , CTG3.CTGNM AS LV1_CTGNM
+					 , CTG2.CTGNM AS LV2_CTGNM
+					 , CTG1.CTGNM AS LV3_CTGNM
+					 , I.UOM
+					 , A.CNTRNO
+					 , COALESCE(A.QTY, 0) AS CNTRQTY
+					 , ROUND(A.QTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNTRQTY_INN
+					 , ROUND(A.QTY / NULLIF(COALESCE(K.ICUNITQTY, 0), 0), 2) AS CNTRQTY_CTN
+					 , ROUND(A.QTY / (NULLIF(COALESCE(K.ICUNITQTY, 0), 0) * NULLIF(COALESCE(K.CPPQTY, 0), 0)), 2) AS CNTRQTY_PLT
+
+					 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+					 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(K.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+					 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(K.ICUNITQTY, 0), 0) * NULLIF(COALESCE(K.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+
+					 , COALESCE(A.QTY, 0) - COALESCE(A.CNFRMQTY, 0) AS RESQTY
+					 , ROUND((COALESCE(A.QTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(J.ICUNITQTY, 0), 0), 2) AS RESQTY_INN
+					 , ROUND((COALESCE(A.QTY, 0) - COALESCE(A.CNFRMQTY, 0)) / NULLIF(COALESCE(K.ICUNITQTY, 0), 0), 2) AS RESQTY_CTN
+					 , ROUND((COALESCE(A.QTY, 0) - COALESCE(A.CNFRMQTY, 0)) / (NULLIF(COALESCE(K.ICUNITQTY, 0), 0) * NULLIF(COALESCE(K.CPPQTY, 0), 0)), 2) AS RESQTY_PLT
+
+				     , I.UOM AS IN_UOM
+					 , L.ICUNITQTY
+					 , 0 AS INQTY_UNIT
+					 , 0 AS INQTY
+					 , A.PRDCTDATE
+					 , A.EXPDATE AS ORG_EXPDATE
+					 , A.EXPDATE
+					 , D.LCKEY AS TOLCKEY
+                     , LC.ZNKEY AS TOZNKEY
+					 , '' AS TOCNTRNO
+					 , D.LCKEY AS REF_LCKEY
+					 , D.EXPCKYN
+					 , D.EXPCKTYPECD
+					 , D.ICGRPKEY
+					 , M.PLCMSTATUSCD
+					 , A.IBCFSEQNO
+				 	 , A.IVATKEY
+					 , CASE WHEN L.WIDTH = 0 OR L.DEPTH = 0 OR L.HEIGHT = 0 OR L.WEIGHT = 0 THEN 'N'
+					        WHEN D.ROBSORTERICYN IS NULL OR D.CUSHNMEPCKGYN IS NULL OR D.BARCODEATTACHYN IS NULL OR D.POLYBAGPCKGYN IS NULL OR D.PCKGOVLPYN IS NULL THEN 'N'
+					   		WHEN D.PCKGOVLPYN = 'Y' AND (D.OVLPPCKGWIDTHVAL = 0 AND D.OVLPPCKGDEPTHVAL = 0 AND D.OVLPPCKGHEIGHTVAL = 0) THEN 'N'
+					   		WHEN D.PCKGFOLDYN IS NULL OR D.HIGHFRQNCYDMGYN IS NULL THEN 'N'
+							ELSE 'Y' END AS ICYN
+					 , CASE WHEN COALESCE(A.QTY, 0) - COALESCE(A.CNFRMQTY, 0) > 0 THEN 'Y'
+							ELSE 'N' END AS NONPLCMYN
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , A.UPDATEDATE
+					 , A.UPDATEURKEY
+				  FROM TWORK_INFO_IBCF_CNTR A
+				 INNER JOIN TWORK_MST_CT B
+					ON A.CTKEY = B.CTKEY
+				 INNER JOIN TWORK_INFO_IB_HD C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.IBHDKEY = C.IBHDKEY
+				 INNER JOIN TWORK_MST_IC D
+					ON A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.ICKEY = D.ICKEY
+                  LEFT OUTER JOIN TWORK_MST_LC LC
+                    ON D.CTKEY = LC.CTKEY
+                   AND D.LCKEY = LC.LCKEY
+				  LEFT OUTER JOIN TWORK_MST_AC E
+					ON A.CTKEY = E.CTKEY
+				   AND D.ACKEY = E.ACKEY
+				  LEFT OUTER JOIN TWORK_MST_ASRT F
+					ON A.CTKEY = F.CTKEY
+				   AND A.OWKEY = F.OWKEY
+				   AND A.ICKEY = F.ASRTDTICKEY
+				  LEFT OUTER JOIN TWORK_MST_IC G
+					ON A.CTKEY = G.CTKEY
+				   AND A.OWKEY = G.OWKEY
+				   AND F.ASRTMASICKEY = G.ICKEY
+				 INNER JOIN TWORK_INFO_IB_DT I
+					ON A.CTKEY = I.CTKEY
+				   AND A.OWKEY = I.OWKEY
+				   AND A.IBHDKEY = I.IBHDKEY
+				   AND A.IBDTKEY = I.IBDTKEY
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE J
+					ON A.CTKEY = J.CTKEY
+				   AND A.OWKEY = J.OWKEY
+				   AND D.ICUNITKEY = J.ICUNITKEY
+				   AND J.ICUNITTYPECD = 'INN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE K
+					ON A.CTKEY = K.CTKEY
+				   AND A.OWKEY = K.OWKEY
+				   AND D.ICUNITKEY = K.ICUNITKEY
+				   AND K.ICUNITTYPECD = 'CTN'
+				  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE L
+					ON A.CTKEY = L.CTKEY
+				   AND A.OWKEY = L.OWKEY
+				   AND D.ICUNITKEY = L.ICUNITKEY
+				   AND L.ICUNITTYPECD = 'EA'
+				 INNER JOIN TWORK_INFO_IBCF_DT M
+					ON A.CTKEY = M.CTKEY
+				   AND A.OWKEY = M.OWKEY
+				   AND A.IBHDKEY = M.IBHDKEY
+				   AND A.IBDTKEY = M.IBDTKEY
+				   AND A.IBCFSEQNO = M.IBCFSEQNO
+				 INNER JOIN TWORK_MST_ICBARCODE N
+					ON A.CTKEY = N.CTKEY
+				   AND A.OWKEY = N.OWKEY
+				   AND A.ICKEY = N.ICKEY
+				   AND N.UOM = 'EA'
+				 INNER JOIN TWORK_MST_CTG CTG1
+					ON A.CTKEY = CTG1.CTKEY
+				   AND A.OWKEY = CTG1.OWKEY
+				   AND D.CTGKEY = CTG1.CTGKEY
+				   AND CTG1.CTGLV = '3'
+				 INNER JOIN TWORK_MST_CTG CTG2
+					ON CTG1.CTKEY = CTG2.CTKEY
+				   AND CTG1.OWKEY = CTG2.OWKEY
+				   AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+				   AND CTG2.CTGLV = '2'
+				 INNER JOIN TWORK_MST_CTG CTG3
+					ON CTG2.CTKEY = CTG3.CTKEY
+				   AND CTG2.OWKEY = CTG3.OWKEY
+				   AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+				   AND CTG3.CTGLV = '1'
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.IBHDKEY = #{ibhdkey}
+				   AND A.QTY > 0
+		<if test="ickeyList != null and ickeyList.size > 0">
+			<foreach collection="ickeyList" item="ickey" open=" AND A.ICKEY IN (" separator="," close=")">
+				#{ickey}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)">
+			AND D.ICNM LIKE '%'|| #{icnm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)">
+			AND N.BARCODE = #{barcode}
+		</if>
+		     ) A
+		 WHERE 1=1
+	</sql>
+
+	<select id="selectIbOrderDt" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderDt - 입고 적치 상세 조회 */
+		<include refid="selectIbOrderDtsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+			</otherwise>
+		</choose>
+	</select>
+
+	<sql id="selectIbOrderPlcmsql">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderPlcmsql - 입고 적치 적치 조회  SQL */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.IBCFSEQNO
+			 , A.SEQNO
+			 , A.ICKEY
+			 , B.ICNM
+			 , A.IVATKEY
+			 , A.ASRTYN
+			 , CTG3.CTGNM AS LV1_CTGNM
+			 , CTG2.CTGNM AS LV2_CTGNM
+			 , CTG1.CTGNM AS LV3_CTGNM
+			 , A.PRDCTDATE
+			 , A.EXPDATE
+		     , B.ICGRPKEY
+			 , A.LCKEY
+			 , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(C.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_INN
+			 , ROUND(A.CNFRMQTY / NULLIF(COALESCE(D.ICUNITQTY, 0), 0), 2) AS CNFRMQTY_CTN
+			 , ROUND(A.CNFRMQTY / (NULLIF(COALESCE(D.ICUNITQTY, 0), 0) * NULLIF(COALESCE(D.CPPQTY, 0), 0)), 2) AS CNFRMQTY_PLT
+			 , A.CNTRNO
+			 , A.IBCFCNTRNO
+			 , A.BFCHGEXPDATE
+			 , E.IVCNTRMGMTYN
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_INFO_IB_PLCM_DT A
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND B.ICUNITKEY = C.ICUNITKEY
+		   AND C.ICUNITTYPECD = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND B.ICUNITKEY = D.ICUNITKEY
+		   AND D.ICUNITTYPECD = 'CTN'
+		 INNER JOIN TWORK_MST_LC E
+			ON A.CTKEY = E.CTKEY
+		   AND A.LCKEY = E.LCKEY
+		 INNER JOIN TWORK_MST_CTG CTG1
+			ON A.CTKEY = CTG1.CTKEY
+		   AND A.OWKEY = CTG1.OWKEY
+		   AND B.CTGKEY = CTG1.CTGKEY
+		   AND CTG1.CTGLV = '3'
+	     INNER JOIN TWORK_MST_CTG CTG2
+			ON CTG1.CTKEY = CTG2.CTKEY
+		   AND CTG1.OWKEY = CTG2.OWKEY
+		   AND CTG1.UPRCTGKEY = CTG2.CTGKEY
+		   AND CTG2.CTGLV = '2'
+		 INNER JOIN TWORK_MST_CTG CTG3
+			ON CTG2.CTKEY = CTG3.CTKEY
+		   AND CTG2.OWKEY = CTG3.OWKEY
+		   AND CTG2.UPRCTGKEY = CTG3.CTGKEY
+		   AND CTG3.CTGLV = '1'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.IBDTKEY = #{ibdtkey}
+		   AND A.IBCFCNTRNO = #{ibcfcntrno}
+	</sql>
+
+	<select id="selectIbOrderPlcm" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderPlcm - 입고 적치 상세 조회 */
+		<include refid="selectIbOrderPlcmsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC), IBCFSEQNO, SEQNO
+			</otherwise>
+		</choose>
+	</select>
+
+	<select id="selectPlcmMstIc" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectPlcmMstIc - 상품 마스터 조회  */
+		SELECT A.*
+			 , B.WEIGHT
+			 , B.ICUNITQTY
+			 , CASE WHEN B.WIDTH = 0 OR B.DEPTH = 0 OR B.HEIGHT = 0 OR B.WEIGHT = 0 THEN 'N'
+					WHEN A.ROBSORTERICYN IS NULL OR A.CUSHNMEPCKGYN IS NULL OR A.BARCODEATTACHYN IS NULL OR A.POLYBAGPCKGYN IS NULL OR A.PCKGOVLPYN IS NULL THEN 'N'
+					WHEN A.PCKGOVLPYN = 'Y' AND (A.OVLPPCKGWIDTHVAL = 0 AND A.OVLPPCKGDEPTHVAL = 0 AND A.OVLPPCKGHEIGHTVAL = 0) THEN 'N'
+					WHEN A.PCKGFOLDYN IS NULL OR A.HIGHFRQNCYDMGYN IS NULL THEN 'N'
+					ELSE 'Y' END AS ICYN
+		  FROM TWORK_MST_IC A
+		 INNER JOIN TWORK_MST_ICUTXTYPE B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		   AND B.ICUNITTYPECD = 'EA'
+		 WHERE A.CTKEY 		= #{ctkey}
+		   AND A.OWKEY 		= #{owkey}
+		   AND A.ICKEY 		= #{ickey}
+	</select>
+
+	<select id="selectIvatxlcList" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIvatxlcList - 재고 테이블 조회  */
+		SELECT IVLC.CTKEY			/* 센터 코드 */
+			 , IVLC.OWKEY			/* 화주코드 */
+			 , IVLC.LCKEY			/* 로케이션 코드 */
+			 , IVLC.ICKEY			/* 상품코드 */
+			 , IVLC.IVATKEY			/* 재고속성코드 */
+			 , IVLC.IVSERIALNO		/* 용기번호 */
+			 , IVLC.TOTQTY
+			 , IVLC.AVQTY
+			 , IVLC.ALQTY
+			 , IVLC.HOLDQTY
+			 , LC.IVCNTRMGMTYN  	/* 용기관리여부 */
+		  FROM TWORK_INFO_IVATXLC IVLC
+		 INNER JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IVLC.CTKEY
+		   AND LC.LCKEY = IVLC.LCKEY
+		 WHERE IVLC.CTKEY = #{ctkey}
+		   AND IVLC.OWKEY = #{owkey}
+		   AND IVLC.LCKEY = #{lckey}
+		   AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+	</select>
+
+	<select id="selectIbOrderPlcmDtByPrdctAndExpdate" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbOrderPlcmDtByPrdctAndExpdate - 적치 테이블 조회  */
+		SELECT *
+		  FROM TWORK_INFO_IB_PLCM_DT
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND LCKEY   = #{lckey}
+		   AND IBCFCNTRNO = #{ibcfcntrno}
+		   AND CNTRNO  = #{cntrno}
+		   AND IBCFSEQNO = #{ibcfseqno}
+		   AND (EXPDATE = #{expdate} OR (EXPDATE IS NULL AND #{expdate} IS NULL))
+		   AND (PRDCTDATE = #{prdctdate} OR (PRDCTDATE IS NULL AND #{prdctdate} IS NULL))
+	</select>
+
+	<insert id="insertPlcmDt"  parameterType="ibOrderPlcmDtVO">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - insertPlcmDt - 입고 적치 생성  */
+		INSERT INTO TWORK_INFO_IB_PLCM_DT
+		( CTKEY
+		, OWKEY
+		, IBHDKEY
+		, IBDTKEY
+		, IBCFSEQNO
+		, CNTRNO
+		, SEQNO
+		, IBCFCNTRNO
+		, ASRTYN
+		, MASICIBCFSEQNO
+		, MASIBDTKEY
+		, ICKEY
+		, IVATKEY
+		, PRDCTDATE
+		, EXPDATE
+		, BFCHGEXPDATE
+		, PLCMDATE
+		, LCKEY
+		, CNFRMQTY
+		, DMGQTY
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		) VALUES
+		( #{ctkey}
+		, #{owkey}
+		, #{ibhdkey}
+		, #{ibdtkey}
+		, #{ibcfseqno}
+		, #{cntrno}
+		, #{seqno}
+		, #{ibcfcntrno}
+		, #{asrtyn}
+		, #{masicibcfseqno}
+		, #{masibdtkey}
+		, #{ickey}
+		, #{ivatkey}
+		, #{prdctdate}
+		, #{expdate}
+		, #{bfchgexpdate}
+		, #{plcmdate}
+		, #{lckey}
+		, #{cnfrmqty}
+		, #{dmgqty}
+		, #{sysdate}
+		, #{surkey}
+		, #{sysdate}
+		, #{surkey}
+		)
+	</insert>
+
+	<update id="updatePlcmDt">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updatePlcmDt - 적치 수량 수정 */
+		UPDATE TWORK_INFO_IB_PLCM_DT
+		   SET CNFRMQTY 	= CNFRMQTY 	+ #{cnfrmqty}
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY   		= #{ctkey}
+		   AND OWKEY   		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND IBDTKEY 		= #{ibdtkey}
+		   AND IBCFSEQNO	= #{ibcfseqno}
+		   AND SEQNO 		= #{seqno}
+	</update>
+
+	<select id="selectIbPlcmDtSeqno" resultType="biginteger">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbPlcmDtSeqno - 입고 적치 시리얼 번호 조회 */
+		SELECT COALESCE(MAX(SEQNO) + 1, 1)
+		  FROM TWORK_INFO_IB_PLCM_DT
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<update id="updateIbcfDtCnfrmqty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateIbcfDtCnfrmqty - 입고 확정 상세 적치수량 저장 */
+		UPDATE TWORK_INFO_IBCF_DT
+		   SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			 , PLCMSTATUSCD = (
+								CASE WHEN IBQTY = CNFRMQTY + #{cnfrmqty} THEN '20'
+									 WHEN CNFRMQTY + #{cnfrmqty} = 0 THEN '00'
+									 ELSE '10' END
+							   )
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND IBCFSEQNO = #{ibcfseqno}
+	</update>
+
+	<update id="updateAsrtMasIbcfDtCnfrmqty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateAsrtMasIbcfDtCnfrmqty - 입고 확정 상세 모상품 적치수량 저장 */
+		UPDATE TWORK_INFO_IBCF_DT
+		   SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			 , PLCMSTATUSCD = (
+								CASE WHEN IBQTY = CNFRMQTY + #{cnfrmqty} THEN '20'
+									 WHEN CNFRMQTY + #{cnfrmqty} = 0 THEN '00'
+									 ELSE '10' END
+							   )
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{upribdtkey}
+	</update>
+
+	<update id="updateIbcfCntrCnfrmqty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateIbcfCntrCnfrmqty - 용기 확정 상세 적치수량 저장 */
+		UPDATE TWORK_INFO_IBCF_CNTR
+		   SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND IBCFSEQNO = #{ibcfseqno}
+		   AND CNTRNO = #{cntrno}
+	</update>
+
+	<update id="updateIbcfCntrQty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateIbcfCntrQty - 용기 확정 상세 입고수량 저장 */
+		UPDATE TWORK_INFO_IBCF_CNTR
+		   SET QTY = QTY + #{qty}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND CNTRNO = #{cntrno}
+	</update>
+
+	<select id="selectIbcfCntrMap" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbcfCntrMap - 입고확정 용기 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBCF_CNTR
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND IVATKEY = #{ivatkey}
+		   AND CNTRNO  = #{cntrno}
+	</select>
+
+	<update id="updateIbDtCnfrmqty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateIbDtCnfrmqty - 입고 상세 적치수량 저장 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			 , PLCMSTATUSCD = (
+								CASE WHEN EXPCTQTY = CNFRMQTY + #{cnfrmqty} THEN '20'
+									 WHEN CNFRMQTY + #{cnfrmqty} = 0 THEN '00'
+								ELSE '10' END
+								)
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+	</update>
+
+	<update id="updateAsrtMasIbDtCnfrmqty">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - updateAsrtMasIbDtCnfrmqty - 아소트 모상품 입고 상세 적치수량 저장 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET CNFRMQTY = CNFRMQTY + #{cnfrmqty}
+			 , PLCMSTATUSCD = (
+								CASE WHEN EXPCTQTY = CNFRMQTY + #{cnfrmqty} THEN '20'
+									 WHEN CNFRMQTY + #{cnfrmqty} = 0 THEN '00'
+									 ELSE '10' END
+							  )
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{upribdtkey}
+	</update>
+
+	<delete id="deleteIbOrderPlcm">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - deleteIbOrderPlcm - 적치 삭제 */
+		DELETE FROM TWORK_INFO_IB_PLCM_DT
+		 WHERE CTKEY 	 = #{ctkey}
+		   AND OWKEY 	 = #{owkey}
+		   AND IBHDKEY 	 = #{ibhdkey}
+		   AND IBDTKEY   = #{ibdtkey}
+		   AND IBCFSEQNO = #{ibcfseqno}
+		   AND SEQNO 	 = #{seqno}
+	</delete>
+
+	<select id="selectIbPlcmDt" resultType="camelMap">
+		/* wms-inbound-iborderplcm-sql-oracle.xml - selectIbPlcmDt - 적치 삭제 */
+		SELECT *
+		  FROM TWORK_INFO_IB_PLCM_DT
+		 WHERE CTKEY 	 = #{ctkey}
+		   AND OWKEY 	 = #{owkey}
+		   AND IBHDKEY 	 = #{ibhdkey}
+		   AND IBDTKEY   = #{ibdtkey}
+		   AND IBCFSEQNO = #{ibcfseqno}
+		   AND SEQNO 	 = #{seqno}
+	</select>
+
+
+
+</mapper>

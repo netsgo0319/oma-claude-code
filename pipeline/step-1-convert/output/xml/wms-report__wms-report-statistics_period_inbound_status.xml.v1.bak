@@ -1,0 +1,1143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.statistics_period_inbound_statusMapper">
+
+    <sql id="selectInboundStatusSql">
+       
+        WITH BASE AS (
+            SELECT
+                  B.IBEXPCTDATE
+                , SUBSTR(B.IBEXPCTDATE, 1, 4) AS YEAR_VAL
+                , SUBSTR(B.IBEXPCTDATE, 5, 2) AS MONTH_VAL
+                , A.ICKEY
+                , COALESCE(C.MASICYN, 'N')         AS IS_PARENT  -- 모자구분
+                , COALESCE(C.ASRTYN, 'N')          AS IS_ASSORT  -- 아소트여부
+                , COALESCE(A.EXPCTQTY, 0)          AS ORD_QTY    -- 발주(예정)수량
+                , COALESCE(A.CNFRMQTY, 0)          AS CNF_QTY    -- 입고(확정)수량
+                , COALESCE(A.CPAMT, 0)             AS PRICE      -- 단가
+                
+                -- 입고 유형 구분
+                , CASE WHEN B.IBHDTYPECD LIKE 'T%' THEN 'TRANSFER'
+                       WHEN B.IBHDTYPECD LIKE 'D%' THEN 'DIRECT'
+                       ELSE 'NORMAL' 
+                  END AS IB_TYPE
+                
+                -- [수정] 0으로 나누기 방지 로직 추가 (값이 0이면 1로 치환)
+                , CASE WHEN COALESCE(U1.ICUNITQTY, 0) = 0 THEN 1 ELSE U1.ICUNITQTY END AS INN_UNIT -- 중포입수
+                , CASE WHEN COALESCE(U2.ICUNITQTY, 0) = 0 THEN 1 ELSE U2.ICUNITQTY END AS CTN_UNIT -- 박스입수
+                , CASE WHEN COALESCE(U2.CPPQTY, 0)    = 0 THEN 1 ELSE U2.CPPQTY    END AS PLT_UNIT -- 팔레트입수
+                , '20' AS DTTYPE
+                , A.CTKEY
+                , A.OWKEY
+            FROM TWORK_INFO_IB_DT A
+            JOIN TWORK_INFO_IB_HD B  ON A.CTKEY = B.CTKEY AND A.OWKEY = B.OWKEY AND A.IBHDKEY = B.IBHDKEY
+            JOIN TWORK_MST_IC     C  ON A.CTKEY = C.CTKEY AND A.OWKEY = C.OWKEY AND A.ICKEY = C.ICKEY
+            LEFT JOIN TWORK_MST_ICUTXTYPE U1 ON A.CTKEY = U1.CTKEY AND A.ICKEY = U1.ICKEY AND U1.ICUNITTYPECD = 'INN'
+            LEFT JOIN TWORK_MST_ICUTXTYPE U2 ON A.CTKEY = U2.CTKEY AND A.ICKEY = U2.ICKEY AND U2.ICUNITTYPECD = 'CTN'
+           WHERE A.CTKEY = '09'
+             AND A.OWKEY = 'DAISO'
+        )
+        SELECT
+              YEAR_VAL                               AS "yearVal"
+            , MONTH_VAL                              AS "monthVal"
+            , SUBSTR(IBEXPCTDATE, 7, 2)              AS "ibExpectDate"
+
+            /* 1. (모) SKU 카운트 */
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND ORD_QTY > 0 THEN ICKEY END) AS "parentOrder"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND CNF_QTY > 0 THEN ICKEY END) AS "parentInbound"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' THEN ICKEY END) AS "parentTransfer"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN ICKEY END) AS "parentNormal"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN ICKEY END) AS "parentPutaway"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='Y' AND CNF_QTY > 0 AND IB_TYPE='DIRECT'   THEN ICKEY END) AS "parentDirect"
+
+            /* 2. (자) SKU 카운트 */
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND ORD_QTY > 0 THEN ICKEY END) AS "childOrder"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND CNF_QTY > 0 THEN ICKEY END) AS "childInbound"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' THEN ICKEY END) AS "childTransfer"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN ICKEY END) AS "childNormal"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND CNF_QTY > 0 AND IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN ICKEY END) AS "childPutaway"
+            , COUNT(DISTINCT CASE WHEN IS_PARENT='N' AND CNF_QTY > 0 AND IB_TYPE='DIRECT'   THEN ICKEY END) AS "childDirect"
+
+            /* 3. EA (낱개 수량) */
+            , SUM(ORD_QTY)                                                                        AS "eaOrderQty"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN CNF_QTY ELSE 0 END)                           AS "eaTransfer"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN CNF_QTY ELSE 0 END)                           AS "eaTransferSum" -- 화면 중복 바인딩 대응
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN CNF_QTY ELSE 0 END)         AS "eaTransferNormal"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN CNF_QTY ELSE 0 END)         AS "eaTransferAssort"
+            , SUM(CASE WHEN IB_TYPE='DIRECT'   THEN CNF_QTY ELSE 0 END)                           AS "eaDirect"
+
+            /* 4. 중포 (INN) 수량 - [수정] 0 나누기 방지 적용됨 */
+            , SUM(ROUND(ORD_QTY / INN_UNIT, 1))                                                   AS "innOrderQty"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN ROUND(CNF_QTY/INN_UNIT, 1) ELSE 0 END)        AS "innTransfer"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN ROUND(CNF_QTY/INN_UNIT, 1) ELSE 0 END) AS "innTransferNormal"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN ROUND(CNF_QTY/INN_UNIT, 1) ELSE 0 END) AS "innTransferAssort"
+            , SUM(CASE WHEN IB_TYPE='DIRECT'   THEN ROUND(CNF_QTY/INN_UNIT, 1) ELSE 0 END)        AS "innDirect"
+
+            /* 5. CTN (박스) 수량 - [수정] 0 나누기 방지 적용됨 */
+            , SUM(ROUND(ORD_QTY / CTN_UNIT, 1))                                                   AS "ctnOrderQty"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN ROUND(CNF_QTY/CTN_UNIT, 1) ELSE 0 END)        AS "ctnTransfer"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN ROUND(CNF_QTY/CTN_UNIT, 1) ELSE 0 END) AS "ctnTransferNormal"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN ROUND(CNF_QTY/CTN_UNIT, 1) ELSE 0 END) AS "ctnTransferAssort"
+            , SUM(CASE WHEN IB_TYPE='DIRECT'   THEN ROUND(CNF_QTY/CTN_UNIT, 1) ELSE 0 END)        AS "ctnDirect"
+
+            /* 6. PLT (팔레트) 수량 - [수정] 0 나누기 방지 적용됨 */
+            , SUM(ROUND(ORD_QTY / (CTN_UNIT * PLT_UNIT), 2))                                      AS "pltOrderQty"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN ROUND(CNF_QTY/(CTN_UNIT*PLT_UNIT), 2) ELSE 0 END) AS "pltTransfer"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN ROUND(CNF_QTY/(CTN_UNIT*PLT_UNIT), 2) ELSE 0 END) AS "pltTransferNormal"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN ROUND(CNF_QTY/(CTN_UNIT*PLT_UNIT), 2) ELSE 0 END) AS "pltTransferAssort"
+            , SUM(CASE WHEN IB_TYPE='DIRECT'   THEN ROUND(CNF_QTY/(CTN_UNIT*PLT_UNIT), 2) ELSE 0 END) AS "pltDirect"
+
+            /* 7. 금액 (Amount) */
+            , SUM(ORD_QTY * PRICE)                                                                AS "orderAmt"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' THEN CNF_QTY * PRICE ELSE 0 END)                   AS "amtTransfer"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='N' THEN CNF_QTY * PRICE ELSE 0 END) AS "amtTransferNormal"
+            , SUM(CASE WHEN IB_TYPE='TRANSFER' AND IS_ASSORT='Y' THEN CNF_QTY * PRICE ELSE 0 END) AS "amtTransferAssort"
+            , SUM(CASE WHEN IB_TYPE='DIRECT'   THEN CNF_QTY * PRICE ELSE 0 END)                   AS "amtDirect"
+
+        FROM BASE
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+             AND  #{SEARCH_CONDITION}
+        </if>
+        GROUP BY YEAR_VAL, MONTH_VAL, IBEXPCTDATE
+        ORDER BY IBEXPCTDATE DESC
+        
+    </sql>
+
+    <select id="inbound_statusCount" resultType="int">
+        SELECT COUNT(1) FROM (<include refid="selectInboundStatusSql"/>)
+    </select>
+
+    <select id="inbound_status" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectInboundStatusSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+	
+    <sql id="selectPutawayStatusSql">
+        
+       WITH BASE AS (
+                    SELECT 
+                        A.PLCMDATE            AS IBEXPCTDATE
+                        , SUBSTR(A.LCKEY, 1, 2) AS CENTER_CD
+                        , COALESCE(C.MASICYN, 'N')   AS 모자
+                        , A.CNFRMQTY            AS PCS
+                        /* 1. 단위 환산 로직 (INN, CTN, PLT) */
+                        , CASE WHEN D_INN.ICUNITQTY IS NULL THEN 0
+                            WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / COALESCE(D_INN.ICUNITQTY, 1), 2)
+                            ELSE 0 END AS INN
+                        , CASE WHEN D_CTN.ICUNITQTY IS NULL THEN 0
+                            WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / COALESCE(D_CTN.ICUNITQTY, 1), 2)
+                            ELSE 0 END AS CTN
+                        , CASE WHEN D_CTN.ICUNITQTY IS NULL THEN 0
+                            WHEN A.CNFRMQTY > 0 THEN ROUND(A.CNFRMQTY / (COALESCE(D_CTN.ICUNITQTY, 1) * CASE COALESCE(D_CTN.CPPQTY, 0) WHEN 0 THEN 1 ELSE D_CTN.CPPQTY END), 2)
+                            ELSE 0 END AS PLT
+                        /* 2. 판매가 기준 금액 계산 */
+                        , COALESCE(A.CNFRMQTY * C.SLPRC, 0) AS AMT
+                        , '20' AS DTTYPE
+                        , A.CTKEY
+                        , A.OWKEY
+                    FROM TWORK_INFO_IB_PLCM_DT A
+                    INNER JOIN TWORK_MST_IC C
+                    ON A.CTKEY = C.CTKEY AND A.OWKEY = C.OWKEY AND A.ICKEY = C.ICKEY
+                    LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D_INN
+                    ON A.CTKEY = D_INN.CTKEY AND A.OWKEY = D_INN.OWKEY AND C.ICUNITKEY = D_INN.ICUNITKEY AND D_INN.ICUNITTYPECD = 'INN'
+                    LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D_CTN
+                    ON A.CTKEY = D_CTN.CTKEY AND A.OWKEY = D_CTN.OWKEY AND C.ICUNITKEY = D_CTN.ICUNITKEY AND D_CTN.ICUNITTYPECD = 'CTN'
+                    WHERE A.CNFRMQTY > 0
+                ),
+                AGG AS (
+                    SELECT
+                        IBEXPCTDATE AS 적치일자,
+                        CENTER_CD,
+                        SUM(CASE WHEN 모자='Y' THEN 1 ELSE 0 END) AS 모_SKU,
+                        SUM(CASE WHEN 모자='N' THEN 1 ELSE 0 END) AS 자_SKU,
+                        SUM(PCS) AS PCS,
+                        SUM(INN) AS INN,
+                        SUM(CTN) AS CTN,
+                        SUM(PLT) AS PLT,
+                        SUM(AMT) AS AMT
+                    FROM BASE
+                    WHERE 1=1
+                     <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                        AND  #{SEARCH_CONDITION}
+                    </if>
+                    GROUP BY IBEXPCTDATE, CENTER_CD
+                )
+                SELECT
+                    SUBSTR(적치일자, 1, 4) AS year,
+                    SUBSTR(적치일자, 5, 2) AS month,
+                    SUBSTR(적치일자, 7, 2) AS stackdate,
+
+                    /* ========================================================== */
+                    /* 1. 전체 합계 (ALL)                                          */
+                    /* ========================================================== */
+                    (COALESCE(HE_모_SKU, 0)+COALESCE(P0_모_SKU, 0)+COALESCE(HC_모_SKU, 0)+COALESCE(P1_모_SKU, 0)+COALESCE(HB_모_SKU, 0)+COALESCE(HA_모_SKU, 0)+COALESCE(HG_모_SKU, 0)+COALESCE(HD_모_SKU, 0)+COALESCE(HF_모_SKU, 0)) AS allmosku,
+                    (COALESCE(HE_자_SKU, 0)+COALESCE(P0_자_SKU, 0)+COALESCE(HC_자_SKU, 0)+COALESCE(P1_자_SKU, 0)+COALESCE(HB_자_SKU, 0)+COALESCE(HA_자_SKU, 0)+COALESCE(HG_자_SKU, 0)+COALESCE(HD_자_SKU, 0)+COALESCE(HF_자_SKU, 0)) AS alljasku,
+                    (COALESCE(HE_PCS, 0)+COALESCE(P0_PCS, 0)+COALESCE(HC_PCS, 0)+COALESCE(P1_PCS, 0)+COALESCE(HB_PCS, 0)+COALESCE(HA_PCS, 0)+COALESCE(HG_PCS, 0)+COALESCE(HD_PCS, 0)+COALESCE(HF_PCS, 0)) AS allpcs,
+                    (COALESCE(HE_INN, 0)+COALESCE(P0_INN, 0)+COALESCE(HC_INN, 0)+COALESCE(P1_INN, 0)+COALESCE(HB_INN, 0)+COALESCE(HA_INN, 0)+COALESCE(HG_INN, 0)+COALESCE(HD_INN, 0)+COALESCE(HF_INN, 0)) AS allmid,
+                    (COALESCE(HE_CTN, 0)+COALESCE(P0_CTN, 0)+COALESCE(HC_CTN, 0)+COALESCE(P1_CTN, 0)+COALESCE(HB_CTN, 0)+COALESCE(HA_CTN, 0)+COALESCE(HG_CTN, 0)+COALESCE(HD_CTN, 0)+COALESCE(HF_CTN, 0)) AS allctn,
+                    (COALESCE(HE_PLT, 0)+COALESCE(P0_PLT, 0)+COALESCE(HC_PLT, 0)+COALESCE(P1_PLT, 0)+COALESCE(HB_PLT, 0)+COALESCE(HA_PLT, 0)+COALESCE(HG_PLT, 0)+COALESCE(HD_PLT, 0)+COALESCE(HF_PLT, 0)) AS allplt,
+                    (COALESCE(HE_AMT, 0)+COALESCE(P0_AMT, 0)+COALESCE(HC_AMT, 0)+COALESCE(P1_AMT, 0)+COALESCE(HB_AMT, 0)+COALESCE(HA_AMT, 0)+COALESCE(HG_AMT, 0)+COALESCE(HD_AMT, 0)+COALESCE(HF_AMT, 0)) AS allamt,
+
+                    /* ========================================================== */
+                    /* 2. 각 존별 상세 (HA ~ HG, P0, P1)                             */
+                    /* ========================================================== */
+                    COALESCE(HA_모_SKU, 0) AS hamosku, COALESCE(HA_자_SKU, 0) AS hajasku, COALESCE(HA_PCS, 0) AS hapcs, COALESCE(HA_INN, 0) AS hamid, COALESCE(HA_CTN, 0) AS hactn, COALESCE(HA_PLT, 0) AS haplt, COALESCE(HA_AMT, 0) AS haamt,
+                    COALESCE(HB_모_SKU, 0) AS hbmosku, COALESCE(HB_자_SKU, 0) AS hbjasku, COALESCE(HB_PCS, 0) AS hbpcs, COALESCE(HB_INN, 0) AS hbmid, COALESCE(HB_CTN, 0) AS hbctn, COALESCE(HB_PLT, 0) AS hbplt, COALESCE(HB_AMT, 0) AS hbamt,
+                    COALESCE(HC_모_SKU, 0) AS hcmosku, COALESCE(HC_자_SKU, 0) AS hcjasku, COALESCE(HC_PCS, 0) AS hcpcs, COALESCE(HC_INN, 0) AS hcmid, COALESCE(HC_CTN, 0) AS hcctn, COALESCE(HC_PLT, 0) AS hcplt, COALESCE(HC_AMT, 0) AS hcamt,
+                    COALESCE(HD_모_SKU, 0) AS hdmosku, COALESCE(HD_자_SKU, 0) AS hdjasku, COALESCE(HD_PCS, 0) AS hdpcs, COALESCE(HD_INN, 0) AS hdmid, COALESCE(HD_CTN, 0) AS hdctn, COALESCE(HD_PLT, 0) AS hdplt, COALESCE(HD_AMT, 0) AS hdamt,
+                    COALESCE(HE_모_SKU, 0) AS hemosku, COALESCE(HE_자_SKU, 0) AS hejasku, COALESCE(HE_PCS, 0) AS hepcs, COALESCE(HE_INN, 0) AS hemid, COALESCE(HE_CTN, 0) AS hectn, COALESCE(HE_PLT, 0) AS heplt, COALESCE(HE_AMT, 0) AS heamt,
+                    COALESCE(HF_모_SKU, 0) AS hfmosku, COALESCE(HF_자_SKU, 0) AS hfjasku, COALESCE(HF_PCS, 0) AS hfpcs, COALESCE(HF_INN, 0) AS hfmid, COALESCE(HF_CTN, 0) AS hfctn, COALESCE(HF_PLT, 0) AS hfplt, COALESCE(HF_AMT, 0) AS hfamt,
+                    COALESCE(HG_모_SKU, 0) AS hgmosku, COALESCE(HG_자_SKU, 0) AS hgjasku, COALESCE(HG_PCS, 0) AS hgpcs, COALESCE(HG_INN, 0) AS hgmid, COALESCE(HG_CTN, 0) AS hgctn, COALESCE(HG_PLT, 0) AS hgplt, COALESCE(HG_AMT, 0) AS hgamt,
+                    COALESCE(P0_모_SKU, 0) AS pltrackmosku, COALESCE(P0_자_SKU, 0) AS pltrackjasku, COALESCE(P0_PCS, 0) AS pltrackpcs, COALESCE(P0_INN, 0) AS pltrackmid, COALESCE(P0_CTN, 0) AS pltrackctn, COALESCE(P0_PLT, 0) AS pltrackplt, COALESCE(P0_AMT, 0) AS pltrackamt,
+                    COALESCE(P1_모_SKU, 0) AS lightmosku, COALESCE(P1_자_SKU, 0) AS lightjasku, COALESCE(P1_PCS, 0) AS lightpcs, COALESCE(P1_INN, 0) AS lightmid, COALESCE(P1_CTN, 0) AS lightctn, COALESCE(P1_PLT, 0) AS lightplt, COALESCE(P1_AMT, 0) AS lightamt
+
+                FROM AGG
+                PIVOT (
+                    SUM(모_SKU) AS 모_SKU, SUM(자_SKU) AS 자_SKU, SUM(PCS) AS PCS,
+                    SUM(INN) AS INN, SUM(CTN) AS CTN, SUM(PLT) AS PLT, SUM(AMT) AS AMT
+                    FOR CENTER_CD IN ('HE' AS HE, 'P0' AS P0, 'HC' AS HC, 'P1' AS P1, 'HB' AS HB, 'HA' AS HA, 'HG' AS HG, 'HD' AS HD, 'HF' AS HF)
+                )
+                ORDER BY stackdate
+    </sql>
+
+    <select id="selectPutawayStatusCount" resultType="int">
+        SELECT COUNT(1) FROM (<include refid="selectPutawayStatusSql"/>)
+    </select>
+
+    <select id="selectPutawayStatusList" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectPutawayStatusSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="selectReceivingStatusList" >
+        
+        WITH BASE AS (
+            SELECT
+                  B.IBEXPCTDATE
+                , B.IBHDTYPECD
+                , B.IBHDKEY
+                , A.IBDTKEY
+                , COALESCE(C.MASICYN, 'N') AS MASICYN
+                , COALESCE(C.ASRTYN, 'N')  AS ASRTYN
+                , COALESCE(A.INITQTY, 0)   AS INITQTY
+                , COALESCE(A.EXPCTQTY, 0)  AS EXPCTQTY  -- 입고예정수량
+                , COALESCE(A.IBQTY, 0)     AS IBQTY
+                , COALESCE(A.CNFRMQTY, 0)  AS CNFRMQTY  -- 입하확정수량
+                , COALESCE(A.CPAMT, 0)     AS CPAMT     -- 단가
+                , COALESCE(A.EXPCTQTY * A.CPAMT, 0) AS PLAN_AMT -- 예정금액
+                , COALESCE(A.IBQTY * A.CPAMT, 0)    AS IB_AMT
+                , COALESCE(A.CNFRMQTY * A.CPAMT, 0) AS CNFM_AMT -- 확정금액
+                , COALESCE(A.UPDATEDATE, '00000000') AS UPDATEDATE
+                , '20' AS DTTYPE
+                , C.ICUNITKEY
+                , '20' AS DTTYPE
+                , A.CTKEY
+                , A.OWKEY
+            FROM TWORK_INFO_IB_DT A
+            JOIN TWORK_INFO_IB_HD B  
+              ON A.CTKEY = B.CTKEY 
+             AND A.OWKEY = B.OWKEY 
+             AND A.IBHDKEY = B.IBHDKEY
+            JOIN TWORK_MST_IC C      
+              ON A.CTKEY = C.CTKEY 
+             AND A.OWKEY = C.OWKEY 
+             AND A.ICKEY = C.ICKEY
+           WHERE A.CTKEY = '09'
+             AND A.OWKEY = 'DAISO'
+        )
+        SELECT
+              SUBSTR(IBEXPCTDATE, 1, 4) AS "year"
+            , SUBSTR(IBEXPCTDATE, 5, 2) AS "month"
+            , SUBSTR(IBEXPCTDATE, 7, 2) AS "day"
+
+            /* 1. 입고 예정 (Exp) */
+            , COUNT(DISTINCT CASE WHEN MASICYN='Y' AND EXPCTQTY > 0 THEN IBDTKEY END) AS "expMoSku"
+            , COUNT(DISTINCT CASE WHEN MASICYN='N' AND EXPCTQTY > 0 THEN IBDTKEY END) AS "expJaSku"
+            , SUM(EXPCTQTY)                                                           AS "expEa"
+            , SUM(PLAN_AMT)                                                           AS "expAmount"
+
+            /* 2. 입하 작업 (Rcv) */
+            , COUNT(DISTINCT CASE WHEN MASICYN='Y' AND CNFRMQTY > 0 THEN IBDTKEY END) AS "rcvMoSku"
+            , COUNT(DISTINCT CASE WHEN MASICYN='N' AND CNFRMQTY > 0 THEN IBDTKEY END) AS "rcvJaSku"
+            , SUM(CNFRMQTY)                                                           AS "rcvEa"
+            , SUM(CNFM_AMT)                                                           AS "rcvAmount"
+
+            /* 3. 작업 잔량 (Remain: 예정 - 입하) */
+            , GREATEST(COUNT(DISTINCT CASE WHEN MASICYN='Y' AND EXPCTQTY > 0 THEN IBDTKEY END) - 
+                       COUNT(DISTINCT CASE WHEN MASICYN='Y' AND CNFRMQTY > 0 THEN IBDTKEY END), 0) AS "remainMoSku"
+            , GREATEST(COUNT(DISTINCT CASE WHEN MASICYN='N' AND EXPCTQTY > 0 THEN IBDTKEY END) - 
+                       COUNT(DISTINCT CASE WHEN MASICYN='N' AND CNFRMQTY > 0 THEN IBDTKEY END), 0) AS "remainJaSku"
+            , (SUM(EXPCTQTY) - SUM(CNFRMQTY))                                                      AS "remainEa"
+            , (SUM(PLAN_AMT) - SUM(CNFM_AMT))                                                      AS "remainAmount"
+
+            /* 4. 진척율 (Prog: (입하/예정)*100) */
+            , CASE WHEN COUNT(DISTINCT CASE WHEN MASICYN='Y' AND EXPCTQTY > 0 THEN IBDTKEY END) > 0 
+                   THEN ROUND((COUNT(DISTINCT CASE WHEN MASICYN='Y' AND CNFRMQTY > 0 THEN IBDTKEY END) / 
+                               COUNT(DISTINCT CASE WHEN MASICYN='Y' AND EXPCTQTY > 0 THEN IBDTKEY END)) * 100, 2)
+                   ELSE 0 END AS "progMoSku"
+            
+            , CASE WHEN COUNT(DISTINCT CASE WHEN MASICYN='N' AND EXPCTQTY > 0 THEN IBDTKEY END) > 0 
+                   THEN ROUND((COUNT(DISTINCT CASE WHEN MASICYN='N' AND CNFRMQTY > 0 THEN IBDTKEY END) / 
+                               COUNT(DISTINCT CASE WHEN MASICYN='N' AND EXPCTQTY > 0 THEN IBDTKEY END)) * 100, 2)
+                   ELSE 0 END AS "progJaSku"
+            
+            , CASE WHEN SUM(EXPCTQTY) > 0 
+                   THEN ROUND((SUM(CNFRMQTY) / SUM(EXPCTQTY)) * 100, 2)
+                   ELSE 0 END AS "progEa"
+
+        FROM BASE
+        WHERE 1=1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+             AND  #{SEARCH_CONDITION}
+        </if>
+        GROUP BY IBEXPCTDATE
+        ORDER BY IBEXPCTDATE DESC
+        
+    </sql>
+
+    <select id="inbound_progressCount" resultType="int">
+        SELECT COUNT(1) FROM (<include refid="selectReceivingStatusList"/>)
+    </select>
+
+    <select id="inbound_progress_list" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectReceivingStatusList"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    
+    <sql id="selectInventoryHoldingList">
+        
+       WITH LC_BASE AS (
+                SELECT 
+                    CTKEY
+                    , ZNKEY
+                    , ARKEY
+                    , LCKEY
+                    , LCLIMITDIVCD
+                FROM TWORK_MST_LC
+            ),
+            STOCK_BASE AS (
+                SELECT 
+                    IVLC.CTKEY
+                    , IVLC.OWKEY
+                    /* 1. 날짜 처리 및 알리아스 변경 */
+                    , TO_DATE(SUBSTR((IVLC.UPDATEDATE)::TEXT, 1, 8), 'YYYYMMDD') AS IBEXPCTDATE
+                    , IVLC.ICKEY
+                    , IVLC.LCKEY
+                    , COALESCE(IVLC.TOTQTY, 0) AS TOTQTY
+                    , COALESCE(IVLC.AVQTY, 0) AS AVQTY
+                    , GREATEST(COALESCE(IVLC.TOTQTY, 0) - COALESCE(IVLC.AVQTY, 0), 0) AS BADQTY
+                    , COALESCE(IC.SLPRC, 0) AS SLPRC
+                    , IC.ASRTYN
+                    , LC.ZNKEY
+                    , '20' AS DTTYPE
+                FROM TWORK_INFO_IVATXLC IVLC
+                JOIN LC_BASE LC 
+                ON LC.CTKEY = IVLC.CTKEY 
+                AND LC.LCKEY = IVLC.LCKEY
+                JOIN TWORK_MST_IC IC 
+                ON IC.CTKEY = IVLC.CTKEY 
+                AND IC.OWKEY = IVLC.OWKEY 
+                AND IC.ICKEY = IVLC.ICKEY
+
+           
+            ),
+            DATES AS (
+                SELECT DISTINCT IBEXPCTDATE 
+                FROM STOCK_BASE
+            ),
+            CELL_STATIC AS (
+                SELECT 
+                    CTKEY
+                    , ZNKEY
+                    , COUNT(*) AS TOTAL_CELL
+                    , COUNT(CASE WHEN LCLIMITDIVCD IS NOT NULL THEN 1 END) AS LIMIT_CELL
+                FROM LC_BASE
+                GROUP BY CTKEY, ZNKEY
+            ),
+            CELL_USAGE AS (
+                SELECT 
+                    SB.IBEXPCTDATE
+                    , LC.ZNKEY
+                    , COUNT(DISTINCT CASE WHEN SB.TOTQTY > 0 THEN LC.LCKEY END) AS USED_CELL
+                FROM STOCK_BASE SB
+                JOIN LC_BASE LC 
+                ON LC.CTKEY = SB.CTKEY 
+                AND LC.LCKEY = SB.LCKEY
+                WHERE 1=1
+                GROUP BY SB.IBEXPCTDATE, LC.ZNKEY
+            ),
+            CELL_DAY AS (
+                SELECT 
+                    D.IBEXPCTDATE
+                    , CS.ZNKEY
+                    , CS.TOTAL_CELL
+                    , CS.LIMIT_CELL
+                    , COALESCE(CU.USED_CELL, 0) AS USED_CELL
+                    , CS.TOTAL_CELL - COALESCE(CU.USED_CELL, 0) AS EMPTY_CELL
+                    , ROUND(
+                        CASE WHEN CS.TOTAL_CELL = 0 THEN 0 
+                            ELSE COALESCE(CU.USED_CELL, 0) / CS.TOTAL_CELL * 100 
+                        END
+                    , 2) AS UTIL_RATE
+                FROM DATES D
+                CROSS JOIN CELL_STATIC CS
+                LEFT JOIN CELL_USAGE CU 
+                ON CU.IBEXPCTDATE = D.IBEXPCTDATE 
+                AND CU.ZNKEY      = CS.ZNKEY
+            ),
+            ZONE_STOCK AS (
+                SELECT 
+                    IBEXPCTDATE
+                    , CTKEY
+                    , OWKEY
+                    , ZNKEY
+                    , COUNT(DISTINCT ICKEY) AS SKU
+                    , SUM(TOTQTY)           AS EA
+                    , SUM(TOTQTY * SLPRC)   AS AMT
+                FROM STOCK_BASE
+                GROUP BY IBEXPCTDATE, ZNKEY, CTKEY, OWKEY
+            ),
+            ZONE_DAY AS (
+                SELECT 
+                    CD.IBEXPCTDATE
+                    , CD.ZNKEY
+                    , CD.TOTAL_CELL
+                    , CD.USED_CELL
+                    , CD.LIMIT_CELL
+                    , CD.EMPTY_CELL
+                    , CD.UTIL_RATE
+                    , COALESCE(ZS.SKU, 0) AS SKU
+                    , COALESCE(ZS.EA, 0) AS EA
+                    , COALESCE(ZS.AMT, 0) AS AMT
+                FROM CELL_DAY CD
+                LEFT JOIN ZONE_STOCK ZS 
+                ON ZS.IBEXPCTDATE = CD.IBEXPCTDATE 
+                AND ZS.ZNKEY      = CD.ZNKEY
+            ),
+            ALL_SUM AS (
+                SELECT 
+                    IBEXPCTDATE  
+                    , COUNT(DISTINCT CASE WHEN ASRTYN = 'Y' AND TOTQTY > 0 THEN ICKEY END) AS ALL_MO_SKU
+                    , COUNT(DISTINCT CASE WHEN ASRTYN = 'N' AND TOTQTY > 0 THEN ICKEY END) AS ALL_JA_SKU
+                    , SUM(TOTQTY)         AS ALL_EA
+                    , SUM(TOTQTY * SLPRC) AS ALL_AMT
+                    /* 가용 필드 삭제 및 불용 재고만 유지 */
+                    , COUNT(DISTINCT CASE WHEN ASRTYN = 'Y' AND BADQTY > 0 THEN ICKEY END) AS UN_MO_SKU
+                    , COUNT(DISTINCT CASE WHEN ASRTYN = 'N' AND BADQTY > 0 THEN ICKEY END) AS UN_JA_SKU
+                    , SUM(BADQTY)         AS UN_EA
+                    , SUM(BADQTY * SLPRC) AS UN_AMT
+                FROM STOCK_BASE
+                WHERE  1=1
+                /* 2. 동적 검색 조건 삽입 동적 검색 조건 때문에 다시 한 번 수정*/
+                 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                      AND  #{SEARCH_CONDITION}
+                </if>
+                GROUP BY IBEXPCTDATE
+            ),
+            ZONE_PIVOT AS (
+                SELECT 
+                    IBEXPCTDATE,
+                    /* [보관존 PIVOT - H, P, HA~HG, PA, PB] */
+                    MAX(CASE WHEN ZNKEY = 'H'  THEN TOTAL_CELL END) AS H_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'H'  THEN USED_CELL END) AS H_USED_CELL, MAX(CASE WHEN ZNKEY = 'H'  THEN SKU END) AS H_SKU, MAX(CASE WHEN ZNKEY = 'H'  THEN EA END) AS H_EA, MAX(CASE WHEN ZNKEY = 'H'  THEN AMT END) AS H_AMT,
+                    MAX(CASE WHEN ZNKEY = 'P'  THEN TOTAL_CELL END) AS P_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'P'  THEN USED_CELL END) AS P_USED_CELL, MAX(CASE WHEN ZNKEY = 'P'  THEN SKU END) AS P_SKU, MAX(CASE WHEN ZNKEY = 'P'  THEN EA END) AS P_EA, MAX(CASE WHEN ZNKEY = 'P'  THEN AMT END) AS P_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HA' THEN TOTAL_CELL END) AS HA_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HA' THEN USED_CELL END) AS HA_USED_CELL, MAX(CASE WHEN ZNKEY = 'HA' THEN SKU END) AS HA_SKU, MAX(CASE WHEN ZNKEY = 'HA' THEN EA END) AS HA_EA, MAX(CASE WHEN ZNKEY = 'HA' THEN AMT END) AS HA_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HB' THEN TOTAL_CELL END) AS HB_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HB' THEN USED_CELL END) AS HB_USED_CELL, MAX(CASE WHEN ZNKEY = 'HB' THEN SKU END) AS HB_SKU, MAX(CASE WHEN ZNKEY = 'HB' THEN EA END) AS HB_EA, MAX(CASE WHEN ZNKEY = 'HB' THEN AMT END) AS HB_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HC' THEN TOTAL_CELL END) AS HC_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HC' THEN USED_CELL END) AS HC_USED_CELL, MAX(CASE WHEN ZNKEY = 'HC' THEN SKU END) AS HC_SKU, MAX(CASE WHEN ZNKEY = 'HC' THEN EA END) AS HC_EA, MAX(CASE WHEN ZNKEY = 'HC' THEN AMT END) AS HC_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HD' THEN TOTAL_CELL END) AS HD_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HD' THEN USED_CELL END) AS HD_USED_CELL, MAX(CASE WHEN ZNKEY = 'HD' THEN SKU END) AS HD_SKU, MAX(CASE WHEN ZNKEY = 'HD' THEN EA END) AS HD_EA, MAX(CASE WHEN ZNKEY = 'HD' THEN AMT END) AS HD_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HE' THEN TOTAL_CELL END) AS HE_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HE' THEN USED_CELL END) AS HE_USED_CELL, MAX(CASE WHEN ZNKEY = 'HE' THEN SKU END) AS HE_SKU, MAX(CASE WHEN ZNKEY = 'HE' THEN EA END) AS HE_EA, MAX(CASE WHEN ZNKEY = 'HE' THEN AMT END) AS HE_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HF' THEN TOTAL_CELL END) AS HF_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HF' THEN USED_CELL END) AS HF_USED_CELL, MAX(CASE WHEN ZNKEY = 'HF' THEN SKU END) AS HF_SKU, MAX(CASE WHEN ZNKEY = 'HF' THEN EA END) AS HF_EA, MAX(CASE WHEN ZNKEY = 'HF' THEN AMT END) AS HF_AMT,
+                    MAX(CASE WHEN ZNKEY = 'HG' THEN TOTAL_CELL END) AS HG_TOTAL_CELL, MAX(CASE WHEN ZNKEY = 'HG' THEN USED_CELL END) AS HG_USED_CELL, MAX(CASE WHEN ZNKEY = 'HG' THEN SKU END) AS HG_SKU, MAX(CASE WHEN ZNKEY = 'HG' THEN EA END) AS HG_EA, MAX(CASE WHEN ZNKEY = 'HG' THEN AMT END) AS HG_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PA' THEN SKU END) AS PA_SKU, MAX(CASE WHEN ZNKEY = 'PA' THEN EA END) AS PA_EA, MAX(CASE WHEN ZNKEY = 'PA' THEN AMT END) AS PA_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PB' THEN SKU END) AS PB_SKU, MAX(CASE WHEN ZNKEY = 'PB' THEN EA END) AS PB_EA, MAX(CASE WHEN ZNKEY = 'PB' THEN AMT END) AS PB_AMT,
+
+                    /* [운영존 PIVOT - 모든 상세 존 복구] */
+                    MAX(CASE WHEN ZNKEY = 'MLD'      THEN EA END) AS MLD_EA, MAX(CASE WHEN ZNKEY = 'MLD' THEN AMT END) AS MLD_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PDM'      THEN EA END) AS PDM_EA, MAX(CASE WHEN ZNKEY = 'PDM' THEN AMT END) AS PDM_AMT,
+                    MAX(CASE WHEN ZNKEY = 'MDM'      THEN EA END) AS MDM_EA, MAX(CASE WHEN ZNKEY = 'MDM' THEN AMT END) AS MDM_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DNR'      THEN EA END) AS DNR_EA, MAX(CASE WHEN ZNKEY = 'DNR' THEN AMT END) AS DNR_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DMN'      THEN EA END) AS DMN_EA, MAX(CASE WHEN ZNKEY = 'DMN' THEN AMT END) AS DMN_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DFR'      THEN EA END) AS DFR_EA, MAX(CASE WHEN ZNKEY = 'DFR' THEN AMT END) AS DFR_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DMG'      THEN EA END) AS DMG_EA, MAX(CASE WHEN ZNKEY = 'DMG' THEN AMT END) AS DMG_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DMR'      THEN EA END) AS DMR_EA, MAX(CASE WHEN ZNKEY = 'DMR' THEN AMT END) AS DMR_AMT,
+                    MAX(CASE WHEN ZNKEY = 'NCR'      THEN EA END) AS NCR_EA, MAX(CASE WHEN ZNKEY = 'NCR' THEN AMT END) AS NCR_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DNS'      THEN EA END) AS DNS_EA, MAX(CASE WHEN ZNKEY = 'DNS' THEN AMT END) AS DNS_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DFS'      THEN EA END) AS DFS_EA, MAX(CASE WHEN ZNKEY = 'DFS' THEN AMT END) AS DFS_AMT,
+                    MAX(CASE WHEN ZNKEY = 'DMS'      THEN EA END) AS DMS_EA, MAX(CASE WHEN ZNKEY = 'DMS' THEN AMT END) AS DMS_AMT,
+                    MAX(CASE WHEN ZNKEY = 'ASTIN'    THEN EA END) AS ASTIN_EA, MAX(CASE WHEN ZNKEY = 'ASTIN' THEN AMT END) AS ASTIN_AMT,
+                    MAX(CASE WHEN ZNKEY = 'ASTOUT'   THEN EA END) AS ASTOUT_EA, MAX(CASE WHEN ZNKEY = 'ASTOUT' THEN AMT END) AS ASTOUT_AMT,
+                    MAX(CASE WHEN ZNKEY = 'SIV'      THEN EA END) AS SIV_EA, MAX(CASE WHEN ZNKEY = 'SIV' THEN AMT END) AS SIV_AMT,
+                    MAX(CASE WHEN ZNKEY = 'MPR'      THEN EA END) AS MPR_EA, MAX(CASE WHEN ZNKEY = 'MPR' THEN AMT END) AS MPR_AMT,
+                    MAX(CASE WHEN ZNKEY = 'STAGE'    THEN EA END) AS STAGE_EA, MAX(CASE WHEN ZNKEY = 'STAGE' THEN AMT END) AS STAGE_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PICKFAIL' THEN EA END) AS PICKFAIL_EA, MAX(CASE WHEN ZNKEY = 'PICKFAIL' THEN AMT END) AS PICKFAIL_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PICKBACK' THEN EA END) AS PICKBACK_EA, MAX(CASE WHEN ZNKEY = 'PICKBACK' THEN AMT END) AS PICKBACK_AMT,
+                    MAX(CASE WHEN ZNKEY = 'PICKTO'   THEN EA END) AS PICKTO_EA, MAX(CASE WHEN ZNKEY = 'PICKTO' THEN AMT END) AS PICKTO_AMT
+                FROM ZONE_DAY
+              
+                GROUP BY IBEXPCTDATE
+            )
+            SELECT
+                TO_CHAR(A.IBEXPCTDATE, 'YYYY') AS "year"
+                , TO_CHAR(A.IBEXPCTDATE, 'MM')   AS "month"
+                , TO_CHAR(A.IBEXPCTDATE, 'DD')   AS "day"
+                , A.ALL_MO_SKU AS "allMoSku"
+                , A.ALL_JA_SKU AS "allJaSku"
+                , A.ALL_EA     AS "allEa"
+                , A.ALL_AMT    AS "allAmt"
+                , A.UN_MO_SKU  AS "unusableMoSku"
+                , A.UN_JA_SKU  AS "unusableJaSku"
+                , A.UN_EA      AS "unusableEa"
+                , A.UN_AMT     AS "unusableAmt"
+                
+                /* [보관존 필드] */
+                , Z.H_SKU AS "lightSku", Z.H_EA AS "lightEa", Z.H_AMT AS "lightAmt"
+                , Z.P_SKU AS "pltrackSku", Z.P_EA AS "pltrackEa", Z.P_AMT AS "pltrackAmt"
+                , Z.HA_SKU AS "haSku", Z.HA_EA AS "haEa", Z.HA_AMT AS "haAmt"
+                , Z.HB_SKU AS "hbSku", Z.HB_EA AS "hbEa", Z.HB_AMT AS "hbAmt"
+                , Z.HC_SKU AS "hcSku", Z.HC_EA AS "hcEa", Z.HC_AMT AS "hcAmt"
+                , Z.HD_SKU AS "hdSku", Z.HD_EA AS "hdEa", Z.HD_AMT AS "hdAmt"
+                , Z.HE_SKU AS "heSku", Z.HE_EA AS "heEa", Z.HE_AMT AS "heAmt"
+                , Z.HF_SKU AS "hfSku", Z.HF_EA AS "hfEa", Z.HF_AMT AS "hfAmt"
+                , Z.HG_SKU AS "hgSku", Z.HG_EA AS "hgEa", Z.HG_AMT AS "hgAmt"
+                , Z.PA_SKU AS "paSku", Z.PA_EA AS "paEa", Z.PA_AMT AS "paAmt"
+                , Z.PB_SKU AS "pbSku", Z.PB_EA AS "pbEa", Z.PB_AMT AS "pbAmt"
+
+                /* [운영존 필드 - 알리아스 매핑] */
+                , Z.MLD_EA AS "b2bWaitEa", Z.MLD_AMT AS "b2bWaitAmt"
+                , Z.PDM_EA AS "planMoveEa", Z.PDM_AMT AS "planMoveAmt"
+                , Z.MDM_EA AS "adminMoveEa", Z.MDM_AMT AS "adminMoveAmt"
+                , Z.DNR_EA AS "rtnDonEa", Z.DNR_AMT AS "rtnDonAmt"
+                , Z.DMN_EA AS "rtnUncollectedEa", Z.DMN_AMT AS "rtnUncollectedAmt"
+                , Z.DFR_EA AS "rtnBadEa", Z.DFR_AMT AS "rtnBadAmt"
+                , Z.DMG_EA AS "rtnFooddmgEa", Z.DMG_AMT AS "rtnFooddmgAmt"
+                , Z.DMR_EA AS "rtnDmgEa", Z.DMR_AMT AS "rtnDmgAmt"
+                , Z.NCR_EA AS "rtnWaitEa", Z.NCR_AMT AS "rtnWaitAmt"
+                , Z.DNS_EA AS "whDonEa", Z.DNS_AMT AS "whDonAmt"
+                , Z.DFS_EA AS "whBadEa", Z.DFS_AMT AS "whBadAmt"
+                , Z.DMS_EA AS "whDmgEa", Z.DMS_AMT AS "whDmgAmt"
+                , Z.ASTIN_EA AS "procWaitEa", Z.ASTIN_AMT AS "procWaitAmt"
+                , Z.ASTOUT_EA AS "procDoneEa", Z.ASTOUT_AMT AS "procDoneAmt"
+                , Z.SIV_EA AS "diffEa", Z.SIV_AMT AS "diffAmt"
+                , Z.MPR_EA AS "reworkWaitEa", Z.MPR_AMT AS "reworkWaitAmt"
+                , Z.STAGE_EA AS "stackWaitEa", Z.STAGE_AMT AS "stackWaitAmt"
+                , Z.PICKFAIL_EA AS "pickingLackEa", Z.PICKFAIL_AMT AS "pickingLackAmt"
+                , Z.PICKBACK_EA AS "pickingReturnEa", Z.PICKBACK_AMT AS "pickingReturnAmt"
+                , Z.PICKTO_EA AS "pickingDoneEa", Z.PICKTO_AMT AS "pickingDoneAmt"
+
+            FROM ALL_SUM A
+            LEFT JOIN ZONE_PIVOT Z 
+            ON Z.IBEXPCTDATE = A.IBEXPCTDATE
+            WHERE 1=1
+            ORDER BY A.IBEXPCTDATE DESC
+        
+    </sql>
+    <select id="InventoryHoldingCount" resultType="int">
+        SELECT COUNT(1) FROM (<include refid="selectInventoryHoldingList"/>)
+    </select>
+
+    <select id="InventoryHoldinglist" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectInventoryHoldingList"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    
+    <sql id="selectStocktakingList">
+        
+      WITH BASE AS (
+                SELECT
+                    TD.WKREGDATE AS IBEXPCTDATE  /* WORK_DATE를 IBEXPCTDATE로 변경 */
+                    , AR.ARKEY     AS AREA
+                    , TD.ICKEY
+                    
+                    /* 지시 (Order / Before) */
+                    , COALESCE(TD.IVQTY, 0)             AS ORD_QTY
+                    , COALESCE(TD.IVQTY * IC.PURPRC, 0) AS ORD_AMT
+                    
+                    /* 실사 (After) */
+                    , COALESCE(TD.PISPQTY, 0)             AS AFT_QTY
+                    , COALESCE(TD.PISPQTY * IC.PURPRC, 0) AS AFT_AMT
+                    
+                    /* 차이 (Diff = After - Before) */
+                    , (COALESCE(TD.PISPQTY, 0) - COALESCE(TD.IVQTY, 0))             AS DIFF_QTY
+                    , ((COALESCE(TD.PISPQTY, 0) - COALESCE(TD.IVQTY, 0)) * IC.PURPRC) AS DIFF_AMT
+                    , TH.CTKEY
+                    , TH.OWKEY
+                    , '20' AS DTTYPE
+                FROM TWORK_INFO_TA_DT TD
+                JOIN TWORK_INFO_TA_HD TH 
+                ON TH.CTKEY = TD.CTKEY 
+                AND TH.OWKEY = TD.OWKEY 
+                AND TH.TAHDKEY = TD.TAHDKEY
+                JOIN TWORK_MST_LC LC 
+                ON LC.CTKEY = TD.CTKEY 
+                AND LC.LCKEY = TD.FRLCKEY
+                JOIN TWORK_MST_AR AR 
+                ON AR.CTKEY = LC.CTKEY 
+                AND AR.ARKEY = LC.ARKEY
+                JOIN TWORK_MST_IC IC 
+                ON IC.CTKEY = TD.CTKEY 
+                AND IC.OWKEY = TD.OWKEY 
+                AND IC.ICKEY = TD.ICKEY
+                WHERE TH.TATYPECD = '30'   -- 재고 실사
+                AND TD.PISPCKYN = 'Y'    -- 실사 완료 건만
+
+            ),
+            GRP AS (
+                SELECT
+                    IBEXPCTDATE
+                    , DTTYPE
+                    , CTKEY
+                    ,OWKEY
+                    , AREA
+                    , COUNT(*)              AS CNT
+                    , COUNT(DISTINCT ICKEY) AS SKU
+                    
+                    , SUM(ORD_QTY)  AS ORD_QTY
+                    , SUM(ORD_AMT)  AS ORD_AMT
+                    
+                    , SUM(DIFF_QTY) AS DIFF_QTY
+                    , SUM(DIFF_AMT) AS DIFF_AMT
+                    
+                    , SUM(AFT_QTY)  AS AFT_QTY
+                FROM BASE
+                GROUP BY IBEXPCTDATE, AREA, DTTYPE, CTKEY, OWKEY
+            ),
+            TOTAL AS (
+                SELECT
+                    IBEXPCTDATE
+                    , SUM(CNT)      AS TOTAL_CNT
+                    , SUM(ORD_QTY)  AS TOTAL_ORD_QTY
+                    , SUM(ORD_AMT)  AS TOTAL_ORD_AMT
+                    , SUM(DIFF_QTY) AS TOTAL_DIFF_QTY
+                    , SUM(DIFF_AMT) AS TOTAL_DIFF_AMT
+                    , SUM(AFT_QTY)  AS TOTAL_AFT_QTY
+                FROM GRP
+                WHERE 1=1
+                /* 2. 동적 검색 조건 삽입 */
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                    AND ${SEARCH_CONDITION}
+                </if>
+                GROUP BY IBEXPCTDATE
+            )
+            SELECT
+                SUBSTR(T.IBEXPCTDATE, 1, 4) AS "year"
+                , SUBSTR(T.IBEXPCTDATE, 5, 2) AS "month"
+                , SUBSTR(T.IBEXPCTDATE, 7, 2) AS "day"
+
+                /* ===== 전체 합계 ===== */
+                , T.TOTAL_CNT       AS "allOrdCnt"
+                , T.TOTAL_ORD_QTY   AS "allOrdEa"
+                , T.TOTAL_ORD_AMT   AS "allOrdAmt"
+                , T.TOTAL_CNT       AS "allDiffCnt"
+                , T.TOTAL_DIFF_QTY  AS "allDiffEa"
+                , T.TOTAL_DIFF_AMT  AS "allDiffAmt"
+                , T.TOTAL_CNT       AS "allAccCnt"
+                , CASE WHEN T.TOTAL_ORD_QTY = 0 THEN 0 
+                    ELSE ROUND(T.TOTAL_AFT_QTY / T.TOTAL_ORD_QTY * 100, 2) END AS "allAccEa"
+                , CASE WHEN T.TOTAL_ORD_AMT = 0 THEN 0 
+                    ELSE ROUND(T.TOTAL_AFT_QTY * 1 / NULLIF(T.TOTAL_ORD_AMT,0) * 100, 2) END AS "allAccAmt"
+
+                /* ===== 구역별 데이터 상세 (PA ~ HG) ===== */
+                /* PA */
+                , COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.SKU END), 0)      AS "paOrdSku", COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.ORD_QTY END), 0)  AS "paOrdEa", COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.ORD_AMT END), 0)  AS "paOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.SKU END), 0)      AS "paDiffSku", COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.DIFF_QTY END), 0) AS "paDiffEa", COALESCE(SUM(CASE WHEN G.AREA='PA' THEN G.DIFF_AMT END), 0) AS "paDiffAmt"
+                , 0 AS "paAccSku", CASE WHEN SUM(CASE WHEN G.AREA='PA' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='PA' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='PA' THEN G.ORD_QTY END) * 100, 2) END AS "paAccEa", 0 AS "paAccAmt"
+
+                /* PB */
+                , COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.SKU END), 0)      AS "pbOrdSku", COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.ORD_QTY END), 0)  AS "pbOrdEa", COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.ORD_AMT END), 0)  AS "pbOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.SKU END), 0)      AS "pbDiffSku", COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.DIFF_QTY END), 0) AS "pbDiffEa", COALESCE(SUM(CASE WHEN G.AREA='PB' THEN G.DIFF_AMT END), 0) AS "pbDiffAmt"
+                , 0 AS "pbAccSku", CASE WHEN SUM(CASE WHEN G.AREA='PB' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='PB' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='PB' THEN G.ORD_QTY END) * 100, 2) END AS "pbAccEa", 0 AS "pbAccAmt"
+
+                /* HA */
+                , COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.SKU END), 0)      AS "haOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.ORD_QTY END), 0)  AS "haOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.ORD_AMT END), 0)  AS "haOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.SKU END), 0)      AS "haDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.DIFF_QTY END), 0) AS "haDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HA' THEN G.DIFF_AMT END), 0) AS "haDiffAmt"
+                , 0 AS "haAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HA' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HA' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HA' THEN G.ORD_QTY END) * 100, 2) END AS "haAccEa", 0 AS "haAccAmt"
+
+                /* HB */
+                , COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.SKU END), 0)      AS "hbOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.ORD_QTY END), 0)  AS "hbOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.ORD_AMT END), 0)  AS "hbOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.SKU END), 0)      AS "hbDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.DIFF_QTY END), 0) AS "hbDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HB' THEN G.DIFF_AMT END), 0) AS "hbDiffAmt"
+                , 0 AS "hbAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HB' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HB' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HB' THEN G.ORD_QTY END) * 100, 2) END AS "hbAccEa", 0 AS "hbAccAmt"
+
+                /* HC */
+                , COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.SKU END), 0)      AS "hcOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.ORD_QTY END), 0)  AS "hcOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.ORD_AMT END), 0)  AS "hcOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.SKU END), 0)      AS "hcDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.DIFF_QTY END), 0) AS "hcDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HC' THEN G.DIFF_AMT END), 0) AS "hcDiffAmt"
+                , 0 AS "hcAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HC' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HC' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HC' THEN G.ORD_QTY END) * 100, 2) END AS "hcAccEa", 0 AS "hcAccAmt"
+
+                /* HD */
+                , COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.SKU END), 0)      AS "hdOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.ORD_QTY END), 0)  AS "hdOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.ORD_AMT END), 0)  AS "hdOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.SKU END), 0)      AS "hdDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.DIFF_QTY END), 0) AS "hdDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HD' THEN G.DIFF_AMT END), 0) AS "hdDiffAmt"
+                , 0 AS "hdAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HD' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HD' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HD' THEN G.ORD_QTY END) * 100, 2) END AS "hdAccEa", 0 AS "hdAccAmt"
+
+                /* HE */
+                , COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.SKU END), 0)      AS "heOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.ORD_QTY END), 0)  AS "heOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.ORD_AMT END), 0)  AS "heOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.SKU END), 0)      AS "heDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.DIFF_QTY END), 0) AS "heDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HE' THEN G.DIFF_AMT END), 0) AS "heDiffAmt"
+                , 0 AS "heAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HE' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HE' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HE' THEN G.ORD_QTY END) * 100, 2) END AS "heAccEa", 0 AS "heAccAmt"
+
+                /* HF */
+                , COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.SKU END), 0)      AS "hfOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.ORD_QTY END), 0)  AS "hfOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.ORD_AMT END), 0)  AS "hfOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.SKU END), 0)      AS "hfDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.DIFF_QTY END), 0) AS "hfDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HF' THEN G.DIFF_AMT END), 0) AS "hfDiffAmt"
+                , 0 AS "hfAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HF' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HF' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HF' THEN G.ORD_QTY END) * 100, 2) END AS "hfAccEa", 0 AS "hfAccAmt"
+
+                /* HG */
+                , COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.SKU END), 0)      AS "hgOrdSku", COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.ORD_QTY END), 0)  AS "hgOrdEa", COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.ORD_AMT END), 0)  AS "hgOrdAmt"
+                , COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.SKU END), 0)      AS "hgDiffSku", COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.DIFF_QTY END), 0) AS "hgDiffEa", COALESCE(SUM(CASE WHEN G.AREA='HG' THEN G.DIFF_AMT END), 0) AS "hgDiffAmt"
+                , 0 AS "hgAccSku", CASE WHEN SUM(CASE WHEN G.AREA='HG' THEN G.ORD_QTY END) = 0 THEN 0 ELSE ROUND(SUM(CASE WHEN G.AREA='HG' THEN G.AFT_QTY END) / SUM(CASE WHEN G.AREA='HG' THEN G.ORD_QTY END) * 100, 2) END AS "hgAccEa", 0 AS "hgAccAmt"
+
+            FROM TOTAL T
+            LEFT JOIN GRP G 
+            ON G.IBEXPCTDATE = T.IBEXPCTDATE
+            GROUP BY 
+                T.IBEXPCTDATE
+                , T.TOTAL_CNT, T.TOTAL_ORD_QTY, T.TOTAL_ORD_AMT
+                , T.TOTAL_DIFF_QTY, T.TOTAL_DIFF_AMT, T.TOTAL_AFT_QTY
+            ORDER BY T.IBEXPCTDATE DESC
+        
+    </sql>
+
+     <select id="StocktakingCount" resultType="int">
+        SELECT COUNT(1) FROM (<include refid="selectStocktakingList"/>)
+    </select>
+
+    <select id="Stocktakinglist" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectStocktakingList"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <sql id="DamageDefectPeriodsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrdersql - 입고현황 - 주문별 현황 - 입고 주문 조회  SQL */
+		WITH
+			/* ============================================================
+			* 1) 반품 원본
+			* ============================================================ */
+			IB_BASE AS (
+				SELECT
+					A.CTKEY
+					, A.OWKEY
+					, TO_DATE(SUBSTR(B.IBEXPCTDATE, 1, 8), 'YYYYMMDD') AS BASE_DATE
+					, A.ICKEY
+					, COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					, COALESCE(A.DMGQTY, 0) AS DMGQTY
+					, COALESCE(A.DFCQTY, 0) AS DFCQTY
+					, COALESCE(A.DONAQTY, 0) AS DONAQTY
+					, COALESCE(A.FOODDMGQTY, 0) AS FOODDMGQTY
+					, COALESCE(A.CPAMT, 0) AS CPAMT
+                    , '20' AS DTTYPE
+				FROM TWORK_INFO_IB_DT A
+				JOIN TWORK_INFO_IB_HD B
+				ON A.CTKEY   = B.CTKEY
+				AND A.OWKEY   = B.OWKEY
+				AND A.IBHDKEY = B.IBHDKEY
+				WHERE A.CTKEY = '09'
+				AND A.OWKEY = 'DAISO'
+				AND B.IBHDTYPECD = '50'
+			),
+
+			/* ============================================================
+			* 2) 물류내 재고 원본
+			* ============================================================ */
+			STOCK_BASE AS (
+				SELECT
+					IVLC.CTKEY
+					, IVLC.OWKEY
+					, TO_DATE(SUBSTR((IVLC.UPDATEDATE)::TEXT,1,8),'YYYYMMDD') AS STOCKDATE
+					, IVLC.ICKEY
+					, COALESCE(IVLC.TOTQTY, 0) AS TOTQTY
+					, COALESCE(IC.SLPRC, 0)    AS SLPRC
+					, ZN.ZNKEY
+				FROM TWORK_INFO_IVATXLC IVLC
+				JOIN TWORK_MST_LC LC
+				ON LC.CTKEY = IVLC.CTKEY
+				AND LC.LCKEY = IVLC.LCKEY
+				JOIN TWORK_MST_ZN ZN
+				ON ZN.CTKEY = LC.CTKEY
+				AND ZN.ZNKEY = LC.ZNKEY
+				JOIN TWORK_MST_IC IC
+				ON IC.CTKEY = IVLC.CTKEY
+				AND IC.OWKEY = IVLC.OWKEY
+				AND IC.ICKEY = IVLC.ICKEY
+				WHERE IVLC.CTKEY = '09'
+				AND IVLC.OWKEY = 'DAISO'
+			),
+
+			/* ============================================================
+			* 3) 반품 집계
+			* ============================================================ */
+			IB_RET AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, BASE_DATE
+					, COUNT(DISTINCT CASE WHEN CNFRMQTY > 0 THEN ICKEY END) AS rtn_all_sku
+					, SUM(CNFRMQTY)                                       AS rtn_all_ea
+					, SUM(CNFRMQTY * CPAMT)                               AS rtn_all_amt
+
+					, COUNT(DISTINCT CASE WHEN DMGQTY > 0 THEN ICKEY END) AS rtn_dmg_sku
+					, SUM(DMGQTY)                                        AS rtn_dmg_ea
+					, SUM(DMGQTY * CPAMT)                                AS rtn_dmg_amt
+
+					, COUNT(DISTINCT CASE WHEN DFCQTY > 0 THEN ICKEY END) AS rtn_bad_sku
+					, SUM(DFCQTY)                                        AS rtn_bad_ea
+					, SUM(DFCQTY * CPAMT)                                AS rtn_bad_amt
+
+					, COUNT(DISTINCT CASE WHEN DONAQTY > 0 THEN ICKEY END) AS rtn_don_sku
+					, SUM(DONAQTY)                                        AS rtn_don_ea
+					, SUM(DONAQTY * CPAMT)                                AS rtn_don_amt
+
+					, COUNT(DISTINCT CASE WHEN FOODDMGQTY > 0 THEN ICKEY END) AS rtn_food_sku
+					, SUM(FOODDMGQTY)                                        AS rtn_food_ea
+					, SUM(FOODDMGQTY * CPAMT)                                AS rtn_food_amt
+				FROM IB_BASE
+				GROUP BY CTKEY, OWKEY, BASE_DATE
+			),
+
+			/* ============================================================
+			* 4) 물류내 재고 집계
+			* ============================================================ */
+			STOCK_RET AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, STOCKDATE
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY IN ('DMS','DFS','DNS') AND TOTQTY > 0 THEN ICKEY END) AS wh_all_sku
+					, SUM(CASE WHEN ZNKEY IN ('DMS','DFS','DNS') THEN TOTQTY ELSE 0 END)                  AS wh_all_ea
+					, SUM(CASE WHEN ZNKEY IN ('DMS','DFS','DNS') THEN TOTQTY * SLPRC ELSE 0 END)          AS wh_all_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DMS' AND TOTQTY>0 THEN ICKEY END) AS wh_dmg_sku
+					, SUM(CASE WHEN ZNKEY='DMS' THEN TOTQTY ELSE 0 END)               AS wh_dmg_ea
+					, SUM(CASE WHEN ZNKEY='DMS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_dmg_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DFS' AND TOTQTY>0 THEN ICKEY END) AS wh_bad_sku
+					, SUM(CASE WHEN ZNKEY='DFS' THEN TOTQTY ELSE 0 END)               AS wh_bad_ea
+					, SUM(CASE WHEN ZNKEY='DFS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_bad_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DNS' AND TOTQTY>0 THEN ICKEY END) AS wh_don_sku
+					, SUM(CASE WHEN ZNKEY='DNS' THEN TOTQTY ELSE 0 END)               AS wh_don_ea
+					, SUM(CASE WHEN ZNKEY='DNS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_don_amt
+
+					, 0 AS wh_food_sku
+					, 0 AS wh_food_ea
+					, 0 AS wh_food_amt
+				FROM STOCK_BASE
+				GROUP BY CTKEY, OWKEY, STOCKDATE
+			),
+
+			/* ============================================================
+			* 5) 전체 SKU (중복 제거)
+			* ============================================================ */
+			ALL_SKU AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, 기준일자
+					, COUNT(DISTINCT ICKEY) AS all_sku
+				FROM (
+					SELECT CTKEY, OWKEY, BASE_DATE AS 기준일자, ICKEY FROM IB_BASE WHERE CNFRMQTY > 0
+					UNION
+					SELECT CTKEY, OWKEY, STOCKDATE AS 기준일자, ICKEY FROM STOCK_BASE
+					WHERE ZNKEY IN ('DMS','DFS','DNS') AND TOTQTY > 0
+				)
+				GROUP BY CTKEY, OWKEY, 기준일자
+			)
+
+			/* ============================================================
+			* 6) 최종 SELECT (넥사크로 바인드 대응)
+			* ============================================================ */
+			SELECT
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'YYYY') AS year,
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'MM')   AS month,
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'DD')   AS day,
+
+				COALESCE(A.all_sku, 0)                                   AS all_sku,
+				COALESCE(I.rtn_all_ea, 0) + COALESCE(S.wh_all_ea, 0)           AS all_ea,
+				COALESCE(I.rtn_all_amt, 0) + COALESCE(S.wh_all_amt, 0)         AS all_amt,
+
+				COALESCE(I.rtn_all_sku, 0)  AS rtn_all_sku,
+				COALESCE(I.rtn_all_ea, 0)   AS rtn_all_ea,
+				COALESCE(I.rtn_all_amt, 0)  AS rtn_all_amt,
+
+				COALESCE(S.wh_all_sku, 0)   AS wh_all_sku,
+				COALESCE(S.wh_all_ea, 0)    AS wh_all_ea,
+				COALESCE(S.wh_all_amt, 0)   AS wh_all_amt,
+
+				COALESCE(I.rtn_dmg_sku, 0)  AS rtn_dmg_sku,
+				COALESCE(I.rtn_dmg_ea, 0)   AS rtn_dmg_ea,
+				COALESCE(I.rtn_dmg_amt, 0)  AS rtn_dmg_amt,
+
+				COALESCE(I.rtn_bad_sku, 0)  AS rtn_bad_sku,
+				COALESCE(I.rtn_bad_ea, 0)   AS rtn_bad_ea,
+				COALESCE(I.rtn_bad_amt, 0)  AS rtn_bad_amt,
+
+				COALESCE(I.rtn_don_sku, 0)  AS rtn_don_sku,
+				COALESCE(I.rtn_don_ea, 0)   AS rtn_don_ea,
+				COALESCE(I.rtn_don_amt, 0)  AS rtn_don_amt,
+
+				COALESCE(I.rtn_food_sku, 0) AS rtn_food_sku,
+				COALESCE(I.rtn_food_ea, 0)  AS rtn_food_ea,
+				COALESCE(I.rtn_food_amt, 0) AS rtn_food_amt,
+
+				COALESCE(S.wh_dmg_sku, 0)   AS wh_dmg_sku,
+				COALESCE(S.wh_dmg_ea, 0)    AS wh_dmg_ea,
+				COALESCE(S.wh_dmg_amt, 0)   AS wh_dmg_amt,
+
+				COALESCE(S.wh_bad_sku, 0)   AS wh_bad_sku,
+				COALESCE(S.wh_bad_ea, 0)    AS wh_bad_ea,
+				COALESCE(S.wh_bad_amt, 0)   AS wh_bad_amt,
+
+				COALESCE(S.wh_don_sku, 0)   AS wh_don_sku,
+				COALESCE(S.wh_don_ea, 0)    AS wh_don_ea,
+				COALESCE(S.wh_don_amt, 0)   AS wh_don_amt,
+
+				COALESCE(S.wh_food_sku, 0)  AS wh_food_sku,
+				COALESCE(S.wh_food_ea, 0)   AS wh_food_ea,
+				COALESCE(S.wh_food_amt, 0)  AS wh_food_amt,
+
+				0 AS exp_sku,
+				0 AS exp_ea,
+				0 AS exp_amt
+
+			FROM IB_RET I
+			FULL OUTER JOIN STOCK_RET S
+			ON I.CTKEY = S.CTKEY
+			AND I.OWKEY = S.OWKEY
+			AND I.BASE_DATE = S.STOCKDATE
+			LEFT JOIN ALL_SKU A
+			ON A.CTKEY = COALESCE(I.CTKEY, S.CTKEY)
+			AND A.OWKEY = COALESCE(I.OWKEY, S.OWKEY)
+			AND A.기준일자 = COALESCE(I.BASE_DATE, S.STOCKDATE)
+                
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND  #{SEARCH_CONDITION}
+            </if>
+			ORDER BY year, month, day;
+
+	</sql>
+
+
+	<select id="DamageDefectPeriodCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderCount - 입고현황 - 주문별 현황 - 입고 주문 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="DamageDefectPeriodsql"/>
+		)
+	</select>
+
+	<select id="DamageDefectPeriod" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbHd - 입고현황 - 주문별 현황 - 입고 주문 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="DamageDefectPeriodsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+      <sql id="selectDamageDefectStatusSql">
+        
+        WITH 
+        /* 1. 반품 입고 원본 (IB) */
+        IB_BASE AS (
+            SELECT 
+                  A.CTKEY
+                , A.OWKEY
+                , SUBSTR(B.IBEXPCTDATE, 1, 8) AS IBEXPCTDATE
+                , A.ICKEY
+                , COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY  /* 확정수량 */
+                , COALESCE(A.DMGQTY, 0)   AS DMGQTY    /* 파손 */
+                , COALESCE(A.DFCQTY, 0)   AS DFCQTY    /* 불량 */
+                , COALESCE(A.DONAQTY, 0)  AS DONAQTY   /* 기부 */
+                , 0                  AS FOODDQTY  /* 식품폐기 (컬럼 없음 -> 0 처리) */
+                , COALESCE(A.CPAMT, 0)    AS UNIT_PRICE
+            FROM TWORK_INFO_IB_DT A
+            JOIN TWORK_INFO_IB_HD B 
+              ON A.CTKEY = B.CTKEY 
+             AND A.OWKEY = B.OWKEY 
+             AND A.IBHDKEY = B.IBHDKEY
+           WHERE B.IBHDTYPECD = '50' /* 반품 입고만 대상 */
+        ),
+        
+        /* 2. 물류내 재고 원본 (STOCK) - [수정] 테이블 및 존 마스터 변경 */
+        STOCK_BASE AS (
+            SELECT
+                  S.CTKEY
+                , S.OWKEY
+                , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') AS STOCKDATE /* 재고는 현재 기준 */
+                , S.ICKEY
+                , COALESCE(S.TOTQTY, 0) AS TOTQTY
+                , COALESCE(I.SLPRC, 0)  AS UNIT_PRICE
+                , Z.ZNKEY          AS ZONE_CD
+            FROM TWORK_INFO_IVATXLC S             /* [변경] 재고 속성별 로케이션별 재고 정보 */
+            JOIN TWORK_MST_LC L 
+              ON S.CTKEY = L.CTKEY 
+             AND S.LCKEY = L.LCKEY
+            JOIN TWORK_MST_ZN Z                   /* [변경] TWORK_MST_ZONE -> TWORK_MST_ZN */
+              ON L.CTKEY = Z.CTKEY 
+             AND L.ZNKEY = Z.ZNKEY
+            JOIN TWORK_MST_IC I 
+              ON S.CTKEY = I.CTKEY 
+             AND S.OWKEY = I.OWKEY 
+             AND S.ICKEY = I.ICKEY
+           WHERE S.TOTQTY > 0                     /* 재고가 있는 것만 조회 */
+             AND Z.ZNKEY IN ('DMS', 'DFS', 'DNS') /* DMS:파손, DFS:불량, DNS:기부 */
+        ),
+
+        /* 3-1. 반품 집계 (IB_RET) */
+        IB_RET AS (
+            SELECT
+                  MAX(CTKEY) AS CTKEY
+                , MAX(OWKEY) AS OWKEY
+                /* 전체 */
+                , COUNT(DISTINCT ICKEY)              AS RTN_TOT_SKU
+                , SUM(COALESCE(CNFRMQTY, 0))              AS RTN_TOT_EA
+                , SUM(COALESCE(CNFRMQTY, 0) * UNIT_PRICE) AS RTN_TOT_AMT
+                /* 파손 */
+                , COUNT(DISTINCT CASE WHEN DMGQTY > 0 THEN ICKEY END) AS RTN_DMG_SKU
+                , SUM(COALESCE(DMGQTY, 0))                AS RTN_DMG_EA
+                , SUM(COALESCE(DMGQTY, 0) * UNIT_PRICE)   AS RTN_DMG_AMT
+                /* 불량 */
+                , COUNT(DISTINCT CASE WHEN DFCQTY > 0 THEN ICKEY END) AS RTN_BAD_SKU
+                , SUM(COALESCE(DFCQTY, 0))                AS RTN_BAD_EA
+                , SUM(COALESCE(DFCQTY, 0) * UNIT_PRICE)   AS RTN_BAD_AMT
+                /* 기부 */
+                , COUNT(DISTINCT CASE WHEN DONAQTY > 0 THEN ICKEY END) AS RTN_DON_SKU
+                , SUM(COALESCE(DONAQTY, 0))               AS RTN_DON_EA
+                , SUM(COALESCE(DONAQTY, 0) * UNIT_PRICE)  AS RTN_DON_AMT
+                /* 식품폐기 */
+                , COUNT(DISTINCT CASE WHEN FOODDQTY > 0 THEN ICKEY END) AS RTN_FOOD_SKU
+                , SUM(COALESCE(FOODDQTY, 0))              AS RTN_FOOD_EA
+                , SUM(COALESCE(FOODDQTY, 0) * UNIT_PRICE) AS RTN_FOOD_AMT
+                , IBEXPCTDATE
+                , '20' AS DTTYPE
+            FROM IB_BASE
+            GROUP BY IBEXPCTDATE
+        ),
+
+        /* 3-2. 물류내 재고 집계 (STOCK_RET) */
+        STOCK_RET AS (
+            SELECT
+                  STOCKDATE
+                /* 전체 */
+                , COUNT(DISTINCT ICKEY)              AS WH_TOT_SKU
+                , SUM(COALESCE(TOTQTY, 0))                AS WH_TOT_EA
+                , SUM(COALESCE(TOTQTY, 0) * UNIT_PRICE)   AS WH_TOT_AMT
+                /* 파손 (DMS) */
+                , COUNT(DISTINCT CASE WHEN ZONE_CD='DMS' THEN ICKEY END) AS WH_DMG_SKU
+                , SUM(CASE WHEN ZONE_CD='DMS' THEN TOTQTY ELSE 0 END)    AS WH_DMG_EA
+                , SUM(CASE WHEN ZONE_CD='DMS' THEN TOTQTY*UNIT_PRICE ELSE 0 END) AS WH_DMG_AMT
+                /* 불량 (DFS) */
+                , COUNT(DISTINCT CASE WHEN ZONE_CD='DFS' THEN ICKEY END) AS WH_BAD_SKU
+                , SUM(CASE WHEN ZONE_CD='DFS' THEN TOTQTY ELSE 0 END)    AS WH_BAD_EA
+                , SUM(CASE WHEN ZONE_CD='DFS' THEN TOTQTY*UNIT_PRICE ELSE 0 END) AS WH_BAD_AMT
+                /* 기부 (DNS) */
+                , COUNT(DISTINCT CASE WHEN ZONE_CD='DNS' THEN ICKEY END) AS WH_DON_SKU
+                , SUM(CASE WHEN ZONE_CD='DNS' THEN TOTQTY ELSE 0 END)    AS WH_DON_EA
+                , SUM(CASE WHEN ZONE_CD='DNS' THEN TOTQTY*UNIT_PRICE ELSE 0 END) AS WH_DON_AMT
+            FROM STOCK_BASE
+            GROUP BY STOCKDATE
+        )
+
+        /* 4. 최종 조회 (Full Outer Join) */
+        SELECT
+              SUBSTR(COALESCE(I.IBEXPCTDATE, S.STOCKDATE), 1, 4) AS "year"
+            , SUBSTR(COALESCE(I.IBEXPCTDATE, S.STOCKDATE), 5, 2) AS "month"
+            , SUBSTR(COALESCE(I.IBEXPCTDATE, S.STOCKDATE), 7, 2) AS "day"
+
+            /* 1. 전체 (반품 + 물류내) */
+            , (COALESCE(I.RTN_TOT_SKU, 0) + COALESCE(S.WH_TOT_SKU, 0)) AS "all_sku"
+            , (COALESCE(I.RTN_TOT_EA, 0)  + COALESCE(S.WH_TOT_EA, 0))  AS "all_ea"
+            , (COALESCE(I.RTN_TOT_AMT, 0) + COALESCE(S.WH_TOT_AMT, 0)) AS "all_amt"
+
+            /* 2. 반품 전체 */
+            , COALESCE(I.RTN_TOT_SKU, 0) AS "rtn_all_sku"
+            , COALESCE(I.RTN_TOT_EA, 0)  AS "rtn_all_ea"
+            , COALESCE(I.RTN_TOT_AMT, 0) AS "rtn_all_amt"
+
+            /* 3. 물류내 전체 */
+            , COALESCE(S.WH_TOT_SKU, 0) AS "wh_all_sku"
+            , COALESCE(S.WH_TOT_EA, 0)  AS "wh_all_ea"
+            , COALESCE(S.WH_TOT_AMT, 0) AS "wh_all_amt"
+
+            /* 4. 반품 파손 */
+            , COALESCE(I.RTN_DMG_SKU, 0) AS "rtn_dmg_sku"
+            , COALESCE(I.RTN_DMG_EA, 0)  AS "rtn_dmg_ea"
+            , COALESCE(I.RTN_DMG_AMT, 0) AS "rtn_dmg_amt"
+
+            /* 5. 반품 불량 */
+            , COALESCE(I.RTN_BAD_SKU, 0) AS "rtn_bad_sku"
+            , COALESCE(I.RTN_BAD_EA, 0)  AS "rtn_bad_ea"
+            , COALESCE(I.RTN_BAD_AMT, 0) AS "rtn_bad_amt"
+
+            /* 6. 반품 기부 */
+            , COALESCE(I.RTN_DON_SKU, 0) AS "rtn_don_sku"
+            , COALESCE(I.RTN_DON_EA, 0)  AS "rtn_don_ea"
+            , COALESCE(I.RTN_DON_AMT, 0) AS "rtn_don_amt"
+
+            /* 7. 반품 식품파손 */
+            , COALESCE(I.RTN_FOOD_SKU, 0) AS "rtn_food_sku"
+            , COALESCE(I.RTN_FOOD_EA, 0)  AS "rtn_food_ea"
+            , COALESCE(I.RTN_FOOD_AMT, 0) AS "rtn_food_amt"
+
+            /* 8. 물류내 파손 */
+            , COALESCE(S.WH_DMG_SKU, 0) AS "wh_dmg_sku"
+            , COALESCE(S.WH_DMG_EA, 0)  AS "wh_dmg_ea"
+            , COALESCE(S.WH_DMG_AMT, 0) AS "wh_dmg_amt"
+
+            /* 9. 물류내 불량 */
+            , COALESCE(S.WH_BAD_SKU, 0) AS "wh_bad_sku"
+            , COALESCE(S.WH_BAD_EA, 0)  AS "wh_bad_ea"
+            , COALESCE(S.WH_BAD_AMT, 0) AS "wh_bad_amt"
+
+            /* 10. 물류내 기부 */
+            , COALESCE(S.WH_DON_SKU, 0) AS "wh_don_sku"
+            , COALESCE(S.WH_DON_EA, 0)  AS "wh_don_ea"
+            , COALESCE(S.WH_DON_AMT, 0) AS "wh_don_amt"
+
+            /* 11. 물류내 식품파손 (0 처리) */
+            , 0 AS "wh_food_sku"
+            , 0 AS "wh_food_ea"
+            , 0 AS "wh_food_amt"
+
+            /* 12. 유통기한 초과 (0 처리) */
+            , 0 AS "exp_sku"
+            , 0 AS "exp_ea"
+            , 0 AS "exp_amt"
+
+        FROM IB_RET I
+        FULL OUTER JOIN STOCK_RET S ON I.IBEXPCTDATE = S.STOCKDATE
+        WHERE 1=1 
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+             AND  #{SEARCH_CONDITION}
+        </if>
+        ORDER BY COALESCE(I.IBEXPCTDATE, S.STOCKDATE) DESC
+        
+    </sql>
+
+    <select id="selectDamageDefectStatusCount" resultType="int">
+        SELECT COUNT(1) cnt FROM (<include refid="selectDamageDefectStatusSql"/>) 
+    </select>
+
+    <select id="selectDamageDefectStatusList" resultType="camelMap">
+        ${GRIDPAGING_ROWNUMTYPE_TOP}
+        <include refid="selectDamageDefectStatusSql"/>
+        ${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+</mapper>

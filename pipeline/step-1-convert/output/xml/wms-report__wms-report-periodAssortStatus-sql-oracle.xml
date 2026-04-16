@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.PeriodAssortStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <sql id="sql_periodAssortStatus">
+        <![CDATA[
+        WITH PARAM AS (
+            SELECT CASE WHEN #{monthOrDay} = '20' THEN 'DAY' ELSE 'MON' END AS GRP_UNIT,
+                   CASE WHEN #{fromDate} IS NOT NULL
+                         AND LENGTH(#{fromDate}) > 0
+                         AND #{fromDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS FR_DT,
+                   CASE WHEN #{toDate} IS NOT NULL
+                         AND LENGTH(#{toDate}) > 0
+                         AND #{toDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS TO_DT
+        ),
+        BASE AS (
+            SELECT B.WORK_DT,
+                   B.CTKEY,
+                   B.OWKEY,
+                   B.SKU_TYPE,
+                   B.EXP_QTY,
+                   B.ASRT_QTY,
+                   B.UNIT_COST,
+                   P.GRP_UNIT
+            FROM (
+                SELECT DATE_TRUNC('day', TO_DATE(SUBSTR(IH.IBEXPCTDATE,1,8),'YYYYMMDD'))::DATE AS WORK_DT,
+                       CASE WHEN ID.UPRIBDTKEY IS NULL THEN 'P' ELSE 'C' END AS SKU_TYPE,
+                       ID.CTKEY,
+                       ID.OWKEY,
+                       IH.IBEXPCTDATE,
+                       COALESCE(ID.EXPCTQTY, 0) AS EXP_QTY,
+                       COALESCE(ID.ASRTWKQTY, 0) AS ASRT_QTY,
+                       COALESCE(ID.CPAMT, 0) AS UNIT_COST
+                FROM   TWORK_INFO_IB_HD IH
+                       JOIN TWORK_INFO_IB_DT ID
+                         ON IH.CTKEY = ID.CTKEY
+                        AND IH.IBHDKEY = ID.IBHDKEY
+                WHERE  ID.ASRTWKTGTYN = 'Y'
+                  AND  COALESCE(ID.IBQTY, 0) > 0
+            ) B
+            JOIN PARAM P ON 1=1
+           WHERE B.IBEXPCTDATE IS NOT NULL
+             AND (P.FR_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(TO_DATE(SUBSTR(B.IBEXPCTDATE,1,8),'YYYYMMDD'),'MM') ELSE TO_DATE(SUBSTR(B.IBEXPCTDATE,1,8),'YYYYMMDD')END) >= P.FR_DT)
+             AND (P.TO_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(TO_DATE(SUBSTR(B.IBEXPCTDATE,1,8),'YYYYMMDD'),'MM') ELSE TO_DATE(SUBSTR(B.IBEXPCTDATE,1,8),'YYYYMMDD')END) <= P.TO_DT)
+        ),
+        AGG AS (
+            SELECT GRP_UNIT,
+                   CASE WHEN GRP_UNIT = 'DAY' THEN WORK_DT ELSE TRUNC(WORK_DT,'MM') END AS GRP_DT,
+                   CTKEY,
+                   OWKEY,
+                   SUM(CASE WHEN SKU_TYPE='P' THEN 1 ELSE 0 END) AS IB_PLAN_P_SKU,
+                   SUM(CASE WHEN SKU_TYPE='C' THEN 1 ELSE 0 END) AS IB_PLAN_C_SKU,
+                   SUM(EXP_QTY) AS IB_PLAN_EA,
+                   SUM(EXP_QTY * UNIT_COST) AS IB_PLAN_AMT,
+                   SUM(CASE WHEN SKU_TYPE='P' AND ASRT_QTY>0 THEN 1 ELSE 0 END) AS ASRT_P_SKU,
+                   SUM(CASE WHEN SKU_TYPE='C' AND ASRT_QTY>0 THEN 1 ELSE 0 END) AS ASRT_C_SKU,
+                   SUM(CASE WHEN SKU_TYPE='P' AND ASRT_QTY = EXP_QTY THEN 1 ELSE 0 END) AS ASRT_P_CMPL_SKU,
+                   SUM(CASE WHEN SKU_TYPE='C' AND ASRT_QTY = EXP_QTY THEN 1 ELSE 0 END) AS ASRT_C_CMPL_SKU,
+                   SUM(ASRT_QTY) AS ASRT_EA,
+                   SUM(ASRT_QTY * UNIT_COST) AS ASRT_AMT
+            FROM BASE
+            GROUP BY GRP_UNIT,
+                     CASE WHEN GRP_UNIT='DAY' THEN WORK_DT ELSE TRUNC(WORK_DT,'MM') END,
+                     CTKEY,
+                     OWKEY
+        )
+        SELECT TO_CHAR(GRP_DT,'YYYY') AS grpyear,
+               TO_CHAR(GRP_DT,'MM')   AS grpmonth,
+               CASE WHEN GRP_UNIT='DAY' THEN TO_CHAR(GRP_DT,'DD') ELSE '-' END AS grpdate,
+               IB_PLAN_P_SKU AS ibhexptmosku,
+               IB_PLAN_C_SKU AS ibhexptjasku,
+               IB_PLAN_EA    AS ibhexptea,
+               IB_PLAN_AMT   AS ibhexptmt,
+               ASRT_P_SKU    AS asrtmosku,
+               ASRT_C_SKU    AS asrtjasku,
+               ASRT_EA       AS asrtea,
+               ASRT_AMT      AS asrtamt,
+               GREATEST(COALESCE(IB_PLAN_P_SKU - ASRT_P_CMPL_SKU, 0), 0) AS wkresmosku,
+               GREATEST(COALESCE(IB_PLAN_C_SKU - ASRT_C_CMPL_SKU, 0), 0) AS wkresjasku,
+               GREATEST(COALESCE(IB_PLAN_EA    - ASRT_EA, 0), 0) AS wkresea,
+               GREATEST(COALESCE(IB_PLAN_AMT   - ASRT_AMT, 0), 0) AS wkresamt,
+               CASE WHEN IB_PLAN_P_SKU = 0 THEN 0 ELSE ROUND(ASRT_P_CMPL_SKU / IB_PLAN_P_SKU * 100, 2) END AS progressmosku,
+               CASE WHEN IB_PLAN_C_SKU = 0 THEN 0 ELSE ROUND(ASRT_C_CMPL_SKU / IB_PLAN_C_SKU * 100, 2) END AS progressjasku,
+               CASE WHEN IB_PLAN_EA    = 0 THEN 0 ELSE ROUND(ASRT_EA    / IB_PLAN_EA    * 100, 2) END AS progressea,
+               CASE WHEN IB_PLAN_AMT   = 0 THEN 0 ELSE ROUND(ASRT_AMT   / IB_PLAN_AMT   * 100, 2) END AS progressamt
+        FROM   AGG
+        WHERE 1 = 1
+        ]]>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </sql>
+
+    <select id="selectPeriodAssortStatusInfoCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM (
+            <include refid="sql_periodAssortStatus"/>
+        ) CNT
+    </select>
+
+    <select id="selectPeriodAssortStatusInfoList" resultType="camelMap">
+        /* wms-report-periodAssortStatus-sql-oracle.xml - selectPeriodAssortStatusInfoList */
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        FROM (
+            <include refid="sql_periodAssortStatus"/>
+        ) DATA
+        ORDER BY DATA.grpyear, DATA.grpmonth, DATA.grpdate
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+</mapper>

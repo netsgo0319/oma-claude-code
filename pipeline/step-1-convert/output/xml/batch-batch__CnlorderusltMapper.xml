@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.CnlorderusltMapper">
+
+    <select id="selectBatchCnlorderList" resultType="camelMap">
+	  /* CnlorderusltMapper.xml selectBatchCnlorderList */
+       SELECT  HD.ORGORDERKEY,
+               HD.CLAIMNO,
+               DT.ICKEY,
+               DT.OLNICKEY ,
+               DT.INITQTY
+        FROM TORDER_INFO_SO_HD HD
+        JOIN TORDER_INFO_SO_DT DT
+          ON HD.OWKEY = DT.OWKEY
+         AND HD.SOHDKEY = DT.SOHDKEY
+        WHERE HD.OWKEY = 'DAISO'
+          AND HD.WKSTATUS = '40'
+          AND HD.ORDERTYPECD IN ('90','100')
+          AND HD.ORDERISTDAY BETWEEN #{startDate} AND #{endDate}
+          AND HD.CNLDATE >= TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '6' MINUTE, 'YYYYMMDDHH24MISS')
+          AND HD.CNLDATE <![CDATA[ < ]]> TO_CHAR(CURRENT_TIMESTAMP  - INTERVAL '1' MINUTE, 'YYYYMMDDHH24MISS')
+          AND EXISTS (
+                SELECT 1
+                FROM TORDER_INTF_MAL_CNLORD IF
+                WHERE IF.ORGORDERKEY = HD.ORGORDERKEY
+                  AND (IF.CLAIMNO = HD.CLAIMNO OR (IF.CLAIMNO IS NULL AND HD.CLAIMNO IS NULL))
+                  AND IF.REQUESTDT >= TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '1 days' , 'YYYYMMDD')
+              )
+    </select>
+
+
+</mapper>

@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.user.mapper.UserMapper">
+	
+	<select id="selectUserCount" resultType="java.lang.Integer" >
+		/* adm-user-user-sql-oracle.xml - selectUserCount */
+		SELECT 	COUNT(1)
+	  	FROM 	TADMIN_MST_UR TB1
+  		LEFT OUTER JOIN TADMIN_MST_URGR TB2
+	  	    		 ON TB1.URGRKEY = TB2.URGRKEY
+  		LEFT OUTER JOIN TADMIN_MST_CT TB3
+	  			 	 ON TB1.CTKEY   = TB3.CTKEY
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND	#{SEARCH_CONDITION}
+		</if>
+	</select>	
+	
+	<select id="selectUserInfoList" resultType="camelMap" >
+		/* adm-user-user-sql-oracle.xml - selectUserInfoList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+        SELECT '0' AS CHK
+			 , TB1.URKEY			/* 사용자 아이디 */
+			 , TB1.URNM				/* 사용자 명 */
+			 , TB1.URGRKEY			/* 사용자 그룹 코드 */
+			 , TB2.URGRNM			/* 사용자 그룹 코드명 */
+			 , TB1.CLOSDATE			/* 종료 일시 */
+			 , TB1.CTKEY			/* 센터 코드 */
+			 , TB3.CTNM				/* 센터 코드명 */
+			 , TB1.OWKEY			/* 화주코드 */
+			 , TB4.OWNM				/* 화주코드명 */
+			 , TB1.DEPTKEY			/* 부서코드 */
+			 , TB1.JOBTTL			/* 직급 */
+			 , TB1.GENDERTYPE		/* 성별구분 */
+			 , TB1.EMPLOYTYPE		/* 채용구분 */
+			 , pkg_crypto$decrypt(TB1.CP, 'fE0/YItliaCtbo9q/dksJtBHdayHukm3bZii/Bi8yg52mE05mlm729yWrhOghQjs') AS CP		/* 휴대폰 번호 */
+			 , TB1.WRKTYPE			/* 재직구분 */
+			 , TB1.JOINDAY			/* 일사일자 */
+			 , TB1.QUITDAY			/* 퇴사일자 */
+			 , TB1.DELYN			/* 삭제 여부 */
+			 , TB1.LASTLOGINDATE	/* 마지막로그인일시 */
+			 , TB1.LASTPWDATE		/* 마지막암호변경일시 */
+			 , TB1.LOGINFAILCNT		/* 로그인실패카운터 */
+			 , TB1.INSERTDATE		/* 입력 일시 */
+			 , TB1.INSERTURKEY		/* 입력자 */
+			 , TB1.UPDATEDATE		/* 수정 일시 */
+			 , TB1.UPDATEURKEY		/* 수정자 */
+		  FROM TADMIN_MST_UR TB1
+		  LEFT OUTER JOIN TADMIN_MST_URGR TB2
+			ON TB1.URGRKEY = TB2.URGRKEY
+		  LEFT OUTER JOIN TADMIN_MST_CT TB3
+			ON TB1.CTKEY = TB3.CTKEY
+		  LEFT OUTER JOIN TADMIN_MST_OW TB4
+			ON TB1.OWKEY = TB4.OWKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+		 ORDER BY TB1.UPDATEDATE DESC
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkTAdminMstUr" resultType="camelMap" >
+		/* adm-user-user-sql-oracle.xml - selectPkTAdminMstUr */
+		SELECT A.URKEY
+			 , A.URNM
+			 , A.URGRKEY
+		     , C.URGRNM
+		     , '' AS URPW1
+		     , '' AS URPW2
+			 , A.CTKEY
+			 , D.CTNM
+			 , A.OWKEY
+			 , B.OWNM
+			 , A.DEPTKEY
+		     , A.JOBTTL
+			 , A.GENDERTYPE
+		     , A.EMPLOYTYPE
+			 , A.WRKTYPE
+			 , pkg_crypto$decrypt(A.CP, #{encKey}) AS CP
+		     , A.JOINDAY
+		     , A.QUITDAY
+			 , A.DELYN
+		FROM TADMIN_MST_UR A
+				 LEFT OUTER JOIN TADMIN_MST_OW B
+								 ON A.OWKEY= B.OWKEY
+				 LEFT OUTER JOIN TADMIN_MST_URGR C
+								 ON A.URGRKEY = C.URGRKEY
+				 LEFT OUTER JOIN TADMIN_MST_CT D
+								 ON A.CTKEY = D.CTKEY
+	    WHERE A.URKEY = #{urkey}
+	</select>
+
+	<select id="selectUserDupCheckCount" resultType="java.lang.Integer" >
+		/* adm-user-user-sql-oracle.xml - selectUserCount */
+		SELECT 	COUNT(1)
+		FROM 	TADMIN_MST_UR TB1
+		LEFT OUTER JOIN TADMIN_MST_URGR TB2 ON TB1.URGRKEY = TB2.URGRKEY
+		LEFT OUTER JOIN TADMIN_MST_CT TB3 ON TB1.CTKEY = TB3.CTKEY
+		WHERE TB1.URKEY = #{urkey}
+	</select>
+
+	<select id="selectUserInfoChkUpdate" resultType="java.lang.Integer" >
+		/* adm-user-user-sql-oracle.xml - selectUserInfoChkUpdate */
+		SELECT
+				
+				(SELECT MAX(CHK) FROM
+				(SELECT CASE URGRKEY WHEN 'CUSTOMER' THEN 1 ELSE 0 END AS CHK 
+				  FROM TADMIN_MST_UR 
+				 WHERE URKEY = #{urkey}
+				UNION 
+				SELECT CASE #{urgrkey} WHEN 'CUSTOMER' THEN 1 ELSE 0 END AS CHK 
+				  FROM TADMIN_MST_UR 
+				 WHERE URKEY = #{urkey}))				 
+				+
+				(SELECT COUNT(1)
+				  FROM TADMIN_MST_UR U
+				  INNER JOIN TADMIN_MST_AC A
+				  		  ON U.REPACKEY = A.ACKEY
+				 WHERE U.URKEY = #{urkey}
+				   AND U.URGRKEY = 'CUSTOMER'
+				   AND A.REPACTYPE = '1'
+				 ) AS CNT
+	</select>		
+	
+	<select id="selectUserInfoChkInsert" resultType="java.lang.Integer" >
+		/* adm-user-user-sql-oracle.xml - selectUserInfoChkInsert */
+		SELECT
+				(SELECT CASE #{urgrkey} WHEN 'CUSTOMER' THEN 1 ELSE 0 END 
+				 )
+				+
+				(SELECT COUNT(1)
+				  FROM TADMIN_MST_AC
+				 WHERE ACKEY = #{urkey}
+				   AND REPACTYPE = '1') AS CNT
+	</select>		
+
+	<insert id="insertUserInfo">
+		/* adm-user-user-sql-oracle.xml - insertUserInfo */
+		INSERT INTO TADMIN_MST_UR
+		(
+			  URKEY        -- 사용자 ID
+			, URNM         -- 사용자명
+			, URGRKEY      -- 사용자 그룹 코드
+			, URPW         -- 비밀번호 (암호화된 값)
+			, CTKEY        -- 대표 센터
+			, OWKEY       -- 대표 화주
+			, DEPTKEY       -- 부서 코드
+		    , DEPTNM       -- 부서 이름
+			, JOBTTL       -- 직급
+			, GENDERTYPE   -- 성별 구분
+			, EMPLOYTYPE   -- 고용 형태
+			, WRKTYPE	   -- 재직구분
+		    , JOINDAY      -- 입사일
+			, QUITDAY      -- 퇴사 일자 (YYYYMMDDHHMMSS)
+			, IPADDR       -- 클라이언트 IP
+			, CP           -- 휴대폰 번호
+			, LASTPWDATE   -- 마지막 비밀번호 변경 일시
+			, URPWOLD1	   -- 최근 사용 비밀번호1
+			, INSERTDATE   -- 등록 일시
+			, INSERTURKEY  -- 등록자
+			, UPDATEDATE   -- 수정 일시
+			, UPDATEURKEY  -- 수정자
+			)
+			VALUES
+			(
+			  #{urkey}
+			, #{urnm}
+			, #{urgrkey}
+			, #{urpw1}
+			, #{ctkey}
+			, #{owkey}
+			, #{deptkey}
+		    , (SELECT ADCDDTNM FROM TADMIN_MST_ADCD_DT WHERE ADCDHDKEY = 'DEPTKEY' AND ADCDDTKEY = #{deptkey})
+			, #{jobttl}
+			, #{gendertype}
+			, #{employtype}
+			, #{wrktype}
+		    , SUBSTR(#{joinday}, 0, 8)
+		    , SUBSTR(#{quitday}, 0, 8)
+			, #{ipaddr}
+			, pkg_crypto$encrypt(#{cp}, #{encKey})
+			, #{sysdate}
+			, #{urpw1}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateUserInfo">
+		/* adm-user-user-sql-oracle.xml - updateUserInfo */
+		UPDATE TADMIN_MST_UR
+		   SET URNM = #{urnm}
+		     , URGRKEY = #{urgrkey}
+		     <if test='@com.kns.framework.util.StringUtil@isNotEmpty(urpw1)'>
+			     , URPW = #{urpw1}
+				 , LASTPWDATE = #{sysdate}
+			     , EXP = COALESCE(#{exp}, #{sysdate}) + 10000000000
+				 , URPWOLD1 = CASE WHEN URPWOLD1 IS NULL THEN #{urpw1}
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN URPWOLD1
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN URPWOLD1
+								   ELSE URPWOLD2
+								   END
+				 , URPWOLD2 = CASE WHEN URPWOLD1 IS NULL THEN URPWOLD2
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN #{urpw1}
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN URPWOLD2
+								   ELSE URPWOLD3
+								   END
+				 , URPWOLD3 = CASE WHEN URPWOLD1 IS NULL THEN URPWOLD3
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN URPWOLD3
+								   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN #{urpw1}
+								   ELSE #{urpw1}
+								   END
+		     </if>
+		     , CTKEY = #{ctkey}
+		     , OWKEY = #{owkey}
+		     , DEPTKEY = #{deptkey}
+		     , DEPTNM = (SELECT ADCDDTNM FROM TADMIN_MST_ADCD_DT WHERE ADCDHDKEY = 'DEPTKEY' AND ADCDDTKEY = #{deptkey})
+			 , JOBTTL = #{jobttl}
+			 , GENDERTYPE = #{gendertype}
+			 , EMPLOYTYPE = #{employtype}
+		     , WRKTYPE = #{wrktype}
+			 , JOINDAY = SUBSTR(#{joinday}, 0, 8)
+		     , QUITDAY = SUBSTR(#{quitday}, 0, 8)
+		  	 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+			 , IPADDR = #{ipaddr}
+			 , DELYN = #{delyn}
+			 , CP = pkg_crypto$encrypt(#{cp}, #{encKey})
+		 WHERE 
+		       URKEY  = #{urkey}
+	</update>
+	
+	<update id="updateMaxLoginFailCount">
+		/* adm-user-user-sql-oracle.xml - updateMaxLoginFailCount */
+		UPDATE TADMIN_MST_UR
+		   SET LOGINFAILCNT = LOGINFAILCNT + 1
+		  	 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE 
+		       URKEY  = #{urkey}
+	</update>
+
+	<update id="updateLoginFailInit">
+		/* adm-user-user-sql-oracle.xml - updateLoginFailInit */
+		UPDATE TADMIN_MST_UR
+		   SET LOGINFAILCNT = 0
+		  	 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		     <if test="urpw != null">
+				 , URPW = #{urpw}
+				 , LASTPWDATE = #{sysdate}
+				 , PWINITYN = 'Y'
+			 </if>
+		 WHERE URKEY  = #{urkey}
+	</update>
+			
+	<update id="deleteUserInfo">
+		/* adm-user-user-sql-oracle.xml - deleteUserInfo */
+		UPDATE TADMIN_MST_UR 
+		   SET DELYN = 'Y'
+		     , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE URKEY  = #{urkey}
+	</update>
+	
+	<update id="updateUserPw">
+		/* adm-user-user-sql-oracle.xml - updateUserPw */
+		UPDATE TADMIN_MST_UR
+		   SET UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+			 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(urpw)" >
+			 , URPW = #{urpw}
+		     , LASTPWDATE = #{sysdate}
+		     , URPWOLD1 = CASE WHEN URPWOLD1 IS NULL THEN #{urpw}
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN URPWOLD1
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN URPWOLD1
+							   ELSE URPWOLD2
+							   END
+		     , URPWOLD2 = CASE WHEN URPWOLD1 IS NULL THEN URPWOLD2
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN #{urpw}
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN URPWOLD2
+							   ELSE URPWOLD3
+							   END
+		     , URPWOLD3 = CASE WHEN URPWOLD1 IS NULL THEN URPWOLD3
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NULL THEN URPWOLD3
+							   WHEN URPWOLD1 IS NOT NULL AND URPWOLD2 IS NOT NULL AND URPWOLD3 IS NULL THEN #{urpw}
+							   ELSE #{urpw}
+							   END
+			 </if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+				, OWKEYM = #{owkey}
+			</if>
+		   	 <if test="pwinityn != null">
+				 , PWINITYN = #{pwinityn}
+			 </if>
+		 WHERE 
+		       URKEY  = #{urkey}
+	</update>
+
+	<select id="selectLoginUserInfo" resultType="LoginVO">
+		/* adm-user-user-sql-oracle.xml - selectLoginUserInfo */
+		SELECT
+		      A.URKEY
+			, A.URPW
+			, A.URNM
+			, A.URGRKEY
+			, A.LAKEY
+		    , 'PASS' AS CHGPW
+			, (SELECT UTCOFFSET FROM TADMIN_MST_TZ_HD WHERE TZKEY = A.TZKEY) AS UTCOFFSET
+			, A.CTKEY
+			, C.CTNM AS CTKEY_DESC
+			, A.OWKEY AS OWKEY
+			, A.LOGINFAILCNT
+			, A.DIVCD
+			, A.URTYP
+			, A.RSTCDIV
+			, A.IPADDR AS UNIQUEADDR
+			, A.REPACKEY
+			, B.ICGRPKEY
+			, A.QUIESCENCEYN
+			, A.PWINITYN
+			, D.WRITEPERMIT
+			, A.LASTPWDATE
+		    , COALESCE(A.WRKTYPE, 'Y') AS WRKTYPE
+			, pkg_crypto$decrypt(A.CP, #{encKey}) AS CP
+		FROM
+		      TADMIN_MST_UR A
+		LEFT OUTER JOIN TADMIN_MST_AC B
+		          	 ON A.URKEY = B.URKEY
+		LEFT OUTER JOIN TADMIN_MST_CT C
+			 		 ON A.CTKEY = C.CTKEY
+		INNER JOIN TADMIN_MST_URGR D
+				ON A.URGRKEY = D.URGRKEY
+		WHERE
+			A.URKEY = #{urkey}
+		AND
+		    A.DELYN = 'N'
+	</select>
+
+	<select id ="validateUserInfo" resultType="camelMap">
+		SELECT COUNT(1) AS CNT, pkg_crypto$decrypt(MAX(CP), #{encKey}) AS CP
+		  FROM TADMIN_MST_UR
+		 WHERE URKEY = #{urkey}
+		   AND URNM = #{urnm}
+		   AND DELYN = 'N'
+	</select>
+
+	<select id="selectUserInfoPop" resultType="camelMap">
+		/* adm-user-user-sql-oracle.xml - selectUserInfoPop */
+		SELECT A.URKEY
+			 , A.OWKEYM AS OWKEY
+			 , B.OWNM
+		FROM TADMIN_MST_UR A
+			LEFT OUTER JOIN TADMIN_MST_OW B
+						 ON A.OWKEYM = B.OWKEY
+		WHERE URKEY = #{urkey}
+	</select>
+
+	<select id="selectUserPasswordChk" resultType="camelMap">
+		SELECT CASE WHEN URPWOLD1 IS NOT NULL AND URPWOLD1 = #{newPw} THEN 'F'
+					WHEN URPWOLD2 IS NOT NULL AND URPWOLD2 = #{newPw} THEN 'F'
+					WHEN URPWOLD3 IS NOT NULL AND URPWOLD3 = #{newPw} THEN 'F'
+					ELSE 'S' END AS RSLT
+		FROM TADMIN_MST_UR
+		WHERE URKEY = #{urkey}
+	</select>
+
+	<select id="selectUserInfoCheck" resultType="camelMap" >
+		/* adm-user-user-sql-oracle.xml - selectUserInfoCheck */
+		SELECT A.URKEY
+			 , A.URNM
+		     , A.URPW
+			 , A.URGRKEY
+			 , A.URGRKEY || '(' || C.URGRNM|| ')' AS  URGRNAME
+			 , A.REPACKEY
+			 , A.EXP
+			 , A.CLOSDATE
+			 , A.LAKEY
+			 , G.ADCDDTNM AS LANGNAME
+			 , A.LOGINFAILCNT
+			 , A.TZKEY
+			 , A.CTKEY
+			 , CASE A.CTKEY WHEN A.CTKEY IS NULL THEN '' ELSE A.CTKEY || '(' || D.CTNM|| ')' END AS CTNM
+			 , A.OWKEYM AS OWKEY
+			 , B.OWNM
+			 , A.DIVCD
+			 , A.URTYP
+			 , A.RSTCDIV
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+			 , A.IPADDR
+			 , A.DELYN
+			 , pkg_crypto$decrypt(A.CP, #{encKey}) AS CP
+			 , A.PARTNERCD
+			 , PWINITYN
+		FROM TADMIN_MST_UR A
+				 LEFT OUTER JOIN TADMIN_MST_OW B
+								 ON A.OWKEYM= B.OWKEY
+				 LEFT OUTER JOIN TADMIN_MST_URGR C
+								 ON A.URGRKEY = C.URGRKEY
+				 LEFT OUTER JOIN TADMIN_MST_CT D
+								 ON A.CTKEY = D.CTKEY
+				 LEFT OUTER JOIN TADMIN_MST_TZ_HD F
+								 ON A.TZKEY = F.TZKEY
+				 LEFT OUTER JOIN (SELECT A.ADCDHDKEY
+									   , B.ADCDDTKEY
+									   , B.ADCDDTNM
+								  FROM TADMIN_MST_ADCD_HD A
+										   INNER JOIN TADMIN_MST_ADCD_DT B
+												   ON B.ADCDHDKEY = A.ADCDHDKEY
+												  AND B.LAKEY = #{slakey}
+								  WHERE A.ADCDHDKEY = 'LAKEY') G
+								 ON G.ADCDDTKEY = A.LAKEY
+		WHERE A.URKEY = #{urkey}
+		  AND A.DELYN = 'N'
+	</select>
+
+	<insert id="insertIfErpSmsMsg">
+		/* adm-user-user-sql-oracle.xml - insertIfErpSmsMsg */
+		INSERT INTO TADMIN_EAI_SMS_BATCH (
+		      SND_NR
+			, SND_ROW_SEQ
+			, SND_ROW_SEQ_CNT
+			, SND_DATE
+			, SND_TRNS_TYP
+			, SND_PROC_STAT
+			, SND_PROC_STAT_MSG
+			, TRN_STATS
+			, REG_ID
+			, REG_DTM
+			, WHS_COD
+			, SMS_SND_ID
+			, SMS_SND_TYP
+			, SMS_REPLY_NO
+			, SMS_MSG_TITLE
+			, SMS_MSG
+			, SMS_RECEIVER_INFO
+		) VALUES (
+		      #{sndNr}
+			, 1
+			, 1
+			, TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+			, 'I'
+			, 'N'
+			, null
+			, 'SN'
+			, #{urkey}
+			, CURRENT_TIMESTAMP
+			, #{ctkey}
+			, 'WMSBS' || #{sndNr}
+			, 'I'
+			, '03180560365'
+			, #{ctnm} || '비밀번호초기화'
+			, '비밀번호가 초기화 되었습니다. 초기 비밀번호는 ' || #{newPassword} || ' 입니다.'
+		    , #{urnm} || '^' || #{cp}
+		)
+	</insert>
+
+	<select id="selectSmsUserInfo" resultType="camelMap">
+		/* adm-user-user-sql-oracle.xml - selectSmsUserInfo */
+		SELECT UR.URKEY
+			,  UR.URNM
+			,  pkg_crypto$decrypt(UR.CP, #{encKey}) AS CP
+			,  UR.CTKEY
+			,  CT.CTNM
+		  FROM TADMIN_MST_UR UR
+		 INNER JOIN TADMIN_MST_CT CT
+				 ON UR.CTKEY = CT.CTKEY
+		 WHERE UR.URKEY = #{urkey}
+		   AND UR.DELYN = 'N'
+	</select>
+
+	<select	id="selectUserPermitInfo" resultType="camelMap">
+		/* adm-user-user-sql-oracle.xml - selectUserPermitInfo */
+		SELECT URKEY
+			 , URGRKEY
+			 , #{urgrkey} AS TOBEURGRKEY
+			 , CASE WHEN UR.URGRKEY IS NULL AND #{urgrkey} IS NOT NULL
+					THEN 'G'
+					WHEN UR.URGRKEY IS NOT NULL AND #{urgrkey} IS NULL
+					THEN 'D'
+					WHEN UR.URGRKEY != #{urgrkey}
+					THEN 'C'
+				END RESULT
+		  FROM TADMIN_MST_UR UR
+		 WHERE UR.URKEY = #{urkey}
+	</select>
+	
+	<insert id="insertRoleHistory">
+		/* adm-user-user-sql-oracle.xml - insertRoleHistory */
+		INSERT INTO TADMIN_INFO_ROLEHS (
+				PRCSDATE
+			  , PRCSURKEY
+			  , PRCSTGTURKEY
+			  , PRCSFLAG
+			  , CHGBFROLE
+			  , CHGAFROLE
+			  , INSERTDATE
+			  , INSERTURKEY
+		      , UPDATEDATE
+		      , UPDATEURKEY
+		) VALUES (
+			    #{sysdate}
+			  , #{surkey}
+			  , #{urkey}
+			  , #{result}
+			  , #{urgrkey}
+			  , #{tobeurgrkey}
+			  , #{sysdate}
+			  , #{surkey}
+			  , #{sysdate}
+			  , #{surkey}
+		)
+	</insert>
+</mapper>

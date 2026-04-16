@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.common.mapper.CommonAddrEntityMapper">
+
+	<insert id="addAddressEntitymaster">
+		<![CDATA[
+		INSERT INTO TADMIN_MST_ADDR_T (
+			  ADDRID
+			, ADDNT
+			, UNIT
+			, STNM
+			, CTYNM
+			, ZIPCD
+			, CNTRYCD
+			, STACD
+			, SHPGLOCNM
+			, LAT
+			, LON
+			, ADDRSTTCD
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) 
+		VALUES (
+			  #{addrid}
+			, #{addnt}
+			, #{unit}
+			, #{stnm}
+			, #{ctynm}
+			, #{zipcd}
+			, #{cntrycd}
+			, #{stacd}
+			, #{shpglocnm}
+			, COALESCE(#{lat}, 0)
+			, COALESCE(#{lon}, 0)
+			, '1'
+			, 'N'
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+		]]>
+	</insert>
+
+	<update id="changeAddressEntitymaster">
+		UPDATE TADMIN_MST_ADDR_T
+		SET   ZIPCD = #{zipcd}
+		    , DELYN = 'N'
+			, CTYNM = #{ctynm}
+			, STNM = #{stnm}
+		    , UPDATEDATE = #{sysdate}
+		    , UPDATEURKEY = #{surkey}
+		WHERE ADDRID = #{addrid}
+	</update>
+
+	<update id="deleteAddressEntitymaster">
+		<![CDATA[
+	    UPDATE    TADMIN_MST_ADDR_T
+		SET       DELYN      = 'Y'
+		        , UPDATEDATE     = #{sysdate}
+				, UPDATEURKEY     = #{surkey}
+		WHERE     ADDRID     = #{addrid}
+		]]>
+	</update>
+	
+	<select id="getAddrId" resultType="java.lang.Integer" >
+		SELECT nextval('seq_tadmin_mst_addr_t') as SEQ 
+	</select>
+
+</mapper>	

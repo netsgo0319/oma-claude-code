@@ -1,0 +1,2220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.order.mapper.OutboundOrderMapper">
+   
+    <select id="selectOutboundOrderHeaderCount" resultType="java.lang.Integer">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderHeaderCount */
+        SELECT  COUNT(0)
+        FROM TORDER_INFO_SO_HD A
+            INNER JOIN TORDER_INFO_CO_HD B
+               	     ON A.OWKEY = B.OWKEY
+               	    AND A.COHDKEY = B.COHDKEY
+            INNER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.ICKEY)    AS SKU
+	                      , SUM(T.EXPCTQTY)   AS EXPCTQTY
+	                      , SUM(T.SLPRC)      AS SLPRC
+                          , SUM(T.CNFRMYN)    AS CNFRMSKU
+	                      , SUM(T.CNFRMQTY)   AS CNFRMQTY
+	                      , SUM(T.CNFRMSLPRC) AS CNFRMSLPRC
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+		                      , X.ICKEY
+		                      , MAX(I.SLPRC) * SUM(X.EXPCTQTY) AS  SLPRC
+		                      , SUM(X.EXPCTQTY) AS EXPCTQTY
+                              , CASE WHEN SUM(CNFRMQTY) > 0 THEN 1 ELSE 0 END CNFRMYN
+		                      , SUM(CNFRMQTY) AS CNFRMQTY
+		                      , MAX(I.SLPRC) * SUM(CNFRMQTY) AS CNFRMSLPRC
+		                 FROM TORDER_INFO_SO_DT X
+		                 INNER JOIN TORDER_MST_IC I
+		                         ON X.OWKEY = I.OWKEY
+		                        AND X.ICKEY = I.ICKEY
+		                 WHERE X.OWKEY = #{owkey}
+                         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+                         	AND  X.ICKEY IN
+                            <foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+                               #{ickey}
+                            </foreach>
+                         </if>
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.ICKEY
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) C
+                ON A.OWKEY = C.OWKEY AND A.SOHDKEY = C.SOHDKEY
+            INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+            WHERE H.OBYN = 'Y'
+                AND H.ORDERAT = 'MALGENERAL'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                        #{ortype}
+                    </foreach>
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                    AND A.ORDERTYPECD = '100'
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                    AND C.SLPRC > #{isSlprc}
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isNissndyn)'>
+                    AND COALESCE(A.NISSNDYN, 'N') = #{isNissndyn}
+                </if>
+            </if>
+    </select>
+
+    <select id="selectOutboundOrderHeaderList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderHeaderList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+            SELECT  '0' AS CHK
+                   , A.OWKEY
+                   , A.ORDERISTDAY 
+                   , A.DLVYEXPCTDAY
+                   , A.CNFRMDAY
+                   , A.CTKEY
+                   , MCB.CTNM AS OBCTNM
+                   , A.FROMTOCTKEY
+                   , MCA.CTNM AS IBCTNM
+                   , A.ORDERTYPECD     
+                   , H.ORDERTYPENM  
+                   , A.ORGORDERKEY   
+                   , A.SOHDKEY         
+                   , A.COHDKEY  
+                   , D.WBLNO
+                   , D.WBLCNT
+                   , (
+                      CASE WHEN (SELECT COUNT(*) FROM TORDER_INFO_SO_HD X WHERE X.OWKEY = A.OWKEY AND X.SOHDKEY = A.SOHDKEY AND X.ORDERTYPECD = '100') > 0 
+                      	   THEN 'Y' 
+                      ELSE 'N' END
+                     ) AS EXCYN
+                   , A.WKSTATUS
+                   , COALESCE(C.SKU, 0)              AS EXPCTSKU
+                   , COALESCE(C.EXPCTQTY, 0)         AS EXPCTQTY
+                   , COALESCE(C.SLPRC, 0)            AS EXPCTSLPRC
+                   , COALESCE(C.CNFRMSKU, 0)         AS CNFRMSKU
+                   , COALESCE(C.CNFRMQTY, 0)         AS CNFRMQTY
+                   , COALESCE(C.CNFRMSLPRC, 0)       AS CNFRMSLPRC
+                   , A.CMT
+                   , COALESCE(A.NISYN, 'N') AS NISPRCSYN
+                   , COALESCE(A.NISSNDYN, 'N') AS NISSNDYN --  전체결품/몰결품처리전송여부
+                   , A.RECPNM
+                   , A.RECPADDRHD					  
+				   , A.RECPADDRDT
+				   , A.RECPZIPCD
+				   , A.RECPTEL01
+				   , A.RECPTEL02
+			       , A.BUYER
+			       , A.BUYERADDRHD
+			       , A.BUYERADDRDT
+			       , A.BUYERZIPCD
+			       , A.BUYERTEL01
+			       , A.BUYERTEL02
+			       , A.RECALLER
+			       , A.RECALLERADDRHD
+			       , A.RECALLERADDRDT
+			       , A.RECALLERZIPCD
+			       , A.RECALLERTEL01
+			       , A.RECALLERTEL02
+                   , A.ORDERERRCD
+                   , A.ORDERERRCMT
+                   , CASE WHEN A.IFYN = 'Y' THEN 'N' ELSE 'Y' END AS IFYN -- 수기등록여부
+                   , A.INSERTDATE
+                   , A.INSERTURKEY
+                   , A.UPDATEDATE
+                   , A.UPDATEURKEY
+            FROM TORDER_INFO_SO_HD A
+            INNER JOIN TORDER_INFO_CO_HD B
+               	     ON A.OWKEY = B.OWKEY
+               	    AND A.COHDKEY = B.COHDKEY
+            INNER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.ICKEY)    AS SKU
+	                      , SUM(T.EXPCTQTY)   AS EXPCTQTY
+	                      , SUM(T.SLPRC)      AS SLPRC
+                          , SUM(T.CNFRMYN)    AS CNFRMSKU
+	                      , SUM(T.CNFRMQTY)   AS CNFRMQTY
+	                      , SUM(T.CNFRMSLPRC) AS CNFRMSLPRC
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+		                      , X.ICKEY
+		                      , MAX(I.SLPRC) * SUM(X.EXPCTQTY) AS  SLPRC
+		                      , SUM(X.EXPCTQTY) AS EXPCTQTY
+                              , CASE WHEN SUM(CNFRMQTY) > 0 THEN 1 ELSE 0 END CNFRMYN
+		                      , SUM(CNFRMQTY) AS CNFRMQTY
+		                      , MAX(I.SLPRC) * SUM(CNFRMQTY) AS CNFRMSLPRC
+		                 FROM TORDER_INFO_SO_DT X
+		                 INNER JOIN TORDER_MST_IC I
+		                         ON X.OWKEY = I.OWKEY
+		                        AND X.ICKEY = I.ICKEY
+		                 WHERE X.OWKEY = #{owkey}
+                         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+							AND  X.ICKEY IN
+						<foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+						   #{ickey}
+						</foreach>
+						</if>
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.ICKEY
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) C
+                ON A.OWKEY = C.OWKEY AND A.SOHDKEY = C.SOHDKEY
+            LEFT OUTER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.WBLNO) AS WBLCNT
+	                      , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+						        ELSE MIN(T.WBLNO)
+						   END AS WBLNO
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+ 		                      , X.WBLNO
+		                 FROM TORDER_INFO_SO_WBLNO X
+		                 WHERE X.OWKEY = 'DAISO'
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) D
+                ON A.OWKEY = D.OWKEY AND A.SOHDKEY = D.SOHDKEY
+            INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+            LEFT OUTER JOIN TORDER_MST_CT MCA ON A.FROMTOCTKEY = MCA.CTKEY
+            LEFT OUTER JOIN TORDER_MST_CT MCB ON A.CTKEY = MCB.CTKEY
+            WHERE H.OBYN = 'Y'
+                AND H.ORDERAT = 'MALGENERAL'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                        #{ortype}
+                    </foreach>
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                    AND A.ORDERTYPECD = '100'
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                    AND C.SLPRC > #{isSlprc}
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isNissndyn) '>
+                    AND COALESCE(A.NISSNDYN, 'N') = #{isNissndyn}
+                </if>
+            </if>
+
+            ORDER BY A.UPDATEDATE DESC
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <select id="selectOutboundOrderDetailList" resultType="camelMap">
+         /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderDetailList */
+            SELECT '0' AS CHK
+                 , A.OWKEY
+                 , A.ORDERISTDAY 
+                 , A.DLVYEXPCTDAY
+                 , A.CNFRMDAY
+                 , A.CTKEY
+                 , MCB.CTNM AS OBCTNM
+                 , A.FROMTOCTKEY
+                 , MCA.CTNM AS IBCTNM
+                 , A.ORDERTYPECD     
+                 , H.ORDERTYPENM  
+                 , A.ORGORDERKEY   
+                 , A.SOHDKEY         
+                 , A.COHDKEY  
+                 , SW.WBLNO
+                 , (
+                    CASE WHEN (SELECT COUNT(*) FROM TORDER_INFO_SO_HD X WHERE X.OWKEY = A.OWKEY AND X.SOHDKEY = A.SOHDKEY AND X.ORDERTYPECD = '100') > 0 
+                    	   THEN 'Y' 
+                    ELSE 'N' END
+                   ) AS EXCYN
+                 , C.WKSTATUS
+                 , IC.ICKEY
+			     , IC.ICNM
+				 , COALESCE(ASRT.ASRTKEY, IC.ICKEY) AS ASRTKEY
+				 , COALESCE(ASRT.ASRTNM, IC.ICNM) AS ASRTNM
+                 , COALESCE(C.INITQTY, 0)                                 AS INITQTY
+                 , COALESCE(C.NISQTY, 0)                                  AS NISQTY
+                 , COALESCE(C.EXPCTQTY, 0)                               AS EXPCTQTY
+                 , COALESCE(C.EXPCTQTY * IC.SLPRC, 0)                    AS EXPCTSLPRC
+                 , COALESCE(C.CNFRMQTY, 0)                               AS CNFRMQTY
+                 , COALESCE(C.CNFRMQTY * IC.SLPRC, 0)                    AS CNFRMSLPRC
+                 , COALESCE(C.NISQTY, 0)  AS OPENCHKQTY
+                 , COALESCE(C.AVIVQTY, 0)  AS AVIVQTY
+                 , A.CMT   
+                 , CASE WHEN A.IFYN = 'Y' THEN 'N' ELSE 'Y' END AS IFYN -- 수기등록여부
+                 , C.ORDERERRCD
+                 , C.ORDERERRCMT
+                 , C.INSERTDATE
+                 , C.INSERTURKEY
+                 , C.UPDATEDATE
+                 , C.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.OWKEY = B.OWKEY
+               AND A.COHDKEY = B.COHDKEY
+        INNER JOIN TORDER_INFO_SO_DT C
+                ON A.OWKEY = C.OWKEY
+               AND A.SOHDKEY = C.SOHDKEY
+        LEFT OUTER JOIN TORDER_MST_AC G ON A.OWKEY = G.OWKEY  AND A.ACKEY = G.ACKEY
+        INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+        INNER JOIN TORDER_MST_IC IC
+		        ON A.OWKEY = IC.OWKEY
+		       AND C.ICKEY = IC.ICKEY
+		       AND IC.DELYN = 'N'
+		LEFT JOIN TORDER_MST_ASRT ASRT
+		       ON A.OWKEY = ASRT.OWKEY
+		      AND C.OLNICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			   ON ASRT.OWKEY = REP.OWKEY
+			  AND ASRT.ASRTREPKEY = REP.ICKEY
+        LEFT OUTER JOIN TORDER_MST_AC J ON IC.OWKEY = J.OWKEY AND IC.ACKEY = J.ACKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCA ON A.FROMTOCTKEY = MCA.CTKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCB ON A.CTKEY = MCB.CTKEY
+        LEFT OUTER JOIN
+        (
+         SELECT T.SOHDKEY
+              , T.OWKEY
+              , T.DLVRYCORP
+              , COUNT(T.WBLNO) AS WBLCNT
+              , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+			        ELSE MIN(T.WBLNO)
+			   END AS WBLNO
+         FROM (
+             SELECT X.OWKEY
+                  , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+                  , X.DLVRYCORP
+                  , X.WBLNO
+             FROM TORDER_INFO_SO_WBLNO X
+             WHERE X.OWKEY = 'DAISO'
+             GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO, X.DLVRYCORP
+         	) T GROUP BY T.SOHDKEY, T.OWKEY, T.DLVRYCORP
+         ) SW        
+         ON A.OWKEY = SW.OWKEY AND A.SOHDKEY = SW.SOHDKEY
+        WHERE C.OWKEY = #{owkey}
+          AND C.SOHDKEY = #{sohdkey}
+        ORDER BY LPAD(C.SODTKEY::TEXT, 20, '0')
+    </select>
+    
+    <select id="selectOutboundOrderNisCount" resultType="java.lang.Integer">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderNisCount */
+        SELECT  COUNT(0)
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.OWKEY = B.OWKEY
+               AND A.COHDKEY = B.COHDKEY
+        INNER JOIN TORDER_INFO_SO_DT C
+                ON A.OWKEY = C.OWKEY
+               AND A.SOHDKEY = C.SOHDKEY
+        LEFT OUTER JOIN TORDER_MST_AC G ON A.OWKEY = G.OWKEY  AND A.ACKEY = G.ACKEY
+        INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+        INNER JOIN TORDER_MST_IC IC ON A.OWKEY = IC.OWKEY AND C.ICKEY = IC.ICKEY
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+         	AND  IC.ICKEY IN
+            <foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+               #{ickey}
+            </foreach>
+         </if>
+        LEFT JOIN TORDER_MST_ASRT ASRT
+		       ON A.OWKEY = ASRT.OWKEY
+		      AND C.OLNICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			   ON ASRT.OWKEY = REP.OWKEY
+			  AND ASRT.ASRTREPKEY = REP.ICKEY
+        LEFT OUTER JOIN TORDER_MST_AC J ON IC.OWKEY = J.OWKEY  AND IC.ACKEY = J.ACKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCA ON A.FROMTOCTKEY = MCA.CTKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCB ON A.CTKEY = MCB.CTKEY
+        LEFT OUTER JOIN
+        (
+         SELECT T.SOHDKEY
+              , T.OWKEY
+              , COUNT(T.WBLNO) AS WBLCNT
+              , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+			        ELSE MIN(T.WBLNO)
+			   END AS WBLNO
+         FROM (
+             SELECT X.OWKEY
+                  , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+                  , X.WBLNO
+             FROM TORDER_INFO_SO_WBLNO X
+             WHERE X.OWKEY = 'DAISO'
+             GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO
+         	) T GROUP BY T.SOHDKEY, T.OWKEY
+         ) SW
+        ON A.OWKEY = SW.OWKEY AND A.SOHDKEY = SW.SOHDKEY 
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                AND  A.WKSTATUS != #{cancelYn}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                AND  A.ORDERTYPECD IN
+                <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                    #{ortype}
+                </foreach>
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                AND A.ORDERTYPECD = '100'
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                AND MO.SLPRC * C.EXPCTQTY > #{isSlprc}
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(nisyn)'>
+                AND COALESCE(C.NISYN, 'N') = #{nisyn}
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isNissndyn) '>
+                AND COALESCE(A.NISSNDYN, 'N') = #{isNissndyn}
+            </if>
+        </if>
+    </select>
+
+    <select id="selectOutboundOrderNisList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderNisList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+            SELECT  '0' AS CHK
+                   , A.OWKEY
+                   , A.ORDERISTDAY 
+                   , A.DLVYEXPCTDAY
+                   , A.CNFRMDAY
+                   , A.FROMTOCTKEY
+                   , MCB.CTNM AS IBCTNM
+                   , A.CTKEY
+                   , MCA.CTNM AS OBCTNM
+                   , A.ORDERTYPECD     
+                   , H.ORDERTYPENM  
+                   , A.ORGORDERKEY   
+                   , A.SOHDKEY         
+                   , A.COHDKEY  
+                   , SW.WBLNO
+                   , (
+                      CASE WHEN (
+						         SELECT COUNT(*) 
+                                 FROM TORDER_INFO_SO_HD X 
+                                 WHERE X.OWKEY = A.OWKEY 
+                                 AND X.SOHDKEY = A.SOHDKEY 
+                                 AND X.ORDERTYPECD = '100'
+                                ) > 0 
+                      	   THEN 'Y' 
+                      ELSE 'N' END) AS EXCYN
+                   , C.WKSTATUS
+                   , IC.ICKEY
+			       , IC.ICNM
+				   , COALESCE(ASRT.ASRTKEY, IC.ICKEY) AS ASRTKEY
+				   , COALESCE(ASRT.ASRTNM, IC.ICNM) AS ASRTNM
+                   , COALESCE(C.EXPCTQTY, 0) AS EXPCTQTY
+                   , COALESCE(C.EXPCTQTY * IC.SLPRC, 0) AS EXPCTSLPRC
+                   , COALESCE(C.NISQTY, 0) AS NISQTY
+                   , COALESCE(C.NISQTY * IC.SLPRC, 0) AS NISSLPRC
+                   , COALESCE(C.INITQTY, 0) AS INITQTY
+                   , COALESCE(C.CNFRMQTY, 0) AS CNFRMQTY
+                   , COALESCE(C.AVIVQTY, 0)  AS AVIVQTY
+                   , A.CMT   
+                   , A.NISYN
+                   , C.SODTKEY
+                   , C.URGENCYREQYN
+                   , C.ORDERERRCD
+                   , C.ORDERERRCMT
+                   , C.INSERTDATE
+                   , C.INSERTURKEY
+                   , C.UPDATEDATE
+                   , C.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.OWKEY = B.OWKEY
+               AND A.COHDKEY = B.COHDKEY
+        INNER JOIN TORDER_INFO_SO_DT C
+                ON A.OWKEY = C.OWKEY
+               AND A.SOHDKEY = C.SOHDKEY
+        LEFT OUTER JOIN TORDER_MST_AC G ON A.OWKEY = G.OWKEY  AND A.ACKEY = G.ACKEY
+        INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+        INNER JOIN TORDER_MST_IC IC ON A.OWKEY = IC.OWKEY AND C.ICKEY = IC.ICKEY AND IC.DELYN = 'N'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+         	AND  IC.ICKEY IN
+            <foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+               #{ickey}
+            </foreach>
+         </if>
+        LEFT JOIN TORDER_MST_ASRT ASRT
+		       ON A.OWKEY = ASRT.OWKEY
+		      AND C.OLNICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			   ON ASRT.OWKEY = REP.OWKEY
+			  AND ASRT.ASRTREPKEY = REP.ICKEY
+        LEFT OUTER JOIN TORDER_MST_AC J ON IC.OWKEY = J.OWKEY  AND IC.ACKEY = J.ACKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCA ON A.CTKEY = MCA.CTKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCB ON A.FROMTOCTKEY = MCB.CTKEY
+        LEFT OUTER JOIN
+        (
+         SELECT T.SOHDKEY
+              , T.OWKEY
+              , COUNT(T.WBLNO) AS WBLCNT
+              , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+			        ELSE MIN(T.WBLNO)
+			   END AS WBLNO
+         FROM (
+             SELECT X.OWKEY
+                  , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+                  , X.WBLNO
+             FROM TORDER_INFO_SO_WBLNO X
+             WHERE X.OWKEY = #{owkey}
+             GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO
+         	) T GROUP BY T.SOHDKEY, T.OWKEY
+         ) SW
+        ON A.OWKEY = SW.OWKEY AND A.SOHDKEY = SW.SOHDKEY 
+<!--        AND (C.ICKEY = SW.ICKEY OR SW.ICKEY IS NULL)-->
+        WHERE 1 = 1
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND #{SEARCH_CONDITION}
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                AND  A.WKSTATUS != #{cancelYn}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                AND  A.ORDERTYPECD IN
+                <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                    #{ortype}
+                </foreach>
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                AND A.ORDERTYPECD = '100'
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                AND MO.SLPRC * C.EXPCTQTY > #{isSlprc}
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(nisyn)'>
+                AND COALESCE(C.NISYN, 'N') = #{nisyn}
+            </if>
+            <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isNissndyn) '>
+                AND COALESCE(A.NISSNDYN, 'N') = #{isNissndyn}
+            </if>
+        </if>
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+    
+    <select id="selectNisPrcsInfoList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectNisPrcsInfoList */
+        SELECT SH.SOHDKEY
+        	 , SD.SODTKEY
+        	 , SH.COHDKEY 
+        	 , SD.CODTKEY 
+             , SH.ORGORDERKEY 
+		     , SH.CLAIMNO 
+		     , SD.ICKEY 
+		     , SD.OLNICKEY 
+		     , SD.NISYN
+		     , COALESCE(SD.EXPCTQTY, 0) AS EXPCTQTY 
+		     , COALESCE(SD.NISQTY, 0) AS NISQTY
+		     , SD.EXPCTQTY - COALESCE(SD.NISQTY, 0) AS CNFRMQTY 
+		     , CASE WHEN (SD.EXPCTQTY - COALESCE(SD.NISQTY, 0)) > 0 THEN 'MAL' ELSE 'MAL' END AS IFDIV
+		FROM TORDER_INFO_SO_HD SH
+		INNER JOIN TORDER_INFO_SO_DT SD
+		ON SH.OWKEY = SD.OWKEY 
+		AND SH.SOHDKEY = SD.SOHDKEY
+		WHERE 1 = 1
+		AND SH.OWKEY = #{owkey}
+		AND SH.SOHDKEY = #{sohdkey}
+		AND SH.NISYN = 'Y'
+		AND SD.WKSTATUS != #{soSendStatus}
+
+    </select>
+    
+    <update id="updateNisPrcsSoDt">
+		/* oms-master-commonCode-sql-oracle.xml - updateNisPrcsSoDt */
+		UPDATE TORDER_INFO_SO_DT
+		SET WKSTATUS      = #{soWkstatus}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND SOHDKEY    = #{sohdkey}
+		  AND SODTKEY IN
+	      <foreach collection="sodtkeys" item="sodtkey" open="(" separator="," close=")">
+	          #{sodtkey}
+	      </foreach>
+	</update>
+	
+	<update id="updateNisPrcsSoHd">
+		/* oms-master-commonCode-sql-oracle.xml - updateNisPrcsSoHd */
+		UPDATE TORDER_INFO_SO_HD
+		SET WKSTATUS      = #{soWkstatus}
+		  , CNFRMDAY     = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND SOHDKEY    = #{sohdkey}
+		  AND (SELECT CASE WHEN SUM(CASE WHEN WKSTATUS=#{soWkstatus} THEN 1 ELSE 0 END) = COUNT(1) THEN 'Y' ELSE 'N' END
+	               FROM TORDER_INFO_SO_DT
+	              WHERE OWKEY = #{owkey}
+	                AND SOHDKEY = #{sohdkey}
+	           ) = 'Y'
+	</update>
+	
+	<update id="updateNisPrcsCoDt">
+		/* oms-master-commonCode-sql-oracle.xml - updateNisPrcsCoDt */
+		UPDATE TORDER_INFO_CO_DT
+		SET WKSTATUS      = #{coWkstatus}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COHDKEY    = #{cohdkey}
+		  AND CODTKEY IN
+	      <foreach collection="codtkeys" item="codtkey" open="(" separator="," close=")">
+	          #{codtkey}
+	      </foreach>
+	</update>
+	
+	<update id="updateNisPrcsCoHd">
+		/* oms-master-commonCode-sql-oracle.xml - updateNisPrcsCoHd */
+		UPDATE TORDER_INFO_CO_HD
+		SET WKSTATUS     = #{coWkstatus}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE OWKEY       = #{owkey}
+		  AND COHDKEY    = #{cohdkey}
+		  AND (SELECT CASE WHEN SUM(CASE WHEN WKSTATUS=#{coWkstatus} THEN 1 ELSE 0 END) = COUNT(1) THEN 'Y' ELSE 'N' END
+                 FROM TORDER_INFO_CO_DT
+                WHERE OWKEY = #{owkey}
+                  AND COHDKEY = #{cohdkey}
+               ) = 'Y'
+	</update>
+    
+    <select id="selectOutboundOrderHdList" resultType="com.daiso.oms.ordercommon.vo.ServiceOrderProcVO$ServiceOrdersVO">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderHdList */
+        SELECT  OWKEY
+              , SOHDKEY
+              , DLVYEXPCTDAY
+              , ORDERISTDAY
+              , ORDERTYPECD
+              , WKSTATUS
+              , CTKEY
+              , DLVYACKEY
+              , STOREKEY
+              , BILLKEY
+              , PAYERKEY
+              , ACKEY
+              , LOGGRPCD
+              , ORGORDERKEY
+              , FROMTOCTKEY
+              , ICGRTYPE
+              , ICGRKEY
+              , POTYPE
+              , RFRNCKEY
+              , SALESEMPID
+              , DLVYEMPID
+              , EDIYN
+              , CMT
+              , CNLYN
+              , CNLDATE
+              , CNLEMPID
+              , ORDERSNDYN
+              , ORDERSNDDATE
+              , ORDERSNDUSERID
+              , COHDKEY
+              , EXTORDERTYPECD
+              , ORDERERRCD
+              , ORDERERRCMT
+              , ORDERRSNCD
+              , ADDCMT01
+              , RECPNM
+              , RECPADDRHD
+              , RECPADDRDT
+              , RECPZIPCD
+              , RECPTEL01
+              , RECPTEL02
+              , BUYER
+              , BUYERADDRHD
+              , BUYERADDRDT
+              , BUYERZIPCD
+              , BUYERTEL01
+              , BUYERTEL02
+              , RECALLER
+              , RECALLERADDRHD
+              , RECALLERADDRDT
+              , RECALLERZIPCD
+              , RECALLERTEL01
+              , RECALLERTEL02
+              , RIRSNCD
+              , CLAIMNO
+              , DLVYMETHDCD
+              , DLVYMETHDDTCD
+              , MALORDERDIV
+              , NISYN
+              , NISCNLRNGDIV
+              , PAYMTCOMPLDAY
+              , PARTERID
+              , ACCESSKEY
+              , ADDCMT02
+              , SHMISTNO
+              , INSERTDATE
+              , INSERTURKEY
+              , UPDATEDATE
+              , UPDATEURKEY
+              , 'Y' AS FRONTYN
+              , 'N' AS OPENCHKYN
+        FROM TORDER_INFO_SO_HD
+        WHERE 1 = 1
+        AND SOHDKEY = #{sohdkey}
+    </select>
+    
+    <select id="selectOutboundOrderDtList" resultType="com.daiso.oms.ordercommon.vo.ServiceOrderProcVO$ServiceOrderItemsVO">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderDtList */
+        SELECT B.OWKEY
+		     , A.CTKEY
+             , B.SOHDKEY
+             , B.SODTKEY
+             , B.ICKEY
+             , B.OLNICKEY
+             , B.ICUTKEY
+             , B.UOM
+             , B.INITQTY
+             , B.EXPCTQTY
+             , B.CNFRMQTY
+             , B.SNDQTY
+             , B.DLVYEXPCTDAY
+             , B.ORDERISTDAY
+             , B.OBAMT
+             , B.TTWEIGHT
+             , B.WEIGHTUNIT
+             , B.VOL
+             , B.VOLUNIT
+             , B.LOGGRPCD
+             , B.CMT
+             , B.PRDCTLOT
+             , B.PRDCTDAY
+             , B.WKSTATUS
+             , B.RFRNCKEY
+             , B.RFRNCDTKEY
+             , B.ORGORDERKEY
+             , B.ORGORDERDTKEY
+             , B.CNFRMYN
+             , B.CNLYN
+             , B.NISCMT
+             , B.RICMT
+             , B.COHDKEY
+             , B.CODTKEY
+             , B.ORDERERRCD
+             , B.ORDERERRCMT
+             , B.ICGRKEY
+             , B.ICGRTYPE
+             , B.SPEC
+             , B.DLVYCNTRUNIT
+             , B.MALBOXQTY
+             , B.MALPCSQTY
+             , B.NISQTY
+             , B.NISYN
+             , B.INSERTDATE
+             , B.INSERTURKEY
+             , B.UPDATEDATE
+             , B.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_SO_DT B
+                ON A.OWKEY = B.OWKEY
+               AND A.SOHDKEY = B.SOHDKEY
+        WHERE 1 = 1
+        AND A.SOHDKEY = #{sohdkey}
+        AND B.SODTKEY IN
+	    <foreach collection="sodtkeys" item="sodtkey" open="(" separator="," close=")">
+	        #{sodtkey}
+	    </foreach>
+    </select>
+    
+    <select id="selectSoDispReCreateInfoList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoDispReCreateInfoList */
+        SELECT SH.SOHDKEY 
+        	 , SD.SODTKEY
+        	 , SH.COHDKEY 
+        	 , SD.CODTKEY 
+             , SH.ORGORDERKEY 
+		     , SH.CLAIMNO 
+		     , SD.ICKEY 
+		     , SD.OLNICKEY 
+		     , SD.EXPCTQTY 
+		     , SD.NISQTY
+		     , SD.EXPCTQTY - SD.NISQTY AS CNFRMQTY 
+		     , CASE WHEN (SD.EXPCTQTY - SD.NISQTY) > 0 THEN 'WMS' ELSE 'MAL' END AS IFDIV
+		FROM TORDER_INFO_SO_HD SH
+		INNER JOIN TORDER_INFO_SO_DT SD
+		ON SH.OWKEY = SD.OWKEY 
+		AND SH.SOHDKEY = SD.SOHDKEY 
+		WHERE 1 = 1
+		AND SH.OWKEY = #{owkey}
+		AND SH.SOHDKEY = #{sohdkey}
+		AND SH.WKSTATUS = #{soWkstatus}
+    </select>
+    
+    <select id="selectTOrderMstOwOrderTypeList" resultType="camelMap">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - selectTOrderMstOwOrderTypeList */
+		SELECT A.EXTORDERTYPECD AS FIELD1
+			,  B.EXTORDERTYPENM AS FIELD2
+			,  A.ORDERTYPECD || ' : '|| C.ORDERTYPENM AS FIELD3
+			,  A.ORDERTYPECD AS FIELD4
+			,  A.OWKEY AS FIELD5
+			,  C.ORDERTYPENM AS FIELD6
+            ,  C.WMSYN AS FIELD7
+		FROM TORDER_INFO_ORTYPE_MAPPING A
+			INNER JOIN TORDER_MST_EXTERN B
+				    ON A.OWKEY = B.OWKEY
+				   AND A.EXTORDERTYPECD = B.EXTORDERTYPECD
+			INNER JOIN TORDER_MST_ORTYPE C
+					ON A.OWKEY = C.OWKEY
+				   AND A.ORDERTYPECD = C.ORDERTYPECD
+		WHERE A.DELYN = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibyn)">
+			AND C.IBYN = #{ibyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obyn)">
+			AND C.OBYN = #{obyn}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ordertypecd)" >
+	     	AND C.ORDERTYPECD IN
+	        <foreach item="ordertypecd" index="index" collection="ordertypecd"    open="(" separator="," close=")">
+	           #{ordertypecd}
+	        </foreach>
+	    </if>	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orderat)">
+			AND C.ORDERAT = #{orderat}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wmsobtype)">
+			AND C.WMSOBTYPE = #{wmsobtype}
+		</if>
+		ORDER BY A.EXTORDERTYPECD, LPAD(A.ORDERTYPECD::TEXT, 20, '0')
+	</select>
+	
+	<select id="selectOrderTypeCodeCheck" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOrderTypeCodeCheck */
+        SELECT CH.OWKEY
+            ,  CH.ORDERTYPECD
+            ,  CH.HDDTDIV
+            ,  CH.SOCOLUMN
+            ,  CH.REQRDYN
+            ,  CH.DELYN
+        FROM TORDER_INFO_SO_CHK CH
+        JOIN TORDER_MST_ORTYPE OT
+          ON CH.OWKEY = OT.OWKEY
+         AND CH.ORDERTYPECD = OT.ORDERTYPECD
+         AND OT.DELYN = 'N'
+        WHERE CH.DELYN = 'N'
+          AND CH.REQRDYN = 'Y'
+          AND CH.OWKEY = #{owkey}
+    </select>
+	
+	<select id="selectOrderTypeMappingList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOrderTypeMappingList */
+        SELECT A.OWKEY
+             , A.EXTORDERTYPECD
+             , A.ORDERTYPECD
+        FROM TORDER_INFO_ORTYPE_MAPPING A
+        WHERE A.DELYN = 'N'
+    </select>
+	
+	<select id="selectOrderTypeReasonList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOrderTypeReasonList */
+        SELECT A.OWKEY
+             , A.ORDERTYPECD
+             , B.ORDERRSNCD
+             , B.ORDERRSNNM
+        FROM TORDER_MST_ORTYPE A
+             INNER JOIN TORDER_MST_ORTYPEREASON B
+                     ON A.OWKEY = B.OWKEY
+                    AND A.ORDERTYPECD = B.ORDERTYPECD
+                    AND B.DELYN ='N'
+        WHERE A.DELYN = 'N'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+    </select>
+    
+    <update id="updateOutboundOrderHeaderTemp">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateOutboundOrderHeaderTemp */
+        UPDATE TORDER_UPLOAD_SO
+           SET DLVYEXPCTDAY = #{dlvyexpctday}
+             , ORDERISTDAY  = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+             , ORDERTYPECD  = #{ordertypecd}
+             , FROMTOCTKEY  = #{fromtoctkey}
+             , CTKEY        = #{ctkey}
+             , ACKEY        = #{ackey}
+             , UOM          = 'EA'
+        WHERE UPLOADKEY = #{uploadkey}
+    </update>
+    
+    <select id="selectOutboundOrderExcelList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderExcelList */
+        SELECT #{owkey} AS OWKEY
+             , SH.UPLOADKEY
+             , SH.UPLOADSEQ
+             , SH.FROMTOCTKEY AS FROMTOCTKEY
+             , SH.CTKEY AS CTKEY
+             , SH.ACKEY AS ACKEY
+             , SH.DLVYACKEY AS DLVYACKEY
+             , SH.DLVYEXPCTDAY AS DLVYEXPCTDAY
+             , SH.ORDERISTDAY AS ORDERISTDAY
+             , SH.ORDERTYPECD AS ORDERTYPECD
+             , SH.CMT
+             , SH.ICKEY
+             , SH.OLNICKEY
+             , SH.UOM
+             , SH.ORDQTY AS INITQTY
+             , SH.ORDQTY AS EXPCTQTY
+             , SH.DTCMT
+			 , pkg_crypto$decrypt(SH.BUYER, #{encKey}) AS BUYER
+			 , pkg_crypto$decrypt(SH.RECPNM, #{encKey}) AS RECPNM
+			 , pkg_crypto$decrypt(SH.RECPTEL01, #{encKey}) AS RECPTEL01
+			 , pkg_crypto$decrypt(SH.RECPTEL02, #{encKey}) AS RECPTEL02
+			 , SH.RECPZIPCD
+			 , pkg_crypto$decrypt(SH.RECPADDRHD, #{encKey}) AS RECPADDRHD
+			 , pkg_crypto$decrypt(SH.RECPADDRDT, #{encKey}) AS RECPADDRDT
+			 , SH.ADDCMT01
+             , SH.ORDERERRCD
+             , SH.ORDERERRCMT
+             , SH.DELYN
+             , 'TEMP' AS SOHDKEY
+             , 'TEMP' AS SODTKEY
+             , 'TEMP' AS COHDKEY
+             , 'TEMP' AS CODTKEY
+             , SH.INSERTDATE
+             , SH.INSERTURKEY
+             , SH.UPDATEDATE
+             , SH.UPDATEURKEY
+        FROM TORDER_UPLOAD_SO SH
+        WHERE UPLOADKEY = #{uploadkey}
+    </select>
+    
+    <select id="selectSoExcelTempCount" resultType="java.lang.Integer">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoExcelTempCount */
+		SELECT COUNT(1)
+		FROM TORDER_UPLOAD_SO
+		WHERE UPLOADKEY = #{uploadkey}
+		  AND DELYN = 'N'
+	</select>
+	
+	<select id="selectSoExcelErrorCount" resultType="java.lang.Integer">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoExcelErrorCount */
+		SELECT COUNT(1)
+		FROM TORDER_UPLOAD_SO
+        WHERE UPLOADKEY = #{uploadkey}
+          AND DELYN = 'N'
+          AND ORDERERRCD IS NOT NULL
+	</select>
+	
+	<select id="selectSoExcelTempSucCount" resultType="java.lang.Integer">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoExcelTempSucCount */
+		SELECT COUNT(1)
+		FROM TORDER_UPLOAD_SO
+		WHERE UPLOADKEY = #{uploadkey}
+		  AND DELYN = 'N'
+		  AND ORDERERRCD IS NULL
+	</select>
+	
+	<select id="selectSoExcelHeaderList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoExcelHeaderList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT '0' AS CHK
+             , SO.UPLOADKEY
+             , SO.UPLOADSEQ
+             , SO.ACKEY
+             , SO.DLVYACKEY
+             , SO.STOREKEY
+             , SO.CTKEY
+             , SO.DLVYEXPCTDAY
+             , SO.ORDERISTDAY
+             , SO.ORDERTYPECD
+             , SO.CMT
+             , SO.ICKEY
+             , IC.ICNM
+             , SO.OLNICKEY
+             , COALESCE(ASRT.ASRTNM, IC.ICNM) AS OLNICNM
+             , SO.UOM
+             , SO.ORDQTY
+             , SO.DTCMT
+             , SO.FROMTOCTKEY
+			 , pkg_crypto$decrypt(SO.BUYER, #{encKey}) AS BUYER
+			 , pkg_crypto$decrypt(SO.RECPNM, #{encKey}) AS RECPNM
+			 , pkg_crypto$decrypt(SO.RECPTEL01, #{encKey}) AS RECPTEL01
+			 , pkg_crypto$decrypt(SO.RECPTEL02, #{encKey}) AS RECPTEL02
+			 , SO.RECPZIPCD
+			 , pkg_crypto$decrypt(SO.RECPADDRHD, #{encKey}) AS RECPADDRHD
+			 , pkg_crypto$decrypt(SO.RECPADDRDT, #{encKey}) AS RECPADDRDT
+			 , SO.ADDCMT01
+			 , (SELECT ROUND(ORDQTY / COALESCE(SUM(ICUNITQTY), 1), 5) FROM TORDER_MST_ICUTXTYPE X WHERE X.OWKEY = 'DAISO' AND X.ICKEY = SO.ICKEY AND X.ICUNITTYPE = 'INN') AS INN
+			 , (SELECT ROUND(ORDQTY / COALESCE(SUM(ICUNITQTY), 1), 5) FROM TORDER_MST_ICUTXTYPE X WHERE X.OWKEY = 'DAISO' AND X.ICKEY = SO.ICKEY AND X.ICUNITTYPE = 'CTN') AS CTN
+             , SO.ORDERERRCD
+             , SO.ORDERERRCMT
+             , SO.DELYN
+             , SO.INSERTDATE
+             , SO.INSERTURKEY
+             , SO.UPDATEDATE
+             , SO.UPDATEURKEY
+        FROM TORDER_UPLOAD_SO SO
+        INNER JOIN TORDER_MST_IC IC
+		        ON IC.OWKEY = 'DAISO'
+		       AND SO.ICKEY = IC.ICKEY
+		       AND IC.DELYN = 'N'
+		LEFT JOIN TORDER_MST_ASRT ASRT
+		       ON IC.OWKEY = 'DAISO'
+		      AND SO.OLNICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			   ON ASRT.OWKEY = REP.OWKEY
+			  AND ASRT.ASRTREPKEY = REP.ICKEY
+        WHERE SO.UPLOADKEY = #{uploadkey}
+          AND SO.DELYN = 'N'
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+    
+    <update id="deleteExcelTempList">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - deleteExcelTempList */
+        UPDATE TORDER_UPLOAD_SO TUM
+          SET DELYN = ( SELECT TB.DELYN
+                        FROM ( SELECT 'Y' AS DELYN
+                                    , T.UPLOADKEY
+                                    , T.ACKEY
+                                    , T.STOREKEY
+                                    , T.DLVYACKEY
+                                    , T.CTKEY
+                                    , T.DLVYEXPCTDAY
+                                    , T.ORDERISTDAY
+                                    , T.ORDERTYPECD
+                                    , T.CMT
+                                    , FROMTOCTKEY
+									, BUYER
+									, RECPNM
+									, RECPTEL01
+									, RECPTEL02
+									, RECPZIPCD
+									, RECPADDRHD
+									, RECPADDRDT
+									, ADDCMT01
+                                FROM ( <foreach collection="excelList" item="item" separator="UNION ALL">
+                                            SELECT #{item.uploadkey}    AS UPLOADKEY
+                                                 , #{item.ackey}        AS ACKEY
+                                                 , #{item.storekey}     AS STOREKEY
+                                                 , #{item.deliverykey}  AS DLVYACKEY
+                                                 , #{item.ctkey}        AS CTKEY
+                                                 , #{item.dlvyexpctday} AS DLVYEXPCTDAY
+                                                 , #{item.orderistday}  AS ORDERISTDAY
+                                                 , #{item.ordertypecd}  AS ORDERTYPECD
+                                                 , #{item.cmt}          AS CMT
+                                                 , #{item.fromtoctkey} AS FROMTOCTKEY
+												 , #{item.buyer} AS BUYER
+												 , #{item.recpnm} AS RECPNM
+												 , #{item.recptel01} AS RECPTEL01
+												 , #{item.recptel02} AS RECPTEL02
+												 , #{item.recpzipcd} AS RECPZIPCD
+												 , #{item.recpaddrhd} AS RECPADDRHD
+												 , #{item.recpaddrdt} AS RECPADDRDT
+												 , #{item.addcmt01} AS ADDCMT01
+                                        </foreach> ) T ) TB
+                                WHERE TB.UPLOADKEY              = TUM.UPLOADKEY
+                                  AND COALESCE(TB.ACKEY, 'X')        = COALESCE(TUM.ACKEY, 'X')
+                                  AND COALESCE(TB.STOREKEY, 'X')     = COALESCE(TUM.STOREKEY, 'X')
+                                  AND COALESCE(TB.DLVYACKEY, 'X')    = COALESCE(TUM.DLVYACKEY, 'X')
+                                  AND COALESCE(TB.CTKEY, 'X')        = COALESCE(TUM.CTKEY, 'X')
+                                  AND COALESCE(TB.DLVYEXPCTDAY, 'X') = COALESCE(TUM.DLVYEXPCTDAY, 'X')
+                                  AND COALESCE(TB.ORDERISTDAY, 'X')  = COALESCE(TUM.ORDERISTDAY, 'X')
+                                  AND COALESCE(TB.ORDERTYPECD, 'X')  = COALESCE(TUM.ORDERTYPECD, 'X')
+                                  AND COALESCE(TB.CMT, 'X')         = COALESCE(TUM.CMT, 'X') )
+                                  AND COALESCE(TB.FROMTOCTKEY, 'X') = COALESCE(TUM.FROMTOCTKEY, 'X') )
+								  AND COALESCE(TB.BUYER, 'X')       = COALESCE(TUM.BUYER, 'X') )
+								  AND COALESCE(TB.RECPNM, 'X')      = COALESCE(TUM.RECPNM, 'X') )
+								  AND COALESCE(TB.RECPTEL01, 'X')   = COALESCE(TUM.RECPTEL01, 'X') )
+								  AND COALESCE(TB.RECPTEL02, 'X')   = COALESCE(TUM.RECPTEL02, 'X') )
+								  AND COALESCE(TB.RECPZIPCD, 'X')   = COALESCE(TUM.RECPZIPCD, 'X') )
+								  AND COALESCE(TB.RECPADDRHD, 'X')  = COALESCE(TUM.RECPADDRHD, 'X') )
+								  AND COALESCE(TB.RECPADDRDT, 'X')  = COALESCE(TUM.RECPADDRDT, 'X') )
+								  AND COALESCE(TB.ADDCMT01, 'X')  = COALESCE(TUM.ADDCMT01, 'X') )
+        WHERE TUM.UPLOADKEY = #{uploadkey}
+        AND EXISTS (
+            SELECT 1
+            FROM ( <foreach collection="excelList" item="item" separator="UNION ALL">
+                     SELECT #{item.uploadkey}    AS UPLOADKEY
+                         , #{item.ackey}        AS ACKEY
+                         , #{item.storekey}     AS STOREKEY
+                         , #{item.deliverykey}  AS DLVYACKEY
+                         , #{item.ctkey}        AS CTKEY
+                         , #{item.dlvyexpctday} AS DLVYEXPCTDAY
+                         , #{item.orderistday}  AS ORDERISTDAY
+                         , #{item.ordertypecd}  AS ORDERTYPECD
+                         , #{item.cmt}          AS CMT
+                         , #{item.fromtoctkey} AS FROMTOCTKEY
+						 , #{item.buyer} AS BUYER
+						 , #{item.recpnm} AS RECPNM
+						 , #{item.recptel01} AS RECPTEL01
+						 , #{item.recptel02} AS RECPTEL02
+						 , #{item.recpzipcd} AS RECPZIPCD
+						 , #{item.recpaddrhd} AS RECPADDRHD
+						 , #{item.recpaddrdt} AS RECPADDRDT
+						 , #{item.addcmt01} AS ADDCMT01
+                    </foreach> ) T
+            WHERE T.UPLOADKEY              = TUM.UPLOADKEY
+              AND COALESCE(T.ACKEY, 'X')        = COALESCE(TUM.ACKEY, 'X')
+              AND COALESCE(T.STOREKEY, 'X')     = COALESCE(TUM.STOREKEY, 'X')
+              AND COALESCE(T.DLVYACKEY, 'X')    = COALESCE(TUM.DLVYACKEY, 'X')
+              AND COALESCE(T.CTKEY, 'X')        = COALESCE(TUM.CTKEY, 'X')
+              AND COALESCE(T.DLVYEXPCTDAY, 'X') = COALESCE(TUM.DLVYEXPCTDAY, 'X')
+              AND COALESCE(T.ORDERISTDAY, 'X')  = COALESCE(TUM.ORDERISTDAY, 'X')
+              AND COALESCE(T.ORDERTYPECD, 'X')  = COALESCE(TUM.ORDERTYPECD, 'X')
+              AND COALESCE(T.CMT, 'X')         = COALESCE(TUM.CMT, 'X')
+              AND COALESCE(TB.FROMTOCTKEY, 'X') = COALESCE(TUM.FROMTOCTKEY, 'X') )
+			  AND COALESCE(TB.BUYER, 'X')       = COALESCE(TUM.BUYER, 'X') )
+			  AND COALESCE(TB.RECPNM, 'X')      = COALESCE(TUM.RECPNM, 'X') )
+			  AND COALESCE(TB.RECPTEL01, 'X')   = COALESCE(TUM.RECPTEL01, 'X') )
+			  AND COALESCE(TB.RECPTEL02, 'X')   = COALESCE(TUM.RECPTEL02, 'X') )
+			  AND COALESCE(TB.RECPZIPCD, 'X')   = COALESCE(TUM.RECPZIPCD, 'X') )
+			  AND COALESCE(TB.RECPADDRHD, 'X')  = COALESCE(TUM.RECPADDRHD, 'X') )
+			  AND COALESCE(TB.RECPADDRDT, 'X')  = COALESCE(TUM.RECPADDRDT, 'X') )
+			  AND COALESCE(TB.ADDCMT01, 'X')  = COALESCE(TUM.ADDCMT01, 'X') )
+        )
+    </update>
+	
+	<update id="deleteExcelTempDetailList">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - deleteExcelTempDetailList */
+        UPDATE TORDER_UPLOAD_SO TUM
+          SET DELYN = ( SELECT TB.DELYN
+                        FROM ( SELECT 'Y' AS DELYN
+                                    , T.UPLOADKEY
+                                    , T.UPLOADSEQ
+                               FROM (
+                                <foreach collection="excelList" item="item" separator="UNION ALL">
+                                    SELECT #{item.uploadkey} AS UPLOADKEY
+                                         , #{item.uploadseq} AS UPLOADSEQ
+                                </foreach> ) T ) TB
+                                WHERE TB.UPLOADKEY = TUM.UPLOADKEY
+                                  AND TB.UPLOADSEQ = TUM.UPLOADSEQ )
+        WHERE TUM.UPLOADKEY = #{uploadkey}
+        AND EXISTS (
+            SELECT 1
+            FROM ( <foreach collection="excelList" item="item" separator="UNION ALL">
+                SELECT #{item.uploadkey} AS UPLOADKEY
+                     , #{item.uploadseq} AS UPLOADSEQ
+                   </foreach> ) T
+        WHERE T.UPLOADSEQ = TUM.UPLOADSEQ
+        )
+    </update>
+	
+	<select id="selectSoExcelErrorHeader" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoExcelErrorHeader */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT '0' AS CHK
+             , SO.UPLOADKEY
+             , SO.UPLOADSEQ
+             , SO.ACKEY
+             , SO.DLVYACKEY
+             , SO.STOREKEY
+             , SO.CTKEY
+             , SO.DLVYEXPCTDAY
+             , SO.ORDERISTDAY
+             , SO.ORDERTYPECD
+             , SO.CMT
+             , SO.ICKEY
+             , IC.ICNM
+             , SO.OLNICKEY
+             , ASRT.ASRTNM AS OLNICNM
+             , SO.UOM
+             , SO.ORDQTY
+             , SO.DTCMT
+             , SO.FROMTOCTKEY
+			 , SO.BUYER
+			 , SO.RECPNM
+			 , SO.RECPTEL01
+			 , SO.RECPTEL02
+			 , SO.RECPZIPCD
+			 , SO.RECPADDRHD
+			 , SO.RECPADDRDT
+			 , SO.ADDCMT01
+             , SO.ORDERERRCD
+             , SO.ORDERERRCMT
+             , SO.DELYN
+             , SO.INSERTDATE
+             , SO.INSERTURKEY
+             , SO.UPDATEDATE
+             , SO.UPDATEURKEY
+        FROM TORDER_UPLOAD_SO SO
+        LEFT JOIN TORDER_MST_IC IC
+                ON IC.OWKEY = 'DAISO'
+               AND SO.ICKEY = IC.ICKEY
+        LEFT JOIN TORDER_MST_ASRT ASRT
+               ON ASRT.OWKEY = 'DAISO'
+              AND SO.OLNICKEY = ASRT.ASRTKEY
+              AND SO.ICKEY = ASRT.ASRTREPKEY
+        WHERE SO.UPLOADKEY = #{uploadkey}
+          AND SO.DELYN = 'N'
+          AND SO.ORDERERRCD IS NOT NULL
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+	
+	<select id="selectExcelErrorCount" resultType="java.lang.Integer">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectExcelErrorCount */
+        SELECT COUNT(1)
+        FROM TORDER_UPLOAD_SO
+        WHERE UPLOADKEY = #{uploadkey}
+          AND DELYN = 'N'
+          AND ORDERERRCD IS NOT NULL
+    </select>
+	
+	<insert id="insertCustomerOrderExcelHeader">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - insertCustomerOrderExcelHeader */
+        INSERT INTO TORDER_INFO_CO_HD
+        (
+        	  OWKEY
+        	, COHDKEY
+        	, EXTORDERTYPECD
+        	, ORDERTYPECD
+        	, DLVYEXPCTDAY
+        	, ORDERISTDAY
+        	, WKSTATUS
+        	, DLVYACKEY
+        	, STOREKEY
+        	, ACKEY
+        	, RFRNCKEY
+        	, CMT
+        	, CNLYN
+        	, CNLID
+        	, ORDERERRCD
+        	, ORDERERRCMT
+        	, EDIYN
+        	, FROMTOCTKEY
+        	, CTKEY
+        	
+        	, BUYER
+			, RECPNM
+			, RECPTEL01
+			, RECPTEL02
+			, RECPZIPCD
+			, RECPADDRHD
+			, RECPADDRDT
+			, ADDCMT01
+			
+        	, SPLITORDERYN
+        	, IFYN
+        	, INSERTDATE
+        	, INSERTURKEY
+        	, UPDATEDATE
+        	, UPDATEURKEY
+        )
+        SELECT #{owkey} AS OWKEY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || #{orderNoType} || LPAD(nextval('seq_torder_info_co_hd')::TEXT, 6, '0') AS COHDKEY
+             , (SELECT MAX(EXTORDERTYPECD) AS EXTORDERTYPECD FROM TORDER_INFO_ORTYPE_MAPPING T WHERE T.OWKEY = #{owkey} AND T.ORDERTYPECD = A.ORDERTYPECD) AS EXTORDERTYPECD
+             , A.ORDERTYPECD
+             , A.DLVYEXPCTDAY
+             , A.ORDERISTDAY
+             , #{wkstatus} AS WKSTATUS
+             , A.DLVYACKEY
+             , A.STOREKEY
+             , A.ACKEY
+             , A.UPLOADKEY AS RFRNCKEY
+             , A.CMT
+             , 'N' AS CNLYN
+        	 , '' AS CNLID
+        	 , A.ORDERERRCD
+        	 , A.ORDERERRCMT
+             , 'N' AS EDIYN
+             , A.FROMTOCTKEY
+             , A.CTKEY
+             , A.BUYER
+			 , A.RECPNM
+			 , A.RECPTEL01
+			 , A.RECPTEL02
+			 , A.RECPZIPCD
+			 , A.RECPADDRHD
+			 , A.RECPADDRDT
+			 , A.ADDCMT01
+             , 'N' AS SPLITORDERYN
+             , 'N' AS IFYN
+             , #{sysdate} AS INSERTDATE
+             , #{surkey} AS INSERTURKEY
+             , #{sysdate} AS UPDATEDATE
+             , #{surkey} AS UPDATEURKEY
+        FROM (SELECT UPLOADKEY
+                   , ACKEY
+                   , DLVYACKEY
+                   , STOREKEY
+                   , CTKEY
+                   , DLVYEXPCTDAY
+                   , ORDERISTDAY
+                   , ORDERTYPECD
+                   , FROMTOCTKEY
+				   , BUYER
+				   , RECPNM
+				   , RECPTEL01
+				   , RECPTEL02
+				   , RECPZIPCD
+				   , RECPADDRHD
+				   , RECPADDRDT
+			 	   , ADDCMT01
+                   , CMT
+                   , ORDERERRCD
+        	       , ORDERERRCMT
+              FROM TORDER_UPLOAD_SO
+              WHERE UPLOADKEY = #{uploadkey}
+                AND ORDERERRCD IS NULL
+                AND ORDERERRCMT IS NULL
+                AND DELYN = 'N'
+              GROUP BY  UPLOADKEY
+                   , ACKEY
+                   , DLVYACKEY
+                   , STOREKEY
+                   , CTKEY
+                   , DLVYEXPCTDAY
+                   , ORDERISTDAY
+                   , ORDERTYPECD
+                   , FROMTOCTKEY
+				   , BUYER
+				   , RECPNM
+				   , RECPTEL01
+				   , RECPTEL02
+				   , RECPZIPCD
+				   , RECPADDRHD
+				   , RECPADDRDT
+			 	   , ADDCMT01
+                   , CMT
+                   , ORDERERRCD
+        	       , ORDERERRCMT
+        ) A
+             LEFT OUTER JOIN TORDER_MST_AC C
+                          ON C.OWKEY = #{owkey}
+                         AND A.DLVYACKEY = C.ACKEY
+    </insert>
+	
+	<insert id="insertCustomerOrderExcelDetail">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - insertCustomerOrderExcelDetail */
+        INSERT INTO TORDER_INFO_CO_DT
+        (     OWKEY
+        	, COHDKEY
+			, CODTKEY
+			, EXTORDERTYPECD
+			, WKSTATUS
+			, ICKEY
+			, OLNICKEY
+			, ORDERISTDAY
+			, DLVYEXPCTDAY
+			, ORDERISTQTY
+			, UNIT
+			, CNVRTQTY
+			, TTWEIGHT
+			, WEIGHTUNIT
+			, VOL
+			, VOLUNIT
+			, LOGGRPCD
+			, CMT
+			, CNLYN
+			, RFRNCKEY
+			, RFRNCDTKEY
+			, ORDERERRCD
+			, ORDERERRCMT
+			, DLVYCNTRUNIT
+			, MALBOXQTY
+			, MALPCSQTY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+        )
+        SELECT B.OWKEY
+             , B.COHDKEY
+             , ROW_NUMBER() OVER(PARTITION BY B.COHDKEY ORDER BY A.ICKEY ) * 100 AS CODTKEY
+             , B.EXTORDERTYPECD
+             , B.WKSTATUS
+             , A.ICKEY
+             , A.OLNICKEY
+             , B.ORDERISTDAY
+             , B.DLVYEXPCTDAY
+             , A.ORDQTY AS ORDERISTQTY
+             , 'EA' AS UNIT
+             , A.ORDQTY AS CNVRTQTY
+             , A.ORDQTY * COALESCE(D.WEIGHT, 0) AS TTWEIGHT
+             , 'G' AS WEIGHTUNIT
+             , A.ORDQTY * COALESCE(D.VOL, 0) AS VOL
+             , 'MM3' AS VOLUNIT
+             , C.UDF2 AS LOGGRPCD  /* 온도 */
+             , A.CMT
+             , 'N' AS CNLYN
+             , B.RFRNCKEY
+             , ROW_NUMBER() OVER(PARTITION BY B.COHDKEY ORDER BY A.ICKEY ) * 100 AS RFRNCDTKEY
+             , A.ORDERERRCD
+             , A.ORDERERRCMT
+             , '' AS DLVYCNTRUNIT
+             , 0 AS MALBOXQTY
+             , 0 AS MALPCSQTY
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+        FROM TORDER_UPLOAD_SO A
+             INNER JOIN TORDER_INFO_CO_HD B
+                     ON COALESCE(A.ACKEY, 'XX') = COALESCE(B.ACKEY, 'XX')
+                    AND COALESCE(A.DLVYACKEY, 'XX')    = COALESCE(B.DLVYACKEY, 'XX')
+                    AND COALESCE(A.STOREKEY, 'XX')  = COALESCE(B.STOREKEY, 'XX')
+                    AND A.CTKEY                   = B.CTKEY
+                    AND A.DLVYEXPCTDAY            = B.DLVYEXPCTDAY
+                    AND A.ORDERISTDAY             = B.ORDERISTDAY
+                    AND A.ORDERTYPECD             = B.ORDERTYPECD
+                    AND COALESCE(A.CMT, 'XX')          = COALESCE(B.CMT, 'XX')
+                    AND COALESCE(A.ADDCMT01, 'XX')     = COALESCE(B.ADDCMT01, 'XX')
+             LEFT OUTER JOIN TORDER_MST_IC C
+                          ON B.OWKEY = C.OWKEY
+                         AND A.ICKEY = C.ICKEY
+             LEFT OUTER JOIN TORDER_MST_ICUTXTYPE D
+                          ON C.OWKEY = D.OWKEY
+                         AND C.ICKEY = D.ICKEY
+                         AND A.UOM = D.ICUNITTYPE
+        WHERE A.UPLOADKEY = #{uploadkey}
+          AND B.RFRNCKEY = #{uploadkey}
+          AND A.DELYN = 'N'
+          AND A.ORDERERRCD IS NULL
+          AND A.ORDERERRCMT IS NULL
+    </insert>
+	
+	<insert id="insertOutboundOrderExcelHeader">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - insertOutboundOrderExcelHeader */
+        INSERT INTO TORDER_INFO_SO_HD (
+          OWKEY
+        , SOHDKEY
+        , DLVYEXPCTDAY
+        , ORDERISTDAY
+        , ORDERTYPECD
+        , WKSTATUS
+        , CTKEY
+        , DLVYACKEY
+        , STOREKEY
+        , ACKEY
+        , LOGGRPCD
+        , ORGORDERKEY
+        , POTYPE
+        , RFRNCKEY
+        , EDIYN
+        , CMT
+        , CNLYN
+        , ORDERSNDYN
+        , COHDKEY
+        , EXTORDERTYPECD
+        , FROMTOCTKEY
+        , BUYER
+        , RECPNM
+        , RECPTEL01
+        , RECPTEL02
+        , RECPZIPCD
+        , RECPADDRHD
+        , RECPADDRDT
+        , ADDCMT01
+        , ORDERERRCD
+        , ORDERERRCMT
+        , NISYN
+        , IFYN
+        , INSERTDATE
+        , INSERTURKEY
+        , UPDATEDATE
+        , UPDATEURKEY
+    )
+    SELECT
+          #{owkey} AS OWKEY
+        , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') || #{orderNoType} || LPAD(nextval('seq_torder_info_so_hd')::TEXT, 6, '0') AS SOHDKEY
+        , A.DLVYEXPCTDAY
+        , A.ORDERISTDAY
+        , A.ORDERTYPECD
+        , #{wkstatus} AS WKSTATUS
+        , A.CTKEY
+        , A.DLVYACKEY
+        , A.STOREKEY
+        , A.ACKEY
+        , '' AS LOGGRPCD
+        , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') || #{orderNoType} || LPAD(currval('seq_torder_info_so_hd')::TEXT, 6, '0') AS ORGORDERKEY
+        , '' AS POTYPE
+        , A.UPLOADKEY AS RFRNCKEY
+        , 'N' AS EDIYN
+        , A.CMT
+        , 'N' AS CNLYN
+        , 'N' AS ORDERSNDYN
+        , A.COHDKEY
+        , A.EXTORDERTYPECD
+        , A.FROMTOCTKEY
+        , A.BUYER
+        , A.RECPNM
+        , A.RECPTEL01
+        , A.RECPTEL02
+        , A.RECPZIPCD
+        , A.RECPADDRHD
+        , A.RECPADDRDT
+        , A.ADDCMT01
+        , A.ORDERERRCD
+        , A.ORDERERRCMT
+        , 'N' AS NISYN
+        , 'N' AS IFYN
+        , #{sysdate} AS INSERTDATE
+        , #{surkey} AS INSERTURKEY
+        , #{sysdate} AS UPDATEDATE
+        , #{surkey} AS UPDATEURKEY
+    FROM (
+        SELECT
+              A.UPLOADKEY
+            , A.ACKEY
+            , A.DLVYACKEY
+            , A.STOREKEY
+            , A.CTKEY
+            , A.DLVYEXPCTDAY
+            , A.ORDERISTDAY
+            , A.ORDERTYPECD
+            , A.CMT
+            , A.ORDERERRCD
+            , A.ORDERERRCMT
+            , B.COHDKEY
+            , B.EXTORDERTYPECD
+            , A.FROMTOCTKEY
+            , A.BUYER
+            , A.RECPNM
+            , A.RECPTEL01
+            , A.RECPTEL02
+            , A.RECPZIPCD
+            , A.RECPADDRHD
+            , A.RECPADDRDT
+            , A.ADDCMT01
+        FROM TORDER_UPLOAD_SO A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.UPLOADKEY = B.RFRNCKEY
+               AND COALESCE(A.ACKEY, 'XX')     = COALESCE(B.ACKEY, 'XX')
+               AND COALESCE(A.DLVYACKEY, 'XX') = COALESCE(B.DLVYACKEY, 'XX')
+               AND COALESCE(A.STOREKEY, 'XX')  = COALESCE(B.STOREKEY, 'XX')
+               AND A.CTKEY               = B.CTKEY
+               AND A.DLVYEXPCTDAY        = B.DLVYEXPCTDAY
+               AND A.ORDERISTDAY         = B.ORDERISTDAY
+               AND A.ORDERTYPECD         = B.ORDERTYPECD
+               AND COALESCE(A.CMT, 'XX')       = COALESCE(B.CMT, 'XX')
+               AND COALESCE(A.ADDCMT01, 'XX')  = COALESCE(B.ADDCMT01, 'XX')
+        WHERE A.UPLOADKEY = #{uploadkey}
+          AND B.RFRNCKEY  = #{uploadkey}
+          AND A.ORDERERRCD IS NULL
+          AND A.ORDERERRCMT IS NULL
+          AND A.DELYN = 'N'
+        GROUP BY
+              A.UPLOADKEY, A.ACKEY, A.DLVYACKEY, A.STOREKEY, A.CTKEY,
+              A.DLVYEXPCTDAY, A.ORDERISTDAY, A.ORDERTYPECD, A.CMT,
+              A.ORDERERRCD, A.ORDERERRCMT, B.COHDKEY, B.EXTORDERTYPECD,
+              A.FROMTOCTKEY, A.BUYER, A.RECPNM, A.RECPTEL01, A.RECPTEL02,
+              A.RECPZIPCD, A.RECPADDRHD, A.RECPADDRDT, A.ADDCMT01
+    ) A
+    LEFT OUTER JOIN TORDER_MST_AC C
+           ON C.OWKEY = #{owkey}
+          AND A.DLVYACKEY = C.ACKEY
+    </insert>
+	
+	<insert id="insertOutboundOrderExcelDetail">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - insertOutboundOrderExcelDetail */
+        INSERT INTO TORDER_INFO_SO_DT (
+               OWKEY
+             , SOHDKEY
+             , SODTKEY
+             , ORGORDERKEY
+             , ICKEY
+             , OLNICKEY
+             , ICUTKEY
+             , UOM
+             , INITQTY
+             , EXPCTQTY
+             , CNFRMQTY
+             , SNDQTY
+             , DLVYEXPCTDAY
+             , ORDERISTDAY
+             , OBAMT
+             , TTWEIGHT
+             , WEIGHTUNIT
+             , VOL
+             , VOLUNIT
+             , LOGGRPCD
+             , CMT
+             , WKSTATUS
+             , RFRNCKEY
+             , RFRNCDTKEY
+             , CNFRMYN
+             , CNLYN
+             , NISCMT
+             , RICMT
+             , COHDKEY
+             , CODTKEY
+             , ORDERERRCD
+             , ORDERERRCMT
+             , SPEC
+             , DLVYCNTRUNIT
+             , MALBOXQTY
+             , MALPCSQTY
+             , NISQTY
+             , NISYN
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+        )
+        SELECT A.OWKEY
+             , A.SOHDKEY
+             , ROW_NUMBER() OVER(PARTITION BY A.SOHDKEY ORDER BY C.ICKEY ) * 100 AS SODTKEY
+             , A.SOHDKEY AS ORGORDERKEY
+             , C.ICKEY
+             , C.OLNICKEY
+             , D.ICUNITKEY AS ICUTKEY
+             , C.UNIT AS UOM
+             , C.ORDERISTQTY AS INITQTY
+             , C.ORDERISTQTY AS EXPCTQTY
+             , 0 AS CNFRMQTY
+             , 0 AS SNDQTY
+             , A.DLVYEXPCTDAY
+             , A.ORDERISTDAY
+             , '' AS OBAMT
+             , C.TTWEIGHT
+             , C.WEIGHTUNIT
+             , C.VOL
+             , C.VOLUNIT
+             , C.LOGGRPCD  /* 온도 */
+             , C.CMT
+             , A.WKSTATUS
+             , B.RFRNCKEY
+             , C.RFRNCDTKEY
+             , 'N' AS CNFRMYN
+             , 'N' AS CNLYN
+             , '' AS NISCMT
+             , '' AS RICMT
+             , B.COHDKEY
+             , C.CODTKEY
+             , A.ORDERERRCD
+             , A.ORDERERRCMT
+             , D.SPEC
+             , '' AS DLVYCNTRUNIT
+             , 0 AS MALBOXQTY
+             , 0 AS MALPCSQTY
+             , 0 AS NISQTY
+             , 'N' AS NISYN
+             , #{sysdate} AS INSERTDATE
+             , #{surkey} AS INSERTURKEY
+             , #{sysdate} AS UPDATEDATE
+             , #{surkey} AS UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.OWKEY = B.OWKEY
+               AND A.COHDKEY = B.COHDKEY
+               AND A.RFRNCKEY = B.RFRNCKEY
+        INNER JOIN TORDER_INFO_CO_DT C
+                ON B.OWKEY = C.OWKEY
+               AND B.COHDKEY = C.COHDKEY
+        LEFT JOIN TORDER_MST_IC D
+               ON C.OWKEY = D.OWKEY
+              AND C.ICKEY = D.ICKEY
+        WHERE A.RFRNCKEY = #{uploadkey}
+          AND A.ORDERERRCD IS NULL
+          AND A.ORDERERRCMT IS NULL
+    </insert>
+	
+	<select id="selectOutboundOrderHdGroupList" resultType="com.daiso.oms.ordercommon.vo.ServiceOrderProcVO$ServiceOrdersVO">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderHdGroupList */
+        SELECT OWKEY
+              , SOHDKEY
+              , DLVYEXPCTDAY
+              , ORDERISTDAY
+              , ORDERTYPECD
+              , WKSTATUS
+              , CTKEY
+              , DLVYACKEY
+              , STOREKEY
+              , BILLKEY
+              , PAYERKEY
+              , ACKEY
+              , LOGGRPCD
+              , ORGORDERKEY
+              , FROMTOCTKEY
+              , ICGRTYPE
+              , ICGRKEY
+              , POTYPE
+              , RFRNCKEY
+              , SALESEMPID
+              , DLVYEMPID
+              , EDIYN
+              , CMT
+              , CNLYN
+              , CNLDATE
+              , CNLEMPID
+              , ORDERSNDYN
+              , ORDERSNDDATE
+              , ORDERSNDUSERID
+              , COHDKEY
+              , EXTORDERTYPECD
+              , ORDERERRCD
+              , ORDERERRCMT
+              , ORDERRSNCD
+              , ADDCMT01
+              , RECPNM
+              , RECPADDRHD
+              , RECPADDRDT
+              , RECPZIPCD
+              , RECPTEL01
+              , RECPTEL02
+              , BUYER
+              , BUYERADDRHD
+              , BUYERADDRDT
+              , BUYERZIPCD
+              , BUYERTEL01
+              , BUYERTEL02
+              , RECALLER
+              , RECALLERADDRHD
+              , RECALLERADDRDT
+              , RECALLERZIPCD
+              , RECALLERTEL01
+              , RECALLERTEL02
+              , RIRSNCD
+              , CLAIMNO
+              , DLVYMETHDCD
+              , DLVYMETHDDTCD
+              , MALORDERDIV
+              , NISYN
+              , NISCNLRNGDIV
+              , PAYMTCOMPLDAY
+              , PARTERID
+              , ACCESSKEY
+              , ADDCMT02
+              , SHMISTNO
+              , INSERTDATE
+              , INSERTURKEY
+              , UPDATEDATE
+              , UPDATEURKEY
+              , 'Y' AS FRONTYN
+        FROM TORDER_INFO_SO_HD
+        WHERE RFRNCKEY = #{uploadkey}
+    </select>
+    
+    <select id="selectOutboundOrderDtGroupList" resultType="com.daiso.oms.ordercommon.vo.ServiceOrderProcVO$ServiceOrderItemsVO">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderDtGroupList */
+        SELECT B.OWKEY
+             , A.CTKEY
+             , B.SOHDKEY
+             , B.SODTKEY
+             , B.ICKEY
+             , B.OLNICKEY
+             , B.ICUTKEY
+             , B.UOM
+             , B.INITQTY
+             , B.EXPCTQTY
+             , B.CNFRMQTY
+             , B.SNDQTY
+             , B.DLVYEXPCTDAY
+             , B.ORDERISTDAY
+             , B.OBAMT
+             , B.TTWEIGHT
+             , B.WEIGHTUNIT
+             , B.VOL
+             , B.VOLUNIT
+             , B.LOGGRPCD
+             , B.CMT
+             , B.PRDCTLOT
+             , B.PRDCTDAY
+             , B.WKSTATUS
+             , B.RFRNCKEY
+             , B.RFRNCDTKEY
+             , B.ORGORDERKEY
+             , B.ORGORDERDTKEY
+             , B.CNFRMYN
+             , B.CNLYN
+             , B.NISCMT
+             , B.RICMT
+             , B.COHDKEY
+             , B.CODTKEY
+             , B.ORDERERRCD
+             , B.ORDERERRCMT
+             , B.ICGRKEY
+             , B.ICGRTYPE
+             , B.SPEC
+             , B.DLVYCNTRUNIT
+             , B.MALBOXQTY
+             , B.MALPCSQTY
+             , B.NISQTY
+             , B.NISYN
+             , B.INSERTDATE
+             , B.INSERTURKEY
+             , B.UPDATEDATE
+             , B.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_SO_DT B
+                ON A.OWKEY = B.OWKEY
+               AND A.SOHDKEY = B.SOHDKEY
+        WHERE A.RFRNCKEY = #{uploadkey}
+    </select>
+    
+    <update id="updateUrgencyReqOutboundOrder">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateUrgencyReqOutboundOrder */
+        UPDATE TORDER_INFO_SO_DT SET
+		  URGENCYREQYN = 'Y'
+		, UPDATEDATE = #{sysdate}
+		, UPDATEURKEY = #{surkey}
+		WHERE 1 = 1
+		AND SOHDKEY = #{sohdkey}
+		AND SODTKEY = #{sodtkey}
+    </update>
+    
+    <select id="selectOutboundOrderB2BHeaderCount" resultType="java.lang.Integer">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderB2BHeaderCount */
+        SELECT  COUNT(0)
+        FROM TORDER_INFO_SO_HD A
+            INNER JOIN TORDER_INFO_CO_HD B
+               	     ON A.OWKEY = B.OWKEY
+               	    AND A.COHDKEY = B.COHDKEY
+            INNER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.ICKEY)    AS SKU
+	                      , SUM(T.EXPCTQTY)   AS EXPCTQTY
+	                      , SUM(T.SLPRC)      AS SLPRC
+                          , SUM(T.CNFRMYN)    AS CNFRMSKU
+	                      , SUM(T.CNFRMQTY)   AS CNFRMQTY
+	                      , SUM(T.CNFRMSLPRC) AS CNFRMSLPRC
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+		                      , X.ICKEY
+		                      , MAX(I.SLPRC) * SUM(X.EXPCTQTY) AS  SLPRC
+		                      , SUM(X.EXPCTQTY) AS EXPCTQTY
+                              , CASE WHEN SUM(CNFRMQTY) > 0 THEN 1 ELSE 0 END CNFRMYN
+		                      , SUM(CNFRMQTY) AS CNFRMQTY
+		                      , MAX(I.SLPRC) * SUM(CNFRMQTY) AS CNFRMSLPRC
+		                 FROM TORDER_INFO_SO_DT X
+		                 INNER JOIN TORDER_MST_IC I
+		                         ON X.OWKEY = I.OWKEY
+		                        AND X.ICKEY = I.ICKEY
+		                 WHERE X.OWKEY = #{owkey}
+                         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+                         	AND  X.ICKEY IN
+                            <foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+                               #{ickey}
+                            </foreach>
+                         </if>
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.ICKEY
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) C
+                ON A.OWKEY = C.OWKEY AND A.SOHDKEY = C.SOHDKEY
+            INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+            WHERE H.OBYN = 'Y'
+                AND H.ORDERAT = 'GENERAL'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                        #{ortype}
+                    </foreach>
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                    AND A.ORDERTYPECD = '100'
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                    AND C.SLPRC > #{isSlprc}
+                </if>
+            </if>
+    </select>
+
+    <select id="selectOutboundOrderB2BHeaderList" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderB2BHeaderList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+            SELECT  '0' AS CHK
+                   , A.OWKEY
+                   , A.ORDERISTDAY 
+                   , A.DLVYEXPCTDAY
+                   , A.CNFRMDAY
+                   , A.CTKEY
+                   , MCB.CTNM AS OBCTNM
+                   , A.FROMTOCTKEY
+                   , MCA.CTNM AS IBCTNM
+                   , A.ORDERTYPECD     
+                   , H.ORDERTYPENM  
+                   , A.ORGORDERKEY   
+                   , A.SOHDKEY         
+                   , A.COHDKEY  
+                   , D.WBLNO
+                   , D.WBLCNT
+                   , (
+                      CASE WHEN (SELECT COUNT(*) FROM TORDER_INFO_SO_HD X WHERE X.OWKEY = A.OWKEY AND X.ORGORDERKEY = A.ORGORDERKEY AND X.ORDERTYPECD = '100') > 0 
+                      	   THEN 'Y' 
+                      ELSE 'N' END) AS EXCYN
+                   , A.WKSTATUS
+                   , COALESCE(C.SKU, 0)              AS EXPCTSKU
+                   , COALESCE(C.EXPCTQTY, 0)         AS EXPCTQTY
+                   , COALESCE(C.SLPRC, 0)            AS EXPCTSLPRC
+                   , COALESCE(C.CNFRMSKU, 0)         AS CNFRMSKU
+                   , COALESCE(C.CNFRMQTY, 0)         AS CNFRMQTY
+                   , COALESCE(C.CNFRMSLPRC, 0)       AS CNFRMSLPRC
+                   , A.CMT
+                   , A.ORDERERRCD
+                   , A.ORDERERRCMT
+                   , CASE WHEN A.IFYN = 'Y' THEN 'N' ELSE 'Y' END AS IFYN -- 수기등록여부
+                   , A.INSERTDATE
+                   , A.INSERTURKEY
+                   , A.UPDATEDATE
+                   , A.UPDATEURKEY
+            FROM TORDER_INFO_SO_HD A
+            INNER JOIN TORDER_INFO_CO_HD B
+               	     ON A.OWKEY = B.OWKEY
+               	    AND A.COHDKEY = B.COHDKEY
+            INNER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.ICKEY)    AS SKU
+	                      , SUM(T.EXPCTQTY)   AS EXPCTQTY
+	                      , SUM(T.SLPRC)      AS SLPRC
+                          , SUM(T.CNFRMYN)    AS CNFRMSKU
+	                      , SUM(T.CNFRMQTY)   AS CNFRMQTY
+	                      , SUM(T.CNFRMSLPRC) AS CNFRMSLPRC
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+		                      , X.ICKEY
+		                      , MAX(I.SLPRC) * SUM(X.EXPCTQTY) AS  SLPRC
+		                      , SUM(X.EXPCTQTY) AS EXPCTQTY
+                              , CASE WHEN SUM(CNFRMQTY) > 0 THEN 1 ELSE 0 END CNFRMYN
+		                      , SUM(CNFRMQTY) AS CNFRMQTY
+		                      , MAX(I.SLPRC) * SUM(CNFRMQTY) AS CNFRMSLPRC
+		                 FROM TORDER_INFO_SO_DT X
+		                 INNER JOIN TORDER_MST_IC I
+		                         ON X.OWKEY = I.OWKEY
+		                        AND X.ICKEY = I.ICKEY
+		                 WHERE X.OWKEY = #{owkey}
+                         <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+                         	AND  X.ICKEY IN
+                            <foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+                               #{ickey}
+                            </foreach>
+                         </if>
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.ICKEY
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) C
+                ON A.OWKEY = C.OWKEY AND A.SOHDKEY = C.SOHDKEY
+            LEFT OUTER JOIN
+	                (
+	                 SELECT T.SOHDKEY
+	                      , T.OWKEY
+	                      , COUNT(T.WBLNO) AS WBLCNT
+	                      , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+						        ELSE MIN(T.WBLNO)
+						   END AS WBLNO
+	                 FROM (
+		                 SELECT X.OWKEY
+ 		                      , X.SOHDKEY AS SOHDKEY /*S/O번호*/
+ 		                      , X.WBLNO
+		                 FROM TORDER_INFO_SO_WBLNO X
+		                 WHERE X.OWKEY = 'DAISO'
+		                 GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO
+	                 	) T GROUP BY T.SOHDKEY, T.OWKEY
+	                 ) D
+                ON A.OWKEY = D.OWKEY AND A.SOHDKEY = D.SOHDKEY
+            INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+            LEFT OUTER JOIN TORDER_MST_CT MCA ON A.FROMTOCTKEY = MCA.CTKEY
+            LEFT OUTER JOIN TORDER_MST_CT MCB ON A.CTKEY = MCB.CTKEY
+            WHERE H.OBYN = 'Y'
+                AND H.ORDERAT = 'GENERAL'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ortype)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="ortype" index="index" collection="ortype"    open="(" separator="," close=")">
+                        #{ortype}
+                    </foreach>
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isExcYn) and "Y".equals(isExcYn)'>
+                    AND A.ORDERTYPECD = '100'
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isSlprc)'>
+                    AND C.SLPRC > #{isSlprc}
+                </if>
+            </if>
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+
+    <select id="selectOutboundOrderB2BDetailList" resultType="camelMap">
+         /* oms-order-outboundOrderCommon-sql-oracle.xml - selectOutboundOrderB2BDetailList */
+            SELECT  '0' AS CHK
+                   , A.OWKEY
+                   , A.ORDERISTDAY 
+                   , A.DLVYEXPCTDAY
+                   , A.CNFRMDAY
+                   , A.CTKEY
+                   , MCB.CTNM AS OBCTNM
+                   , A.FROMTOCTKEY
+                   , MCA.CTNM AS IBCTNM
+                   , A.ORDERTYPECD     
+                   , H.ORDERTYPENM  
+                   , A.ORGORDERKEY   
+                   , A.SOHDKEY         
+                   , A.COHDKEY  
+                   , SW.WBLNO
+                   , (
+                      CASE WHEN (SELECT COUNT(*) FROM TORDER_INFO_SO_HD X WHERE X.OWKEY = A.OWKEY AND X.ORGORDERKEY = A.ORGORDERKEY AND X.ORDERTYPECD = '100') > 0 
+                      	   THEN 'Y' 
+                      ELSE 'N' END) AS EXCYN
+                   , A.WKSTATUS
+                 , IC.ICKEY
+			     , IC.ICNM
+				 , COALESCE(ASRT.ASRTKEY, IC.ICKEY)  AS ASRTKEY
+				 , COALESCE(ASRT.ASRTNM, IC.ICNM)  AS   ASRTNM
+                 , COALESCE(C.EXPCTQTY, 0)                               AS EXPCTQTY
+                 , COALESCE(C.EXPCTQTY * IC.SLPRC, 0)                    AS EXPCTSLPRC
+                 , COALESCE(C.CNFRMQTY, 0)                               AS CNFRMQTY
+                 , COALESCE(C.CNFRMQTY * IC.SLPRC, 0)                    AS CNFRMSLPRC
+                   , A.CMT   
+                   , CASE WHEN A.IFYN = 'Y' THEN 'N' ELSE 'Y' END AS IFYN -- 수기등록여부
+                 , C.ORDERERRCD
+                 , C.ORDERERRCMT
+                 , C.INSERTDATE
+                 , C.INSERTURKEY
+                 , C.UPDATEDATE
+                 , C.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_CO_HD B
+                ON A.OWKEY = B.OWKEY
+               AND A.COHDKEY = B.COHDKEY
+        INNER JOIN TORDER_INFO_SO_DT C
+                ON A.OWKEY = C.OWKEY
+               AND A.SOHDKEY = C.SOHDKEY
+        LEFT OUTER JOIN TORDER_MST_AC G ON A.OWKEY = G.OWKEY  AND A.ACKEY = G.ACKEY
+        INNER JOIN TORDER_MST_ORTYPE H ON A.OWKEY = H.OWKEY AND A.ORDERTYPECD = H.ORDERTYPECD
+        INNER JOIN TORDER_MST_IC IC
+		        ON A.OWKEY = IC.OWKEY
+		       AND C.ICKEY = IC.ICKEY
+		       AND IC.DELYN = 'N'
+		LEFT JOIN TORDER_MST_ASRT ASRT
+		       ON A.OWKEY = ASRT.OWKEY
+		      AND C.OLNICKEY = ASRT.ASRTKEY
+		LEFT JOIN TORDER_MST_IC REP
+			   ON ASRT.OWKEY = REP.OWKEY
+			  AND ASRT.ASRTREPKEY = REP.ICKEY
+        LEFT OUTER JOIN TORDER_MST_AC J ON IC.OWKEY = J.OWKEY  AND IC.ACKEY = J.ACKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCA ON A.FROMTOCTKEY = MCA.CTKEY
+        LEFT OUTER JOIN TORDER_MST_CT MCB ON A.CTKEY = MCB.CTKEY
+        LEFT OUTER JOIN TORDER_INFO_SO_WBLNO SW ON A.OWKEY = SW.OWKEY AND A.SOHDKEY = SW.SOHDKEY
+        WHERE C.OWKEY = #{owkey}
+          AND C.SOHDKEY = #{sohdkey}
+    </select>
+    
+    <update id="updateSoHdBatchProc">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - updateSoHdBatchProc */
+		UPDATE TORDER_INFO_SO_HD
+		SET BATEXECID = ''
+		  , BATWKSTATUS = 'WAIT'
+		  , FRONTYN = #{frontyn}
+		  , OPENCHKYN = #{openChkYn}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND SOHDKEY = #{sohdkey}
+	</update>
+	
+	<select id="selectSoItemList" resultType="camelMap">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - selectSoItemList */
+	    SELECT SOHDKEY
+	         , SODTKEY
+	         , ICKEY
+	         , OLNICKEY
+	    FROM TORDER_INFO_SO_DT
+	    WHERE SOHDKEY = #{sohdkey}
+	</select>
+	
+	<update id="updateSoDtAvIvQty">
+		/* oms-order-outboundOrderCommon-sql-oracle.xml - updateSoDtAvIvQty */
+	    UPDATE TORDER_INFO_SO_DT
+	    SET NISQTY = GREATEST(INITQTY - LEAST(COALESCE(#{avivqty}, 0), COALESCE(INITQTY, 0)), 0)
+	      , AVIVQTY = #{avivqty}
+	      , UPDATEURKEY = #{urkey}
+	      , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+	    WHERE SOHDKEY = #{sohdkey}
+	      AND SODTKEY = #{sodtkey}
+	</update>
+
+    <select id="selectChkNis" resultType="camelMap">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - selectChkNis */
+       SELECT
+             B.ICKEY,
+             B.SODTKEY,
+             B.COHDKEY,
+             B.CODTKEY,
+             B.ORGORDERKEY,
+             A.CLAIMNO,
+             B.OLNICKEY,
+            /* 상품별 총 지시수량 */
+            SUM(B.INITQTY) AS TOTALQTY,
+            /* 상품별 결품수량 */
+            SUM(
+                    CASE
+                        WHEN B.NISQTY > 0
+                         AND B.INITQTY = B.NISQTY
+                        THEN B.INITQTY      -- 전량 결품
+                        WHEN B.NISQTY > 0
+                         AND B.INITQTY > B.NISQTY
+                        THEN B.NISQTY       -- 부분 결품
+                        ELSE 0
+                    END
+                ) AS NISQTY,
+           CASE
+            WHEN NOT EXISTS (
+                SELECT 1
+                FROM TORDER_INFO_SO_DT X
+                WHERE X.OWKEY   = B.OWKEY
+                  AND X.SOHDKEY = B.SOHDKEY
+                  AND X.NISQTY <![CDATA[ < ]]> X.INITQTY
+            )
+            THEN 'Y'
+            ELSE 'N'
+        END AS FULLNISYN ,
+
+        A.NISSNDYN
+        FROM TORDER_INFO_SO_DT B
+        JOIN TORDER_INFO_SO_HD A
+        ON B.OWKEY = A.OWKEY
+        AND B.SOHDKEY = A.SOHDKEY
+        WHERE B.OWKEY   = #{owkey}
+          AND B.SOHDKEY = #{sohdkey}
+        <if test='@com.kns.framework.util.StringUtil@isEmpty(nissndyn)' >
+          AND B.WKSTATUS != #{soSendStatus}
+        </if>
+         GROUP BY
+              B.OWKEY
+            , B.SOHDKEY
+            , B.ICKEY
+            , B.SODTKEY
+            , B.COHDKEY
+            , B.CODTKEY
+            , B.ORGORDERKEY
+            , A.CLAIMNO
+            , B.OLNICKEY
+            , A.NISSNDYN
+    </select>
+
+    <update id="updateSoDtNis">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateChkNis */
+        UPDATE TORDER_INFO_SO_DT T
+            SET
+                EXPCTQTY =
+                    CASE
+                        WHEN NISQTY > 0
+                        THEN GREATEST(COALESCE(EXPCTQTY - NISQTY, 0), 0)
+                        ELSE EXPCTQTY
+                    END,
+                WKSTATUS =
+                           CASE
+                               /* 헤더 기준 전체 결품이면 완결 */
+                               WHEN (
+                                       SELECT SUM(
+                                                  CASE
+                                                      WHEN GREATEST(
+                                                               D.EXPCTQTY - COALESCE(D.NISQTY, 0),
+                                                               0
+                                                           ) = 0
+                                                      THEN 0
+                                                      ELSE 1
+                                                  END
+                                              )
+                                       FROM TORDER_INFO_SO_DT D
+                                       WHERE D.OWKEY   = T.OWKEY
+                                         AND D.SOHDKEY = T.SOHDKEY
+                                         AND D.WKSTATUS != #{soSendStatus}
+                                   ) = 0
+                               THEN #{soSendStatus}
+                               ELSE T.WKSTATUS
+                           END,
+                 NISQTY = 0 ,
+                 UPDATEDATE   = #{sysdate} ,
+                 UPDATEURKEY  = #{surkey}
+
+            WHERE T.OWKEY   = #{owkey}
+              AND T.SOHDKEY = #{sohdkey}
+              AND T.WKSTATUS != #{soSendStatus}
+    </update>
+
+    <update id="updateSoHdNis">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateSoHdNis */
+        UPDATE TORDER_INFO_SO_HD H
+        SET  WKSTATUS = #{soSendStatus}   -- 20
+            ,NISSNDYN ='Y'  -- 결품대상 전송 됨으로 이후 처리된다.
+            ,UPDATEDATE = #{sysdate}
+            ,UPDATEURKEY = #{surkey}
+        WHERE H.OWKEY   = #{owkey}
+          AND H.SOHDKEY = #{sohdkey}
+        <if test='@com.kns.framework.util.StringUtil@isEmpty(nissndyn)' >
+          AND H.WKSTATUS != #{soSendStatus}
+          AND NOT EXISTS (
+                SELECT 1
+                FROM TORDER_INFO_SO_DT D
+                WHERE D.OWKEY   = H.OWKEY
+                  AND D.SOHDKEY = H.SOHDKEY
+                  AND D.WKSTATUS != #{soSendStatus}
+            )
+        </if>
+        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(nissndyn)  and "N".equals(nissndyn)' >
+            AND H.NISSNDYN ='N'
+        </if>
+
+    </update>
+
+
+    <update id="updateCoHdNis">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateCoHdNis */
+        UPDATE TORDER_INFO_CO_HD C
+        SET WKSTATUS = #{coWkstatus}   -- SEND
+            ,UPDATEDATE = #{sysdate}
+            ,UPDATEURKEY = #{surkey}
+        WHERE C.OWKEY   = #{owkey}
+          AND C.WKSTATUS != #{coWkstatus}
+          AND EXISTS (
+                SELECT 1
+                FROM TORDER_INFO_SO_HD S
+                WHERE S.OWKEY    = C.OWKEY
+                  AND S.COHDKEY  = C.COHDKEY
+                  AND S.OWKEY    = #{owkey}
+                  AND S.SOHDKEY  = #{sohdkey}
+                  AND S.WKSTATUS = #{soSendStatus}   -- SO가 완결
+          )
+    </update>
+
+    <update id="updateCoDtNis">
+         /* oms-order-outboundOrderCommon-sql-oracle.xml - updateCoDtNis */
+        UPDATE TORDER_INFO_CO_DT C
+            SET WKSTATUS = #{coWkstatus}   -- 20
+               ,UPDATEDATE = #{sysdate}
+               ,UPDATEURKEY = #{surkey}
+            WHERE C.OWKEY   = #{owkey}
+              AND C.WKSTATUS != #{coWkstatus}
+              AND EXISTS (
+                    SELECT 1
+                    FROM TORDER_INFO_SO_HD M
+                    WHERE M.OWKEY   = C.OWKEY
+                      AND M.COHDKEY = C.COHDKEY
+                      AND M.OWKEY    = #{owkey}
+                      AND M.SOHDKEY = #{sohdkey}
+                      AND M.WKSTATUS = #{soSendStatus}   -- SO 상세가 완결
+              )
+    </update>
+
+    <update id="updateSoHdBatch15StatusProc">
+        /* oms-order-outboundOrderCommon-sql-oracle.xml - updateSoHdBatch15StatusProc */
+        UPDATE TORDER_INFO_SO_HD
+        SET   BATEXECID = NULL
+            , BATWKSTATUS = 'WAIT'
+            , FRONTYN = 'Y'
+            , UPDATEDATE = #{sysdate}
+            , UPDATEURKEY = #{surkey}
+        WHERE OWKEY = #{owkey}
+        AND SOHDKEY = #{sohdkey}
+    </update>
+
+
+</mapper>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.strategy.mapper.StrategyManagerMapper">
+		
+	<select id="selectStrategyInfoDtList" resultType="com.daiso.wms.common.vo.StgDtVO">
+		SELECT A.CTKEY, A.STGHDKEY, A.STGKEY, A.EXEPRTY, A.STGTYPE, B.JAVABEANID
+		 FROM TWORK_INFO_STG_DT A
+		    , TWORK_MST_STG B 
+		WHERE A.STGKEY=B.STGKEY
+		 	<if test="stgkey != null"> 
+		 		AND A.STGKEY = #{stgkey}
+		 	</if>	
+		 	<if test="stgtype != null"> 	    
+		    	AND A.STGTYPE='10'
+		    </if>
+		ORDER BY EXEPRTY ASC
+	</select>
+
+	<select id="selectStrategyInfoDtAtList" resultType="com.daiso.wms.common.vo.StgDtAtVO">
+		SELECT CTKEY, STGHDKEY, STGKEY, EXEPRTY, STGDTKEY, ATKEY, VALUE1, VALUE2
+		 FROM TWORK_INFO_STG_DTAT
+	</select>
+		
+</mapper>	

@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.IbObInvnStatusMapper">
+
+    <sql id="sql_selectIbObInvnStatus">
+        /* 입출고현황 */
+        SELECT NULL                                                                 AS IC_BIZ_KIND        /* 10 : 건과, 20 : 베이커리 */
+             , TRUNC(SUM(T.BEFORE_BOX_QTY), 2)                                      AS BEFORE_BOX_QTY     /* 전일재고 수량 - BOX */
+             , SUM(T.BEFORE_BOL_QTY)                                                AS BEFORE_BOL_QTY     /* 전일재고 수량 - BOL */
+             , SUM(T.BEFORE_EA_QTY)                                                 AS BEFORE_EA_QTY      /* 전일재고 수량 - EA */
+             , SUM(T.IB_QTY)                                                        AS IB_QTY             /* 당일입고 수량 */
+             , TRUNC(SUM(T.OB_BOX_QTY), 2)                                          AS OB_BOX_QTY         /* 당일출고 수량 - BOX */
+             , SUM(T.OB_BOL_QTY)                                                    AS OB_BOL_QTY         /* 당일출고 수량 - BOL */
+             , SUM(T.OB_EA_QTY)                                                     AS OB_EA_QTY          /* 당일출고 수량 - EA */
+             , TRUNC(SUM(T.ASRS_QTY), 2)                                            AS ASRS_QTY           /* 재고수량 - ASRS BOX */
+             , SUM(T.ASRS_STORAGE_RATIO)                                            AS ASRS_CELL          /* 재고수량 - ASRS CELL */
+             , TRUNC(SUM(T.MSC_BOX_QTY), 2)                                         AS MSC_BOX_QTY        /* 재고수량 - MSC BOX */
+             , SUM(T.MSC_BOL_QTY)                                                   AS MSC_BOL_QTY        /* 재고수량 - MSC BOL */
+             , SUM(T.MSC_STORAGE_RATIO)                                             AS MSC_CELL           /* 재고수량 - MSC CELL */
+             , TRUNC(SUM(T.GNRL_BOX_QTY), 2)                                        AS GNRL_BOX_QTY       /* 재고수량 - 수동창고 BOX */
+             , SUM(T.GNRL_BOL_QTY)                                                  AS GNRL_BOL_QTY       /* 재고수량 - 수동창고 BOL */
+             , SUM(T.GNRL_EA_QTY)                                                   AS GNRL_EA_QTY        /* 재고수량 - 수동창고 EA */
+             , TRUNC(SUM(T.ASRS_QTY) + SUM(T.MSC_BOX_QTY) + SUM(T.GNRL_BOX_QTY), 2) AS TOTAL_BOX_QTY      /* 재고합계 - BOX */
+             , SUM(T.MSC_BOL_QTY) + SUM(T.GNRL_BOL_QTY)                             AS TOTAL_BOL_QTY      /* 재고합계 - BOL */
+             , SUM(T.GNRL_EA_QTY)                                                   AS TOTAL_EA_QTY       /* 재고합계 - EA */
+          FROM (
+
+               /* 전일 재고 */
+               SELECT PREV_IV.IC_BIZ_KIND
+                    , SUM(PREV_IV.BOX_QTY) AS BEFORE_BOX_QTY
+                    , SUM(PREV_IV.BOL_QTY) AS BEFORE_BOL_QTY
+                    , SUM(PREV_IV.EA_QTY)  AS BEFORE_EA_QTY
+                    , 0                    AS IB_QTY
+                    , 0                    AS OB_BOX_QTY
+                    , 0                    AS OB_BOL_QTY
+                    , 0                    AS OB_EA_QTY
+                    , 0                    AS ASRS_QTY
+                    , 0                    AS MSC_BOX_QTY
+                    , 0                    AS MSC_BOL_QTY
+                    , 0                    AS GNRL_BOX_QTY
+                    , 0                    AS GNRL_BOL_QTY
+                    , 0                    AS GNRL_EA_QTY
+                    , 0                    AS ASRS_STORAGE_RATIO
+                    , 0                    AS MSC_STORAGE_RATIO
+                 FROM (
+                      WITH A AS (
+                           SELECT IC.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IVAT.TTQTY, IC.ICUTKEY, IV.UOM, ICUT.ICUTQTY, ICUT2.ICUTQTY AS BOL_ICUTQTY
+                             FROM (SELECT IVATC.CTKEY, IVATC.OWKEY, IVATC.ICKEY, IVATC.LCKEY, IVATC.IVATKEY, IVATC.TTQTY
+                                     FROM TWORK_INFO_IVATXLCXULC_CARRYOVER IVATC
+                                    WHERE IVATC.IVATSTANDARDDATE = TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD') - 1, 'YYYYMMDD')
+                                      AND IVATC.CTKEY = #{ctkey}
+                                      AND IVATC.OWKEY = #{owkey}
+                                      AND IVATC.AVQTY > 0
+                                  ) IVAT
+                            INNER JOIN TWORK_INFO_IVAT IV
+                               ON IVAT.CTKEY = IV.CTKEY
+                              AND IVAT.OWKEY = IV.OWKEY
+                              AND IVAT.IVATKEY = IV.IVATKEY
+                              AND IVAT.ICKEY = IV.ICKEY
+                            INNER JOIN TWORK_MST_IC IC
+                               ON IVAT.CTKEY = IC.CTKEY
+                              AND IVAT.OWKEY = IC.OWKEY
+                              AND IVAT.ICKEY = IC.ICKEY
+                              AND IC.DELYN = 'N'
+                            INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                               ON IC.CTKEY = ICUT.CTKEY
+                              AND IC.OWKEY = ICUT.OWKEY
+                              AND IC.ICUTKEY = ICUT.ICUTKEY
+                              AND IV.UOM = ICUT.ICUTTYPE
+                              AND ICUT.OUTBOUNDUSEYN = 'Y'
+                             LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT2
+                               ON IC.CTKEY = ICUT2.CTKEY
+                              AND IC.OWKEY = ICUT2.OWKEY
+                              AND IC.ICUTKEY = ICUT2.ICUTKEY
+                              AND ICUT2.ICUTTYPE = 'BOL'
+                              AND ICUT2.IVUSEYN = 'Y'
+                              AND ICUT2.ICUTQTY > 0
+                              AND ICUT2.OUTBOUNDUSEYN = 'Y'
+                            WHERE EXISTS (SELECT 1 FROM TWORK_MST_LC LC WHERE LC.CTKEY = IVAT.CTKEY AND LC.LCKEY = IVAT.LCKEY AND LC.LCTYPE = '90')
+                            GROUP BY IC.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IVAT.TTQTY, IC.ICUTKEY, IV.UOM, ICUT.ICUTQTY, ICUT2.ICUTQTY
+                           )
+
+                      SELECT A.IC_BIZ_KIND
+                           , SUM(CASE WHEN A.UOM = 'BOX' THEN DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE ELSE 0 END) AS BOX_QTY
+                           , SUM(CASE WHEN MOD(A.TTQTY, A.ICUTQTY) > 0 AND MOD((A.TTQTY - (DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE * A.ICUTQTY)), A.BOL_ICUTQTY) = 0
+                                           THEN (A.TTQTY - (DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE * A.ICUTQTY)) / A.BOL_ICUTQTY
+                                      WHEN A.UOM = 'BOL' THEN DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE
+                                      ELSE 0
+                             END) AS BOL_QTY
+                           , SUM(CASE WHEN MOD(A.TTQTY, A.ICUTQTY) > 0 AND MOD((A.TTQTY - (DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE * A.ICUTQTY)), A.BOL_ICUTQTY) > 0
+                                           THEN COALESCE(((A.TTQTY - (DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE * A.ICUTQTY))) / (
+                                                SELECT ICUTQTY
+                                                  FROM TWORK_MST_ICUTXTYPE ICUT3
+                                                 WHERE ICUT3.CTKEY = A.CTKEY
+                                                   AND ICUT3.OWKEY = A.OWKEY
+                                                   AND ICUT3.ICUTKEY = A.ICUTKEY
+                                                   AND ICUT3.ICUTTYPE = 'EA'
+                                                   AND ICUT3.OUTBOUNDUSEYN = 'Y'
+                                                ), 0)
+                                      WHEN A.UOM = 'EA' THEN DATE_TRUNC('day', A.TTQTY / A.ICUTQTY)::DATE
+                                      ELSE 0
+                             END) AS EA_QTY
+                        FROM A
+                       GROUP BY A.IC_BIZ_KIND
+                      ) PREV_IV
+                GROUP BY PREV_IV.IC_BIZ_KIND
+
+                UNION ALL
+
+               /* 당일입고 */
+               SELECT IC.IC_BIZ_KIND
+                    , 0                            AS BEFORE_BOX_QTY
+                    , 0                            AS BEFORE_BOL_QTY
+                    , 0                            AS BEFORE_EA_QTY
+                    , SUM(CD.CFQTY / ICUT.ICUTQTY) AS IB_QTY
+                    , 0                            AS OB_BOX_QTY
+                    , 0                            AS OB_BOL_QTY
+                    , 0                            AS OB_EA_QTY
+                    , 0                            AS ASRS_QTY
+                    , 0                            AS MSC_BOX_QTY
+                    , 0                            AS MSC_BOL_QTY
+                    , 0                            AS GNRL_BOX_QTY
+                    , 0                            AS GNRL_BOL_QTY
+                    , 0                            AS GNRL_EA_QTY
+                    , 0                            AS ASRS_STORAGE_RATIO
+                    , 0                            AS MSC_STORAGE_RATIO
+                 FROM TWORK_INFO_IBCF_DT CD
+                INNER JOIN TWORK_INFO_IB_DT ID
+                   ON ID.CTKEY = CD.CTKEY
+                  AND ID.OWKEY = CD.OWKEY
+                  AND ID.IBHDKEY = CD.IBHDKEY
+                  AND ID.IBDTKEY = CD.IBDTKEY
+                  AND CD.CFQTY > 0
+                INNER JOIN TWORK_MST_IC IC
+                   ON ID.CTKEY = IC.CTKEY
+                  AND ID.OWKEY = IC.OWKEY
+                  AND ID.ICKEY = IC.ICKEY
+                  AND IC.DELYN = 'N'
+                INNER JOIN TWORK_MST_ICUTXTYPE  ICUT
+                   ON IC.CTKEY = ICUT.CTKEY
+                  AND IC.OWKEY = ICUT.OWKEY
+                  AND IC.ICUTKEY = ICUT.ICUTKEY
+                  AND ICUT.ICUTTYPE = ID.UOM
+                  AND ICUT.OUTBOUNDUSEYN = 'Y'
+                WHERE CD.CTKEY = #{ctkey}
+                  AND CD.OWKEY = #{owkey}
+                  AND CD.IBCONFIRMDATE >= RPAD(#{searchDate}, 14, 0)
+                  AND CD.IBCONFIRMDATE <![CDATA[ <= ]]> CONCAT(#{searchDate}, '235959')
+                GROUP BY IC.IC_BIZ_KIND
+
+                UNION ALL
+
+               /* 당일출고 */
+               SELECT IC.IC_BIZ_KIND
+                    , 0                                                                         AS BEFORE_BOX_QTY
+                    , 0                                                                         AS BEFORE_BOL_QTY
+                    , 0                                                                         AS BEFORE_EA_QTY
+                    , 0                                                                         AS IB_QTY
+                    , SUM(CASE WHEN OD.UOM = 'BOX' THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END)     AS OB_BOX_QTY
+                    , SUM(CASE WHEN OD.UOM = 'BOL' THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END)     AS OB_BOL_QTY
+                    , SUM(CASE WHEN OD.UOM = 'EA'  THEN OD.CFQTY / ICUT.ICUTQTY ELSE 0 END)     AS OB_EA_QTY
+                    , 0                                                                         AS ASRS_QTY
+                    , 0                                                                         AS MSC_BOX_QTY
+                    , 0                                                                         AS MSC_BOL_QTY
+                    , 0                                                                         AS GNRL_BOX_QTY
+                    , 0                                                                         AS GNRL_BOL_QTY
+                    , 0                                                                         AS GNRL_EA_QTY
+                    , 0                                                                         AS ASRS_STORAGE_RATIO
+                    , 0                                                                         AS MSC_STORAGE_RATIO
+                 FROM TWORK_INFO_OB_DT  OD
+                INNER JOIN TWORK_MST_IC IC
+                   ON OD.CTKEY = IC.CTKEY
+                  AND OD.OWKEY = IC.OWKEY
+                  AND OD.ICKEY = IC.ICKEY
+                  AND IC.DELYN = 'N'
+                INNER JOIN TWORK_MST_ICUTXTYPE  ICUT
+                   ON OD.CTKEY = ICUT.CTKEY
+                  AND OD.OWKEY = ICUT.OWKEY
+                  AND OD.ICUTKEY = ICUT.ICUTKEY
+                  AND OD.UOM = ICUT.ICUTTYPE
+                  AND ICUT.OUTBOUNDUSEYN = 'Y'
+                  AND OD.CFQTY > 0
+                WHERE EXISTS (
+                      SELECT 1 FROM TWORK_INFO_OB_HD OH
+                       WHERE OH.CTKEY = #{ctkey}
+                         AND OH.OWKEY = #{owkey}
+                         AND OH.OBCONFIRMDATE >= RPAD(#{searchDate}, 14, 0)
+                         AND OH.OBCONFIRMDATE <![CDATA[ <= ]]> CONCAT(#{searchDate}, '235959')
+                         AND OH.CTKEY = OD.CTKEY
+                         AND OH.OWKEY = OD.OWKEY
+                         AND OH.OBHDKEY = OD.OBHDKEY
+                      )
+                GROUP BY IC.IC_BIZ_KIND
+
+                UNION ALL
+
+               /* 재고 */
+               SELECT IV.IC_BIZ_KIND
+                    , 0                    AS BEFORE_BOX_QTY
+                    , 0                    AS BEFORE_BOL_QTY
+                    , 0                    AS BEFORE_EA_QTY
+                    , 0                    AS IB_QTY
+                    , 0                    AS OB_BOX_QTY
+                    , 0                    AS OB_BOL_QTY
+                    , 0                    AS OB_EA_QTY
+                    , SUM(IV.ASRS_QTY)     AS ASRS_QTY
+                    , SUM(IV.MSC_BOX_QTY)  AS MSC_BOX_QTY
+                    , SUM(IV.MSC_BOL_QTY)  AS MSC_BOL_QTY
+                    , SUM(IV.GNRL_BOX_QTY) AS GNRL_BOX_QTY
+                    , SUM(IV.GNRL_BOL_QTY) AS GNRL_BOL_QTY
+                    , SUM(IV.GNRL_EA_QTY)  AS GNRL_EA_QTY
+                    , 0                    AS ASRS_STORAGE_RATIO
+                    , 0                    AS MSC_STORAGE_RATIO
+                 FROM (
+                      WITH B AS (
+                           SELECT IVAT.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IVAT.TTQTY, IVAT.ICUTKEY, IVAT.UOM, ICUT.ICUTQTY, ICUT2.ICUTQTY AS BOL_ICUTQTY
+                             FROM (
+                                  <choose>
+                                      <when test="isSearchDateBeforeToday == true">
+                                          SELECT IC.IC_BIZ_KIND, IVATC.CTKEY, IVATC.OWKEY, IVATC.ICKEY, IVATC.LCKEY, IVATC.IVATKEY, IC.ICUTKEY, IVATC.TTQTY, IVATC.AVQTY, IV.UOM
+                                            FROM TWORK_INFO_IVATXLCXULC_CARRYOVER IVATC
+                                           INNER JOIN TWORK_INFO_IVAT IV
+                                              ON IVATC.CTKEY = IV.CTKEY
+                                             AND IVATC.OWKEY = IV.OWKEY
+                                             AND IVATC.ICKEY = IV.ICKEY
+                                             AND IVATC.IVATKEY = IV.IVATKEY
+                                           INNER JOIN TWORK_MST_IC IC
+                                              ON IVATC.CTKEY = IC.CTKEY
+                                             AND IVATC.OWKEY = IC.OWKEY
+                                             AND IVATC.ICKEY = IC.ICKEY
+                                             AND IC.DELYN = 'N'
+                                           WHERE IVATC.CTKEY = #{ctkey}
+                                             AND IVATC.OWKEY = #{owkey}
+                                             AND IVATC.IVATSTANDARDDATE = TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD'), 'YYYYMMDD')
+                                             AND IVATC.AVQTY > 0
+                                           GROUP BY IC.IC_BIZ_KIND, IVATC.CTKEY, IVATC.OWKEY, IVATC.ICKEY, IVATC.LCKEY, IVATC.IVATKEY, IC.ICUTKEY, IVATC.TTQTY, IVATC.AVQTY, IV.UOM
+                                      </when>
+                                      <otherwise>
+                                          SELECT IC.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IC.ICUTKEY, IVAT.TTQTY, IVAT.AVQTY, IV.UOM
+                                            FROM TWORK_INFO_IVATXLCXULC IVAT
+                                           INNER JOIN TWORK_INFO_IVAT IV
+                                              ON IVAT.CTKEY = IV.CTKEY
+                                             AND IVAT.OWKEY = IV.OWKEY
+                                             AND IVAT.ICKEY = IV.ICKEY
+                                             AND IVAT.IVATKEY = IV.IVATKEY
+                                           INNER JOIN TWORK_MST_IC IC
+                                              ON IVAT.CTKEY = IC.CTKEY
+                                             AND IVAT.OWKEY = IC.OWKEY
+                                             AND IVAT.ICKEY = IC.ICKEY
+                                             AND IC.DELYN = 'N'
+                                           WHERE IVAT.CTKEY = #{ctkey}
+                                             AND IVAT.OWKEY = #{owkey}
+                                             AND IVAT.AVQTY > 0
+                                           GROUP BY IC.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IC.ICUTKEY, IVAT.TTQTY, IVAT.AVQTY, IV.UOM
+                                      </otherwise>
+                                  </choose>
+                                  ) IVAT
+                            INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                               ON IVAT.CTKEY = ICUT.CTKEY
+                              AND IVAT.OWKEY = ICUT.OWKEY
+                              AND IVAT.ICKEY = ICUT.ICUTKEY
+                              AND IVAT.UOM = ICUT.ICUTTYPE
+                              AND ICUT.OUTBOUNDUSEYN = 'Y'
+                             LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUT2
+                               ON IVAT.CTKEY = ICUT2.CTKEY
+                              AND IVAT.OWKEY = ICUT2.OWKEY
+                              AND IVAT.ICKEY = ICUT2.ICUTKEY
+                              AND ICUT2.ICUTTYPE = 'BOL'
+                              AND ICUT2.IVUSEYN = 'Y'
+                              AND ICUT2.ICUTQTY > 0
+                              AND ICUT2.OUTBOUNDUSEYN = 'Y'
+                            WHERE EXISTS (SELECT 1 FROM TWORK_MST_LC LC WHERE LC.CTKEY = IVAT.CTKEY AND LC.LCKEY = IVAT.LCKEY AND LC.LCTYPE = '90')
+                           GROUP BY IVAT.IC_BIZ_KIND, IVAT.CTKEY, IVAT.OWKEY, IVAT.ICKEY, IVAT.LCKEY, IVAT.IVATKEY, IVAT.TTQTY, IVAT.ICUTKEY, IVAT.UOM, ICUT.ICUTQTY, ICUT2.ICUTQTY
+                           )
+
+                      SELECT B.IC_BIZ_KIND
+                           , SUM(CASE WHEN B.LCKEY = 'ASRS' THEN B.TTQTY / B.ICUTQTY ELSE 0 END)                                          AS ASRS_QTY
+                           , SUM(CASE WHEN B.LCKEY = 'MSC' AND B.UOM = 'BOX' THEN B.TTQTY / B.ICUTQTY ELSE 0 END)                         AS MSC_BOX_QTY
+                           , SUM(CASE WHEN B.LCKEY = 'MSC' AND B.UOM = 'BOL' THEN B.TTQTY / B.ICUTQTY ELSE 0 END)                         AS MSC_BOL_QTY
+                           , SUM(CASE WHEN B.LCKEY NOT IN ('ASRS', 'MSC') AND B.UOM = 'BOX' THEN DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE ELSE 0 END)   AS GNRL_BOX_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOX' AND MOD(B.TTQTY, B.ICUTQTY) > 0 AND MOD((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY)), B.BOL_ICUTQTY) = 0
+                                           THEN ((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) / B.BOL_ICUTQTY
+                                      WHEN B.LCKEY NOT IN ('ASRS', 'MSC') AND B.UOM = 'BOL' THEN DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE
+                                      ELSE 0
+                             END) AS GNRL_BOL_QTY
+                           , SUM(CASE WHEN B.UOM = 'BOX' AND MOD(B.TTQTY, B.ICUTQTY) > 0 AND MOD((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY)), B.BOL_ICUTQTY) > 0
+                                           THEN COALESCE(((B.TTQTY - (DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE * B.ICUTQTY))) /
+                                                (SELECT ICUT3.ICUTQTY FROM TWORK_MST_ICUTXTYPE ICUT3
+                                                 WHERE ICUT3.CTKEY    = B.CTKEY
+                                                   AND ICUT3.OWKEY    = B.OWKEY
+                                                   AND ICUT3.ICUTKEY  = B.ICKEY
+                                                   AND ICUT3.ICUTTYPE = 'EA'
+                                                   AND ICUT3.OUTBOUNDUSEYN = 'Y'
+                                                ), 0)
+                                      WHEN B.LCKEY NOT IN ('ASRS', 'MSC') AND B.UOM = 'EA' THEN DATE_TRUNC('day', B.TTQTY / B.ICUTQTY)::DATE
+                                      ELSE 0
+                             END) AS GNRL_EA_QTY
+                        FROM B
+                      GROUP BY B.IC_BIZ_KIND
+                      )IV
+                GROUP BY IV.IC_BIZ_KIND
+
+                UNION ALL
+
+               /* 자동창고 보관율 */
+               SELECT NULL          AS IC_BIZ_KIND            /* 자동창고에는 건과만 */
+                    , 0             AS BEFORE_BOX_QTY
+                    , 0             AS BEFORE_BOL_QTY
+                    , 0             AS BEFORE_EA_QTY
+                    , 0             AS IB_QTY
+                    , 0             AS OB_BOX_QTY
+                    , 0             AS OB_BOL_QTY
+                    , 0             AS OB_EA_QTY
+                    , 0             AS ASRS_QTY
+                    , 0             AS MSC_BOX_QTY
+                    , 0             AS MSC_BOL_QTY
+                    , 0             AS GNRL_BOX_QTY
+                    , 0             AS GNRL_BOL_QTY
+                    , 0             AS GNRL_EA_QTY
+                    , WCS.ASRS_LOAD AS ASRS_STORAGE_RATIO   /* 보관율을 보관셀수로 변경 */
+                    , WCS.MSC_LOAD  AS MSC_STORAGE_RATIO    /* 보관율을 보관셀수로 변경 */
+                 FROM TWORK_INFO_WCSSTORAGE_REQ REQ
+                INNER JOIN TWORK_INTF_SICSWCS   WCS
+                   ON REQ.ICS_SEQ = WCS.ICS_SEQ
+                WHERE REQ.CTKEY = #{ctkey}
+                  AND REQ.OWKEY = #{owkey}
+                  AND REQ.REQUEST_DATE = TO_CHAR(TO_DATE(#{searchDate}, 'YYYYMMDD'), 'YYYYMMDD')
+               ) T
+         GROUP BY T.IC_BIZ_KIND
+    </sql>
+
+    <select id="selectIbObInvnStatusList" resultType="camelMap">
+        /* wms-report-ibObInvnStatus-sql-oracle.xml - selectIbObInvnStatusList */
+        SELECT A.* FROM ( <include refid="sql_selectIbObInvnStatus"/> ) A
+    </select>
+
+    <select id="selectWcsStorageReq" resultType="camelMap">
+        /* wms-report-ibObInvnStatus-sql-oracle.xml - selectWcsStorageReq */
+        SELECT CTKEY
+             , OWKEY
+             , REQUEST_DATE
+             , ICS_SEQ
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+          FROM TWORK_INFO_WCSSTORAGE_REQ
+         WHERE 1 = 1
+               AND REQUEST_DATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+    </select>
+
+    <insert id="insertWcsStorageReq">
+        /* wms-report-ibObInvnStatus-sql-oracle.xml - insertWcsStorageReq */
+        INSERT INTO TWORK_INFO_WCSSTORAGE_REQ (
+               CTKEY
+             , OWKEY
+             , REQUEST_DATE
+             , ICS_SEQ
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+        ) VALUES (
+              #{sctkey}
+            , #{sowkey}
+            , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+            , #{icsSeq}
+            , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+            , #{surkey}
+            , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+            , #{surkey}
+        )
+    </insert>
+
+    <update id="updateWcsStorageReq">
+        /* wms-report-ibObInvnStatus-sql-oracle.xml - updateWcsStorageReq */
+        UPDATE TWORK_INFO_WCSSTORAGE_REQ
+           SET ICS_SEQ = #{icsSeq}
+             , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+             , UPDATEURKEY = #{surkey}
+         WHERE REQUEST_DATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+    </update>
+
+</mapper>

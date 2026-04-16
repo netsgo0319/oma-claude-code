@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.item.mapper.ItemRestBatchMapper">
+	
+	<insert id="insertInterfaceItemList">
+		/* adm-item-itemrestbatch-sql-oracle.xml  insertInterfaceItemList */
+		INSERT INTO TADMIN_INTF_IC
+		(
+		      ICKEY
+		    , ICNAME
+		    , CONSUMER_ICNAME
+		    , CTGKEY
+		    , IC_TYPE
+		    , INTF_IC_TYPE
+		    , IC_BARCODE
+		    , UOM
+		    , INTF_UOM
+		    , SHELF
+		    , SHELFUNIT
+		    , COST
+		    , INTF_COST
+		    , COSTUNIT
+		    , CREAT_AT
+		    , MODIFY_AT
+		    , TEMPERING
+		    , INTF_TEMPERING
+		    , TEMPERINGTIME
+		    , SBKEY
+		    , ORGKEY
+		    , INVUNIT
+		    , WEIGHT
+		    , TOTWEIGHT
+		    , WEIGHTUNIT
+		    , SZ
+		    , LENGTH
+		    , WIDTH
+		    , HEIGHT
+		    , SPEC
+		    , VOLUME
+		    , VOLUMEUNIT
+		    , INTF_IC_STATUS
+		    , IC_STATUS
+		    , WGT_CF_YN
+		    , REQUESTDT
+		    , INTERFACE_ID
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		
+		)
+		VALUES
+		( 	   LTRIM(#{ickey}, '0')       /*화주상품코드*/
+		     , #{icname}      /*제품명*/
+		     , #{consumerIcname}       /*소비자품명*/
+		     , #{ctgkey}       /*계층구조*/
+		     , CASE #{icType} 
+		     		WHEN 'FERT' THEN '003' /*제품*/
+		     		WHEN 'HAWA' THEN '005' /*상품*/
+					WHEN 'S023' THEN '006' /*소모품*/
+					WHEN 'LEIH' THEN '3'   /*용기*/
+		     		ELSE '1'  /*일반상품*/
+		        END    /*제품 유형*/
+		     , #{icType}     /*제품 유형*/
+		     , #{icBarcode}        /*제품 바코드*/			     
+		     , CASE #{invunit}
+		     		WHEN #{boxexternuom} THEN #{boxuom} 
+			 		WHEN #{bolexternuom} THEN #{boluom}
+			 		WHEN #{eaexternuom} THEN #{eauom}
+			 		ELSE COALESCE(#{invunit}, #{boxuom})
+			    END 
+			 , #{invunit} 
+		     , CASE WHEN #{shelfunit}='Y' THEN CAST(#{shelf} AS NUMERIC) * 365
+		            WHEN #{shelfunit}='M' AND MOD(CAST(#{shelf} AS NUMERIC), 12)=0 THEN CAST(#{shelf} AS NUMERIC)/12*365
+		            WHEN #{shelfunit}='M' AND MOD(CAST(#{shelf} AS NUMERIC), 12)>0 THEN CAST(#{shelf} AS NUMERIC) * 31
+		            WHEN #{shelfunit}='W' THEN CAST(#{shelf} AS NUMERIC) * 7			            
+		            WHEN #{shelfunit}='H' THEN TRUNC(CAST(#{shelf} AS NUMERIC) / 24, 3)
+		            ELSE CAST(#{shelf} AS NUMERIC)
+		        END    /*유통기한*/
+		     , #{shelfunit}      /*유통기한 단위*/
+		     , CASE WHEN #{costunit}='Y' THEN CAST(#{cost} AS NUMERIC) * 365
+		            WHEN #{costunit}='M' AND MOD(CAST(#{cost} AS NUMERIC), 12)=0 THEN CAST(#{cost} AS NUMERIC)/12*365
+		            WHEN #{costunit}='M' AND MOD(CAST(#{cost} AS NUMERIC), 12)>0 THEN CAST(#{cost} AS NUMERIC) * 31
+		            WHEN #{costunit}='W' THEN CAST(#{cost} AS NUMERIC) * 7			    
+		            WHEN #{costunit}='H' THEN TRUNC(CAST(#{cost} AS NUMERIC) / 24, 3)        
+		            ELSE CAST(#{cost} AS NUMERIC)
+		        END       /*소비기한(일 단위로 변환)*/
+		     , #{cost} 
+		     , #{costunit}     /*소비기한 단위*/
+		     , #{creatAt}      /*생성일자*/
+		     , #{modifyAt}      /*수정일자*/
+		     , #{mappTempering}  /*SAP-시스템 맵핑 Tempering*/    
+		     , #{tempering}      /*Tempering*/
+		     , #{temperingtime}       /*Tempering시간*/
+		     , #{sbkey}       /*대체상품코드*/
+		     , #{orgkey}        /*원상품코드*/
+		     , #{invunit}       /*재고단위*/
+		     , #{weight}        /*순중량*/
+		     , #{totweight}       /*총중량*/
+		     , #{weightunit}       /*중량단위(KG)*/
+		     , #{sz}      /*크기*/
+		     , #{length}        /*세로*/
+		     , #{width}       /*가로*/
+		     , #{height}       /*높이*/
+		     , #{spec}     /*가로/세로/높이 단위*/
+		     , #{volume}       /*부피*/
+		     , #{volumeunit}        /*부피단위*/
+		     , #{icStatus}       /*품목상태*/
+		     , #{mappIcStatus}   /*SAP-시스템 맵핑 품목상태*/    
+		     , #{wgtCfYn}        /*PDA 검근여부*/
+		     , #{requestDt}       /*요청일자*/
+		     , #{interfaceId}       /*인터페이스 마스터 ID*/
+		     , #{interfaceDate}      /*입력 일시*/
+		     , #{interfaceUrkey}       /*입력 사용자 ID*/
+		     , #{interfaceDate}        /*수정 일시*/
+		     , #{interfaceUrkey}     /*수정 사용자 ID*/
+		)
+	</insert>
+	
+	<insert id="insertInterfaceItemUnitList">
+		/* adm-item-itemrestbatch-sql-oracle.xml  insertInterfaceItemUnitList */
+		INSERT INTO TADMIN_INTF_ICUNIT
+		(
+		      ICKEY    /*화주상품코드*/
+			, UOM    /*단위*/
+			, INTF_UOM
+			, NUMERATOR   /*분자*/
+			, DENOMINATOR /*분모*/
+			, COVERTQTY    /*환산수량*/
+			, QTY    /*기본수량*/
+			, LENGTH    /*길이*/
+			, WIDTH    /*너비*/
+			, HEIGHT    /*높이*/
+			, SIZEUNIT    /*측정단위*/
+			, WEIGHT    /*중량*/
+			, INTF_WEIGHT
+			, WEIGHTUNIT    /*중량단위*/
+			, INTF_WEIGHTUNIT
+			, VOLUME    /*부피*/
+			, INTF_VOLUME
+			, VOLUMEUNIT    /*부피단위*/
+			, INTF_VOLUMEUNIT
+			, BARCODE    /*바코드*/
+			, CONSUMER_PRICE    /*소비자가*/
+			, OUT_PRICE    /*출고가*/
+			, STOR_PRICE    /*대리점가*/
+			, REQUESTDT    /*요청일자*/
+			, INTERFACE_ID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		VALUES
+		(
+			   LTRIM(#{ickey}, '0')   /*화주상품코드*/
+			 , CASE WHEN #{uom}=#{boxexternuom} THEN #{boxuom} 
+			 		WHEN #{uom}=#{bolexternuom} THEN #{boluom}
+			 		WHEN #{uom}=#{eaexternuom} THEN #{eauom}
+			 		ELSE #{uom}
+			    END     /*단위*/
+			 , #{uom} 
+			 , #{numerator}   /*분자*/
+			 , #{denominator}   /*분모*/
+			 , CASE WHEN CAST(#{denominator} AS NUMERIC)=0 THEN 1 
+			 		ELSE TRUNC(CAST(#{numerator} AS NUMERIC) / CAST(#{denominator} AS NUMERIC), 5) 
+			   END   /*환산수량*/
+			 , #{qty}   /*기본수량*/
+			 , #{length}     /*길이*/
+			 , #{width}     /*너비*/
+			 , #{height}     /*높이*/
+			 , #{sizeunit}    /*측정단위*/
+			 , CASE WHEN #{weightunit}='KG' THEN CAST(#{weight} AS NUMERIC) * 1000 
+			        ELSE CAST(#{weight} AS NUMERIC)
+			    END     /*중량*/
+			 , #{weight} 
+			 , 'G'   /*중량단위*/
+			 , #{weightunit}
+			 , CASE WHEN #{volumeunit}='MMQ' THEN CAST(#{volume} AS NUMERIC) 
+			        ELSE COALESCE(#{length}, 0) * COALESCE(#{width}, 0) * COALESCE(#{height}, 0) 
+			    END    /*부피*/
+			 , #{volume} 			    
+			 , 'MM3'     /*부피단위(mm*mm*mm)*/
+			 , #{volumeunit} 
+			 , #{barcode}     /*바코드*/
+			 , #{consumerPrice}     /*소비자가*/
+			 , #{outPrice}    /*출고가*/
+			 , #{storPrice}     /*대리점가*/
+			 , #{requestDt}     /*요청일자*/
+			 , #{interfaceId}    /*인터페이스 마스터 ID*/
+			 , #{interfaceDate}        /*입력 일시*/
+			 , #{interfaceUrkey}        /*입력 사용자 ID*/
+			 , #{interfaceDate}      /*수정 일시*/
+			 , #{interfaceUrkey}      /*수정 사용자 ID*/
+		)
+	</insert>
+	
+</mapper>

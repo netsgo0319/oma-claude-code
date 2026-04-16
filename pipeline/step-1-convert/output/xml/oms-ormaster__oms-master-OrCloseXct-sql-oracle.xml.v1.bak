@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OrderCloseCenterMapper">
+
+	<select id="selectOrderCloseCenterHdCount" resultType="java.lang.Integer">
+		/* oms-master-OrCloseXct-sql-oracle.xml selectOrderCloseCenterHdCount */
+		SELECT COUNT(1)
+		FROM TORDER_MST_DDLN_CT A
+			INNER JOIN TORDER_MST_CT B
+					ON A.CTKEY = B.CTKEY
+			INNER JOIN TADMIN_MST_OW C
+					ON A.OWKEY = C.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectOrderCloseCenterHdList" resultType="camelMap">
+		/* oms-master-OrCloseXct-sql-oracle.xml selectOrderCloseCenterHdList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , A.OWKEY
+		     , C.OWNM
+			 , A.CTKEY
+		     , B.CTNM
+             , A.IODEV
+             , A.MEDITRSN
+             , A.MEDITCHGDATE
+             , A.IFSYSTM
+             , A.CRITMAXPRCSQTY
+             , A.DELYN
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+		FROM TORDER_MST_DDLN_CT A
+			INNER JOIN TORDER_MST_CT B
+					ON A.CTKEY = B.CTKEY
+			INNER JOIN TADMIN_MST_OW C
+					ON A.OWKEY = C.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		ORDER BY A.UPDATEDATE DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<select id="selectOrderCloseCenterDtList" resultType="camelMap">
+		/* oms-master-OrCloseXct-sql-oracle.xml selectOrderCloseCenterDtList */
+		WITH L_DATE AS (
+			<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(comboValue) and comboValue != "undefined"'>
+						-- 월 단위 선택일 경우
+						SELECT TO_CHAR(TO_DATE(#{comboValue}, 'YYYYMM') + (LEVEL- 1::INTEGER), 'YYYYMMDD') AS LDATE
+							 , #{owkey} AS OWKEY
+							 , #{ctkey} AS CTKEY
+						WHERE LEVEL <![CDATA[<=]]> TO_NUMBER(TO_CHAR((DATE_TRUNC('month', TO_DATE(#{comboValue}, 'YYYYMM')) + INTERVAL '1 month - 1 day')::DATE, 'DD'))
+						CONNECT BY LEVEL <![CDATA[<=]]> TO_NUMBER(TO_CHAR((DATE_TRUNC('month', TO_DATE(#{comboValue}, 'YYYYMM')) + INTERVAL '1 month - 1 day')::DATE, 'DD'))
+					</when>
+					<otherwise>
+						-- 일 단위 (오늘~7일)
+						SELECT TO_CHAR(CURRENT_TIMESTAMP + (LEVEL- 1::INTEGER), 'YYYYMMDD') AS LDATE
+							 , #{owkey} AS OWKEY
+							 , #{ctkey} AS CTKEY
+						CONNECT BY LEVEL <![CDATA[<=]]> 7
+					</otherwise>
+				</choose>
+
+		)
+		SELECT L_DATE.LDATE
+		     , CT.OWKEY
+             , CT.CTKEY
+             , (SELECT CTNM FROM TORDER_MST_CT C WHERE C.CTKEY = CT.CTKEY) AS CTNM
+		     , CT.IODEV
+             , CA.DSBTPRCSCRITDAY
+             , COALESCE(CA.MAXPRCSQTY, CT.CRITMAXPRCSQTY) AS MAXPRCSQTY
+             , DA.DAYOFFHOLIYN
+             , DA.DAYOFFHOLINM
+		     , HO.HOLINM
+             , CA.INSERTDATE
+             , CA.INSERTURKEY
+             , CA.UPDATEDATE
+             , CA.UPDATEURKEY
+		FROM L_DATE
+		LEFT JOIN TORDER_MST_DDLN_CT CT
+				ON L_DATE.CTKEY = CT.CTKEY
+		       AND L_DATE.OWKEY = CT.OWKEY
+		LEFT JOIN TORDER_INFO_CAPA_CT CA
+		       ON L_DATE.LDATE = CA.DSBTPRCSCRITDAY
+		      AND L_DATE.OWKEY = CA.OWKEY
+		      AND L_DATE.CTKEY = CA.CTKEY
+		      AND CT.IODEV = CA.IODEV
+		LEFT JOIN TORDER_INFO_DAYOFF DA
+		       ON DA.OWKEY = CT.OWKEY
+		      AND DA.CTKEY = CT.CTKEY
+		      AND DA.DAYOFFHOLIDAY = L_DATE.LDATE
+		LEFT JOIN TORDER_MST_HOLIDAY HO
+		       ON L_DATE.LDATE = HO.HOLIDAY
+		WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+		 AND CT.OWKEY = #{owkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+		 AND CT.CTKEY = #{ctkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(iodev)" >
+		 AND CT.IODEV = #{iodev}
+		</if>
+		ORDER BY L_DATE.LDATE ASC
+	</select>
+
+	<select id="selectCritMonthList" resultType="camelMap">
+		/* oms-master-OrCloseXct-sql-oracle.xml selectCritMonthList */
+		SELECT TO_CHAR((TRUNC(CURRENT_TIMESTAMP, 'MM') + (-(24 - LEVEL)) * INTERVAL '1 month'), 'YYYYMM') AS FIELD1,
+			   TO_CHAR((TRUNC(CURRENT_TIMESTAMP, 'MM') + (-(24 - LEVEL)) * INTERVAL '1 month'), 'YY.FMMM') AS FIELD2
+		CONNECT BY LEVEL <![CDATA[<=]]> 24
+		ORDER BY FIELD1 DESC
+	</select>
+
+	<select id="checkOrderCloseCenter" resultType="java.lang.Integer">
+		/* oms-master-OrCloseXct-sql-oracle.xml checkOrderCloseCenter */
+		SELECT COUNT(*)
+		FROM TORDER_MST_DDLN_CT
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND IODEV = #{iodev}
+	</select>
+
+	<insert id="insertOrderCloseCenter">
+		/* oms-master-OrCloseXct-sql-oracle.xml insertOrderCloseCenter */
+		INSERT INTO TORDER_MST_DDLN_CT
+		(
+			  OWKEY
+			, CTKEY
+			, IODEV
+			, MEDITRSN
+			, MEDITCHGDATE
+			, IFSYSTM
+			, CRITMAXPRCSQTY
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+
+		)
+		VALUES (
+			  #{owkey}
+			, #{ctkey}
+			, #{iodev}
+			, #{meditrsn}
+			, #{meditchgdate}
+			, #{ifsystm}
+			, #{critmaxprcsqty}
+			, #{delyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateOrderCloseCenter">
+		/* oms-master-OrCloseXct-sql-oracle.xml updateOrderCloseCenter */
+		UPDATE TORDER_MST_DDLN_CT
+			SET IFSYSTM            = #{ifsystm}
+			  , CRITMAXPRCSQTY     = #{critmaxprcsqty}
+			  , DELYN              = #{delyn}
+			  , UPDATEDATE		   = #{sysdate}
+			  , UPDATEURKEY 	   = #{surkey}
+		WHERE OWKEY = #{owkey}
+		  AND CTKEY = #{ctkey}
+		  AND IODEV = #{iodev}
+	</update>
+
+	<update id="mergeOrderCloseCenterCapa">
+		/* oms-master-OrCloseXct-sql-oracle.xml mergeOrderCloseCenterCapa */
+		MERGE INTO TORDER_INFO_CAPA_CT
+		USING DUAL
+		ON (       OWKEY = #{owkey}
+			   AND CTKEY = #{ctkey}
+		       AND IODEV = #{iodev}
+		       AND DSBTPRCSCRITDAY = #{ldate}
+			)
+		WHEN MATCHED THEN
+			UPDATE
+				SET MAXPRCSQTY      = #{maxprcsqty}
+		          , UPDATEDATE		= #{sysdate}
+		          , UPDATEURKEY 	= #{surkey}
+		WHEN NOT MATCHED THEN
+			INSERT (
+				  OWKEY
+                , CTKEY
+                , IODEV
+                , DSBTPRCSCRITDAY
+                , MAXPRCSQTY
+                , INSERTDATE
+                , INSERTURKEY
+                , UPDATEDATE
+                , UPDATEURKEY
+
+			)
+		    VALUES (
+				  #{owkey}
+                , #{ctkey}
+                , #{iodev}
+                , #{ldate}
+                , #{maxprcsqty}
+				, #{sysdate}
+		        , #{surkey}
+				, #{sysdate}
+				, #{surkey}
+			)
+	</update>
+
+	<update id="mergeOrderCloseCenterDayOff">
+		/* oms-master-OrCloseXct-sql-oracle.xml mergeOrderCloseCenterDayOff */
+		MERGE INTO TORDER_INFO_DAYOFF
+		USING DUAL
+		ON (       OWKEY = #{owkey}
+			   AND CTKEY = #{ctkey}
+		       AND DAYOFFHOLIDAY = #{ldate}
+			)
+		WHEN MATCHED THEN
+			UPDATE
+				SET DAYOFFHOLIYN    = #{dayoffholiyn}
+                  , DAYOFFHOLINM    = #{dayoffholinm}
+		          , UPDATEDATE		= #{sysdate}
+		          , UPDATEURKEY 	= #{surkey}
+		WHEN NOT MATCHED THEN
+			INSERT (
+				  OWKEY
+                , CTKEY
+                , DAYOFFHOLIDAY
+                , DAYOFFHOLIYN
+                , DAYOFFHOLINM
+                , INSERTDATE
+                , INSERTURKEY
+                , UPDATEDATE
+                , UPDATEURKEY
+
+			)
+		    VALUES (
+				  #{owkey}
+                , #{ctkey}
+                , #{ldate}
+                , #{dayoffholiyn}
+                , #{dayoffholinm}
+				, #{sysdate}
+		        , #{surkey}
+				, #{sysdate}
+				, #{surkey}
+			)
+
+	</update>
+
+	<select id="selectOwnerOrderType" resultType="camelMap">
+		/* oms-master-OrCloseXct-sql-oracle.xml selectOwnerOrderType */
+		SELECT OR_TYPE_CD AS FIELD1
+			 , OR_TYPE_NAME AS FIELD2
+			 , IBYN AS FIELD3
+			 , OBYN AS FIELD4
+			 , ORDER_ATTR AS FIELD5
+			 , OWKEY AS FIELD6
+		FROM TORDER_MST_ORTYPE
+		WHERE OWKEY = #{owkey}
+		  AND DELYN = 'N'
+	</select>
+
+	<insert id="insertIntfMallCenterClose">
+		INSERT INTO TORDER_INTF_MAL_DDLN_CT
+		(
+		    CTKEY
+          , CRITDAY
+          , CTCLOSETIME
+		  , IFID
+		  , REQUESTDT
+          , INSERTDATE
+          , INSERTURKEY
+          , UPDATEDATE
+          , UPDATEURKEY
+		)
+		VALUES (
+			#{ctkey}
+          , #{critday}
+          , #{ctclosetime}
+		  , #{interfaceId}
+		  , #{requestDt}
+          , #{sysdate}
+          , #{surkey}
+		  , #{sysdate}
+          , #{surkey}
+		)
+	</insert>
+
+	<insert id="insertIntfMallCenterMaxCapa" parameterType="com.daiso.oms.api.out.dto.OrderCloseCenterOutDTO$OrderCloseCenterRsVO">
+	/* oms-master-OrCloseXct-sql-oracle.xml - insertIntfMallCenterMaxCapa */
+		INSERT INTO TORDER_INTF_MAL_CAPA_CT
+		(
+		    CTKEY
+          , CRITDAY
+          , CTPRCSLIMITQTY
+		  , IFID
+		  , REQUESTDT
+          , INSERTDATE
+          , INSERTURKEY
+          , UPDATEDATE
+          , UPDATEURKEY
+		)
+		VALUES (
+			#{ctkey}
+          , #{critday}
+          , #{ctprcslimitqty}
+		  , #{interfaceId}
+		  , #{requestDt}
+          , to_char(CURRENT_TIMESTAMP, 'yyyymmddhh24miss')
+          , 'kyw'
+		  , to_char(CURRENT_TIMESTAMP, 'yyyymmddhh24miss')
+          , 'kyw'
+		)
+	</insert>
+
+</mapper>

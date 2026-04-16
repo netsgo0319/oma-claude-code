@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.HolidayApiMapper">
+
+	<insert id="insertHolidayInfo">
+		/* oms-master-holidayBatch-sql-oracle.xml - insertHolidayInfo */
+		MERGE INTO TORDER_MST_HOLIDAY HO
+		USING DUAL
+		ON
+		(
+		       HO.HOLIDAY = #{locdate}
+		)
+		WHEN MATCHED THEN
+		   UPDATE SET
+		      HO.HOLINM      = #{dateName}
+			, HO.UPDATEDATE  = #{sysdate}
+	        , HO.UPDATEURKEY = #{interfaceUrkey}
+	    WHEN NOT MATCHED THEN
+		   INSERT
+		   (
+		        HO.HOLIDAY
+		      , HO.HOLINM
+		      , HO.INSERTDATE
+		      , HO.INSERTURKEY
+		      , HO.UPDATEDATE
+		      , HO.UPDATEURKEY
+		   )
+		   VALUES
+		   (
+		        #{locdate}
+              , #{dateName}
+	          , #{sysdate}
+	          , #{interfaceUrkey}
+	          , #{sysdate}
+	          , #{interfaceUrkey}
+		)
+	</insert>
+	
+</mapper>
+	

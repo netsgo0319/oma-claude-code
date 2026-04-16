@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.IcxctMapper">
+
+	<select id="selectIcxctCount" resultType="java.lang.Integer" >
+		/* adm-master-icxct-sql-oracle.xml - selectIcxctCount */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_ICXCT A
+			LEFT OUTER JOIN TADMIN_MST_OW OW
+						 ON A.OWKEY = OW.OWKEY
+			INNER JOIN TADMIN_MST_IC IC
+					ON A.OWKEY = IC.OWKEY
+				   AND A.ICKEY = IC.ICKEY
+			  	   AND IC.DELYN = 'N'
+			LEFT OUTER JOIN TADMIN_MST_ICUTXTYPE ICUT
+						 ON IC.OWKEY = ICUT.OWKEY
+						AND IC.ICUNITKEY = ICUT.ICUNITKEY
+						AND ICUT.ICUNITTYPE = #{eaUom}
+			LEFT OUTER JOIN TADMIN_MST_CT CT1
+						 ON A.CTKEY = CT1.CTKEY
+			LEFT OUTER JOIN (
+					   SELECT A.CTGKEY AS B_LEV_CTGKEY
+							, A.CTGNM AS B_LEV_CTGNAME
+							, A.UPPERCTGKEY AS M_LEV_CTGKEY
+							, B.CTGNM AS M_LEV_CTGNAME
+							, C.CTGKEY AS H_LEV_CTGKEY
+							, C.CTGNM AS H_LEV_CTGNAME
+					   FROM TADMIN_MST_CTG A
+						LEFT OUTER JOIN TADMIN_MST_CTG B
+									 ON A.UPPERCTGKEY = B.CTGKEY
+						LEFT OUTER JOIN TADMIN_MST_CTG C
+									 ON B.UPPERCTGKEY = C.CTGKEY
+					   WHERE A.DELYN = 'N' ) CTG
+					 	 ON IC.CTGKEY = CTG.B_LEV_CTGKEY
+			LEFT OUTER JOIN TADMIN_MST_ICGR ICGR
+						 ON A.OWKEY = ICGR.OWKEY
+						AND A.ICGRPKEY = ICGR.ICGRPKEY
+						AND ICGR.ICGRPTYPE ='CATEGORY'
+				<where>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				</where>
+	</select>
+	
+	<update id="updateChkIcxct" parameterType="hashmap">
+		/* adm-master-icxct-sql-oracle.xml - updateChkIcxct */
+		UPDATE TADMIN_MST_ICXCT A
+		SET
+		            UPDATEDATE   		  	  = #{sysdate}
+				   ,UPDATEURKEY  		  	  = #{surkey}
+			   <if test="chk_cdock != null and chk_cdock.equalsIgnoreCase('true')">
+			        ,A.CDOCKYN 		  = #{cdock}
+			   </if>
+			   <if test="chk_pkctkey != null and chk_pkctkey.equalsIgnoreCase('true')">
+			        ,A.PKCTKEY 		  = #{pkctkey}
+			   </if>
+			   <if test="chk_pktype != null and chk_pktype.equalsIgnoreCase('true')">
+			        ,A.PKTYPE 		  = #{pktype}
+			   </if>		
+		WHERE  
+				  ORDTYPE||ICKEY||OWKEY||CTKEY||NEWYN IN 
+				  <foreach item="chk" index="index" collection="chkArray"
+					open="(" separator="," close=")">
+					#{chk}
+				</foreach>
+	</update>
+	<select id="selectIcxct" resultType="camelMap">
+		/* adm-master-icxct-sql-oracle.xml - selectIcxct */
+		/* 상품별 센터 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+			,  A.OWKEY
+			,  OW.OWNM
+			,  A.ICKEY
+			,  IC.ICNM
+			,  A.CTKEY
+			,  CT1.CTNM
+			,  A.LOGGRPCD
+			,  ICUT.WIDTH AS WIDTHUNIT
+			,  ICUT.LENGTH AS LENGTHUNIT
+			,  ICUT.HEIGHT AS HEIGHTUNIT
+			,  A.ICGRPKEY
+			,  ICGR.ICGRPNM
+			,  IC.CTGKEY
+			,  CTG.H_LEV_CTGKEY
+			,  CTG.H_LEV_CTGNAME
+			,  CTG.M_LEV_CTGKEY
+			,  CTG.M_LEV_CTGNAME
+			,  CTG.B_LEV_CTGKEY
+			,  CTG.B_LEV_CTGNAME
+			,  A.INSERTDATE
+			,  A.UPDATEDATE
+			,  A.INSERTURKEY
+			,  A.UPDATEURKEY
+			,  IC.UOM
+			,  IC.SPEC
+			,  IC.UDF3
+		FROM TADMIN_MST_ICXCT A
+			LEFT OUTER JOIN TADMIN_MST_OW OW
+						 ON A.OWKEY = OW.OWKEY
+			     INNER JOIN TADMIN_MST_IC IC
+						 ON A.OWKEY = IC.OWKEY
+						AND A.ICKEY = IC.ICKEY
+						AND IC.DELYN = 'N'
+		    LEFT OUTER JOIN TADMIN_MST_ICUTXTYPE ICUT
+		    			 ON IC.OWKEY = ICUT.OWKEY
+		    			AND IC.ICUNITKEY = ICUT.ICUNITKEY
+		    			AND ICUT.ICUNITTYPE = #{eaUom}
+			LEFT OUTER JOIN TADMIN_MST_CT CT1
+						 ON A.CTKEY = CT1.CTKEY
+			LEFT OUTER JOIN (
+						SELECT A.CTGKEY AS B_LEV_CTGKEY
+							 , A.CTGNM AS B_LEV_CTGNAME
+							 , A.UPPERCTGKEY AS M_LEV_CTGKEY
+							 , B.CTGNM AS M_LEV_CTGNAME
+							 , C.CTGKEY AS H_LEV_CTGKEY
+							 , C.CTGNM AS H_LEV_CTGNAME
+						FROM TADMIN_MST_CTG A
+							LEFT OUTER JOIN TADMIN_MST_CTG B
+										 ON A.UPPERCTGKEY = B.CTGKEY
+							LEFT OUTER JOIN TADMIN_MST_CTG C
+										 ON B.UPPERCTGKEY = C.CTGKEY
+						WHERE A.DELYN = 'N'
+						) CTG
+						  ON IC.CTGKEY = CTG.B_LEV_CTGKEY
+			LEFT OUTER JOIN TADMIN_MST_ICGR ICGR
+						 ON A.OWKEY = ICGR.OWKEY
+						AND A.ICGRPKEY = ICGR.ICGRPKEY
+						AND ICGR.ICGRPTYPE ='CATEGORY'
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectPkIcxct" resultType="camelMap">
+		/* adm-master-icxct-sql-oracle.xml - selectPkIcxct */
+		SELECT	 A.OWKEY
+				        ,(SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNM
+						,'OWKEY' || ';' || A.OWKEY AS OWKEY_DESC
+						,A.ICKEY
+						,IC.ICNM
+						,A.CTKEY
+						,CT1.CTNM
+						,LOGGRPCD
+						,'LOGGRPCD' || ';' || LOGGRPCD AS LOGGRPCD_DESC
+						,CP
+						,SLPRC
+						,VOLTYPE
+						,'VOLTYPE' || ';' || VOLTYPE AS VOLTYPE_DESC
+						,NEWYN
+						,'YESORNO' ||';'|| NEWYN AS NEWYN_DESC
+						,USDCP
+						,USDSLPRC
+						,WIDTHUNIT
+						,LENGTHUNIT
+						,HEIGHTUNIT
+						,A.ACKEY
+						,'ACKEY' || ';' || A.ACKEY AS ACKEY_DESC
+						,ORDSTOPTYPE
+						,'ORDSTOPTYPE' || ';' || ORDSTOPTYPE AS ORDSTOPTYPE_DESC
+						,ORDTYPE
+						,'ORDTYPE' || ';' || ORDTYPE AS ORDTYPE_DESC
+						,OBPTKEY
+						,'OBPTKEY' || ';' || OBPTKEY AS OBPTKEY_DESC
+						,DCKEY
+						,A.ICGRPKEY
+						,(SELECT I.ICGRPNM FROM TADMIN_MST_ICGR I WHERE  I.OWKEY = A.OWKEY AND I.ICGRPTYPE= 'CATEGORY' AND I.ICGRPKEY = A.ICGRPKEY) AS ICGRKEYNAME
+						,CDOCKYN
+                        ,PKCTKEY
+                        ,CT2.CTNM AS PKCTNAME
+                        ,PKTYPE
+                        ,'PKTYPE' || ';' || PKTYPE AS PKTYPE_DESC 
+                        ,IC.CTGKEY
+						,CTG.H_LEV_CTGNAME
+						,CTG.H_LEV_CTGKEY
+						,CTG.M_LEV_CTGNAME
+						,CTG.M_LEV_CTGKEY
+						,CTG.B_LEV_CTGNAME
+						,CTG.B_LEV_CTGKEY						
+						,A.INSERTDATE
+						,A.INSERTURKEY
+						,A.UPDATEDATE
+						,A.UPDATEURKEY
+						,A.SCMCK
+						,'YESORNO' ||';'|| A.SCMCK AS SCMCHECK_DESC
+						,A.CDCPOYN
+						,'YESORNO' ||';'|| A.CDCPOYN AS CDCPOYN_DESC
+						,A.SCMURKEY
+						,A.STCAPPLYGRADETYPE
+						,'STC_APPLY_GRADE_TYPE' ||';'|| A.STCAPPLYGRADETYPE AS STC_APPLY_GRADE_TYPE_DESC
+						,A.STCAPPLYGRADENM
+				FROM 	TADMIN_MST_ICXCT A
+				INNER JOIN TADMIN_MST_CT CT1
+				   		ON A.CTKEY = CT1.CTKEY
+				LEFT OUTER JOIN TADMIN_MST_CT CT2
+				   			 ON A.PKCTKEY = CT2.CTKEY
+				INNER JOIN TADMIN_MST_IC IC
+				   		ON A.OWKEY = IC.OWKEY
+					   AND A.ICKEY = IC.ICKEY
+				LEFT OUTER JOIN (SELECT A.CTGKEY AS H_LEV_CTGKEY
+					                  , A.CTGLV AS H_LEV_CTGLEVEL
+					                  , A.CTGNM AS H_LEV_CTGNAME
+					                  , B.CTGKEY AS M_LEV_CTGKEY
+					                  , B.CTGLV AS M_LEV_CTGLEVEL
+					                  , B.CTGNM AS M_LEV_CTGNAME
+					                  , C.CTGKEY AS B_LEV_CTGKEY
+					                  , C.CTGLV AS B_LEV_CTGLEVEL
+					                  , C.CTGNM AS B_LEV_CTGNAME
+					                  , A.OWKEY
+					          FROM (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 1
+					          ) A
+					          INNER JOIN (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 2
+					          ) B ON A.CTGKEY = B.UPPERCTGKEY
+								  AND A.OWKEY = B.OWKEY
+							  INNER JOIN (
+					              SELECT CTGKEY, CTGLV, CTGNM, UPPERCTGKEY, OWKEY
+					              FROM TADMIN_MST_CTG
+					              WHERE CTGLEVEL = 3
+					          ) C ON B.CTGKEY = C.UPPERCTGKEY
+							     AND B.OWKEY = C.OWKEY
+					) CTG ON IC.OWKEY  = CTG.OWKEY
+						 AND IC.CTGKEY = CTG.B_LEV_CTGKEY
+				  WHERE A.OWKEY = #{owkey}
+					AND A.CTKEY = #{ctkey}
+					AND A.ICKEY = #{ickey}
+	</select>
+	
+	 
+	
+	<insert id="insertTAdminMstIcxct">
+		/* adm-master-icxct-sql-oracle.xml - insertTAdminMstIcxct */
+		INSERT INTO TADMIN_MST_ICXCT	(
+			 OWKEY
+			,ICKEY
+			,CTKEY
+			,LOGGRPCD
+			,CP
+			,SLPRC
+			,VOLTYPE
+			,NEWYN
+			,USDCP
+			,USDSLPRC
+			,WIDTHUNIT
+			,LENGTHUNIT
+			,HEIGHTUNIT
+			,ACKEY
+			,ORDSTOPTYPE
+			,ORDTYPE
+			,RNDKEY
+			,ICGRPKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )
+		VALUES	(
+			 #{owkey}
+			,#{ickey}
+			,#{ctkey}
+			,#{loggrpcd}
+			,#{cp}
+			,#{slprc}
+			,#{voltype}
+			,#{newyn}
+			,#{usdcp}
+			,#{usdslprc}
+			,#{widthunit}
+			,#{lengthunit}
+			,#{heightunit}
+			,#{ackey}
+			,#{ordstoptype}
+			,#{ordtype}
+			,#{rndkey}
+			,#{icgrpkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>	
+	
+	
+	<update id="updateTAdminMstIcxct">
+		/* adm-master-icxct-sql-oracle.xml - updateTAdminMstIcxct */
+		UPDATE 	TADMIN_MST_ICXCT
+		   SET	 LOGGRPCD 		  	  	  = #{loggrpcd}
+				,VOLTYPE 				  = #{voltype}
+				,NEWYN 				  	  = #{newyn}
+				,WIDTHUNIT 			  	  = #{widthunit}
+				,LENGTHUNIT 			  = #{lengthunit}
+				,HEIGHTUNIT 			  = #{heightunit}
+				,ACKEY 				  	  = #{ackey}
+				,OBPTKEY  				  = #{obptkey}
+				,RNDKEY					  = #{rndkey}
+				,ICGRPKEY				  = #{icgrpkey}
+				,UPDATEDATE   		  	  = #{sysdate}
+				,UPDATEURKEY  		  	  = #{surkey}
+				,PKCTKEY                  = #{pkctkey}
+				,CDOCKYN                  = #{cdockyn}
+				,PKTYPE                   = #{pktype}
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</update>
+	
+	<delete id="deleteTAdminMstIcxct">
+		/* adm-master-icxct-sql-oracle.xml - deleteTAdminMstIcxct */
+		DELETE 
+		FROM   TADMIN_MST_ICXCT
+		WHERE	OWKEY = #{owkey}
+		AND     ICKEY = #{ickey}
+		AND     CTKEY = #{ctkey}
+	</delete>
+</mapper>	

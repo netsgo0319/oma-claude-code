@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.SequenceStrategyMapper">
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<select id="getSequenceStrategy" resultType="com.daiso.ams.system.vo.SequenceStrategyVO">
+		/* adm-system-sequence-strategy-sql-oracle.xml - getSequenceStrategy */
+		SELECT '0' CHK
+			,  #{apkey} AS APKEY
+			,  STGNM
+			,  SEQNM
+			,  STARTNO
+			,  PREFIX
+			,  SUFFIX
+			,  LENGTH AS SEQLENGTH
+			,  DATEFORMAT
+		    ,  SEQINITUSEYN
+		    ,  SEQRESETCYCLE
+			,  SEQINITDATE
+			,  DELYN
+			,  PREFIX
+				|| TO_CHAR(CURRENT_TIMESTAMP, DATEFORMAT)
+				|| SUFFIX
+				|| LPAD(STARTNO::TEXT, LENGTH, '0') AS  SEQRESULT
+			,  INSERTDATE
+			,  INSERTURKEY
+			,  UPDATEDATE
+			,  UPDATEURKEY
+		  FROM TADMIN_MST_SEQ_STG A
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<update id="updateSequenceStrategy">
+		/* adm-system-sequence-strategy-sql-oracle.xml - updateSequenceStrategy */
+		MERGE INTO TADMIN_MST_SEQ_STG A
+			 USING DUAL
+				ON (STGNM = #{stgnm})
+		WHEN MATCHED THEN
+				UPDATE SET
+				      A.UPDATEURKEY = #{surkey}
+				    , A.UPDATEDATE = #{sysdate}
+				    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(delyn)">
+						, A.DELYN = #{delyn}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(startno)">
+						, A.STARTNO = #{startno}
+					</if>
+					, A.PREFIX = #{prefix}
+					, A.SUFFIX = #{suffix}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(seqlength)">
+						, A.LENGTH = #{seqlength}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(seqnm)">
+						, A.SEQNM = #{seqnm}
+					</if>
+				    , A.SEQINITUSEYN = #{seqinituseyn}
+				    , A.SEQRESETCYCLE = #{seqresetcycle}
+					, A.DATEFORMAT = #{dateformat}
+		WHEN NOT MATCHED THEN
+				INSERT (
+					  A.STGNM
+					, A.SEQNM
+					, A.STARTNO
+					, A.PREFIX
+					, A.SUFFIX
+					, A.LENGTH
+					, A.DATEFORMAT
+					, A.SEQINITUSEYN
+					, A.SEQRESETCYCLE
+					, A.DELYN
+					, A.INSERTDATE
+					, A.INSERTURKEY
+					, A.UPDATEDATE
+					, A.UPDATEURKEY
+				)
+				VALUES (
+					  #{stgnm}
+					, #{seqnm}
+					, #{startno}
+					, #{prefix}
+					, #{suffix}
+					, #{seqlength}
+					, #{dateformat}
+					, #{seqinituseyn}
+					, #{seqresetcycle}
+					, #{delyn}
+					, #{sysdate}
+					, #{surkey}
+					, #{sysdate}
+					, #{surkey}
+					)
+	</update>
+
+	<update id="deleteSequenceStrategy">
+		/* adm-system-sequence-strategy-sql-oracle.xml - deleteSequenceStrategy */
+		UPDATE TADMIN_MST_SEQ_STG
+		   SET DELYN = 'Y'
+		 WHERE STGNM = #{stgnm}
+	</update>
+
+	<select id="getApplicationList" resultType="java.lang.String">
+		/* adm-system-sequence-strategy-sql-oracle.xml - getApplicationList */
+		SELECT APKEY
+		  FROM TADMIN_MST_AP
+		 WHERE ISOFFLINE = 'N'
+	</select>
+
+</mapper>

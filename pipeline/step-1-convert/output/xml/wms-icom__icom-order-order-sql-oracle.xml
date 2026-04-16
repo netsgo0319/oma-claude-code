@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.oms.mapper.OrderIcomMapper">
+
+	<update id="updateTOrderInfoOrDt">
+		UPDATE TORDER_INFO_OR_DT
+		   SET 
+				 ICKEY              = #{ickey}
+				 ,ICUTKEY            = #{icutkey}
+				 ,UOM                = #{uom}
+				 ,ORIGIN_ICKEY 		 = CASE WHEN ICKEY != #{ickey} THEN ICKEY ELSE '' END
+				 ,UPDATEDATE         = #{sysdate}
+				 ,UPDATEURKEY        = #{surkey}
+		 WHERE 
+		 	   ORHDKEY = #{orhdkey}		
+		   AND ORDTKEY = #{ordtkey}		
+	</update>
+	
+	<update id="updateTOrderInfoOrHdAfterDeleteObHd">
+		UPDATE TORDER_INFO_OR_HD
+		   SET WKSTATUS = #{wkstatus}
+		      ,IFSTATUS = #{ifstatus}
+		      ,PACKAGEORDERKEY = NULL
+		      ,AVINVSHORTFLAG = NULL
+		      ,UPDATEDATE         = #{sysdate}
+			  ,UPDATEURKEY        = #{surkey}
+		 WHERE 
+		 	   ORHDKEY = #{orhdkey}
+	</update>
+	
+	<update id="updateTOrderInfoOrDtAfterDeleteObDt">
+		UPDATE TORDER_INFO_OR_DT
+		   SET WKSTATUS = #{wkstatus}
+		   	   ,AVINVSHORTFLAG = NULL
+		   	   ,UPDATEDATE         = #{sysdate}
+			   ,UPDATEURKEY        = #{surkey}
+		 WHERE 
+		 	   ORHDKEY = #{orhdkey}
+		 <if test="ordtkey != null">
+		 	AND ORDTKEY = #{ordtkey}
+		 </if>
+	</update>
+
+	<update id="updateTorderOrHdRegisterWaybillno" >
+		UPDATE  TORDER_INFO_OR_HD
+		SET  WAYBILLNO = #{waybillno}
+		  ,UPDATEDATE         = #{sysdate}
+		  ,UPDATEURKEY        = #{surkey}
+		WHERE  OWKEY = #{owkey}
+		  AND  PACKAGEORDERKEY = #{packageorderkey}
+	</update>
+</mapper>	

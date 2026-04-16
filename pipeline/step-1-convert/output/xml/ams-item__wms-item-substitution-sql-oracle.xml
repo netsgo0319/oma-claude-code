@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.SubstitutionWmsMapper">
+
+	<select id="selectCountTWorkMstIcsb" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TWORK_MST_ICSB
+		 WHERE OWKEY = #{owkey}
+	 	   AND ICKEY = #{ickey}
+ 		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sbkey)">
+		   AND	SBKEY = #{sbkey}	
+		</if> 
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+	 	   AND  CTKEY = #{ctkey}
+	    </if>       
+
+	</select>
+	
+	<insert id="insertTWorkMstIcsb">
+		INSERT INTO TWORK_MST_ICSB ( 
+			CTKEY
+			,OWKEY
+			,ICKEY
+			,SBKEY
+			,ICUTTYPE
+			,UDF1
+			,UDF2
+			,UDF3
+			,CLOSDATE
+			,UPDATEURKEY
+			,UPDATEDATE
+			,INSERTURKEY
+			,INSERTDATE
+		) VALUES ( 
+			#{ctkey}
+			,#{owkey}
+			,#{ickey}
+			,#{sbkey}
+			,#{icunittype}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{closdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		) 	 	
+	</insert>
+	
+	<update id="updateTWorkMstIcsb">	
+		UPDATE 	TWORK_MST_ICSB 
+	   	   SET	ICUTTYPE = #{icunittype}
+          		,UDF1 = #{udf1}
+          		,UDF2 = #{udf2}
+          		,UDF3 = #{udf3}
+          		,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+		        ,UPDATEDATE = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		 WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+		   AND	SBKEY = #{sbkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+	  	   AND 	CTKEY = #{ctkey}
+  		</if> 
+	</update>
+	
+	<delete id="deleteTWorkMstIcsb" >
+	    UPDATE 	TWORK_MST_ICSB
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{sysdate}
+	    WHERE	OWKEY = #{owkey} 
+		   AND 	ICKEY = #{ickey} 
+ 		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sbkey)">
+		   AND	SBKEY = #{sbkey}	
+		</if> 
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+	 	   AND  CTKEY = #{ctkey}
+	    </if> 
+	</delete>
+</mapper>	

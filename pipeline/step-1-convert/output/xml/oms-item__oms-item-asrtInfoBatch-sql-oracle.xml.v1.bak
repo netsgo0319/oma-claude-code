@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.api.in.mapper.ItemApiBatchMapper">
+
+	<insert id="insertErpItemAsrtInfoIntfInfo">
+		/* oms-item-asrtInfoBatch-sql-oracle.xml - insertErpItemAsrtInfoIntfInfo */
+		INSERT INTO TORDER_MST_ASRT
+		(
+		  OWKEY
+		, ASRTKEY
+		, ASRTREPKEY
+		, ASRTNM
+		, SMLCTG
+		, QTY
+		, ORGQTY
+		, ICIMGURL
+		, ICCOLOR
+		, ICDESIGN
+		, ICCHRT
+		, ASRTSTATUS
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, #{asrtkey}
+		, #{asrtrepkey}
+		, #{asrtnm}
+		, #{smlctg}
+		, #{qty}
+		, #{qty}
+		, #{icimgurl}
+		, #{iccolor}
+		, #{icdesign}
+		, #{icchrt}
+		, #{asrtstatus}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		)
+	</insert>
+	
+	<update id="updateErpItemAsrtInfoIntfInfo">
+		/* oms-item-asrtInfoBatch-sql-oracle.xml - updateErpItemAsrtInfoIntfInfo */
+		UPDATE TORDER_MST_ASRT
+		   SET ASRTNM     = #{asrtnm}
+		     , SMLCTG     = #{smlctg}
+		     , QTY        = #{qty}
+		     , ORGQTY     = #{qty}
+		     , ICIMGURL   = #{icimgurl}
+		     , ICCOLOR    = #{iccolor}
+		     , ICDESIGN   = #{icdesign}
+		     , ICCHRT     = #{icchrt}
+		     , ASRTSTATUS = #{asrtstatus}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{interfaceUrkey}
+	     WHERE OWKEY = #{owkey}
+	       AND ASRTKEY = #{asrtkey}
+	</update>
+	
+	<insert id="insertErpItemAsrtInfoHistIntfInfo">
+		/* oms-item-asrtInfoBatch-sql-oracle.xml - insertErpItemAsrtInfoHistIntfInfo */
+		INSERT INTO TORDER_HIST_ASRT
+		(
+		  OWKEY
+		, ASRTKEY
+		, ASRTREPKEY
+		, ASRTNM
+		, SMLCTG
+		, QTY
+		, ORGQTY
+		, ICIMGURL
+		, ICCOLOR
+		, ICDESIGN
+		, ICCHRT
+		, ASRTSTATUS
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{owkey}
+		, #{asrtkey}
+		, #{asrtrepkey}
+		, #{asrtnm}
+		, #{smlctg}
+		, #{qty}
+		, #{qty}
+		, #{icimgurl}
+		, #{iccolor}
+		, #{icdesign}
+		, #{icchrt}
+		, #{asrtstatus}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		, #{sysdate}
+		, #{interfaceUrkey}
+		)
+	</insert>
+
+	<insert id="inserttorderWmsAsrtBatch">
+		/* oms-item-asrtInfoBatch-sql-oracle.xml - inserttorderWmsAsrtBatch */
+		INSERT INTO TORDER_WMS_ASRT_BATCH
+		(
+			REQDATE,
+		    ASRTREPKEY,
+			SENDSTATUS,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+		VALUES
+		(
+			  #{reqdate}
+			, #{asrtrepkey}
+			, #{sendstatus}
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		)
+	</insert>
+
+
+	
+	<insert id="insertWmsItemAsrtInfoIntf">
+		/* oms-item-asrtInfoBatch-sql-oracle.xml - insertWmsItemAsrtInfoIntf */
+		INSERT INTO TORDER_INTF_WMS_ASRT
+		(
+		     CTKEY
+		   , OWKEY
+		   , ASRTREPKEY
+		   , ASRTKEY
+		   , QTY
+		   , ICCOLOR
+		   , ICDESIGN
+		   , ICCHRT
+		   , ICIMGURL
+		   , USEYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{ctkey}
+		   , #{owkey}
+		   , #{asrtrepkey}
+		   , #{asrtkey}
+		   , #{qty}
+		   , #{iccolor}
+		   , #{icdesign}
+		   , #{icchrt}
+		   , #{icimgurl}
+		   , #{useyn}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		)
+	</insert>
+</mapper>

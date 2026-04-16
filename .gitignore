@@ -24,3 +24,4 @@ workspace/output/
 workspace/reports/
 settings.local.json
 .claude/settings.local.json
+.env

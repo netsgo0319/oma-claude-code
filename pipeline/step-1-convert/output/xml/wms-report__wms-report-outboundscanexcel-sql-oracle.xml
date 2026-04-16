@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.OutboundScanExcelMapper">
+
+	<resultMap id="selectInvnXAttributeRefMap" type="java.util.HashMap">
+        <result property="ickey" 			        column="ICKEY" />
+        <result property="icnm" 			        column="ICNM" />
+        <result property="owkey" 			        column="OWKEY" />
+        <result property="ctkey" 			        column="CTKEY" />
+        <result property="owname" 			        column="OWNAME" />
+        <result property="ctname" 			        column="CTNAME" />
+        <result property="serial_no" 		        column="SERIAL_NO" />
+        <result property="externorderkey" 		    column="EXTERNORDERKEY" />
+        <result property="externorderlinenum" 		column="EXTERNORDERLINENUM" />
+        <result property="externorderlinenum_name"  column="EXTERNORDERLINENUM_NAME" />
+        <result property="owname" 		            column="OWNAME" />
+        <result property="updateurkey" 		        column="UPDATEURKEY" />
+        <result property="obconfirmurkey" 	        column="OBCONFIRMURKEY" />
+        <result property="productdate" 		        column="PRODUCTDATE" />
+        <result property="expiredate" 		        column="EXPIREDATE" />
+        <result property="weight" 	         	    column="WEIGHT" />
+        <result property="uom" 		                column="UOM" />
+		<result property="uom_desc" 		        column="UOM_DESC"          typeHandler="CodeDescTypeHandler"/>
+	</resultMap> 
+	
+	<resultMap id="selectInvnXAttributeMap" type="java.util.HashMap" extends="selectInvnXAttributeRefMap" >
+		<result property="insertdate" 		        column="INSERTDATE"/>
+		<result property="updatedate" 		        column="UPDATEDATE"/>
+        <result property="productdate" 		        column="PRODUCTDATE"       typeHandler="GmtDateTimeTypeHandler" />
+        <result property="expiredate" 		        column="EXPIREDATE"        typeHandler="GmtDateTimeTypeHandler" />
+        <result property="ibconfirmdate" 	        column="IBCONFIRMDATE"     typeHandler="GmtDateTimeTypeHandler" />
+        <result property="obconfirmdate" 	        column="OBCONFIRMDATE"     typeHandler="GmtDateTimeTypeHandler" />
+	</resultMap> 
+	
+	<sql id="selectInvnXAttributeRefSql">
+		SELECT A.ICKEY
+		      ,B.OWKEY  
+		      ,B.CTKEY
+		      ,A.SERIAL_NO
+		      ,A.EXTERNORDERKEY
+		      ,A.EXTERNORDERLINENUM
+		      ,A.UOM
+		      ,A.WEIGHT
+		      ,B.EXPIREDATE
+		      ,B.PRODUCTDATE
+		      ,B.OBCONFIRMURKEY       <!-- 출고 확정자 -->
+		      ,A.UPDATEURKEY          <!-- 검근자 -->
+		      ,D.ICNM
+		      ,C.OWNM
+		      ,E.CTNM
+		      ,A.INSERTDATE       
+		      ,A.UPDATEDATE           <!-- 스캔출고일자(최종 스캔) -->
+		      ,B.OBCONFIRMDATE        <!-- 출고확정일자(실제 출고) -->
+		FROM   TWORK_INFO_OBSN_SCAN A 
+		      ,TWORK_INFO_OB_DT     B 
+		      ,TADMIN_MST_OW        C
+		      ,TADMIN_MST_IC        D
+		      ,TADMIN_MST_CT        E 
+		WHERE  1=1
+		AND    A.EXTERNORDERKEY     = B.EXTERNORDERKEY
+		AND    A.EXTERNORDERLINENUM = B.EXTERNORDERLINENUM
+		AND    B.OWKEY              = C.OWKEY
+		AND    B.OWKEY              = D.OWKEY
+		AND    B.ICKEY              = D.ICKEY
+		AND    B.CTKEY              = E.CTKEY
+		AND    A.SCANTYPE           = 'O'
+		AND    B.WKSTATUS           IN ('90','91')
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(appn_odr) and appn_odr != 'undefined'" >
+	        AND A.EXTERNORDERLINENUM = #{appn_odr}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>		  
+	</sql>
+
+	<select id="selectOutboundScan" resultMap="selectInvnXAttributeMap">
+	   	#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnXAttributeRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					 ORDER BY B.OWKEY
+				             ,A.EXTERNORDERKEY
+				             ,A.EXTERNORDERLINENUM
+				             ,A.UPDATEDATE DESC
+				</otherwise>
+			</choose>
+	   	#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="getAppnList" resultMap="selectInvnXAttributeMap">
+		SELECT EXTERNORDERLINENUM
+		     , (EXTERNORDERLINENUM)::TEXT AS EXTERNORDERLINENUM_NAME
+		FROM
+		(
+			SELECT A.EXTERNORDERKEY
+			      ,A.EXTERNORDERLINENUM
+			FROM   TWORK_INFO_OBSN_SCAN A 
+			      ,TWORK_INFO_OB_DT     B 
+			      ,TADMIN_MST_OW        C
+			      ,TADMIN_MST_IC        D
+			      ,TADMIN_MST_CT        E  
+			WHERE  1=1
+			AND    A.EXTERNORDERKEY     = B.EXTERNORDERKEY
+			AND    A.EXTERNORDERLINENUM = B.EXTERNORDERLINENUM
+			AND    B.OWKEY              = C.OWKEY
+			AND    B.OWKEY              = D.OWKEY
+			AND    B.ICKEY              = D.ICKEY
+			AND    B.CTKEY              = E.CTKEY
+			AND    A.SCANTYPE           = 'O'
+			AND    B.WKSTATUS           IN ('90','91')
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>	
+		)
+		WHERE 1=1
+		GROUP BY EXTERNORDERLINENUM
+		ORDER BY EXTERNORDERLINENUM
+	</select>
+
+	<select id="selectOutboundScanCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+       	  FROM  (
+			<include refid="selectInvnXAttributeRefSql"/>
+       	  )
+	</select>
+	
+</mapper>

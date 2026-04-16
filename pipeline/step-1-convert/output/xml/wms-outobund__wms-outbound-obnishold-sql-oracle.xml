@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObNisHoldMgmtMapper">
+
+	<sql id="selectNisHoldBaseSql">
+		SELECT 0 AS CHK /*체크박스*/
+			 , NISHD.CTKEY /*센터 코드*/
+			 , NISHD.OWKEY /*화주 코드*/
+			 , OBHD.OBHDDAY /*출고희망일자*/
+			 , NISHD.OBNISNO /*출고결품 번호*/
+			 , OBHD.OBORDKEY /*오더코드*/
+			 , NISHD.OBHDKEY /*릴리즈 코드*/
+			 , NISHD.STNBARCODE /*등록STN*/
+			 , NISHD.INSERTURKEY /*입력자*/
+			 , NISHD.INSERTDATE /*입력일시*/
+			 , SUM(COALESCE(NISDT.EXPCTQTY, 0)) AS TOT_EXPCTQTY /*총예정수량*/
+			 , SUM(COALESCE(NISDT.CNFRMQTY, 0)) AS TOT_CNFRMQTY /*총확정수량*/
+			 , SUM(COALESCE(NISDT.NISQTY, 0)) AS TOT_NISQTY /*총결품수량*/
+			 , SUM(CASE NONICYN WHEN 'Y' THEN NISDT.NISQTY ELSE 0 END) AS TOT_EXIST_ICQTY /*총상품없음수량*/
+			 , (CASE WHEN SUM(CASE NISDT.WKPRGRYN WHEN 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y' ELSE 'N' END) AS PDA_CNFRMYN /*PDA확정여부*/
+			 , ( CASE
+					WHEN (COUNT(NISDT.OBNISDTNO) - SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '99' THEN 1 ELSE 0 END)) = SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '00' THEN 1 ELSE 0 END) THEN '00'
+					WHEN (COUNT(NISDT.OBNISDTNO) - SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '99' THEN 1 ELSE 0 END)) = SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '10' THEN 1 ELSE 0 END) THEN '10'
+					WHEN (COUNT(NISDT.OBNISDTNO) - SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '99' THEN 1 ELSE 0 END)) = SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '20' THEN 1 ELSE 0 END) THEN '20'
+					WHEN (COUNT(NISDT.OBNISDTNO) - SUM(CASE NISDT.NISPRCSSTATUSCD WHEN '99' THEN 1 ELSE 0 END)) >= SUM(CASE WHEN NISDT.NISPRCSSTATUSCD IN ('10','20') THEN 1 ELSE 0 END) THEN '20'
+				 ELSE NULL
+				 END
+			   ) AS OB_NISPRCS_STATUSCD /*주문결품처리상태*/
+			 , (CASE WHEN SUM((CASE NONICYN WHEN 'Y' THEN 1 ELSE 0 END)) > 0 THEN 'Y' ELSE 'N' END) AS EXIST_IC_YN /*상품없음처리여부*/
+			 , COALESCE(NISHD.CNFRMYN, 'N') AS CNFRMYN /*포장지시여부*/
+			 , NISHD.CNFRMURKEY AS PCKG_IST_URKEY /*포장지시처리자*/
+			 , NISHD.CNFRMDATE AS PCKG_IST_DATE /*포장지시처리일시*/
+			 , NISHD.REWKOBHDKEY /*재작업 릴리즈 코드*/
+		  FROM TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+	<if test='gubun.equals("HD")'>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)
+					or (@com.kns.framework.util.StringUtil@isNotEmpty(NISQTYFROM) and @com.kns.framework.util.StringUtil@isNotEmpty(NISQTYTO))
+					or (@com.kns.framework.util.StringUtil@isNotEmpty(PKIMPSYN))
+					or (@com.kns.framework.util.StringUtil@isNotEmpty(NISPRCSSTATUSCD))
+					">
+		 INNER JOIN (
+					SELECT DISTINCT
+						   NISHD.CTKEY
+						 , NISHD.OWKEY
+						 , NISHD.OBNISNO
+					  FROM TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+					 INNER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+						ON NISHD.CTKEY = NISDT.CTKEY
+					   AND NISHD.OWKEY = NISDT.OWKEY
+					   AND NISHD.OBNISNO = NISDT.OBNISNO
+					 LEFT OUTER JOIN TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+						ON NISHD.CTKEY = OBHD.CTKEY
+					   AND NISHD.OWKEY = OBHD.OWKEY
+					   AND (NISHD.OBHDKEY = OBHD.OBHDKEY
+							OR NISHD.REWKOBHDKEY = OBHD.OBHDKEY)
+					 WHERE NISHD.CTKEY = #{CTKEY}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY) or @com.kns.framework.util.StringUtil@isNotEmpty(sowkey)">
+					   AND NISHD.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+					</if>
+					   AND OBHD.OBHDDAY BETWEEN #{OBHDDAY_FROM} AND #{OBHDDAY_TO}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+					   AND NISDT.ICKEY IN
+						<foreach collection="ICKEY.split(',')" item="ickey" open="(" separator="," close=")">
+							#{ickey}
+						</foreach>
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(NISQTYFROM) and @com.kns.framework.util.StringUtil@isNotEmpty(NISQTYTO)">
+					   AND NISDT.NISQTY BETWEEN #{NISQTYFROM} AND #{NISQTYTO}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PKIMPSYN)">
+					   AND COALESCE(NISDT.PKIMPSYN, 'N') = #{PKIMPSYN}
+					</if>
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(NISPRCSSTATUSCD)">
+					   AND NISDT.NISPRCSSTATUSCD IN
+						<foreach collection="NISPRCSSTATUSCD.split(',')" item="nisprcsstatuscd" open="(" separator="," close=")">
+							#{nisprcsstatuscd}
+						</foreach>
+					</if>
+			 ) FIL
+			ON NISHD.CTKEY = FIL.CTKEY
+		   AND NISHD.OWKEY = FIL.OWKEY
+		   AND NISHD.OBNISNO = FIL.OBNISNO
+		</if>
+	</if>
+		 INNER JOIN TWORK_INFO_OB_NIS_DT NISDT /*출고 결품 상세 정보*/
+			ON NISHD.CTKEY = NISDT.CTKEY
+		   AND NISHD.OWKEY = NISDT.OWKEY
+		   AND NISHD.OBNISNO = NISDT.OBNISNO
+		 LEFT OUTER JOIN TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+			ON NISHD.CTKEY = OBHD.CTKEY
+		   AND NISHD.OWKEY = OBHD.OWKEY
+		   AND (NISHD.OBHDKEY = OBHD.OBHDKEY
+				OR NISHD.REWKOBHDKEY = OBHD.OBHDKEY)
+		 WHERE NISHD.CTKEY = #{CTKEY}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY) or @com.kns.framework.util.StringUtil@isNotEmpty(sowkey)">
+		   AND NISHD.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+		</if>
+		   AND OBHD.OBHDDAY BETWEEN #{OBHDDAY_FROM} AND #{OBHDDAY_TO}
+		 GROUP BY
+			   NISHD.CTKEY /*센터 코드*/
+			 , NISHD.OWKEY /*화주 코드*/
+			 , OBHD.OBHDDAY /*출고희망일자*/
+			 , NISHD.OBNISNO /*출고결품 번호*/
+			 , OBHD.OBORDKEY /*오더코드*/
+			 , NISHD.OBHDKEY /*릴리즈 코드*/
+			 , NISHD.STNBARCODE /*스테이션 바코드*/
+			 , NISHD.INSERTURKEY /*입력자*/
+			 , NISHD.INSERTDATE /*입력일시*/
+			 , NISHD.CNFRMYN /*포장지시여부*/
+			 , NISHD.CNFRMURKEY /*포장지시처리자*/
+			 , NISHD.CNFRMDATE /*포장지시처리일시*/
+			 , NISHD.REWKOBHDKEY /*재작업 릴리즈 코드*/
+	</sql>
+
+	<sql id="selectNisHoldSql">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldSql - 결품보류현황 - 헤더 조회 SQL */
+		SELECT *
+		  FROM (
+				<include refid="selectNisHoldBaseSql"/>
+			 ) A
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+		   		#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectNisHoldCount" resultType="java.lang.Integer">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldCount - 결품보류현황 - 헤더조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectNisHoldSql"/>
+		)
+	</select>
+
+	<select id="selectNisHold" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHold - 결품보류현황 - 헤더조회 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectNisHoldSql"/>
+		 ORDER BY
+			   OBNISNO
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectNisHoldDtSql">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDtSql - 결품보류현황 - 상세 조회 SQL */
+		SELECT DISTINCT
+			   NISDT.CTKEY /*센터 코드*/
+			 , NISDT.OWKEY /*화주 코드*/
+			 , NISDT.OBNISNO /*출고 결품 번호*/
+			 , NISDT.OBNISDTNO /*출고 결품 상세 번호*/
+			 , OBHD.OBORDKEY AS OBORDKEY /*오더코드*/
+			 , NISDT.OBHDKEY /*릴리즈 코드*/
+			 , NISDT.OBDTKEY /*릴리즈 상세코드*/
+			 , NISDT.ICKEY /*상품 코드*/
+			 , IC.ICNM /*상품명*/
+			 , NISDT.EXPCTQTY /*예정 수량*/
+			 , NISDT.CNFRMQTY /*확정 수량*/
+			 , NISDT.NISQTY /*결품 수량*/
+			 , (CASE NONICYN WHEN 'Y' THEN NISDT.NISQTY ELSE 0 END) AS EXIST_IC_QTY /*상품없음수량*/
+			 , COALESCE(NISDT.PKIMPSYN, 'N') AS PKIMPSYN /*피킹 불가 여부*/
+			 , NISDT.NISPRCSSTATUSCD /*결품 처리 상태 코드*/
+			 , NISDT.NISQTY AS SEPQTY /*주문분리할 수량*/
+		  FROM TWORK_INFO_OB_NIS_DT NISDT
+		 INNER JOIN TWORK_INFO_OB_NIS_HD NISHD /*출고 결품 헤더 정보*/
+			ON NISDT.CTKEY = NISHD.CTKEY
+		   AND NISDT.OWKEY = NISHD.OWKEY
+		   AND NISDT.OBNISNO = NISHD.OBNISNO
+		 LEFT OUTER JOIN TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+			ON NISHD.CTKEY = OBHD.CTKEY
+		   AND NISHD.OWKEY = OBHD.OWKEY
+		   AND (NISHD.OBHDKEY = OBHD.OBHDKEY
+				OR NISHD.REWKOBHDKEY = OBHD.OBHDKEY)
+		 INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+			ON NISDT.CTKEY = IC.CTKEY
+		   AND NISDT.OWKEY = IC.OWKEY
+		   AND NISDT.ICKEY = IC.ICKEY
+		 WHERE NISDT.CTKEY = #{ctkey}
+		   AND NISDT.OWKEY = #{owkey}
+		   AND NISDT.OBNISNO = #{obnisno}
+	</sql>
+
+	<select id="selectNisHoldDtCount" resultType="java.lang.Integer">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDtCount - 결품보류현황 - 상세정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectNisHoldDtSql"/>
+		)
+	</select>
+
+	<select id="selectNisHoldDt" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDt - 결품보류현황 - 상세 조회 */
+		SELECT *
+		  FROM (
+			<include refid="selectNisHoldDtSql"/>
+			 )
+		 ORDER BY
+		   	   ICKEY /*상품 코드*/
+	</select>
+
+	<sql id="selectNisHoldDetailSql">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDetailSql - 결품보류상세현황 - 조회 SQL */
+		SELECT NIS.CTKEY /*센터 코드*/
+			 , NIS.OWKEY /*화주 코드*/
+			 , NIS.OBHDDAY /*출고희망일자*/
+			 , NIS.OBNISNO /*출고결품 번호*/
+			 , NIS.OBORDKEY /*오더코드*/
+			 , NIS.OBHDKEY /*릴리즈 코드*/
+			 , NIS.STNBARCODE /*등록STN*/
+			 , NIS.INSERTURKEY /*입력자*/
+			 , NIS.INSERTDATE /*입력일시*/
+			 , NIS.PDA_CNFRMYN /*PDA확정여부*/
+			 , NIS.OB_NISPRCS_STATUSCD /*주문결품처리상태*/
+			 , COALESCE(NONICYN, 'N') AS EXIST_IC_YN /*상품없음처리여부*/
+			 , NID.ICKEY /*상품 코드*/
+			 , IC.ICNM /*상품명*/
+			 , NID.EXPCTQTY /*예정 수량*/
+			 , NID.CNFRMQTY /*확정 수량*/
+			 , NID.NISQTY /*결품 수량*/
+			 , (CASE NONICYN WHEN 'Y' THEN NID.NISQTY ELSE 0 END) AS EXIST_IC_QTY /*상품없음수량*/
+			 , COALESCE(NID.PKIMPSYN, 'N') AS PKIMPSYN /*피킹 불가 여부*/
+			 , NID.NISPRCSSTATUSCD /*결품 처리 상태 코드*/
+			 , COALESCE(NIS.CNFRMYN, 'N') AS CNFRMYN /*포장지시여부*/
+			 , NIS.PCKG_IST_URKEY /*포장지시처리자*/
+			 , NIS.PCKG_IST_DATE /*포장지시처리일시*/
+			 , NIS.REWKOBHDKEY /*재작업 릴리즈 코드*/
+		  FROM (
+				<include refid="selectNisHoldSql"/>
+		 ) NIS
+		 INNER JOIN TWORK_INFO_OB_NIS_DT NID
+		    ON NIS.CTKEY = NID.CTKEY
+		   AND NIS.OWKEY = NID.OWKEY
+		   AND NIS.OBNISNO = NID.OBNISNO
+		 INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+			ON NID.CTKEY = IC.CTKEY
+		   AND NID.OWKEY = IC.OWKEY
+		   AND NID.ICKEY = IC.ICKEY
+	<where>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND NID.ICKEY IN
+			<foreach collection="ICKEY.split(',')" item="ickey" open="(" separator="," close=")">
+				#{ickey}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(NISQTYFROM) and @com.kns.framework.util.StringUtil@isNotEmpty(NISQTYTO)">
+		   AND NID.NISQTY BETWEEN #{NISQTYFROM} AND #{NISQTYTO}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(PKIMPSYN)">
+		   AND COALESCE(NID.PKIMPSYN, 'N') = #{PKIMPSYN}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(NISPRCSSTATUSCD)">
+		   AND NID.NISPRCSSTATUSCD IN
+			<foreach collection="NISPRCSSTATUSCD.split(',')" item="nisprcsstatuscd" open="(" separator="," close=")">
+				#{nisprcsstatuscd}
+			</foreach>
+		</if>
+	</where>
+	</sql>
+
+	<select id="selectNisHoldDetailCount" resultType="java.lang.Integer">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDetailCount - 결품보류상세현황 - 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectNisHoldDetailSql"/>
+			 )
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectNisHoldDetail" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldDetail - 결품보류상세현황 - 조회 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+				<include refid="selectNisHoldDetailSql"/>
+			 )
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				#{SEARCH_CONDITION}
+			</if>
+		</where>
+		 ORDER BY
+			   OBNISNO /*출고결품 번호*/
+			 , OBHDKEY /*릴리즈 코드*/
+			 , ICKEY /*상품 코드*/
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<update id="updateObNisHold">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObNisHold - 결품보류내역 - 출고결품 헤더 확정처리 업데이트 */
+		UPDATE TWORK_INFO_OB_NIS_HD /*출고 결품 헤더 정보*/
+		   SET CNFRMDATE = #{sysdate} /*확정 일시*/
+			 , CNFRMURKEY = #{surkey} /*확정자*/
+			 , CNFRMYN = 'Y' /*확정 여부*/
+		<if test="rewkobhdkey != null and rewkobhdkey != ''">
+			 , REWKOBHDKEY = #{rewkobhdkey}
+		</if>
+			 , UPDATEDATE = #{sysdate} /*수정 일시*/
+			 , UPDATEURKEY = #{surkey} /*수정자*/
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBNISNO = #{obnisno}
+	</update>
+
+	<update id="updateObNisHoldDt">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObNisHoldDt - 결품보류내역 - 출고결품 상세 확정처리 업데이트 */
+		UPDATE TWORK_INFO_OB_NIS_DT /*출고 결품 상세 정보*/
+		   SET CNFRMQTY = #{cnfrmqty} /*확정 수량*/
+			 , NISPRCSSTATUSCD = #{nisprcsstatuscd} /*결품 처리 상태 코드*/
+			 , UPDATEDATE = #{sysdate} /*수정 일시*/
+			 , UPDATEURKEY = #{surkey} /*수정자*/
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBNISNO = #{obnisno}
+		   AND OBNISDTNO = #{obnisdtno}
+	</update>
+
+	<select id="selectStockOutCnt" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectStockOutCnt - 결품보류내역 - 기존릴리즈의 상세가 미할당만 남았는지 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+		  FROM (
+				SELECT OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBHDKEY
+					 , COUNT(OD.OBDTKEY) OB_CNT
+					 , SUM(CASE WHEN OD.OBDTSTATUSCD = '01' THEN 1 ELSE 0 END) AS OBDTSTATUSCD_01
+				  FROM TWORK_INFO_OB_HD OH
+				 INNER JOIN TWORK_INFO_OB_DT OD
+					ON OH.CTKEY = OD.CTKEY
+				   AND OH.OWKEY = OD.OWKEY
+				   AND OH.OBHDKEY = OD.OBHDKEY
+				 WHERE OH.CTKEY = '09'
+				   AND OH.OWKEY = 'DAISO'
+				   AND OH.OBHDKEY = #{obhdkey}
+				 GROUP BY
+					   OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBHDKEY
+				)
+		 WHERE OB_CNT = OBDTSTATUSCD_01
+	</select>
+
+	<update id="updateObHdInfo">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObHdInfo - 결품보류내역 - 출고공통 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD /*출고 공통 정보*/
+		   SET OBSTATUSCD = #{obstatuscd} /*출고 상태 코드*/
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateObDtInfo">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObDtInfo - 결품보류내역 - 재작업지시 - 출고공통 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT /*출고 상세 정보*/
+		   SET ALQTY = 0
+			 , PKISTQTY = 0
+			 , PKQTY = 0
+			 , CLASSIFSQTY = 0
+			 , PAKQTY = 0
+			 , NISQTY = 0
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="sumOfCnfrmQtyinNisHoldDetail" resultType="java.lang.Integer">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObDtInfo - 결품보류내역 - 확정처리 - 결품보류 상세의 확정수량 합계 조회 */
+		SELECT COALESCE(SUM(CNFRMQTY), 0) AS CNFRMQTY_SUM
+		  FROM TWORK_INFO_OB_NIS_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBNISNO = #{obnisno}
+	</select>
+
+	<select id="selectNisHoldHd" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectNisHoldHd - 결품보류내역 - 결품보류HD 재조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBNISNO
+			,OBHDKEY
+			,STNBARCODE
+			,CNFRMYN
+			,CNFRMDATE
+			,CNFRMURKEY
+			,REWKOBHDKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		FROM TWORK_INFO_OB_NIS_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBNISNO = #{obnisno}
+	</select>
+
+	<update id="updateObHdWkTypeCd">
+		/* wms-outbound-obnishold-sql-oracle.xml - updateObHdWkTypeCd - 결품보류내역 - 재작업지시 시 신규릴리즈코드의 작업유형 변경 */
+		UPDATE TWORK_INFO_OB_HD /*출고 공통 정보*/
+		   SET WKTYPECD = NULL
+			 , PREOBHDKEY = NULL
+			 , PKOBHDKEY = NULL
+		     , WAHDKEY = NULL
+		     , PIHDKEY = NULL
+		     , OBWKDATE = NULL
+			 , DASSTNBARCODE = NULL
+			 , DASCELLBARCODE = NULL
+			 , CLASSIFCNTRBARCODE = NULL
+			 , CLASSIFWKURKEY = NULL
+			 , CLASSIFWKDATE = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="callGetObDtSummary" statementType="CALLABLE" parameterType="java.util.HashMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - callGetObDtSummary - 재작업지시 시 신규릴리즈코드의 작업유형 재조회 */
+		{
+			  CALL SP_GET_OB_DT_SUMMARY(
+					#{ctkey,mode=IN,jdbcType=VARCHAR}
+					, #{owkey,mode=IN,jdbcType=VARCHAR}
+					, #{obhdkey,mode=IN,jdbcType=VARCHAR}
+					, #{vol,mode=OUT,jdbcType=NUMERIC}
+					, #{weight,mode=OUT,jdbcType=NUMERIC}
+					, #{ordseptypecd,mode=OUT,jdbcType=VARCHAR}
+					, #{wktypecd,mode=OUT,jdbcType=VARCHAR}
+					, #{classifspeccd,mode=OUT,jdbcType=VARCHAR}
+			  )
+		}
+	</update>
+
+	<select id="selectReWkDtList" resultType="camelMap">
+		/* wms-outbound-obnishold-sql-oracle.xml - selectReWkDtList - 재작업지시 시 신규릴리즈코드의 OBDT조회 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.OBHDKEY
+			,OD.OBDTKEY
+			,OD.ICKEY
+			,OD.OBDTSTATUSCD
+			,OD.UOM
+			,OD.INITQTY
+			,OD.EXPCTQTY
+			,OD.ALQTY
+			,OD.PKISTQTY
+			,OD.PKQTY
+			,OD.CLASSIFSQTY
+			,OD.PAKQTY
+			,OD.NISQTY
+			,OD.CNFRMQTY
+			,OD.OBORDKEY
+			,OD.OBORDDTKEY
+			,OD.ORHDKEY
+			,OD.ORDTKEY
+			,OD.EXTERNORDERKEY
+			,OD.EXTERNORDERLINENUM
+			,OH.PIHDKEY
+			,OH.OBHDTYPECD
+			,OH.OBSTATUSCD
+		FROM TWORK_INFO_OB_HD OH
+		INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+			AND OH.OWKEY = OD.OWKEY
+			AND OH.OBHDKEY = OD.OBHDKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBHDKEY = #{obhdkey}
+		ORDER BY OD.ICKEY
+	</select>
+</mapper>

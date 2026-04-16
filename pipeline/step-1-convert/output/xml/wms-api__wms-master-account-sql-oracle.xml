@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.AccountApiMapper">
+
+	<select id="selectInterfaceAccountCount" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-account-sql-oracle.xml - selectInterfaceAccountCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_AC_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND ACKEY = #{ackey}					/* 거래처코드 */
+	</select>
+
+	<insert id="insertInterfaceAccount" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO">
+		/* wms-master-account-sql-oracle.xml - insertInterfaceAccount */
+		INSERT INTO TWORK_INTF_AC_RCV (
+			   CTKEY			/* 센터코드 */
+			 , ACKEY			/* 거래처코드 */
+			 , ACNM				/* 거래처명 */
+			 , ACTYPECD			/* 거래처구분 */
+			 , OPERSTATYPE		/* 거래처상태 */
+			 , ADDRESS1			/* 주소1 */
+			 , ADDRESS2			/* 주소2 */
+			 , TEL1				/* 전화번호1 */
+			 , CONTACT			/* 담당자 */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{ackey}
+			 , #{acname}
+			 , #{actype}
+			 , #{acstatus}
+			 , #{address1}
+			 , #{address2}
+			 , #{tel1}
+			 , #{contact}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceAccount" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO">
+		/* wms-master-account-sql-oracle.xml - updateInterfaceAccount */
+		UPDATE TWORK_INTF_AC_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, ACNM = #{acname}					/* 거래처명 */
+					, ACTYPECD = #{actype}				/* 거래처구분 */
+					, OPERSTATYPE = #{acstatus}			/* 거래처상태 */
+					, ADDRESS1 = #{address1}			/* 주소1 */
+					, ADDRESS2 = #{address2}			/* 주소2 */
+					, TEL1 = #{tel1}					/* 전화번호1 */
+					, CONTACT = #{contact}				/* 담당자 */
+		     		, DELYN = #{delyn}					/* 삭제여부 */
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = null					/* 처리일시 */
+					, RCVDATE = #{sysdate}				/* 수신일시 */
+				</when>
+			</choose>
+
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND ACKEY = #{ackey}					/* 거래처코드 */
+	</update>
+
+	<select id="selectTworkMstAcCount" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-account-sql-oracle.xml - selectTworkMstAcCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_AC
+		 WHERE CTKEY = #{ctkey}		/* 센터코드 */
+		   AND ACKEY = #{ackey}		/* 거래처코드 */
+	</select>
+
+	<insert id="insertTworkMstAc" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO">
+		/* wms-master-account-sql-oracle.xml - insertTworkMstAc */
+		INSERT INTO TWORK_MST_AC (
+			   CTKEY				/* 센터 코드 */
+			 , ACKEY				/* 거래처 코드 */
+			 , ACNM					/* 거래처 명 */
+			 , ACTYPECD				/* 거래처 구분 */
+			 , OPERSTATYPE			/* 운영 상태 구분 */
+			 , ADDRESS1				/* 주소1 */
+			 , ADDRESS2				/* 주소2 */
+			 , TEL1					/* 전화 번호 1 */
+			 , CONTACT				/* 담당자 */
+			 , INSERTDATE			/* 입력 일시 */
+			 , INSERTURKEY			/* 입력 사용자 ID */
+			 , UPDATEDATE			/* 수정 일시 */
+			 , UPDATEURKEY			/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{ackey}
+			 , #{acname}
+			 , #{actype}
+			 , #{acstatus}
+			 , #{address1}
+			 , #{address2}
+			 , #{tel1}
+			 , #{contact}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstAc" parameterType="com.daiso.wms.api.in.dto.AccountRequestDTO">
+		/* wms-master-account-sql-oracle.xml - updateTworkMstAc */
+		UPDATE TWORK_MST_AC
+		   SET ACNM = #{acname}					/* 거래처 명 */
+			 , ACTYPECD = #{actype}				/* 거래처 구분 */
+			 , OPERSTATYPE = #{acstatus}		/* 운영 상태 구분 */
+			 , ADDRESS1 = #{address1}			/* 주소1 */
+			 , ADDRESS2 = #{address2}			/* 주소2 */
+			 , TEL1 = #{tel1}					/* 전화 번호 1 */
+			 , CONTACT = #{contact}				/* 담당자 */
+		     , DELYN = #{delyn}					/* 삭제여부 */
+		     , UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND ACKEY = #{ackey}					/* 거래처코드 */
+	</update>
+
+</mapper>

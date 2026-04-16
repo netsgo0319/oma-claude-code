@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.master.mapper.CustomerItemMapper">
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<select id="selectCustomerItemCount" resultType="java.lang.Integer">
+		/* wms-master-customerItem-sql-oracle.xml - selectCustomerItemCount */
+		SELECT
+			count(1)
+		FROM
+			TWORK_MST_STORE_IC A
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectCustomerItemList" resultType="camelMap">
+		/* wms-master-customerItem-sql-oracle.xml - selectCustomerItemList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT
+		      '0' AS CHK
+		    , A.CTKEY
+		    , B.CTNAME
+			, A.OWKEY
+		    , C.OWNAME
+			, A.STORE_KEY
+		    , D.STORE_NAME
+			, A.ICKEY
+		    , E.ICNAME
+		    , E.SHELFDAY
+		    , WELLFOOD.FN_GET_STORE_IC_MIN_EXPIRE(A.CTKEY, A.OWKEY, A.STORE_KEY, A.ICKEY) AS MIN_EXPIREDATE
+			, A.MINEXPIRESTD
+			, A.SAFESTOCKYN
+			, A.PLTBOXDELIGBCD
+			, A.PLTDELIGBCD
+			, A.WRAPPEDYN
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		FROM
+		      TWORK_MST_STORE_IC A
+			, TWORK_MST_CT B
+			, TWORK_MST_OW C
+			, TWORK_MST_STORE D
+			, TWORK_MST_IC E
+
+		<where>
+			AND A.CTKEY = B.CTKEY(+)
+			AND A.OWKEY = C.OWKEY(+)
+			AND A.CTKEY = D.CTKEY(+)
+			AND A.OWKEY = D.OWKEY(+)
+			AND A.STORE_KEY = D.STORE_KEY(+)
+			AND A.CTKEY = E.CTKEY(+)
+			AND A.OWKEY = E.OWKEY(+)
+			AND A.ICKEY = E.ICKEY(+)
+			<include refid="sql_searchCond"/>
+		</where>
+
+		ORDER BY A.UPDATEDATE DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectDupCustomerItemCount" resultType="java.lang.Integer">
+		/* wms-master-customerItem-sql-oracle.xml - selectDupCustomerItemCount */
+		SELECT
+		    COUNT(1)
+		FROM TWORK_MST_STORE_IC
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND STORE_KEY = #{storeKey}
+		AND ICKEY = #{ickey}
+	</select>
+
+	<insert id="insertCustomerItem">
+		/* wms-master-customerItem-sql-oracle.xml - insertCustomerItem */
+		INSERT INTO TWORK_MST_STORE_IC (
+			  CTKEY
+			, OWKEY
+			, STORE_KEY
+			, ICKEY
+			, MINEXPIRESTD
+			, SAFESTOCKYN
+			, PLTBOXDELIGBCD
+			, PLTDELIGBCD
+			, WRAPPEDYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{ctkey}
+			, #{owkey}
+			, #{storeKey}
+			, #{ickey}
+			, #{minexpirestd}
+			, #{safestockyn}
+			, #{pltboxdeligbcd}
+			, #{pltdeligbcd}
+			, #{wrappedyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateCustomerItem">
+		/* wms-master-customerItem-sql-oracle.xml - updateCustomerItem */
+		UPDATE TWORK_MST_STORE_IC
+		SET
+			  MINEXPIRESTD = #{minexpirestd}
+			, SAFESTOCKYN = #{safestockyn}
+			, PLTBOXDELIGBCD = #{pltboxdeligbcd}
+			, PLTDELIGBCD = #{pltdeligbcd}
+			, WRAPPEDYN = #{wrappedyn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND STORE_KEY = #{storeKey}
+		AND ICKEY = #{ickey}
+	</update>
+
+	<delete id="deleteCustomerItem">
+		/* wms-master-customerItem-sql-oracle.xml - deleteCustomerItem */
+		DELETE
+		FROM TWORK_MST_STORE_IC
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND STORE_KEY = #{storeKey}
+		AND ICKEY = #{ickey}
+	</delete>
+
+</mapper>
+	

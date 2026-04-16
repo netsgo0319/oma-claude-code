@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.common.mapper.FileMapper">
+	<select id="selectFileInfoList" resultType="FileVO">
+		/* adm-file-sql-oracle.xml - selectFileInfoList */
+		SELECT FILEKEY
+			 , FILESEQ
+			 , APKEY
+			 , MEKEY
+			 , APKEY || '/' || FILEPATH AS FILE_PATH
+			 , FILESIZE
+			 , FILEEXTS
+			 , ORIGFILENM
+			 , SAVEFILENM
+		  FROM TADMIN_MST_FILE
+		 WHERE FILEKEY = #{filekey}
+	</select>
+	
+	<select id="selectFileInfo" resultType="FileVO">
+		/* adm-file-sql-oracle.xml - selectFileInfo */
+		SELECT FILEKEY
+			 , FILESEQ
+			 , APKEY
+			 , MEKEY
+			 , APKEY || '/' || FILEPATH AS FILE_PATH
+			 , FILESIZE
+			 , FILEEXTS
+			 , ORIGFILENM
+			 , SAVEFILENM
+		  FROM TADMIN_MST_FILE
+		 WHERE FILEKEY = #{filekey}
+		   AND FILESEQ = #{fileseq}
+	</select>
+	
+	<delete id="deleteFileInfo">
+	/* adm-file-sql-oracle.xml -deleteFileInfo */
+		DELETE
+			FROM TADMIN_MST_FILE
+		 WHERE FILEKEY = #{filekey}
+		   AND FILESEQ = #{fileseq}
+	</delete>
+	
+	<insert id="insertFileInfo">
+	/* adm-file-sql-oracle.xml - insertFileInfo */
+		INSERT INTO TADMIN_MST_FILE
+		(
+		       FILEKEY
+		     , FILESEQ
+		     , APKEY
+		     , MEKEY
+		     , FILEPATH
+		     , FILESIZE
+		     , FILEEXTS
+		     , ORIGFILENM
+		     , SAVEFILENM
+		     , REM
+		     , INSERTDATE
+		     , INSERTURKEY
+		     , UPDATEDATE
+		     , UPDATEURKEY
+		)
+		VALUES
+		(
+		       #{filekey}
+			 , #{fileseq}
+			 , #{apkey}
+			 , #{mekey}
+			 , #{filepath}
+			 , #{filesize}
+			 , #{fileexts}
+			 , #{origfilenm}
+			 , #{savefilenm}
+			 , #{rem}
+   			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+	</insert>
+	
+	<select id="getNewFileKey" resultType="java.lang.String">
+		/* adm-file-sql-oracle.xml - getNewFileKey */
+		SELECT nextval('seq_tadmin_mst_file')
+	</select>
+
+	<select id="selectExcelTemplate" resultType="FileVO">
+		SELECT FILEPATH
+			 , FILEEXTS
+			 , ORIGFILENM
+			 , SAVEFILENM
+		  FROM TADMIN_EXCELTEMPL
+		 WHERE USKEY = #{uskey}
+		   AND GRIDDIVCD = #{griddivcd}
+	</select>
+
+	<insert id="createBulkExcel"
+			parameterType="com.kns.framework.util.excel.sample.SampleDomain$Excel$ExcelRegistBulkRequest">
+
+		/* com.daiso.ams.common.mapper.FileMapper - createBulkExcel */
+
+		INSERT INTO TADMIN_BULK_EXCEL (ID, C1, C2, C3) VALUES
+
+		<foreach collection="list" item="item" index="index" separator=",">
+			( #{ item.id }, #{ item.col1 }, #{ item.col2 }, #{ item.col3 })
+		</foreach>
+
+	</insert>
+
+</mapper>

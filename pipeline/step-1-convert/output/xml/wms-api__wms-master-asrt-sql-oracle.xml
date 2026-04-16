@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.AsrtApiMapper">
+
+	<select id="selectInterfaceAsrtCount" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-asrt-sql-oracle.xml - selectInterfaceAsrtCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_ASRT_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ASRTMASICKEY = #{asrtrepkey}		/* 아소트모상품코드 */
+		   AND ASRTDTICKEY = #{asrtkey}			/* 아소트자상품코드 */
+	</select>
+
+	<insert id="insertInterfaceAsrt" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - insertInterfaceAsrt */
+		INSERT INTO TWORK_INTF_ASRT_RCV (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , ASRTMASICKEY		/* 아소트모상품코드 */
+			 , ASRTDTICKEY		/* 아소트자상품코드 */
+			 , QTY				/* 수량 */
+			 , ICCOLOR			/* 색상 */
+			 , ICDESIGN			/* 디자인 */
+			 , ICCHRT			/* 캐릭터 */
+			 , ICIMGURL			/* 상품이미지URL */
+			 , DELYN			/* 삭제여부 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{asrtrepkey}
+			 , #{asrtkey}
+			 , #{qty}
+			 , #{iccolor}
+			 , #{icdesign}
+			 , #{icchrt}
+			 , #{icimgurl}
+			 , #{delyn}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceAsrt" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - updateInterfaceAsrt */
+		UPDATE TWORK_INTF_ASRT_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, QTY = #{qty}						/* 수량 */
+					, ICCOLOR = #{iccolor}				/* 색상 */
+					, ICDESIGN = #{icdesign}			/* 디자인 */
+					, ICCHRT = #{icchrt}				/* 캐릭터 */
+					, ICIMGURL = #{icimgurl}			/* 상품이미지URL */
+					, DELYN = #{delyn}					/* 삭제여부 */
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = null					/* 처리일시 */
+					, RCVDATE = #{sysdate}				/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ASRTMASICKEY = #{asrtrepkey}		/* 아소트모상품코드 */
+		   AND ASRTDTICKEY = #{asrtkey}			/* 아소트자상품코드 */
+	</update>
+
+	<select id="selectTworkMstAsrtCount" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-asrt-sql-oracle.xml - selectTworkMstAsrtCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_ASRT
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ASRTMASICKEY = #{asrtrepkey}		/* 아소트모상품코드 */
+		   AND ASRTDTICKEY = #{asrtkey}			/* 아소트자상품코드 */
+	</select>
+
+	<insert id="insertTworkMstAsrt" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - insertTworkMstAsrt */
+		INSERT INTO TWORK_MST_ASRT (
+			   CTKEY			/* 센터 코드 */
+			 , OWKEY			/* 화주 코드 */
+			 , ASRTMASICKEY		/* 아소트 모상품코드 */
+			 , ASRTDTICKEY		/* 아소트 자상품코드 */
+			 , ASRTNM			/* 상품명 */
+			 , ASRTMASQTY		/* 아소트모상품수량 */
+			 , QTY				/* 수량 */
+			 , COLOR			/* 색상 */
+			 , DESIGN			/* 디자인 */
+			 , CHRT				/* 캐릭터 */
+			 , IMGURL			/* 이미지URL */
+			 , DELYN			/* 삭제여부 */
+			 , INSERTDATE		/* 입력 일시 */
+			 , INSERTURKEY		/* 입력 사용자 ID */
+			 , UPDATEDATE		/* 수정 일시 */
+			 , UPDATEURKEY		/* 수정 사용자 ID */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{asrtrepkey}
+			 , #{asrtkey}
+			 , (SELECT ICNM FROM TWORK_MST_IC WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND ICKEY = #{asrtkey})
+			 , (SELECT ICUNITQTY FROM TWORK_MST_ICUTXTYPE WHERE CTKEY = #{ctkey} AND OWKEY = #{owkey} AND ICKEY = #{asrtrepkey} AND ICUNITTYPECD = 'INN')
+			 , #{qty}
+			 , #{iccolor}
+			 , #{icdesign}
+			 , #{icchrt}
+			 , #{icimgurl}
+			 , COALESCE(#{delyn}, 'N')
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstAsrt" parameterType="com.daiso.wms.api.in.dto.AsrtRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - updateTworkMstAsrt */
+		UPDATE TWORK_MST_ASRT
+		   SET QTY = #{qty}						/* 수량 */
+			 , COLOR = #{iccolor}				/* 색상 */
+			 , DESIGN = #{icdesign}				/* 디자인 */
+			 , CHRT = #{icchrt}					/* 캐릭터 */
+			 , IMGURL = #{icimgurl}				/* 이미지URL */
+		     , DELYN = COALESCE(#{delyn}, 'N')		/* 삭제여부 */
+		     , UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ASRTMASICKEY = #{asrtrepkey}		/* 아소트모상품코드 */
+		   AND ASRTDTICKEY = #{asrtkey}			/* 아소트자상품코드 */
+	</update>
+
+	<select id="selectInterfaceAsrtRenewalCount" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-asrt-sql-oracle.xml - selectInterfaceAsrtRenewalCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INTF_ASRT_RENEW_RCV
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ISTREGDATE = #{istregdate}		/* 지시등록일자 */
+		   AND BFCHGICKEY = #{bfchgickey}		/* 변경전상품코드 */
+		   AND AFCHGICKEY = #{afchgickey}		/* 변경후상품코드 */
+	</select>
+
+	<insert id="insertInterfaceAsrtRenewal" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - insertInterfaceAsrtRenewal */
+		INSERT INTO TWORK_INTF_ASRT_RENEW_RCV (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , ISTREGDATE		/* 지시등록일자 */
+			 , BFCHGICKEY		/* 변경전상품코드 */
+			 , AFCHGICKEY		/* 변경후상품코드 */
+			 , PRCSYN			/* 처리여부 */
+			 , PRCSDATE			/* 처리일시 */
+			 , RCVDATE			/* 수신일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{istregdate}
+			 , #{bfchgickey}
+			 , #{afchgickey}
+			 , 'N'
+			 , NULL
+			 , #{sysdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateInterfaceAsrtRenewal" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - updateInterfaceAsrtRenewal */
+		UPDATE TWORK_INTF_ASRT_RENEW_RCV
+		   SET UPDATEDATE = #{sysdate}					/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}					/* 수정자 */
+
+			<choose>
+				<when test='"Y".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = #{sysdate}				/* 처리일시 */
+				</when>
+				<when test='"N".equals(prcsyn)'>
+					, PRCSYN = #{prcsyn}				/* 처리여부 */
+					, PRCSDATE = null					/* 처리일시 */
+					, RCVDATE = #{sysdate}				/* 수신일시 */
+				</when>
+			</choose>
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND ISTREGDATE = #{istregdate}		/* 지시등록일자 */
+		   AND BFCHGICKEY = #{bfchgickey}		/* 변경전상품코드 */
+		   AND AFCHGICKEY = #{afchgickey}		/* 변경후상품코드 */
+	</update>
+
+	<select id="selectTworkInfoAsrtRenewCount" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO" resultType="java.lang.Integer">
+		/* wms-master-asrt-sql-oracle.xml - selectTworkInfoAsrtRenewCount */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_ASRT_RENEW
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND BFCHGICKEY = #{bfchgickey}		/* 변경전상품코드 */
+		   AND AFCHGICKEY = #{afchgickey}		/* 변경후상품코드 */
+	</select>
+
+	<insert id="insertTworkInfoAsrtRenew" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - insertTworkInfoAsrtRenew */
+		INSERT INTO TWORK_INFO_ASRT_RENEW (
+			   CTKEY			/* 센터코드 */
+			 , OWKEY			/* 화주코드 */
+			 , BFCHGICKEY		/* 변경전상품코드 */
+			 , AFCHGICKEY		/* 변경후상품코드 */
+			 , WKISTDATE		/* 작업지시일시 */
+			 , INSERTDATE		/* 입력일시 */
+			 , INSERTURKEY		/* 입력사용자 */
+			 , UPDATEDATE		/* 수정일시 */
+			 , UPDATEURKEY		/* 수정사용자 */
+			 )
+		VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{bfchgickey}
+			 , #{afchgickey}
+			 , #{istregdate}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkInfoAsrtRenew" parameterType="com.daiso.wms.api.in.dto.AsrtRenewalRequestDTO">
+		/* wms-master-asrt-sql-oracle.xml - updateTworkInfoAsrtRenew */
+		UPDATE TWORK_INFO_ASRT_RENEW
+		   SET WKISTDATE = #{istregdate}		/* 작업지시일시 */
+		     , UPDATEDATE = #{sysdate}			/* 수정일시 */
+			 , UPDATEURKEY = #{surkey}			/* 수정사용자 */
+		 WHERE CTKEY = #{ctkey}					/* 센터코드 */
+		   AND OWKEY = #{owkey}					/* 화주코드 */
+		   AND BFCHGICKEY = #{bfchgickey}		/* 변경전상품코드 */
+		   AND AFCHGICKEY = #{afchgickey}		/* 변경후상품코드 */
+	</update>
+
+</mapper>

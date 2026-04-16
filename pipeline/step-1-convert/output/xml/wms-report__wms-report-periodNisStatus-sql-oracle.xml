@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.report.mapper.PeriodNisStatusMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <sql id="sql_periodNisStatus">
+        <![CDATA[
+        WITH PARAM AS (
+            SELECT CASE WHEN #{monthOrDay} = '20' THEN 'DAY' ELSE 'MON' END AS GRP_UNIT,
+                   CASE WHEN #{fromDate} IS NOT NULL
+                         AND LENGTH(#{fromDate}) > 0
+                         AND #{fromDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{fromDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS FR_DT,
+                   CASE WHEN #{toDate} IS NOT NULL
+                         AND LENGTH(#{toDate}) > 0
+                         AND #{toDate} NOT IN ('null', 'undefined')
+                        THEN CASE WHEN #{monthOrDay} = '20'
+                                  THEN TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD')
+                                  ELSE TRUNC(TO_DATE(REPLACE(#{toDate}, '-',''),'YYYYMMDD'), 'MM')
+                             END
+                   END AS TO_DT
+        ),
+        BASE AS (
+           SELECT B.OWKEY,
+                  B.CTKEY,
+                  B.SHIP_DT,
+                  CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END AS SHIP_GRP_DT,
+                  B.OBHDKEY,
+                  B.OBDTKEY,
+                  B.ICKEY,
+                  B.ORD_QTY,
+                  B.NIS_QTY,
+                  P.GRP_UNIT
+            FROM (
+                SELECT CASE WHEN LENGTH(OH.OBREQDATE) = 14
+                       THEN TO_DATE(SUBSTR(OH.OBREQDATE,1,8),'YYYYMMDD')
+                        END AS SHIP_DT,
+                         OH.OBHDKEY,
+                         OH.OWKEY,
+                         OH.CTKEY,
+                         OD.OBDTKEY,
+                         OD.ICKEY,
+                         COALESCE(OD.EXPCTQTY, 0) AS ORD_QTY,
+                         COALESCE(OD.NISQTY, NISDT.NISQTY) AS NIS_QTY
+                  FROM   TWORK_INFO_OB_HD OH
+                          JOIN TWORK_INFO_OB_DT OD
+                            ON OH.CTKEY = OD.CTKEY
+                           AND OH.OWKEY = OD.OWKEY
+                           AND OH.OBHDKEY = OD.OBHDKEY
+                          LEFT JOIN TWORK_INFO_OB_NIS_HD NISHD
+                            ON OH.CTKEY = NISHD.CTKEY
+                           AND OH.OWKEY = NISHD.OWKEY
+                           AND OH.OBHDKEY = NISHD.OBHDKEY
+                          LEFT JOIN TWORK_INFO_OB_NIS_DT NISDT
+                            ON NISHD.CTKEY = NISDT.CTKEY
+                           AND NISHD.OWKEY = NISDT.OWKEY
+                           AND NISHD.OBNISNO = NISDT.OBNISNO
+                           AND OD.OBDTKEY = NISDT.OBDTKEY
+            ) B
+            JOIN PARAM P ON 1=1
+           WHERE B.SHIP_DT IS NOT NULL
+             AND (P.FR_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END) >= P.FR_DT)
+             AND (P.TO_DT IS NULL OR (CASE WHEN P.GRP_UNIT = 'MON' THEN TRUNC(B.SHIP_DT,'MM') ELSE B.SHIP_DT END) <= P.TO_DT)
+        ),
+        AGG AS (
+                  SELECT  OWKEY,
+                          CTKEY,
+                          GRP_UNIT,
+                          SHIP_GRP_DT AS GRP_DT,
+                          COUNT(DISTINCT OBHDKEY)                   AS ORD_CNT,
+                          COUNT(DISTINCT OBHDKEY || '|' || OBDTKEY) AS ORD_SKU,
+                          SUM(ORD_QTY)                              AS ORD_EA,
+                          COUNT(DISTINCT CASE WHEN NIS_QTY > 0 THEN OBHDKEY END)                   AS NIS_CNT,
+                          COUNT(DISTINCT CASE WHEN NIS_QTY > 0 THEN OBHDKEY || '|' || OBDTKEY END) AS NIS_SKU,
+                          SUM(NIS_QTY)                              AS NIS_EA
+                   FROM BASE
+                  GROUP BY OWKEY, CTKEY, GRP_UNIT, SHIP_GRP_DT
+        )
+         SELECT  TO_CHAR(GRP_DT,'YYYY') AS grpyear,
+                 TO_CHAR(GRP_DT,'MM')   AS grpmonth,
+                 CASE WHEN GRP_UNIT='DAY' THEN TO_CHAR(GRP_DT,'DD') ELSE '-' END AS grpdate,
+                 CASE WHEN GRP_UNIT='DAY' THEN TO_CHAR(GRP_DT,'DY','NLS_DATE_LANGUAGE=KOREAN') ELSE '-' END AS weekday,
+                 ORD_CNT AS ordcnt,
+                 ORD_SKU AS ordsku,
+                 ORD_EA  AS ordea,
+                 NIS_CNT AS niscnt,
+                 NIS_SKU AS nissku,
+                 NIS_EA  AS nisea,
+                 CASE WHEN ORD_CNT = 0 THEN 0 ELSE ROUND(NIS_CNT / ORD_CNT * 100, 2) END AS nisratecnt,
+                 CASE WHEN ORD_SKU = 0 THEN 0 ELSE ROUND(NIS_SKU / ORD_SKU * 100, 2) END AS nisratesku,
+                 CASE WHEN ORD_EA  = 0 THEN 0 ELSE ROUND(NIS_EA  / ORD_EA  * 100, 2) END AS nisrateea
+          FROM   AGG
+         WHERE 1=1
+        ]]>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+            AND #{SEARCH_CONDITION}
+        </if>
+    </sql>
+
+    <select id="selectPeriodNisStatusInfoCount" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM (
+            <include refid="sql_periodNisStatus"/>
+        ) CNT
+    </select>
+
+    <select id="selectPeriodNisStatusInfoList" resultType="camelMap">
+        /* wms-report-periodNisStatus-sql-oracle.xml - selectPeriodNisStatusInfoList */
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        FROM (
+            <include refid="sql_periodNisStatus"/>
+        ) DATA
+        ORDER BY DATA.grpyear, DATA.grpmonth, DATA.grpdate
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+</mapper>

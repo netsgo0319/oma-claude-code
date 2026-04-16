@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.MessageMapper">
+	
+	<select id="selectMessage" resultType="camelMap">
+		/* adm-master-message-sql-oracle.xml - selectMessage */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+							SELECT
+							  	'0' AS CHK
+								,A.MULAAPMSGHDKEY
+								,B.MSGTYPE
+								,B.LAKEY
+								,B.DISPLAYMSG
+								,B.DISPLAYMSGABBR
+								,A.CLOSDATE
+								,A.INSERTDATE 
+								,A.UPDATEDATE 
+								,A.INSERTURKEY
+ 								,A.UPDATEURKEY
+						  FROM TADMIN_MST_MULAAPMSG_HD A 
+						  INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+						  		  ON A.MULAAPMSGHDKEY = B.MULAAPMSGHDKEY
+						 WHERE 1 = 1
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+							   AND #{SEARCH_CONDITION}
+							</if>
+						<choose>
+							<when test='sortValue !=null and sortValue != "" '>	
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>	
+							</when>	
+							<otherwise>
+								ORDER BY B.UPDATEDATE DESC
+							</otherwise>
+						</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+
+	</select>
+
+
+	<select id="selectMessageCount" resultType="java.lang.Integer" >
+		/* adm-master-message-sql-oracle.xml - selectMessageCount */
+			SELECT COUNT(1)  
+			  FROM TADMIN_MST_MULAAPMSG_HD A 
+			  INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+			  		  ON A.MULAAPMSGHDKEY = B.MULAAPMSGHDKEY
+			 WHERE  1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   AND #{SEARCH_CONDITION}
+				</if>
+	</select> 
+	
+	<select id="selectDupMessageCount" resultType="java.lang.Integer" >
+		/* adm-master-message-sql-oracle.xml - selectDupMessageCount */
+             SELECT 
+            	COUNT(1)
+              FROM TADMIN_MST_MULAAPMSG_HD A 
+              INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+              		  ON A.MULAAPMSGHDKEY = B.MULAAPMSGHDKEY
+             WHERE A.MULAAPMSGHDKEY = #{mulaapmsghdkey}
+			   AND B.MSGTYPE = #{msgtype}
+               AND B.LAKEY = #{lakey}
+	</select>
+	
+	<insert id="insertTAdminMstMulaapmsgHd">
+		/* adm-master-message-sql-oracle.xml - insertTAdminMstMulaapmsgHd */
+		INSERT INTO TADMIN_MST_MULAAPMSG_HD
+		(
+			 UPDATEURKEY
+			,UPDATEDATE
+			,MULAAPMSGHDKEY
+			,INSERTURKEY
+			,INSERTDATE
+			,CLOSDATE
+		)VALUES(
+			 #{surkey}
+			,#{sysdate}
+			,#{mulaapmsghdkey}
+			,#{surkey}
+			,#{sysdate}
+			,SUBSTR(#{closdate}, 0, 14)
+		)		
+	</insert>
+
+	<insert id="insertTAdminMstMulaapmsgDt">
+		/* adm-master-message-sql-oracle.xml - insertTAdminMstMulaapmsgDt */
+		INSERT INTO TADMIN_MST_MULAAPMSG_DT
+		(
+			 UPDATEURKEY
+			,UPDATEDATE
+			,MULAAPMSGHDKEY
+			,MSGTYPE
+			,LAKEY
+			,INSERTURKEY
+			,INSERTDATE
+			,DISPLAYMSG
+			,DISPLAYMSGABBR
+		)VALUES(
+			 #{surkey}
+			,#{sysdate}
+			,#{mulaapmsghdkey}
+			,#{msgtype}
+			,#{lakey}
+			,#{surkey}
+			,#{sysdate}
+			,#{displaymsg}
+			,#{displaymsgabbr}
+		)
+	</insert>
+
+
+	<update id="updateupdateTAdminMstMulaapmsgHd">
+		/* adm-master-message-sql-oracle.xml - updateupdateTAdminMstMulaapmsgHd */
+		UPDATE TADMIN_MST_MULAAPMSG_HD
+		   SET UPDATEURKEY = #{surkey}
+		      ,UPDATEDATE = #{sysdate}
+		      ,CLOSDATE = #{closdate}
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+	
+	</update>
+	
+	<update id="updateTAdminMstMulaapmsgDt">
+		/* adm-master-message-sql-oracle.xml - updateTAdminMstMulaapmsgDt */
+		UPDATE TADMIN_MST_MULAAPMSG_DT
+		   SET DISPLAYMSG = #{displaymsg}
+		      ,DISPLAYMSGABBR = #{displaymsgabbr}
+		   	  ,MSGTYPE = #{msgtype}
+		      ,UPDATEURKEY = #{surkey}
+		      ,UPDATEDATE = #{sysdate}
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+		   AND LAKEY = #{lakey}
+		   AND MSGTYPE = #{msgtype}
+	</update>
+
+	<update id="updateTAdminMstMulaapmsgHd">
+		/* adm-master-message-sql-oracle.xml - updateTAdminMstMulaapmsgHd */
+		UPDATE TADMIN_MST_MULAAPMSG_HD
+		   SET UPDATEURKEY = #{surkey}
+		      ,UPDATEDATE = #{sysdate}
+		      ,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+	</update>
+	
+	<delete id="deleteTAdminMstMulaapmsgHd">
+		/* adm-master-message-sql-oracle.xml - deleteTAdminMstMulaapmsgHd */
+		DELETE
+		  FROM  TADMIN_MST_MULAAPMSG_HD
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+	</delete>	
+	
+	<delete id="deleteTAdminMstMulaapmsgDt">
+		/* adm-master-message-sql-oracle.xml - deleteTAdminMstMulaapmsgDt */
+		DELETE
+		  FROM TADMIN_MST_MULAAPMSG_DT
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+		   AND LAKEY = #{lakey}
+		   AND MSGTYPE = #{msgtype}
+	</delete>
+
+	<select id="selectTAdminMstMulaapmsgHd" resultType="camelMap">
+		/* adm-master-message-sql-oracle.xml - selectTAdminMstMulaapmsgHd */
+		SELECT  MULAAPMSGHDKEY
+			   ,CLOSDATE
+		  FROM TADMIN_MST_MULAAPMSG_HD
+		 WHERE
+		       MULAAPMSGHDKEY = #{mulaapmsghdkey}
+	</select>
+
+	<select id="selectTAdminMstMulaapmsgDtCount" resultType="java.lang.Integer" >
+		/* adm-master-message-sql-oracle.xml - selectTAdminMstMulaapmsgDtCount */
+		SELECT COUNT(1)  
+		  FROM TADMIN_MST_MULAAPMSG_DT B
+		 WHERE MULAAPMSGHDKEY = #{mulaapmsghdkey}
+		   	<if test="lakey != null">
+			   AND LAKEY = #{lakey}
+		   	</if>
+		   	<if test="msgtype != null">
+			   AND MSGTYPE = #{msgtype}
+		   	</if>
+	</select> 
+
+	<delete id="deleteExcelTemp">
+		/* adm-master-message-sql-oracle.xml - deleteExcelTemp */
+		DELETE FROM TADMIN_UPLOAD_MESSAGE
+		WHERE UPLDKEY = #{upldkey}
+	</delete>
+
+	<select id="selectMessageExcelTempList" resultType="camelMap">
+		/* adm-master-message-sql-oracle.xml - selectMessageExcelTempList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , UPLDKEY
+		     , UPLDSEQ
+		     , MULAAPMSGHDKEY
+             , LAKEY
+             , MSGTYPE
+             , DISPLAYMSG
+             , DISPLAYMSGABBR
+             , DELYN
+		     , ERRCD
+		     , ERRCMT
+             , INSERTDATE
+             , INSERTURKEY
+             , UPDATEDATE
+             , UPDATEURKEY
+		FROM TADMIN_UPLOAD_MESSAGE
+		WHERE UPLDKEY = #{upldkey}
+		  AND DELYN = 'N'
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		ORDER BY PAGING_NUM
+	</select>
+
+	<update id="updateExcelUploadVaild">
+		/* adm-master-message-sql-oracle.xml - updateExcelUploadVaild */
+		UPDATE TADMIN_UPLOAD_MESSAGE TUM
+		   SET (TUM.ERRCD
+		       ,TUM.ERRCMT ) = (SELECT T.ERRCD
+									 , T.ERRCD AS ERRCMT
+								  FROM (SELECT A.UPLDKEY
+										     , A.UPLDSEQ
+										     , A.MULAAPMSGHDKEY
+											 , A.MSGTYPE
+										     , A.LAKEY
+											 , A.DISPLAYMSG
+											 , A.DISPLAYMSGABBR
+											 , A.DELYN
+											 , CASE WHEN (SELECT COUNT(1)
+											     			FROM TADMIN_UPLOAD_MESSAGE TEMP
+											     			WHERE UPLDKEY = #{upldkey}
+															  AND TEMP.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+															  AND TEMP.LAKEY = A.LAKEY
+															  AND TEMP.MSGTYPE = A.MSGTYPE ) > 1 THEN 'DATA_DUPLICATED'
+											     	WHEN A.MULAAPMSGHDKEY IS NULL THEN 'MESSAGEKEY_NULL'
+											  		WHEN A.LAKEY IS NULL THEN 'LAKEY_NULL'
+											  		WHEN A.MSGTYPE IS NULL THEN 'MSGTYPE_NULL'
+											  		WHEN A.DISPLAYMSG IS NULL THEN 'DISPLAYMESSAGE_NULL'
+											  		WHEN (SELECT D.MULAAPMSGHDKEY
+															FROM TADMIN_MST_MULAAPMSG_DT D
+															WHERE D.MULAAPMSGHDKEY = A.MULAAPMSGHDKEY
+															  AND D.LAKEY = A.LAKEY
+															  AND D.MSGTYPE = A.MSGTYPE) IS NOT NULL THEN 'IS_EXISTS_DATA'
+											  		WHEN (SELECT MAX(ADCDDTNM)
+															FROM TADMIN_MST_ADCD_DT
+															WHERE ADCDHDKEY = 'LAKEY'
+															  AND ADCDDTKEY = A.LAKEY
+															  AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+											  		WHEN (SELECT MAX(ADCDDTNM)
+															FROM TADMIN_MST_ADCD_DT
+															WHERE ADCDHDKEY = 'MSGTYPE'
+															  AND ADCDDTKEY = A.MSGTYPE
+															  AND LAKEY = #{lakey}) IS NULL THEN 'ADCD_KEY_NULL'
+											 END AS ERRCD
+											  , A.INSERTDATE
+											  , A.INSERTURKEY
+											  , A.UPDATEDATE
+											  , A.UPDATEURKEY
+											  FROM TADMIN_UPLOAD_MESSAGE A
+											  WHERE A.UPLDKEY = #{upldkey}
+											 ) T
+										WHERE TUM.UPLDKEY = T.UPLDKEY
+										  AND TUM.UPLDSEQ = T.UPLDSEQ)
+		WHERE TUM.UPLDKEY = #{upldkey}
+		  AND TUM.DELYN = 'N'
+	</update>
+
+	<update id="deleteExcelTempList" parameterType="java.util.HashMap">
+		/* ams-master-message-sql-oracle.xml - deleteExcelTempList */
+		UPDATE TADMIN_UPLOAD_MESSAGE TUM
+		   SET DELYN = (    SELECT TB.DELYN
+		       				FROM ( SELECT 'Y' AS DELYN
+										 , T.UPLDKEY
+										 , T.UPLDSEQ
+									FROM (
+											<foreach collection="excelList" item="item" separator="UNION ALL">
+												SELECT #{item.upldkey} AS UPLDKEY
+													 , #{item.upldseq} AS UPLDSEQ
+											</foreach>
+										 ) T ) TB
+							WHERE TB.UPLDKEY = TUM.UPLDKEY
+							  AND TB.UPLDSEQ = TUM.UPLDSEQ )
+		 WHERE TUM.UPLDKEY = #{upldkey}
+		   AND EXISTS (
+				SELECT 1
+				FROM (
+						<foreach collection="excelList" item="item" separator="UNION ALL">
+							SELECT #{item.upldkey} AS UPLDKKEY
+								 , #{item.upldseq} AS UPLDSEQ
+						</foreach>
+					) T
+				WHERE T.UPLDSEQ = TUM.UPLDSEQ
+		)
+	</update>
+
+	<select id="selectMessageExcelError" resultType="camelMap">
+		/* ams-master-message-sql-oracle.xml - selectMessageExcelError */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		     , UPLDKEY
+			 , UPLDSEQ
+			 , MULAAPMSGHDKEY
+			 , LAKEY
+			 , MSGTYPE
+			 , DISPLAYMSG
+			 , DISPLAYMSGABBR
+			 , DELYN
+			 , ERRCD
+			 , ERRCMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		FROM TADMIN_UPLOAD_MESSAGE
+		WHERE UPLDKEY = #{upldkey}
+		  AND DELYN = 'N'
+		  AND ERRCD IS NOT NULL
+		  AND ERRCMT IS NOT NULL
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectExcelErrorCount" resultType="java.lang.Integer">
+		/* ams-master-message-sql-oracle.xml - selectExcelErrorCount */
+		SELECT COUNT(1)
+		FROM TADMIN_UPLOAD_MESSAGE
+		WHERE UPLDKEY = #{upldkey}
+		  AND DELYN = 'N'
+		  AND ERRCD IS NOT NULL
+	</select>
+
+	<insert id="insertMessageHdList">
+		/* ams-master-message-sql-oracle.xml - insertMessageHdList */
+		INSERT INTO TADMIN_MST_MULAAPMSG_HD (
+			MULAAPMSGHDKEY
+		  , CLOSDATE
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)
+		SELECT TB.MULAAPMSGHDKEY
+			 , #{closdate}
+			 , TB.INSERTDATE
+			 , TB.INSERTURKEY
+			 , TB.UPDATEDATE
+			 , TB.UPDATEURKEY
+		FROM (
+			SELECT T.MULAAPMSGHDKEY
+				 , CASE WHEN D.MULAAPMSGHDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				 , T.INSERTDATE
+				 , T.INSERTURKEY
+				 , T.UPDATEDATE
+				 , T.UPDATEURKEY
+			FROM (
+				 SELECT TEMP.UPLDKEY
+					  , TEMP.MULAAPMSGHDKEY
+					  , TEMP.INSERTDATE
+				 	  , TEMP.INSERTURKEY
+				 	  , TEMP.UPDATEDATE
+				 	  , TEMP.UPDATEURKEY
+				   FROM TADMIN_UPLOAD_MESSAGE TEMP
+				  WHERE TEMP.UPLDKEY = #{upldkey}
+					AND TEMP.DELYN ='N'
+				  GROUP BY TEMP.UPLDKEY , TEMP.MULAAPMSGHDKEY , TEMP.INSERTDATE , TEMP.INSERTURKEY , TEMP.UPDATEDATE , TEMP.UPDATEURKEY) T
+			 LEFT JOIN TADMIN_MST_MULAAPMSG_DT D
+					ON T.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY) TB
+		WHERE TB.SAVEYN = 'Y'
+	</insert>
+
+	<insert id="insertMessageDtList">
+		/* ams-master-message-sql-oracle.xml - insertMessageDtList */
+		INSERT INTO TADMIN_MST_MULAAPMSG_DT(
+			  MULAAPMSGHDKEY
+			, LAKEY
+			, MSGTYPE
+			, DISPLAYMSG
+			, DISPLAYMSGABBR
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT MULAAPMSGHDKEY
+			 , LAKEY
+			 , MSGTYPE
+			 , DISPLAYMSG
+			 , DISPLAYMSGABBR
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TADMIN_UPLOAD_MESSAGE
+		 WHERE UPLDKEY = #{upldkey}
+		   AND DELYN = 'N'
+		   AND ERRCD IS NULL
+	</insert>
+
+	<select id="selectMessageExcelTempCount" resultType="java.lang.Integer">
+		/* ams-master-message-sql-oracle.xml - insertMessageDtList */
+		SELECT COUNT(1)
+		FROM TADMIN_UPLOAD_MESSAGE
+		WHERE UPLDKEY = #{upldkey}
+		  AND DELYN = 'N'
+	</select>
+
+	<select id="selectMessageExcelList" resultType="camelMap">
+		/* adm-master-message-sql-oracle.xml - selectMessageExcelList */
+		SELECT A.MULAAPMSGHDKEY
+			 , B.MSGTYPE
+			 , B.LAKEY
+			 , B.DISPLAYMSG
+			 , B.DISPLAYMSGABBR
+			 , A.CLOSDATE
+			 , A.INSERTDATE
+			 , A.UPDATEDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEURKEY
+		  FROM TADMIN_MST_MULAAPMSG_HD A
+		 INNER JOIN TADMIN_MST_MULAAPMSG_DT B
+			ON A.MULAAPMSGHDKEY = B.MULAAPMSGHDKEY
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+		<choose>
+			<when test='sortValue !=null and sortValue != "" '>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY B.UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	</select>
+
+</mapper>

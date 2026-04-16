@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.OutboundOrderReceiveApiMapper">
+
+	<!--주문분리 전략조회-->
+	<select id="selectOrdSepStgCd" parameterType="com.daiso.wms.api.in.dto.OutboundOrderReceiveRequestDTO" resultType="camelMap">
+		/* wms-outbound-order-receive-sql-oracle.xml - selectOrdSepStgCd - 주문분리 전략조회 */
+		SELECT
+			ORDSEPSTGCD AS ORDSEPTEMPCD
+			,'KOR' AS SLAKEY
+		FROM TWORK_INFO_ORD_SEP_STG_MSTR
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND USEYN = 'Y'
+	</select>
+
+	<!--출고 헤더 수신 인터페이스 등록-->
+	<insert id="insertInterfaceOutboundHeaderReceive" parameterType="com.daiso.wms.api.in.dto.OutboundOrderReceiveRequestDTO">
+		/* wms-outbound-order-receive-sql-oracle.xml - insertInterfaceOutboundHeaderReceive - 출고 헤더 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_OB_HD_RCV
+		(
+			CTKEY
+			, OWKEY
+			, SOHDKEY
+			, EXTERNORDERKEY
+		    , CLAIMNO
+			, ORHDDATE
+			, OBHDTYPECD
+			, OBREQDATE
+			, DLVYTYPECD
+			, TOCTKEY
+			, STOREKEY
+			, DLVYFORMCD
+			, NISCNLRNGCD
+			, ORDPRSNNM
+			, RCPPRSNNM
+			, RCPPRSNTELNO
+			, RCPPRSNTELNO2
+			, RCPPRSNZIPCD
+			, RCPPRSNADDR1
+			, RCPPRSNADDR2
+			, DLVYMSG
+			, CHNLID
+			, CMT
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{orhdkey}
+			,#{externorderkey}
+		    ,#{claimno}
+			,#{obhdday}
+			,#{obhdtypecd}
+			,#{obreqdate}
+			,#{dlvytypecd}
+			,#{toctkey}
+			,#{storekey}
+			,#{dlvyformcd}
+			,#{niscnlrngcd}
+			,#{ordprsnnm}
+			,#{rcpprsnnm}
+			,#{rcpprsntelno}
+			,#{rcpprsntelno2}
+			,#{rcpprsnzipcd}
+			,#{rcpprsnaddr1}
+			,#{rcpprsnaddr2}
+			,#{dlvymsg}
+			,#{chnlid}
+			,#{cmt}
+			,'N'
+			,NULL
+			,#{sysdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--출고 상세 수신 인터페이스 등록-->
+	<insert id="insertInterfaceOutboundDetailReceive" parameterType="com.daiso.wms.api.in.dto.OutboundOrderReceiveRequestDTO$OutboundOrderReceiveDetailDto">
+		/* wms-outbound-order-receive-sql-oracle.xml - insertInterfaceOutboundDetailReceive - 출고 상세 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_OB_DT_RCV
+		(
+			CTKEY
+			, OWKEY
+			, SOHDKEY
+			, SODTKEY
+			, EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY
+			, ICKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXQTY
+			, UOM
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{orhdkey}
+			,#{ordtkey}
+			,#{externorderkey}
+			,#{externorderlinenum}
+			,#{ickey}
+			,#{icunitkey}
+			,#{initqty}
+			,#{expctqty}
+			,#{uom}
+			,'N'
+			,NULL
+			,#{sysdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--출고 헤더 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceOutboundHeaderList" parameterType="com.daiso.wms.api.in.dto.OutboundOrderReceiveRequestDTO" resultType="camelMap">
+		/* wms-outbound-order-receive-sql-oracle.xml - selectInterfaceOutboundHeaderList - 출고 헤더 수신 인터페이스 - 등록 대상 조회 */
+		SELECT
+			CTKEY
+			, OWKEY
+			, SOHDKEY AS ORHDKEY
+			, EXTERNORDERKEY
+		    , CLAIMNO
+			, ORHDDATE AS OBHDDAY
+			, OBHDTYPECD
+			, OBREQDATE
+			, DLVYTYPECD
+			, TOCTKEY
+			, STOREKEY
+			, DLVYFORMCD
+			, NISCNLRNGCD
+			, ORDPRSNNM
+			, RCPPRSNNM
+			, RCPPRSNTELNO
+			, RCPPRSNTELNO2
+			, RCPPRSNZIPCD
+			, RCPPRSNADDR1
+			, RCPPRSNADDR2
+			, DLVYMSG
+			, CHNLID
+			, CMT
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		FROM TWORK_INTF_OB_HD_RCV
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PRCSYN = 'N'
+		AND TO_DATE(RCVDATE, 'YYYYMMDDHH24MISS') + INTERVAL '1' DAY <![CDATA[ > ]]> CURRENT_TIMESTAMP
+	</select>
+
+	<!--출고 상세 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceOutboundDetailList" resultType="camelMap">
+		/* wms-outbound-order-receive-sql-oracle.xml - selectInterfaceOutboundDetailList - 출고 상세 수신 인터페이스 - 등록 대상 조회 */
+		SELECT
+			CTKEY
+			, OWKEY
+			, SOHDKEY AS ORHDKEY
+			, SODTKEY AS ORDTKEY
+			, EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+			, ICKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXQTY AS EXPCTQTY
+			, UOM
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		FROM TWORK_INTF_OB_DT_RCV
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+		ORDER BY SOHDKEY, CAST(SODTKEY AS NUMERIC)
+	</select>
+
+	<!--출고 주문 정보 상세 등록-->
+	<insert id="insertOutboundOrderDetail">
+		/* wms-outbound-order-receive-sql-oracle.xml - insertOutboundOrderDetail - 출고 주문 정보 상세 등록 */
+		INSERT INTO TWORK_INFO_OB_ORD_DT
+		(
+			CTKEY
+			, OWKEY
+			, OBORDKEY
+			, OBORDDTKEY
+			, ICKEY
+			, ICUNITKEY
+			, UOM
+			, INITQTY
+			, EXPCTQTY
+			, CNFRMQTY
+			, OBCNFRMDATE
+			, OBCONFIRMURKEY
+			, ORHDKEY
+			, ORDTKEY
+			, EXTERNORDERKEY
+			, EXTERNORDERLINENUM
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{obordkey}
+			,#{ordtkey}
+			,#{ickey}
+			,#{icunitkey}
+			,#{uom}
+			,#{initqty}
+			,#{expctqty}
+			,0
+			,NULL
+			,NULL
+			,#{orhdkey}
+			,#{ordtkey}
+			,#{externorderkey}
+			,#{externorderlinenum}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--출고 주문 정보 헤더 등록-->
+	<insert id="insertOutboundOrderHeader">
+		/* wms-outbound-order-receive-sql-oracle.xml - insertOutboundOrderHeader - 출고 주문 정보 헤더 등록 */
+		INSERT INTO TWORK_INFO_OB_ORD_HD
+		(
+			CTKEY
+			, OWKEY
+			, OBORDKEY
+			, OBHDTYPECD
+			, OBHDDAY
+			, OBREQDATE
+			, OBCNFRMDATE
+			, DLVYTYPECD
+			, DLVYFORMCD
+			, NISCNLRNGCD
+			, ORDNM
+			, RCPPRSNNM
+			, RCPPRSNTELNO
+			, RCPPRSNTELNO2
+			, RCPPRSNZIPCD
+			, RCPPRSNADDR1
+			, RCPPRSNADDR2
+			, DLVYMSG
+			, CHNLID
+			, ACKEY
+			, ACNM
+			, CNTRYCD
+			, STATE
+			, CTY
+			, DLVRYCORPCD
+			, TOCTKEY
+			, STOREKEY
+			, IBHDKEY
+			, ORHDKEY
+			, EXTERNORDERKEY
+			, CLAIMNO
+			, CMT
+			, PRINFORCVPRGRYN
+			, MALPRGRSTATUSCD
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{obordkey}
+			,#{obhdtypecd}
+			,#{obhdday}
+			,#{obreqdate}
+			, NULL
+			,#{dlvytypecd}
+			,#{dlvyformcd}
+			,#{niscnlrngcd}
+			,#{ordprsnnm}
+			,#{rcpprsnnm}
+			,#{rcpprsntelno}
+			,#{rcpprsntelno2}
+			,#{rcpprsnzipcd}
+			,#{rcpprsnaddr1}
+			,#{rcpprsnaddr2}
+			,#{dlvymsg}
+			,#{chnlid}
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			, NULL
+			,#{toctkey}
+			,#{storekey}
+			, NULL
+			,#{orhdkey}
+			,#{externorderkey}
+			,#{claimno}
+			,#{cmt}
+			,'N'
+			,'01'
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!--출고 헤더 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceOutboundHeaderReceive">
+		UPDATE TWORK_INTF_OB_HD_RCV
+		SET PRCSYN = 'Y'
+			,PRCSDATE = #{sysdate}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+	</update>
+
+	<!--출고 상세 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceOutboundDetailReceive">
+		UPDATE TWORK_INTF_OB_DT_RCV
+		SET PRCSYN = 'Y'
+			,PRCSDATE = #{sysdate}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND SOHDKEY = #{orhdkey}
+	</update>
+</mapper>

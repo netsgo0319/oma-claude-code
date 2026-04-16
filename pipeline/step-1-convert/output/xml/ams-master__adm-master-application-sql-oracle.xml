@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.master.mapper.ApplicationMapper">
+
+	<sql id="sql_sort">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(sortValue) and @com.kns.framework.util.StringUtil@isNotEmpty(colName)'>
+				ORDER BY
+				#{colName} #{sortValue}
+			</when>
+			<otherwise>
+				ORDER BY
+					UPDATEDATE DESC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		<include refid="sql_sort"/>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_searchCond">
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+	</sql>
+
+	<select id="selectApplicationCount" resultType="java.lang.Integer" >
+		/* adm-master-application-sql-oracle.xml - selectApplicationCount */
+		SELECT
+		    count(1)
+		FROM
+		    TADMIN_MST_AP
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+	</select>
+
+	<select id="selectApplicationList" resultType="camelMap">
+		/* adm-master-application-sql-oracle.xml - selectApplicationList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		  	  '0' AS CHK
+			, APKEY
+			, APNM
+			, ISOFFLINE
+			, INSERTDATE
+			, INSERTURKEY AS INSERTURNAME
+			, UPDATEDATE
+			, UPDATEURKEY AS UPDATEURNAME
+		FROM
+		    TADMIN_MST_AP
+		<where>
+			<include refid="sql_searchCond"/>
+		</where>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDupApplicationCount" resultType="java.lang.Integer">
+		/* adm-master-application-sql-oracle.xml - selectDupApplicationCount */
+		SELECT
+			count(1)
+		FROM
+			TADMIN_MST_AP
+		<where>
+		AND APKEY = #{apkey}
+		</where>
+	</select>	
+
+	<insert id="insertApplication">
+		/* adm-master-application-sql-oracle.xml - insertApplication */
+		INSERT INTO TADMIN_MST_AP (
+			  APKEY
+		    , APNM
+		    , ISOFFLINE
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{apkey}
+			, #{apnm}
+   			, #{isoffline}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+	
+	
+	<update id="updateApplication">
+		/* adm-master-application-sql-oracle.xml - updateApplication */
+		UPDATE
+		    TADMIN_MST_AP
+		SET
+			  APNM = #{apnm}
+			, ISOFFLINE = #{isoffline}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		<where>
+			AND APKEY = #{apkey}
+		</where>
+	</update>
+
+	<delete id="deleteApplication">
+		/* adm-master-application-sql-oracle.xml - deleteApplication */
+		DELETE
+		FROM
+		    TADMIN_MST_AP
+		<where>
+			AND APKEY = #{apkey}
+		</where>
+	</delete>
+
+</mapper>

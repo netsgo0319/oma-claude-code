@@ -1,0 +1,30 @@
+{
+  "step": "step-1-convert",
+  "step_number": 1,
+  "status": "success",
+  "started_at": 1776325459,
+  "completed_at": 1776325519,
+  "duration_ms": 60000,
+  "blockers": [],
+  "warnings": [],
+  "next_step": "step-2-tc-generate",
+  "next_step_recommendation": "proceed",
+  "summary": {
+    "files_processed": 431,
+    "files_total": 431,
+    "queries_total": 4990,
+    "queries_rule_converted": 1265,
+    "queries_llm_converted": 157,
+    "queries_no_change": 3568,
+    "queries_unconverted": 18,
+    "complexity_distribution": {
+      "null": 4972,
+      "": 18
+    }
+  },
+  "outputs": {
+    "xml_dir": "pipeline/step-1-convert/output/xml/",
+    "results_dir": "pipeline/step-1-convert/output/results/",
+    "extracted_oracle_dir": "pipeline/step-1-convert/output/extracted_oracle/"
+  }
+}

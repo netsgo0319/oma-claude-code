@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObWblRePrintMapper">
+
+	<sql id="selectWblRePrintSql">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintSql - 운송장 재출력 - 대상조회 */
+		SELECT
+			'0' AS CHK
+			,OH.CTKEY
+			,OH.OWKEY
+			,OH.OBHDKEY
+			,OH.OBHDTYPECD
+			,OH.OBSTATUSCD
+			,OH.OBHDDAY
+			,OH.DLVRYCORPCD
+			,DLC.DLVRYCORPNM
+			,OH.WBLNO
+			,OH.PCKGURKEY
+			,OH.PCKGDATE
+			,OH.PCKGSTNBARCODE
+			,OH.CLASSIFCNTRBARCODE
+			,CNTR.CNTRBARCODE
+			,OH.PCKGBOXBARCODE
+			,BOX.BOXNM
+			,OH.WKTYPECD
+		FROM TWORK_INFO_OB_HD OH
+			LEFT OUTER JOIN TWORK_MST_DLVRYCORP DLC
+				ON OH.CTKEY = DLC.CTKEY
+				AND OH.OWKEY = DLC.OWKEY
+				AND OH.DLVRYCORPCD = DLC.DLVRYCORPCD
+			LEFT OUTER JOIN (
+				SELECT PD.CTKEY, PD.OWKEY, PD.OBHDKEY, MAX(PC.CNTRBARCODE) AS CNTRBARCODE
+				FROM TWORK_INFO_PI_DT PD
+					INNER JOIN TWORK_INFO_PK_CNTR_DT PC
+						ON PD.CTKEY = PC.CTKEY
+						AND PD.OWKEY = PC.OWKEY
+						AND PD.PIHDKEY = PC.PIHDKEY
+						AND PD.PIDTKEY = PC.PIDTKEY
+				GROUP BY PD.CTKEY, PD.OWKEY, PD.OBHDKEY
+			) CNTR
+				ON OH.CTKEY = CNTR.CTKEY
+				AND OH.OWKEY = CNTR.OWKEY
+				AND OH.OBHDKEY = CNTR.OBHDKEY
+			LEFT OUTER JOIN TWORK_MST_BOX BOX
+				ON OH.CTKEY = BOX.CTKEY
+				AND OH.PCKGBOXBARCODE = BOX.BOXBARCODE
+		WHERE <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				#{SEARCH_CONDITION}
+			  </if>
+		AND OH.OBSTATUSCD IN ('65', '70')
+		ORDER BY OH.PCKGDATE DESC
+	</sql>
+
+	<select id="selectWblRePrintCount" resultType="java.lang.Integer">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintCount - 택배접수 관리 - 운송장 재출력 - 대상조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectWblRePrintSql"/>
+		)
+	</select>
+
+	<select id="selectWblRePrintList" resultType="camelMap">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintList - 택배접수 관리 - 운송장 재출력 - 대상조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+				<include refid="selectWblRePrintSql"/>
+		)
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectWblRePrintDetailSql">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintDetailSql - 운송장 재출력 - 상품정보 조회 */
+		SELECT
+			OD.CTKEY
+			,OD.OWKEY
+			,OD.ICKEY
+			,IC.ICNM
+			,OD.CNFRMQTY
+		  FROM TWORK_INFO_OB_DT OD
+			INNER JOIN TWORK_MST_IC IC
+				ON OD.CTKEY = IC.CTKEY
+				AND OD.OWKEY = IC.OWKEY
+				AND OD.ICKEY = IC.ICKEY
+		 WHERE OD.CTKEY = #{ctkey}
+		   AND OD.OWKEY = #{owkey}
+		   AND OD.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTSTATUSCD IN ('65', '70')
+		 ORDER BY OD.ICKEY
+	</sql>
+
+	<select id="selectWblRePrintDetailCount" resultType="java.lang.Integer">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintDetailCount - 택배접수 관리 - 상품정보 조회 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectWblRePrintDetailSql"/>
+		)
+	</select>
+
+	<select id="selectWblRePrintDetail" resultType="camelMap">
+		/* wms-outbound-obWblRePrint-sql-oracle.xml - selectWblRePrintDetail - 택배접수 관리 - 상품정보 LIST */
+		SELECT *
+		  FROM (
+				<include refid="selectWblRePrintDetailSql"/>
+		)
+	</select>
+</mapper>

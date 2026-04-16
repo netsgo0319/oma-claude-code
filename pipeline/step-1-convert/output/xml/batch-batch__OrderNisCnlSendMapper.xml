@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.OrderNisCnlSendMapper">
+
+    <select id="selectOrderNisCnlList" resultType="camelMap">
+		/* OrderNisCnlSendMapper.xml selectOrderNisCnlList */
+		SELECT HD.SOHDKEY
+		     , HD.ORGORDERKEY
+		     , HD.CLAIMNO
+		     , DT.ICKEY
+		     , DT.OLNICKEY
+		     , DT.INITQTY
+		FROM TORDER_INFO_SO_HD HD
+		JOIN TORDER_INFO_SO_DT DT
+		  ON HD.OWKEY = DT.OWKEY
+		 AND HD.SOHDKEY = DT.SOHDKEY
+		WHERE HD.OWKEY = 'DAISO'
+		  AND HD.WKSTATUS = '20'
+		  AND HD.NISYN = 'Y'
+		  AND HD.NISSNDYN = 'N'
+		  AND HD.ORDERTYPECD IN ('90','100')
+		  AND HD.ORDERISTDAY BETWEEN #{startDate} AND #{endDate}
+		  AND (HD.OWKEY, HD.SOHDKEY) IN (
+		        SELECT OWKEY, SOHDKEY
+		        FROM TORDER_INFO_SO_DT
+		        GROUP BY OWKEY, SOHDKEY
+		        HAVING SUM(COALESCE(CNFRMQTY, 0)) = 0
+		      )
+    </select>
+    
+    <update id="updateOrderNisCnlSuccResult">
+    	/* OrderNisCnlSendMapper.xml updateOrderNisCnlSuccResult */
+        UPDATE TORDER_INFO_SO_HD SET 
+        NISSNDYN ='Y'
+        , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+        , UPDATEURKEY = #{interfaceUrkey}
+        WHERE 1 = 1
+          AND OWKEY = #{owkey} 
+          AND SOHDKEY = #{sohdkey}
+          AND NISYN = 'Y'
+          AND NISSNDYN ='N'
+	</update>
+
+</mapper>

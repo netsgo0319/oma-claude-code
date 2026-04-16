@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.interfaces.mapper.WmsInvnSyncMapper">
+
+	<sql id="sql_selectWmsInvnSync">
+        SELECT INVN.WMS_INVN_SEQ
+             , INVN.CTKEY
+             , INVN.OWKEY
+             , INVN.PROC_TYPE
+             , INVN.REASON
+             , INVN.WCS_INF_SEQ
+             , INVN.PRODUCT_CODE
+             , IC.ICNAME
+             , INVN.QUANTITY_VALUE
+             , INVN.QUANTITY_UNIT
+             , INVN.EFFECTIVE_DATE
+             , INVN.FROM_LOCATION
+             , INVN.TO_LOCATION
+             , INVN.FROM_SYNC_YN
+             , INVN.TO_SYNC_YN
+             , INVN.WMS_SYNC_YN
+             , INVN.INSERTDATE
+             , INVN.INSERTURKEY
+             , INVN.UPDATEDATE
+             , INVN.UPDATEURKEY
+          FROM TWORK_WMS_INVN_SYNC INVN
+          LEFT OUTER JOIN TWORK_MST_IC IC
+               ON IC.CTKEY = INVN.CTKEY
+               AND IC.OWKEY = INVN.OWKEY
+               AND IC.ICKEY = INVN.PRODUCT_CODE
+	</sql>
+
+	<select id="selectWmsInvnSyncCount" resultType="java.lang.Integer">
+        /* wms-inventory-adj-history-sql-oracle.xml - selectWmsInvnSyncCount */
+		SELECT COUNT(1)
+		  FROM (
+		       SELECT A.*
+		         FROM (<include refid="sql_selectWmsInvnSync"/>) A
+		        WHERE 1 = 1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                      AND #{SEARCH_CONDITION}
+                </if>
+		       )
+	</select>
+
+	<select id="selectWmsInvnSyncList" resultType="camelMap">
+		/* wms-inventory-adj-history-sql-oracle.xml - selectInvnAdjHistoryList : WMS 재고 조정 이력 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT A.*
+		  FROM ( <include refid="sql_selectWmsInvnSync"/> ) A
+		 WHERE 1 = 1
+		 <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND #{SEARCH_CONDITION}
+		 </if>
+		 ORDER BY A.WMS_INVN_SEQ DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectWmsInvnSyncSummary" resultType="camelMap">
+		/* wms-inventory-adj-history-sql-oracle.xml - selectInvnAdjHistorySummary : WMS 재고 조정 이력 Summary 조회 */
+		SELECT SUM(B.QUANTITY_VALUE) AS SUM_QTY
+		  FROM (
+		       SELECT A.*
+		         FROM ( <include refid="sql_selectWmsInvnSync"/> ) A
+		        WHERE 1 = 1
+		        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		          AND #{SEARCH_CONDITION}
+		        </if>
+		        ORDER BY A.WMS_INVN_SEQ DESC
+		       ) B
+	</select>
+
+	<update id="updateWmsInvnSync">
+		/* wms-inventory-adj-history-sql-oracle.xml - updateWmsInvnSync : WMS 재고 조정 이력 UPDATE */
+		UPDATE TWORK_WMS_INVN_SYNC
+		   SET WMS_SYNC_YN = 'Y'
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND PRODUCT_CODE = #{productCode}
+		   AND EFFECTIVE_DATE = TO_CHAR(TO_DATE(SUBSTR(#{effectiveDate},1,8),'YYYYMMDD'),'YYYY-MM-DD')
+		   AND QUANTITY_UNIT = #{quantityUnit}
+		   AND WMS_SYNC_YN = 'N'
+	</update>
+
+	<select id="selectSivwcsList" resultType="camelMap">
+		/* wms-inventory-adj-history-sql-oracle.xml - selectSivwcsList : WMS 재고 조정 이력 Summary 조회 */
+		SELECT CTKEY, OWKEY, IV_NUMBER, MIN(INSERTDATE) AS INSERTDATE
+		  FROM TWORK_INTF_SIVWCS
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND INSERTDATE = #{insertdate}
+		 GROUP BY CTKEY, OWKEY, IV_NUMBER
+		 ORDER BY INSERTDATE DESC
+	</select>
+
+	<select id="selectWcsInvnQtyHistoryList" resultType="camelMap">
+		/* wms-inventory-adj-history-sql-oracle.xml - selectWcsInvnQtyHistoryList : WMS 재고 이동 이력 조회 */
+        SELECT A.*
+          FROM (
+         SELECT ''             AS CTKEY
+              , ''             AS OWKEY
+              , CODE           AS PRODUCT_CODE
+              , ICNAME         AS PRODUCT_NAME
+              , EFFECTIVE_DATE AS EFFECTIVE_DATE
+              , '재고현황'     AS ORDER_TYPE
+              , QUANTITY_UNIT  AS QUANTITY_UNIT
+              , 0              AS ORDER_QTY
+              , '-'            AS ORDER_UNIT
+              , 0              AS RESULT_QTY
+              , '-'            AS RESULT_UNIT
+              , '-'            AS FROM_LOCATION_CODE
+              , '-'            AS TO_LOCATION_CODE
+              , COALESCE(ASRS, 0) AS ASRS
+              , COALESCE(MSC, 0) AS MSC
+              , COALESCE(L1, 0) AS L1
+              , COALESCE(L2, 0) AS L2
+              , COALESCE(M1, 0) AS M1
+              , COALESCE(M2, 0) AS M2
+              , COALESCE(LM, 0) AS LM
+              , COALESCE(CONV1, 0) AS CONV1
+              , COALESCE(CONV2, 0) AS CONV2
+              , COALESCE(CONV3, 0) AS CONV3
+              , COALESCE(MPS1, 0) AS MPS1
+              , COALESCE(MPS2, 0) AS MPS2
+              , COALESCE(MPS3, 0) AS MPS3
+              , COALESCE(MPS4, 0) AS MPS4
+              , COALESCE(WMS, 0) AS WMS
+              , INSERTDATE
+          FROM (
+               SELECT CODE
+                      , ICNAME
+                      , EFFECTIVE_DATE
+                      , QUANTITY_UNIT
+                      , INSERTDATE
+                      , SUM(CASE WHEN LOCATION_CODE = 'ASRS' THEN QUANTITY_VALUE END) AS ASRS
+                      , SUM(CASE WHEN LOCATION_CODE = 'MSC' THEN QUANTITY_VALUE END) AS MSC
+                      , SUM(CASE WHEN LOCATION_CODE = 'L1' THEN QUANTITY_VALUE END) AS L1
+                      , SUM(CASE WHEN LOCATION_CODE = 'L2' THEN QUANTITY_VALUE END) AS L2
+                      , SUM(CASE WHEN LOCATION_CODE = 'M1' THEN QUANTITY_VALUE END) AS M1
+                      , SUM(CASE WHEN LOCATION_CODE = 'M2' THEN QUANTITY_VALUE END) AS M2
+                      , SUM(CASE WHEN LOCATION_CODE = 'LM' THEN QUANTITY_VALUE END) AS LM
+                      , SUM(CASE WHEN LOCATION_CODE = 'CONV1' THEN QUANTITY_VALUE END) AS CONV1
+                      , SUM(CASE WHEN LOCATION_CODE = 'CONV2' THEN QUANTITY_VALUE END) AS CONV2
+                      , SUM(CASE WHEN LOCATION_CODE = 'CONV3' THEN QUANTITY_VALUE END) AS CONV3
+                      , SUM(CASE WHEN LOCATION_CODE = 'MPS1' THEN QUANTITY_VALUE END) AS MPS1
+                      , SUM(CASE WHEN LOCATION_CODE = 'MPS2' THEN QUANTITY_VALUE END) AS MPS2
+                      , SUM(CASE WHEN LOCATION_CODE = 'MPS3' THEN QUANTITY_VALUE END) AS MPS3
+                      , SUM(CASE WHEN LOCATION_CODE = 'MPS4' THEN QUANTITY_VALUE END) AS MPS4
+                      , SUM(CASE WHEN LOCATION_CODE = 'WMS' THEN QUANTITY_VALUE END) AS WMS
+                   FROM (
+				 SELECT RIVWCS.CODE
+                      , IC.ICNAME
+                      , RIVWCS.EFFECTIVE_DATE
+                      , RIVWCS.LOCATION_CODE
+                      , RIVWCS.QUANTITY_VALUE
+                      , RIVWCS.QUANTITY_UNIT
+                      , RIVWCS.INSERTDATE
+				  FROM TWORK_INTF_RIVWCS RIVWCS
+				 INNER JOIN (
+							SELECT CTKEY, OWKEY, IV_NUMBER
+							  FROM (
+										SELECT ROW_NUMBER() OVER(ORDER BY SIVWCS.S_IV_SEQ DESC) ROW_NUM
+											 , SIVWCS.CTKEY
+											 , SIVWCS.OWKEY
+										     , SIVWCS.S_IV_SEQ
+											 , SIVWCS.IV_NUMBER
+										  FROM TWORK_INTF_SIVWCS SIVWCS
+						 				 WHERE SIVWCS.CTKEY = #{ctkey}
+										   AND SIVWCS.OWKEY = #{owkey}
+										   AND SIVWCS.SUCCEEDED = 'true'
+									 ) A
+								WHERE ROW_NUM = 1
+				 			) SIVWCS
+					 ON RIVWCS.IV_NUMBER = SIVWCS.IV_NUMBER
+                  INNER JOIN TWORK_MST_IC IC
+                     ON SIVWCS.CTKEY = IC.CTKEY
+                    AND SIVWCS.OWKEY = IC.OWKEY
+                    AND RIVWCS.CODE  = IC.ICKEY
+                  WHERE SIVWCS.CTKEY = #{ctkey}
+                    AND SIVWCS.OWKEY = #{owkey}
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+                    AND RIVWCS.CODE  = #{PRODUCT_CODE}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+                    AND RIVWCS.EFFECTIVE_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+                    </if>
+                   ) AS pvt_src
+                  GROUP BY CODE, ICNAME, EFFECTIVE_DATE, QUANTITY_UNIT, INSERTDATE
+               ) AS pivoted
+        UNION ALL
+        SELECT SIBWCS.CTKEY
+             , SIBWCS.OWKEY
+             , SIBICWCS.CODE                            AS PRODUCT_CODE
+             , IC.ICNAME                                AS PRODUCT_NAME
+             , SIBICWCS.EXPIRATION_DATE                 AS EFFECTIVE_DATE
+             , '입고' || SIBWCS.ORDER_TYPE              AS ORDER_TYPE
+             , RIBICWCS.ACCEPTED_QUANTITY_UNIT          AS QUANTITY_UNIT
+             , SIBICWCS.PRODUCT_QUANTITY_VALUE          AS ORDER_QTY
+             , SIBICWCS.PRODUCT_QUANTITY_UNIT           AS ORDER_UNIT
+             , COALESCE(RIBICWCS.ACCEPTED_QUANTITY_VALUE, 0) AS RESULT_QTY
+             , RIBICWCS.ACCEPTED_QUANTITY_UNIT          AS RESULT_UNIT
+             , SIBWCS.FROM_LOCATION                     AS FROM_LOCATION_CODE
+             ,'ASRS'                                    AS TO_LOCATION_CODE
+             , COALESCE(RIBICWCS.ACCEPTED_QUANTITY_VALUE, 0) AS ASRS
+             , 0 AS MSC
+             , 0 AS L1
+             , 0 AS L2
+             , 0 AS M1
+             , 0 AS M2
+             , 0 AS LM
+             , 0 AS CONV1
+             , 0 AS CONV2
+             , 0 AS CONV3
+             , 0 AS MPS1
+             , 0 AS MPS2
+             , 0 AS MPS3
+             , 0 AS MPS4
+             , 0 AS WMS
+             , RIBWCS.INSERTDATE                        AS INSERTDATE
+          FROM TWORK_INTF_SIBWCS        SIBWCS
+         INNER JOIN TWORK_INTF_RIBWCS   RIBWCS
+            ON SIBWCS.IB_SEQ = RIBWCS.IB_SEQ
+           AND RIBWCS.STATUS = 'COMPLETED'
+           AND RIBWCS.SUCCEEDED = 'true'
+         INNER JOIN TWORK_INTF_SIBICWCS SIBICWCS
+            ON SIBWCS.IB_SEQ = SIBICWCS.IB_SEQ
+         INNER JOIN TWORK_INTF_RIBICWCS RIBICWCS
+            ON RIBWCS.R_IB_SEQ = RIBICWCS.R_IB_SEQ
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON SIBWCS.CTKEY = IC.CTKEY
+           AND SIBWCS.OWKEY = IC.OWKEY
+           AND SIBICWCS.CODE = IC.ICKEY
+         WHERE SIBWCS.CTKEY = #{ctkey}
+           AND SIBWCS.OWKEY = #{owkey}
+           AND SIBWCS.REQ_TYPE_CD = 'C'
+           AND SIBWCS.SUCCEEDED = 'true'
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND SIBICWCS.CODE = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND SIBICWCS.EXPIRATION_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND RIBWCS.INSERTDATE >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+        UNION ALL
+        SELECT RIVMSCWCS.CTKEY
+             , RIVMSCWCS.OWKEY
+             , RIVMSCWCS.PRODUCT_CODE               AS PRODUCT_CODE
+             , IC.ICNAME                            AS PRODUCT_NAME
+             , RIVMSCWCS.EFFECTIVE_DATE             AS EFFECTIVE_DATE
+             , 'MSC재고처리결과'                    AS ORDER_TYPE
+             , RIVMSCWCS.QUANTITY_UNIT              AS QUANTITY_UNIT
+             , 0                                    AS ORDER_QTY
+             , '-'                                  AS ORDER_UNIT
+             , 0                                    AS RESULT_QTY
+             , '-'                                  AS RESULT_UNIT
+             , RIVMSCWCS.LOCATION_CODE              AS FROM_LOCATION_CODE
+             , COALESCE(RIVMSCWCS.REJECT_LINE_NO, 'MSC') AS TO_LOCATION_CODE
+             , CASE WHEN 'RECEIPT'  = RIVMSCWCS.TYPE AND 'ASRS' = RIVMSCWCS.LOCATION_CODE THEN -COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    WHEN 'REJECTED' = RIVMSCWCS.TYPE AND 'ASRS' = RIVMSCWCS.LOCATION_CODE THEN -COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END ASRS
+             , CASE WHEN 'RECEIPT'  = RIVMSCWCS.TYPE AND 'ASRS' = RIVMSCWCS.LOCATION_CODE THEN  COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    WHEN 'RECEIPT'  = RIVMSCWCS.TYPE AND 'MSC'  = RIVMSCWCS.LOCATION_CODE THEN -COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    WHEN 'REJECTED' = RIVMSCWCS.TYPE AND 'MSC'  = RIVMSCWCS.LOCATION_CODE THEN -COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END MSC
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'L1' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS L1
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'L2' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS L2
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'M1' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS M1
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'M2' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS M2
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'LM' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS LM
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'CONV1' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV1
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'CONV2' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV2
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'CONV3' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV3
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'MPS1' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS1
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'MPS2' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS2
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'MPS3' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS3
+             , CASE RIVMSCWCS.REJECT_LINE_NO WHEN 'MPS4' THEN COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS4
+             , CASE WHEN 'RECEIPT'  = RIVMSCWCS.TYPE AND 'WMS'  = RIVMSCWCS.LOCATION_CODE THEN  COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    WHEN 'REJECTED' = RIVMSCWCS.TYPE AND 'WMS'  = RIVMSCWCS.LOCATION_CODE THEN -COALESCE(RIVMSCWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END WMS
+             , RIVMSCWCS.INSERTDATE                     AS INSERTDATE
+          FROM TWORK_INTF_RIVMSCWCS RIVMSCWCS
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON RIVMSCWCS.CTKEY = IC.CTKEY
+           AND RIVMSCWCS.OWKEY = IC.OWKEY
+           AND RIVMSCWCS.PRODUCT_CODE = IC.ICKEY
+         WHERE RIVMSCWCS.CTKEY = #{ctkey}
+           AND RIVMSCWCS.OWKEY = #{owkey}
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND RIVMSCWCS.PRODUCT_CODE   = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND RIVMSCWCS.EFFECTIVE_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND RIVMSCWCS.INSERTDATE >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+        UNION ALL
+        SELECT SRMWCS.CTKEY
+             , SRMWCS.OWKEY
+             , SRMWCS.PRODUCT_CODE              AS PRODUCT_CODE
+             , IC.ICNAME                        AS PRODUCT_NAME
+             , SRMWCS.EXPIRATION_DATE           AS EFFECTIVE_DATE
+             , '보충' || SRMWCS.ORDER_TYPE      AS ORDER_TYPE
+             , RRMWCS.DELIVERED_QUANTITY_UNIT   AS QUANTITY_UNIT
+             , SRMWCS.REPLENISH_QUANTITY_VALUE  AS ORDER_QTY
+             , SRMWCS.REPLENISH_QUANTITY_UNIT   AS ORDER_UNIT
+             , COALESCE(RRMWCS.DELIVERED_QUANTITY_VALUE, 0)  AS RESULT_QTY
+             , RRMWCS.DELIVERED_QUANTITY_UNIT           AS RESULT_UNIT
+             , SRMWCS.ORIGIN_LOCATION_CODE      AS FROM_LOCATION_CODE
+             , RRMWCS.DESTINATION_LOCATION_CODE AS TO_LOCATION_CODE
+             , 0 AS ASRS
+             , 0 AS MSC
+             , 0 AS L1
+             , 0 AS L2
+             , 0 AS M1
+             , 0 AS M2
+             , 0 AS LM
+             , 0 AS CONV1
+             , 0 AS CONV2
+             , 0 AS CONV3
+             , 0 AS MPS1
+             , 0 AS MPS2
+             , 0 AS MPS3
+             , 0 AS MPS4
+             , 0 AS WMS
+             , RRMWCS.INSERTDATE                        AS INSERTDATE
+          FROM TWORK_INTF_SRMWCS        SRMWCS
+         INNER JOIN TWORK_INTF_RRMWCS   RRMWCS
+            ON SRMWCS.RM_SEQ    = RRMWCS.RM_SEQ
+           AND RRMWCS.STATUS    = 'COMPLETED'
+           AND RRMWCS.SUCCEEDED = 'true'
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON SRMWCS.CTKEY        = IC.CTKEY
+           AND SRMWCS.OWKEY        = IC.OWKEY
+           AND SRMWCS.PRODUCT_CODE = IC.ICKEY
+         WHERE SRMWCS.CTKEY           = #{ctkey}
+           AND SRMWCS.OWKEY           = #{owkey}
+           AND SRMWCS.REQ_TYPE_CD     = 'C'
+           AND SRMWCS.SUCCEEDED       = 'true'
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND SRMWCS.PRODUCT_CODE    = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND SRMWCS.EXPIRATION_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND RRMWCS.INSERTDATE      >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+         UNION ALL
+        SELECT SIVMMWCS.CTKEY
+             , SIVMMWCS.OWKEY
+             , SIVMMWCS.PRODUCT_CODE                        AS PRODUCT_CODE
+             , IC.ICNAME                                    AS PRODUCT_NAME
+             , SIVMMWCS.EFFECTIVE_DATE                      AS EFFECTIVE_DATE
+             , '재고이동' || SIVMMWCS.ORDER_TYPE            AS ORDER_TYPE
+             , RIVMMWCS.DELIVERED_QUANTITY_UNIT             AS QUANTITY_UNIT
+             , SIVMMWCS.QUANTITY_VALUE                      AS ORDER_QTY
+             , SIVMMWCS.QUANTITY_UNIT                       AS ORDER_UNIT
+             , COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0)    AS RESULT_QTY
+             , RIVMMWCS.DELIVERED_QUANTITY_UNIT             AS RESULT_UNIT
+             , SIVMMWCS.ORIGIN_LOCATION_CODE                AS FROM_LOCATION_CODE
+             , RIVMMWCS.DESTINATION_LOCATION_CODE           AS TO_LOCATION_CODE
+             , -CASE RIVMMWCS.ORIGIN_LOCATION_CODE WHEN 'ASRS' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END   AS ASRS
+             , -CASE RIVMMWCS.ORIGIN_LOCATION_CODE WHEN 'MSC' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END   AS MSC
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'L1' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS L1
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'L2' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS L2
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'M1' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS M1
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'M2' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS M2
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'LM' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS LM
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'CONV1' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS CONV1
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'CONV2' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS CONV2
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'CONV3' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS CONV3
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'MPS1' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS MPS1
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'MPS2' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS MPS2
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'MPS3' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS MPS3
+             , CASE RIVMMWCS.DESTINATION_LOCATION_CODE WHEN 'MPS4' THEN COALESCE(RIVMMWCS.DELIVERED_QUANTITY_VALUE, 0) ELSE 0 END AS MPS4
+             , 0 AS WMS
+             , RIVMMWCS.INSERTDATE                      AS INSERTDATE
+          FROM TWORK_INTF_SIVMMWCS          SIVMMWCS
+         INNER JOIN TWORK_INTF_RIVMMWCS     RIVMMWCS
+            ON SIVMMWCS.IVMM_SEQ  = RIVMMWCS.IVMM_SEQ
+           AND RIVMMWCS.STATUS    = 'COMPLETED'
+           AND RIVMMWCS.SUCCEEDED = 'true'
+           AND RIVMMWCS.PROCESS_CODE = 'S'
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON SIVMMWCS.CTKEY        = IC.CTKEY
+           AND SIVMMWCS.OWKEY        = IC.OWKEY
+           AND SIVMMWCS.PRODUCT_CODE = IC.ICKEY
+         WHERE SIVMMWCS.CTKEY       = #{ctkey}
+           AND SIVMMWCS.OWKEY       = #{owkey}
+           AND SIVMMWCS.REQ_TYPE_CD = 'C'
+           AND SIVMMWCS.SUCCEEDED   = 'true'
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND SIVMMWCS.PRODUCT_CODE   = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND SIVMMWCS.EFFECTIVE_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND RIVMMWCS.INSERTDATE  >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+        UNION ALL
+        SELECT SOBWCS.CTKEY
+             , SOBWCS.OWKEY
+             , SOBICWCS.CODE                            AS PRODUCT_CODE
+             , IC.ICNAME                                AS PRODUCT_NAME
+             , SOBICWCS.EFFECTIVE_DATE                  AS EFFECTIVE_DATE
+             , '출고'                                 AS ORDER_TYPE
+             , ROBICWCS.PICKED_QUANTITY_UNIT            AS QUANTITY_UNIT
+             , SOBICWCS.QUANTITY_VALUE                  AS ORDER_QTY
+             , SOBICWCS.QUANTITY_UNIT                   AS ORDER_UNIT
+             , COALESCE(ROBICWCS.PICKED_QUANTITY_VALUE, 0)   AS RESULT_QTY
+             , ROBICWCS.PICKED_QUANTITY_UNIT            AS RESULT_UNIT
+             , 'MSC'                                    AS FROM_LOCATION_CODE
+             , '피킹로케이션'                             AS TO_LOCATION_CODE
+             , 0                                        AS ASRS
+             , -COALESCE(ROBICWCS.PICKED_QUANTITY_VALUE, 0)  AS MSC
+             , 0 AS L1
+             , 0 AS L2
+             , 0 AS M1
+             , 0 AS M2
+             , 0 AS LM
+             , 0 AS CONV1
+             , 0 AS CONV2
+             , 0 AS CONV3
+             , 0 AS MPS1
+             , 0 AS MPS2
+             , 0 AS MPS3
+             , 0 AS MPS4
+             , 0 AS WMS
+             , ROBWCS.INSERTDATE                        AS INSERTDATE
+          FROM TWORK_INTF_SOBWCS        SOBWCS
+         INNER JOIN TWORK_INTF_ROBWCS   ROBWCS
+            ON SOBWCS.OB_SEQ    = ROBWCS.OB_SEQ
+           AND ROBWCS.STATUS    = 'COMPLETED'
+           AND ROBWCS.SUCCEEDED = 'true'
+         INNER JOIN TWORK_INTF_SOBICWCS SOBICWCS
+            ON SOBWCS.OB_SEQ    = SOBICWCS.OB_SEQ
+         INNER JOIN TWORK_INTF_ROBICWCS ROBICWCS
+            ON ROBWCS.R_OB_SEQ  = ROBICWCS.R_OB_SEQ
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON SOBWCS.CTKEY  = IC.CTKEY
+           AND SOBWCS.OWKEY  = IC.OWKEY
+           AND SOBICWCS.CODE = IC.ICKEY
+         WHERE SOBWCS.CTKEY         = #{ctkey}
+           AND SOBWCS.OWKEY         = #{owkey}
+           AND SOBWCS.REQ_TYPE_CD   = 'C'
+           AND SOBWCS.SUCCEEDED     = 'true'
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND SOBICWCS.CODE        = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND SOBICWCS.EFFECTIVE_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND ROBWCS.INSERTDATE    >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+         UNION ALL
+        SELECT RIVRVWCS.CTKEY
+             , RIVRVWCS.OWKEY
+             , RIVRVWCS.PRODUCT_CODE                AS PRODUCT_CODE
+             , IC.ICNAME                            AS PRODUCT_NAME
+             , RIVRVWCS.EFFECTIVE_DATE              AS EFFECTIVE_DATE
+             , '재고조정' || RIVRVWCS.REASON        AS ORDER_TYPE
+             , RIVRVWCS.QUANTITY_UNIT               AS QUANTITY_UNIT
+             , 0                                    AS ORDER_QTY
+             , '-'                                  AS ORDER_UNIT
+             , 0                                    AS RESULT_QTY
+             , '-'                                  AS RESULT_UNIT
+             , RIVRVWCS.LOCATION_CODE               AS FROM_LOCATION_CODE
+             , COALESCE(RIVRVWCS.CARGO_LOCATION, '-')    AS TO_LOCATION_CODE
+             , CASE WHEN 'LOST'     = RIVRVWCS.REASON AND 'ASRS' = RIVRVWCS.LOCATION_CODE THEN -COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    WHEN 'FOUND'    = RIVRVWCS.REASON AND 'ASRS' = RIVRVWCS.LOCATION_CODE THEN  COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    WHEN 'HANDOVER' = RIVRVWCS.REASON AND 'ASRS' = RIVRVWCS.LOCATION_CODE THEN -COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END ASRS
+             , CASE WHEN 'LOST'     = RIVRVWCS.REASON AND 'ASRS' = RIVRVWCS.LOCATION_CODE THEN -COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    WHEN 'FOUND'    = RIVRVWCS.REASON AND 'MSC'  = RIVRVWCS.LOCATION_CODE THEN  COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    WHEN 'HANDOVER' = RIVRVWCS.REASON AND 'MSC'  = RIVRVWCS.LOCATION_CODE THEN -COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END MSC
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'L1' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS L1
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'L2' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS L2
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'M1' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS M1
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'M2' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS M2
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'LM' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS LM
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'CONV1' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV1
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'CONV2' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV2
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'CONV3' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS CONV3
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'MPS1' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS1
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'MPS2' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS2
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'MPS3' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS3
+             , CASE RIVRVWCS.CARGO_LOCATION WHEN 'MPS4' THEN COALESCE(RIVRVWCS.QUANTITY_VALUE, 0) ELSE 0 END AS MPS4
+             , CASE WHEN 'RECEIPT'  = RIVRVWCS.REASON AND 'WMS'  = RIVRVWCS.LOCATION_CODE THEN  COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    WHEN 'REJECTED' = RIVRVWCS.REASON AND 'WMS'  = RIVRVWCS.LOCATION_CODE THEN -COALESCE(RIVRVWCS.QUANTITY_VALUE, 0)
+                    ELSE 0
+                END WMS
+             , RIVRVWCS.INSERTDATE                      AS INSERTDATE
+          FROM TWORK_INTF_RIVRVWCS      RIVRVWCS
+          LEFT OUTER JOIN TWORK_MST_IC IC
+            ON RIVRVWCS.CTKEY = IC.CTKEY
+           AND RIVRVWCS.OWKEY = IC.OWKEY
+           AND RIVRVWCS.PRODUCT_CODE = IC.ICKEY
+         WHERE RIVRVWCS.CTKEY = #{ctkey}
+           AND RIVRVWCS.OWKEY = #{owkey}
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(PRODUCT_CODE)" >
+           AND RIVRVWCS.PRODUCT_CODE   = #{PRODUCT_CODE}
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(EFFECTIVE_DATE)" >
+           AND RIVRVWCS.EFFECTIVE_DATE = TO_CHAR(TO_DATE(#{EFFECTIVE_DATE}, 'YYYYMMDD'), 'YYYY-MM-DD')
+           </if>
+           <if test="@com.kns.framework.util.StringUtil@isNotEmpty(INSERTDATE)" >
+           AND RIVRVWCS.INSERTDATE  >= RPAD(#{INSERTDATE}, 14, 0)
+           </if>
+        ) A
+        ORDER BY A.INSERTDATE
+	</select>
+
+    <update id="saveInvnAdjHistory">
+        /* wms-inventory-adj-history-sql-oracle.xml - saveInvnAdjHistory : WMS 재고 조정 배치Y/N UPDATE */
+        UPDATE TWORK_WMS_INVN_SYNC
+           SET WMS_SYNC_YN = #{wmsSyncYn}
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE WMS_INVN_SEQ = #{wmsInvnSeq}
+    </update>
+
+</mapper>

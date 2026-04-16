@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.PoGradeApiMapper">
+	<insert id="insertIntfTablePoGrade">
+		/* oms-po-poMasterBatch-sql-oracle.xml - insertIntfTablePoGrade */
+		INSERT INTO TORDER_INTF_WMS_GRADE (
+		     OWKEY
+		   , CTKEY
+		   , ICKEY
+		   , DSBTGRADE
+		   , INSERTSYSTM
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{owkey}
+		   , #{ctkey}
+		   , #{ickey}
+		   , #{gradecd}
+		   , #{insertsystm}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeIcXCtPoGrade">
+		/* oms-po-poMasterBatch-sql-oracle.xml - mergeIcXCtPoGrade */
+		MERGE INTO TORDER_MST_ICXCT A
+			USING (
+				SELECT OWKEY
+		             , CTKEY
+		             , ICKEY
+		             , DSBTGRADE
+		        FROM TORDER_INTF_WMS_GRADE
+		        WHERE IFID = #{interfaceId}
+		        GROUP BY OWKEY, CTKEY, ICKEY, DSBTGRADE
+		        ) IN_ICXCT
+			ON (
+				   A.OWKEY = IN_ICXCT.OWKEY
+		       AND A.CTKEY = IN_ICXCT.CTKEY
+		       AND A.ICKEY = IN_ICXCT.ICKEY
+		    )
+			WHEN MATCHED THEN
+				 UPDATE
+					SET A.DSBTGRADE   = IN_ICXCT.DSBTGRADE
+					  , A.UPDATEURKEY = #{surkey}
+					  , A.UPDATEDATE  = #{sysdate}
+			WHEN NOT MATCHED THEN
+				INSERT (
+					 A.OWKEY
+		           , A.CTKEY
+		           , A.ICKEY
+		           , A.DSBTGRADE
+		           , A.INSERTDATE
+		           , A.INSERTURKEY
+		           , A.UPDATEDATE
+		           , A.UPDATEURKEY
+					)
+		        VALUES	(
+				     IN_ICXCT.OWKEY
+		           , IN_ICXCT.CTKEY
+		           , IN_ICXCT.ICKEY
+		           , IN_ICXCT.DSBTGRADE
+		           , #{sysdate}
+		           , #{surkey}
+		           , #{sysdate}
+		           , #{surkey}
+		        )
+	</insert>
+
+</mapper>
+	

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.PoGradeApiMapper">
+	<insert id="insertIntfTablePoGrade">
+		/* oms-po-poMasterBatch-sql-oracle.xml - insertIntfTablePoGrade */
+		INSERT INTO TORDER_INTF_WMS_GRADE (
+		     OWKEY
+		   , CTKEY
+		   , ICKEY
+		   , DSBTGRADE
+		   , INSERTSYSTM
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{owkey}
+		   , #{ctkey}
+		   , #{ickey}
+		   , #{gradecd}
+		   , #{insertsystm}
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="mergeIcXCtPoGrade">
+		/* oms-po-poMasterBatch-sql-oracle.xml - mergeIcXCtPoGrade */
+		INSERT INTO TORDER_MST_ICXCT (
+			  OWKEY
+			, CTKEY
+			, ICKEY
+			, DSBTGRADE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT OWKEY
+			, CTKEY
+			, ICKEY
+			, DSBTGRADE
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		FROM TORDER_INTF_WMS_GRADE
+		WHERE IFID = #{interfaceId}
+		GROUP BY OWKEY, CTKEY, ICKEY, DSBTGRADE
+		ON CONFLICT (OWKEY, CTKEY, ICKEY)
+		DO UPDATE SET
+			  DSBTGRADE   = EXCLUDED.DSBTGRADE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+	</insert>
+
+</mapper>
+	

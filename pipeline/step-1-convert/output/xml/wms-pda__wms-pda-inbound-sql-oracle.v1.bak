@@ -1,0 +1,2329 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.pda.mapper.PdaInboundMapper">
+
+	<!--	2025-06-19-->
+	<sql id="assortVolList">
+	/* 아소트, 체적대상 상품조회 */
+		SELECT *
+		  FROM (
+				SELECT T.DLVYDAY
+				 	 , T.CNTRLABELNO
+				 	 , SUM(T.IBQTY) AS IBQTY
+					 , T.ASRTWKTGTYN /* 아소트대상여부 Y,N*/
+					 , CASE WHEN MIN(T.WIDTH) = 0 OR MIN(T."DEPTH") = 0 OR MIN(T.HEIGHT) = 0 OR MIN(T.WEIGHT) = 0 THEN 'Y'
+					 		WHEN T.ROBSORTERICYN IS NULL OR T.CUSHNMEPCKGYN IS NULL OR T.BARCODEATTACHYN IS NULL OR T.POLYBAGPCKGYN IS NULL OR T.PCKGOVLPYN IS NULL THEN 'Y'
+							WHEN T.PCKGOVLPYN = 'Y' AND (T.OVLPPCKGWIDTHVAL+T.OVLPPCKGDEPTHVAL+T.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+							WHEN T.PCKGFOLDYN IS NULL OR T.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+							ELSE 'N'
+					   END AS VOLUMEYN /* 체적대상여부 Y,N */
+					 , T.ICKEY
+					 , T.ICNM
+					 , T.IMGURL
+					 , T.LCKEY
+					 , T.WIDTH
+					 , T."DEPTH"
+					 , T.HEIGHT
+					 , T.VOL
+					 , T.WEIGHT
+					 , T.PKOTICYN /* 덕용상품여부 */
+					 , T.ROBSORTERICYN /* 로봇소터가능상품여부 */
+					 , T.CUSHNMEPCKGYN /* 완충재포장여부 */
+					 , T.BARCODEATTACHYN /* 상품바코드부착여부 */
+					 , T.POLYBAGPCKGYN /* 폴리백포장여부 */
+					 , T.PCKGOVLPYN /* 포장겹침여부 */
+					 , T.OVLPPCKGWIDTHVAL /* 겹침포장가로증가값 */
+					 , T.OVLPPCKGDEPTHVAL /* 겹침포장세로증가값 */
+					 , T.OVLPPCKGHEIGHTVAL /* 겹침포장높이증가값 */
+					 , T.PCKGFOLDYN /* 포장접기여부 */
+					 , T.HIGHFRQNCYDMGYN /* 고빈도파손여부 */
+				  FROM (
+						SELECT COALESCE(OL.DLVYDAY, SUBSTR(IH.IBEXPCTDATE,0,8)) AS DLVYDAY
+							 , OL.CNTRLABELNO
+							 , IH.IBHDKEY
+							 , ID.IBDTKEY
+							 , CASE WHEN COALESCE(ID.IBQTY, 0) <![CDATA[<]]> 1 THEN ID.EXPCTQTY
+									ELSE ID.IBQTY
+							   END AS IBQTY /* 입고수량(검수수량) */
+							 , ID.ASRTWKTGTYN /* 아소트여부 Y,N */
+							 , ID.ICKEY
+							 , IC.ICNM
+							 , IC.IMGURL /* 상품이미지 */
+							 , IC.LCKEY /* 상품 대표로케이션 */
+							 , COALESCE(IXT.WIDTH, 0) AS WIDTH /* 가로 */
+							 , COALESCE(IXT."DEPTH", 0) AS "DEPTH" /* 세로 */
+							 , COALESCE(IXT.HEIGHT, 0) AS HEIGHT /* 높이 */
+							 , COALESCE(IXT.VOL, 0) AS VOL /* 부피(CBM) */
+							 , COALESCE(IXT.WEIGHT, 0) AS WEIGHT /* 중량 */
+							 , IC.PKOTICYN /* 덕용상품여부 */
+							 , IC.ROBSORTERICYN /* 로봇소터가능상품여부 */
+							 , IC.CUSHNMEPCKGYN /* 완충재포장여부 */
+							 , IC.BARCODEATTACHYN /* 상품바코드부착여부 */
+							 , IC.POLYBAGPCKGYN /* 폴리백포장여부 */
+							 , IC.PCKGOVLPYN /* 포장겹침여부 */
+							 , IC.OVLPPCKGWIDTHVAL /* 겹침포장가로증가값 */
+							 , IC.OVLPPCKGDEPTHVAL /* 겹침포장세로증가값 */
+							 , IC.OVLPPCKGHEIGHTVAL /* 겹침포장높이증가값 */
+							 , IC.PCKGFOLDYN /* 포장접기여부 */
+							 , IC.HIGHFRQNCYDMGYN /* 고빈도파손여부 */
+						  FROM TWORK_INFO_IB_HD IH
+					INNER JOIN TWORK_INFO_IB_DT ID
+							ON IH.CTKEY     = ID.CTKEY
+						   AND IH.OWKEY     = ID.OWKEY
+						   AND IH.IBHDKEY   = ID.IBHDKEY
+					INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+							ON ID.CTKEY     = IC.CTKEY
+						   AND ID.OWKEY     = IC.OWKEY
+						   AND ID.ICKEY     = IC.ICKEY
+						   AND IC.UOM       = 'EA'
+					INNER JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+							ON IC.CTKEY       = IXT.CTKEY
+						   AND IC.OWKEY       = IXT.OWKEY
+						   AND IC.ICKEY       = IXT.ICKEY
+						   AND IC.ICUNITKEY   = IXT.ICUNITKEY
+						   AND IC.UOM 	 	  = IXT.ICUNITTYPECD
+					 LEFT JOIN TWORK_INFO_B2B_OB_LABEL OL /* B2B출고라벨 */
+							ON ID.CTKEY     = OL.CTKEY
+						   AND ID.OWKEY     = OL.OWKEY
+						   AND ID.IBHDKEY   = OL.IBHDKEY
+						   AND ID.IBDTKEY   = OL.IBDTKEY
+						   AND ID.ICKEY     = OL.ICKEY
+						 WHERE IH.CTKEY  	  = #{sctkey} /* 센터 */
+						   AND IH.OWKEY  	  = #{sowkey} /* 화주 */
+						   AND (
+								OL.DLVYDAY    BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+						   	 OR 
+						   		IH.IBEXPCTDATE BETWEEN RPAD(#{dlvyday}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+						   		) /* 배송일자 */
+						   <choose>
+						   	  <when test="radioType == 'cntrlabelno'">
+						   	  	AND OL.CNTRLABELNO = #{cntrlabelno} /* 용기바코드 */
+						   	  </when>
+						   	  <otherwise>
+						   	  	AND ID.ICKEY IN (
+					    							SELECT DISTINCT ICKEY
+					    							  FROM TWORK_MST_ICBARCODE
+					    							 WHERE CTKEY   = IH.CTKEY
+					    							   AND OWKEY   = IH.OWKEY
+					    							   AND ICKEY   = ID.ICKEY
+					    							   AND (ICKEY = #{ickey} OR BARCODE = #{ickey})
+					    							) /* 상품바코드 */
+						   	  </otherwise>
+						   </choose>
+						   <choose>
+						   	<when test="tabIndex == 0">
+						   		AND ID.ASRTWKTGTYN = 'Y' /* 아소트대상 */
+						   	</when>
+						   	<otherwise>
+								AND (
+									 CASE WHEN COALESCE(IXT.WIDTH, 0) = 0 OR COALESCE(IXT."DEPTH", 0) = 0 OR COALESCE(IXT.HEIGHT, 0) = 0 OR COALESCE(IXT.WEIGHT, 0) = 0 THEN 'Y'
+										  WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'Y'
+										  WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL+IC.OVLPPCKGDEPTHVAL+IC.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+										  WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+										  ELSE 'N'
+									  END
+									) = 'Y' /* 체적대상 조건 */
+								 
+						   	</otherwise>
+						   </choose>
+		) T
+					  GROUP BY T.DLVYDAY, T.CNTRLABELNO, T.ASRTWKTGTYN, T.ICKEY, T.ICNM, T.IMGURL, T.LCKEY
+					  		 , T.WIDTH , T."DEPTH", T.HEIGHT, T.VOL, T.WEIGHT
+					  		 , T.PKOTICYN, T.ROBSORTERICYN, T.CUSHNMEPCKGYN, T.BARCODEATTACHYN, T.POLYBAGPCKGYN, T.PCKGOVLPYN
+					  		 , T.OVLPPCKGWIDTHVAL, T.OVLPPCKGDEPTHVAL, T.OVLPPCKGHEIGHTVAL, T.PCKGFOLDYN, T.HIGHFRQNCYDMGYN 
+							   ) TT
+					  ORDER BY TT.ICKEY
+	</sql>
+
+	<!--2025-06-19-->
+	<select id="selectAssortVolList" resultType="camelMap">
+	/* wms-pda-inbound-sql-oracle.xml - selectAssortVolListCount - 아소트, 체적대상 상품조회  SQL */
+		<include refid="assortVolList"/>
+	</select>
+
+	<!--	2025-06-19-->
+	<sql id="assortVolDtList">
+		/* 아소트, 체적대상 상세조회 */
+		SELECT *
+		FROM (
+			 SELECT T.DLVYDAY
+				  , T.CNTRLABELNO
+				  , SUM(T.IBQTY) AS IBQTY
+				  , T.ASRTWKTGTYN /* 아소트대상여부 Y,N*/
+				  , CASE WHEN MIN(T.WIDTH) = 0 OR MIN(T."DEPTH") = 0 OR MIN(T.HEIGHT) = 0 OR MIN(T.WEIGHT) = 0 THEN 'Y'
+					 	 WHEN T.ROBSORTERICYN IS NULL OR T.CUSHNMEPCKGYN IS NULL OR T.BARCODEATTACHYN IS NULL OR T.POLYBAGPCKGYN IS NULL OR T.PCKGOVLPYN IS NULL THEN 'Y'
+						 WHEN T.PCKGOVLPYN = 'Y' AND (T.OVLPPCKGWIDTHVAL+T.OVLPPCKGDEPTHVAL+T.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+						 WHEN T.PCKGFOLDYN IS NULL OR T.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+						 ELSE 'N'
+					 END AS VOLUMEYN /* 체적대상여부 Y,N */
+				  , T.ICKEY
+				  , T.ICNM
+				  , T.IMGURL
+				  , T.LCKEY
+				  , T.WIDTH
+				  , T."DEPTH"
+				  , T.HEIGHT
+				  , T.VOL
+				  , T.WEIGHT
+				  , CASE WHEN T.PKOTICYN IS NULL THEN '-'
+			 			 ELSE T.PKOTICYN
+			 		 END AS PKOTICYN /* 덕용상품여부 */
+				  , CASE WHEN T.ROBSORTERICYN IS NULL THEN '-'
+			 			 ELSE T.ROBSORTERICYN
+			 		  END AS ROBSORTERICYN /* 로봇소터가능상품여부 */
+				  , CASE WHEN T.CUSHNMEPCKGYN IS NULL THEN '-'
+			 			 ELSE T.CUSHNMEPCKGYN
+			 		  END AS CUSHNMEPCKGYN /* 완충재포장여부 */
+				  , CASE WHEN T.BARCODEATTACHYN IS NULL THEN '-'
+			 			 ELSE T.BARCODEATTACHYN
+			 		 END AS BARCODEATTACHYN /* 상품바코드부착여부 */
+				  , CASE WHEN T.POLYBAGPCKGYN IS NULL THEN '-'
+			 			 ELSE T.POLYBAGPCKGYN
+			 		 END AS POLYBAGPCKGYN /* 폴리백포장여부 */
+				  , CASE WHEN T.PCKGOVLPYN IS NULL THEN '-'
+			 			 ELSE T.PCKGOVLPYN
+			 		 END AS PCKGOVLPYN/* 포장겹침여부 */
+				  , T.OVLPPCKGWIDTHVAL/* 겹침포장가로증가값 */
+				  , T.OVLPPCKGDEPTHVAL /* 겹침포장세로증가값 */
+				  , T.OVLPPCKGHEIGHTVAL /* 겹침포장높이증가값 */
+				  , CASE WHEN T.PCKGFOLDYN IS NULL THEN '-'
+			 			 ELSE T.PCKGFOLDYN
+			 	     END AS PCKGFOLDYN /* 포장접기여부 */
+				  , CASE WHEN T.HIGHFRQNCYDMGYN IS NULL THEN '-'
+			 			 ELSE T.HIGHFRQNCYDMGYN
+					 END AS HIGHFRQNCYDMGYN /* 고빈도파손여부 */
+			 FROM (
+				  SELECT COALESCE(OL.DLVYDAY, SUBSTR(IH.IBEXPCTDATE,0,8)) AS DLVYDAY
+					   , OL.CNTRLABELNO
+					   , IH.IBHDKEY
+					   , ID.IBDTKEY
+					   , CASE WHEN COALESCE(ID.IBQTY, 0) <![CDATA[<]]> 1 THEN ID.EXPCTQTY
+							  ELSE ID.IBQTY
+					     END AS IBQTY /* 입고수량(검수수량) */
+					   , ID.ASRTWKTGTYN /* 아소트여부 Y,N */
+					   , ID.ICKEY
+					   , IC.ICNM
+					   , IC.IMGURL /* 상품이미지 */
+					   , IC.LCKEY /* 상품 대표로케이션 */
+					   , COALESCE(IXT.WIDTH, 0)   AS WIDTH /* 가로 */
+					   , COALESCE(IXT."DEPTH", 0) AS "DEPTH" /* 세로 */
+					   , COALESCE(IXT.HEIGHT, 0)  AS HEIGHT /* 높이 */
+					   , COALESCE(IXT.VOL, 0)     AS VOL /* 부피(CBM) */
+					   , COALESCE(IXT.WEIGHT, 0)  AS WEIGHT /* 중량 */
+					   , IC.PKOTICYN /* 덕용상품여부 */
+					   , IC.ROBSORTERICYN /* 로봇소터가능상품여부 */
+					   , IC.CUSHNMEPCKGYN /* 완충재포장여부 */
+					   , IC.BARCODEATTACHYN /* 상품바코드부착여부 */
+					   , IC.POLYBAGPCKGYN /* 폴리백포장여부 */
+					   , IC.PCKGOVLPYN /* 포장겹침여부 */
+					   , IC.OVLPPCKGWIDTHVAL /* 겹침포장가로증가값 */
+					   , IC.OVLPPCKGDEPTHVAL /* 겹침포장세로증가값 */
+					   , IC.OVLPPCKGHEIGHTVAL /* 겹침포장높이증가값 */
+					   , IC.PCKGFOLDYN /* 포장접기여부 */
+					   , IC.HIGHFRQNCYDMGYN /* 고빈도파손여부 */
+				  FROM TWORK_INFO_IB_HD IH
+			INNER JOIN TWORK_INFO_IB_DT ID
+				    ON IH.CTKEY           = ID.CTKEY
+				   AND IH.OWKEY           = ID.OWKEY
+				   AND IH.IBHDKEY         = ID.IBHDKEY
+			INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+				    ON ID.CTKEY           = IC.CTKEY
+				   AND ID.OWKEY           = IC.OWKEY
+				   AND ID.ICKEY           = IC.ICKEY
+				   AND IC.UOM             = 'EA'
+			INNER JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+				    ON IC.CTKEY           = IXT.CTKEY
+				   AND IC.OWKEY           = IXT.OWKEY
+				   AND IC.ICKEY           = IXT.ICKEY
+				   AND IC.ICUNITKEY       = IXT.ICUNITKEY
+				   AND IC.UOM             = IXT.ICUNITTYPECD
+			 LEFT JOIN TWORK_INFO_B2B_OB_LABEL OL /* B2B출고라벨 */
+					ON ID.CTKEY     = OL.CTKEY
+				   AND ID.OWKEY     = OL.OWKEY
+				   AND ID.IBHDKEY   = OL.IBHDKEY
+				   AND ID.IBDTKEY   = OL.IBDTKEY
+				   AND ID.ICKEY     = OL.ICKEY
+				 WHERE IH.CTKEY           = #{sctkey} /* 센터 */
+				   AND IH.OWKEY           = #{sowkey} /* 화주 */
+				   AND ID.ICKEY           = #{ickey} /* 상품코드 */
+				   AND COALESCE(OL.CNTRLABELNO, '-') = CASE WHEN #{cntrlabelno} IS NULL OR #{cntrlabelno} = 'undefined' OR #{cntrlabelno} = '' THEN '-'
+				   									   ELSE #{cntrlabelno}
+				   								   END /* 용기바코드 */
+			  ) T
+		      GROUP BY T.DLVYDAY, T.CNTRLABELNO, T.ASRTWKTGTYN, T.ICKEY, T.ICNM, T.IMGURL, T.LCKEY
+		      		 , T.WIDTH, T."DEPTH", T.HEIGHT, T.VOL, T.WEIGHT
+			  	     , T.PKOTICYN, T.ROBSORTERICYN, T.CUSHNMEPCKGYN, T.BARCODEATTACHYN, T.POLYBAGPCKGYN, T.PCKGOVLPYN
+					 , T.OVLPPCKGWIDTHVAL, T.OVLPPCKGDEPTHVAL, T.OVLPPCKGHEIGHTVAL, T.PCKGFOLDYN, T.HIGHFRQNCYDMGYN 
+		               ) TT
+		         WHERE (TT.ASRTWKTGTYN = 'Y' OR TT.VOLUMEYN = 'Y') /* 아소트대상 OR 체적대상 */
+		      ORDER BY TT.ICKEY
+	</sql>
+
+	<!--2025-06-19-->
+	<select id="selectAssortVolDtList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectAssortVolDtList - 아소트, 체적대상 상세조회  SQL */
+		<include refid="assortVolDtList"/>
+	</select>
+
+	<sql id="cProductList">
+		/* 자상품 조회 팝업 */
+		SELECT ASRT.ASRTMASICKEY AS MASICKEY
+			 , ASRT.ASRTDTICKEY AS DTICKEY
+			 , DTIC.ICNM AS DTICNM
+			 , DTIC.IMGURL AS DTIMGURL /* 자상품이미지 */
+			 , DTIC.LCKEY AS DTLCKEY  /* 자상품 대표로케이션 */
+			 , ASRT.COLOR /* 색상 */
+			 , ASRT.DESIGN /* 디자인 */
+			 , ASRT.CHRT /* 캐릭터 */
+		     , LC.RACKNO /* 랙번호 */
+		  FROM TWORK_MST_ASRT ASRT /* 아소트 */
+  	INNER JOIN TWORK_MST_IC DTIC /*상품마스터*/
+		    ON ASRT.CTKEY 		    = DTIC.CTKEY
+		   AND ASRT.OWKEY 		    = DTIC.OWKEY
+		   AND ASRT.ASRTDTICKEY 	= DTIC.ICKEY
+		   AND DTIC.UOM 			= 'EA'
+	 LEFT JOIN TWORK_MST_LC LC
+		    ON ASRT.CTKEY  			= LC.CTKEY
+		   AND DTIC.LCKEY 			= LC.LCKEY
+		 WHERE ASRT.CTKEY           = #{sctkey} /*센터 */
+		   AND ASRT.OWKEY           = #{sowkey} /*화주*/
+		   AND ASRT.ASRTMASICKEY    = #{ickey} /* 상품코드 */
+		   AND ASRT.QTY > 0
+	</sql>
+
+	<!--2025-06-19-->
+	<select id="selectCProductList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectCProductList - 자상품 조회 팝업  SQL */
+		<include refid="cProductList"/>
+	</select>
+	
+	<!--2025-11-06-->
+	<select id="selectCombnpckgItemPop" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectCombnpckgItemPop - 검수-합포장아이템팝업 조회  SQL */
+		SELECT T.CTKEY
+ 	         , T.OWKEY
+			 , T.IBHDKEY
+ 	         , T.IBDTKEY
+ 	         , T.BOXLABELNO
+ 	         , T.CNTRLABELNO AS CNTRNO
+		  	 , T.ICKEY
+ 	         , T.ICNM
+ 	         , T.EXPDATE
+ 	         , T.EXPCKYN /* 유통기한체크여부 */
+		 	 , CASE WHEN T.ICKEY IS NOT NULL THEN SUM(T.CTNEXQTY)
+				    ELSE 1
+			    END AS CTNEXQTY /* 예정CTN수량 */
+			 , TRUNC(SUM(T.CTNIBQTY), 1) AS CTNIBQTY /* 검수CTN수량 */
+			 , TRUNC(SUM(T.EXQTY), 1) AS EXQTY /* 예정EA수량 */
+			 , TRUNC(SUM(T.IBQTY), 1) AS INQTY /* 검수EA수량 */
+			 , MIN(T.PRCSYN) AS PRCSYN /* 검수처리상태(합포박스일때 검수안된 상품이 있으면 'N') */
+			 , MAX(T.PLCMSTATUSCD) AS PLCMSTATUSCD /* 적치상태 */
+			 , CASE WHEN MIN(T.PRCSYN) = 'Y' AND SUM(T.EXQTY)  =  SUM(T.IBQTY) THEN '검수\n완료'
+				    WHEN MAX(T.PRCSYN) = 'Y' AND SUM(T.EXQTY)  >  SUM(T.IBQTY) THEN '부분\n검수'
+				    ELSE '대기'
+			    END AS PRCSMSG
+			 , MAX(CASE WHEN SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS OBIMPSCRITALERTYN /* 출고불가 대상여부 */
+		 FROM (		
+				SELECT OL.CTKEY
+					 , OL.OWKEY
+					 , OL.IBHDKEY
+					 , OL.IBDTKEY
+					 , OL.PRCSYN /* 검수처리상태 */
+					 , COALESCE(ID.PLCMSTATUSCD, '00') AS PLCMSTATUSCD /* 적치상태 */
+					 , OL.BOXLABELNO
+					 , OL.CNTRLABELNO
+					 , OL.ICKEY
+					 , IC.ICNM AS ICNM
+					 , TRUNC(OL.QTY/IXT.ICUNITQTY, 1) AS CTNEXQTY /* 예정CTN수량 */
+					 , TRUNC(COALESCE(OL.IBQTY, 0)/IXT.ICUNITQTY, 1) AS CTNIBQTY /* 검수CTN수량 */
+					 , TRUNC(OL.QTY/IXTT.ICUNITQTY, 1) AS INNEXQTY /* 예정INN수량 */
+					 , TRUNC(COALESCE(OL.IBQTY, 0)/IXTT.ICUNITQTY, 1) AS INNIBQTY /* 검수INN수량 */
+					 , OL.QTY AS EXQTY /* 예정EA수량 */
+					 , COALESCE(OL.IBQTY, 0) AS IBQTY /* 검수EA수량 */
+					 , OL.EXPDATE /* 유통기한 */
+					 , IC.EXPCKYN /* 유통기한체크여부 */
+					 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+						    ELSE NULL
+					    END AS OBIMPSCRITDATE /* 출고불가 일자 */
+ 				  FROM TWORK_INFO_B2B_OB_LABEL OL
+ 				 INNER JOIN TWORK_INFO_IB_DT ID
+		 				 ON ID.CTKEY           = OL.CTKEY
+		 				AND ID.OWKEY           = OL.OWKEY
+		 			  	AND ID.IBHDKEY         = OL.IBHDKEY
+		 				AND ID.IBDTKEY         = OL.IBDTKEY
+		 		 INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+		 				 ON IC.CTKEY           = OL.CTKEY
+		 				AND IC.OWKEY           = OL.OWKEY
+		 				AND IC.ICKEY           = OL.ICKEY
+		 				AND IC.UOM             = 'EA'
+		 		  LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+		 				 ON IXT.CTKEY          = IC.CTKEY
+		 				AND IXT.OWKEY          = IC.OWKEY
+		 				AND IXT.ICKEY          = IC.ICKEY
+		 				AND IXT.ICUNITKEY      = IC.ICUNITKEY
+		 				AND IXT.ICUNITTYPECD   = 'CTN'
+		 		  LEFT JOIN TWORK_MST_ICUTXTYPE IXTT /* 상품단위유형 */
+		 				 ON IXTT.CTKEY         = IC.CTKEY
+		 				AND IXTT.OWKEY         = IC.OWKEY
+		 				AND IXTT.ICKEY         = IC.ICKEY
+		 				AND IXTT.ICUNITKEY     = IC.ICUNITKEY
+		 				AND IXTT.ICUNITTYPECD  = 'INN'
+ 				  WHERE OL.CTKEY      = #{sctkey}
+		 			AND OL.OWKEY      = #{sowkey}
+				<if test='combnpckgList.size() > 0'>
+					AND OL.PRCSYN = 'N'
+					AND OL.BOXLABELNO  IN
+					<foreach item='labelno' index='index' collection='combnpckgList' open='(' separator=',' close=')'>
+						#{labelno}
+					</foreach>
+				</if>
+		 		<if test='boxlabelno != null and boxlabelno != ""'>
+					AND OL.BOXLABELNO = #{boxlabelno}
+				</if>
+			) T
+ 		GROUP BY T.CTKEY, T.OWKEY, T.IBHDKEY, T.IBDTKEY, T.BOXLABELNO, T.CNTRLABELNO, T.ICKEY, T.ICNM, T.EXPDATE, T.EXPCKYN
+ 		ORDER BY T.ICKEY
+	</select>
+	
+	<sql id="inspection">
+		/* 입하검수 내역 조회 */
+		SELECT SUM(TT.CTNEXQTY) OVER(PARTITION BY TT.CTKEY) AS TOTCTNEXQTY
+			 , SUM(TT.CTNIBQTY) OVER(PARTITION BY TT.CTKEY) AS TOTCTNIBQTY
+			 , TT.*
+		     , '0' AS CHK
+		  FROM (
+		 	   SELECT T.CTKEY
+		 	        , T.OWKEY
+		 	        , T.DLVYDAY
+		 	        , T.SKUCNT /* SKU 수 */
+					, T.IBHDKEY
+		 	        , T.IBDTKEY
+		 	        , T.BOXLABELNO
+		 	        , T.CNTRLABELNO AS CNTRNO
+				  	, T.ICKEY
+		 	        , T.ICNM
+		 	        , T.EXPDATE
+		 	        , T.EXPCKYN
+				    , T.IBNISRSNCD
+				    , T.IBNISDTRSNCONT
+		 	        , T.IBCFSEQNO
+				 	, CASE WHEN T.ICKEY IS NOT NULL THEN SUM(T.CTNEXQTY)
+						   ELSE 1
+					  END AS CTNEXQTY /* 예정CTN수량 */
+					-- , TRUNC(SUM(T.CTNIBQTY), 1) AS CTNIBQTY /* 검수CTN수량 */
+					, TRUNC((SUM(T.CTNIBQTY)/SUM(T.CTNEXQTY)) * 1, 1) AS CTNIBQTY /* 검수CTN수량 */
+					, TRUNC(SUM(T.EXQTY), 1) AS EXQTY /* 예정EA수량 */
+					, TRUNC(SUM(T.IBQTY), 1) AS INQTY /* 검수EA수량 */
+					, MIN(T.PRCSYN) AS PRCSYN /* 검수처리상태(합포박스일때 검수안된 상품이 있으면 'N') */
+					, CASE WHEN MIN(T.PRCSYN) = 'Y' AND SUM(T.EXQTY) <![CDATA[=]]> SUM(T.IBQTY) THEN '검수\n완료'
+						   WHEN MAX(T.PRCSYN) = 'Y' AND SUM(T.EXQTY) <![CDATA[>]]> SUM(T.IBQTY) THEN '부분\n검수'
+						   ELSE '대기'
+					  END AS PRCSMSG
+					, MAX(T.ALERTYN) AS ALERTYN /* 아소트, 체적대상 팝업여부 */
+					, MAX(CASE WHEN SUBSTR(T.IMMTIVDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS IMMTIVALERTYN /* 임박재고 대상여부 */
+					, MAX(CASE WHEN SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS OBIMPSCRITALERTYN /* 출고불가 대상여부 */
+					, CASE WHEN SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END OBIMPSCRITDATEYN /* 출고불가 대상여부 */
+				 FROM (
+					  SELECT OL.CTKEY
+					       , OL.OWKEY
+					       , OL.DLVYDAY
+		 				   , OL.IBHDKEY
+					       , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN OL.IBDTKEY
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN NULL
+		 				  		  ELSE OL.IBDTKEY
+		 				       END AS IBDTKEY
+		 				   , COUNT(DISTINCT OL.ICKEY) OVER(PARTITION BY OL.CTKEY) AS SKUCNT /* SKU 수 */
+		 				   , OL.PRCSYN /* 검수처리상태 */
+		 				   , OL.BOXLABELNO
+		 				   , OL.CNTRLABELNO
+		 				   , ID.IBNISRSNCD
+		 				   , ID.IBNISDTRSNCONT
+					       , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN OL.IBCFSEQNO
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN NULL
+		 				  		  ELSE OL.IBCFSEQNO
+		 				      END AS IBCFSEQNO
+		 				   , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN OL.ICKEY
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN NULL
+		 				  		  ELSE OL.ICKEY
+		 				     END AS ICKEY
+		 				   , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN IC.ICNM
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN '합포건 ' || COUNT(DISTINCT OL.ICKEY) OVER(PARTITION BY OL.BOXLABELNO) || ' SKU'
+		 				  		  ELSE IC.ICNM
+		 				  	 END AS ICNM
+					       , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN IC.EXPCKYN
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN MAX(DISTINCT IC.EXPCKYN) OVER(PARTITION BY OL.BOXLABELNO)
+		 				  		  ELSE IC.EXPCKYN
+		 				  	 END AS EXPCKYN
+		 				   , CASE WHEN (OL.QTY/IXT.ICUNITQTY) <![CDATA[ < ]]> 0.1 THEN CEIL(OL.QTY/IXT.ICUNITQTY) ELSE TRUNC(OL.QTY/IXT.ICUNITQTY, 1) END AS CTNEXQTY /* 예정CTN수량 */
+		 				   , CASE WHEN (COALESCE(OL.IBQTY, 0)/IXT.ICUNITQTY) <![CDATA[ < ]]> 0.1 THEN CEIL(COALESCE(OL.IBQTY, 0)/IXT.ICUNITQTY) ELSE TRUNC(COALESCE(OL.IBQTY, 0)/IXT.ICUNITQTY, 1) END AS CTNIBQTY /* 검수CTN수량 */
+		 				   , CASE WHEN (OL.QTY/IXTT.ICUNITQTY) <![CDATA[ < ]]> 0.1 THEN CEIL(OL.QTY/IXTT.ICUNITQTY) ELSE TRUNC(OL.QTY/IXTT.ICUNITQTY, 1) END AS INNEXQTY /* 예정INN수량 */
+		 				   , CASE WHEN (COALESCE(OL.IBQTY, 0)/IXTT.ICUNITQTY) <![CDATA[ < ]]> 0.1 THEN CEIL(COALESCE(OL.IBQTY, 0)/IXTT.ICUNITQTY) ELSE  TRUNC(COALESCE(OL.IBQTY, 0)/IXTT.ICUNITQTY, 1) END AS INNIBQTY /* 검수INN수량 */
+		 				   , OL.QTY AS EXQTY /* 예정EA수량 */
+		 				   , COALESCE(OL.IBQTY, 0) AS IBQTY /* 검수EA수량 */
+		 				   , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO THEN OL.EXPDATE
+		 				   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN NULL
+		 				       	  ELSE OL.EXPDATE
+		 				     END AS EXPDATE /* 유통기한 */
+		 				   , CASE WHEN ID.ASRTWKTGTYN = 'Y' OR TARGET.TARGETYN = 'Y' THEN 'Y'
+		 				   		  WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'Y'
+								  WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL+IC.OVLPPCKGDEPTHVAL+IC.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+								  WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+								  ELSE 'N'
+		 				      END AS ALERTYN /* 아소트, 체적대상 팝업여부 */
+						   , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+						  		  ELSE NULL
+							  END AS  IMMTIVDATE /* 유통기한 임박일자 */
+						   , CASE WHEN OL.CNTRLABELNO = OL.BOXLABELNO AND IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+						   		  WHEN COUNT(OL.BOXLABELNO) OVER(PARTITION BY OL.BOXLABELNO) > 1 THEN NULL
+							   	  WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+								  ELSE NULL
+							  END AS  OBIMPSCRITDATE /* 출고불가 일자 */
+		 				FROM TWORK_INFO_B2B_OB_LABEL OL
+		 		  INNER JOIN TWORK_INFO_IB_DT ID
+		 				  ON ID.CTKEY           = OL.CTKEY
+		 				 AND ID.OWKEY           = OL.OWKEY
+		 			  	 AND ID.IBHDKEY         = OL.IBHDKEY
+		 				 AND ID.IBDTKEY         = OL.IBDTKEY
+		 		  INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+		 				  ON IC.CTKEY           = OL.CTKEY
+		 				 AND IC.OWKEY           = OL.OWKEY
+		 				 AND IC.ICKEY           = OL.ICKEY
+		 				 AND IC.UOM             = 'EA'
+		 		   LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+		 				  ON IXT.CTKEY          = IC.CTKEY
+		 				 AND IXT.OWKEY          = IC.OWKEY
+		 				 AND IXT.ICKEY          = IC.ICKEY
+		 				 AND IXT.ICUNITKEY      = IC.ICUNITKEY
+		 				 AND IXT.ICUNITTYPECD   = 'CTN'
+		 		   LEFT JOIN TWORK_MST_ICUTXTYPE IXTT /* 상품단위유형 */
+		 				  ON IXTT.CTKEY         = IC.CTKEY
+		 				 AND IXTT.OWKEY         = IC.OWKEY
+		 				 AND IXTT.ICKEY         = IC.ICKEY
+		 				 AND IXTT.ICUNITKEY     = IC.ICUNITKEY
+		 				 AND IXTT.ICUNITTYPECD  = 'INN'
+		 		   LEFT JOIN (
+		 					 SELECT CTKEY
+		 				      	  , OWKEY
+		 				      	  , ICKEY
+		 						  , MAX(CASE WHEN COALESCE(WIDTH, 0) = 0 OR COALESCE("DEPTH", 0) = 0 OR COALESCE(HEIGHT, 0) = 0 OR COALESCE(WEIGHT, 0) = 0 THEN 'Y'
+		 									 ELSE 'N'
+		 							END) AS TARGETYN
+		 					   FROM TWORK_MST_ICUTXTYPE
+		 					  WHERE CTKEY = #{sctkey}
+		 					    AND OWKEY = #{sowkey}
+		 					    AND ICUNITTYPECD = 'EA'
+		 				   GROUP BY CTKEY, OWKEY, ICKEY
+		 					 ) TARGET
+		 				  ON TARGET.CTKEY = IC.CTKEY
+		 				 AND TARGET.OWKEY = IC.OWKEY
+		 				 AND TARGET.ICKEY = IC.ICKEY
+				   LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+						  ON IMMT.CTKEY   = IC.CTKEY
+		 			   WHERE OL.CTKEY     = #{sctkey}
+		 				 AND OL.OWKEY     = #{sowkey}
+		 				 AND OL.DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+		 				<choose>
+						    <when test="radioType == 'cntrlabelno'">
+						      AND OL.CNTRLABELNO = #{cntrlabelno}/* 용기바코드 */
+						      <choose>
+						        <when test="tabIndex == 0">
+						          /* 롤테이너의 경우, 같은날 돌려쓸수있기에.. 해당조건필요  */
+						          AND OL.IBHDKEY = (
+						           				   SELECT MIN(T1.IBHDKEY)
+						           				     FROM TWORK_INFO_B2B_OB_LABEL T1
+						           			   INNER JOIN TWORK_INFO_IB_HD T2
+						           				       ON T2.CTKEY       = T1.CTKEY
+						           				      AND T2.OWKEY       = T1.OWKEY
+						           				      AND T2.IBHDKEY     = T1.IBHDKEY
+						           				    WHERE T1.CTKEY 		 = #{sctkey}
+						           				      AND T1.OWKEY 		 = #{sowkey}
+						           				      AND T1.DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+						           				      AND T1.CNTRLABELNO = #{cntrlabelno}
+						           				      AND T2.IBSTATUSCD  BETWEEN '00' AND '40'
+						          )
+						        </when>
+						        <otherwise>
+						          AND OL.IBHDKEY||OL.IBDTKEY IN (
+							           							   SELECT DISTINCT T1.IBHDKEY||T1.IBDTKEY
+							           							     FROM TWORK_INFO_B2B_OB_LABEL T1
+							           						   INNER JOIN TWORK_INFO_IB_HD T2
+							           							       ON T2.CTKEY 		 = T1.CTKEY
+							           							      AND T2.OWKEY 		 = T1.OWKEY
+							           							      AND T2.IBHDKEY 	 = T1.IBHDKEY
+							           						   INNER JOIN TWORK_INFO_IB_DT T3
+							           						   		   ON T3.CTKEY 		 = T2.CTKEY
+							           							      AND T3.OWKEY 		 = T2.OWKEY
+							           							      AND T3.IBHDKEY 	 = T2.IBHDKEY
+							           							      AND T3.IBDTKEY	 = T1.IBDTKEY
+							           							      AND COALESCE(T3.PLCMSTATUSCD, '00') > '00'
+							           							    WHERE T1.CTKEY 		 = #{sctkey}
+							           							      AND T1.OWKEY 		 = #{sowkey}
+							           							      AND T1.DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+							           							      AND T1.CNTRLABELNO = #{cntrlabelno}
+							           							      AND T2.IBSTATUSCD BETWEEN '00' AND '40'
+						          )
+						        </otherwise>
+						      </choose>
+						    </when>
+						    <otherwise>
+						      /* 용기라벨정보가 NULL일 경우, 해당박스만이라도 조회되게끔 OR문 추가 */
+						      AND (
+						          OL.CNTRLABELNO IN (
+						          					SELECT DISTINCT CNTRLABELNO
+						          					  FROM TWORK_INFO_B2B_OB_LABEL
+						          					 WHERE CTKEY      = #{sctkey}
+						          					   AND OWKEY      = #{sowkey}
+						          					   AND DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+						          					   AND BOXLABELNO = #{boxlabelno}
+						          )
+						          OR OL.BOXLABELNO = #{boxlabelno}
+						      )
+						      <choose>
+						        <when test="tabIndex == 0">
+						          AND OL.IBHDKEY = (
+						           				   SELECT MIN(T1.IBHDKEY)
+						           				     FROM TWORK_INFO_B2B_OB_LABEL T1
+						           			   INNER JOIN TWORK_INFO_IB_HD T2
+						           				       ON T2.CTKEY 		= T1.CTKEY
+						           				      AND T2.OWKEY	 	= T1.OWKEY
+						           				      AND T2.IBHDKEY 	= T1.IBHDKEY
+						           				    WHERE T1.CTKEY 		= #{sctkey}
+						           				      AND T1.OWKEY	    = #{sowkey}
+						           				      AND T1.DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+						           				      AND T1.BOXLABELNO = #{boxlabelno}
+						           				      AND T2.IBSTATUSCD BETWEEN '00' AND '40'
+						         )
+						        </when>
+						        <otherwise>
+						          AND OL.IBHDKEY||OL.IBDTKEY IN (
+									   							   SELECT DISTINCT T1.IBHDKEY||T1.IBDTKEY
+							           							     FROM TWORK_INFO_B2B_OB_LABEL T1
+							           						   INNER JOIN TWORK_INFO_IB_HD T2
+							           							       ON T2.CTKEY 		= T1.CTKEY
+							           							      AND T2.OWKEY 		= T1.OWKEY
+							           							      AND T2.IBHDKEY 	= T1.IBHDKEY
+							           						   INNER JOIN TWORK_INFO_IB_DT T3
+							           						   		   ON T3.CTKEY 		 = T2.CTKEY
+							           							      AND T3.OWKEY 		 = T2.OWKEY
+							           							      AND T3.IBHDKEY 	 = T2.IBHDKEY
+							           							      AND T3.IBDTKEY	 = T1.IBDTKEY
+							           							      AND COALESCE(T3.PLCMSTATUSCD, '00') > '00'
+							           							    WHERE T1.CTKEY 		= #{sctkey}
+							           							      AND T1.OWKEY 		= #{sowkey}
+							           							      AND T1.DLVYDAY BETWEEN #{dlvyday} AND TO_CHAR(TO_DATE(#{dlvyday}, 'YYYYMMDDHH24MISS')+2, 'YYYYMMDD')
+							           							      AND T1.BOXLABELNO = #{boxlabelno}
+							           							      AND T2.IBSTATUSCD BETWEEN '00' AND '40'
+						          )
+						        </otherwise>
+						      </choose>
+						    </otherwise>
+						  </choose>
+		 				 ) T
+		 				 GROUP BY T.CTKEY, T.OWKEY, T.DLVYDAY, T.IBHDKEY, T.IBDTKEY, T.BOXLABELNO, T.CNTRLABELNO, T.SKUCNT, T.ICKEY, T.ICNM
+								, T.EXPDATE, T.OBIMPSCRITDATE, T.EXPCKYN, T.IBNISRSNCD, T.IBNISDTRSNCONT, T.IBCFSEQNO
+		 				 ) TT
+		 				 ORDER BY TT.OBIMPSCRITDATEYN DESC, TT.PRCSYN, TT.ICKEY, TT.BOXLABELNO
+	</sql>
+
+	<!--2025-06-19-->
+	<select id="selectInspectionList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectInspectionList - 입하검수 내역 조회  SQL */
+		<include refid="inspection"/>
+	</select>
+
+	<sql id="inspectionDt">
+		/* 입하검수 상세내역 조회 */
+		SELECT T.CTKEY
+		     , T.OWKEY
+		     , T.IBHDKEY
+		     , T.IBDTKEY
+		     , T.BOXLABELNO
+		     , T.CNTRLABELNO AS CNTRNO
+	 		 , T.ICKEY
+	 		 , T.ICNM
+		     , T.EXPDATE
+		     , T.EXPCKYN
+	 		 , T.CTNICUNITQTY /* CTN입수량 */
+			 , T.INNICUNITQTY /* INN입수량 */
+	 		 , TRUNC(SUM(T.CTNEXQTY), 1) AS CTNEXQTY /* 예정CTN수량 */
+	 		 , TRUNC(SUM(T.CTNIBQTY), 1) AS CTNIBQTY /* 검수CTN수량 */
+	 		 , TRUNC(SUM(T.INNEXQTY), 1) AS INNEXQTY /* 예정INN수량 */
+	 		 , TRUNC(SUM(T.INNIBQTY), 1) AS INNIBQTY /* 검수INN수량 */
+	 		 , TRUNC(SUM(T.EXQTY), 1) AS EXQTY /* 예정EA수량 */
+	 		 , TRUNC(SUM(T.IBQTY), 1) AS INQTY /* 검수EA수량 */
+	 		 , T.IBDTSTATUSCD /* 주문상태 */
+	 		 , T.PLCMSTATUSCD /* 적치상태 */
+	 		 , T.PRCSYN /* 검수처리상태 */
+	 		 , CASE WHEN T.LCKEY IS NULL THEN '-'
+	 		     	ELSE T.LCKEY
+	 		    END AS LCKEY /* 대표로케이션 */
+	 		 , T.IMGURL /* 상품이미지 */
+	 		 , CASE WHEN T.ROBSORTERICYN IS NULL THEN '-'
+	 		        ELSE T.ROBSORTERICYN
+	 		     END AS ROBSORTERICYN /* 로봇가능여부 */
+	 		 , CASE WHEN T.DIVNM IS NULL THEN '-'
+	 		        ELSE T.DIVNM
+	 		     END AS DIVNM/* 구분 */
+	 		 , T.CANCELYN /* 취소가능여부 */
+			 , T.IBNISRSNCD
+			 , T.IBNISDTRSNCONT
+		     , T.IBCFSEQNO
+	 		 , CASE WHEN T.PRCSYN = 'Y' THEN
+	 		 		CASE WHEN SUM(T.EXQTY) > SUM(T.IBQTY) THEN '부분\n검수'
+	 		 		 	 ELSE '검수\n완료'
+	 		 	END ELSE '대기'
+	 		   END AS PRCSMSG
+		     , MAX(CASE WHEN SUBSTR(T.IMMTIVDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS IMMTIVALERTYN /* 임박재고 대상여부 */
+			 , MAX(CASE WHEN SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS OBIMPSCRITALERTYN /* 출고불가 대상여부 */
+			 , CASE WHEN SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') THEN 'Y' ELSE 'N' END OBIMPSCRITDATEYN /* 출고불가 대상여부 */
+    	  FROM (
+    	  	   SELECT OL.CTKEY
+    	  	        , OL.OWKEY
+    	  	   	    , OL.IBHDKEY
+    	  	        , OL.IBDTKEY
+    	  	   	 	, IXT.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+    	  	   	 	, IXTT.ICUNITQTY AS INNICUNITQTY /* INN입수량 */
+    	  	   	 	, OL.BOXLABELNO
+    	  	   	 	, OL.CNTRLABELNO
+					, ID.IBNISRSNCD
+					, ID.IBNISDTRSNCONT
+    	  	   	 	, OL.ICKEY
+    	  	   	 	, IC.ICNM
+    	  	        , OL.IBCFSEQNO
+    	  	   	 	, OL.QTY/IXT.ICUNITQTY AS CTNEXQTY /* 예정CTN수량 */
+    	  	   	 	, COALESCE(OL.IBQTY, 0)/IXT.ICUNITQTY AS CTNIBQTY /* 검수CTN수량 */
+    	  	   	 	, OL.QTY/IXTT.ICUNITQTY AS INNEXQTY /* 예정INN수량 */
+    	  	   	 	, COALESCE(OL.IBQTY, 0)/IXTT.ICUNITQTY AS INNIBQTY /* 검수INN수량 */
+    	  	   	    , OL.QTY AS EXQTY /* 예정EA수량 */
+    	  	   	    , COALESCE(OL.IBQTY, 0) AS IBQTY /* 검수EA수량 */
+    	  	   	    , OL.EXPDATE /* 유통기한 */
+    	  	        , IC.EXPCKYN
+    	  	   	    , ID.IBDTSTATUSCD /* 주문상태 */
+    	  	   	    , ID.PLCMSTATUSCD /* 적치상태 */
+    	  	   	    , OL.PRCSYN /* 검수처리상태 */
+    	  	   	    , IC.LCKEY /* 대표로케이션 */
+    	  	   	    , IC.IMGURL /* 상품이미지 */
+    	  	   	    , IC.ROBSORTERICYN /* 로봇가능여부 */
+    	  	   	    , CASE WHEN ID.ASRTWKTGTYN = 'N' THEN '일반'
+    	  	   	    		ELSE
+    	  	   	    		CASE WHEN IC.ASRTREPKEY IS NULL THEN '아소트(모)'
+    	  	   	    			 ELSE '아소트(자)'
+    	  	   	    			 END
+    	  	   	      END AS DIVNM /* 구분 */
+    	  	   	    , CASE WHEN ID.IBDTSTATUSCD IN ('30','40') AND COALESCE(ID.ASRTWKQTY, 0) = 0 AND COALESCE(ID.PLCMSTATUSCD, '00') = '00' THEN 'Y'
+    	  	   	    	   ELSE 'N'
+    	  	   	      END AS CANCELYN /* 취소가능여부 */
+    	  	        , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+						  		  ELSE NULL
+							  END AS IMMTIVDATE /* 유통기한 임박일자 */
+					, CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN TO_CHAR((TO_DATE(SUBSTR(OL.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS) + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+						   ELSE NULL
+					  END AS OBIMPSCRITDATE /* 출고불가 일자 */
+    	         FROM TWORK_INFO_B2B_OB_LABEL OL
+    	   INNER JOIN TWORK_INFO_IB_DT ID
+    	  	   	   ON ID.CTKEY 			 = OL.CTKEY
+    	  	   	  AND ID.OWKEY 			 = OL.OWKEY
+    	  	   	  AND ID.IBHDKEY 		 = OL.IBHDKEY
+    	  	   	  AND ID.IBDTKEY 		 = OL.IBDTKEY
+    	   INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+    	  		   ON IC.CTKEY 			 = OL.CTKEY
+    	  		  AND IC.OWKEY 			 = OL.OWKEY
+    	  		  AND IC.ICKEY 			 = OL.ICKEY
+    	  		  AND IC.UOM 			 = 'EA'
+    	    LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+    	  		   ON IXT.CTKEY 		 = IC.CTKEY
+    	  		  AND IXT.OWKEY 		 = IC.OWKEY
+    	  		  AND IXT.ICKEY 		 = IC.ICKEY
+    	  		  AND IXT.ICUNITKEY 	 = IC.ICUNITKEY
+    	  		  AND IXT.ICUNITTYPECD   = 'CTN'
+    	    LEFT JOIN TWORK_MST_ICUTXTYPE IXTT /* 상품단위유형 */
+    	  		   ON IXTT.CTKEY 		 = IC.CTKEY
+    	  		  AND IXTT.OWKEY 		 = IC.OWKEY
+    	  		  AND IXTT.ICKEY 		 = IC.ICKEY
+    	  		  AND IXTT.ICUNITKEY 	 = IC.ICUNITKEY
+    	  		  AND IXTT.ICUNITTYPECD  = 'INN'
+    	  	LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+				   ON IMMT.CTKEY 		 = IC.CTKEY
+    	  	    WHERE OL.CTKEY      	 = #{sctkey}
+    	   		  AND OL.OWKEY      	 = #{sowkey}
+    	    	  AND OL.IBHDKEY    	 = #{ibhdkey}
+    	  	      AND OL.BOXLABELNO 	 = #{boxlabelno}
+				  AND OL.ICKEY           = #{ickey}
+    	  	  ) T
+    	  GROUP BY T.CTKEY, T.OWKEY, T.IBHDKEY, T.BOXLABELNO, T.CNTRLABELNO, T.ICKEY, T.ICNM, T.EXPDATE, T.EXPCKYN, T.CTNICUNITQTY
+				 , T.INNICUNITQTY, T.IBDTSTATUSCD, T.PLCMSTATUSCD, T.PRCSYN, T.LCKEY, T.IMGURL, T.ROBSORTERICYN
+    	         , T.IMMTIVDATE, T.OBIMPSCRITDATE, T.DIVNM, T.CANCELYN, T.IBNISRSNCD, T.IBNISDTRSNCONT, T.IBDTKEY, T.IBCFSEQNO
+	</sql>
+
+	<!--2025-06-19-->
+	<select id="selectInspectionDtList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectInspectionDtList - 입하검수 상세내역 조회  SQL */
+		<include refid="inspectionDt"/>
+	</select>
+
+	<!--2025-07-07-->
+	<sql id="directInspection">
+		/* 직납검수 내역 조회 */
+		SELECT T.*
+		     , NULL AS SORTKEY
+		     , '0' AS CHK
+		     , CASE WHEN T.PRCSYN = 'N' THEN '검수대상'
+        			ELSE
+        			CASE WHEN T.CANCELYN = 'Y' THEN '검수취소가능'
+           				 ELSE '검수취소 불가'
+       				END
+   			   END AS STATUSMSG
+			 , CASE WHEN T.PRCSYN = 'Y'
+			     	THEN
+					CASE WHEN T.EXQTY > T.INQTY THEN '부분\n검수'
+						 ELSE '검수\n완료'
+					END ELSE '대기'
+			   END AS PRCSMSG
+		    , SUBSTR(T.IBEXPCTDATE, 0, 4) || '-' || SUBSTR(T.IBEXPCTDATE, 5, 2) || '-' || SUBSTR(T.IBEXPCTDATE, 7, 2) AS IBDATE
+		  FROM (
+			   SELECT SUBSTR(IH.IBEXPCTDATE, 0, 8) AS IBEXPCTDATE
+			   		, IH.CTKEY
+			   		, IH.OWKEY
+					, IH.IBHDKEY
+					, ID.IBDTKEY
+					, IH.ACKEY
+					, IH.ACNM
+					, ID.ICKEY
+					, IC.ICNM
+			        , ID.EXPDATE
+			        , IC.IMGURL
+			        , IC.EXPCKYN
+			        , IC.EXPCKTYPECD 
+			        , ID.PRDCTDATE
+					, ID.IBNISRSNCD
+					, ID.IBNISDTRSNCONT
+			        , COALESCE(IC.EXPCNVRSNDAYS, 0) EXPCNVRSNDAYS
+			        , COALESCE(IMMT.IMMTIVCRITRT, 0)/100 AS IMMTIVCRITRT
+			        , COALESCE(IC.OBIMPSCRITRT, 0)/100 AS OBIMPSCRITRT
+					, IXT.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+					, TRUNC(ID.EXPCTQTY, 1) AS EXQTY/* 예정수량 */
+					, TRUNC(COALESCE(ID.IBQTY, 0), 1) AS INQTY /* 검수수량 */
+					, TRUNC(ID.EXPCTQTY/IXT.ICUNITQTY, 1) AS CTNEXQTY /* 예정CTN수량 */
+					, TRUNC(COALESCE(ID.IBQTY, 0)/IXT.ICUNITQTY, 1) AS CTNIBQTY /* 검수CTN수량 */
+					, CASE WHEN ID.IBDTSTATUSCD != '00' THEN 'Y'
+						   ELSE 'N'
+					  END AS PRCSYN /* 검수처리상태 */
+					, CASE WHEN ID.IBDTSTATUSCD IN ('30','40') AND COALESCE(ID.ASRTWKQTY, 0) = 0 AND COALESCE(ID.PLCMSTATUSCD, '00') = '00' THEN 'Y'
+						   ELSE 'N'
+					  END AS CANCELYN /* 취소가능여부 */
+					, CASE WHEN ID.ASRTWKTGTYN = 'Y' OR TARGET.TARGETYN = 'Y' THEN 'Y'
+						   WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'Y'
+						   WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL+IC.OVLPPCKGDEPTHVAL+IC.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+						   WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+					 	   ELSE 'N'
+					   END AS ALERTYN
+				 FROM TWORK_INFO_IB_HD IH
+		   INNER JOIN TWORK_INFO_IB_DT ID
+				   ON ID.CTKEY   = IH.CTKEY
+				  AND ID.OWKEY   = IH.OWKEY
+				  AND ID.IBHDKEY = IH.IBHDKEY
+				  AND ID.IBDTKEY = ID.IBDTKEY
+		   INNER JOIN TWORK_MST_IC IC /*상품마스터 */
+				   ON IC.CTKEY   = IH.CTKEY
+			      AND IC.OWKEY   = IH.OWKEY
+			      AND IC.ICKEY   = ID.ICKEY
+			      AND IC.UOM     = 'EA'
+		   INNER JOIN (
+					  SELECT DISTINCT
+					  		 CTKEY
+					  	   , OWKEY
+					  	   , ICKEY
+						FROM TWORK_MST_ICBARCODE
+					   WHERE CTKEY     = #{sctkey}
+					     AND OWKEY     = #{sowkey}
+					     AND USEYN     = 'Y'
+					     AND (ICKEY = #{barcode} OR BARCODE = #{barcode})
+					  ) ICB
+				   ON ICB.CTKEY	       = IC.CTKEY
+				  AND ICB.OWKEY	       = IC.OWKEY
+				  AND ICB.ICKEY	       = IC.ICKEY
+			LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+				   ON IXT.CTKEY 	   = IC.CTKEY
+				  AND IXT.OWKEY 	   = IC.OWKEY
+				  AND IXT.ICKEY 	   = IC.ICKEY
+				  AND IXT.ICUNITKEY    = IC.ICUNITKEY
+				  AND IXT.ICUNITTYPECD = 'CTN'
+		    LEFT JOIN (
+					  SELECT CTKEY
+				       	   , OWKEY
+				           , ICKEY
+					       , MAX(CASE WHEN COALESCE(WIDTH, 0) = 0 OR COALESCE("DEPTH", 0) = 0 OR COALESCE(HEIGHT, 0) = 0 OR COALESCE(WEIGHT, 0) = 0 THEN 'Y'
+									  ELSE 'N'
+					  			 END) AS TARGETYN
+					    FROM TWORK_MST_ICUTXTYPE
+					   WHERE CTKEY = #{sctkey}
+					     AND OWKEY = #{sowkey}
+					     AND ICUNITTYPECD = 'EA'
+				    GROUP BY CTKEY, OWKEY, ICKEY
+				  	 ) TARGET
+				   ON TARGET.CTKEY     = IC.CTKEY
+				  AND TARGET.OWKEY     = IC.OWKEY
+				  AND TARGET.ICKEY     = IC.ICKEY
+			LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+				   ON IMMT.CTKEY       = IC.CTKEY
+				WHERE IH.CTKEY         = #{sctkey}
+				  AND IH.OWKEY         = #{sowkey}
+				  AND IH.IBEXPCTDATE   =  RPAD(#{ibexpctdate}, 14, '0')
+ 				  AND IH.IBHDTYPECD    IN ('40', '70') /* 직납, PO */
+				  AND IH.IBSTATUSCD   != '99' /* 작업취소 */
+				  AND ID.UPRIBDTKEY IS NULL
+			   ) T
+		   GROUP BY T.IBEXPCTDATE, T.CTKEY, T.OWKEY, T.IBHDKEY, T.IBDTKEY, T.ACKEY, T.ACNM, T.ICKEY, T.ICNM, T.EXPDATE, T.EXPCKTYPECD 
+				  , T.IMGURL, T.EXPCKYN, T.PRDCTDATE, T.EXPCNVRSNDAYS, T.CTNICUNITQTY, T.EXQTY, T.INQTY, T.CTNEXQTY
+				  , T.CTNIBQTY, T.PRCSYN, T.CANCELYN, T.IBNISRSNCD, T.IBNISDTRSNCONT, T.IMMTIVCRITRT, T.OBIMPSCRITRT, T.ALERTYN
+		   ORDER BY T.PRCSYN
+		   		  , T.CANCELYN DESC
+		   		  , T.IBHDKEY
+	</sql>
+
+	<!--2025-07-07-->
+	<select id="selectDirectInspectionList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectDirectInspectionList - 직납검수 내역 조회  SQL */
+		<include refid="directInspection"/>
+	</select>
+
+	<!--2025-07-07-->
+	<sql id="directInspectionDt">
+		/* 직납검수 상세내역 조회 */
+		SELECT SUBSTR(T.IBEXPCTDATE, 0, 8) AS IBEXPCTDATE
+			 , T.CTKEY
+			 , T.OWKEY
+			 , T.IBHDKEY
+			 , T.IBDTKEY
+		     , ICF.IBCFSEQNO
+		     , T.ACKEY
+			 , T.ACNM
+			 , T.ICKEY
+			 , T.ICNM
+			 , T.IMGURL  /* 상품이미지 */
+			 , CASE WHEN T.DIVNM IS NULL THEN '-'
+			        ELSE T.DIVNM
+				END AS DIVNM /* 구분 일반,아소트 */
+			 , T.ROBSORTERICYN /* 로봇가능여부 */
+			 , T.EXPCKYN /* 유통기한관리여부 */
+			 , T.EXPCKTYPECD /*유통기한관리유형*/
+			 , T.IMMTIVCRITRT /* 임박재고기준율 */
+			 , T.OBIMPSCRITRT /* 출고불가기준율 */
+			 , COALESCE(T.EXPDATE, ICF.EXPDATE) AS EXPDATE /* 유통기한 */
+			 , COALESCE(T.PRDCTDATE, ICF.PRDCTDATE) AS PRDCTDATE /* 생산일자 */
+			 , T.EXPCNVRSNDAYS /* 유통기한 전환일수 */
+			 , CASE WHEN T.LCKEY IS NULL THEN '-'
+			        ELSE T.LCKEY
+			    END AS LCKEY /* 대표로케이션 */
+			 , T.CTNICUNITQTY /* CTN입수량 */
+			 , T.TOTCTNEXQTY
+			 , T.TOTCTNIBQTY
+			 , TRUNC(SUM(T.EXQTY), 1) AS EXQTY
+			 , TRUNC(SUM(T.IBQTY), 1) AS INQTY
+			 , TRUNC(SUM(T.CTNEXQTY), 1) AS CTNEXQTY /* 예정CTN수량 */
+			 , TRUNC(SUM(T.CTNIBQTY), 1) AS CTNIBQTY /* 검수CTN수량 */
+			 , T.IBDTSTATUSCD /* 주문상세상태 */
+			 , T.PRCSYN /* 검수처리상태 'Y':검수완료 'N':대기 */
+			 , CASE WHEN T.PRCSYN = 'Y'
+			     	THEN
+					CASE WHEN SUM(T.EXQTY) > SUM(T.IBQTY) THEN '부분\n검수'
+						 ELSE '검수\n완료'
+						 END
+				    ELSE '대기'
+			   END AS PRCSMSG
+			 , T.CANCELYN /* 취소가능여부 */
+			 , T.IBNISRSNCD
+			 , T.IBNISDTRSNCONT
+		FROM (
+			 SELECT IH.IBEXPCTDATE
+				  , IH.CTKEY
+				  , IH.OWKEY
+				  , IH.IBHDKEY
+				  , ID.IBDTKEY
+				  , IH.ACKEY
+				  , IH.ACNM
+				  , ID.ICKEY
+				  , IC.ICNM
+			      , ID.PRDCTDATE
+			      , ID.EXPDATE
+			      , ID.IBNISRSNCD
+				  , ID.IBNISDTRSNCONT
+			      , IXT.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+				  , COALESCE(IC.EXPCNVRSNDAYS, 0) EXPCNVRSNDAYS
+				  , COALESCE(ID.EXPCTQTY, 0) AS EXQTY /* 예정수량 */
+				  , COALESCE(ID.IBQTY, 0) AS IBQTY /* 검수수량 */
+			      , ID.EXPCTQTY / IXT.ICUNITQTY AS CTNEXQTY
+        		  , COALESCE(ID.IBQTY, 0) / IXT.ICUNITQTY AS CTNIBQTY
+			      , SUM(ID.EXPCTQTY / IXT.ICUNITQTY) OVER(PARTITION BY IH.CTKEY) AS TOTCTNEXQTY
+  				  , SUM(ID.IBQTY / IXT.ICUNITQTY) OVER(PARTITION BY IH.CTKEY) AS TOTCTNIBQTY
+        		  , ID.IBDTSTATUSCD
+				  , CASE WHEN ID.IBDTSTATUSCD != '00' THEN 'Y'
+						 ELSE 'N'
+				    END AS PRCSYN
+				  , IC.LCKEY
+				  , IC.IMGURL
+				  , IC.ROBSORTERICYN
+				  , IC.EXPCKYN
+				  , IC.EXPCKTYPECD
+				  , COALESCE(IMMT.IMMTIVCRITRT, 0)/100 AS IMMTIVCRITRT
+                  , COALESCE(IC.OBIMPSCRITRT, 0)/100 AS OBIMPSCRITRT
+				  , CASE WHEN ID.ASRTWKTGTYN = 'N' THEN '일반'
+						 ELSE
+						 CASE WHEN IC.ASRTREPKEY IS NULL THEN '아소트(모)'
+							  ELSE '아소트(자)'
+						 	  END
+					END AS DIVNM
+				  , CASE WHEN ID.IBDTSTATUSCD IN ('30', '40') AND COALESCE(ID.ASRTWKQTY, 0) = 0 AND COALESCE(ID.PLCMSTATUSCD, '00') = '00' THEN 'Y'
+						 ELSE 'N'
+				    END AS CANCELYN
+				  , CASE WHEN ID.ASRTWKTGTYN = 'Y' OR TARGET.TARGETYN = 'Y' THEN 'Y'
+				  		 WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'Y'
+						 WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL+IC.OVLPPCKGDEPTHVAL+IC.OVLPPCKGHEIGHTVAL <![CDATA[ <= ]]> 0) THEN 'Y'
+						 WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+						 ELSE 'N'
+				    END AS ALERTYN
+			 FROM TWORK_INFO_IB_HD IH
+       INNER JOIN TWORK_INFO_IB_DT ID
+			   ON ID.CTKEY           = IH.CTKEY
+			  AND ID.OWKEY           = IH.OWKEY
+			  AND ID.IBHDKEY         = IH.IBHDKEY
+			  AND ID.IBDTKEY         = ID.IBDTKEY
+	   INNER JOIN TWORK_MST_IC IC
+	   		   ON IC.CTKEY           = IH.CTKEY
+	   		  AND IC.OWKEY           = IH.OWKEY
+	   		  AND IC.ICKEY           = ID.ICKEY
+	   		  AND IC.UOM             = 'EA'
+        LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+			   ON IXT.CTKEY          = IC.CTKEY
+			  AND IXT.OWKEY          = IC.OWKEY
+			  AND IXT.ICKEY          = IC.ICKEY
+			  AND IXT.ICUNITKEY      = IC.ICUNITKEY
+			  AND IXT.ICUNITTYPECD   = 'CTN'
+		LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+			   ON IMMT.CTKEY         = IC.CTKEY
+		LEFT JOIN (
+				  SELECT CTKEY
+			       	   , OWKEY
+			           , ICKEY
+				       , MAX(CASE WHEN COALESCE(WIDTH, 0) = 0 OR COALESCE("DEPTH", 0) = 0 OR COALESCE(HEIGHT, 0) = 0 OR COALESCE(WEIGHT, 0) = 0 THEN 'Y'
+								  ELSE 'N'
+				  			 END) AS TARGETYN
+				    FROM TWORK_MST_ICUTXTYPE
+				   WHERE CTKEY = #{sctkey}
+				     AND OWKEY = #{sowkey}
+				     AND ICKEY = #{ickey}
+				     AND ICUNITTYPECD = 'EA'
+			    GROUP BY CTKEY, OWKEY, ICKEY
+				  ) TARGET
+				   ON TARGET.CTKEY     = IC.CTKEY
+				  AND TARGET.OWKEY     = IC.OWKEY
+				  AND TARGET.ICKEY     = IC.ICKEY
+				WHERE IH.CTKEY         = #{sctkey}
+				  AND IH.OWKEY         = #{sowkey}
+				  AND IH.IBEXPCTDATE   =  RPAD(#{ibexpctdate}, 14, '0')
+ 				  AND IH.IBHDTYPECD    IN ('40', '70') /* 직납, PO */
+				  AND IH.IBSTATUSCD   != '99' /* 작업취소 */
+				  AND ID.UPRIBDTKEY IS NULL
+				  AND ID.IBHDKEY       = #{ibhdkey}
+				  AND ID.IBDTKEY       = #{ibdtkey}
+				  AND ID.ICKEY         = #{ickey}
+			 ) T
+		    LEFT JOIN TWORK_INFO_IBCF_DT ICF
+		 	      ON ICF.CTKEY         = T.CTKEY
+		 	     AND ICF.OWKEY         = T.OWKEY
+		 	     AND ICF.IBHDKEY       = T.IBHDKEY
+		 	     AND ICF.IBDTKEY       = T.IBDTKEY
+		 	     AND ICF.ICKEY         = T.ICKEY
+		GROUP BY IBEXPCTDATE, T.CTKEY, T.OWKEY, T.IBHDKEY, T.IBDTKEY, ICF.IBCFSEQNO, T.ACKEY, T.ACNM, T.ICKEY, T.ICNM, T.IMGURL,
+		         T.DIVNM, T.ROBSORTERICYN, T.EXPCKYN, T.EXPDATE, T.PRDCTDATE, ICF.EXPDATE, ICF.PRDCTDATE, T.EXPCNVRSNDAYS, T.LCKEY, T.CTNICUNITQTY, T.EXPCKTYPECD 
+			   , T.IBDTSTATUSCD, T.PRCSYN, T.CANCELYN, T.ALERTYN, T.TOTCTNEXQTY, T.TOTCTNIBQTY, T.IMMTIVCRITRT, T.OBIMPSCRITRT
+		       , T.IBNISRSNCD, T.IBNISDTRSNCONT
+		ORDER BY T.IBDTKEY
+			   , T.ICKEY
+	</sql>
+
+	<!--2025-07-07-->
+	<select id="selectDirectInspectionDtList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectDirectInspectionDtList - 직납검수 상세내역 조회  SQL */
+		<include refid="directInspectionDt"/>
+	</select>
+
+	<!--2025-07-16-->
+	<sql id="nInspection">
+		/* 미검수 내역 조회 */
+		SELECT T.IBHDKEY
+	 		 , T.ACNM
+	 		 , T.ICKEY
+	 		 , T.ICNM
+	 		 , T.CNTRLABELNO /* 용기라벨 */
+	 		 , TRUNC(SUM(T.EXQTY), 1) AS EXQTY /* PCS예정수량 */
+	 		 , TRUNC((SUM(T.EXQTY)/IXT.ICUNITQTY), 1) AS CTNEXQTY /* CTN예정수량 */
+	 		 , T.IBTYPE
+	 		 , ICB.BARCODE
+  		  FROM (
+  		  	   SELECT IH.CTKEY
+ 		   		    , IH.OWKEY
+ 		   		    , IH.IBHDKEY
+ 		   		    , IH.ACNM
+ 		   		    , IC.ICKEY
+ 		   		    , IC.ICNM
+ 		   		    , COALESCE(OL.CNTRLABELNO, OL.BOXLABELNO) AS CNTRLABELNO
+ 		   		    , OL.QTY AS EXQTY
+ 		   		    , 'B2B' AS IBTYPE
+ 		   		 FROM TWORK_INFO_IB_HD IH
+  		   INNER JOIN TWORK_INFO_IB_DT ID
+  		       	   ON ID.CTKEY   = IH.CTKEY
+  		     	  AND ID.OWKEY   = IH.OWKEY
+  		     	  AND ID.IBHDKEY = IH.IBHDKEY
+  		   INNER JOIN TWORK_INFO_B2B_OB_LABEL OL
+  		     	   ON OL.CTKEY   = ID.CTKEY
+  		     	  AND OL.OWKEY   = ID.OWKEY
+  		     	  AND OL.IBHDKEY = ID.IBHDKEY
+  		     	  AND OL.IBDTKEY = ID.IBDTKEY
+  		   INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+  		           ON IC.CTKEY   = ID.CTKEY
+  		          AND IC.OWKEY   = ID.OWKEY
+  		          AND IC.ICKEY   = ID.ICKEY
+  		          AND IC.UOM     = 'EA'
+  		        WHERE IH.CTKEY   = #{sctkey}
+  		          AND IH.OWKEY   = #{sowkey}
+  		          AND OL.DLVYDAY = #{ibexpctdate}
+  		          AND IH.IBSTATUSCD <![CDATA[<]]> '90' /* ('90':적치완료) */
+		          AND OL.PRCSYN  = 'N'
+  		          AND ID.UPRIBDTKEY IS NULL
+  		    UNION ALL
+  	     	   SELECT IH.CTKEY
+  	     		    , IH.OWKEY
+  	     		    , IH.IBHDKEY
+  	     		    , IH.ACNM
+  	     		    , IC.ICKEY
+  	     		    , IC.ICNM
+ 	     		    , NULL AS CNTRLABELNO
+ 	     		    , ID.EXPCTQTY AS EXQTY
+ 	     	        , 'DIRT' AS IBTYPE
+  	             FROM TWORK_INFO_IB_HD IH
+ 	       INNER JOIN TWORK_INFO_IB_DT ID
+ 	       		   ON ID.CTKEY 	           = IH.CTKEY
+ 	       		  AND ID.OWKEY 	           = IH.OWKEY
+ 	       		  AND ID.IBHDKEY           = IH.IBHDKEY
+ 	       INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+ 	        	   ON IC.CTKEY 	           = ID.CTKEY
+ 	        	  AND IC.OWKEY 	           = ID.OWKEY
+ 	        	  AND IC.ICKEY 	           = ID.ICKEY
+ 	        	  AND IC.UOM 		       = 'EA'
+ 	        	WHERE IH.CTKEY 	           = #{sctkey}
+ 	        	  AND IH.OWKEY 	           = #{sowkey}
+ 	        	  AND IH.IBEXPCTDATE =  RPAD(#{ibexpctdate}, 14, '0')
+				  AND IH.IBSTATUSCD  <![CDATA[<]]> '90' /* ('90':적치완료) */
+ 	        	  AND ID.IBDTSTATUSCD      = '00' /* ('00':작업생성) */
+ 	        	  AND IH.IBHDTYPECD        IN ('40', '70') /* 직납, PO */
+ 	        	  AND COALESCE(ID.ASRTWKQTY, 0) = 0
+ 	        	  AND ID.UPRIBDTKEY IS NULL
+ 	           ) T
+ 	       INNER JOIN (
+ 	        		  SELECT CTKEY
+ 	       				   , OWKEY
+ 	       				   , ICKEY
+ 	      				   , STRING_AGG(DISTINCT BARCODE, ',' ORDER BY ICKEY, BARCODE) AS BARCODE
+ 	      			    FROM TWORK_MST_ICBARCODE
+ 	      			   WHERE CTKEY       = #{sctkey}
+ 	      			     AND OWKEY       = #{sowkey}
+ 	      			     AND USEYN       = 'Y'
+ 	      		    GROUP BY CTKEY, OWKEY, ICKEY
+ 	      			  ) ICB
+ 	               ON ICB.CTKEY 		 = T.CTKEY
+ 	     		  AND ICB.OWKEY 		 = T.OWKEY
+ 	     		  AND ICB.ICKEY 		 = T.ICKEY
+ 	        LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+ 	       	   	   ON IXT.CTKEY 	 	 = T.CTKEY
+ 	       	      AND IXT.OWKEY 	 	 = T.OWKEY
+ 	       	      AND IXT.ICKEY 	 	 = T.ICKEY
+ 	       	      AND IXT.ICUNITTYPECD   = 'CTN'
+		GROUP BY T.IBHDKEY, T.IBTYPE, T.ACNM, T.ICKEY, T.ICNM, T.CNTRLABELNO, IXT.ICUNITQTY, ICB.BARCODE
+ 	         ORDER BY T.ICKEY, T.CNTRLABELNO
+	</sql>
+
+	<!--2025-07-16-->
+	<select id="selectNInspectionList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectNInspectionList - 미검수 내역 조회  SQL */
+		<include refid="nInspection"/>
+	</select>
+
+	<!--2025-07-16-->
+	<sql id="assort">
+		/* 아소트 내역 조회 */
+		SELECT IH.ACNM
+	    	 , ID.ICKEY
+	    	 , IC.ICNM
+	    	 , ICB.BARCODE
+	    	 , TRUNC(SUM(ID.IBQTY) - SUM(ID.ASRTWKQTY), 1) AS UNWKQTY
+	    	 , TRUNC(((SUM(ID.IBQTY) - SUM(ID.ASRTWKQTY)) / MAX(IXT.ICUNITQTY)), 1) AS CTNUNWKQTY
+	      FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IB_DT ID
+			ON ID.CTKEY   = IH.CTKEY
+		   AND ID.OWKEY	  = IH.OWKEY
+		   AND ID.IBHDKEY = IH.IBHDKEY
+	INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+		    ON IC.CTKEY   = ID.CTKEY
+		   AND IC.OWKEY   = ID.OWKEY
+		   AND IC.ICKEY   = ID.ICKEY
+		   AND IC.UOM     = 'EA'
+	INNER JOIN (
+			   SELECT CTKEY
+				    , OWKEY
+				    , ICKEY
+				    , STRING_AGG(DISTINCT BARCODE, ',' ORDER BY ICKEY, BARCODE) AS BARCODE
+				 FROM TWORK_MST_ICBARCODE
+				WHERE CTKEY   = #{sctkey}
+				  AND OWKEY   = #{sowkey}
+				  AND USEYN   = 'Y'
+			 GROUP BY CTKEY, OWKEY, ICKEY
+			   ) ICB
+	      	  	   ON ICB.CTKEY      		   = IC.CTKEY
+		  	      AND ICB.OWKEY      		   = IC.OWKEY
+		  	      AND ICB.ICKEY      		   = IC.ICKEY
+		    LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+		  		   ON IXT.CTKEY 	  		   = ID.CTKEY
+		  	      AND IXT.OWKEY 	  		   = ID.OWKEY
+		  	      AND IXT.ICKEY 	  		   = ID.ICKEY
+		  	      AND IXT.ICUNITTYPECD = 'CTN'
+		  	    WHERE IH.CTKEY       		   = #{sctkey}
+		  	      AND IH.OWKEY       		   = #{sowkey}
+		  	      AND IH.IBEXPCTDATE 		   BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+		  	      AND COALESCE(ID.ASRTWKTGTYN, 'N') = 'Y'
+		  	      AND COALESCE(ID.ASRTWKQTY, 0) <![CDATA[<]]> COALESCE(ID.IBQTY, 0)
+		  	      AND IH.IBSTATUSCD  != '91' /* ('91':입고마감) */
+		     GROUP BY IH.ACNM, ID.ICKEY, IC.ICNM, ICB.BARCODE
+		     ORDER BY ID.ICKEY
+	</sql>
+
+	<!--22025-07-16-->
+	<select id="selectAssortList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectAssortList - 아소트 내역 조회  SQL */
+		<include refid="assort"/>
+	</select>
+
+	<!--2025-07-16-->
+	<sql id="nPutaway">
+		/* 미적치 내역 조회 */
+		SELECT T.CTKEY
+			 , T.OWKEY
+			 , T.ICKEY
+			 , IC.ICNM
+			 , ICB.BARCODE
+		     , IC.EXPCKYN
+			 , CASE WHEN T.EXPDATE IS NULL THEN NULL
+		            ELSE SUBSTR(T.EXPDATE, 1, 4) || '-' || SUBSTR(T.EXPDATE, 5, 2) || '-' || SUBSTR(T.EXPDATE, 7,2)
+				END AS EXPDATE
+			 , CASE WHEN T.CNTRNO IS NULL THEN '-'
+			        ELSE T.CNTRNO
+			    END AS CNTRNO
+			 , TRUNC(SUM(T.QTY) - SUM(T.CNFRMQTY), 1) AS REMAINQTY
+			 , TRUNC(((SUM(T.QTY) - SUM(T.CNFRMQTY)) / IXT.ICUNITQTY), 1) AS CTNREMAINQTY
+	  	  FROM (
+	    	   SELECT CNTR.CTKEY
+	    			, CNTR.OWKEY
+	    			, CNTR.ICKEY
+	    			, CNTR.EXPDATE
+	    			, CASE COALESCE(CNTR.CNTRNO, 'NA') WHEN 'NA'  THEN NULL
+	    										  WHEN 'N/A' THEN NULL
+	    										  ELSE CNTR.CNTRNO
+	    			  END AS CNTRNO /* 용기번호 */
+	    			, CNTR.QTY /* 수량 */
+	    			, CNTR.CNFRMQTY /* 적치수량 */
+	    	     FROM TWORK_INFO_IBCF_CNTR CNTR
+	       INNER JOIN TWORK_INFO_IB_HD IH
+	    		   ON IH.CTKEY 		 = CNTR.CTKEY
+	    		  AND IH.OWKEY 		 = CNTR.OWKEY
+	    		  AND IH.IBHDKEY 	 = CNTR.IBHDKEY
+	    		WHERE IH.CTKEY 		 = #{sctkey}
+	    		  AND IH.OWKEY 		 = #{sowkey}
+	    		  AND IH.IBEXPCTDATE BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+	    		  AND IH.IBSTATUSCD != '91' /* ('91':입고마감) */
+	    		  AND CNTR.QTY <![CDATA[>]]> CNTR.CNFRMQTY /* 수량 > 적치수량 */
+	    		) T
+	       INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+	    		   ON IC.CTKEY = T.CTKEY
+	    		  AND IC.OWKEY = T.OWKEY
+	    		  AND IC.ICKEY = T.ICKEY
+	    		  AND IC.UOM   = 'EA'
+	       INNER JOIN (
+	    			  SELECT CTKEY
+	    				   , OWKEY
+	    				   , ICKEY
+	    				   , STRING_AGG(DISTINCT BARCODE, ',' ORDER BY ICKEY, BARCODE) AS BARCODE
+	    			    FROM TWORK_MST_ICBARCODE
+	    			   WHERE CTKEY 	 = #{sctkey}
+	    			     AND OWKEY 	 = #{sowkey}
+	    				 AND USEYN   = 'Y'
+	    		    GROUP BY CTKEY, OWKEY, ICKEY
+	    			  ) ICB
+	    				  ON ICB.CTKEY 		  = IC.CTKEY
+	    				 AND ICB.OWKEY 		  = IC.OWKEY
+	    				 AND ICB.ICKEY 		  = IC.ICKEY
+	    		   LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+	    				  ON IXT.CTKEY 		  = T.CTKEY
+	    				 AND IXT.OWKEY 		  = T.OWKEY
+	    				 AND IXT.ICKEY 		  = T.ICKEY
+	    				 AND IXT.ICUNITTYPECD = 'CTN'
+	    			GROUP BY T.CTKEY, T.OWKEY, T.ICKEY, IC.ICNM, ICB.BARCODE, T.EXPDATE, T.CNTRNO, IXT.ICUNITQTY, IC.EXPCKYN
+	    			ORDER BY T.ICKEY, T.CNTRNO
+	</sql>
+
+	<!--2025-07-16-->
+	<select id="selectNPutawayList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectNPutawayList - 미적치 내역 조회  SQL */
+		<include refid="nPutaway"/>
+	</select>
+
+	<!--2025-07-25-->
+	<sql id="subInsp">
+		/* 부자재검수 내역 조회 */
+		SELECT IH.CTKEY
+			 , IH.OWKEY
+			 , IH.IBHDKEY
+			 , ID.IBDTKEY
+		     , ICF.IBCFSEQNO
+			 , ID.IBDTSTATUSCD
+			 , ID.ICKEY
+			 , IC.ICNM
+			 , IC.LCKEY
+		     , IC.IMGURL
+			 , IH.ACKEY
+			 , IH.ACNM
+			 , IH.IBEXPCTDATE
+		     , SUBSTR(IH.IBEXPCTDATE, 0, 4) || '-' || SUBSTR(IH.IBEXPCTDATE, 5, 2) || '-' || SUBSTR(IH.IBEXPCTDATE, 7, 2) AS IBDATE
+			 , ID.EXPCTQTY AS EXQTY /* 예정수량 */
+			 , ID.IBQTY AS INQTY /* 검수수량 */
+			 , ID.CNFRMQTY /* 적치수량 */
+			 , '' AS INPUTQTY /* 화면입력수량 */
+			 /* 검수처리상태 - 수량입력부/ 검수완료 버튼 활성화 여부 (Y:비활성화, N:활성화) */
+			 , CASE WHEN ID.IBDTSTATUSCD != '00' THEN 'Y'
+				    ELSE 'N'
+			   END AS PRCSYN
+			   /* 취소가능 여부 (상태코드 30 또는 40이면서 검수수량 0인 경우만 가능) */
+			 , CASE WHEN ID.IBDTSTATUSCD IN ('30','40') AND ID.CNFRMQTY = 0 THEN 'Y'
+					ELSE 'N'
+			   END AS CANCELYN
+			   /* 상태 텍스트 표시 (화면용) */
+			 , CASE WHEN ID.IBDTSTATUSCD = '00' THEN '검수대상'
+					WHEN ID.IBQTY <![CDATA[>]]> ID.CNFRMQTY THEN '적치대상'
+				    ELSE '적치완료'
+			   END AS STATUSTEXT
+			   /* 텍스트 색상 표시용 (Y:빨강, N:검정) */
+			 , CASE WHEN ID.IBDTSTATUSCD = '00' THEN 'Y'
+				    WHEN ID.IBQTY <![CDATA[>]]> ID.CNFRMQTY THEN 'Y'
+				    ELSE 'N'
+			   END AS TEXTCOLOR
+			   /* 리스트뷰 백그라운드 색상 */
+			 , CASE WHEN ID.IBDTSTATUSCD = '00' THEN 'RED'
+				    WHEN ID.IBQTY <![CDATA[>]]> ID.CNFRMQTY THEN 'GREEN'
+				    ELSE 'WHITE'
+			   END AS BACKCOLOR
+		 	 , NULL AS SORTKEY
+		  FROM TWORK_INFO_IB_HD IH
+		 INNER JOIN TWORK_INFO_IB_DT ID
+		 	     ON ID.CTKEY		   = IH.CTKEY
+		 	    AND ID.OWKEY		   = IH.OWKEY
+		 	    AND ID.IBHDKEY 		   = IH.IBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+		 	     ON IC.CTKEY 		   = ID.CTKEY
+		 	    AND IC.OWKEY 		   = ID.OWKEY
+		 	    AND IC.ICKEY 		   = ID.ICKEY
+		 	    AND IC.ICGRPKEY		   = 'SM'
+		 	    AND IC.UOM			   = 'EA'
+		 INNER JOIN (
+		 		    SELECT DISTINCT
+		 	    		   CTKEY
+		 	    		 , OWKEY
+		 	    		 , ICKEY
+		 	    	  FROM TWORK_MST_ICBARCODE
+		 	    	 WHERE CTKEY   = #{sctkey}
+		 	    	   AND OWKEY   = #{sowkey}
+		 	    	   AND (ICKEY = #{icbarcode} OR BARCODE = #{icbarcode})
+		 	        ) ICB
+		         ON ICB.CTKEY	   = IC.CTKEY
+		        AND ICB.OWKEY	   = IC.OWKEY
+		        AND ICB.ICKEY	   = IC.ICKEY
+		  LEFT JOIN TWORK_INFO_IBCF_DT ICF
+		 	     ON ICF.CTKEY      = ID.CTKEY
+		 	    AND ICF.OWKEY      = ID.OWKEY
+		 	    AND ICF.IBHDKEY    = ID.IBHDKEY
+		 	    AND ICF.IBDTKEY    = ID.IBDTKEY
+		 	    AND ICF.ICKEY      = ID.ICKEY
+		      WHERE IH.CTKEY 	   = #{sctkey}
+		        AND IH.OWKEY 	   = #{sowkey}
+		        AND IH.IBHDTYPECD  = '60' /* 부자재입고 */
+		        AND IH.IBSTATUSCD != '99' /* 작업취소 */
+				AND IH.IBEXPCTDATE =  RPAD(#{ibexpctdate}, 14, '0')
+		   ORDER BY IH.IBHDKEY, IH.IBEXPCTDATE
+	</sql>
+
+	<!--2025-07-25-->
+	<select id="selectSubInspList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectSubInspList - 부자재검수 내역조회  SQL */
+		<include refid="subInsp"/>
+	</select>
+
+	<!--2025-07-25-->
+	<sql id="subPlcm">
+		/* 적치대상 내역조회 */
+		SELECT IH.CTKEY
+	 		 , IH.OWKEY
+	 		 , IH.IBHDKEY
+	 		 , IBCF.IBDTKEY
+	 		 , IBCF.IBCFSEQNO /* 검수확정일련번호 */
+	 		 , IBCF.MASICIBCFSEQNO /* 모상품입고확정일련번호 */
+	 		 , IBCF.ICKEY
+		     , IBCF.CNTRNO
+	 		 , IC.ICNM
+	 		 , IBCF.IVATKEY /* 재고속성코드 */
+	 		 , IC.LCKEY AS REFLCKEY /* 대표로케이션 */
+	 		 , (IBCF.IBQTY - IBCF.CNFRMQTY) AS REMAINQTY /* 대기수량 */
+	 		 , IC.LCKEY AS TOLCKEY /* 로케이션입력(Defualt 대표로케이션) */
+	 		 , IBCF.IBQTY-IBCF.CNFRMQTY AS INQTY /* 적치입력수량(Defualt 대기수량) */
+	 		 , IC.IMGURL /* 상품이미지 */
+  		  FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IBCF_DT IBCF
+	        ON IBCF.CTKEY 	  = IH.CTKEY
+	       AND IBCF.OWKEY 	  = IH.OWKEY
+	       AND IBCF.IBHDKEY   = IH.IBHDKEY
+	INNER JOIN TWORK_MST_IC IC /*상품마스터 */
+	        ON IC.CTKEY 	  = IBCF.CTKEY
+	       AND IC.OWKEY 	  = IBCF.OWKEY
+	       AND IC.ICKEY 	  = IBCF.ICKEY
+	       AND IC.ICGRPKEY    = 'SM'
+	       AND IC.UOM 		  = 'EA'
+  		 WHERE IH.CTKEY 	  = #{sctkey}
+  		   AND IH.OWKEY 	  = #{sowkey}
+	  	   AND IH.IBHDKEY 	  = #{ibhdkey}
+	  	   AND IC.ICKEY 	  = #{ickey}
+		   AND IBCF.IBCFSEQNO = #{ibcfseqno}
+  		   AND IH.IBHDTYPECD  = '60' /* 부자재입고 */
+  		   AND IH.IBSTATUSCD != '99' /* 작업취소 */
+		   AND IH.IBEXPCTDATE =  RPAD(#{ibexpctdate}, 14, '0')
+	</sql>
+
+	<!--2025-07-25-->
+	<select id="selectSubPlcmList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectSubPlcmList - 적치대상 내역조회  SQL */
+		<include refid="subPlcm"/>
+	</select>
+
+	<!--2025-07-25-->
+	<sql id="subPlcmCnl">
+		/* 적치취소대상 내역조회 */
+		SELECT '0' AS CHK
+			 , IH.CTKEY
+		     , IH.OWKEY
+		     , IH.ACNM
+		     , IH.IBHDKEY
+		     , PLCM.IBDTKEY
+			 , PLCM.IBCFSEQNO /* 검수확정일련번호 */
+		     , PLCM.IBCFCNTRNO /* 입고확정용기번호 */
+		     , PLCM.MASICIBCFSEQNO /* 모상품입고확정일련번호 */
+			 , PLCM.SEQNO /* 적치일련번호 */
+			 , PLCM.ICKEY
+		     , IC.ICNM
+		     , PLCM.IVATKEY /* 재고속성코드 */
+			 , SUBSTR(PLCM.PLCMDATE, 0, 4) || '-' || SUBSTR(PLCM.PLCMDATE, 5, 2) || '-' || SUBSTR(PLCM.PLCMDATE, 7, 2) AS PLCMDATE /* 적치일자 */
+			 , PLCM.LCKEY /* 로케이션 */
+			 , PLCM.CNFRMQTY /* 적치수량 */
+			 , CASE WHEN IH.IBSTATUSCD IN ('91', '99') THEN 'N'
+			     	ELSE 'Y'
+			   END AS CNLABLEYN /* 취소가능여부 'Y':보임 'N':안보임*/
+		  FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IB_PLCM_DT PLCM
+			ON PLCM.CTKEY 	  = IH.CTKEY
+		   AND PLCM.OWKEY 	  = IH.OWKEY
+		   AND PLCM.IBHDKEY   = IH.IBHDKEY
+	INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+	  	    ON IC.CTKEY 	  = PLCM.CTKEY
+	       AND IC.OWKEY 	  = PLCM.OWKEY
+	       AND IC.ICKEY 	  = PLCM.ICKEY
+	       AND IC.ICGRPKEY 	  = 'SM'
+	       AND IC.UOM 		  = 'EA'
+		 WHERE IH.CTKEY 	  = #{sctkey}
+		   AND IH.OWKEY 	  = #{sowkey}
+		   AND IH.IBEXPCTDATE = RPAD(#{ibexpctdate}, 14, '0')
+		   AND PLCM.ICKEY 	  = #{ickey}
+		   AND IH.IBHDTYPECD  = '60' /* 60:부자재입고 */
+		   AND IH.IBSTATUSCD != '99' /* 작업취소 */
+	  ORDER BY CASE WHEN IH.IBSTATUSCD IN ('91', '99') THEN 'N'
+		            ELSE 'Y'
+			   END DESC
+			 , PLCM.PLCMDATE DESC
+			 , IH.IBHDKEY, PLCM.LCKEY, PLCM.EXPDATE
+	</sql>
+
+	<!--2025-07-25-->
+	<select id="selectSubPlcmCnlList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectSubPlcmCnlList - 적치취소대상 내역조회  SQL */
+		<include refid="subPlcmCnl"/>
+	</select>
+
+	<!--2025-07-31-->
+	<sql id="contTransfer">
+		/* 용기환적 내역조회 */
+		SELECT T.*
+			 , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+			 , INN.ICUNITQTY AS INNICUNITQTY /* INN입수량 */
+		 	 , TRUNC((T.TGTQTY / INN.ICUNITQTY), 1) AS INNTGTQTY /* 대상수량(INN) */
+		 	 , TRUNC((T.TGTQTY / CTN.ICUNITQTY), 1) AS CTNTGTQTY /* 대상수량(CTN) */
+		 	 , DATE_TRUNC('day', (T.QTY    / INN.ICUNITQTY))::DATE AS INNQTY /* 입력수량(INN) */
+		 	 , DATE_TRUNC('day', (T.QTY    / CTN.ICUNITQTY))::DATE AS CTNQTY /* 입력수량(CTN) */
+		 	 , (
+			   SELECT MAX(CASE WHEN COALESCE(B.WIDTH, 0) = 0
+								 OR COALESCE(B."DEPTH", 0) = 0
+								 OR COALESCE(B.HEIGHT, 0) = 0
+								 OR COALESCE(B.WEIGHT, 0) = 0 THEN 'Y'
+							   ELSE 'N'
+						  END
+					 	 )
+			     FROM TWORK_MST_ICUTXTYPE B
+				WHERE B.CTKEY = T.CTKEY
+				  AND B.OWKEY = T.OWKEY
+				  AND B.ICKEY = T.ICKEY
+				  AND B.ICUNITTYPECD = 'EA'
+		 	   ) AS ALERTYN /* 체적대상 팝업여부 */
+	 	  FROM (
+			   SELECT CNTR.CTKEY
+			  		, CNTR.OWKEY
+			  		, CNTR.IBHDKEY
+			  		, CNTR.IBDTKEY
+			  		, CNTR.IBCFSEQNO
+			  		, CNTR.MASICIBCFSEQNO
+			  		, CNTR.ICKEY
+			        , IH.ACNM
+			  		, IC.ICNM
+			  		, CNTR.IVATKEY
+			  		, IC.IMGURL
+			  		, IC.EXPCKYN
+			        , CNTR.EXPDATE /* 유통기한 */
+			        , CASE WHEN CNTR.EXPDATE IS NULL THEN '-'
+			               ELSE SUBSTR(CNTR.EXPDATE, 0, 4) || '-' || SUBSTR(CNTR.EXPDATE, 5, 2) || '-' || SUBSTR(CNTR.EXPDATE, 7, 2)
+			           END AS EXPDATETEXT /* 화면표시용 유통기한 */
+			  		, COALESCE(IC.LCKEY, '-') AS LCKEY
+			  		, COALESCE(ASRT.COLOR, '-') AS COLOR /* 색상 */
+			  		, COALESCE(ASRT.DESIGN, '-') AS DESIGN /* 디자인 */
+			  		, COALESCE(ASRT.CHRT, '-') AS CHRT /* 캐릭터 */
+			  		, CNTR.BFCHGCNTRNO /* 최초PLT번호 :: 'NA'는 화면에서 '-'로 */
+			        , CNTR.CNTRNO AS DEFCNTRNO /* 현재용기번호 :: 'NA'는 화면에서 '-'로 */
+			        , CASE WHEN CNTR.BFCHGCNTRNO IS NULL OR CNTR.BFCHGCNTRNO = 'NA' THEN '-'
+			               ELSE CNTR.BFCHGCNTRNO
+			           END AS BFCHGCNTRNOTEXT /* 화면표시용 최초PLT번호 */
+			        , CASE WHEN CNTR.CNTRNO IS NULL OR CNTR.CNTRNO = 'NA' THEN '-'
+			               ELSE CNTR.CNTRNO
+			           END AS DEFCNTRNOTEXT /* 화면표시용 현재용기번호 */
+ 			  		, NULL AS CNTRNO /* 신규용기번호(환적PLT:입력) */
+					, '0' AS INPUTQTY
+			        , CNTR.IBQTY
+			        , CNTR.CNFRMQTY
+			  		, CNTR.QTY - CNTR.CNFRMQTY AS TGTQTY /* 대상수량(EA) */
+			  		, CNTR.QTY - CNTR.CNFRMQTY AS QTY /* 입력수량(EA) */
+				 FROM TWORK_INFO_IBCF_CNTR CNTR
+		   INNER JOIN TWORK_INFO_IB_HD IH
+			 	   ON IH.CTKEY 			 = CNTR.CTKEY
+				  AND IH.OWKEY 			 = CNTR.OWKEY
+				  AND IH.IBHDKEY 		 = CNTR.IBHDKEY
+		   INNER JOIN TWORK_MST_IC IC /* 상품마스터 */
+			 	   ON IC.CTKEY 			 = CNTR.CTKEY
+				  AND IC.OWKEY 			 = CNTR.OWKEY
+				  AND IC.ICKEY 			 = CNTR.ICKEY
+				  AND IC.UOM 			 = 'EA'
+			LEFT JOIN TWORK_MST_ASRT ASRT
+				   ON ASRT.CTKEY 		 = IC.CTKEY
+				  AND ASRT.OWKEY 		 = IC.OWKEY
+				  AND ASRT.ASRTDTICKEY   = IC.ICKEY
+				WHERE CNTR.CTKEY 		 = #{sctkey} /* 센터 */
+				  AND CNTR.OWKEY 		 = #{sowkey} /* 화주 */
+          	      AND IH.IBEXPCTDATE 	 BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+				  AND IH.IBSTATUSCD 	!= '99' /* 작업취소 */
+				  AND CNTR.QTY <![CDATA[>]]> CNTR.CNFRMQTY
+				<if test='barcode != "" and barcode != null'>
+					 <choose>
+						<when test='radioType == "PLT"'>
+							AND CNTR.CNTRNO = #{barcode}
+						</when>
+							<otherwise>
+								AND CNTR.ICKEY IN (
+												  SELECT DISTINCT ICKEY
+													FROM TWORK_MST_ICBARCODE ICB
+												   WHERE ICB.CTKEY   = CNTR.CTKEY
+													 AND ICB.OWKEY   = CNTR.OWKEY
+													 AND ICB.ICKEY   = CNTR.ICKEY
+													 AND ICB.USEYN   = 'Y'
+													 AND (ICB.ICKEY = #{barcode} OR ICB.BARCODE = #{barcode})
+												  )
+							</otherwise>
+					 </choose>
+				</if>
+				) T
+		LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+			   ON CTN.CTKEY 	   = T.CTKEY
+			  AND CTN.OWKEY 	   = T.OWKEY
+			  AND CTN.ICKEY 	   = T.ICKEY
+			  AND CTN.ICUNITTYPECD = 'CTN'
+		LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+			   ON INN.CTKEY 	   = T.CTKEY
+			  AND INN.OWKEY 	   = T.OWKEY
+			  AND INN.ICKEY 	   = T.ICKEY
+			  AND INN.ICUNITTYPECD = 'INN'
+	   WHERE T.TGTQTY != 0
+	</sql>
+
+	<!--2025-07-31-->
+	<select id="selectContTransferList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectContTransferList - 용기환적 내역조회  SQL */
+		<include refid="contTransfer"/>
+	</select>
+
+	<update id="updatePartialContainer">
+		/* wms-pda-inbound-sql-oracle.xml - updatePartialContainer */
+		UPDATE TWORK_INFO_IBCF_CNTR
+		   SET QTY		   = QTY - #{qty}
+		     , UPDATEDATE  = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , UPDATEURKEY = #{urkey}
+		 WHERE CTKEY 	   = #{ctkey}
+		   AND OWKEY 	   = #{owkey}
+		   AND IBHDKEY	   = #{ibhdkey}
+   		   AND IBDTKEY 	   = #{ibdtkey}
+		   AND ICKEY 	   = #{ickey}
+		   AND IVATKEY 	   = #{ivatkey}
+		   AND CNTRNO      = #{defcntrno}
+		   AND BFCHGCNTRNO = #{bfchgcntrno}
+	</update>
+
+	<update id="updateSameContainer">
+		/* wms-pda-inbound-sql-oracle.xml - updateSameContainer */
+		UPDATE TWORK_INFO_IBCF_CNTR
+		   SET QTY    	   = QTY + #{qty}
+		     , UPDATEDATE  = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , UPDATEURKEY = #{urkey}
+		 WHERE CTKEY 	   = #{ctkey}
+		   AND OWKEY 	   = #{owkey}
+		   AND IBHDKEY	   = #{ibhdkey}
+		   AND IBDTKEY 	   = #{ibdtkey}
+		   AND ICKEY 	   = #{ickey}
+		   AND IVATKEY 	   = #{ivatkey}
+		   AND CNTRNO      = #{cntrno}
+		   AND BFCHGCNTRNO = #{bfchgcntrno}
+	</update>
+
+	<insert id="insertContainer">
+		/* wms-pda-inbound-sql-oracle.xml - insertContainer */
+		INSERT INTO TWORK_INFO_IBCF_CNTR (
+		            CTKEY
+			      , OWKEY
+				  , IBHDKEY
+				  , IBDTKEY
+				  , IBCFSEQNO
+				  , CNTRNO
+				  , ICKEY
+			 	  , IVATKEY
+				  , BFCHGCNTRNO
+				  , MASICIBCFSEQNO
+				  , QTY
+				  , IBQTY
+			      , CNFRMQTY
+				  , PRDCTDATE
+			 	  , EXPDATE
+			 	  , INSERTDATE
+			 	  , INSERTURKEY
+				  , UPDATEDATE
+				  , UPDATEURKEY
+				  )
+			 VALUES (
+				    #{sctkey}
+				  , #{sowkey}
+				  , #{ibhdkey}
+			 	  , #{ibdtkey}
+				  , #{ibcfseqno}
+				  , #{cntrno}
+				  , #{ickey}
+				  , #{ivatkey}
+				  , #{bfchgcntrno}
+				  , #{masicibcfseqno}
+				  , #{qty}
+				  , #{ibqty}
+				  , #{cnfrmqty}
+				  , #{prdctdate}
+			 	  , #{expdate}
+			 	  , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+				  , #{surkey}
+				  , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+				  , #{surkey}
+				  )
+	</insert>
+
+	<delete id="deleteContainer">
+		/* wms-pda-inbound-sql-oracle.xml - deleteContainer */
+		DELETE FROM TWORK_INFO_IBCF_CNTR
+		      WHERE CTKEY 	  = #{ctkey}
+		        AND OWKEY 	  = #{owkey}
+		        AND IBHDKEY	  = #{ibhdkey}
+		        AND IBDTKEY   = #{ibdtkey}
+		        AND ICKEY 	  = #{ickey}
+		        AND IVATKEY   = #{ivatkey}
+				AND CNTRNO    = #{defcntrno}
+				AND BFCHGCNTRNO = #{bfchgcntrno}
+	</delete>
+
+	<select id="selectMappingLocation" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectMappingLocation- 로케이션 매핑 확인  SQL */
+		SELECT IVL.LCKEY
+		  FROM TWORK_INFO_IVATXLC IVL
+	 	  WHERE IVL.CTKEY 		 = #{ctkey}
+	 	  	AND IVL.OWKEY 	     = #{owkey}
+	 	    AND IVL.IVSERIALNO   = #{cntrno}
+	 	    AND IVL.TOTQTY <![CDATA[>]]> 0
+	</select>
+
+	<select id="selectExistContainer" resultType="java.lang.Integer">
+		/* wms-pda-inbound-sql-oracle.xml - selectExistContainer - 용기 존재 확인  SQL */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IBCF_CNTR
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND ICKEY   = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND CNTRNO  = #{cntrno}
+		   AND BFCHGCNTRNO = #{bfchgcntrno}
+	</select>
+
+	<select id="selectNegativeQty" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectNegativeQty - 수량-입력수량 = 값 조회  SQL */
+		SELECT (QTY - COALESCE(CNFRMQTY, 0)) - #{qty} AS NEGATIVEQTY
+			 , COALESCE(CNFRMQTY, 0) AS CNFRMQTY
+		  FROM TWORK_INFO_IBCF_CNTR
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND ICKEY   = #{ickey}
+		   AND IVATKEY = #{ivatkey}
+		   AND CNTRNO  = #{defcntrno}
+		   AND BFCHGCNTRNO = #{bfchgcntrno}
+	</select>
+
+	<!--2025-08-11-->
+	<sql id="plcmIcPop">
+		/* 상품바코드 스캔 시 상품용기선택 팝업 조회 */
+		SELECT IH.CTKEY
+		     , IH.OWKEY
+		     , CNTR.ICKEY
+		     , IC.ICNM
+			 , CNTR.CNTRNO /* 용기번호 : 'NA'면 화면에서 '-' 로 표기*/
+			 , SUM(CNTR.QTY) AS EXQTY /* 예정수량 */
+			 , SUM(CNTR.CNFRMQTY) AS CNFRMQTY /* 적치수량 */
+			 , TRUNC(SUM(CNTR.QTY) / IXT.ICUNITQTY, 1) AS CTNEXQTY /* CTN예정수량 */
+			 , TRUNC(SUM(CNTR.CNFRMQTY) / IXT.ICUNITQTY, 1) AS CTNCNFRMQTY /* CTN적치수량 */
+	      FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IBCF_CNTR CNTR
+	     	ON CNTR.CTKEY 		  = IH.CTKEY
+	       AND CNTR.OWKEY 		  = IH.OWKEY
+	       AND CNTR.IBHDKEY 	  = IH.IBHDKEY
+	INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+		    ON IC.CTKEY 		  = CNTR.CTKEY
+		   AND IC.OWKEY 		  = CNTR.OWKEY
+		   AND IC.ICKEY 		  = CNTR.ICKEY
+		   AND IC.UOM 			  = 'EA'
+	INNER JOIN (
+			   SELECT DISTINCT
+			   			 CTKEY
+			   		   , OWKEY
+			   		   , ICKEY
+			   	 FROM TWORK_MST_ICBARCODE
+			   	WHERE CTKEY   	= #{sctkey}
+	    		  AND OWKEY   	= #{sowkey}
+	      		  AND (ICKEY 	= #{icbarcode} OR BARCODE 	= #{icbarcode})
+			   ) ICB
+	        ON ICB.CTKEY 		= IC.CTKEY
+	       AND ICB.OWKEY 		= IC.OWKEY
+	       AND ICB.ICKEY 		= IC.ICKEY
+	 LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+	        ON IXT.CTKEY 		= IC.CTKEY
+	       AND IXT.OWKEY 		= IC.OWKEY
+	       AND IXT.ICKEY 		= IC.ICKEY
+	       AND IXT.ICUNITTYPECD = 'CTN'
+	     WHERE IH.CTKEY 	  	= #{sctkey}
+	       AND IH.OWKEY 	  	= #{sowkey}
+	       AND IH.IBEXPCTDATE 	BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+	       AND IH.IBSTATUSCD   != '99'
+	       AND CNTR.QTY > 0
+	  GROUP BY IH.CTKEY, IH.OWKEY, CNTR.ICKEY, IC.ICNM, CNTR.CNTRNO, IXT.ICUNITQTY
+	  ORDER BY CASE WHEN CNTR.CNTRNO = 'NA' THEN '1'
+	  			    ELSE CNTR.CNTRNO
+					 END
+			 , CNTR.ICKEY
+	</sql>
+
+	<!--2025-08-11-->
+	<select id="selectPlcmIcPopList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectPlcmIcPopList - 상품바코드 스캔 시 상품용기선택 팝업 조회  SQL */
+		<include refid="plcmIcPop"/>
+	</select>
+
+	<!--2025-08-11-->
+	<sql id="plcmBoxlabelPop">
+		/* 박스라벨바코드 스캔 시 상품용기선택 팝업 조회 */
+		SELECT IH.CTKEY
+		     , IH.OWKEY
+		     , IH.IBHDKEY
+		     , CNTR.IBDTKEY
+		     , CNTR.IBCFSEQNO
+			 , CNTR.EXPDATE
+		     , CNTR.ICKEY
+		     , IC.ICNM
+			 , CNTR.CNTRNO /* 용기번호 : 'NA'면 화면에서 '-' 로 표기 */
+			 , SUM(CNTR.QTY) AS EXQTY /* 예정수량 */
+			 , SUM(CNTR.CNFRMQTY) AS CNFRMQTY /* 적치수량 */
+			 , TRUNC(SUM(CNTR.QTY) / IXT.ICUNITQTY, 1) AS CTNEXQTY /* CTN예정수량 */
+			 , TRUNC(SUM(CNTR.CNFRMQTY) / IXT.ICUNITQTY, 1) AS CTNCNFRMQTY /* CTN적치수량 */
+			 , CASE WHEN COUNT(DISTINCT CNTR.ICKEY) OVER(PARTITION BY IH.CTKEY) > 1 THEN 'Y' ELSE 'N' END AS COMBNPCKGYN
+		  FROM TWORK_INFO_IB_HD IH
+ 	INNER JOIN TWORK_INFO_B2B_OB_LABEL OL
+ 	    	ON OL.CTKEY   			= IH.CTKEY
+ 	       AND OL.OWKEY   			= IH.OWKEY
+ 	       AND OL.IBHDKEY 			= IH.IBHDKEY
+	INNER JOIN TWORK_INFO_IBCF_CNTR CNTR
+	    	ON CNTR.CTKEY 			= OL.CTKEY
+	       AND CNTR.OWKEY 			= OL.OWKEY
+	       AND CNTR.IBHDKEY 		= OL.IBHDKEY
+	       AND CNTR.IBDTKEY 		= OL.IBDTKEY
+	       AND CNTR.ICKEY 			= OL.ICKEY
+	       AND CNTR.IBCFSEQNO 		= OL.IBCFSEQNO
+		   AND SUBSTR(COALESCE(CNTR.EXPDATE, '00000000'), 0, 8) = COALESCE(OL.EXPDATE, '00000000')
+    INNER JOIN TWORK_MST_IC IC /* 상품마스터 */
+        	ON IC.CTKEY 		    = CNTR.CTKEY
+           AND IC.OWKEY 		    = CNTR.OWKEY
+           AND IC.ICKEY 		    = CNTR.ICKEY
+           AND IC.UOM 			    = 'EA'
+     LEFT JOIN TWORK_MST_ICUTXTYPE IXT /* 상품단위유형 */
+		    ON IXT.CTKEY 	  	    = IC.CTKEY
+		   AND IXT.OWKEY 	  	    = IC.OWKEY
+		   AND IXT.ICKEY 	  	    = IC.ICKEY
+		   AND IXT.ICUNITTYPECD     = 'CTN'
+	     WHERE IH.CTKEY 	        = #{sctkey}
+	       AND IH.OWKEY 	        = #{sowkey}
+		   AND IH.IBEXPCTDATE		BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+	       AND IH.IBSTATUSCD		!= '99' /* 용기라벨정보가 NULL일 경우, 해당박스만이라도 조회되게끔 OR문 추가 */
+	       AND OL.BOXLABELNO 		= #{boxlabelno}
+	       AND CNTR.QTY > 0
+	  GROUP BY IH.CTKEY, IH.OWKEY, IH.IBHDKEY, CNTR.IBDTKEY, CNTR.IBCFSEQNO, CNTR.EXPDATE, CNTR.ICKEY, IC.ICNM, CNTR.CNTRNO, IXT.ICUNITQTY
+	  ORDER BY CASE WHEN CNTR.CNTRNO = 'NA' THEN '1'
+	  				ELSE CNTR.CNTRNO
+					 END
+	</sql>
+
+	<!--2025-08-11-->
+	<select id="selectPlcmBoxlabelPopList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectPlcmBoxlabelPopList - 박스라벨바코드 스캔 시 상품용기선택 팝업 조회  SQL */
+		<include refid="plcmBoxlabelPop"/>
+	</select>
+
+	<!--2025-08-11-->
+	<sql id="plcm">
+		/* 상품주문선택 팝업에서 선택 or 용기바코드 스캔 시 STEP1.리스트, STEP2.상세 조회 SQL */
+		<!--
+			박스라벨로 조회 시, 1박스 기준으로 강제 세팅하여 보여주려고 했으나, 적치 후 해당박스와 동일한 상품이 존재할 경우 적치가 안된것처럼 조회되어서 주석처리..
+		<if test='combo == "boxlabelno"'>
+			SELECT T.CTKEY
+			     , T.OWKEY
+			     , T.IBHDKEY
+			     , T.IBDTKEY
+			     , T.IBCFSEQNO /* 검수확정일련번호 */
+			     , T.MASICIBCFSEQNO /* 모상품입고확정일련번호 */
+				 , T.ACNM
+			     , T.ICKEY
+			     , T.ICNM
+			     , T.IVATKEY /* 재고속성코드 */
+				 , T.CTNICUNITQTY /* CTN단위수량 */
+			     , T.INNICUNITQTY /* INN단위수량 */
+			     , T.BFCHGCNTRNO
+				 , T.CNTRNO /* 용기번호 */
+				 , T.CNTRNOTEXT
+				 , T.TOCNTRNO
+				 , CASE WHEN T.EXQTY <![CDATA[>=]]>  T.CTNICUNITQTY THEN T.CTNICUNITQTY
+				      	ELSE 0
+				    END EXQTY /* STEP1. 예정수량 */
+				 , CASE WHEN T.EXQTY <![CDATA[>=]]>  T.CTNICUNITQTY THEN 0
+				      	ELSE T.CTNICUNITQTY
+				    END CNFRMQTY /* 확정수량 */
+				 , CASE WHEN T.CTNEXQTY  <![CDATA[<]]>  1 THEN 0
+				     	ELSE 1
+				    END CTNEXQTY/* STEP1. CTN예정수량 */
+				 , CASE WHEN T.CTNEXQTY <![CDATA[<]]>  1 THEN 1
+				     	ELSE 0
+				    END CTNCNFRMQTY 
+				 , CASE WHEN T.EXQTYTEXT <![CDATA[>]]> 0 THEN T.CTNICUNITQTY
+				 		ELSE 0
+				    END AS EXQTYTEXT
+				 , CASE WHEN T.EXQTYTEXT <![CDATA[>]]> 0 THEN 0
+				 		ELSE T.CTNICUNITQTY
+				    END AS CNFRMQTYTEXT
+				 , CASE WHEN T.CTNEXQTYTEXT <![CDATA[>]]> 0 THEN 1
+				 		ELSE 0
+				 	END AS CTNEXQTYTEXT
+				 , CASE WHEN T.CTNEXQTYTEXT <![CDATA[>]]> 0 THEN 0
+				 		ELSE 1
+				    END AS CTNCNFRMQTYTEXT
+				 /************ ******** 여기부터 STEP.2에서 보여줄 내용 ****** ***************/
+				 , T.REFLCKEY /* STEP2.대표로케이션 */
+				 , T.PLTAVYN
+				 , CASE WHEN T.REMAINQTY  <![CDATA[>=]]>  T.CTNICUNITQTY THEN T.CTNICUNITQTY
+				        ELSE 0
+				    END AS REMAINQTY /* STEP2.대기수량 */
+				 , CASE WHEN T.REMAINQTY  <![CDATA[>=]]>  T.CTNICUNITQTY THEN 1
+				 		ELSE 0
+				 	END AS CTNREMAINQTY
+				 , CASE WHEN T.REMAINQTY  <![CDATA[>=]]>  T.INNREMAINQTY THEN T.CTNICUNITQTY/T.INNICUNITQTY
+				 		ELSE 0
+				    END AS INNREMAINQTY
+				 , T.EXPCKYN /* STEP2.유통기한관리여부 */
+				 , T.EXPCNVRSNDAYS
+				 , T.ROBSORTERICYN /* STEP2.로봇가능여부 */
+				 , T.TOLCKEY /* STEP1.STEP2.로케이션입력 */
+				 , CASE WHEN T.INQTY <![CDATA[>=]]> T.CTNICUNITQTY THEN T.CTNICUNITQTY
+				      	ELSE 0
+				    END AS INQTY
+				 , CASE WHEN T.INQTY <![CDATA[>=]]> T.CTNICUNITQTY THEN 1
+				     	ELSE 0
+				    END AS CFCTNQTY
+				 , CASE WHEN T.INQTY <![CDATA[>=]]> T.CTNICUNITQTY THEN T.CTNICUNITQTY/T.INNICUNITQTY
+				     	ELSE 0
+				    END AS CFINNQTY
+				 , T.PRDCTDATE
+				 , T.EXPDATE/* 유통기한 */
+				 , T.IMGURL
+				 , T.IMMTIVCRITRT
+				 , T.IMMTIVDATE
+				 , T.OBIMPSCRITRT
+				 , T.OBIMPSCRITDATE
+				 , T.IMMTIVALERTYN
+				 , T.OBIMPSCRITDATEYN
+				 , T.ALERTYN
+				 , T.IVSERIALNO /* 용기번호 */
+		   		 , T.LCSTORGTYPECD /* 로케이션 보관 유형 */
+		   		 , T.IVCNTRMGMTYN /* 용기관리여부 */
+			FROM (
+		</if>
+		-->
+		   	SELECT IH.CTKEY
+		   	     , IH.OWKEY
+		   	     , IH.IBHDKEY
+		   	     , CNTR.IBDTKEY
+		   	     , CNTR.IBCFSEQNO /* 검수확정일련번호 */
+		   	     , CNTR.MASICIBCFSEQNO /* 모상품입고확정일련번호 */
+			   	 , IH.ACNM
+		   	     , CNTR.ICKEY
+		   	     , IC.ICNM
+		   	     , IC.ICGRPKEY
+		   	     , CNTR.IVATKEY /* 재고속성코드 */
+			  	 , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN단위수량 */
+		   	     , INN.ICUNITQTY AS INNICUNITQTY /* INN단위수량 */
+		   	     , CNTR.BFCHGCNTRNO
+			   	 , CNTR.CNTRNO /* 용기번호 */
+		   	     , CASE WHEN CNTR.CNTRNO IS NULL OR CNTR.CNTRNO = 'NA' THEN '-'
+		   	         	ELSE CNTR.CNTRNO
+		   	        END AS CNTRNOTEXT /* 화면표시용 용기번호 */
+		   	     , '' AS TOCNTRNO /* 저장 용기번호 */
+			   	 , (CNTR.QTY - CNTR.CNFRMQTY) AS EXQTY /* STEP1. 예정수량 */
+		   	     , CNTR.CNFRMQTY AS CNFRMQTY /* 확정수량 */
+		   	     , TRUNC((CNTR.QTY - CNTR.CNFRMQTY) / CTN.ICUNITQTY, 1) AS CTNEXQTY /* STEP1. CTN예정수량 */
+		         , TRUNC((CNTR.CNFRMQTY / CTN.ICUNITQTY), 1) AS CTNCNFRMQTY /* CTN 확정수량 */
+		   	     , CASE WHEN (CNTR.QTY - CNTR.CNFRMQTY) = 0 THEN 0
+		   	            ELSE CNTR.QTY
+		   	        END AS EXQTYTEXT /* 화면표시용 예정수량 */
+		   	     , CASE WHEN (CNTR.QTY - CNTR.CNFRMQTY) = 0 THEN 0
+		   	            ELSE CNTR.CNFRMQTY
+		   	        END AS CNFRMQTYTEXT /* 화면표시용 확정수량 */
+		   	     , CASE WHEN TRUNC((CNTR.QTY - CNTR.CNFRMQTY) / CTN.ICUNITQTY, 1) = 0 THEN 0
+		   	            ELSE TRUNC((CNTR.QTY / CTN.ICUNITQTY), 1)
+		   	        END AS CTNEXQTYTEXT /* 화면표시용 CTN 예정수량 */
+		   	     , CASE WHEN TRUNC((CNTR.QTY - CNTR.CNFRMQTY) / CTN.ICUNITQTY, 1) = 0 THEN 0
+		   	            ELSE TRUNC((CNTR.CNFRMQTY / CTN.ICUNITQTY), 1)
+		   	        END AS CTNCNFRMQTYTEXT /* 화면표시용 CTN 확정수량 */
+			   	 /************ ******** 여기부터 STEP.2에서 보여줄 내용 ****** ***************/
+			   	 , IC.LCKEY AS REFLCKEY /* STEP2.대표로케이션 */
+			   	 , CASE WHEN COALESCE(ZN.ZNKEY, 'Z') = 'H' THEN 'N' ELSE 'Y' END AS PLTAVYN
+			   	 , (CNTR.QTY - CNTR.CNFRMQTY) AS REMAINQTY /* STEP2.대기수량 */
+		   	     , TRUNC(((CNTR.QTY - CNTR.CNFRMQTY) / CTN.ICUNITQTY), 1) AS CTNREMAINQTY /* STEP2.CTN대기수량 */
+		   	     , TRUNC(((CNTR.QTY - CNTR.CNFRMQTY) / INN.ICUNITQTY), 1) AS INNREMAINQTY /* STEP2.INN대기수량 */
+			   	 , IC.EXPCKYN /* STEP2.유통기한관리여부 */
+				 , COALESCE(IC.EXPCNVRSNDAYS, 0) EXPCNVRSNDAYS
+			   	 , IC.ROBSORTERICYN /* STEP2.로봇가능여부 */
+			   	 , IC.LCKEY AS TOLCKEY /* STEP1.STEP2.로케이션입력 */
+			   	 , (CNTR.QTY - CNTR.CNFRMQTY) AS INQTY /* STEP1.STEP2.입력수량(DataSet에 자동컬럼생성을 위해 미리 0으로 조회) */
+			   	 , DATE_TRUNC('day', (CNTR.QTY - CNTR.CNFRMQTY) / CTN.ICUNITQTY)::DATE AS CFCTNQTY /* STEP1.STEP2.입력CTN수량 */
+			   	 , DATE_TRUNC('day', (CNTR.QTY - CNTR.CNFRMQTY) / INN.ICUNITQTY)::DATE AS CFINNQTY /* STEP2.입력INN수량 */
+			   	 , CNTR.PRDCTDATE /* STEP1.STEP2.생산일자(라디오가 생산일자일때 보여줌) - 저장시 유통기한 NULL */
+			   	 , CNTR.EXPDATE /* STEP1.STEP2.유통기한(라디오가 유통기한일때 보여줌) - 저장시 생산일자 NULL */
+			   	 , IC.IMGURL /* STEP2.상품이미지 */
+			   	 , COALESCE(IMMT.IMMTIVCRITRT, 0)/100 AS IMMTIVCRITRT
+    			 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E'
+    			        THEN TO_CHAR((TO_DATE(SUBSTR(CNTR.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS)
+    			                     + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+    			        ELSE NULL
+    			    END AS IMMTIVDATE /* 유통기한 임박일자 */
+    			 , COALESCE(IC.OBIMPSCRITRT, 0)/100 AS OBIMPSCRITRT
+    			 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E'
+    			        THEN TO_CHAR((TO_DATE(SUBSTR(CNTR.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS)
+    			                     + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0)/100))::DATE,'YYYYMMDD')||'000000'
+    			        ELSE NULL
+    			    END AS OBIMPSCRITDATE /* 출고불가 일자 */
+    			 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' AND SUBSTR(CNTR.EXPDATE,1,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+    			        THEN 'Y' ELSE 'N'
+    			    END AS IMMTIVALERTYN /* 임박재고 대상여부 */
+    			 , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' AND SUBSTR(CNTR.EXPDATE,1,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+    			        THEN 'Y' ELSE 'N'
+    			    END AS OBIMPSCRITDATEYN /* 출고불가 대상여부 */
+			   	 , CASE WHEN COALESCE(EA.WIDTH, 0) = 0 OR COALESCE(EA."DEPTH", 0) = 0 OR COALESCE(EA.HEIGHT, 0) = 0 OR COALESCE(EA.WEIGHT, 0) = 0 THEN 'Y'
+			   	 		WHEN IC.ROBSORTERICYN IS NULL OR IC.CUSHNMEPCKGYN IS NULL OR IC.BARCODEATTACHYN IS NULL OR IC.POLYBAGPCKGYN IS NULL OR IC.PCKGOVLPYN IS NULL THEN 'Y'
+			   	   		WHEN IC.PCKGOVLPYN = 'Y' AND (IC.OVLPPCKGWIDTHVAL+IC.OVLPPCKGDEPTHVAL+IC.OVLPPCKGHEIGHTVAL <![CDATA[<=]]> 0) THEN 'Y'
+			   	   		WHEN IC.PCKGFOLDYN IS NULL OR IC.HIGHFRQNCYDMGYN IS NULL THEN 'Y'
+			   	   		ELSE 'N'
+					END AS ALERTYN /* 체적대상 팝업여부 */
+		   		 , IVAT.IVSERIALNO /* 용기번호 */
+		   		 , LC.LCSTORGTYPECD /* 로케이션 보관 유형 */
+		   		 , LC.IVCNTRMGMTYN /* 용기관리여부 */
+		   		 , '(' || SUBSTR(IH.IBEXPCTDATE, 5,2) || '-' || SUBSTR(IH.IBEXPCTDATE, 7,2) || ')' AS IBEXPCTTEXT
+		   	  FROM TWORK_INFO_IB_HD IH
+		INNER JOIN TWORK_INFO_IBCF_CNTR CNTR
+		  	    ON CNTR.CTKEY 		  = IH.CTKEY
+		       AND CNTR.OWKEY 		  = IH.OWKEY
+		       AND CNTR.IBHDKEY 	  = IH.IBHDKEY
+		INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+		        ON IC.CTKEY 		  = CNTR.CTKEY
+		       AND IC.OWKEY 		  = CNTR.OWKEY
+		       AND IC.ICKEY 		  = CNTR.ICKEY
+		       AND IC.UOM 			  = 'EA'
+		 LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+		 	    ON CTN.CTKEY 		  = IC.CTKEY
+		 	   AND CTN.OWKEY 		  = IC.OWKEY
+		 	   AND CTN.ICKEY 		  = IC.ICKEY
+		 	   AND CTN.ICUNITTYPECD   = 'CTN'
+		 LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+		 	    ON INN.CTKEY 		  = IC.CTKEY
+		 	   AND INN.OWKEY 		  = IC.OWKEY
+		 	   AND INN.ICKEY 		  = IC.ICKEY
+		 	   AND INN.ICUNITTYPECD   = 'INN'
+		 LEFT JOIN TWORK_MST_ICUTXTYPE EA /* EA 상품단위유형 */
+		 	    ON EA.CTKEY 		  = IC.CTKEY
+		 	   AND EA.OWKEY 		  = IC.OWKEY
+		 	   AND EA.ICKEY 		  = IC.ICKEY
+		 	   AND EA.ICUNITTYPECD   = 'EA'
+		 LEFT JOIN TWORK_MST_LC LC
+		 	    ON CNTR.CTKEY  		  = LC.CTKEY
+		 	   AND IC.LCKEY 		  = LC.LCKEY
+		 LEFT JOIN TWORK_MST_ZN ZN
+		 		ON ZN.CTKEY = LC.CTKEY
+		 	   AND ZN.ZNKEY = LC.ZNKEY
+		 LEFT JOIN TWORK_INFO_IVATXLC IVAT
+		 	    ON IH.CTKEY           = IVAT.CTKEY
+		 	   AND IH.OWKEY 		  = IVAT.OWKEY
+		 	   AND LC.LCKEY 		  = IVAT.LCKEY
+		 	   AND CNTR.IVATKEY 	  = IVAT.IVATKEY
+		 	   AND IVAT.TOTQTY <![CDATA[>]]> 0
+	 	 LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+			    ON IMMT.CTKEY  		  = IC.CTKEY
+		 	 WHERE IH.CTKEY 		  = #{sctkey}
+		 	   AND IH.OWKEY 		  = #{sowkey}
+ 			   AND IH.IBEXPCTDATE 	  BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+		 	   AND IH.IBSTATUSCD 	  != '99'
+		 	   AND CNTR.CNTRNO 	      = #{cntrno}
+		 	   <if test='ickey != "" and ickey != null'>
+		 	     AND CNTR.ICKEY = #{ickey}
+		 	   </if>
+		 	   <if test='ibhdkey != "" and ibhdkey != null'>
+		 	     AND CNTR.IBHDKEY = #{ibhdkey}
+		 	   </if>
+		 	   <if test='ibdtkey != "" and ibdtkey != null'>
+		 	     AND CNTR.IBDTKEY = #{ibdtkey}
+		 	   </if>
+		 	   <if test='ibcfseqno != "" and ibcfseqno != null'>
+		 	     AND CNTR.IBCFSEQNO = #{ibcfseqno}
+		 	   </if>
+		 	 ORDER BY (CNTR.QTY-CNTR.CNFRMQTY) DESC
+					, CNTR.ICKEY, IH.IBHDKEY, CNTR.IBCFSEQNO
+		 	 <!--  
+	 	 	 <choose>
+				<when test='combo == "boxlabelno"'>
+		       	) T
+					ORDER BY REMAINQTY DESC
+	       		           , T.ICKEY, T.IBHDKEY, T.IBCFSEQNO
+				</when>
+				<otherwise>
+					ORDER BY (CNTR.QTY-CNTR.CNFRMQTY) DESC
+					       , CNTR.ICKEY, IH.IBHDKEY, CNTR.IBCFSEQNO
+				</otherwise>
+		 	 </choose>
+		 	 -->
+	</sql>
+
+	<!--2025-08-11-->
+	<select id="selectPlcmList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectPlcmList - /* 상품주문선택 팝업에서 선택 or 용기바코드 스캔 시 STEP1.리스트 , STEP2.상세 조회 */
+		<include refid="plcm"/>
+	</select>
+
+	<select id="selectPltRackList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectPltrackList - PLT랙 체크 후 용기번호 확인 */
+		SELECT 'NA' AS IVSERIALNO /* 다른파렛트를 그냥 적치할수 있도록 무조건 'NA'로 뽑도록 변경됨 IVAT.IVSERIALNO  */
+		  FROM TWORK_MST_LC LC
+	 LEFT JOIN TWORK_INFO_IVATXLC IVAT
+		   ON LC.CTKEY        = IVAT.CTKEY
+		  AND LC.LCKEY        = IVAT.LCKEY
+	      AND IVAT.TOTQTY <![CDATA[>]]> 0
+		WHERE LC.CTKEY 		  = #{ctkey}
+		  AND IVAT.OWKEY      = #{owkey}
+		  AND LC.LCKEY        = #{lckey}
+		  AND LC.LCSTORGTYPECD IN ('20', '30')
+		  AND LC.IVCNTRMGMTYN = 'Y'
+	</select>
+
+	<select id="selectLightRackList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectLightRackList - 경량랙 체크 */
+		SELECT *
+ 		  FROM TWORK_MST_LC
+ 		 WHERE CTKEY = #{ctkey}
+ 		   AND LCKEY = #{lckey}
+ 		   AND LCSTORGTYPECD IN ('40', '50', '60', '70')
+	</select>
+	
+	<select id="selectLcInfo" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectLcInfo - 로케이션정보조회 */
+		SELECT *
+ 		  FROM TWORK_MST_LC
+ 		 WHERE CTKEY = #{sctkey}
+ 		   AND LCKEY = #{lckey}
+	</select>
+
+	<!--2025-08-11-->
+	<sql id="plcmCnl">
+		/* 상품주문선택 팝업에서 선택 시 STEP3.취소리스트 조회 */
+		SELECT '0' AS CHK
+		     , IH.CTKEY
+		     , IH.OWKEY
+		     , IH.ACNM
+		     , IH.IBHDKEY
+		     , PLCM.IBDTKEY
+			 , PLCM.IBCFSEQNO /* 검수확정일련번호 */
+		     , PLCM.IBCFCNTRNO /* 입고확정용기번호 */
+		     , PLCM.MASICIBCFSEQNO /* 모상품입고확정일련번호 */
+			 , PLCM.SEQNO /* 적치일련번호(검수했을때의 유통기한이 적치할때 2개로 찢어질경우 1,2..) */
+			 , PLCM.ICKEY, IC.ICNM, IC.ICGRPKEY, PLCM.IVATKEY /* 재고속성코드 */
+		     , PLCM.PLCMDATE /* 적치일자 */
+		     , PLCM.PRDCTDATE /* 생산일자 */
+		     , PLCM.EXPDATE /* 유통기한 */
+			 , PLCM.LCKEY /* 로케이션 */
+			 , PLCM.CNFRMQTY /* 적치수량 */
+			 , TRUNC((PLCM.CNFRMQTY / CTN.ICUNITQTY), 1) AS CTNCNFRMQTY /* CTN적치수량 */
+			 , CASE WHEN IH.IBSTATUSCD IN ('91', '99')
+			     	THEN 'N'
+			     	ELSE 'Y'
+			    END CNLABLEYN /* 취소가능여부 'Y':보임 'N':안보임*/
+		  FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IB_PLCM_DT PLCM
+			ON PLCM.CTKEY 		  = IH.CTKEY
+		   AND PLCM.OWKEY 		  = IH.OWKEY
+	       AND PLCM.IBHDKEY 	  = IH.IBHDKEY
+    INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+			ON IC.CTKEY 		  = PLCM.CTKEY
+		   AND IC.OWKEY 		  = PLCM.OWKEY
+		   AND IC.ICKEY 		  = PLCM.ICKEY
+		   AND IC.UOM 			  = 'EA'
+	 LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+		    ON CTN.CTKEY 		  = IC.CTKEY
+		   AND CTN.OWKEY 		  = IC.OWKEY
+		   AND CTN.ICKEY 		  = IC.ICKEY
+		   AND CTN.ICUNITTYPECD   = 'CTN'
+		 WHERE IH.CTKEY 		  = #{sctkey}
+		   AND IH.OWKEY 		  = #{sowkey}
+		   AND IH.IBEXPCTDATE 	  BETWEEN RPAD(#{ibexpctdate}, 14, '0') AND RPAD(TO_CHAR(TO_DATE(#{ibexpctdate}, 'YYYYMMDDHH24MISS')+3, 'YYYYMMDD'), 14, '0')
+		   AND PLCM.ICKEY 		  = #{ickey}
+	  ORDER BY CASE WHEN IH.IBSTATUSCD IN ('91', '99') THEN 'N'
+	  				ELSE 'Y'
+			    END DESC
+		 	 , PLCM.PLCMDATE DESC
+			 , IH.IBHDKEY, PLCM.LCKEY, PLCM.EXPDATE, PLCM.IBCFSEQNO
+
+	</sql>
+
+	<!--2025-08-11-->
+	<select id="selectPlcmCnlList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectPlcmCnlList - /* 상품주문선택 팝업에서 선택 시 STEP3.취소리스트 조회 SQL */
+		<include refid="plcmCnl"/>
+	</select>
+
+	<!--2025-08-11-->
+	<sql id="recommededLc">
+		/* PLT 추천로케이션팝업 - 추천로케이션이 없을때 */
+		SELECT *
+		  FROM ( 
+				SELECT LC.CTKEY
+				     , LC.LCKEY
+				     , IL.IVSERIALNO
+					 , LC.LCKEY AS REFLCKEY
+					 , 0 AS ORDERBY
+				  FROM TWORK_MST_LC LC
+				  LEFT JOIN (
+							  SELECT CTKEY
+							       , LCKEY
+							       , MAX(CASE WHEN IVSERIALNO = 'NA'
+											  THEN ''
+							   	        	  ELSE IVSERIALNO
+							   	          END) AS IVSERIALNO
+							    FROM TWORK_INFO_IVATXLC
+							   WHERE CTKEY = #{sctkey}
+							     AND TOTQTY > 0
+						       GROUP BY CTKEY, OWKEY, LCKEY
+						  	) IL
+						 ON IL.CTKEY = LC.CTKEY
+						AND IL.LCKEY = LC.LCKEY
+				 WHERE LC.CTKEY = #{sctkey}
+				   AND LC.LCKEY IN (SELECT LCKEY
+									  FROM TWORK_MST_IC
+									 WHERE CTKEY = #{sctkey}
+									   AND OWKEY = #{sowkey}
+									   AND ICKEY = #{ickey})
+			UNION ALL
+				SELECT LC.CTKEY
+				     , LC.LCKEY
+				     , IL.IVSERIALNO
+					 , NULL AS REFLCKEY
+					 , 1 AS ORDERBY
+				  FROM TWORK_MST_LC LC
+			 	  LEFT JOIN (
+							   SELECT CTKEY
+							        , LCKEY
+							   	    , MAX(CASE WHEN IVSERIALNO = 'NA'
+							   	        	   THEN ''
+							   	        	   ELSE IVSERIALNO
+							   	           END) AS IVSERIALNO
+							     FROM TWORK_INFO_IVATXLC
+							    WHERE CTKEY = #{sctkey}
+							      AND TOTQTY > 0
+						        GROUP BY CTKEY, OWKEY, LCKEY
+							) IL
+					     ON IL.CTKEY = LC.CTKEY
+					    AND IL.LCKEY = LC.LCKEY
+				 WHERE LC.CTKEY = #{sctkey}
+				   AND LC.LCSTORGTYPECD IN ('20', '30')
+				   AND LC.LCTYPECD = '90'
+				   AND LC.LCKEY NOT IN (SELECT COALESCE(LCKEY, ' ')
+										  FROM TWORK_MST_IC
+										 WHERE CTKEY = #{sctkey}
+										   AND OWKEY = #{sowkey}
+										   AND ICKEY = #{ickey})
+				<if test='lckey != "" and lckey != null'>
+					AND LC.LCKEY LIKE #{lckey} || '%'
+				</if>
+			 ) T
+		 ORDER BY T.ORDERBY, T.LCKEY
+	</sql>
+
+	<!--2025-08-11-->
+	<select id="selectRecommededLcList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectRecommededLcList - /* PLT 추천로케이션팝업 임시조회쿼리 */
+		<include refid="recommededLc"/>
+	</select>
+
+	<select id="selectRegReturnPhotoList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectRegReturnPhotoList - 반품사진등록 대상 조회 */
+		SELECT DISTINCT
+			   IH.CTKEY
+			 , IH.OWKEY
+			 , IH.EXTORDERKEY /* 외부주문번호 : 클레임번호 */
+			 , IBW.WBLNO /* 운송장번호 */
+			 , IBW.FILEKEY
+			 , IBW.IBHDKEY
+			 , IBW.SEQNO
+			 , CASE WHEN (
+						  SELECT COUNT(*)
+							FROM TWORK_INFO_FILE
+						   WHERE CTKEY = IBW.CTKEY
+						     AND FILEKEY = IBW.FILEKEY
+						 ) <![CDATA[ > ]]> 0
+					THEN 'Y'
+					ELSE 'N'
+				END AS FILEYN /* 사진등록여부 */
+		  FROM TWORK_INFO_IB_HD IH
+	INNER JOIN TWORK_INFO_IBRET_WBLNO IBW
+	        ON IBW.CTKEY   		 = IH.CTKEY
+	       AND IBW.OWKEY   		 = IH.OWKEY
+	       AND IBW.IBHDKEY 		 = IH.IBHDKEY
+		 WHERE IH.CTKEY             = #{sctkey}
+		   AND IH.OWKEY             = #{sowkey}
+		   AND IH.IBHDTYPECD        = '50'               /* 50: 반품입고 */
+		   AND IBW.WBLDIVCD         = '20'               /* 20: 상품회수지시(반품) */
+		   AND IBW.WBLPRGRSTATUSCD  = '10'       		 /* 10:회수중 */
+		   /* 검색 조건 (운송장번호) */
+		   AND IBW.WBLNO = #{value}
+		 ORDER BY IH.EXTORDERKEY, IBW.WBLNO
+	</select>
+
+	<select id="selectRegPhotoList" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectRegPhotoList - 등록사진 조회 */
+		/* 등록사진 팝업 조회 */
+		SELECT DISTINCT
+			   FI.CTKEY
+			 , FI.FILEKEY /* 파일키번호 */
+			 , FI.FILESEQNO /* 파일일련번호 */
+			 , FI.ORGFILENM || '.' || FI.FILEEXTS AS FILENAME /* 파일명: ex) 사진.jpg */
+			 , FI.FILEPATH /* 파일경로 */
+			 , FI.FILEEXTS /* 파일확장자 */
+			 , FI.CMT AS IMGURL /* 이미지 url */
+		  FROM TWORK_INFO_IBRET_WBLNO IBW
+    INNER JOIN TWORK_INFO_FILE FI
+            ON IBW.CTKEY   = FI.CTKEY
+           AND IBW.FILEKEY = FI.FILEKEY
+		 WHERE IBW.CTKEY   = #{ctkey}
+		   AND IBW.FILEKEY = #{filekey}
+	  ORDER BY FI.FILESEQNO
+	</select>
+
+	<select id="selectFilekey" resultType="camelMap">
+		/* wms-pda-inbound-sql-oracle.xml - selectFilekey */
+		/* 해당 운송장번호에 파일키번호 존재하는지 체크 */
+		SELECT *
+          FROM TWORK_INFO_IBRET_WBLNO
+ 		 WHERE CTKEY = #{ctkey}
+ 		   AND OWKEY = #{owkey}
+ 		   AND WBLNO = #{wblno}
+ 		   AND FILEKEY IS NOT NULL
+	</select>
+
+	<select id="selectNextFileseqno" resultType="java.lang.Integer">
+	/* wms-pda-inbound-sql-oracle.xml - selectMaxFileseqno */
+	SELECT COALESCE(MAX(FILESEQNO) + 1, 1) AS NEXTFILESEQNO
+	  FROM TWORK_INFO_FILE
+	 WHERE CTKEY   = #{ctkey}
+	   AND FILEKEY = #{filekey}
+	</select>
+
+	<update id="updateFilekey">
+		/* wms-pda-inbound-sql-oracle.xml - updateFilekey */
+		UPDATE TWORK_INFO_IBRET_WBLNO
+		   SET FILEKEY     = #{filekey}
+		     , UPDATEDATE  = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		     , UPDATEURKEY = #{updateurkey}
+		 WHERE CTKEY	   = #{ctkey}
+		   AND OWKEY       = #{owkey}
+		   AND WBLNO	   = #{wblno}
+	</update>
+
+	<delete id="deleteImage">
+		/* wms-pda-inbound-sql-oracle.xml - deleteImage */
+		DELETE FROM TWORK_INFO_FILE
+		      WHERE CTKEY  	  = #{ctkey}
+		        AND FILEKEY	  = #{filekey}
+				AND FILESEQNO = #{fileseqno}
+	</delete>
+
+</mapper>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.IvatCarryoverMapper">
+	
+	<!-- 당일 마감재고 여부 조회 -->
+	<select id="selectIvatCarryoverCount" resultType="int">
+		/* IvatCarryoverMapper.selectIvatCarryoverCount 당일 마감재고 여부 조회 */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IVATXLCXULC_CARRYOVER
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IVATSTANDARDDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+	</select>
+	
+	<!-- 당일 마감재고 생성 -->
+	<insert id="insertIvatCarryover">
+		/* IvatCarryoverMapper.insertIvatCarryover 당일 마감재고 생성 */
+		INSERT INTO TWORK_INFO_IVATXLCXULC_CARRYOVER
+		(
+		    IVATSTANDARDDATE   /* 재고기준일 */
+		  , CTKEY      /* 센터코드 */
+		  , IVATKEY    /* 재고속성키 */
+		  , LCKEY      /* 로케이션코드 */
+		  , ULCKEY     /* ULC코드 */
+		  , OWKEY      /* 화주코드 */
+		  , ICKEY      /* 상품코드 */
+		  , TTQTY      /* 총수량 */
+		  , AVQTY      /* 가용수량 */
+		  , ALQTY      /* 할당수량 */
+		  , PIQTY      /* 피킹수량 */
+		  , PAQTY      /* 패킹수량 */
+		  , LOQTY      /* 상차수량 */
+		  , HOQTY      /* 보류수량 */
+		  , LOGGRPCD   /* 상품온도구분 */
+		  , MTLSTATUS  /* 미트론 재고상태값(10:정상,20:보류) */
+		  , MTLHOLDURKEY    /* 출고보류처리자 */
+		  , MTLHOLDDATE     /* 출고보류처리일시 */
+		  , MTLRELURKEY     /* 출고보류해제처리자 */
+		  , MTLRELDATE      /* 출고보류해제처리일시 */
+		  , ILBHSKEY        /* 입고라벨 출력이력 코드 */
+		  , METHOLDBANKCD   /* 출고보류 금융기관 */
+		  , METHOLDCONTDT   /* 출고보류 금융기관 심사일자 */
+		  , UPDATEKEY       /* 변경KEY */
+		  , MV_REASONTYPE   /* 보류사유유형 */
+		  , IVATSTATUS      /* 재고속성상태 */
+		  , INSERTDATE      /* 등록일시 */
+		  , INSERTURKEY     /* 등록사용자ID */
+		  , UPDATEDATE      /* 수정일시 */
+		  , UPDATEURKEY     /* 수정사용자ID */
+		)
+		SELECT  TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD') AS IVATSTANDARDDATE
+		      , CTKEY
+			  , IVATKEY
+			  , LCKEY
+			  , ULCKEY
+			  , OWKEY
+			  , ICKEY
+			  , TTQTY
+			  , AVQTY
+			  , ALQTY
+			  , PIQTY
+			  , PAQTY
+			  , LOQTY
+			  , HOQTY
+			  , LOGGRPCD
+			  , MTLSTATUS
+			  , MTLHOLDURKEY
+			  , MTLHOLDDATE
+			  , MTLRELURKEY
+			  , MTLRELDATE
+			  , ILBHSKEY
+			  , METHOLDBANKCD
+			  , METHOLDCONTDT
+			  , UPDATEKEY
+			  , MV_REASONTYPE
+			  , IVATSTATUS
+			  , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS INSERTDATE
+			  , 'BATCH' AS INSERTURKEY
+			  , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS UPDATEDATE
+			  , 'BATCH' AS UPDATEURKEY
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	</insert>
+	
+	
+	<!-- 당일 마감재고 삭제 -->
+	<delete id="deleteIvatCarryover">
+		/* IvatCarryoverMapper.deleteIvatCarryover 당일 마감재고 삭제 */
+		DELETE
+		  FROM TWORK_INFO_IVATXLCXULC_CARRYOVER
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IVATSTANDARDDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+	</delete>
+	
+</mapper>

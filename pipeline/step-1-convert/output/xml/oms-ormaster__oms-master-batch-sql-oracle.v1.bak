@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.BatchManagementMapper">
+	
+	<select id="selectBatchInfoList" parameterType="map" resultType="camelMap">
+		/* adm-master-batch-sql-oracle.xml - selectBatchInfoList */
+		SELECT APKEY
+		     , BATID
+			 , BATNM
+			 , BATDESCRPT
+			 , BATJOBCLASSNM
+			 , BATEXECSTADATE
+			 , BATEXECENDDATE
+			 , CRONEXPSMETH
+			 , BATPARAM
+			 , ERRSNDCD
+			 , BATEXECYN
+			 , COALESCE(C.STATE, COALESCE(D.STATE, B.TRIGGER_STATE)) AS STATUS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM BATCH_MANAGE A
+		  LEFT JOIN QRTZ_TRIGGERS B
+				 ON A.BATID || 'Trigger' = B.TRIGGER_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS C
+		  		 ON B.TRIGGER_NAME = C.TRIGGER_NAME
+				AND A.BATID || 'Job' = C.JOB_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS D
+				 ON A.BATID || 'Job' = D.JOB_NAME
+				AND A.BATID || 'Trigger' != D.TRIGGER_NAME
+		 WHERE 1 = 1
+		ORDER BY APKEY, BATID
+	</select>
+
+	<select id="selectBatchInfo" parameterType="java.lang.String" resultType="camelMap">
+		/* adm-master-batch-sql-oracle.xml - selectBatchInfo */
+		SELECT APKEY
+		     , BATID
+			 , BATNM
+			 , BATDESCRPT
+			 , BATJOBCLASSNM
+			 , BATEXECSTADATE
+			 , BATEXECENDDATE
+			 , CRONEXPSMETH
+			 , BATPARAM
+			 , ERRSNDCD
+			 , BATEXECYN
+			 , COALESCE(C.STATE, COALESCE(D.STATE, B.TRIGGER_STATE)) AS STATUS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM BATCH_MANAGE A
+		  LEFT JOIN QRTZ_TRIGGERS B
+				 ON A.BATID || 'Trigger' = B.TRIGGER_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS C
+				 ON B.TRIGGER_NAME = C.TRIGGER_NAME
+				AND A.BATID || 'Job' = C.JOB_NAME
+		  LEFT JOIN QRTZ_FIRED_TRIGGERS D
+				 ON A.BATID || 'Job' = D.JOB_NAME
+				AND A.BATID || 'Trigger' != D.TRIGGER_NAME
+		  WHERE 1 = 1
+		    AND A.BATID = #{batid}
+	</select>
+
+</mapper>

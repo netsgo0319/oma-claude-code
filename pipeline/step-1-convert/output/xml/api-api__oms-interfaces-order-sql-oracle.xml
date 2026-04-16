@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.api.order.in.mapper.DoRecvApiMapper">
+
+	<!-- 복호화 -->
+    <select id="decryptMal" parameterType="map" resultType="string">
+        SELECT pkg_crypto$decrypt(#{str}, #{key}) AS decrypt
+    </select>
+
+    <!-- 암호화 -->
+    <select id="encryptOms" parameterType="map" resultType="string">
+        SELECT pkg_crypto$encrypt(#{str}, #{key}) AS encrypt
+    </select>
+
+	<select id="selectStockList" resultType="com.daiso.api.order.dto.StockGetApiResponseDTO$StockListDTO">
+		/* oms-interfaces-order-sql-oracle selectStockList */
+		WITH WITH_STOCK AS (
+		    SELECT  I.LCKEY AS LOCATION    /*로케이션*/
+		         , I.ICKEY AS MATNR    /*자재번호*/
+		         , SUBSTR(IV.EXPIREDATE,1,8) AS EXPIRY_DT  /* 소비기한(유통기한) */
+		         , IC.ICNM AS MATNR_N    /*자재내역*/
+		         , I.LCKEY AS LOCATION_N    /*로케이션명*/
+		         , I.CTKEY AS PPART_CD    /*내부코드*/
+		         , SUM(COALESCE(I.TTQTY, 0))  AS CURR_ST    /*재고*/
+		         , SUM(COALESCE(I.AVQTY, 0)) AS AVAR_ST    /*가용수량 20241022 sap요청에 의해 가용+할당+보류*/
+		         , SUM(COALESCE(I.ALQTY, 0))  AS ASSI_ST    /*할당수량*/
+		         , SUM(COALESCE(I.HOQTY, 0)) AS BLOCK_ST    /*보류수량*/
+		      FROM TWORK_INFO_IVATXLCXULC I
+		      JOIN TWORK_INFO_IVAT IV
+		        ON I.CTKEY = IV.CTKEY 
+		       AND I.OWKEY = IV.OWKEY 
+		       AND I.IVATKEY = IV.IVATKEY 
+		       AND I.ICKEY = IV.ICKEY 
+		      JOIN TWORK_MST_LC L
+		        ON I.CTKEY = L.CTKEY 
+		       AND I.LCKEY = L.LCKEY 
+		      JOIN TADMIN_MST_IC IC
+		        ON I.OWKEY = IC.OWKEY 
+		       AND I.ICKEY = IC.ICKEY
+		      JOIN TADMIN_MST_ICUTXTYPE IT
+		        ON IT.OWKEY = IC.OWKEY 
+		       AND IT.ICUNITKEY = IC.ICUTKEY
+		       AND IT.ICUNITTYPE = IV.UOM
+		     WHERE I.CTKEY = #{ctkey}
+		       AND I.OWKEY = #{owkey}    
+		       AND I.TTQTY > 0
+		     GROUP BY
+		           I.CTKEY 
+		         , I.OWKEY 
+		         , I.ICKEY 
+		         , IC.ICNM
+		         , I.LCKEY 
+		         , SUBSTR(IV.EXPIREDATE,1,8)
+		         , IV.UOM
+		         , IT.ICUNITQTY
+		)
+		SELECT #{baseDt}          AS RECDAT    /*수신일*/
+		     , #{plantCode}       AS WERKS    /*플랜트*/
+		     , #{slocationCode}   AS LGORT    /*저장위치*/ 
+		     , LOCATION    /*로케이션*/
+		     , MATNR    /*자재번호*/
+		     , EXPIRY_DT  /* 소비기한(유통기한) */
+		     , INVN_ST_CD       /* 가용 */
+		     , MATNR_N    /*자재내역*/
+		     , LOCATION_N    /*로케이션명*/
+		     , PPART_CD    /*내부코드*/
+		     , AVAR_ST AS CURR_ST    /*재고*/
+		     , AVAR_ST    /*가용수량 20241022 sap요청에 의해 가용+할당+보류*/
+		     , 0 AS ASSI_ST    /*할당수량*/
+		     , 0 AS BLOCK_ST    /*보류수량*/
+		     , #{eaexternuom} AS ISU_QTY  /* 재고단위 WMS무조건 EA로 관리 */
+		  FROM (
+		      SELECT LOCATION    /*로케이션*/
+		           , MATNR    /*자재번호*/
+		           , EXPIRY_DT  /* 소비기한(유통기한) */
+		           , '10' AS INVN_ST_CD       /* 가용 */
+		           , MATNR_N    /*자재내역*/
+		           , LOCATION_N    /*로케이션명*/
+		           , PPART_CD    /*내부코드*/
+		           , AVAR_ST AS CURR_ST    /*재고*/
+		           , AVAR_ST    /*가용수량 20241022 sap요청에 의해 가용+할당+보류*/
+		        FROM WITH_STOCK
+		       WHERE AVAR_ST > 0
+		      UNION ALL
+		      SELECT LOCATION    /*로케이션*/
+		           , MATNR    /*자재번호*/
+		           , EXPIRY_DT  /* 소비기한(유통기한) */
+		           , '20' AS INVN_ST_CD       /* 가용 */
+		           , MATNR_N    /*자재내역*/
+		           , LOCATION_N    /*로케이션명*/
+		           , PPART_CD    /*내부코드*/
+		           , ASSI_ST AS CURR_ST    /*재고*/
+		           , ASSI_ST AS AVAR_ST    /*가용수량 20241022 sap요청에 의해 가용+할당+보류*/
+		        FROM WITH_STOCK
+		       WHERE ASSI_ST > 0
+		      UNION ALL
+		      SELECT LOCATION    /*로케이션*/
+		           , MATNR    /*자재번호*/
+		           , EXPIRY_DT  /* 소비기한(유통기한) */
+		           , '70' AS INVN_ST_CD       /* 가용 */
+		           , MATNR_N    /*자재내역*/
+		           , LOCATION_N    /*로케이션명*/
+		           , PPART_CD    /*내부코드*/
+		           , BLOCK_ST AS CURR_ST    /*재고*/
+		           , BLOCK_ST AS AVAR_ST    /*가용수량 20241022 sap요청에 의해 가용+할당+보류*/
+		        FROM WITH_STOCK
+		       WHERE BLOCK_ST > 0
+		       ) T
+	</select>
+
+	<insert id="insertTorderIntfWmsRenewal" parameterType="com.daiso.api.order.dto.RenewalDirectiveDTO$RenewalDirectiveWMSVO">
+		/* oms-interfaces-order-sql-oracle insertTorderIntfWmsRenewal */
+		INSERT INTO TORDER_INTF_WMS_RENEWAL (
+			INSERTSYSTM,
+			REQUESTDT,
+			IFID,
+			OWKEY,
+			CTKEY,
+			ISTREGDATE,
+			BFCHGICKEY,
+			AFCHGICKEY,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+			)
+			VALUES (
+			#{insertsystm},
+			#{requestdt},
+			#{ifid},
+			#{owkey},
+			#{ctkey},
+			#{istregdate},
+			#{bfchgickey},
+			#{afchgickey},
+			TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'api-service',
+			TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'api-service'
+		)
+	</insert>
+
+
+	<insert id="insertTorderIntfWmsB2bOrdOrder" 	parameterType="com.daiso.api.order.dto.WmsSoAllocB2BConfirmDTO$OrgDataVO">
+		/* oms-interfaces-order-sql-oracle insertTorderIntfWmsB2bOrdOrder */
+		INSERT INTO TORDER_INTF_WMS_B2BORDORDER (
+			INSERTSYSTM,
+			CTKEY,
+			OWKEY,
+			SOHDKEY,
+			ICKEY,
+			QTY,
+			TRANID,
+			IFID,
+			INSERTDATE,
+			INSERTURKEY,
+			UPDATEDATE,
+			UPDATEURKEY
+		)
+		VALUES (
+			#{insertSystm},
+			#{ctKey},
+			#{owKey},
+			#{soHdKey},
+			#{icKey},
+			#{qty},
+			#{tranId},
+			#{ifId},
+			TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'api-service',
+			TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'api-service'
+		)
+	</insert>
+
+	<select id="getMngCtkey"  resultType="java.lang.String">
+		/* oms-interfaces-order-sql-oracle getMngCtkey */
+		SELECT CTKEY
+		FROM TORDER_MST_CT
+		WHERE MANAGEMENTYN ='Y'
+		  AND DELYN = 'N'
+	</select>
+</mapper>

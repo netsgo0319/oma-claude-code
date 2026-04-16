@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.outbound.mapper.ObMoveObMapper">
+	<sql id="selectMoveObLblSql">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblSql - 이고 출고 - 출고 라벨 정보 조회 */
+		SELECT 0 AS CHK							 /*체크 박스*/
+			 , OBHD.CTKEY                        /*센터 코드*/
+             , OBHD.OWKEY                        /*화주 코드*/
+			 , OBHD.OBHDDAY                      /*출고 헤더 일자*/
+			 , OBHD.TOCTKEY                      /*TO 센터 코드*/
+        	 , OBHD.ORHDKEY						 /*SO 주문 번호*/
+			 , OBHD.OBORDKEY                     /*오더 코드*/
+             , OBHD.OBHDKEY                      /*릴리즈코드*/
+			 , OBHD.OBHDTYPECD                   /*출고 헤더 유형 코드*/
+			 , OBHD.OBSTATUSCD                   /*출고 상태 코드*/
+             , MC.MVOBGRPNO                      /*이고 그룹 번호*/
+             , MC.CNFRMYN                        /*확정여부*/
+			 , MC.CNTRBARCODE                    /*용기 바코드*/
+			 , MC.CNTRWKURKEY 					 /*용기 작업자*/
+			 , MC.UPDATEDATE 					 /*수정일시*/
+			 , CNTR.CNTRDIVCD                    /*용기구분코드*/
+             , CT.CTNM                           /*센터명*/
+             , TOCT.CTNM AS TOCTNM               /*TO센터명*/
+			 , COUNT(DISTINCT MCDT.ICKEY) AS SKU /*상품 최소 분류 단위*/
+			 , SUM(MCDT.QTY) AS EA               /*총수량*/
+			 , SUM(MCDT.QTY * IC.SLPRC) AS AMT   /*총금액*/
+		  FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+		 INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+			ON OBHD.CTKEY = MC.CTKEY
+		   AND OBHD.OWKEY = MC.OWKEY
+		   AND OBHD.OBHDKEY = MC.OBHDKEY
+		 INNER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세 정보*/
+			ON MC.CTKEY = MCDT.CTKEY
+		   AND MC.OWKEY = MCDT.OWKEY
+		   AND MC.OBHDKEY = MCDT.OBHDKEY
+		   AND MC.CNTRBARCODE = MCDT.CNTRBARCODE
+		 INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+		    ON MCDT.CTKEY = IC.CTKEY
+		   AND MCDT.OWKEY = IC.OWKEY
+		   AND MCDT.ICKEY = IC.ICKEY
+		 LEFT JOIN TWORK_MST_CNTR CNTR /*용기마스터*/
+			ON MCDT.CTKEY = CNTR.CTKEY
+		   AND MCDT.CNTRBARCODE = CNTR.CNTRBARCODE
+		 INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+			ON OBHD.CTKEY = CT.CTKEY
+         INNER JOIN TWORK_MST_CT TOCT /*센터 마스터 TOCTKEY*/
+			ON OBHD.TOCTKEY = TOCT.CTKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			   #{SEARCH_CONDITION}
+			</if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(condList)">
+                <foreach collection="condList" item="cond" open="AND OBHD.OBSTATUSCD IN (" separator="," close=")">
+               #{cond}
+                </foreach>
+            </if>
+		   AND OBHD.OBHDTYPECD = #{obhdtypecd}
+           AND OBHD.CNTRWKCOMPLYN = 'Y'
+		   AND MC.CNTRDDLNYN = 'Y'
+		</where>
+		 GROUP BY
+			   OBHD.CTKEY      /*센터 코드*/
+             , OBHD.OWKEY      /*화주 코드*/
+			 , OBHD.OBHDDAY    /*출고 헤더 일자*/
+			 , OBHD.TOCTKEY    /*TO 센터 코드*/
+        	 , OBHD.ORHDKEY	   /*SO 주문 번호*/
+			 , OBHD.OBORDKEY   /*오더 코드*/
+             , OBHD.OBHDKEY    /*릴리즈코드*/
+			 , OBHD.OBHDTYPECD /*출고 헤더 유형 코드*/
+			 , OBHD.OBSTATUSCD /*출고 상태 코드*/
+             , MC.MVOBGRPNO    /*이고 그룹 번호*/
+             , MC.CNFRMYN      /*확정여부*/
+			 , MC.CNTRBARCODE  /*용기 바코드*/
+			 , MC.CNTRWKURKEY  /*용기 작업자*/
+			 , MC.UPDATEDATE   /*수정일시*/
+			 , CNTR.CNTRDIVCD  /*용기구분코드*/
+             , CT.CTNM         /*센터명*/
+             , TOCT.CTNM       /*TO센터명*/
+	</sql>
+
+	<select id="selectMoveObLblCount" resultType="java.lang.Integer">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblCount - 이고 출고 - 출고 라벨 정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectMoveObLblSql"/>
+		)
+	</select>
+
+	<select id="selectMoveObLblList" resultType="camelMap">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblList - 이고 출고 - 출고 라벨 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		<include refid="selectMoveObLblSql"/>
+		)
+        ORDER BY OBHDDAY DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <sql id="selectMoveObLblDtSql">
+        /* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblDtSql - 이고 출고 - 출고 라벨 상세정보 조회 */
+        SELECT MCDT.CTKEY				/*센터 코드*/
+             , MCDT.OWKEY				/*화주 코드*/
+             , OBDT.OBORDKEY			/*오더코드*/
+             , MCDT.CNTRBARCODE			/*용기 바코드*/
+             , OBDT.OBORDDTKEY			/*오더 상세 코드*/
+             , ASRT.ASRTMASICKEY 		/*아소트 모상품 코드*/
+             , ASRTIC.ICNM AS ASRTMASICNM /*아소트 모상품 명*/
+             , IC.ASRTYN				/*아소트여부*/
+             , MCDT.ICKEY				/*상품코드*/
+             , IC.ICNM					/*상품명*/
+             , MCDT.IVATKEY				/*재고 속성 코드*/
+             , MCDT.UOM					/*단위*/
+             , MCDT.QTY					/*수량*/
+             , COALESCE(ROUND((MCDT.QTY / INN.ICUNITQTY), 2), 0) AS INNQTY /*중포수량*/
+             , COALESCE(ROUND((MCDT.QTY / CTN.ICUNITQTY), 2), 0) AS CTNQTY /*카톤수량*/
+             , COALESCE(ROUND((MCDT.QTY / PLT.ICUNITQTY), 2), 0) AS PLTQTY  /*파레트수량*/
+             , COALESCE((MCDT.QTY * IC.SLPRC), 0) AS AMT /*금액*/
+             , MCDT.INSERTDATE          /*입력일시*/
+             , MCDT.INSERTURKEY         /*입력자*/
+             , MCDT.UPDATEDATE          /*수정일시*/
+             , MCDT.UPDATEURKEY         /*수정자*/
+          FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+         INNER JOIN TWORK_INFO_MVOB_CNTR MC	/*이고 용기 정보*/
+            ON OBHD.CTKEY = MC.CTKEY
+           AND OBHD.OWKEY = MC.OWKEY
+           AND OBHD.OBHDKEY = MC.OBHDKEY
+         INNER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세정보*/
+            ON MC.CTKEY = MCDT.CTKEY
+           AND MC.OWKEY = MCDT.OWKEY
+           AND MC.OBHDKEY = MCDT.OBHDKEY
+           AND MC.CNTRBARCODE = MCDT.CNTRBARCODE
+         INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세 정보*/
+            ON MCDT.CTKEY = OBDT.CTKEY
+           AND MCDT.OWKEY = OBDT.OWKEY
+           AND MCDT.OBHDKEY = OBDT.OBHDKEY
+           AND MCDT.OBDTKEY = OBDT.OBDTKEY
+         INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+            ON OBDT.CTKEY = IC.CTKEY
+           AND OBDT.OWKEY = IC.OWKEY
+           AND OBDT.ICKEY = IC.ICKEY
+          LEFT OUTER JOIN TWORK_MST_ASRT ASRT /*아소트정보*/
+            ON IC.CTKEY = ASRT.CTKEY
+           AND IC.OWKEY = ASRT.OWKEY
+           AND IC.ICKEY = ASRT.ASRTDTICKEY
+           AND IC.ASRTYN = 'Y'
+          LEFT OUTER JOIN TWORK_MST_IC ASRTIC /*상품마스터(아소트)*/
+            ON ASRT.CTKEY = ASRTIC.CTKEY
+           AND ASRT.OWKEY = ASRTIC.OWKEY
+           AND ASRT.ASRTMASICKEY = ASRTIC.ICKEY
+          LEFT OUTER JOIN TWORK_MST_ICUTXTYPE INN /*상품단위유형마스터*/
+            ON IC.CTKEY = INN.CTKEY
+           AND IC.OWKEY = INN.OWKEY
+           AND IC.ICKEY = INN.ICKEY
+           AND INN.ICUNITTYPECD = 'INN' /*INN: 중포*/
+          LEFT OUTER JOIN TWORK_MST_ICUTXTYPE CTN
+            ON IC.CTKEY = CTN.CTKEY
+           AND IC.OWKEY = CTN.OWKEY
+           AND IC.ICKEY = CTN.ICKEY
+           AND CTN.ICUNITTYPECD = 'CTN' /*CTN: 카톤*/
+          LEFT OUTER JOIN TWORK_MST_ICUTXTYPE PLT
+            ON IC.CTKEY = PLT.CTKEY
+           AND IC.OWKEY = PLT.OWKEY
+           AND IC.ICKEY = PLT.ICKEY
+           AND PLT.ICUNITTYPECD = 'PLT' /*PLT: 파레트*/
+         WHERE OBHD.CTKEY = #{ctkey}
+           AND OBHD.OWKEY = #{owkey}
+           AND OBHD.OBHDTYPECD = #{obhdtypecd}
+           AND OBHD.OBORDKEY = #{obordkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(condList)">
+            <foreach collection="condList" item="cond" open="AND OBHD.OBSTATUSCD IN (" separator="," close=")">
+               #{cond}
+            </foreach>
+        </if>
+           AND MC.CNTRDDLNYN = 'Y'
+           AND MC.CNTRBARCODE = #{cntrbarcode}
+           AND OBHD.CNTRWKCOMPLYN = 'Y'
+         ORDER BY OBDT.OBORDDTKEY
+    </sql>
+
+    <select id="selectMoveObLblDtCount" resultType="java.lang.Integer">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblDtCount - 이고 출고 - 출고 라벨 상세정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectMoveObLblDtSql"/>
+		)
+	</select>
+
+    <select id="selectMoveObLblDtList" resultType="camelMap">
+        /* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObLblDtList - 이고 출고 - 출고 라벨 상세정보 조회 */
+		SELECT *
+		  FROM (
+		<include refid="selectMoveObLblDtSql"/>
+		)
+	</select>
+
+    <update id="updateMvobGrpNo">
+        /* wms-outbound-obmoveob-sql-oracle.xml - updateMvobGrpNo - 이고 출고 - 이고 그룹번호 업데이트 */
+        UPDATE TWORK_INFO_MVOB_CNTR /*출고 공통 정보*/
+           SET MVOBGRPNO = #{mvobgrpno}
+             , UPDATEDATE = #{sysdate}
+             , UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND OBHDKEY = #{obhdkey}
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(cntrbarcode)">
+           AND CNTRBARCODE = #{cntrbarcode}
+        </if>
+    </update>
+
+    <sql id="selectMoveObSql">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObSql - 이고 출고 - 출고 정보 조회 */
+		SELECT 0 AS CHK		       /*체크박스*/
+             , OBHD.CTKEY 	       /*센터 코드*/
+             , OBHD.OWKEY 	       /*화주 코드*/
+             , OBHD.OBHDDAY        /*출고 헤더 일자*/
+             , OBHD.TOCTKEY        /*TO 센터 코드*/
+             , OBHD.ORHDKEY        /*주문 공통 코드*/
+             , OBHD.OBORDKEY       /*오더 코드*/
+             , OBHD.OBHDKEY        /*릴리즈 코드*/
+             , OBHD.OBHDTYPECD     /*출고 헤더 유형 코드*/
+             , OBHD.OBSTATUSCD     /*출고 상태 코드*/
+             , MC.MVOBGRPNO        /*이고 그룹 번호*/
+             , CT.CTNM             /*센터명*/
+             , TOCT.CTNM AS TOCTNM /*TO센터명*/
+             , CASE WHEN COUNT(*) = SUM(CASE WHEN MC.CNFRMYN = 'Y' THEN 1 ELSE 0 END)
+                    THEN 'Y'
+                    ELSE 'N'
+                END AS CNFRMYN		/*확정여부*/
+          FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+         INNER JOIN TWORK_INFO_MVOB_CNTR MC	/*이고 용기 정보*/
+            ON OBHD.CTKEY = MC.CTKEY
+           AND OBHD.OWKEY = MC.OWKEY
+           AND OBHD.OBHDKEY = MC.OBHDKEY
+         INNER JOIN TWORK_MST_CT CT /*센터 마스터*/
+            ON OBHD.CTKEY = CT.CTKEY
+         INNER JOIN TWORK_MST_CT TOCT /*센터 마스터 TOCTKEY*/
+            ON OBHD.TOCTKEY = TOCT.CTKEY
+        <where>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+               #{SEARCH_CONDITION}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(condList)">
+                <foreach collection="condList" item="cond" open="AND OBHD.OBSTATUSCD IN (" separator="," close=")">
+               #{cond}
+                </foreach>
+            </if>
+           AND OBHD.OBHDTYPECD = #{obhdtypecd}
+           AND OBHD.CNTRWKCOMPLYN = 'Y'
+           AND MC.MVOBGRPNO IS NOT NULL
+           AND MC.CNTRDDLNYN = 'Y' /*용기마감여부*/
+        </where>
+         GROUP BY
+               OBHD.CTKEY
+             , OBHD.OWKEY
+             , OBHD.OBHDDAY
+             , OBHD.TOCTKEY
+             , OBHD.ORHDKEY
+             , OBHD.OBORDKEY
+             , OBHD.OBHDKEY
+             , OBHD.OBHDTYPECD
+             , OBHD.OBSTATUSCD
+             , MC.MVOBGRPNO
+             , CT.CTNM
+             , TOCT.CTNM
+	</sql>
+
+    <select id="selectMoveObCount" resultType="java.lang.Integer">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObCount - 이고 출고 - 출고 정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectMoveObSql"/>
+		)
+	</select>
+
+    <select id="selectMoveObList" resultType="camelMap">
+		/* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObList - 이고 출고 - 출고 정보 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT *
+		  FROM (
+		<include refid="selectMoveObSql"/>
+		)
+        ORDER BY OBHDDAY DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+    <sql id="selectMoveObDtSql">
+        /* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObDtSql - 이고 출고 - 출고 상세정보 조회 sql */
+        SELECT OBHD.CTKEY
+             , OBHD.OWKEY
+             , OBHD.OBORDKEY 	/*오더 코드*/
+             , OBHD.OBHDKEY     /*릴리즈 코드*/
+             , OBDT.OBORDDTKEY 	/*오더 상세 코드*/
+             , MCDT.CNTRBARCODE /*용기 바코드*/
+             , MCDT.ICKEY 		/*상품 코드*/
+             , MCDT.IVATKEY 	/*재고 속성 코드*/
+             , MCDT.UOM 		/*단위*/
+             , MCDT.QTY 		/*수량*/
+             , MCDT.INSERTURKEY /*입력자*/
+             , MCDT.INSERTDATE 	/*입력 일시*/
+             , MCDT.UPDATEURKEY /*수정자*/
+             , MCDT.UPDATEDATE 	/*수정 일시*/
+             , MC.MVOBGRPNO     /*이고 그룹 번호*/
+             , MC.CNFRMYN       /*확정 여부*/
+             , IC.ICNM 			/*상품명*/
+          FROM TWORK_INFO_OB_HD OBHD /*출고 공통 정보*/
+         INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세 정보*/
+            ON OBHD.CTKEY = OBDT.CTKEY
+           AND OBHD.OWKEY = OBDT.OWKEY
+           AND OBHD.OBHDKEY = OBDT.OBHDKEY
+         INNER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세 정보*/
+            ON OBDT.CTKEY = MCDT.CTKEY
+           AND OBDT.OWKEY = MCDT.OWKEY
+           AND OBDT.OBHDKEY = MCDT.OBHDKEY
+           AND OBDT.OBDTKEY = MCDT.OBDTKEY
+         INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+            ON MCDT.CTKEY = MC.CTKEY
+           AND MCDT.OWKEY = MC.OWKEY
+           AND MCDT.OBHDKEY = MC.OBHDKEY
+           AND MCDT.CNTRBARCODE = MC.CNTRBARCODE
+         INNER JOIN TWORK_MST_IC IC /*상품 마스터*/
+            ON MCDT.CTKEY = IC.CTKEY
+           AND MCDT.OWKEY = IC.OWKEY
+           AND MCDT.ICKEY = IC.ICKEY
+		 WHERE OBHD.CTKEY = #{ctkey}
+           AND OBHD.OWKEY = #{owkey}
+           AND OBHD.OBORDKEY = #{obordkey}
+           AND OBHD.OBHDKEY = #{obhdkey}
+           AND MC.MVOBGRPNO = #{mvobgrpno}
+           AND OBHD.CNTRWKCOMPLYN = 'Y'
+           AND MC.CNTRDDLNYN = 'Y'
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(condList)">
+            <foreach collection="condList" item="cond" open="AND OBHD.OBSTATUSCD IN (" separator="," close=")">
+               #{cond}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="selectMoveObDtCount" resultType="java.lang.Integer">
+        /* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObDtCount - 이고 출고 - 출고 상세정보 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="selectMoveObDtSql"/>
+		)
+    </select>
+
+    <select id="selectMoveObDtList" resultType="camelMap">
+        /* wms-outbound-obmoveob-sql-oracle.xml - selectMoveObDtList - 이고 출고 - 출고 상세정보 조회 */
+        SELECT *
+		  FROM (
+		<include refid="selectMoveObDtSql"/>
+		)
+    </select>
+
+    <!--이고출고확정 대상 용기 LIST 조회-->
+	<select id="selectContainerListByMoveOutboundGroupNo" resultType="camelMap">
+		/* wms-outbound-obConfirmManager-sql-oracle.xml - selectContainerListByMoveOutboundGroupNo - 이고출고확정 대상 용기 LIST 조회 */
+		SELECT
+			MC.CTKEY
+			,MC.OWKEY
+			,MC.OBHDKEY
+			,MC.CNTRBARCODE
+			,MC.MVOBGRPNO
+		    ,OBHD.ORHDKEY
+		    ,OBHD.OBSTATUSCD
+        FROM TWORK_INFO_OB_HD OBHD
+        	INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+				ON OBHD.CTKEY = MC.CTKEY
+				AND OBHD.OWKEY = MC.OWKEY
+				AND OBHD.OBHDKEY = MC.OBHDKEY
+        WHERE OBHD.CTKEY = #{ctkey}
+        AND OBHD.OWKEY = #{owkey}
+        AND OBHD.OBHDKEY = #{obhdkey}
+        AND MC.MVOBGRPNO = #{mvobgrpno}
+        AND MC.CNFRMYN = #{cnfrmyn}
+		AND MC.CNTRDDLNYN = 'Y'
+		AND OBHD.CNTRWKCOMPLYN = 'Y'
+		ORDER BY MC.OBHDKEY, MC.CNTRBARCODE
+	</select>
+</mapper>

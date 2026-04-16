@@ -1,0 +1,849 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.CenterMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT B.* FROM (
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		) B
+		ORDER BY UPDATEDATE DESC
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<select id="selectCenterCount" resultType="java.lang.Integer">
+		/* adm-master-center-sql-oracle.xml - selectCenterCount */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_CT A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+	</select>
+	
+	<select id="selectCenter" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - selectCenter */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  '0' AS CHK
+			, A.CTKEY
+			, A.CTNM
+			, A.CTTYPE
+			, A.CTSUMMARYNM
+			, A.BIZAREACD
+		    , A.LDGUNIT
+			, A.ADDRID
+			, A.ZIPCD
+			, A.ADDR1
+			, A.ADDR2
+			, A.TEL
+			, A.DELYN
+			, A.REGNO
+			, A.CLOSDATE
+		    , A.MANAGEMENTYN
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		FROM TADMIN_MST_CT A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+
+		<include refid="sql_pagingBottom"/>
+
+	</select>
+
+	<select id="selectOwList" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - selectOwList */
+		SELECT
+			  '0' AS CHK
+		    , OWKEY
+			, OWNM
+			, #{ctkey} AS CTKEY
+		FROM TADMIN_MST_OW
+		WHERE DELYN = 'N'
+	</select>
+
+	<select id="selectOwnerByCenterList" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - selectOwnerByCenterList */
+		SELECT
+			  '0' AS CHK
+			, A.OWKEY
+			, A.OWNM
+			, B.CTKEY
+		FROM TADMIN_MST_OW A
+		INNER JOIN TADMIN_MST_CTXOW B
+				ON A.OWKEY = B.OWKEY
+		WHERE A.DELYN = 'N'
+		AND B.CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMstCtxow" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstCtxow */
+		SELECT
+		      CTKEY
+			, OWKEY
+		FROM TADMIN_MST_CTXOW
+		WHERE CTKEY = #{ctkey}
+	</select>
+
+	<insert id="insertTAdminMstCtxow">
+		/* adm-master-center-sql-oracle.xml - insertTAdminMstCtxow */
+		INSERT INTO TADMIN_MST_CTXOW (
+			  CTKEY
+			, OWKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES (
+			  #{ctkey}
+			, #{owkey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<delete id="deleteTAdminMstCtxow">
+		/* adm-master-center-sql-oracle.xml - deleteTAdminMstCtxow */
+		DELETE
+		FROM TADMIN_MST_CTXOW
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+	</delete>
+
+	<select id="selectPkCenter" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - selectPkCenter */
+	    SELECT A.CTKEY
+	        , A.CTTYPE
+	        , A.CTNM
+	        , A.LDGUNIT
+	        , A.CLOSDATE
+	        , A.INSERTDATE
+	        , A.UPDATEDATE
+	        , A.INSERTURKEY
+ 			, A.UPDATEURKEY
+	        , A.DELYN
+	        , A.CHITCTKEY
+	        , A.ZIPCD AS ZIPNO
+	        , A.ADDR1 AS LNMADRES
+	        , A.ZIPCD
+	        , A.ADDR1
+	        , A.ADDR2
+	        , A.TEL
+	        , A.REGNO
+			, A.REPORTCTNM
+			, A.ADDRID
+	        , A.MANAGEMENTYN
+            , B.ADDNT, COALESCE(B.UNIT, '') UNIT , COALESCE(B.STNM, '') STNM, COALESCE(B.CTYNM, '') CTYNM 
+            , COALESCE(B.ZIPCD, '') ZIPCD
+            , COALESCE(B.CNTRYCD, '') CNTRYCD
+            ,'CNTRYCD' || ';' || COALESCE(B.CNTRYCD, '') AS CNTRYCD_DESC
+            , COALESCE(B.STACD, '') STACD
+            ,'STACD' || ';' || COALESCE(B.STACD, '') AS STACD_DESC
+            , B.SHPGLOCNM, B.LAT, B.LON, B.ADDRSTTCD
+	    FROM TADMIN_MST_CT A
+		LEFT OUTER JOIN TADMIN_MST_ADDR_T B
+	    			 ON A.ADDRID = B.ADDRID
+	    WHERE A.CTKEY = #{ctkey}
+	</select>
+
+
+	
+	<insert id="insertCenter" >
+		/* adm-master-center-sql-oracle.xml - insertCenter */
+		<![CDATA[	  	
+			INSERT INTO TADMIN_MST_CT(
+			        CTKEY
+			        ,CTTYPE
+			        ,CTNM
+			        ,CNTRYCD
+					,LDGUNIT
+			        ,ZIPCD
+			        ,ADDR1
+			        ,ADDR2
+			        ,ADDRID
+                    ,TEL
+                    ,REGNO
+                    ,REPORTCTNM
+					,MANAGEMENTYN
+			        ,INSERTDATE
+			        ,INSERTURKEY
+			        ,UPDATEDATE
+			        ,UPDATEURKEY
+			        ,CLOSDATE
+			    ) VALUES (
+					#{ctkey}
+					,#{cttype}
+					,#{ctnm}
+					,#{lakey}
+					,#{ldgunit}
+					,#{zipcd}
+					,#{addr1}
+					,#{addr2}
+					,#{addrid}
+					,#{tel}
+					,#{regno}
+					,#{reportctnm}
+					,#{managementyn}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+					,#{closdate}
+				)
+		]]>				
+	</insert>
+	
+	<insert id="mergeTtShpgLocT">
+		/* adm-master-center-sql-oracle.xml - mergeTtShpgLocT */
+		INSERT INTO TT_SHPG_LOC_T (
+			 SHPGLOCID
+			,SHPGLOCCD
+			,SHPGLOCNM
+			,SHPGLOCTYPCD
+			,ADDRID
+			,APPTNEEDYN
+			,TELNO1
+			,TELNO2
+			,STTCD
+			,DELYN
+			,INSERTDATE
+			,UPDATEDATE
+			,INSERTURKEY
+			,UPDATEURKEY
+		) VALUES (
+			 nextval('seq_tt_shpg_loc_t')
+			,#{ctkey}
+			,#{ctname}
+			,'3'
+			,#{addrid}
+			,'N'
+			,#{tel}
+			,#{tel}
+			,'Y'
+			,#{delyn}
+			,#{sysdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{surkey}
+		)
+		ON CONFLICT (SHPGLOCCD)
+		DO UPDATE SET
+			 SHPGLOCNM    = EXCLUDED.SHPGLOCNM
+			,SHPGLOCTYPCD = '3'
+			,ADDRID       = EXCLUDED.ADDRID
+			,TELNO1       = EXCLUDED.TELNO1
+			,TELNO2       = EXCLUDED.TELNO2
+			,STTCD        = EXCLUDED.DELYN
+			,DELYN        = EXCLUDED.DELYN
+			,UPDATEDATE   = EXCLUDED.UPDATEDATE
+			,UPDATEURKEY  = EXCLUDED.UPDATEURKEY
+	</insert>
+	
+	
+	
+	
+	<update id="updateCenter">
+		/* adm-master-center-sql-oracle.xml - updateCenter */
+		<![CDATA[	
+			UPDATE TADMIN_MST_CT 
+			   SET
+					 CTTYPE = #{cttype}
+					,CTNM = #{ctnm}
+					,ZIPCD	 = #{zipcd}
+                    ,ADDR1	 = #{addr1}
+                    ,ADDR2	 = #{addr2}
+                    ,ADDRID      = #{addrid}
+                    ,TEL	 	 = #{tel}
+                    ,REGNO 		 = #{regno}
+                    ,REPORTCTNM = #{reportctnm}
+			     	,MANAGEMENTYN = #{managementyn}
+			        ,DELYN 	  	  = #{delyn}
+					,CLOSDATE = #{closdate}
+			     	,LDGUNIT = #{ldgunit}
+			        ,UPDATEDATE = #{sysdate}
+			        ,UPDATEURKEY = #{surkey}
+			WHERE CTKEY = #{ctkey}
+		]]>
+	</update>
+	
+	<delete id="deleteCenter">
+		/* adm-master-center-sql-oracle.xml - deleteCenter */
+		<![CDATA[
+			UPDATE 	TADMIN_MST_CT
+			SET 	DELYN = 'Y'			
+			       ,UPDATEDATE = #{sysdate}
+			       ,UPDATEURKEY = #{surkey}
+			WHERE 	CTKEY=#{ctkey}
+		]]>					
+	</delete>
+
+	<select id="selectTAdminMstIcxctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstIcxctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_ICXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMstIcgrxctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstIcgrxctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_ICGRXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMsticutxtypexctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMsticutxtypexctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_ICUTXTYPEXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMstMulaapmsgxctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstMulaapmsgxctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_MULAAPMSGXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMstAcxctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstAcxctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_ACXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectTAdminMstEqxctCount" resultType="java.lang.Integer" >
+		/* adm-master-center-sql-oracle.xml - selectTAdminMstEqxctCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_MST_EQXCT
+		 WHERE
+		 	CTKEY = #{ctkey}
+	</select>
+	
+	<select id="getTAdminMstCtList" resultType="camelMap">
+		/* adm-master-center-sql-oracle.xml - getTAdminMstCtList */
+		SELECT 	'0' AS CHK
+		    	,CTKEY
+				,CTNM
+		  FROM 	TADMIN_MST_CT
+		 WHERE	CLOSDATE >= #{sysdate}
+		   AND	DELYN = 'N'
+		   AND  MANAGEMENTYN = 'Y'
+	</select>
+
+	<update id="updateCenterList">
+		/* adm-master-center-sql-oracle.xml  updateCenterList */
+		UPDATE TADMIN_MST_CT A
+		SET ( CTNM
+			 ,ADDRID
+			 ,ZIPCD
+			 ,ADDR1
+			 ,ADDR2
+		     ,UPDATEDATE
+		     ,UPDATEURKEY ) = (  SELECT B.CTNAME
+										, B.ADDRID
+										, B.ZIPCODE
+										, B.ADDRESS1
+										, B.ADDRESS2
+										,#{interfaceDate}
+										,#{interfaceUrkey}
+								   FROM TADMIN_INTF_CT B
+								   WHERE A.CTKEY = B.CTKEY
+									 AND B.INTERFACE_ID = #{interfaceId}
+									 AND B.REQUESTDT = #{requestDt}
+										)
+		WHERE A.DELYN = 'N'
+		  AND EXISTS(
+				SELECT 1
+				FROM TADMIN_INTF_CT C
+				WHERE A.CTKEY = C.CTKEY
+				  AND C.INTERFACE_ID = #{interfaceId}
+				  AND C.REQUESTDT = #{requestDt}
+			)
+	</update>
+
+	<insert id="insertCenterList">
+		/* adm-master-center-sql-oracle.xml  insertCenterList */
+		INSERT INTO TADMIN_MST_CT (
+				CTKEY
+			  , CTTYPE
+			  , CTNM
+			  , ADDRID
+			  , ZIPCD
+			  , ADDR1
+			  , ADDR2
+			  , DELYN
+			  , IFYN
+			  , MANAGEMENTYN
+			  , CLOSDATE
+			  , INSERTDATE
+			  , INSERTURKEY
+			  , UPDATEDATE
+			  , UPDATEURKEY
+		)
+		SELECT B.CTKEY
+			 , B.CTTYPE
+			 , B.CTNAME
+			 , B.ADDRID
+			 , B.ZIPCODE
+			 , B.ADDRESS1
+			 , B.ADDRESS2
+			 , 'N'
+			 , 'Y'
+			 , 'N'
+			 , #{closdate}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+			 , #{interfaceDate}
+			 , #{interfaceUrkey}
+		FROM TADMIN_INTF_CT B
+			 LEFT OUTER JOIN TADMIN_MST_CT A
+						  ON B.CTKEY = A.CTKEY
+		WHERE B.INTERFACE_ID = #{interfaceId}
+		  AND B.REQUESTDT = #{requestDt}
+		  AND A.CTKEY IS NULL
+	</insert>
+
+	<update id="updateEAddridList">
+		/* adm-master-center-sql-oracle.xml  updateAddridList */
+		UPDATE TADMIN_MST_CT C
+		SET ADDRID =
+					   (
+						   SELECT T.ADDRID
+		                     FROM (
+								  SELECT A.CTKEY, MAX(ADDR.ADDRID) AS ADDRID
+								  FROM TADMIN_INTF_CT A
+									  INNER JOIN TADMIN_MST_ADDR_T ADDR
+											  ON ADDR.DELYN = 'N'
+											 AND TRIM(ADDR.STNM)  = TRIM(A.ADDRESS2)
+											 AND TRIM(ADDR.CTYNM) = TRIM(A.ADDRESS1)
+											 AND TRIM(ADDR.ZIPCD) = TRIM(A.ZIPCODE)
+								  WHERE A.INTERFACE_ID = #{interfaceId}
+									AND A.REQUESTDT = #{requestDt}
+									AND A.ZIPCODE IS NOT NULL
+									AND A.ADDRESS1 IS NOT NULL
+								  GROUP BY A.CTKEY
+								  ) T
+			                WHERE T.CTKEY = C.CTKEY
+					   )
+		WHERE EXISTS (
+			SELECT 1
+			FROM TADMIN_INTF_CT A
+				 INNER JOIN TADMIN_MST_ADDR_T ADDR
+						 ON ADDR.DELYN = 'N'
+						AND TRIM(ADDR.STNM) = TRIM(A.ADDRESS2)
+						AND TRIM(ADDR.CTYNM) = TRIM(A.ADDRESS1)
+						AND TRIM(ADDR.ZIPCD) = TRIM(A.ZIPCODE)
+			WHERE A.INTERFACE_ID = #{interfaceId}
+			  AND A.REQUESTDT = #{requestDt}
+			  AND A.ZIPCODE IS NOT NULL
+			  AND A.ADDRESS1 IS NOT NULL
+			  AND A.CTKEY = C.CTKEY
+				)
+	</update>
+
+
+	<update id="updateAddridList">
+		/* adm-master-center-sql-oracle.xml  updateAddridList */
+		UPDATE TADMIN_MST_CT C
+		SET ADDRID = nextval('seq_tadmin_mst_addr_t')
+		WHERE EXISTS (
+			SELECT 1
+			FROM TADMIN_INTF_CT A
+				INNER JOIN TADMIN_MST_CT B
+					    ON A.CTKEY = B.CTKEY
+				LEFT OUTER JOIN TADMIN_MST_ADDR_T ADDR
+					         ON B.ADDRID = ADDR.ADDRID
+					        AND ADDR.DELYN = 'N'
+			WHERE A.INTERFACE_ID = #{interfaceId}
+			  AND A.REQUESTDT = #{requestDt}
+			  AND A.ZIPCODE IS NOT NULL
+			  AND A.ADDRESS1 IS NOT NULL
+			  AND (ADDR.ADDRID IS NULL OR (ADDR.ADDRID IS NOT NULL AND (TRIM(ADDR.STNM) != TRIM(B.ADDR2) OR TRIM(ADDR.CTYNM) != TRIM(B.ADDR1) OR TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD)))
+			  )
+			  AND B.CTKEY = C.CTKEY
+		)
+	</update>
+
+	<insert id="insertAddrTList">
+		/* adm-master-center-sql-oracle.xml  insertAddrTList */
+		INSERT INTO TADMIN_MST_ADDR_T (
+					ADDRID
+				  , ADDNT
+				  , UNIT
+				  , STNM
+				  , CTYNM
+				  , ZIPCD
+				  , CNTRYCD
+				  , STACD
+				  , SHPGLOCNM
+				  , LAT
+				  , LON
+				  , ADDRSTTCD
+				  , DELYN
+				  , INSERTDATE
+				  , INSERTURKEY
+				  , UPDATEDATE
+				  , UPDATEURKEY
+		)
+		SELECT B.ADDRID
+			 , NULL AS ADDNT
+			 , NULL AS UNIT
+			 , B.ADDR2 AS STNM
+			 , B.ADDR1 AS CTYNM
+			 , B.ZIPCD AS ZIPCD
+			 , 'KOR' AS CNTRYCD
+			 , NULL AS STACD
+			 , NULL AS SHPGLOCNM
+			 , 0 AS LAT
+			 , 0 AS LON
+			 , '1' AS ADDRSTTCD
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		FROM TADMIN_INTF_CT A
+			 INNER JOIN TADMIN_MST_CT B
+				  	 ON A.CTKEY  = B.CTKEY
+			 LEFT OUTER JOIN TADMIN_MST_ADDR_T ADDR
+					      ON B.ADDRID = ADDR.ADDRID
+						 AND ADDR.DELYN = 'N'
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.ZIPCODE IS NOT NULL
+		  AND A.ADDRESS1 IS NOT NULL
+		  AND (ADDR.ADDRID IS NULL
+			OR
+			   (ADDR.ADDRID IS NOT NULL
+				   AND
+				(TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+				   )
+			)
+	</insert>
+
+	<insert id="insertWmsAddrTList">
+		/* adm-master-center-sql-oracle.xml  insertWmsAddrTList */
+		INSERT INTO TWORK_MST_ADDR_T (
+				   ADDRID
+				 , ADDNT
+				 , UNIT
+				 , STNM
+				 , CTYNM
+				 , ZIPCD
+				 , CNTRYCD
+				 , STACD
+				 , SHPGLOCNM
+				 , LAT
+				 , LON
+				 , ADDRSTTCD
+				 , DELYN
+				 , INSERTDATE
+				 , INSERTURKEY
+				 , UPDATEDATE
+				 , UPDATEURKEY
+		)
+		SELECT B.ADDRID
+			 , NULL AS ADDNT
+			 , NULL AS UNIT
+			 , B.ADDR2 AS STNM
+			 , B.ADDR1 AS CTYNM
+			 , B.ZIPCD AS ZIPCD
+			 , 'KOR' AS CNTRYCD
+			 , NULL AS STACD
+			 , NULL AS SHPGLOCNM
+			 , 0 AS LAT
+			 , 0 AS LON
+			 , '1' AS ADDRSTTCD
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		FROM TADMIN_INTF_CT A
+			INNER JOIN TADMIN_MST_CT B
+				    ON A.CTKEY = B.CTKEY
+			LEFT OUTER JOIN TWORK_MST_ADDR_T ADDR
+					     ON B.ADDRID = ADDR.ADDRID
+					    AND ADDR.DELYN = 'N'
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.ZIPCODE IS NOT NULL
+		  AND A.ADDRESS1 IS NOT NULL
+		  AND (ADDR.ADDRID IS NULL
+			OR
+			   (ADDR.ADDRID IS NOT NULL
+				   AND
+				(TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+				   )
+			)
+	</insert>
+
+	<insert id="insertTmsAddrTList">
+		/* adm-master-center-sql-oracle.xml  insertTmsAddrTList */
+		INSERT INTO TT_ADDR_T (
+				ADDRID
+			  , ADDNT
+			  , UNIT
+			  , STNM
+			  , CTYNM
+			  , ZIPCD
+			  , CNTRYCD
+			  , STACD
+			  , SHPGLOCNM
+			  , LAT
+			  , LON
+			  , ADDRSTTCD
+			  , DELYN
+			  , INSERTDATE
+			  , INSERTURKEY
+			  , UPDATEDATE
+			  , UPDATEURKEY
+		)
+		SELECT B.ADDRID
+			 , NULL AS ADDNT
+			 , NULL AS UNIT
+			 , B.ADDR2 AS STNM
+			 , B.ADDR1 AS CTYNM
+			 , B.ZIPCD AS ZIPCD
+			 , 'KOR' AS CNTRYCD
+			 , NULL AS STACD
+			 , NULL AS SHPGLOCNM
+			 , 0 AS LAT
+			 , 0 AS LON
+			 , '1' AS ADDRSTTCD
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE
+			 , #{interfaceUrkey} AS INSERTURKEY
+			 , #{interfaceDate} AS UPDATEDATE
+			 , #{interfaceUrkey} AS UPDATEURKEY
+		FROM TADMIN_INTF_CT A
+			INNER JOIN TADMIN_MST_CT B
+					ON A.CTKEY = B.CTKEY
+			LEFT OUTER JOIN TT_ADDR_T ADDR
+						 ON B.ADDRID = ADDR.ADDRID
+						AND ADDR.DELYN = 'N'
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND A.ZIPCODE IS NOT NULL
+		  AND A.ADDRESS1 IS NOT NULL
+		  AND (ADDR.ADDRID IS NULL
+			OR
+			   (ADDR.ADDRID IS NOT NULL
+				   AND
+				(TRIM(ADDR.STNM) != TRIM(B.ADDR2)
+		          OR
+		          TRIM(ADDR.CTYNM) != TRIM(B.ADDR1)
+		          OR
+		          TRIM(ADDR.ZIPCD) != TRIM(B.ZIPCD))
+				   )
+			)
+	</insert>
+
+	<insert id="insertCenterXOwnerIntf">
+		/* adm-master-center-sql-oracle.xml  insertCenterXOwnerIntf */
+		INSERT INTO TADMIN_MST_CTXOW (
+			  CTKEY
+			, OWKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT A.CTKEY
+			 , #{owkey}
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		FROM TADMIN_INTF_CT A
+			 LEFT OUTER JOIN TADMIN_MST_CTXOW B
+						  ON A.CTKEY = B.CTKEY
+		WHERE A.INTERFACE_ID = #{interfaceId}
+		  AND A.REQUESTDT = #{requestDt}
+		  AND B.CTKEY IS NULL
+	</insert>
+
+	<update id="updateWmsCenterList">
+		/* adm-master-center-sql-oracle.xml  updateWmsCenterList */
+		UPDATE TWORK_MST_CT A
+		   SET (  CTNAME
+			    , ADDRID
+			    , ZIPCODE
+			    , ADDRESS1
+			    , ADDRESS2 ) = (  SELECT B.CTNAME
+			                        	 , B.ADDRID
+			                        	 , B.ZIPCODE
+			                        	 , B.ADDRESS1
+										 , B.ADDRESS2
+			                          FROM TADMIN_INTF_CT B
+			                          	INNER JOIN TADMIN_MST_CT C
+			                          		    ON B.CTKEY = C.CTKEY
+			                          WHERE B.INTERFACE_ID = #{interfaceId}
+										AND B.REQUESTDT = #{requestDt}
+			                            AND C.MANAGEMENTYN = 'Y'
+			                            AND B.CTKEY = A.CTKEY
+			                        )
+		WHERE EXISTS (
+			SELECT 1
+			FROM TADMIN_INTF_CT F
+				INNER JOIN TADMIN_MST_CT D
+						ON F.CTKEY = D.CTKEY
+			WHERE F.INTERFACE_ID = #{interfaceId}
+			  AND F.REQUESTDT = #{requestDt}
+			  AND D.MANAGEMENTYN = 'Y'
+			  AND A.CTKEY = F.CTKEY
+		)
+	</update>
+
+	<update id="updateTmsCenterList">
+		/* adm-master-center-sql-oracle.xml  updateTmsCenterList */
+		UPDATE TT_MST_CT A
+		SET (  CTNAME
+				, ADDRID
+				, ZIPCODE
+				, ADDRESS1
+				, ADDRESS2 ) = (  SELECT B.CTNAME
+										 , C.ADDRID
+										 , B.ZIPCODE
+										 , B.ADDRESS1
+										 , B.ADDRESS2
+									FROM TADMIN_INTF_CT B
+										 INNER JOIN TADMIN_MST_CT C
+												 ON B.CTKEY = C.CTKEY
+									WHERE B.INTERFACE_ID = #{interfaceId}
+									  AND B.REQUESTDT = #{requestDt}
+									  AND C.MANAGEMENTYN = 'Y'
+									  AND B.CTKEY = A.CTKEY
+			)
+		WHERE EXISTS (
+			SELECT 1
+			FROM TADMIN_INTF_CT F
+				 INNER JOIN TADMIN_MST_CT D
+						 ON F.CTKEY = D.CTKEY
+			WHERE F.INTERFACE_ID = #{interfaceId}
+			  AND F.REQUESTDT = #{requestDt}
+			  AND D.MANAGEMENTYN = 'Y'
+			  AND A.CTKEY = F.CTKEY
+		)
+	</update>
+
+	<update id="updateTmsShpgLocT">
+		/* adm-master-customer-sql-oracle.xml  updateTmsShpgLocT */
+		UPDATE TT_SHPG_LOC_T TMS
+		SET (     TMS.SHPGLOCNM
+				, TMS.SHPGLOCTYPCD
+				, TMS.ADDRID
+				, TMS.TELNO1
+				, TMS.STTCD
+				, TMS.UPDATEDATE
+				, TMS.UPDATEURKEY ) = ( SELECT A.CTNAME
+											 , '3'
+											 , M.ADDRID
+											 , A.TEL
+											 , 'Y'
+											 ,#{interfaceDate}
+											 ,#{interfaceUrkey}
+										FROM TADMIN_INTF_CT A
+											JOIN TADMIN_MST_CT M
+											  ON A.CTKEY = M.CTKEY
+										WHERE TMS.SHPGLOCCD = A.CTKEY
+										  AND A.INTERFACE_ID = #{interfaceId}
+										  AND A.REQUESTDT = #{requestDt} )
+		WHERE EXISTS(
+			SELECT 1
+			FROM TADMIN_INTF_CT C
+				JOIN TADMIN_MST_CT M
+				  ON C.CTKEY = M.CTKEY
+			WHERE TMS.SHPGLOCCD = C.CTKEY
+			  AND C.INTERFACE_ID = #{interfaceId}
+			  AND C.REQUESTDT = #{requestDt}
+		)
+	</update>
+	
+	<insert id="insertTmsShpgLocT">
+		/* adm-master-customer-sql-oracle.xml  insertTmsShpgLocT */
+		INSERT INTO TT_SHPG_LOC_T
+		(
+			  SHPGLOCID,
+			  SHPGLOCCD,
+			  SHPGLOCNM,
+			  SHPGLOCTYPCD,
+			  ADDRID,
+			  APPTNEEDYN,
+			  TELNO1,
+			  STTCD,
+			  DELYN,
+			  INSERTDATE,
+			  UPDATEDATE,
+			  INSERTURKEY,
+			  UPDATEURKEY
+		)
+		SELECT nextval('seq_tt_shpg_loc_t'),
+			   SHPGLOCCD,
+			   SHPGLOCNM,
+			   '3' AS SHPGLOCTYPCD,
+			   ADDRID,
+			   'N' AS APPTNEEDYN,
+			   TELNO1,
+			   'N' AS STTCD,
+			   'N' AS DELYN,
+			   #{interfaceDate} AS INSERTDATE,
+			   #{interfaceDate} AS UPDATEDATE,
+			   #{interfaceUrkey} AS INSERTURKEY,
+			   #{interfaceUrkey} AS UPDATEURKEY
+		  FROM (
+		  		SELECT A.CTKEY AS SHPGLOCCD
+		  		     , A.CTNAME AS SHPGLOCNM
+					 , M.ADDRID
+					 , A.TEL AS TELNO1
+					 , CASE WHEN ST.SHPGLOCID IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				 FROM TADMIN_INTF_CT A
+				 JOIN TADMIN_MST_CT M
+				   ON A.CTKEY = M.CTKEY
+				 LEFT JOIN TT_SHPG_LOC_T ST
+				   ON A.CTKEY = ST.SHPGLOCCD
+				WHERE A.INTERFACE_ID = #{interfaceId}
+				  AND A.REQUESTDT = #{requestDt}
+		       ) TT
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+
+	<select id="selectCenterXOwnerCheck" resultType="java.lang.Integer">
+		/* adm-master-customer-sql-oracle.xml  selectCenterXOwnerCheck */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_CT
+		WHERE CTKEY = #{ctkey}
+		  AND DELYN = 'Y'
+	</select>
+</mapper>	

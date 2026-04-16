@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.das.classiftotemapping.mapper.ClassifToteMappingMapper">
+	<select id="getClassificationToteMappingWaveSeq" resultType="camelMap">
+		/* wif-das-classificationtotemapping-interface-sql-oracle.xml - getClassificationToteMappingWaveSeq - 분류토트매핑웨이브 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_mapp_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationToteMappingOrderSeq" resultType="camelMap">
+		/* wif-das-classificationtotemapping-interface-sql-oracle.xml - getClassificationToteMappingOrderSeq - 분류토트매핑오더 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_mapp_order') AS ORDER_SEQ
+	</select>
+
+	<insert id="insertClassificationToteMappingWave" parameterType="com.daiso.wif.rest.in.das.classiftotemapping.vo.ClassifToteMappingWaveVO">
+		/* wif-das-classificationtotemapping-interface-sql-oracle.xml - insertClassificationToteMappingWave - 분류토트매핑 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_MAPP_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteMappingOrder" parameterType="com.daiso.wif.rest.in.das.classiftotemapping.vo.ClassifToteMappingOrderVO">
+		/* wif-das-classificationtotemapping-interface-sql-oracle.xml - insertClassificationToteMappingOrder - 분류토트매핑 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_MAPP_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,CLASSIFTOTEBRCD
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{classifToteBrcd}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+</mapper>

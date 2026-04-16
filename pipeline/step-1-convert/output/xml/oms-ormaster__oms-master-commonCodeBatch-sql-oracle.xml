@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.CommonCodeApiMapper">
+
+	<insert id="insertIntfTableCommonCode">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertIntfTableCommonCode */
+		INSERT INTO TORDER_INTF_MAL_COM (
+		     OWKEY
+		   , COMHDKEY
+		   , INSERTSYSTM
+		   , COMHDNM
+		   , UPRCOMHDKEY
+		   , COMDTKEY
+		   , COMDTNM
+		   , UPRCOMDTKEY
+		   , HDDELYN
+		   , DTDELYN
+		   , DELYN
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{owkey}
+		   , #{comhdkey}
+		   , #{insertsystm}
+		   , #{comhdnm}
+		   , #{uprcomhdkey}
+		   , #{comdtkey}
+		   , #{comdtnm}
+		   , #{uprcomdtkey}
+		   , #{hddelyn}
+		   , #{dtdelyn}
+		   , COALESCE(#{delyn}, 'N')
+		   , #{requestDt}
+		   , #{interfaceId}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+		   , #{sysdate}
+		   , #{interfaceUrkey}
+
+		)
+
+
+	</insert>
+
+
+	<insert id="insertErpCommonCodeIntfInfo">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertErpCommonCodeIntfInfo */
+		INSERT INTO TORDER_MST_COM_HD (
+			  OWKEY
+			, COMHDKEY
+			, INSERTSYSTM
+			, COMHDNM
+			, WMSIFYN
+			, TMSIFYN
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT DISTINCT
+			  #{owkey}
+			, COMHDKEY
+			, #{insertsystm}
+			, COMHDNM
+			, 'Y'
+			, 'Y'
+			, 'N'
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM TORDER_EAI_COMCD_BATCH
+		WHERE TRN_ID = #{trnId}
+		ON CONFLICT (OWKEY, COMHDKEY, INSERTSYSTM)
+		DO UPDATE SET
+			  COMHDNM     = EXCLUDED.COMHDNM
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+
+	</insert>
+
+	<insert id="insertErpDetailCommonCodeIntfInfo">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertErpDetailCommonCodeIntfInfo */
+		INSERT INTO TORDER_MST_COM_DT (
+			  OWKEY
+			, COMHDKEY
+			, COMDTKEY
+			, INSERTSYSTM
+			, LAKEY
+			, COMDTNM
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey}
+			, COMHDKEY
+			, COMDTKEY
+			, #{insertsystm}
+			, 'KOR'
+			, COMDTNM
+			, 'N'
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM TORDER_EAI_COMCD_BATCH
+		WHERE TRN_ID = #{trnId}
+		ON CONFLICT (OWKEY, COMHDKEY, INSERTSYSTM, COMDTKEY, LAKEY)
+		DO UPDATE SET
+			  COMDTNM     = EXCLUDED.COMDTNM
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+
+	<insert id="insertMalCommonCodeIntfInfo">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertMalCommonCodeIntfInfo */
+		INSERT INTO TORDER_MST_COM_HD (
+			  OWKEY
+			, COMHDKEY
+			, INSERTSYSTM
+			, COMHDNM
+			, UPRCOMHDKEY
+			, WMSIFYN
+			, TMSIFYN
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey}
+			, COMHDKEY
+			, #{insertsystm}
+			, COMHDNM
+			, UPRCOMHDKEY
+			, 'Y'
+			, 'Y'
+			, HDDELYN
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM TORDER_INTF_MAL_COM
+		WHERE IFID = #{interfaceId}
+		GROUP BY OWKEY, COMHDKEY, INSERTSYSTM, COMHDNM, UPRCOMHDKEY, HDDELYN
+		ON CONFLICT (OWKEY, COMHDKEY, INSERTSYSTM)
+		DO UPDATE SET
+			  COMHDNM     = EXCLUDED.COMHDNM
+			, UPRCOMHDKEY = EXCLUDED.UPRCOMHDKEY
+			, DELYN       = EXCLUDED.DELYN
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+
+	<insert id="insertMalDetailCommonCodeIntfInfo">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertMalDetailCommonCodeIntfInfo */
+		INSERT INTO TORDER_MST_COM_DT (
+			  OWKEY
+			, COMHDKEY
+			, COMDTKEY
+			, INSERTSYSTM
+			, LAKEY
+			, COMDTNM
+			, UPRCOMDTKEY
+			, DTKEYORD
+			, DELYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT #{owkey}
+			, COMHDKEY
+			, COMDTKEY
+			, #{insertsystm}
+			, 'KOR'
+			, COMDTNM
+			, UPRCOMDTKEY
+			, ROW_NUMBER() OVER(PARTITION BY COMHDKEY ORDER BY COMDTKEY)
+			, DTDELYN
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM TORDER_INTF_MAL_COM
+		WHERE IFID = #{interfaceId}
+		GROUP BY OWKEY, COMHDKEY, COMDTKEY, INSERTSYSTM, COMDTNM, UPRCOMDTKEY, DTDELYN
+		ON CONFLICT (OWKEY, COMHDKEY, INSERTSYSTM, COMDTKEY, LAKEY)
+		DO UPDATE SET
+			  COMDTNM     = EXCLUDED.COMDTNM
+			, UPRCOMDTKEY = EXCLUDED.UPRCOMDTKEY
+			, DTKEYORD    = EXCLUDED.DTKEYORD
+			, DELYN       = EXCLUDED.DELYN
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+	
+	<insert id="insertOrderMstGradeIfNotExists">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertOrderMstGradeIfNotExists */
+		INSERT INTO TORDER_MST_GRADE
+	    (
+	        OWKEY
+	        , CTKEY
+	        , OLNICDIV
+	        , NEEDDAYS
+	        , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+	    )
+	    SELECT DT.OWKEY
+	         , CT.CTKEY
+	         , DT.COMDTKEY
+	         , 0
+	         , #{sysdate}
+		     , #{interfaceUrkey}
+		     , #{sysdate}
+		     , #{interfaceUrkey}
+	    FROM TORDER_MST_COM_DT DT
+	    CROSS JOIN TORDER_MST_CT CT
+	    LEFT JOIN TORDER_MST_GRADE GR
+	        ON DT.OWKEY = GR.OWKEY
+	       AND DT.COMDTKEY = GR.OLNICDIV
+	       AND CT.CTKEY = GR.CTKEY
+	    WHERE DT.OWKEY = #{owkey}
+	      AND DT.COMHDKEY = 'CD_00577'
+	      AND CT.MANAGEMENTYN = 'Y'
+	      AND GR.OLNICDIV IS NULL
+		  AND DT.DELYN='N'
+	</insert>
+
+	<insert id="insertWmsCommonCodeIntfInfo" parameterType="com.daiso.oms.api.out.dto.CommonCodeOutDTO$CmcdRsVO">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertWmsCommonCodeIntfInfo */
+		INSERT INTO TORDER_INTF_WMS_COM
+		 (
+		      CTKEY
+			, OWKEY
+            , COMHDKEY
+            , COMHDNM
+            , UPRCOMHDKEY
+            , COMDTKEY
+            , COMDTNM
+            , UPRCOMDTKEY
+            , DELYN
+		    , REQUESTDT
+		    , IFID
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) VALUES (
+              #{ctkey}
+		    , #{owkey}
+            , #{comhdkey}
+            , #{comhdnm}
+            , #{uprcomhdkey}
+            , #{comdtkey}
+            , #{comdtnm}
+            , #{uprcomdtkey}
+            , COALESCE(#{delyn}, 'N')
+		    , #{requestDt}
+		    , #{interfaceId}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+	        , #{urkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+	        , #{urkey}
+		)
+	</insert>
+
+	<insert id="insertErpCommonCodeCtgIntfInfo">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertErpCommonCodeCtgIntfInfo */
+		INSERT INTO TORDER_MST_CTG (
+			  CTGKEY
+			, CTGLV
+			, OWKEY
+			, CTGNM
+			, UPPERCTGKEY
+			, IFYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		SELECT COMDTKEY AS CTGKEY
+			, CASE WHEN LENGTH(COMDTKEY) = 4 THEN '3'
+			       WHEN LENGTH(COMDTKEY) = 2 THEN '2'
+			       WHEN LENGTH(COMDTKEY) = 1 THEN '1'
+			  END AS CTGLV
+			, #{owkey}
+			, COMDTNM AS CTGNM
+			, CASE WHEN LENGTH(COMDTKEY) = 4 THEN SUBSTR(COMDTKEY, 1, 2)
+			       WHEN LENGTH(COMDTKEY) = 2 THEN SUBSTR(COMDTKEY, 1, 1)
+			       WHEN LENGTH(COMDTKEY) = 1 THEN NULL
+			  END AS UPPERCTGKEY
+			, 'Y'
+			, #{sysdate}
+			, #{interfaceUrkey}
+			, #{sysdate}
+			, #{interfaceUrkey}
+		FROM TORDER_EAI_COMCD_BATCH
+		WHERE COMHDKEY IN ('DIV_MIN','DIV_MID', 'DIV_MAX')
+		  AND TRN_ID = #{trnId}
+		ON CONFLICT (OWKEY, CTGKEY)
+		DO UPDATE SET
+			  CTGLV       = EXCLUDED.CTGLV
+			, UPPERCTGKEY = EXCLUDED.UPPERCTGKEY
+			, CTGNM       = EXCLUDED.CTGNM
+			, UPDATEDATE  = EXCLUDED.UPDATEDATE
+			, UPDATEURKEY = EXCLUDED.UPDATEURKEY
+	</insert>
+
+	<insert id="insertWmsCommonCodeCtgIntfInfo" parameterType="com.daiso.oms.api.out.dto.CtgDTO">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertWmsCommonCodeCtgIntfInfo */
+		INSERT INTO TORDER_INTF_WMS_CTG
+		 (
+		      CTKEY
+		    , OWKEY
+		    , CTGKEY
+		    , CTGNM
+		    , CTGLV
+		    , UPPERCTGKEY
+		    , REQUESTDT
+		    , IFID
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) VALUES (
+		      #{ctkey}
+		    , #{owkey}
+		    , #{ctgkey}
+		    , #{ctgnm}
+		    , #{ctglv}
+		    , #{upperctgkey}
+		    , #{requestDt}
+		    , #{interfaceId}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+	        , #{urkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+	        , #{urkey}
+		)
+	</insert>
+
+	<insert id="insertWmsCommonCodeCtgIntfInfo_BACKUP">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - insertWmsCommonCodeCtgIntfInfo */
+		INSERT INTO TORDER_INTF_WMS_CTG
+		 (
+		      CTKEY
+		    , OWKEY
+		    , CTGKEY
+		    , CTGNM
+		    , CTGLV
+		    , UPPERCTGKEY
+		    , REQUESTDT
+		    , IFID
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		) SELECT #{ctkey}
+		       , CTG.OWKEY
+		       , CTG.CTGKEY
+               , CTG.CTGNM
+               , CTG.CTGLV
+               , CTG.UPPERCTGKEY
+		       , #{requestDt}
+		       , #{interfaceId}
+			   , #{sysdate}
+	           , #{interfaceUrkey}
+		       , #{sysdate}
+	           , #{interfaceUrkey}
+		FROM TORDER_MST_CTG CTG
+		INNER JOIN TORDER_EAI_COMCD_BATCH BAT
+		       ON CTG.CTGKEY = BAT.COMDTKEY
+		WHERE BAT.COMHDKEY IN ('DIV_MIN','DIV_MID', 'DIV_MAX')
+          AND BAT.TRN_ID = #{trnId}
+
+	</insert>
+
+
+	<select id="selectIntfTOrderMstCtg" resultType="com.daiso.oms.api.out.dto.CtgDTO" >
+		/* oms-master-commonCodeBatch-sql-oracle.xml - selectIntfTOrderMstCtg */
+		SELECT CTG.OWKEY
+		     , CTG.CTGKEY
+             , CTG.CTGLV
+             , CTG.CTGNM
+             , CTG.UPPERCTGKEY
+		FROM TORDER_MST_CTG CTG
+		INNER JOIN TORDER_EAI_COMCD_BATCH BAT
+		       ON CTG.CTGKEY = BAT.COMDTKEY
+		WHERE BAT.COMHDKEY IN ('DIV_MIN','DIV_MID', 'DIV_MAX')
+
+		  AND BAT.TRN_ID IN
+		<foreach item="id" collection="trnId"    open="(" separator="," close=")">
+			#{id}
+		</foreach>
+	</select>
+
+	<update id="updateIntfCommonCodeErpStatus">
+		/* oms-master-commonCodeBatch-sql-oracle.xml - updateIntfCommonCodeErpStatus */
+		UPDATE TORDER_EAI_COMCD_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID = #{trnId}
+	</update>
+</mapper>

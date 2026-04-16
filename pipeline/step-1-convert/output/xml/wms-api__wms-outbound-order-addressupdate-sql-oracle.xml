@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.OutboundOrderAddressUpdateApiMapper">
+
+	<!--주소변경 가능여부 조회-->
+	<select id="selectAddressUpdatePossibleYn" parameterType="com.daiso.wms.api.in.dto.OutboundOrderAddressUpdateRequestDTO" resultType="camelMap">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - selectAddressUpdatePossibleYn - 주소변경 가능여부 조회*/
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBORDKEY
+			,CASE WHEN
+					SUM(CASE WHEN DLVRYPRGRSTATUSCD IN ('20', '30') THEN 1 ELSE 0 END) = 0
+				THEN 'Y'
+				ELSE 'N' END AS UPDATEYN
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ORHDKEY = #{orhdkey}
+		AND EXTERNORDERKEY = #{externorderkey}
+		GROUP BY CTKEY, OWKEY, OBORDKEY
+	</select>
+
+	<!--주소변경대상 조회-->
+	<select id="selectOutboundHeaderListForAddressUpdate" parameterType="com.daiso.wms.api.in.dto.OutboundOrderAddressUpdateRequestDTO" resultType="camelMap">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - selectOutboundHeaderListForAddressUpdate - 주소변경대상 조회*/
+		SELECT
+			CTKEY
+			,OWKEY
+			,OBHDKEY
+			,DLVRYPRGRSTATUSCD
+		FROM TWORK_INFO_OB_HD
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{obordkey}
+	</select>
+
+	<!--한진택배출력정보의 결과코드(RSLTCD) 를 'ADUPD' 로 변경-->
+	<update id="updateHanjinDeliveryPrintResultCodeByAddressUpdate" parameterType="com.daiso.wms.api.in.dto.OutboundOrderAddressUpdateRequestDTO">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - updateHanjinDeliveryPrintResultCodeByAddressUpdate - 한진택배출력정보의 결과코드(RSLTCD) 를 'ADUPD' 로 변경*/
+		UPDATE TWORK_INFO_HANJIN_PR
+		SET RSLTCD = 'ADUPD'
+			,RSLTMSG = NULL
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{obordkey}
+	</update>
+
+	<!--한진택배접수정보 제거 BY OBHDKEY-->
+	<delete id="deleteHajnjinDeliverySubmissionByAddressUpdate">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - deleteHajnjinDeliverySubmissionByAddressUpdate - 한진택배접수정보 제거 BY OBHDKEY*/
+		DELETE FROM TWORK_INFO_HANJIN_SBM
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</delete>
+
+	<!--출고헤더 수정-->
+	<update id="updateOutboundHeaderByAddressUpdate" parameterType="com.daiso.wms.api.in.dto.OutboundOrderAddressUpdateRequestDTO">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - updateOutboundHeaderByAddressUpdate - 출고헤더 수정*/
+		UPDATE TWORK_INFO_OB_HD
+		SET ORDNM = #{ordprsnnm}
+			,RCPPRSNNM = #{rcpprsnnm}
+			,RCPPRSNTELNO = #{rcpprsntelno}
+			,RCPPRSNTELNO2 = #{rcpprsntelno2}
+			,RCPPRSNZIPCD = #{rcpprsnzipcd}
+			,RCPPRSNADDR1 = #{rcpprsnaddr1}
+			,RCPPRSNADDR2 = #{rcpprsnaddr2}
+			,DLVYMSG = #{dlvymsg}
+			,DLVRYCORPCD = NULL
+			,WBLNO = NULL
+			,DLVRYPRGRSTATUSCD = '00'
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<!--출고주문헤더 수정-->
+	<update id="updateOutboundOrderHeaderByAddressUpdate" parameterType="com.daiso.wms.api.in.dto.OutboundOrderAddressUpdateRequestDTO">
+		/* wms-outbound-order-addressupdate-sql-oracle.xml - updateOutboundOrderHeaderByAddressUpdate - 출고주문헤더 수정*/
+		UPDATE TWORK_INFO_OB_ORD_HD
+		SET ORDNM = #{ordprsnnm}
+			,RCPPRSNNM = #{rcpprsnnm}
+			,RCPPRSNTELNO = #{rcpprsntelno}
+			,RCPPRSNTELNO2 = #{rcpprsntelno2}
+			,RCPPRSNZIPCD = #{rcpprsnzipcd}
+			,RCPPRSNADDR1 = #{rcpprsnaddr1}
+			,RCPPRSNADDR2 = #{rcpprsnaddr2}
+			,DLVYMSG = #{dlvymsg}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBORDKEY = #{obordkey}
+	</update>
+</mapper>

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemCodeTmsMapper">
+	<insert id="insertTTMstIc">
+		/* tms-item-itemcode-sql-oracle.xml - insertTTMstIc */
+		INSERT INTO TT_MST_IC	( 
+			OWKEY
+			,ICKEY
+			,ICNAME
+			,ICGRKEY
+			,ICGRTYPE
+			,ICUTKEY
+			,UOM
+			,WIDTH
+			,LENGTH
+			,HEIGHT
+			,WIDTHPI
+			,LENGTHPI
+			,HEIGHTPI
+			,WEIGHT
+			,VOLUME
+			,BRANDCODE
+			,SHELFLIFEINDICATOR
+			,SHELFLIFE
+			,SHELFLIFECODETYPE
+			,UDF1
+			,UDF2
+			,UDF3
+			,UDF4
+			,UDF5
+			,CLOSDATE
+			,SERIALINPUTTYPE
+			,ACKEY
+			,SPEC
+			,REGDATE
+			,TAXYN
+			,DELYN
+			,CTGKEY
+			,RETURNOR	
+			,ORDSTOPDATE		
+			,RELEASEDAYS	
+			,LO_NON_STOCK_TYPE	
+			,DISPSHELFKEY
+			,ACCSTOCKTYPE  
+			,ACCSTOCKDATE  
+			,RFIDBOX   
+			,RFIDBOTTLE   
+			,ICTYPE    
+			,MINORDQTY    
+			,MAXORDQTY  
+			,ORDSTARTDATE 
+			,FOODYN  
+			,CHITTYPE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,SHELFDAY
+			,BOL_WIDTH
+			,BOL_LENGTH
+			,BOL_HEIGHT
+			,BOL_VOLUME
+			,BOL_WEIGHT
+		) 
+		VALUES	( 
+			#{owkey}
+			,#{ickey}
+			,#{icname}
+			,#{icgrkey}
+			,'CATEGORY'
+			,#{icutkey}
+			,#{uom}
+			,#{width}
+			,#{length}
+			,#{height}
+		    ,#{widthpi}
+		    ,#{lengthpi}
+		    ,#{heightpi}
+			,#{weight}
+			,#{volume}
+			,#{brandcode}
+			,#{shelflifeindicator}
+			,#{shelflife}
+			,#{shelflifecodetype}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{udf4}
+			,#{udf5}
+			,#{closdate}
+			,#{serialinputtype}
+			,#{ackey}
+			,#{spec}
+			,#{regdate}
+			,'N'
+			,'N'
+			,#{ctgkey}
+			,#{returnor}	
+			,#{ordstopdate}
+			,#{releasedays}
+			,#{lo_non_stock_type}	
+			,#{dispshelfkey}
+			,#{accstocktype} 
+			,#{accstockdate}
+			,#{rfidbox}
+			,#{rfidbottle}   
+			,#{ictype}
+			,#{minordqty}    
+			,#{maxordqty}  
+			,#{ordstartdate}
+			,#{foodyn}  
+			,#{chittype}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{shelfday}
+			,#{bolWidth}
+			,#{bolLength}
+			,#{bolHeight}
+			,#{bolVolume}
+			,#{bolWeight}
+		 ) 
+ 	</insert>
+ 	
+ 	<update id="updateTTMstIc">
+		/* tms-item-itemcode-sql-oracle.xml - updateTTMstIc */
+		UPDATE 	TT_MST_IC
+ 		   SET 	ICNAME              = #{icname}
+				,ICGRKEY            = #{icgrkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrtype)" >
+				,ICGRTYPE           = #{icgrtype} 
+				</if> 
+				,ICUTKEY            = #{icutkey}
+				,UOM                = #{uom}
+				,WIDTH              = #{width}
+				,LENGTH             = #{length}
+				,HEIGHT             = #{height}
+				,WIDTHPI            = #{widthpi}
+				,LENGTHPI           = #{lengthpi}
+				,HEIGHTPI           = #{heightpi}
+				,WEIGHT             = #{weight}
+				,VOLUME             = #{volume}
+				,BRANDCODE          = #{brandcode}
+				,SHELFLIFEINDICATOR	= #{shelflifeindicator}		
+				,SHELFLIFE          = #{shelflife}
+				,SHELFLIFECODETYPE  = #{shelflifecodetype}
+				,UDF1               = #{udf1}
+				,UDF2               = #{udf2}
+				,UDF3               = #{udf3}
+				,UDF4               = #{udf4}
+				,UDF5               = #{udf5}
+				,CLOSDATE        = #{closdate}
+				,SERIALINPUTTYPE    = #{serialinputtype}
+				,ACKEY              = #{ackey}
+				,SPEC               = #{spec}
+				,REGDATE            = #{regdate}
+				,TAXYN              = 'N'
+				,BOXPRICE           = '0'
+				,BOTTLEPRICE        = '0'
+				,CTGKEY             = #{ctgkey}
+				,RETURNOR           = #{returnor}	
+				,ORDSTOPDATE        = #{ordstopdate}
+				,RELEASEDAYS        = #{releasedays}
+				,LO_NON_STOCK_TYPE  = #{lo_non_stock_type}	
+				,DISPSHELFKEY       = #{dispshelfkey}
+				,ACCSTOCKTYPE       = #{accstocktype} 
+				,ACCSTOCKDATE       = #{accstockdate}
+				,RFIDBOX            = #{rfidbox}
+				,RFIDBOTTLE         = #{rfidbottle}   
+				,ICTYPE             = #{ictype}
+				,MINORDQTY          = #{minordqty}    
+				,MAXORDQTY          = #{maxordqty}  
+				,ORDSTARTDATE       = #{ordstartdate}
+				,FOODYN             = #{foodyn}  
+				,CHITTYPE           = #{chittype}
+				,INSERTDATE         = #{sysdate}
+				,INSERTURKEY        = #{surkey}
+				,UPDATEDATE         = #{sysdate}
+				,UPDATEURKEY        = #{surkey}
+				,SHELFDAY			= #{shelfday}
+				,BOL_WIDTH			= #{bolWidth}
+				,BOL_LENGTH			= #{bolLength}
+				,BOL_HEIGHT			= #{bolHeight}
+				,BOL_VOLUME			= #{bolVolume}
+				,BOL_WEIGHT			= #{bolWeight}
+			 	,DELYN 				= #{delyn}
+		 WHERE 	OWKEY = #{owkey}
+		   AND 	ICKEY = #{ickey}
+ 	</update>
+ 	
+ 	<delete id="updateTTMstIcxct">
+		/* tms-item-itemcode-sql-oracle.xml - updateTTMstIcxct */
+        UPDATE TT_MST_ICXCT
+          SET  LOGGRPCD 		= #{udf2}
+          	  ,ACKEY			= #{ackey}
+          	  ,ICGRKEY			= #{icgrkey}
+          	  ,DCKEY			= '0'
+          	  ,UPDATEDATE		= #{sysdate}
+			  ,UPDATEURKEY 		= #{surkey}
+			  ,DELYN 				= #{delyn}
+         WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</delete>
+	
+ 	<delete id="deleteTTMstIc">
+		/* tms-item-itemcode-sql-oracle.xml - deleteTTMstIc */
+		UPDATE 	TT_MST_IC
+		   SET   DELYN 		 = #{delYn}
+				,UPDATEDATE	 = #{sysdate}
+				,UPDATEURKEY = #{surkey}
+				,CLOSDATE = #{closdate}
+		 WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+ 	</delete>
+ 	
+ 	<delete id="deleteTTMstIcxct">
+		/* tms-item-itemcode-sql-oracle.xml - deleteTTMstIcxct */
+        UPDATE TT_MST_ICXCT
+          SET  DELYN 		= #{delYn}
+          	  ,UPDATEDATE	= #{sysdate}
+			  ,UPDATEURKEY  = #{surkey}
+         WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   <if test="ctkey != null">
+		   	AND CTKEY = #{ctkey}
+		   </if>
+	</delete>
+	
+	<insert id="insertTTMstIcxct">
+		/* tms-item-itemcode-sql-oracle.xml - insertTTMstIcxct */
+		INSERT INTO TT_MST_ICXCT 
+		( 
+		  UPDATEURKEY
+		 ,UPDATEDATE
+		 ,OWKEY
+		 ,INSERTURKEY
+		 ,INSERTDATE
+		 ,ICKEY
+		 ,CTKEY
+		 ,LOGGRPCD
+		 ,VOLTYPE
+		 ,NEWYN
+		 ,ACKEY
+		 ,ORDTYPE
+		 ,ICGRKEY
+		 ,DCKEY
+		 ,DELYN
+		 )
+		VALUES 
+		( 
+		  #{surkey}
+		 ,#{sysdate}
+		 ,#{owkey}
+		 ,#{surkey}
+		 ,#{sysdate}
+		 ,#{ickey}
+		 ,#{ctkey}
+		 ,#{loggrpcd}
+		 ,'0'
+		 ,'Y'
+		 ,#{ackey}
+		 ,'0'
+		 ,#{icgrkey}
+		 ,#{dckey}
+		 ,'N'
+		)  
+	</insert>
+	
+	 <select id="selectPkCntTTMstIc" resultType="java.lang.Integer" >
+		 /* tms-item-itemcode-sql-oracle.xml - selectPkCntTTMstIc */
+		SELECT COUNT(1)  
+		  FROM TT_MST_ICXCT
+		 WHERE OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND CTKEY = #{ctkey}
+	</select>
+
+	<delete id="deleteTTItemCodeUnitType">
+		/* tms-item-itemcode-sql-oracle.xml - deleteTTItemCodeUnitType */
+		DELETE FROM TT_MST_ICUTXTYPE
+		WHERE OWKEY = #{owkey}
+		  AND ICUTKEY = #{icutkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icuttype)">
+			AND ICUTTYPE = #{icuttype}
+		</if>
+	</delete>
+
+	<delete id="deleteTTItemCodeUnitTypeXCenter">
+		/* tms-item-itemcode-sql-oracle.xml - deleteTTItemCodeUnitTypeXCenter */
+		DELETE FROM TT_MST_ICUTXTYPEXCT
+		WHERE OWKEY = #{owkey}
+		  AND ICUTKEY = #{icutkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icuttype)">
+			AND ICUTTYPE = #{icuttype}
+		</if>
+	</delete>
+	
+	<update id="mergeTTMstIcxct">
+		/* tms-item-itemcode-sql-oracle.xml - mergeTTMstIcxct */
+		MERGE INTO TT_MST_ICXCT
+			USING DUAL
+			ON (OWKEY = #{owkey}
+				AND ICKEY = #{ickey}
+				)
+			WHEN MATCHED THEN
+				UPDATE
+					SET LOGGRPCD 		= #{udf2}
+						,ACKEY			= #{ackey}
+						,ICGRKEY			= #{icgrkey}
+						,DCKEY			= '0'
+						,UPDATEDATE		= #{sysdate}
+						,UPDATEURKEY 		= #{surkey}
+						,DELYN 				= #{delyn}
+			WHEN NOT MATCHED THEN
+				INSERT  (
+						 UPDATEURKEY
+					,UPDATEDATE
+					,OWKEY
+					,INSERTURKEY
+					,INSERTDATE
+					,ICKEY
+					,CTKEY
+					,LOGGRPCD
+					,VOLTYPE
+					,NEWYN
+					,ACKEY
+					,ORDTYPE
+					,ICGRKEY
+					,DCKEY
+					,DELYN
+					)
+					VALUES
+						(
+						  #{surkey}
+						,#{sysdate}
+						,#{owkey}
+						,#{surkey}
+						,#{sysdate}
+						,#{ickey}
+						,#{ctkey}
+						,#{loggrpcd}
+						,'0'
+						,'Y'
+						,#{ackey}
+						,'0'
+						,#{icgrkey}
+						,#{dckey}
+						,'N'
+						)
+	</update>
+</mapper>	

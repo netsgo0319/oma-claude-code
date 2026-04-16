@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.ctmaster.mapper.AreaMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectArea">
+		  FROM TWORK_MST_AR AR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = AR.CTKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = AR.CTKEY
+		   AND ZN.ZNKEY = AR.ZNKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectAreaCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-area-sql-oracle.xml - selectAreaCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectArea"/>
+	</select>
+
+	<select id="selectAreaList" resultType="camelMap">
+		/* wms-ctmaster-area-sql-oracle.xml - selectAreaList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  '0' AS CHK
+			 , AR.CTKEY
+			 , CT.CTNM
+			 , AR.ZNKEY
+			 , ZN.ZNNM
+			 , AR.ARKEY
+			 , AR.ARNM
+			 , AR.ICTMPRDIVCD
+			 , AR.BNDDIVCD
+			 , AR.ARDIVCD
+			 , AR.WRHOUSDIVCD
+		     , AR.ANSUNGB2BPOCTG
+			 , AR.NAMSAB2BPOCTG
+			 , AR.BUSANB2BPOCTG
+			 , AR.SEJONGB2BPOCTG
+			 , AR.INSERTDATE
+			 , AR.INSERTURKEY
+			 , AR.UPDATEDATE
+			 , AR.UPDATEURKEY
+		<include refid="sql_selectArea"/>
+		 ORDER BY
+			   ZN.ZNTYPECD
+			 , AR.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectAreaInfo" resultType="camelMap">
+		/* wms-ctmaster-area-sql-oracle.xml - selectAreaInfo */
+		SELECT AR.CTKEY
+			 , CT.CTNM
+			 , AR.ZNKEY
+			 , ZN.ZNNM
+			 , AR.ARKEY
+			 , AR.ARNM
+			 , AR.ICTMPRDIVCD
+			 , AR.BNDDIVCD
+			 , AR.ARDIVCD
+			 , AR.WRHOUSDIVCD
+		     , AR.ANSUNGB2BPOCTG
+			 , AR.NAMSAB2BPOCTG
+			 , AR.BUSANB2BPOCTG
+			 , AR.SEJONGB2BPOCTG
+			 , AR.INSERTDATE
+			 , AR.INSERTURKEY
+			 , AR.UPDATEDATE
+			 , AR.UPDATEURKEY
+		  FROM TWORK_MST_AR AR
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = AR.CTKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = AR.CTKEY
+		   AND ZN.ZNKEY = AR.ZNKEY
+		 WHERE AR.CTKEY = #{ctkey}
+		   AND AR.ZNKEY = #{znkey}
+		   AND AR.ARKEY = #{arkey}
+	</select>
+
+	<select id="selectAreaDupCheck" resultType="java.lang.Integer">
+		/* wms-ctmaster-area-sql-oracle.xml - selectAreaDupCheck */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_AR
+
+		<where>
+			AND CTKEY = #{ctkey}
+			AND ZNKEY = #{znkey}
+			AND ARKEY = #{arkey}
+		</where>
+	</select>
+
+	<select id="selectAreaUseCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-area-sql-oracle.xml - selectAreaUseCheckCount */
+		SELECT COUNT(1) AS CNT
+		  FROM TWORK_MST_LC
+		 WHERE CTKEY = #{ctkey}
+		   AND ZNKEY = #{znkey}
+		   AND ARKEY = #{arkey}
+	</select>
+
+	<insert id="insertArea">
+		/* wms-ctmaster-area-sql-oracle.xml - insertArea */
+		INSERT INTO TWORK_MST_AR (
+			   CTKEY
+			 , ZNKEY
+			 , ARKEY
+			 , ARNM
+			 , ICTMPRDIVCD
+			 , WRHOUSDIVCD
+			 , ANSUNGB2BPOCTG
+			 , NAMSAB2BPOCTG
+			 , BUSANB2BPOCTG
+			 , SEJONGB2BPOCTG
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{ctkey}
+			 , #{znkey}
+			 , #{arkey}
+			 , #{arnm}
+			 , #{ictmprdivcd}
+			 , #{wrhousdivcd}
+			 , #{ansungb2bpoctg}
+			 , #{namsab2bpoctg}
+			 , #{busanb2bpoctg}
+			 , #{sejongb2bpoctg}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateArea">
+		/* wms-ctmaster-area-sql-oracle.xml - updateArea */
+		UPDATE TWORK_MST_AR
+		   SET ARNM = #{arnm}
+			 , WRHOUSDIVCD = #{wrhousdivcd}
+		     , ANSUNGB2BPOCTG = #{ansungb2bpoctg}
+			 , NAMSAB2BPOCTG = #{namsab2bpoctg}
+			 , BUSANB2BPOCTG = #{busanb2bpoctg}
+			 , SEJONGB2BPOCTG = #{sejongb2bpoctg}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND ZNKEY = #{znkey}
+		   AND ARKEY = #{arkey}
+	</update>
+
+	<delete id="deleteArea">
+		/* wms-ctmaster-area-sql-oracle.xml - deleteArea */
+		DELETE
+		  FROM TWORK_MST_AR
+		WHERE CTKEY = #{ctkey}
+		  AND ZNKEY = #{znkey}
+		  AND ARKEY = #{arkey}
+	</delete>
+
+</mapper>
+	

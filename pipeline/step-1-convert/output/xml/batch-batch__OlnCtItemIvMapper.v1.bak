@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.po.mapper.OlnCtItemIvMapper">
+
+    <select id="selectWmsOlnCtItemIvList" resultType="camelMap">
+		/* OlnCtItemIvMapper.xml selectWmsOlnCtItemIvList */
+        SELECT IC.ICKEY
+		FROM TORDER_WMS_IVTAGET_BATCH IC
+		WHERE IC.CTKEY = #{ctkey}
+		  AND IC.SENDYN = 'N'
+		  AND ROWNUM  <![CDATA[ < ]]> #{sendCnt}
+    </select>
+
+	<insert id="insertIntfIvAvqtyOmsToWms" parameterType = "com.daiso.batch.biz.oms.po.dto.OlnCtItemIvDTO$itemRsVO">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - insertIntfIvAvqtyOmsToWms */
+		INSERT INTO TORDER_INTF_WMS_REQORDERIV
+		(
+			  CTKEY
+            , OWKEY
+            , ICKEY
+            , AVQTY
+            , UNUSEQTY
+            , REQUESTDT
+            , IFID
+            , INSERTDATE
+            , INSERTURKEY
+            , UPDATEDATE
+            , UPDATEURKEY
+		) VALUES (
+	      	  #{ctkey}
+            , #{owkey}
+            , #{ickey}
+            , #{avqty}
+            , #{navqty}
+            , #{requestdt}
+            , #{ifid}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		    , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		    , #{interfaceUrkey}
+		)
+	</insert>
+
+
+	<update id="updateReqorderIv" parameterType="com.daiso.batch.biz.oms.po.dto.OlnCtItemIvDTO$itemRsVO">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - updateReqorderIv */
+		UPDATE TORDER_INFO_REQORDERIV
+		SET AVQTY       = #{avqty}
+		, UNUSEQTY    = #{navqty}
+		, UPDATEDATE  = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		, UPDATEURKEY = #{interfaceUrkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ICKEY = #{ickey}
+	</update>
+
+	<insert id="insertReqorderIv" parameterType="com.daiso.batch.biz.oms.po.dto.OlnCtItemIvDTO$itemRsVO">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - updateReqorderIv */
+		INSERT INTO TORDER_INFO_REQORDERIV
+		(
+		CTKEY, OWKEY, ICKEY,
+		AVQTY, UNUSEQTY,
+		INSERTDATE, INSERTURKEY,
+		UPDATEDATE, UPDATEURKEY
+		)
+		VALUES
+		(
+		#{ctkey},
+		#{owkey},
+		#{ickey},
+		#{avqty},
+		#{navqty},
+		TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+		#{interfaceUrkey},
+		TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+		#{interfaceUrkey}
+		)
+	</insert>
+
+	<!-- TORDER_WMS_IVTAGET_BATCH 오늘 데이터 삭제 -->
+	<!-- 데이터가 많이 적재되어 금일 제외한 건은 전체 삭제 하도록 변경 하는게 맞아 보임 -->
+	<delete id="deleteTodayTarget">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - deleteTodayTarget */
+		DELETE FROM TORDER_WMS_IVTAGET_BATCH
+		WHERE REQDATE <![CDATA[ <= ]]> #{startDate}
+	</delete>
+
+	<!-- 8시 적재용 INSERT -->
+	<insert id="insertTodayTarget">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - insertTodayTarget */
+		INSERT INTO TORDER_WMS_IVTAGET_BATCH (
+			REQDATE, CTKEY, ICKEY, SENDYN,
+			INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+		)
+		SELECT
+			#{startDate} AS REQ_DATE,
+			CT.CTKEY,
+			IC.ICKEY,
+			'N' AS SEND_YN,
+		    TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'batch' AS INSERTURKEY,
+		    TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'),
+			'batch' AS UPDATEURKEY
+		FROM TORDER_MST_IC IC
+		INNER JOIN TORDER_MST_ICXCT ICXCT
+				ON IC.OWKEY = ICXCT.OWKEY
+			   AND IC.ICKEY = ICXCT.ICKEY
+		INNER JOIN TORDER_MST_CT CT
+				ON ICXCT.CTKEY = CT.CTKEY
+		INNER JOIN (
+					SELECT ICKEY,
+						   OWKEY,
+						   COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN,
+						   COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+					  FROM TORDER_MST_ICUTXTYPE
+					 WHERE OWKEY = #{owkey}
+					 GROUP BY ICKEY, OWKEY
+				   ) S_ICUT
+				ON IC.OWKEY = S_ICUT.OWKEY
+			   AND IC.ICKEY = S_ICUT.ICKEY
+		WHERE IC.OWKEY = #{owkey}
+		GROUP BY CT.CTKEY, IC.ICKEY
+	</insert>
+
+	<update id="updateTodayTarget">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - updateTodayTarget */
+		UPDATE  TORDER_WMS_IVTAGET_BATCH SET  SENDYN ='Y' ,  UPDATEDATE =  TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		WHERE   REQDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+		  AND   CTKEY =  #{ctkey}
+		  AND   ICKEY =  #{ickey}
+	</update>
+
+
+	<delete id="deleteWmsReqIv">
+		/* oms-order-inventoryStatusBatch-sql-oracle.xml - deleteTodayTarget */
+		DELETE FROM TORDER_INFO_REQORDERIV
+	</delete>
+
+
+</mapper>

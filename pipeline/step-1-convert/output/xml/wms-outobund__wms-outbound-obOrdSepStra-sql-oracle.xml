@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObOrdSepStraMapper">
+
+	<sql id="selectObSepStraMasterRefSql">
+					/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectObSepStraMasterSql - WMS > 출고 관리 > 주문분리 전략 : 마스터 조회 SQL */
+					SELECT 0 AS CHK
+						 , MST.CTKEY /*센터코드*/
+						 , CT.CTNM /*센터명*/
+						 , MST.OWKEY /*화주코드*/
+						 , OW.OWNM /*화주명*/
+						 , MST.ORDSEPSTGCD /*전략코드*/
+						 , MST.ORDSEPSTGNM /*전략명*/
+						 , COALESCE(MST.USEYN, 'N') AS USEYN /*사용여부*/
+						 , MST.INSERTDATE /*입력일시*/
+						 , MST.INSERTURKEY /*입력자*/
+						 , MST.UPDATEDATE /*수정일시*/
+						 , MST.UPDATEURKEY /*수정자*/
+					   FROM TWORK_INFO_ORD_SEP_STG_MSTR MST
+					 INNER JOIN TWORK_MST_CT CT
+						ON MST.CTKEY = CT.CTKEY
+					 INNER JOIN TWORK_MST_OW OW
+						ON MST.OWKEY = OW.OWKEY
+					 WHERE 1=1
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   AND #{SEARCH_CONDITION}
+					</if>
+	</sql>
+
+	<select id="selectObSepStraMaster" resultType="camelMap">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectObSepStraMaster - WMS > 출고 관리 > 주문분리 전략 : 마스터 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	*
+		  FROM (
+				<include refid="selectObSepStraMasterRefSql"/>
+		  )
+		 ORDER BY
+			   ORDSEPSTGCD
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<sql id="selectObSepStraHeaderRefSql">
+				/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectObSepStraHeaderSql - WMS > 출고 관리 > 주문분리 전략 : 헤더 조회 SQL */
+				SELECT 0 AS CHK
+					 , INFO.CTKEY /*센터코드*/
+					 , INFO.OWKEY /*화주코드*/
+					 , INFO.ORDSEPSTGCD /*주문 분리 전략코드*/
+					 , INFO.ORDSEPPRI /*주문 분리 우선 순위*/
+					 , INFO.ORDSEPCRITCD /*주문 분리 기준코드*/
+					 , INFO.QTY /*PCS*/
+					 , INFO.QTYRNGCD /*PCS구간*/
+					 , INFO.VOL /*CBM*/
+					 , INFO.VOLRNGCD /*CBM구간*/
+					 , INFO.WEIGHT /*중량*/
+					 , INFO.WEIGHTRNGCD /*중량구간*/
+					 , INFO.INSERTURKEY /*입력아이디*/
+					 , INFO.INSERTDATE /*입력일시*/
+					 , INFO.UPDATEURKEY /*수정아이디*/
+					 , INFO.UPDATEDATE /*수정일시*/
+				  FROM TWORK_INFO_ORD_SEP_STG_MSTR MST
+				 INNER JOIN TWORK_INFO_ORD_SEP_STG INFO
+					ON MST.CTKEY = INFO.CTKEY
+				   AND MST.OWKEY = INFO.OWKEY
+				   AND MST.ORDSEPSTGCD = INFO.ORDSEPSTGCD
+				 WHERE MST.CTKEY = #{ctkey}
+				   AND MST.OWKEY = #{owkey}
+				   AND MST.ORDSEPSTGCD = #{ordsepstgcd}
+	</sql>
+
+	<select id="selectObSepStraHeader" resultType="camelMap">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectObSepStraMaster - WMS > 출고 관리 > 주문분리 전략 : 헤더 조회 */
+		SELECT 	*
+		  FROM (
+				<include refid="selectObSepStraHeaderRefSql"/>
+		  )
+		 ORDER BY ORDSEPPRI
+
+	</select>
+
+	<insert id="updateSepStraMasterClear">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - updateSepStraMasterClear - WMS > 출고 관리 > 주문분리 전략 : 마스터 사용여부 제거 */
+		UPDATE TWORK_INFO_ORD_SEP_STG_MSTR
+		   SET USEYN = 'N'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	</insert>
+
+	<insert id="insertSepStraMaster">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - insertSepStraMaster - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 마스터 저장(Insert) */
+		INSERT INTO TWORK_INFO_ORD_SEP_STG_MSTR
+		(
+			CTKEY
+			, OWKEY
+			, ORDSEPSTGCD
+			, ORDSEPSTGNM
+			, USEYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ordsepstgcd}
+			, #{ordsepstgnm}
+			, #{useyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateSepStraMaster">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - updateSepStraMaster - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 마스터 저장(Update) */
+		UPDATE TWORK_INFO_ORD_SEP_STG_MSTR
+		   SET ORDSEPSTGNM = #{ordsepstgnm}
+			 , USEYN = #{useyn}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPSTGCD = #{ordsepstgcd}
+	</update>
+
+	<delete id="deleteSepStraMaster">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - deleteSepStraMaster - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 마스터 삭제 */
+		DELETE FROM TWORK_INFO_ORD_SEP_STG_MSTR
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPSTGCD = #{ordsepstgcd}
+	</delete>
+
+	<select id="selectSepStraMasterUse"  resultType="java.lang.Integer">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectSepStraMasterUse - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 마스터 삭제 - 전략 마스터 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_ORD_SEP_STG_MSTR
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	</select>
+
+	<update id="updateSepStraMasterUseyn">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - updateSepStraMasterUseyn - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 마스터 삭제 - 전략마스터에 사용여부 업데이트 */
+		UPDATE TWORK_INFO_ORD_SEP_STG_MSTR
+		   SET USEYN = 'Y'
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	</update>
+
+	<delete id="deleteSepStraHeader">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - deleteSepStraHeader - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 헤더 삭제 */
+		DELETE FROM TWORK_INFO_ORD_SEP_STG
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPSTGCD = #{ordsepstgcd}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ordsepcritcd)" >
+		   AND ORDSEPCRITCD = #{ordsepcritcd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ordseppri)" >
+		   AND ORDSEPPRI = #{ordseppri}
+		</if>
+	</delete>
+
+	<select id="selectObSepStraHeaderChk"  resultType="camelMap">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - selectObSepStraHeaderChk - WMS > 출고 관리 > 주문분리 전략 : 주문 분리 전략 헤더 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORDSEPSTGCD
+			 , ORDSEPCRITCD
+			 , ORDSEPPRI
+			 , QTY
+			 , QTYRNGCD
+			 , VOL
+			 , VOLRNGCD
+			 , WEIGHT
+			 , WEIGHTRNGCD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INFO_ORD_SEP_STG
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPSTGCD = #{ordsepstgcd}
+		   AND ORDSEPCRITCD = #{ordsepcritcd}
+		   AND ORDSEPPRI = #{ordseppri}
+	</select>
+
+	<insert id="insertSepStraHeader">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - insertSepStraHeader - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 헤더 저장(Insert) */
+		INSERT INTO TWORK_INFO_ORD_SEP_STG
+		(
+			CTKEY
+			 , OWKEY
+			 , ORDSEPSTGCD
+			 , ORDSEPCRITCD
+			 , ORDSEPPRI
+			 , QTY
+			 , QTYRNGCD
+			 , VOL
+			 , VOLRNGCD
+			 , WEIGHT
+			 , WEIGHTRNGCD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ordsepstgcd}
+			, #{ordsepcritcd}
+			, #{ordseppri}
+			, #{qty}
+			, #{qtyrngcd}
+			, #{vol}
+			, #{volrngcd}
+			, #{weight}
+			, #{weightrngcd}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<update id="updateSepStraHeader">
+		/* wms-outbound-obOrdSepStraMapper-sql-oracle.xml - updateSepStraHeader - WMS > 출고 관리 > 주문분리 전략 : 주문분리 전략 헤더 저장(Update) */
+		UPDATE TWORK_INFO_ORD_SEP_STG
+		   SET ORDSEPPRI = #{ordseppri}
+			 , QTY = #{qty}
+			 , QTYRNGCD = #{qtyrngcd}
+			 , VOL = #{vol}
+			 , VOLRNGCD = #{volrngcd}
+			 , WEIGHT = #{weight}
+			 , WEIGHTRNGCD = #{weightrngcd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPSTGCD = #{ordsepstgcd}
+		   AND ORDSEPCRITCD = #{ordsepcritcd}
+		   AND ORDSEPPRI = #{ordseppri}
+	</update>
+</mapper>

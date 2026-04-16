@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.CenterMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectCenter">
+		FROM TWORK_MST_CT CT
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND	#{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectCenterCount" resultType="java.lang.Integer">
+		/* wms-master-center-sql-oracle.xml - selectCenterCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectCenter"/>
+	</select>
+
+	<select id="selectCenterList" resultType="camelMap">
+		/* wms-master-center-sql-oracle.xml - selectCenterList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  CT.CTKEY
+			, CT.CTNM
+			, CT.CTTYPECD
+			, CT.REGNO
+			, CT.ADDR1
+			, CT.ADDR2
+			, CT.TELNO
+			, CT.CLOSDATE
+			, CT.INSERTDATE
+			, CT.INSERTURKEY
+			, CT.UPDATEDATE
+			, CT.UPDATEURKEY
+		<include refid="sql_selectCenter"/>
+		 ORDER BY
+			   CT.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+</mapper>	

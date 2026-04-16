@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfIcomReqIcomMapper">
+
+	<select id="selectPkTOrderReqWmsHdCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_REQ_WMS_HD
+		 WHERE 
+		 	   CTKEY = #{ctkey}
+		   AND REQHDKEY = #{reqhdkey} 
+	
+	</select>
+	
+	<select id="selectPkTOrderReqWmsDtCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_REQ_WMS_DT
+		 WHERE 
+		 	   CTKEY = #{ctkey}
+		   AND REQHDKEY = #{reqhdkey} 
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqdtkey)" >
+		   AND REQDTKEY = #{reqdtkey} 
+		</if>
+	</select>
+
+	<insert id="insertTOrderReqWmsHd">
+			INSERT INTO TORDER_REQ_WMS_HD
+			(
+				  CTKEY
+				 ,REQHDKEY
+				 ,EXTERNORDERKEY
+				 ,OBHDTYPE
+				 ,OBREQUESTDATE
+				 ,OBDATE
+				 ,LOGGRPCD
+				 ,DCKEY
+				 ,OWKEY
+				 ,ACKEY
+				 ,STORE_KEY
+				 ,REQREASON
+				 ,SO_HDKEY
+				 ,ICGRKEY
+				 ,INSERTDATE
+				 ,INSERTURKEY
+				 ,UPDATEDATE
+				 ,UPDATEURKEY
+				 ,FR_CTKEY
+				 ,TO_CTKEY
+			) VALUES (
+				  #{ctkey}						
+				 ,#{reqhdkey}
+				 ,#{externorderkey}
+				 ,#{obhdtype}
+				 ,#{obrequestdate}
+				 ,#{obdate}
+				 ,#{loggrpcd}
+				 ,#{dckey}
+				 ,#{owkey}
+				 ,#{ackey}
+				 ,#{store_key}
+				 ,#{reqreason}
+				 ,#{so_hdkey}
+				 ,#{icgrkey}
+				 ,#{sysdate}
+			     ,#{surkey}
+				 ,#{sysdate}
+			     ,#{surkey}
+			     ,CASE #{obhdtype} WHEN '100' THEN #{fr_ctkey} ELSE '' END
+				 ,CASE #{obhdtype} WHEN '110' THEN #{to_ctkey} WHEN '70' THEN #{to_ctkey} ELSE '' END
+			)	
+	</insert>
+	
+	<insert id="insertTOrderReqWmsDt">
+			INSERT INTO TORDER_REQ_WMS_DT
+			(
+					 CTKEY
+					,REQHDKEY
+					,REQDTKEY
+					,EXTERNORDERKEY
+					,EXTERNORDERLINENUM
+					,OWKEY
+					,ICKEY
+					,ICUTKEY
+					,UOM
+					,EXQTY
+					,SO_HDKEY
+					,SO_DTKEY
+					,COSTPRICE
+					,SALEPRICE
+					,CHITID
+					,ERPSTLC
+					,LCKEY
+					,LOGGRPCD
+					,ACKEY
+					,ICGRKEY
+					,ICGRTYPE
+					,INSERTDATE
+					,INSERTURKEY
+					,UPDATEDATE
+					,UPDATEURKEY
+			) VALUES (
+					 #{ctkey}
+					,#{reqhdkey}
+					,#{reqdtkey}
+					,#{externorderkey}
+					,#{externorderlinenum}
+					,#{owkey}
+					,#{ickey}
+					,#{icutkey}
+					,#{uom}
+					,#{exqty}
+					,#{so_hdkey}
+					,#{so_dtkey}
+					,#{costprice}
+					,#{saleprice}
+					,#{chitid}
+					,#{erpstlc}
+					,#{lckey}
+					,#{loggrpcd}
+					,#{ackeydtl}
+					,#{icgrkeydtl}
+					,#{icgrtype}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+			)	
+	</insert>	
+	
+	<resultMap id="selectTworkMstCtGetCtNameMap" type="java.util.HashMap">
+		<result property="ctname" column="CTNAME" />
+		<result property="trans_date" column="TRANS_DATE" />
+	</resultMap>
+	
+	<select id="selectTworkMstCtGetCtName" resultMap="selectTworkMstCtGetCtNameMap">
+		SELECT CTNAME
+		      ,TO_CHAR(TO_DATE(#{obdate},'YYYYMMDDHH24MISS'),'YYYY.MM.DD') AS TRANS_DATE
+		  FROM TWORK_MST_CT 
+		 WHERE CTKEY = #{ctkey}
+	</select>
+	
+     <update id="procUpdateAlertSend" statementType="CALLABLE" parameterType="java.util.HashMap">
+    	CALL SP_INFO_ALERT_SEND(
+    				 'WMS'
+    				,#{eventid,mode=IN,jdbcType=VARCHAR}
+    				,#{param1,mode=IN,jdbcType=VARCHAR}
+    				,#{param2,mode=IN,jdbcType=VARCHAR}
+    				,#{param3,mode=IN,jdbcType=VARCHAR}
+    				,#{param4,mode=IN,jdbcType=VARCHAR}
+    				,#{param5,mode=IN,jdbcType=VARCHAR}
+    				,#{urkey,mode=IN,jdbcType=VARCHAR}
+    				,#{result,mode=OUT,jdbcType=VARCHAR}
+    				)
+    </update>	
+	
+</mapper>	

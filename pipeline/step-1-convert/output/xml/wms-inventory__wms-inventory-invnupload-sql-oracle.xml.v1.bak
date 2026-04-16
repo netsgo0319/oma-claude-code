@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnUploadMapper">
+
+	<resultMap id="InvnUploadMap" type="java.util.HashMap">
+		<result property="ulhskey" column="ULHSKEY" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctkey_desc" column="CTKEY_DESC" typeHandler="CodeDescTypeHandler"  />
+		<result property="owkey" column="OWKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="lckey" column="LCKEY" />
+		<result property="ulckey" column="ULCKEY" />
+		<result property="qty" column="QTY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler"  />
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeTypeHandler"  />
+		<result property="attribute1" column="ATTRIBUTE1" />
+		<result property="attribute2" column="ATTRIBUTE2" />
+		<result property="attribute3" column="ATTRIBUTE3" />
+		<result property="attribute4" column="ATTRIBUTE4" />
+		<result property="attribute5" column="ATTRIBUTE5" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="ifstatus" column="IFSTATUS" />
+		<result property="ifstatus_desc" column="IFSTATUS_DESC" typeHandler="CodeDescTypeHandler"  />
+		<result property="ifmessage" column="IFMESSAGE" />
+		<result property="insertdate" column="INSERTDATE" typeHandler="GmtDateTimeTypeHandler" />
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="seq" column="SEQ" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+	</resultMap> 
+	
+	<resultMap id="InvnUploadExcelMap" type="java.util.HashMap">
+		<result property="ulhskey" column="ULHSKEY" />
+		<result property="ctkey" column="CTKEY" />
+		<result property="ctkey_desc" column="CTKEY_DESC" />
+		<result property="owkey" column="OWKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="lckey" column="LCKEY" />
+		<result property="ulckey" column="ULCKEY" />
+		<result property="qty" column="QTY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" />
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeFormatTypeHandler" />
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateTimeFormatTypeHandler" />
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateTimeFormatTypeHandler"  />
+		<result property="attribute1" column="ATTRIBUTE1" />
+		<result property="attribute2" column="ATTRIBUTE2" />
+		<result property="attribute3" column="ATTRIBUTE3" />
+		<result property="attribute4" column="ATTRIBUTE4" />
+		<result property="attribute5" column="ATTRIBUTE5" />
+		<result property="productlot" column="PRODUCTLOT" />
+		<result property="ifstatus" column="IFSTATUS" />
+		<result property="ifstatus_desc" column="IFSTATUS_DESC" typeHandler="CodeDescTypeHandler"  />
+		<result property="ifmessage" column="IFMESSAGE" />
+		<result property="insertdate" column="INSERTDATE" typeHandler="GmtDateTimeFormatTypeHandler" />
+		<result property="inserturkey" column="INSERTURKEY" />
+	</resultMap> 	
+
+	<select id="selectInvnUpload" resultMap="InvnUploadMap">
+	<!-- 페이징 상수 사용 금지 -->
+		SELECT 	*
+		  FROM 	(
+			SELECT 	A.* 
+					,ROWNUM PAGING_NUM
+			  FROM 	(
+				SELECT 	ULHSKEY
+						,CTKEY
+						,#{ctkey} || ';' || 'CTKEY'||';'||CTKEY AS CTKEY_DESC
+						,OWKEY
+						,ICKEY
+						,LCKEY
+						,ULCKEY
+						,QTY
+						,ICUTKEY
+						,UOM
+						,#{ctkey} || ';' || 'ICUTTYPE'||';'||UOM AS UOM_DESC
+						,PRODUCTDATE
+						,EXPIREDATE
+						,IBCONFIRMDATE
+						,ATTRIBUTE1
+						,ATTRIBUTE2
+						,ATTRIBUTE3
+						,ATTRIBUTE4
+						,ATTRIBUTE5
+						,PRODUCTLOT
+						,IFSTATUS
+						,#{ctkey} || ';' || 'IFSTATUS'||';'||IFSTATUS AS IFSTATUS_DESC
+						,IFMESSAGE
+						,INSERTDATE
+						,INSERTURKEY
+						,SEQ
+				  FROM 	TWORK_TEMP_IVUP
+				 WHERE	CTKEY = #{ctkey}
+				<choose>
+					<when test="ulhskey != null">
+					   AND	ULHSKEY = #{ulhskey}
+					</when>
+					<otherwise>
+				       	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   		   AND	#{SEARCH_CONDITION}
+						</if>
+					</otherwise>
+				</choose>
+			    <choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY UPDATEDATE DESC
+					</otherwise>
+				</choose>
+			) A
+		)
+		<![CDATA[	    			
+			WHERE 	PAGING_NUM > (#{currentPage} -1)* #{pagingLimit} 
+			AND 	PAGING_NUM <= #{currentPage} * #{pagingLimit}		
+		]]>	
+	<!-- 페이징 상수 사용 금지 -->
+	</select>
+
+
+	<select id="selectInvnUploadCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(*)  
+		  FROM 	TWORK_TEMP_IVUP
+		 WHERE	CTKEY = #{ctkey}
+	  	<choose>
+			<when test="ulhskey != null">
+				AND	 ULHSKEY = #{ulhskey}
+			</when>
+			<otherwise>
+	        	<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   			AND  #{SEARCH_CONDITION}
+				</if>
+			</otherwise>
+		</choose>
+	</select>
+	
+	<select id="selectInvnTemp" resultMap="InvnUploadMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT 	ULHSKEY
+				,CTKEY
+				,OWKEY
+				,ICKEY
+				,LCKEY
+				,ULCKEY
+				,QTY
+				,ICUTKEY
+				,UOM
+				,PRODUCTDATE
+				,EXPIREDATE
+				,IBCONFIRMDATE
+				,ATTRIBUTE1
+				,ATTRIBUTE2
+				,ATTRIBUTE3
+				,ATTRIBUTE4
+				,ATTRIBUTE5
+				,PRODUCTLOT
+				,IFSTATUS
+				,IFMESSAGE
+				,INSERTDATE
+				,INSERTURKEY
+				,SEQ
+		  FROM 	TWORK_TEMP_IVUP
+	 	 WHERE 	CTKEY = #{ctkey}
+	   	   AND 	ULHSKEY = #{ulhskey}
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>	
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY SEQ ASC
+			</otherwise>
+		</choose>
+		 #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectInvnTempAll" resultMap="InvnUploadMap">	    
+	    SELECT TB1.ULHSKEY
+		      ,TB1.CTKEY
+		      ,TB1.OWKEY
+		      ,TB1.ICKEY
+		      ,TB1.LCKEY
+		      ,TB1.ULCKEY
+		      ,TB1.QTY
+		      ,TB1.ICUTKEY
+		      ,TB1.UOM
+		      ,TB1.PRODUCTDATE
+		      ,TB1.EXPIREDATE
+		      ,TB1.IBCONFIRMDATE
+		      ,TB1.ATTRIBUTE1
+		      ,TB1.ATTRIBUTE2
+		      ,TB1.ATTRIBUTE3
+		      ,TB1.ATTRIBUTE4
+		      ,TB1.ATTRIBUTE5
+		      ,TB1.PRODUCTLOT
+		      ,TB1.IFSTATUS
+		      ,TB1.IFMESSAGE
+		      ,TB1.INSERTDATE
+		      ,TB1.INSERTURKEY
+		      ,TB1.SEQ
+		      ,TB2.LOGGRPCD
+		  FROM TWORK_TEMP_IVUP TB1
+		      ,TWORK_MST_IC TB2
+		 WHERE TB1.CTKEY = TB2.CTKEY(+)
+		   AND TB1.OWKEY = TB2.OWKEY(+)
+		   AND TB1.ICKEY = TB2.ICKEY(+)
+		   AND TB1.CTKEY = #{ctkey}
+		   AND TB1.ULHSKEY = #{ulhskey}
+		ORDER BY TB1.ICKEY ASC, TB1.LCKEY ASC, TB1.ULCKEY
+	</select>
+	
+	<insert id="insertTworkTempIvup">
+		INSERT INTO TWORK_TEMP_IVUP
+		(
+			SESSIONID		
+			,ULHSKEY
+			,CTKEY
+			,OWKEY
+			,ICKEY
+			,LCKEY
+			,ULCKEY
+			,QTY
+			,ICUTKEY
+			,UOM
+			,PRODUCTDATE
+			,EXPIREDATE
+			,IBCONFIRMDATE
+			,ATTRIBUTE1
+			,ATTRIBUTE2
+			,ATTRIBUTE3
+			,ATTRIBUTE4
+			,ATTRIBUTE5
+			,PRODUCTLOT
+			,IFSTATUS
+			,IFMESSAGE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,SEQ
+		)
+		VALUES 
+		( 
+			#{sessionid}
+			,#{ulhskey}
+			,#{ctkey}
+			,#{owkey}
+			,#{ickey}
+			,#{lckey}
+			,#{ulckey}
+			,#{qty}
+			,#{icutkey}
+			,#{uom}
+			,#{productdate, typeHandler=GmtDateTimeFormatTypeHandler}
+			,#{expiredate, typeHandler=GmtDateTimeFormatTypeHandler}
+			,#{ibconfirmdate, typeHandler=GmtDateTimeFormatTypeHandler}
+			,#{attribute1}
+			,#{attribute2}
+			,#{attribute3}
+			,#{attribute4}
+			,#{attribute5}
+			,#{productlot}
+			,#{ifstatus}
+			,#{ifmessage}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{seq}
+		)	
+	</insert>	
+	
+	<update id="updateTworkTempIvup">
+		UPDATE TWORK_TEMP_IVUP
+		   SET IFSTATUS            = #{ifstatus}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ifmessage)" >
+		   	   ,IFMESSAGE = #{ifmessage}
+			</if>
+		       ,UPDATEDATE         = #{sysdate}
+		       ,UPDATEURKEY        = #{surkey}
+		 WHERE 
+		       CTKEY = #{ctkey}
+		   AND ULHSKEY = #{ulhskey}
+		   AND SEQ = #{seq}
+	</update>
+	
+	<insert id="insertTworkInfoUlhs">
+		INSERT INTO TWORK_INFO_ULHS
+		(
+			 CTKEY
+			,ULHSKEY
+			,UPLOADFILENAME
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,ULHSTYPE
+		) VALUES (
+			 #{ctkey}
+			,#{ulhskey}                  
+			,#{uploadfilename}            
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		    ,#{ulhstype}                  
+		)
+	</insert>
+
+	<select id="selectExcelDownInvnUpload" resultMap="InvnUploadExcelMap">
+		SELECT 	ULHSKEY
+				,CTKEY AS CTKEY_DESC
+				,OWKEY
+				,ICKEY
+				,LCKEY
+				,ULCKEY
+				,QTY
+				,ICUTKEY
+				,UOM AS UOM_DESC
+				,PRODUCTDATE
+				,EXPIREDATE
+				,IBCONFIRMDATE
+				,ATTRIBUTE1
+				,ATTRIBUTE2
+				,ATTRIBUTE3
+				,ATTRIBUTE4
+				,ATTRIBUTE5
+				,PRODUCTLOT
+				,IFMESSAGE
+				,#{ctkey} || ';' || 'IFSTATUS'||';'||IFSTATUS AS IFSTATUS_DESC
+				,INSERTDATE
+				,INSERTURKEY
+		  FROM 	TWORK_TEMP_IVUP
+		 WHERE  CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	   	   AND	#{SEARCH_CONDITION}
+		</if>
+	</select>
+</mapper>	

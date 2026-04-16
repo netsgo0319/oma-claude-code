@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnManagerMapper">
+
+	<select id="selectChkCommingle" parameterType="invnAtLcUlcVO" resultType="int">
+		<![CDATA[			
+		SELECT COUNT(*) AS CNT
+		 FROM TWORK_INFO_IVATXLCXULC
+		WHERE CTKEY = #{ctkey}
+		    AND LCKEY = #{lckey}
+		    AND TTQTY > 0
+		]]>
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ivatkey)'>
+		    AND IVATKEY <![CDATA[ <> ]]> #{ivatkey}
+		</if>
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ickey)'>
+		    AND ICKEY <![CDATA[ <> ]]> #{ickey}			
+		</if>
+	</select>
+	
+	<select id="selectChkIvatByLcByUlc" parameterType="invnAtLcUlcVO" resultType="int">
+		<![CDATA[			
+		SELECT COUNT(*) AS CNT
+		 FROM TWORK_INFO_IVATXLCXULC
+		WHERE CTKEY = #{ctkey}
+		    AND IVATKEY = #{ivatkey}
+		    AND LCKEY = #{lckey}
+		    AND ULCKEY = #{ulckey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+		]]>
+	</select>
+	
+	<select id="selectChkIvatByLcByUlcByCnt" parameterType="invnAtLcUlcVO" resultType="int">
+		<![CDATA[			
+		SELECT COUNT(*) AS CNT
+		 FROM TWORK_INFO_IVATXLCXULC
+		WHERE  ULCKEY = #{ulckey}
+		   AND TTQTY > 0
+		]]>
+	</select>
+	
+	<select id="selectChkIvatByLcByUlcByKey" parameterType="invnAtLcUlcVO" resultType="java.lang.String">
+		<![CDATA[			
+		SELECT IVATKEY
+		 FROM TWORK_INFO_IVATXLCXULC
+		WHERE CTKEY = #{ctkey}
+		    AND IVATKEY = #{ivatkey}
+		    AND LCKEY = #{lckey}
+		    AND ULCKEY = #{ulckey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+		]]>
+	</select>
+	
+	<insert id="insertIvatByLcByUlc" parameterType="invnAtLcUlcVO">
+		INSERT INTO TWORK_INFO_IVATXLCXULC (
+				CTKEY      
+				,IVATKEY    
+				,LCKEY
+				,ULCKEY
+				,OWKEY      
+				,ICKEY      
+				,TTQTY
+				,AVQTY 
+				,ALQTY
+				,PIQTY 
+				,PAQTY 
+				,HOQTY
+				,LOGGRPCD
+				,IVATSTATUS
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY
+			) VALUES (
+				#{ctkey}				
+				,#{ivatkey}
+				,#{lckey}
+				,#{ulckey}
+				,#{owkey}
+				,#{ickey}
+				,#{ttqty}
+				,#{avqty}
+				,#{alqty}
+				,#{piqty}
+				,#{paqty}
+				,#{hoqty}
+				,#{loggrpcd}
+				,#{ivatstatus}
+			    ,#{sysdate}
+			  	,#{surkey}
+			  	,#{sysdate}
+		      	,#{surkey}
+			)			
+	</insert>	
+	
+	<update id="updateIvatByLcByUlcAddQty" parameterType="invnAtLcUlcVO">
+	/* wms-inventory-invnmanager-sql-oracle.xml - updateIvatByLcByUlcAddQty - 재고 속성 변경 및 수량 변경  SQL */
+	
+		UPDATE TWORK_INFO_IVATXLCXULC SET
+			TTQTY = TTQTY + #{ttqty}
+			,AVQTY = AVQTY + #{avqty}
+			,ALQTY = ALQTY + #{alqty}
+			,PIQTY = PIQTY + #{piqty}
+			,PAQTY = PAQTY + #{paqty}
+			,HOQTY = HOQTY + #{hoqty}
+			,IVATSTATUS = #{ivatstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		    AND IVATKEY = #{ivatkey}
+		    AND LCKEY = #{lckey}
+		    AND ULCKEY = #{ulckey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+	</update>
+	
+	<select id="selectIvatByLcByUlcByPk"  parameterType="invnAtLcUlcVO" resultType="invnAtLcUlcVO">
+	/* wms-inventory-invnmanager-sql-oracle.xml - selectIvatByLcByUlcByPk - 재고 속성 PK 조회  SQL */
+		<![CDATA[			
+		SELECT CTKEY, IVATKEY, LCKEY, ULCKEY, OWKEY, ICKEY
+			, TTQTY, AVQTY, ALQTY, PIQTY, PAQTY, HOQTY, LOQTY, IVATSTATUS
+			, LOGGRPCD
+		 FROM TWORK_INFO_IVATXLCXULC
+		WHERE CTKEY = #{ctkey}
+		    AND IVATKEY = #{ivatkey}
+		    AND LCKEY = #{lckey}
+		    AND ULCKEY = #{ulckey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+		]]>
+	</select>
+	
+	<select id="selectIvatByLcByUlcList"  parameterType="invnAtLcUlcVO" resultType="invnAtLcUlcVO">
+		<![CDATA[			
+		SELECT A.CTKEY, A.IVATKEY, A.LCKEY, A.ULCKEY, A.OWKEY, A.ICKEY
+			, A.TTQTY, A.AVQTY, A.ALQTY, A.PIQTY, A.PAQTY, A.HOQTY, A.IVATSTATUS
+		 FROM TWORK_INFO_IVATXLCXULC A
+		 	, TWORK_MST_LC B 
+		]]>
+		<where>
+			A.CTKEY = B.CTKEY
+			AND A.LCKEY=B.LCKEY
+			AND A.TTQTY > 0				
+			AND A.CTKEY = #{ctkey}			
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ivatkey)'>
+				AND A.IVATKEY = #{ivatkey}
+			</if>	
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(lckey)'>
+				AND A.LCKEY = #{lckey}
+			</if>				
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ulckey)'>
+				AND A.ULCKEY = #{ulckey}
+			</if>				
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(owkey)'>
+				AND A.OWKEY = #{owkey}
+			</if>				
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ickey)'>
+				AND A.ICKEY = #{ickey}
+			</if>
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ivatstatus)'>
+				AND A.IVATSTATUS = #{ivatstatus}
+			</if>															
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(lcholdtype)'>
+				AND B.LCHOLDTYPE = #{lcholdtype} 	
+			</if>
+		</where> 
+	</select>
+
+	<update id="updateIvatByLcByUlcIvatStatus" parameterType="invnAtLcUlcVO">
+	/* wms-inventory-invnmanager-sql-oracle.xml - updateIvatByLcByUlcIvatStatus - 재고 속성 변경 SQL */
+	
+		UPDATE TWORK_INFO_IVATXLCXULC SET
+			IVATSTATUS = #{ivatstatus}
+			
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		    AND IVATKEY = #{ivatkey}
+		    AND LCKEY = #{lckey}
+		    AND ULCKEY = #{ulckey}
+		    AND OWKEY = #{owkey}
+		    AND ICKEY = #{ickey}
+	</update>
+	
+	<select id="selectIvatkeyMap" resultType="camelMap">
+	/* wms-inbound-invnmanager-sql-oracle.xml - selectIvatkeyMap - 재고 속성키 조회 SQL */
+		SELECT IVATKEY
+		  FROM TWORK_INFO_IVAT 
+		 WHERE CTKEY            = #{ctkey}
+           AND OWKEY            = #{owkey}
+           AND ICKEY            = #{ickey}
+           AND EXPIREDATE		= #{expiredate}
+           AND UOM				= #{uom}
+	</select>	
+	
+	<select id="selectIvatkeycount" resultType="camelMap">
+	/* wms-inbound-invnmanager-sql-oracle.xml - selectIvatkeycount - ivatkey 생성 */
+		SELECT FN_GET_KEYCOUNT_IVAT(#{ctkey} , #{surkey}) AS IVATKEY
+	</select>
+	
+	<insert id="insertIvat">
+	/* wms-inbound-invnmanager-sql-oracle.xml - insertIvat - 재고 속성 등록  SQL */
+    	INSERT INTO TWORK_INFO_IVAT   
+		(
+		  CTKEY
+		, IVATKEY
+        , OWKEY
+        , ICKEY
+        , EXPIREDATE
+        , ATTRIBUTE1
+        , ATTRIBUTE2
+        , IVATSTATUS
+        , IBCONFIRMDATE
+        , LOGGRPCD
+        , CFQTY
+        , UOM
+        , INSERTDATE
+        , INSERTURKEY
+        , UPDATEDATE
+        , UPDATEURKEY
+		)
+		VALUES
+		(
+		  #{ctkey}
+		, #{ivatkey}
+		, #{owkey}
+		, #{ickey}
+		, #{expiredate}
+		, '2'					/* TC/DC 구분 */
+		, '1'					/* 일반/보세 구분  */
+		, '10'
+		, COALESCE(#{ibconfirmdate}, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'))
+		, COALESCE(#{loggrpcd}, '1')
+		, #{mvqty}
+		, #{uom}
+		, (TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'))
+		, #{surkey}
+		, (TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'))
+		, #{surkey}
+		)
+    </insert>
+    
+    <update id="updateIvat">
+	/* wms-inbound-invnmanager-sql-oracle.xml - updateIvat - 재고 수정  SQL */
+    	UPDATE TWORK_INFO_IVAT
+		   SET CFQTY       = CFQTY + #{mvqty}
+		     , UPDATEDATE  = (TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS'))
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY            = #{ctkey}
+           AND OWKEY            = #{owkey}
+           AND ICKEY            = #{ickey}
+           AND EXPIREDATE		= #{expiredate}
+           AND UOM				= #{uom}
+    </update>
+
+</mapper>

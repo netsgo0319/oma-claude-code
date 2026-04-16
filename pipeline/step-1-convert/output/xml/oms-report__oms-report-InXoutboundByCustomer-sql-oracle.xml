@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.InXOutboundByCustomerMapper">
+
+	<select id="selectList" resultType="camelMap">
+		/* oms-report-InXOutboundByCustomer-sql-oracle.xml selectList */
+		SELECT T.DELIVERY_HD_DT
+		     , T.DELIVERY_KEY   
+		     , T.OR_TYPE_CD||':'||T.OR_TYPE_NAME AS OR_TYPE_CD
+		     , T.DELIVERY_HD_DT||T.OR_TYPE_CD||T.DELIVERY_KEY AS GROUPKEY
+		     , T.CUSTOMERNM
+		     , MAX(CASE WHEN T.LV=1 THEN COALESCE(T.RTCNT, 0) ELSE 0 END) AS RTCNT            
+		     , CASE WHEN T.POINT IS NULL THEN NULL ELSE T.POINT||':'||T.POINTNM END AS POINTNM
+		     , T.ICKEY
+		     , T.ICNM
+		     , SUM(CASE WHEN T.UNIT='BOX' THEN T.ORDERQTY ELSE 0 END) AS BOXUNITORDERQTY
+		     , SUM(CASE WHEN T.UNIT='BOX' THEN T.CFQUNITQTY ELSE 0 END) AS BOXUNITCFQTY
+		     , SUM(CASE WHEN T.UNIT='BOX' THEN T.CONVERTQTY ELSE 0 END) AS BOXORDERQTY     
+		     , SUM(CASE WHEN T.UNIT='BOX' THEN T.CFQTY ELSE 0 END) AS BOXCFQTY
+		     , SUM(CASE WHEN T.UNIT='BOL' THEN T.ORDERQTY ELSE 0 END) AS BOLUNITORDERQTY
+		     , SUM(CASE WHEN T.UNIT='BOL' THEN T.CFQUNITQTY ELSE 0 END) AS BOLUNITCFQTY
+		     , SUM(CASE WHEN T.UNIT='BOL' THEN T.CONVERTQTY ELSE 0 END) AS BOLORDERQTY     
+		     , SUM(CASE WHEN T.UNIT='BOL' THEN T.CFQTY ELSE 0 END) AS BOLCFQTY
+		     , SUM(CASE WHEN T.UNIT='EA' THEN T.CONVERTQTY ELSE 0 END) AS EAORDERQTY     
+		     , SUM(CASE WHEN T.UNIT='EA' THEN T.CFQTY ELSE 0 END) AS EACFQTY
+		     , MAX(T.OB_COSTPRICE) AS OB_COSTPRICE
+		     , SUM(T.INDIAMT) AS INDIAMT
+		     , SUM(T.VAT) AS VAT
+		     , SUM(T.SENDPRC) AS SENDPRC  
+		     , MIN(T.EXTERNORDERKEY) AS EXTERNORDERKEY
+		     , COUNT(1) AS EXCNT
+		     , CASE WHEN COUNT(1)>1 THEN MIN(T.EXTERNORDERKEY)||' 외 '||(COUNT(1)-1)||'건' 
+		            ELSE MIN(T.EXTERNORDERKEY)
+		       END AS EXDESC
+		  FROM (
+		        SELECT A.OWKEY
+		             , RANK() OVER(PARTITION BY A.OWKEY, A.OR_TYPE_CD, A.DELIVERY_HD_DT, A.DELIVERY_KEY ORDER BY B.ICKEY) AS LV
+		             , A.DELIVERY_HD_DT
+		             , A.EXTORDERTYPECD
+		             , A.OR_TYPE_CD
+		             , OT.OR_TYPE_NAME
+		             , A.DELIVERY_KEY         
+		             , C.ACNM AS ACNAME
+		             , C.POINT
+		             , AD.ADCDDTNM AS POINTNM
+		             , B.ICKEY
+		             , D.ICNM
+		             , B.UNIT
+		             , B.ORDERQTY
+		             , CASE WHEN A.WKSTATUS IN ('COMPLETE', 'SEND') THEN F.CFQTY / (B.CONVERTQTY / B.ORDERQTY) ELSE 0 END AS CFQUNITQTY
+		             , CASE WHEN A.WKSTATUS IN ('COMPLETE', 'SEND') THEN F.CFQTY ELSE 0 END AS CFQTY
+		             , B.CONVERTQTY
+		             , COALESCE(B.OB_COSTPRICE, 0) AS OB_COSTPRICE
+		             , COALESCE(B.INDIAMT, 0) AS INDIAMT
+		             , COALESCE(B.VAT, 0) AS VAT
+		             , CASE WHEN A.WKSTATUS IN ('COMPLETE', 'SEND') THEN ROUND((F.CFQTY *  B.OB_COSTPRICE ) / 1.1) ELSE 0 END AS SENDPRC   -- 부가세제외  
+		             , A.EXTERNORDERKEY
+			     	 , ROLL.RTCNT
+		        FROM  TORDER_INFO_CO_HD A 
+		        INNER JOIN TORDER_INFO_CO_DT B
+		        ON A.OWKEY = B.OWKEY
+		        AND A.CUSTOMERORDERKEY = B.CUSTOMERORDERKEY
+		        AND A.DELIVERY_HD_DT = B.DELIVERY_HD_DT
+		        INNER JOIN TORDER_MST_ORTYPE OT
+			    ON A.OWKEY = OT.OWKEY
+			    AND A.OR_TYPE_CD = OT.OR_TYPE_CD
+		        LEFT JOIN TADMIN_MST_CUSTOMER C 
+		        ON A.OWKEY = C.OWKEY
+		        AND A.DELIVERY_KEY = C.ACKEY
+		        LEFT JOIN TADMIN_MST_ADCD_DT AD
+		        ON C.POINT = AD.ADCDDTKEY
+		        AND AD.ADCDHDKEY = 'POINT'
+		        AND AD.LAKEY = #{slakey}
+		        INNER JOIN TADMIN_MST_IC  D
+		        ON B.OWKEY = D.OWKEY 
+		        AND B.ICKEY = D.ICKEY 
+		        INNER JOIN TORDER_INFO_SO_DT F
+		        ON B.OWKEY = F.OWKEY
+		        AND B.CUSTOMERORDERKEY = F.CUSTOMERORDERKEY
+		        AND B.CUSTOMERORDERDTKEY = F.CUSTOMERORDERDTKEY
+			LEFT JOIN (
+		                   SELECT COUNT(DISTINCT R.ROLL_NUMBER) AS RTCNT
+		                        , WH.STORE_KEY AS DELIVERY_KEY
+		                        , WH.OBHDTYPE
+		                        , SUBSTR(WH.OBHDDATE, 0, 8) AS OBHDDATE
+		                     FROM TWORK_INFO_OB_HD WH
+		                     JOIN TT_SHPM_DETL_ROLL_T R
+		                       ON WH.ORHDKEY = R.SHPMNO
+		                    WHERE WH.OWKEY = #{owkey}
+		                      AND WH.OBHDDATE BETWEEN #{orHddateFr}||'000000' AND #{orHddateTo}||'000000'
+		                      AND R.ROLL_NUMBER IS NOT NULL   
+		                    GROUP BY WH.STORE_KEY
+		                           , WH.OBHDTYPE
+		                           , WH.OBHDDATE
+		                  ) ROLL
+		        ON A.DELIVERY_KEY = ROLL.DELIVERY_KEY
+		        AND OT.OBHDTYPE=ROLL.OBHDTYPE
+		        AND A.DELIVERY_HD_DT = ROLL.OBHDDATE
+		        WHERE A.OWKEY = #{owkey}
+		        AND  A.DELIVERY_HD_DT BETWEEN #{orHddateFr} AND  #{orHddateTo}
+		        AND A.WKSTATUS NOT IN ('CANCEL')
+		        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+					AND B.ICKEY IN (
+						<foreach item="ickey" index="index" collection="ickey"    open="(" separator="," close=")">
+							#{ickey}
+						</foreach>
+					)
+				</if>
+		       ) T
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>		   
+		 GROUP BY T.OWKEY
+		        , T.DELIVERY_HD_DT
+		        , T.DELIVERY_KEY         
+		        , T.CUSTOMERNM
+		        , T.POINT
+		        , T.POINTNM
+		        , T.ICKEY
+		        , T.ICNAME
+		        , T.OR_TYPE_CD
+		        , T.OR_TYPE_NAME
+		 ORDER BY T.DELIVERY_HD_DT
+		        , T.OR_TYPE_CD
+		        , T.DELIVERY_KEY         
+		        , T.ICKEY
+	</select>
+</mapper>
+	

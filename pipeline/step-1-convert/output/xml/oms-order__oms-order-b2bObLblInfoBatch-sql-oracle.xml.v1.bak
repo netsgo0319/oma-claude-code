@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.B2bObLblInfoApiMapper">
+
+	<update id="updateIntfErpStatus">
+		/* oms-master-b2bObLblInfo-sql-oracle.xml - updateIntfErpStatus */
+		UPDATE TORDER_EAI_B2B_OBLABEL_BATCH
+           SET SND_PROC_TYP = 'Y'
+		 WHERE TRN_ID IN
+			<foreach item="trnId" index="index" collection="trnId"    open="(" separator="," close=")">
+				#{trnId}
+			</foreach>
+	</update>
+
+</mapper>
+	

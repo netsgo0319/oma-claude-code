@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.wif.mapper.DwsIfMapper">
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<select id="selectMeasureResultCount" resultType="java.lang.Integer">
+		/* wms-wif-dws-sql-oracle.xml - selectMeasureResultCount 체적실적 수신 Count 조회(WEB) */
+		SELECT COUNT(1)
+		  FROM TWIF_DWS_MEASMRSLT TDM
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectMeasureResultList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-dws-sql-oracle.xml - selectMeasureResultList 체적실적 수신 List 조회(WEB) */
+		SELECT
+				'0' AS CHK
+				, TDM.DWSSEQ
+				, TDM.CTKEY
+				, CT.CTNM
+				, TDM.OWKEY
+				, OW.OWNM
+				, TDM.SITEID
+				, TDM.ICBRCD
+				, TDM.BOXTYPE
+				, TDM.CMT
+				, TDM.WIDTH
+				, TDM.DEPTH
+				, TDM.HEIGHT
+				, TDM.WEIGHT
+				, TDM.VOLUMN
+				, TDM.DFSHPMTRYN
+				, TDM.ONLPCKGBUFFYN
+				, TDM.ONLPCKGROBYN
+				, TDM.PCKGOVLPYN
+				, TDM.PCKGOVLPWIDTH
+				, TDM.PCKGOVLPDEPTH
+				, TDM.PCKGOVLPHEIGHT
+				, TDM.COMPINFO
+				, TDM.CREATEDATE
+				, TDM.FOLDYN
+				, TDM.QRBRCDATTACHYN
+				, TDM.POLYBAGPCKGYN
+				, TDM.HIGHFRQNCYDMGYN
+				, TDM.UDC1
+				, TDM.UDC2
+				, TDM.UDC3
+				, TDM.UDC4
+				, TDM.UDC5
+				, TDM.UDC6
+				, TDM.UDC7
+				, TDM.UDC8
+				, TDM.IFCD
+				, TDM.WIFIFID
+				, TDM.IFID
+				, TDM.IFREQDT
+				, TDM.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, TDM.IFSRCMODULE
+				, TDM.IFTGTMODULE
+				, TDM.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, TDM.IFERRCD
+				, TDM.IFERRMSG
+				, TDM.IFPRCSDATE
+				, TDM.ORD
+				, TDM.INSERTDATE
+				, TDM.INSERTURKEY
+				, TDM.UPDATEDATE
+				, TDM.UPDATEURKEY
+				, TDM.IFRETRYYN
+				, TDM.IFRETRYIFID
+		  FROM TWIF_DWS_MEASMRSLT TDM
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON TDM.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON TDM.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON TDM.CTKEY  		= CDDT.CTKEY
+		   AND TDM.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON TDM.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND TDM.IFSTATUS 	= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		 WHERE 1 = 1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND  #{SEARCH_CONDITION}
+		</if>
+		 ORDER BY TDM.DWSSEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+</mapper>

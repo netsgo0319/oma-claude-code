@@ -1,0 +1,4958 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.common.mapper.CommonMapper">
+
+	<sql id="sql_pagingTop">
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT B.* FROM (
+		</if>
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		<choose>
+			<when test='@com.kns.framework.util.StringUtil@isNotEmpty(pagingYn) and "Y".equals(pagingYn) and type != "combo"'>
+				) B
+				<include refid="sql_sort"/>
+				#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+			</when>
+			<otherwise>
+				<include refid="sql_sort"/>
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_sort">
+		<choose>
+			<otherwise>
+				ORDER BY
+				FIELD1 ASC
+			</otherwise>
+		</choose>
+	</sql>
+
+	<sql id="sql_Tcode">
+		WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+			</where>
+		)
+	</sql>
+
+	<sql id="sql_tWorkMstCtcdDt">
+		  FROM  TWORK_MST_CTCD_HD A
+		  INNER JOIN  TWORK_MST_CTCD_DT B
+		  		  ON A.CTCDHDKEY = B.CTCDHDKEY
+				 AND A.CTKEY = B.CTKEY
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.CTCDHDKEY = #{ctcdhdkey}
+			AND B.LAKEY = #{lakey}
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.CTCDDTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						B.CTCDDTKEY ~ #{value}
+						OR
+						B.CTCDDTNM ~ #{value}
+						OR
+						B.CTCDDTVAL ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						B.CTCDDTKEY LIKE '%' || #{value} || '%'
+						OR
+						B.CTCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						B.CTCDDTVAL LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstCtcdDtMobileCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdDtMobileCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstCtcdDt"/>
+	</select>
+
+	<select id="selectTWorkMstCtcdDtMobile" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdDtMobile */
+		<include refid="sql_pagingTop"/>
+		SELECT B.CTCD_DTKEY AS FIELD1
+			 , B.CTCD_DTNAME AS FIELD2
+			 , B.COMMENTS AS FIELD3
+			 , B.CTCD_DTKEY
+			 , B.CTCD_DTNAME
+			 , B.COMMENTS
+		<include refid="sql_tWorkMstCtcdDt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTWorkMstCtcdDtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdDtCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstCtcdDt"/>
+	</select>
+
+	<select id="selectTWorkMstCtcdDt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdDt */
+		<include refid="sql_pagingTop"/>
+
+		SELECT B.CTCDDTKEY AS FIELD1
+			 , B.CTCDDTNM AS FIELD2
+			 , B.CTCDDTVAL AS FIELD3
+			 , B.CMT AS FIELD4
+			 , B.CTCDDTKEY
+			 , B.CTCDDTNM
+			 , B.CTCDDTVAL
+			 , B.CMT
+			 , B.CTCDDTORD
+
+		<include refid="sql_tWorkMstCtcdDt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstAc">
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			<!--AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}-->
+			AND A.DELYN = 'N'
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<!--<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)">
+				AND A.LOGGRPCD = #{loggrpcd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)">
+				AND A.DCKEY = #{dckey}
+			</if>-->
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ACKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ACKEY ~ #{value}
+						OR
+						A.ACNM ~ #{value}
+						OR
+						A.ACTYPECD ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ACNM LIKE '%' || #{value} || '%'
+						OR
+						A.ACTYPECD LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstAcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAcCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_AC A
+		<include refid="sql_tWorkMstAc"/>
+	</select>
+
+	<select id="selectTWorkMstAc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAc */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ACKEY AS FIELD1
+			, A.ACNM AS FIELD2
+			, B.CTCDDTNM AS FIELD3
+			, C.CTCDDTNM AS FIELD4
+			, D.CTCDDTNM AS FIELD5
+		    , A.ACKEY
+			, A.ACNM
+			, A.ACTYPECD
+			, A.LOGGRPCD
+			, A.DCKEY
+		FROM TWORK_MST_AC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'ACTYPE' AND B.CTCDDTKEY = A.ACTYPECD
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCDHDKEY = 'LOGGRPCD' AND C.CTCDDTKEY = A.LOGGRPCD
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCDHDKEY = 'DCKEY' AND D.CTCDDTKEY = A.DCKEY
+
+		<include refid="sql_tWorkMstAc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstOw">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstOw - common 화주 조회 SQL */
+		FROM TWORK_MST_OW A
+
+		<where>
+			<!--AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}-->
+			<choose>
+				<when test="owkeyList != null and owkeyList.size > 0">
+					AND A.OWKEY IN
+					<foreach item="owkey" collection="owkeyList"
+							 open="(" separator="," close=")">
+						#{owkey}
+					</foreach>
+				</when>
+				<otherwise>
+					AND 1 = 2 /* 센터별 화주 권한이 없는경우 */
+				</otherwise>
+			</choose>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.OWKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.OWKEY ~ #{value}
+						OR
+						A.OWNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstOwCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstOwCount - common 화주 조회 카운트 */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstOw"/>
+	</select>
+
+	<select id="selectTWorkMstOw" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstOw - common 화주 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      OWKEY AS FIELD1
+			, OWNM AS FIELD2
+			, OWKEY
+			, OWNM
+
+		<include refid="sql_tWorkMstOw"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstCt">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstCt - common 센터 조회 SQL */
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="ctkeyList != null and ctkeyList.size > 0" >
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.CTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.CTKEY ~ #{value}
+						OR
+						A.CTNM ~ #{value}
+						OR
+						B.CTCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.CTKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTNM LIKE '%' || #{value} || '%'
+						OR
+						B.CTCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstCtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtCount - common 센터 조회 카운트 */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		FROM TWORK_MST_CT A
+        LEFT OUTER JOIN T_CODE B
+        			 ON B.CTKEY = A.CTKEY
+        			AND B.CTCDHDKEY = 'CTTYPE'
+        			AND B.CTCDDTKEY = A.CTTYPECD
+		<include refid="sql_tWorkMstCt"/>
+	</select>
+
+	<select id="selectTWorkMstCt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCt - common 센터 조회 */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.CTKEY AS FIELD1
+			, A.CTNM AS FIELD2
+			, B.CTCDDTNM AS FIELD3
+			, A.CTKEY
+			, A.CTNM
+			, A.CTTYPECD
+		FROM TWORK_MST_CT A
+		LEFT OUTER JOIN T_CODE B
+					 ON B.CTKEY = A.CTKEY
+					AND B.CTCDHDKEY = 'CTTYPECD'
+					AND B.CTCDDTKEY = A.CTTYPECD
+		<include refid="sql_tWorkMstCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tAdminMstUr">
+		FROM TADMIN_MST_UR A
+		INNER JOIN TADMIN_MST_URGR B
+			ON A.URGRKEY = B.URGRKEY
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.URKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.URKEY ~ #{value}
+						OR
+						A.URNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.URKEY LIKE '%' || #{value} || '%'
+						OR
+						A.URNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTAdminMstUrCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTAdminMstUrCount */
+		SELECT COUNT(1)
+		<include refid="sql_tAdminMstUr"/>
+	</select>
+
+	<select id="selectTAdminMstUr" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTAdminMstUr */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.URKEY AS FIELD1
+			, A.URNM AS FIELD2
+			, A.URKEY
+			, A.URNM
+			, A.URGRKEY
+			, B.URGRNM
+
+		<include refid="sql_tAdminMstUr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIcgr">
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICGRPKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICGRPKEY ~ #{value}
+						OR
+						A.ICGRPNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICGRPKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICGRPNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIcgrCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcgrCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_ICGR A
+		<include refid="sql_tWorkMstIcgr"/>
+	</select>
+
+	<select id="selectTWorkMstIcgr" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcgr */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ICGRPKEY AS FIELD1
+			, A.ICGRPNM AS FIELD2
+			, B.CTCDDTNM AS FIELD3
+			, A.OWKEY AS FIELD4
+			, A.ICGRPKEY
+			, A.ICGRPNM
+			, A.ICGRPTYPECD
+			, A.OWKEY
+		FROM TWORK_MST_ICGR A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'ICGRPTYPECD' AND B.CTCDDTKEY = A.ICGRPTYPECD
+
+		<include refid="sql_tWorkMstIcgr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIcut">
+		FROM
+			TWORK_MST_ICUT A
+		INNER JOIN TWORK_MST_ICUTXTYPE B
+			ON B.CTKEY = A.CTKEY AND B.OWKEY = A.OWKEY AND B.ICUTKEY = A.ICUTKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = B.CTKEY AND C.CTCD_HDKEY = 'ICUTTYPE' AND C.CTCD_DTKEY = B.ICUTTYPE
+
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICUTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICUTKEY ~ #{value}
+						OR
+						C.CTCD_DTNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICUTKEY LIKE '%' || #{value} || '%'
+						OR
+						C.CTCD_DTNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIcutCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcutCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstIcut"/>
+	</select>
+
+	<select id="selectTWorkMstIcut" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcut */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ICUTKEY AS FIELD1
+			, C.CTCD_DTNAME AS FIELD2
+			, B.ICUTQTY AS FIELD3
+			, A.OWKEY AS FIELD4
+			, A.ICUTKEY
+			, B.ICUTTYPE
+			, B.ICUTQTY
+			, A.OWKEY
+		<include refid="sql_tWorkMstIcut"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIcMob">
+		<where>
+			AND A.CLOSDATE >= #{sysdate}
+			AND A.DELYN = 'N'
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND A.ACKEY = #{ackey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)">
+				AND A.LOGGRPCD = #{loggrpcd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICKEY ~ #{value}
+						OR
+						A.ICNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIcMobileCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcMobileCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_IC A
+		<include refid="sql_tWorkMstIcMob"/>
+	</select>
+
+	<select id="selectTWorkMstIcMobile" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcMobile */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.ICKEY AS FIELD1
+			, A.ICNAME AS FIELD2
+			, A.ICUTKEY AS FIELD3
+			, B.CTCD_DTNAME AS FIELD4
+			, A.SPEC AS FIELD5
+			, C.CTCD_DTNAME AS FIELD6
+			, D.CTCD_DTNAME AS FIELD7
+		    , A.ICKEY
+			, A.ORDTYPE
+			, A.ICUTKEY
+			, A.UOM
+			, A.SPEC
+			, A.ICGRKEY
+			, A.LOGGRPCD
+		FROM  TWORK_MST_IC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'ICUTTYPE' AND B.CTCD_DTKEY = A.UOM
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = 'ICGRKEY' AND C.CTCD_DTKEY = A.ICGRKEY
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'LOGGRPCD' AND D.CTCD_DTKEY = A.LOGGRPCD
+		LEFT OUTER JOIN T_CODE E
+			ON E.CTKEY = A.CTKEY AND E.CTCD_HDKEY = 'ORDTYPE' AND E.CTCD_DTKEY = A.ORDTYPE
+
+		<include refid="sql_tWorkMstIcMob"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIc">
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND A.ACKEY = #{ackey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)">
+				AND A.LOGGRPCD = #{loggrpcd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrpkey)">
+				AND A.ICGRPKEY = #{icgrpkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctgkey)">
+				AND A.CTGKEY = #{ctgkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						<if test="valueList != null and valueList.size > 0">
+							AND A.ICKEY IN
+							<foreach item="item" collection="valueList" open="(" separator="," close=")">
+								#{item}
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_IC A
+		<include refid="sql_tWorkMstIc"/>
+	</select>
+
+	<select id="selectTWorkMstIc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIc */
+		WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+				AND B.CTCDHDKEY IN ('ICUNITTYPECD', 'ICGRPKEY', 'ICTMPRDIVCD')
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+					AND B.LAKEY = #{lakey}
+				</if>
+			</where>
+		)
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ICKEY AS FIELD1
+			, A.ICNM AS FIELD2
+		    , B.CTCDDTNM AS FIELD3
+			, F.ICGRPNM AS FIELD4
+			, A.EXPCKYN AS FIELD5
+		    , A.EXPCKTYPECD AS FIELD6
+		    , A.ICKEY
+		    , A.ICNM
+			, A.ICUNITKEY
+			, B.CTCDDTNM AS ICUNITNM
+			, A.ICGRPTYPECD
+			, A.ICGRPKEY
+			, F.ICGRPNM
+			, A.EXPCKYN
+			, A.EXPCKTYPECD
+		FROM TWORK_MST_IC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'ICUNITTYPECD' AND B.CTCDDTKEY = A.UOM
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCDHDKEY = 'ICGRPKEY' AND C.CTCDDTKEY = A.ICGRPKEY
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCDHDKEY = 'ICTMPRDIVCD' AND D.CTCDDTKEY = A.ICTMPRDIVCD
+		/*LEFT OUTER JOIN T_CODE E
+			ON E.CTKEY = A.CTKEY AND E.CTCDHDKEY = 'ORDTYPE' AND E.CTCDDTKEY = A.ORDTYPE*/
+		LEFT OUTER JOIN TWORK_MST_ICGR F
+			ON F.CTKEY = A.CTKEY AND F.ICGRPKEY = A.ICGRPKEY AND F.ICGRPTYPECD = A.ICGRPTYPECD
+
+		<include refid="sql_tWorkMstIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIc2">
+		<where>
+			AND IC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND IC.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND IC.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND IC.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND IC.ACKEY = #{ackey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)">
+				AND IC.LOGGRPCD = #{loggrpcd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrpkey)">
+				AND IC.ICGRPKEY = #{icgrpkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctgkey)">
+				AND IC.CTGKEY = #{ctgkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND IC.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						<if test="valueList != null and valueList.size > 0">
+							AND IC.ICKEY IN
+							<foreach item="item" collection="valueList" open="(" separator="," close=")">
+								#{item}
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						AND (
+						IC.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+
+			AND NOT EXISTS (
+				SELECT 1 FROM TWORK_MST_ASRT WHERE CTKEY = IC.CTKEY AND OWKEY = IC.OWKEY AND ASRTDTICKEY = IC.ICKEY
+			)
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIc2Count" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIc2Count */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_IC IC
+		  LEFT JOIN TWORK_MST_ICGR IG
+			ON IG.CTKEY = IC.CTKEY
+		   AND IG.ICGRPKEY = IC.ICGRPKEY
+		   AND IG.ICGRPTYPECD = IC.ICGRPTYPECD
+		<include refid="sql_tWorkMstIc2"/>
+	</select>
+
+	<select id="selectTWorkMstIc2" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIc2 */
+		  WITH T_CODE AS (
+				SELECT
+					  DT.CTKEY
+					, DT.CTCDHDKEY
+					, DT.CTCDDTKEY
+					, DT.CTCDDTNM
+				FROM TWORK_MST_CTCD_HD HD
+				INNER JOIN TWORK_MST_CTCD_DT DT
+					ON DT.CTKEY = HD.CTKEY AND DT.CTCDHDKEY = HD.CTCDHDKEY
+
+				<where>
+					AND HD.DELYN = 'N'
+					AND DT.DELYN = 'N'
+					AND DT.CTCDHDKEY IN ('ICUNITTYPECD')
+
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+							AND DT.LAKEY = #{lakey}
+					</if>
+				</where>
+			 )
+
+		<include refid="sql_pagingTop"/>
+
+		SELECT IC.ICKEY AS FIELD1
+			 , IC.ICNM AS FIELD2
+			 , CD.CTCDDTNM AS FIELD3
+			 , IG.ICGRPNM AS FIELD4
+			 , IC.ICKEY
+			 , IC.ICNM
+			 , IC.ICUNITKEY
+			 , CD.CTCDDTNM AS ICUNITNM
+			 , IG.ICGRPTYPECD
+			 , IG.ICGRPKEY
+			 , IG.ICGRPNM
+		  FROM TWORK_MST_IC IC
+		  LEFT JOIN T_CODE CD
+			ON CD.CTKEY = IC.CTKEY
+		   AND CD.CTCDHDKEY = 'ICUNITTYPECD'
+		   AND CD.CTCDDTKEY = IC.UOM
+		  LEFT JOIN TWORK_MST_ICGR IG
+			ON IG.CTKEY = IC.CTKEY
+		   AND IG.ICGRPKEY = IC.ICGRPKEY
+		   AND IG.ICGRPTYPECD = IC.ICGRPTYPECD
+
+		<include refid="sql_tWorkMstIc2"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstOwIc">
+		FROM TWORK_MST_IC A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICKEY ~ #{value}
+						OR
+						A.ICNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstOwIcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstOwIcCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstOwIc"/>
+	</select>
+
+	<select id="selectTWorkMstOwIc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstOwIc */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ICKEY AS FIELD1
+			, A.ICNAME AS FIELD2
+			, A.OWKEY AS FIELD3
+			, A.ICUTKEY AS FIELD4
+			, A.UOM AS FIELD5
+			, A.ICKEY
+			, A.OWKEY
+			, A.ICUTKEY
+			, A.UOM
+
+		<include refid="sql_tWorkMstOwIc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIcsb">
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.SBKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.SBKEY ~ #{value}
+						OR
+						A.ICKEY ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						OR
+						A.ICUTTYPE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.SBKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICUTTYPE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selcetTWorkMstIcsbCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selcetTWorkMstIcsbCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_ICSB A
+		<include refid="sql_tWorkMstIcsb"/>
+	</select>
+
+	<select id="selcetTWorkMstIcsb" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selcetTWorkMstIcsb */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.SBKEY AS FIELD1
+			, A.ICKEY AS FIELD2
+			, A.OWKEY AS FIELD3
+			, B.CTCD_DTNAME AS FIELD4
+			, A.SBKEY
+			, A.ICKEY
+			, A.OWKEY
+			, A.ICUTTYPE
+		FROM TWORK_MST_ICSB A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'ICUTTYPE' AND B.CTCD_DTKEY = A.ICUTTYPE
+
+		<include refid="sql_tWorkMstIcsb"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkSetCtcs">
+		FROM TWORK_SET_CTCS A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.CTCSKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.CTCSKEY ~ #{value}
+						OR
+						A.CTCSNM ~ #{value}
+						OR
+						A.DEFAULTVALUE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.CTCSKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTCSNM LIKE '%' || #{value} || '%'
+						OR
+						A.DEFAULTVALUE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkSetCtcsCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkSetCtcsCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkSetCtcs"/>
+	</select>
+
+	<select id="selectTWorkSetCtcs" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkSetCtcs */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.CTCSKEY AS FIELD1
+			, A.CTCSNM AS FIELD2
+		    , A.VALUE1 AS FIELD3
+		    , A.VALUE2 AS FIELD4
+			, A.DEFAULTVALUE AS FIELD5
+			, A.CTCSKEY
+			, A.CTCSNM
+		    , A.VALUE1
+		    , A.VALUE2
+			, A.DEFAULTVALUE
+
+		<include refid="sql_tWorkSetCtcs"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstZn">
+		FROM TWORK_MST_ZN A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctcd_hdkey)">
+				AND A.ZNKEY = #{ctcd_hdkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ZNKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ZNKEY ~ #{value}
+						OR
+						A.ZNNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ZNKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ZNNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstZnCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstZnCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstZn"/>
+	</select>
+
+	<select id="selectTWorkMstZn" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstZn */
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ZNKEY AS FIELD1
+			, A.ZNNM AS FIELD2
+			, A.ZNKEY
+			, A.ZNNM
+
+		<include refid="sql_tWorkMstZn"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstAr">
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+				AND A.ZNKEY = #{znkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctcd_hdkey)">
+				AND A.ARKEY = #{ctcd_hdkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ARKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ARKEY ~ #{value}
+						OR
+						A.ARNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ARKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ARNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstArCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstArCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_AR A
+		<include refid="sql_tWorkMstAr"/>
+	</select>
+
+	<select id="selectTWorkMstAr" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAr */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.ARKEY AS FIELD1
+			, A.ARNM FIELD2
+			, B.CTCDDTNM AS FIELD3
+			, A.ARKEY
+			, A.ARNM
+			, A.ICTMPRDIVCD
+		FROM TWORK_MST_AR A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'ICTMPRDIVCD' AND B.CTCDDTKEY = A.ICTMPRDIVCD
+
+		<include refid="sql_tWorkMstAr"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTWorkMstArMob" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstArMob */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.ARKEY AS FIELD1
+			, A.ARNAME FIELD2
+			, A.ARKEY
+			, A.ARNAME
+		FROM TWORK_MST_AR A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctcd_hdkey)">
+				AND A.ARKEY = #{ctcd_hdkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ARKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ARKEY ~ #{value}
+						OR
+						A.ARNAME ~ #{value}
+						OR
+						A.DONG ~ #{value}
+						OR
+						A.FLOOR ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ARKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ARNAME LIKE '%' || #{value} || '%'
+						OR
+						A.DONG LIKE '%' || #{value} || '%'
+						OR
+						A.FLOOR LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstLc">
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+				AND A.ZNKEY = #{znkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)">
+				AND A.ARKEY = #{arkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstorgtypecd)">
+				AND A.LCSTORGTYPECD = #{lcstorgtypecd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(autoflag)">
+				<choose>
+					<when test="autoflag == 'auto'">
+						AND LCSTORGTYPECD IN ('40', '50')
+					</when>
+					<otherwise>
+						AND LCSTORGTYPECD NOT IN ('40', '50')
+					</otherwise>
+				</choose>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.LCKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.LCKEY ~ #{value}
+						OR
+						A.LCTYPECD ~ #{value}
+						OR
+						A.LCHOLDTYPECD ~ #{value}
+						OR
+						A.ARKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.LCKEY LIKE '%' || #{value} || '%'
+						OR
+						A.LCTYPECD LIKE '%' || #{value} || '%'
+						OR
+						A.LCHOLDTYPECD LIKE '%' || #{value} || '%'
+						OR
+						A.ARKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstLcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_LC A
+		<include refid="sql_tWorkMstLc"/>
+	</select>
+
+	<select id="selectTWorkMstLc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLc */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.LCKEY AS FIELD1
+			, B.CTCDDTNM AS FIELD2
+			, C.CTCDDTNM AS FIELD3
+			, A.ARKEY AS FIELD4
+		    , E.EMPTYLOCATION_YN AS FIELD5
+			, A.IVCNTRMGMTYN AS FIELD6
+			, A.LCKEY
+			, A.LCTYPECD
+			, A.LCHOLDTYPECD
+			, A.LCSTORGTYPECD
+			<!--, A.ERPSTLC-->
+			, A.ARKEY
+			, E.EMPTYLOCATION_YN
+		FROM TWORK_MST_LC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'LCTYPECD' AND B.CTCDDTKEY = A.LCTYPECD
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCDHDKEY = 'LCHOLDTYPECD' AND C.CTCDDTKEY = A.LCHOLDTYPECD
+		<!--LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCDHDKEY = 'ERPSTLC' AND D.CTCDDTKEY = A.ERPSTLC-->
+		INNER JOIN (SELECT A.CTKEY
+				, A.LCKEY
+				, CASE WHEN SUM(COALESCE(B.TOTQTY, 0)) > 0 THEN 'N' ELSE 'Y' END AS EMPTYLOCATION_YN
+				FROM TWORK_MST_LC A
+				LEFT OUTER JOIN TWORK_INFO_IVATXLC B
+				ON A.CTKEY = B.CTKEY
+				AND A.LCKEY = B.LCKEY
+				GROUP BY A.CTKEY, A.LCKEY
+				) E ON E.CTKEY = A.CTKEY AND E.LCKEY = A.LCKEY
+		<include refid="sql_tWorkMstLc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTWorkMstErpLoc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstErpLoc */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.LCKEY AS FIELD1
+			, B.CTCD_DTNAME AS FIELD2
+			, C.CTCD_DTNAME AS FIELD3
+			, A.ERPSTLC AS FIELD4
+			, A.ARKEY AS FIELD5
+		FROM TWORK_MST_LC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'LCTYPE' AND B.CTCD_DTKEY = A.LCTYPE
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = 'LCHOLDTYPE' AND C.CTCD_DTKEY = A.LCHOLDTYPE
+		<include refid="sql_tWorkMstLc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstLcNonAuto">
+		FROM 	TWORK_MST_LC A
+		INNER JOIN (
+		SELECT
+		A.CTKEY,
+		A.LCKEY,
+		CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N'
+		ELSE 'Y'
+		END AS EMPTYLOCATION_YN
+		FROM
+		TWORK_MST_LC A
+		LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+					 ON A.CTKEY = B.CTKEY
+					AND A.LCKEY = B.LCKEY
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		GROUP BY
+		A.CTKEY,
+		A.LCKEY
+		) B
+		ON A.CTKEY = B.CTKEY
+		AND A.LCKEY = B.LCKEY
+		LEFT OUTER JOIN T_CODE C
+		ON C.CTKEY = A.CTKEY
+		AND C.CTCD_DTKEY = A.LCTYPE
+		AND C.CTCD_HDKEY = 'LCTYPE'
+		LEFT OUTER JOIN T_CODE D
+		ON D.CTKEY = A.CTKEY
+		AND D.CTCD_DTKEY = A.LCHOLDTYPE
+		AND D.CTCD_HDKEY = 'LCHOLDTYPE'
+		LEFT OUTER JOIN T_CODE E
+		ON E.CTKEY = A.CTKEY
+		AND E.CTCD_DTKEY = A.ERPSTLC
+		AND E.CTCD_HDKEY = 'ERPSTLC'
+		LEFT OUTER JOIN T_CODE F
+		ON F.CTKEY = B.CTKEY
+		AND F.CTCD_DTKEY = B.EMPTYLOCATION_YN
+		AND F.CTCD_HDKEY = 'YESORNO'
+		WHERE
+		A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		<if test="ctkeyList != null and ctkeyList.size > 0" >
+			AND A.CTKEY IN
+			<foreach item="ctkey" index="index" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+			AND A.ARKEY = #{arkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)" >
+			AND A.ERPSTLC = #{erpstlc}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)" >
+			AND A.LCSTORTYPE = #{lcstortype}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.LCKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.LCKEY ~ #{value}
+					OR
+					C.CTCD_DTNAME ~ #{value}
+					OR
+					D.CTCD_DTNAME ~ #{value}
+					OR
+					E.CTCD_DTNAME ~ #{value}
+					OR
+					A.ARKEY ~ #{value}
+					OR
+					F.CTCD_DTNAME ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.LCKEY LIKE '%' || #{value} || '%'
+					OR
+					C.CTCD_DTNAME LIKE '%' || #{value} || '%'
+					OR
+					D.CTCD_DTNAME LIKE '%' || #{value} || '%'
+					OR
+					E.CTCD_DTNAME LIKE '%' || #{value} || '%'
+					OR
+					A.ARKEY LIKE '%' || #{value} || '%'
+					OR
+					F.CTCD_DTNAME LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+
+	</sql>
+
+	<select id="selectTWorkMstLcNonAutoCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAutoCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstLcNonAuto"/>
+	</select>
+
+	<select id="selectTWorkMstLcNonAuto" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAuto */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT	A.LCKEY AS FIELD1
+		,C.CTCD_DTNAME AS FIELD2
+		,D.CTCD_DTNAME AS FIELD3
+		,A.ARKEY AS FIELD4
+		,F.CTCD_DTNAME AS FIELD5
+		<include refid="sql_tWorkMstLcNonAuto"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstLcNonAutoNormal">
+		FROM TWORK_MST_LC A
+		INNER JOIN (SELECT A.CTKEY
+						, A.LCKEY
+						, CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N' ELSE 'Y' END AS EMPTYLOCATION_YN
+					FROM TWORK_MST_LC A
+					LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+								 ON A.CTKEY = B.CTKEY
+								AND A.LCKEY = B.LCKEY
+					GROUP BY A.CTKEY, A.LCKEY
+			) B ON B.CTKEY = A.CTKEY AND B.LCKEY = A.LCKEY
+		INNER JOIN TWORK_MST_AR C
+			ON C.CTKEY = A.CTKEY AND C.ARKEY = A.ARKEY
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'LCTYPE' AND D.CTCD_DTKEY = A.LCTYPE
+		LEFT OUTER JOIN T_CODE E
+			ON E.CTKEY = A.CTKEY AND E.CTCD_HDKEY = 'LCHOLDTYPE' AND E.CTCD_DTKEY = A.LCHOLDTYPE
+		LEFT OUTER JOIN T_CODE F
+			ON F.CTKEY = A.CTKEY AND F.CTCD_HDKEY = 'ERPSTLC' AND F.CTCD_DTKEY = A.ERPSTLC
+		LEFT OUTER JOIN T_CODE G
+			ON G.CTKEY = A.CTKEY AND G.CTCD_HDKEY = 'YESORNO' AND G.CTCD_DTKEY = B.EMPTYLOCATION_YN
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.LCSTORTYPE NOT IN('40', '50')
+			AND A.LCHOLDTYPE = '10'
+			AND C.BONDTYPE = '1'
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)">
+				AND A.ARKEY = #{arkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)">
+				AND A.ERPSTLC = #{erpstlc}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)">
+				AND A.LCSTORTYPE = #{lcstortype}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.LCKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.LCKEY ~ #{value}
+						OR
+						A.LCTYPE ~ #{value}
+						OR
+						A.LCHOLDTYPE ~ #{value}
+						OR
+						A.ARKEY ~ #{value}
+						OR
+						A.ERPSTLC ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.LCKEY LIKE '%' || #{value} || '%'
+						OR
+						A.LCTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.LCHOLDTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.ARKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ERPSTLC LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstLcNonAutoNormalCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAutoNormalCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstLcNonAutoNormal"/>
+	</select>
+
+	<select id="selectTWorkMstLcNonAutoNormal" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAutoNormal */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+		      A.LCKEY AS FIELD1
+			, D.CTCD_DTNAME AS FIELD2
+			, E.CTCD_DTNAME AS FIELD3
+			, F.CTCD_DTNAME AS FIELD4
+			, A.ARKEY AS FIELD5
+			, G.CTCD_DTNAME AS FIELD6
+			, A.LCKEY
+			, A.LCTYPE
+			, A.LCHOLDTYPE
+			, A.ERPSTLC
+			, A.ARKEY
+			, B.EMPTYLOCATION_YN
+		<include refid="sql_tWorkMstLcNonAutoNormal"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstLcNonAutoBonded">
+		FROM TWORK_MST_LC A
+		INNER JOIN (SELECT A.CTKEY
+		, A.LCKEY
+		, CASE WHEN SUM(COALESCE(B.TTQTY, 0)) > 0 THEN 'N' ELSE 'Y' END AS EMPTYLOCATION_YN
+		FROM TWORK_MST_LC A
+		LEFT OUTER JOIN TWORK_INFO_IVATXLCXULC B
+					 ON A.CTKEY = B.CTKEY
+					AND A.LCKEY = B.LCKEY
+		GROUP BY A.CTKEY, A.LCKEY
+		) B ON B.CTKEY = A.CTKEY AND B.LCKEY = A.LCKEY
+		INNER JOIN TWORK_MST_AR C
+		ON C.CTKEY = A.CTKEY AND C.ARKEY = A.ARKEY
+		LEFT OUTER JOIN T_CODE D
+		ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'LCTYPE' AND D.CTCD_DTKEY = A.LCTYPE
+		LEFT OUTER JOIN T_CODE E
+		ON E.CTKEY = A.CTKEY AND E.CTCD_HDKEY = 'LCHOLDTYPE' AND E.CTCD_DTKEY = A.LCHOLDTYPE
+		LEFT OUTER JOIN T_CODE F
+		ON F.CTKEY = A.CTKEY AND F.CTCD_HDKEY = 'ERPSTLC' AND F.CTCD_DTKEY = A.ERPSTLC
+		LEFT OUTER JOIN T_CODE G
+		ON G.CTKEY = A.CTKEY AND G.CTCD_HDKEY = 'YESORNO' AND G.CTCD_DTKEY = B.EMPTYLOCATION_YN
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.LCSTORTYPE NOT IN('40', '50')
+			AND A.LCHOLDTYPE = '10'
+			AND C.BONDTYPE = '2'
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)">
+				AND A.ARKEY = #{arkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(erpstlc)">
+				AND A.ERPSTLC = #{erpstlc}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstortype)">
+				AND A.LCSTORTYPE = #{lcstortype}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.LCKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.LCKEY ~ #{value}
+						OR
+						A.LCTYPE ~ #{value}
+						OR
+						A.LCHOLDTYPE ~ #{value}
+						OR
+						A.ARKEY ~ #{value}
+						OR
+						A.ERPSTLC ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.LCKEY LIKE '%' || #{value} || '%'
+						OR
+						A.LCTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.LCHOLDTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.ARKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ERPSTLC LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstLcNonAutoBondedCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAutoBonded */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstLcNonAutoBonded"/>
+	</select>
+
+	<select id="selectTWorkMstLcNonAutoBonded"  resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLcNonAutoBonded */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT
+			  A.LCKEY AS FIELD1
+			, D.CTCD_DTNAME AS FIELD2
+			, E.CTCD_DTNAME AS FIELD3
+			, F.CTCD_DTNAME AS FIELD4
+			, A.ARKEY AS FIELD5
+			, G.CTCD_DTNAME AS FIELD6
+			, A.LCKEY
+			, A.LCTYPE
+			, A.LCHOLDTYPE
+			, A.ERPSTLC
+			, A.ARKEY
+			, B.EMPTYLOCATION_YN
+
+		<include refid="sql_tWorkMstLcNonAutoNormal"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstUlc">
+		FROM TWORK_MST_ULC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'ULCTYPE' AND B.CTCD_DTKEY = A.ULCTYPE
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ULCKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ULCKEY ~ #{value}
+						OR
+						A.ULCTYPE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ULCKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ULCTYPE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstUlcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstUlcCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstUlc"/>
+	</select>
+
+	<select id="selectTWorkMstUlc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstUlc */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.ULCKEY AS FIELD1
+			, B.CTCD_DTNAME AS FIELD2
+			, A.ULCKEY
+			, A.ULCTYPE
+		<include refid="sql_tWorkMstUlc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkInfoIbat">
+		FROM TWORK_INFO_IVAT A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)">
+				AND A.ICKEY = #{ickey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.IVATKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.IVATKEY ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						OR
+						A.ICKEY ~ #{value}
+						OR
+						A.PRODUCTLOT ~ #{value}
+						OR
+						A.IVATSTATUS ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.IVATKEY LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.PRODUCTLOT LIKE '%' || #{value} || '%'
+						OR
+						A.IVATSTATUS LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkInfoIvatCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoIvatCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkInfoIbat"/>
+	</select>
+
+	<select id="selectTWorkInfoIvat" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoIvat */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.IVATKEY AS FIELD1
+			, A.OWKEY AS FIELD2
+			, A.ICKEY AS FIELD3
+			, A.IVATKEY
+			, A.OWKEY
+			, A.ICKEY
+		<include refid="sql_tWorkInfoIbat"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkInfoWaHd">
+		FROM TWORK_INFO_WA_HD A
+		LEFT OUTER JOIN T_CODE B
+		ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = 'WAWKSTATUSCD' AND B.CTCDDTKEY = A.WAWKSTATUSCD
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.WAHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.WAHDKEY ~ #{value}
+						OR
+						A.WAHDNM ~ #{value}
+						OR
+						A.OWKEY ~ #{value}
+						OR
+						A.WAWKSTATUSCD ~ #{value}
+						OR
+						A.WAHDDAY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.WAHDKEY LIKE '%' || #{value} || '%'
+						OR
+						A.WAHDNM LIKE '%' || #{value} || '%'
+						OR
+						A.OWKEY LIKE '%' || #{value} || '%'
+						OR
+						A.WAWKSTATUSCD LIKE '%' || #{value} || '%'
+						OR
+						A.WAHDDAY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkInfoWaHdCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoWaHdCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkInfoWaHd"/>
+	</select>
+
+	<select id="selectTWorkInfoWaHd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoWaHd */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.WAHDKEY AS FIELD1
+			, A.WAHDNM AS FIELD2
+			, A.OWKEY AS FIELD3
+			, B.CTCDDTNM AS FIELD4
+			, A.WAHDDAY AS FIELD5
+			, A.WAHDKEY
+			, A.WAHDNM
+			, A.OWKEY
+			, A.WAWKSTATUSCD
+			, A.WAHDDAY
+		<include refid="sql_tWorkInfoWaHd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_putawayLocation">
+		FROM (
+		SELECT
+		A.LCKEY AS FIELD1
+		, A.LCTYPE  AS FIELD2
+		, A.CTKEY ||';'|| 'LCTYPE' || ';' || A.LCTYPE AS FIELD2_DESC
+		, B.STATUS AS FIELD3
+		, A.LCSEQ AS LCSEQ
+		, A.ARKEY AS FIELD4
+		, B.STATUS AS STATUS
+		, B.TTQTY AS FIELD5
+		FROM
+		TWORK_MST_LC A
+		LEFT OUTER JOIN (
+			SELECT
+			B.TO_LCKEY AS LCKEY
+			, '1' AS STATUS
+			, B.CTKEY
+			, COALESCE((SELECT SUM(TTQTY) FROM TWORK_INFO_IVATXLCXULC A WHERE A.CTKEY =  B.CTKEY AND A.OWKEY = B.OWKEY AND A.ICKEY = B.ICKEY AND A.LCKEY = B.TO_LCKEY), 0) AS TTQTY
+			FROM TWORK_MST_IC B
+			WHERE B.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND B.OWKEY = #{owkey}
+			AND B.ICKEY = #{ickey}
+
+			UNION ALL
+
+			SELECT
+			LCKEY
+			, '3SAME' AS STATUS
+			,  CTKEY
+			, SUM(TTQTY) AS TTQTY
+			FROM TWORK_INFO_IVATXLCXULC
+			WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND OWKEY = #{owkey}
+			AND ICKEY = #{ickey}
+			AND TTQTY > 0
+			AND LCKEY NOT IN (SELECT COALESCE(TO_LCKEY, ' ') FROM TWORK_MST_IC WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})AND OWKEY = #{owkey} AND ICKEY = #{ickey})
+			GROUP BY
+			LCKEY
+			, CTKEY
+
+			UNION ALL
+
+			SELECT
+			LCKEY
+			, '2EMPTY' AS STATUS
+			, CTKEY
+			, 0 AS TTQTY
+			FROM (
+			SELECT
+			B.LCKEY
+			, B.CTKEY
+			, SUM(A.TTQTY) AS TTQTY
+			FROM
+			TWORK_INFO_IVATXLCXULC A
+			RIGHT OUTER JOIN TWORK_MST_LC B
+						  ON A.CTKEY = B.CTKEY
+						 AND A.LCKEY = B.LCKEY
+			WHERE B.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			GROUP BY
+			B.LCKEY
+			, B.CTKEY
+			)
+			WHERE (TTQTY = 0 OR TTQTY IS NULL)
+			AND LCKEY NOT IN (
+			SELECT
+			COALESCE(TO_LCKEY, ' ')
+			FROM TWORK_MST_IC
+			WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND OWKEY = #{owkey}
+			AND ICKEY = #{ickey}
+			)
+
+			UNION ALL
+
+			SELECT
+			B.LCKEY
+			, B.CTKEY
+			, '4' AS STAUS
+			, COALESCE(SUM (A.TTQTY), 0) AS TTQTY
+			FROM
+			TWORK_INFO_IVATXLCXULC A
+			RIGHT OUTER JOIN TWORK_MST_LC B
+						  ON A.CTKEY = B.CTKEY
+						 AND A.LCKEY = B.LCKEY
+			WHERE B.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND B.LCKEY NOT IN (
+			SELECT COALESCE(TO_LCKEY, ' ') AS LCKEY
+			FROM TWORK_MST_IC
+			WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND OWKEY = #{owkey}
+			AND ICKEY = #{ickey}
+
+			UNION ALL
+
+			SELECT LCKEY
+			FROM (
+			SELECT
+			B.LCKEY
+			, B.CTKEY
+			, SUM(A.TTQTY) AS TTQTY
+			FROM
+			TWORK_INFO_IVATXLCXULC A
+			RIGHT OUTER JOIN TWORK_MST_LC B
+						  ON A.CTKEY = B.CTKEY
+						 AND A.LCKEY = B.LCKEY
+			WHERE B.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			GROUP BY
+			B.LCKEY
+			, B.CTKEY
+			)
+			WHERE (TTQTY = 0 OR TTQTY IS NULL)
+
+			UNION ALL
+
+			SELECT LCKEY
+			FROM TWORK_INFO_IVATXLCXULC
+			WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND OWKEY = #{owkey}
+			AND ICKEY = #{ickey}
+			AND TTQTY > 0
+			)
+			GROUP BY B.LCKEY, B.CTKEY
+		) B ON A.CTKEY = B.CTKEY
+		   AND A.LCKEY = B.LCKEY
+
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="lcholdtype != 'NOTHING'">
+			AND A.LCHOLDTYPE = '10'
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			AND (
+			A.LCKEY LIKE '%' || #{value} || '%'
+			OR A.LCTYPE LIKE '%' || #{value} || '%'
+			OR B.STATUS LIKE '%' || #{value} || '%'
+			)
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.LCKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.LCKEY ~ #{value}
+					OR
+					A.LCTYPE ~ #{value}
+					OR
+					B.STATUS ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.LCKEY LIKE '%' || #{value} || '%'
+					OR
+					A.LCTYPE LIKE '%' || #{value} || '%'
+					OR
+					B.STATUS LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+
+		) A
+		INNER JOIN TWORK_MST_AR B
+				ON A.FIELD4 = B.ARKEY
+
+		<where>
+			AND B.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND (B.OWKEY = #{owkey} OR B.OWKEY IS NULL)
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND B.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND B.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(arkey2)'>
+						AND ARKEY IN (#{arkey} , #{arkey2})
+					</when>
+					<otherwise>
+						AND ARKEY = #{arkey}
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectPutawayLocationCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectPutawayLocationCount */
+		SELECT COUNT(1)
+		<include refid="sql_putawayLocation"/>
+	</select>
+
+	<select id="selectPutawayLocation" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectPutawayLocation */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		FIELD1
+		, FIELD2
+		, FIELD2_DESC
+		, CASE WHEN SUBSTR(FIELD3,2) = 'SAME' THEN '동일 재고 존재'
+		WHEN SUBSTR(FIELD3,2) = 'EMPTY' THEN '재고 없음'
+		ELSE SUBSTR(FIELD3,2)
+		END  AS FIELD3
+		, FIELD4
+		, COALESCE(#{ctkey}, #{sctkey}) ||';'|| ''|| ';'|| COALESCE(B.ARNAME, FIELD4) AS FIELD4_DESC
+		, COALESCE(FIELD5, 0) AS FIELD5
+		<include refid="sql_putawayLocation"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstIcutxtype">
+		FROM TWORK_MST_ICUTXTYPE A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'ICUTTYPE' AND B.CTCD_DTKEY = A.ICUTTYPE
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icutkey)">
+				AND A.ICUTKEY = #{icutkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICUTTYPE = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICUTTYPE ~ #{value}
+						OR
+						A.ICUTQTY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICUTTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.ICUTQTY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstIcutxtypeCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcutxtypeCount */
+		<include refid="sql_Tcode"/>
+		SELECT count(1)
+		<include refid="sql_tWorkMstIcutxtype"/>
+	</select>
+
+	<select id="selectTWorkMstIcutxtype" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstIcutxtype */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      B.CTCD_DTNAME AS FIELD1
+			, A.ICUTQTY  AS FIELD2
+			, A.ICUTTYPE
+			, A.ICUTQTY
+			, A.ICUTORDER
+		<include refid="sql_tWorkMstIcutxtype"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstPizn">
+		FROM TWORK_MST_PIZN
+
+		<where>
+			AND CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND PIZNKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						PIZNKEY ~ #{value}
+						OR
+						PIZNNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						PIZNKEY LIKE '%' || #{value} || '%'
+						OR
+						PIZNNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstPiznCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstPiznCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstPizn"/>
+	</select>
+
+	<select id="selectTWorkMstPizn" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstPizn */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  PIZNKEY AS FIELD1
+			, PIZNNAME AS FIELD2
+			, PIZNKEY
+			, PIZNNAME
+		<include refid="sql_tWorkMstPizn"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstCtcdCstDt">
+		FROM TWORK_MST_CTCD_DT A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.LAKEY = #{slakey}
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctcd_hdkey)">
+				AND CTCDHDKEY = #{ctcd_hdkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.CTCDHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.CTCDHDKEY ~ #{value}
+						OR
+						A.CTCDDTKEY ~ #{value}
+						OR
+						A.CTCDDTNM ~ #{value}
+						OR
+						A.CTCDDTVAL ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.CTCDHDKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTCDDTKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTCDDTNM LIKE '%' || #{value} || '%'
+						OR
+						A.CTCDDTVAL LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstCtcdCstDtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdCstDtCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstCtcdCstDt"/>
+	</select>
+
+	<select id="selectTWorkMstCtcdCstDt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdCstDt */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.CTCDHDKEY AS FIELD1
+			, A.CTCDDTKEY AS FIELD2
+			, A.CTCDDTNM AS FIELD3
+			, A.CTCDDTVAL AS FIELD4
+			, A.CTCDHDKEY
+			, A.CTCDDTKEY
+			, A.CTCDDTNM
+			, A.CTCDDTVAL
+		<include refid="sql_tWorkMstCtcdCstDt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstEq">
+		FROM TWORK_MST_EQ A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'EQTYPE' AND B.CTCD_DTKEY = A.EQTYPE
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.EQKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.EQKEY ~ #{value}
+						OR
+						A.EQTYPE ~ #{value}
+						OR
+						A.EQNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.EQKEY LIKE '%' || #{value} || '%'
+						OR
+						A.EQTYPE LIKE '%' || #{value} || '%'
+						OR
+						A.EQNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstEqCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstEqCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstEq"/>
+	</select>
+
+	<select id="selectTWorkMstEq" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstEq */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.EQKEY AS FIELD1
+			, B.CTCD_DTNAME AS FIELD2
+			, A.EQKEY
+			, A.EQTYPE
+			, A.EQNAME
+		<include refid="sql_tWorkMstEq"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_wayBillNo">
+		FROM (
+		SELECT
+		C.WAYBILLNO AS FIRSTWAYBILLNO
+		, A.UDF1
+		, A.OWKEY
+		, A.WAYBILLNO
+		, A.ULCKEY
+		FROM
+		TWORK_INFO_ULCXWB A
+		INNER JOIN TWORK_INFO_OBXULC B
+				ON A.ULCKEY = B.ULCKEY
+			   AND A.CTKEY = B.CTKEY
+			   AND A.OWKEY = B.OWKEY
+		INNER JOIN TWORK_INFO_OB_HD C
+				ON A.CTKEY = C.CTKEY
+			   AND A.OWKEY = C.OWKEY
+			   AND B.OBHDKEY = C.OBHDKEY
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="owkeyList != null and owkeyList.size > 0">
+			AND A.OWKEY IN
+			<foreach item="owkey" collection="owkeyList"
+					 open="(" separator="," close=")">
+				#{owkey}
+			</foreach>
+		</if>
+		) A
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND FIRSTWAYBILLNO = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					FIRSTWAYBILLNO ~ #{value}
+					OR
+					UDF1 ~ #{value}
+					OR
+					WAYBILLNO ~ #{value}
+					OR
+					ULCKEY ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					FIRSTWAYBILLNO LIKE '%' || #{value} || '%'
+					OR
+					UDF1 LIKE '%' || #{value} || '%'
+					OR
+					WAYBILLNO LIKE '%' || #{value} || '%'
+					OR
+					ULCKEY LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectWaybillnoCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdCstDt */
+		SELECT COUNT(1)
+		<include refid="sql_wayBillNo"/>
+	</select>
+
+	<select id="selectWaybillno" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstCtcdCstDt */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		A.FIRSTWAYBILLNO AS FIELD1
+		, A.UDF1 AS FIELD2
+		, A.OWKEY AS FIELD3
+		, A.WAYBILLNO AS FIELD4
+		, A.ULCKEY AS FIELD5
+		, A.INSERTDATE AS FIELD6
+		, A.INSERTURKEY AS FIELD7
+		, A.FIRSTWAYBILLNO
+		, A.UDF1
+		, A.OWKEY
+		, A.WAYBILLNO
+		, A.ULCKEY
+		, A.INSERTDATE
+		, A.INSERTURKEY
+		<include refid="sql_wayBillNo"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkInfoPhHd">
+		FROM TWORK_INFO_PO_HD
+
+		<where>
+			AND CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(type) and type == 'inboundorder'">
+				AND WKSTATUS != '90'
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND POHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						POHDKEY ~ #{value}
+						OR
+						POHDDATE ~ #{value}
+						OR
+						ACKEY ~ #{value}
+						OR
+						ACNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						POHDKEY LIKE '%' || #{value} || '%'
+						OR
+						POHDDATE LIKE '%' || #{value} || '%'
+						OR
+						ACKEY LIKE '%' || #{value} || '%'
+						OR
+						ACNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTworkInfoPoHdCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkInfoPoHdCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkInfoPhHd"/>
+	</select>
+
+	<select id="selectTworkInfoPoHd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkInfoPoHd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  POHDKEY AS FIELD1
+			, POHDDATE AS FIELD2
+			, DELIVERYDATE AS FIELD3
+			, OWKEY AS FIELD4
+			, ACKEY AS FIELD5
+			, ACNAME AS FIELD6
+			, POHDKEY
+			, POHDDATE
+			, DELIVERYDATE
+			, OWKEY
+			, ACKEY
+			, ACNAME
+		<include refid="sql_tWorkInfoPhHd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstStg">
+		FROM TWORK_MST_STG A
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(stgtype)">
+				AND A.STGTYPE = #{stgtype}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.STGKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.STGKEY ~ #{value}
+						OR
+						A.STGDESC ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.STGKEY LIKE '%' || #{value} || '%'
+						OR
+						A.STGDESC LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstStgCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkInfoPoHd */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstStg"/>
+	</select>
+
+	<select id="selectTWorkMstStg" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkInfoPoHd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.STGKEY AS FIELD1
+			, A.STGDESC AS FIELD2
+			, A.STGKEY
+			, A.STGDESC
+		<include refid="sql_tWorkMstStg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="selectTWorkMstCtXStCommonCdRefSql">
+		FROM TWORK_MST_CTXST A
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0" >
+				AND A.CTKEY IN
+				<foreach item="ctkey" index="index" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.STKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.STKEY ~ #{value}
+						OR
+						STNAME.URNAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.STKEY LIKE '%' || #{value} || '%'
+						OR
+						A.STNAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTworkMstCtxStCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkMstCtxStCount */
+		SELECT COUNT(1)
+		<include refid="selectTWorkMstCtXStCommonCdRefSql"/>
+	</select>
+
+	<select id="selectTworkMstCtxSt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkMstCtxSt */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      STKEY AS FIELD1
+			, STNAME AS FIELD2
+			, STKEY
+			, STNAME
+		<include refid="selectTWorkMstCtXStCommonCdRefSql"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstStore">
+		FROM TWORK_MST_STORE A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'DCKEY' AND B.CTCD_DTKEY = A.DCKEY
+
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND DELYN = 'N'
+			AND STORE_TYPE = '0'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)">
+				AND A.DCKEY = #{dckey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.STORE_KEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.STORE_KEY ~ #{value}
+						OR
+						A.STORE_NAME ~ #{value}
+						OR
+						A.DCKEY ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.STORE_KEY LIKE '%' || #{value} || '%'
+						OR
+						A.STORE_NAME LIKE '%' || #{value} || '%'
+						OR
+						A.DCKEY LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstStoreCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstStoreCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstStore"/>
+	</select>
+
+	<select id="selectTWorkMstStore" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstStore */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.STORE_KEY AS FIELD1
+			, A.STORE_NAME AS FIELD2
+			, B.CTCD_DTNAME AS FIELD3
+			, A.STORE_KEY
+			, A.STORE_NAME
+			, A.DCKEY
+		<include refid="sql_tWorkMstStore"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_icxIcuttypeXQty">
+		FROM TWORK_MST_IC A
+		INNER JOIN TWORK_MST_ICUT B
+			ON B.CTKEY = A.CTKEY AND B.OWKEY = A.OWKEY AND B.ICUNITKEY = A.ICUNITKEY
+		INNER JOIN TWORK_MST_ICUTXTYPE C
+			ON C.CTKEY = B.CTKEY AND C.OWKEY = B.OWKEY AND C.ICUNITKEY = B.ICUNITKEY
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = C.CTKEY AND D.CTCDHDKEY = 'ICUNITTYPECD' AND D.CTCDDTKEY = C.ICUNITTYPECD
+		LEFT OUTER JOIN T_CODE E
+			ON E.CTKEY = A.CTKEY AND E.CTCDHDKEY = 'ICTMPRDIVCD' AND E.CTCDDTKEY = A.ICTMPRDIVCD
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ackey)">
+				AND A.ACKEY = #{ackey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.ICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.ICKEY ~ #{value}
+						OR
+						A.ICNM ~ #{value}
+						OR
+						C.ICUNITKEY ~ #{value}
+						OR
+						C.ICUNITTYPECD ~ #{value}
+						OR
+						C.ICUNITQTY ~ #{value}
+						OR
+						A.ICTMPRDIVCD ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.ICKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ICNM LIKE '%' || #{value} || '%'
+						OR
+						C.ICUNITKEY LIKE '%' || #{value} || '%'
+						OR
+						C.ICUNITTYPECD LIKE '%' || #{value} || '%'
+						OR
+						C.ICUNITQTY LIKE '%' || #{value} || '%'
+						OR
+						A.ICTMPRDIVCD LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectIcXIcuttypeXQtyCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectIcXIcuttypeXQtyCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_icxIcuttypeXQty"/>
+	</select>
+
+	<select id="selectIcXIcuttypeXQty" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectIcXIcuttypeXQty */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.ICKEY AS FIELD1
+			, A.ICNM AS FIELD2
+			, C.ICUNITKEY AS FIELD3
+			, D.CTCDDTNM AS FIELD4
+			, C.ICUNITQTY AS FIELD5
+			, E.CTCDDTNM AS FIELD6
+			, A.OWKEY AS FIELD7
+			, A.ACKEY AS FIELD8
+			, A.ICGRPKEY AS FIELD9
+			, A.ICGRPTYPECD AS FIELD10
+			, A.ICKEY
+			, A.ICNM
+			, C.ICUNITKEY
+			, C.ICUNITTYPECD
+			, C.ICUNITQTY
+			, A.ICTMPRDIVCD
+			, A.OWKEY
+			, A.ACKEY
+			, A.ICGRPKEY
+			, A.ICGRPTYPECD
+		<include refid="sql_icxIcuttypeXQty"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstSeIcXLoggHd">
+		FROM
+			  TWORK_MST_SEIC_HD A
+		INNER JOIN TWORK_MST_IC B
+				ON A.CTKEY = B.CTKEY
+			   AND A.OWKEY = B.OWKEY
+			   AND A.ICKEY = B.ICKEY
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="owkeyList != null and owkeyList.size > 0">
+			AND A.OWKEY IN
+			<foreach item="owkey" collection="owkeyList"
+					 open="(" separator="," close=")">
+				#{owkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.SEICKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.SEICKEY ~ #{value}
+					OR
+					A.ICKEY ~ #{value}
+					OR
+					A.ICUTKEY ~ #{value}
+					OR
+					A.ICNAME ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.SEICKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ICKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ICUTKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ICNAME LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectCountTworkMstSeIcXLoggHd" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectCountTworkMstSeIcXLoggHd */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstSeIcXLoggHd"/>
+	</select>
+
+	<select id="selectListTworkMstSeIcXLoggHd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectListTworkMstSeIcXLoggHd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.SEICKEY AS FIELD1
+			, A.ICKEY AS FIELD2
+			, B.ICNAME AS FIELD3
+			, A.ICUTKEY AS FIELD4
+			, A.OWKEY AS FIELD5
+			, A.SEICKEY
+			, A.ICKEY
+			, B.ICNAME
+			, A.ICUTKEY
+			, A.OWKEY
+		<include refid="sql_tWorkMstSeIcXLoggHd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectCountTworkMstSeIcHd" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectCountTworkMstSeIcHd */
+		SELECT 	COUNT (1)
+		<include refid="sql_tWorkMstSeIcXLoggHd"/>
+	</select>
+
+	<select id="selectListTworkMstSeIcHd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectListTworkMstSeIcHd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.SEICKEY AS FIELD1
+			, A.ICKEY AS FIELD2
+			, B.ICNAME AS FIELD3
+			, A.ICUTKEY AS FIELD4
+			, A.CLOSDATE	AS FIELD5
+			, A.OWKEY AS FIELD6
+			, A.SEICKEY
+			, A.ICKEY
+			, B.ICNAME
+			, A.ICUTKEY
+			, A.CLOSDATE
+			, A.OWKEY
+		<include refid="sql_tWorkMstSeIcXLoggHd"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="selectTWorkMstAcXUrCommonCdRefSql">
+		FROM
+			  TWORK_MST_ACXUR A
+		INNER JOIN TWORK_MST_AC B
+				ON A.CTKEY = B.CTKEY
+			   AND A.ACKEY = B.ACKEY
+			   AND A.OWKEY = B.OWKEY
+		LEFT OUTER JOIN TWORK_MST_ICGR C
+					 ON A.CTKEY = C.CTKEY
+					AND A.OWKEY = C.OWKEY
+					AND A.ICGRKEY = C.ICGRKEY
+					AND A.ICGRTYPE = C.ICGRTYPE
+		INNER JOIN TADMIN_MST_UR D
+				ON A.URKEY = D.URKEY
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+			AND A.OWKEY = #{owkey}
+		</if>
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="owkeyList != null and owkeyList.size > 0">
+			AND A.OWKEY IN
+			<foreach item="owkey" collection="owkeyList"
+					 open="(" separator="," close=")">
+				#{owkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.URKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.URKEY ~ #{value}
+					OR
+					A.ACKEY ~ #{value}
+					OR
+					A.ACNAME ~ #{value}
+					OR
+					A.ICGRKEY ~ #{value}
+					OR
+					A.ICGRTYPE ~ #{value}
+					OR
+					C.ICGRNAME ~ #{value}
+					OR
+					D.URNM ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.URKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ACKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ACNAME LIKE '%' || #{value} || '%'
+					OR
+					A.ICGRKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ICGRTYPE LIKE '%' || #{value} || '%'
+					OR
+					C.ICGRNAME LIKE '%' || #{value} || '%'
+					OR
+					D.URNM LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTWorkMstAcXUrCommonCdCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAcXUrCommonCdCount */
+		SELECT COUNT(1)
+		<include refid="selectTWorkMstAcXUrCommonCdRefSql"/>
+	</select>
+
+	<select id="selectTWorkMstAcXUrCommonCd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAcXUrCommonCd */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.URKEY AS FIELD1
+			, A.ACKEY AS FIELD2
+			, B.ACNAME AS FIELD3
+			, A.ICGRKEY AS FIELD4
+			, A.ICGRTYPE AS FIELD5
+			, C.ICGRNAME AS FIELD6
+			, A.URKEY
+			, A.ACKEY
+			, B.ACNAME
+			, A.ICGRKEY
+			, A.ICGRTYPE
+			, C.ICGRNAME
+		<include refid="selectTWorkMstAcXUrCommonCdRefSql"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMStToCt">
+		FROM TWORK_MST_CT A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'CTTYPE' AND B.CTCD_DTKEY = A.CTTYPE
+
+		WHERE A.CLOSDATE >= #{sysdate}
+		AND A.DELYN = 'N'
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.CTKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.CTKEY ~ #{value}
+					OR
+					A.CTNAME ~ #{value}
+					OR
+					A.CTTYPE ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.CTKEY LIKE '%' || #{value} || '%'
+					OR
+					A.CTNAME LIKE '%' || #{value} || '%'
+					OR
+					A.CTTYPE LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="sql_tworkMstAcForRep">
+		FROM (
+				SELECT
+					  REP_ACKEY AS ACKEY
+					, OWKEY
+					, CTKEY
+					, DELYN
+					, CLOSDATE
+				FROM TWORK_MST_AC
+				GROUP BY
+					  REP_ACKEY
+					, OWKEY
+					, CTKEY
+					, DELYN
+					, CLOSDATE
+			) A
+		INNER JOIN TWORK_MST_AC B
+			ON A.ACKEY = B.ACKEY AND A.OWKEY = B.OWKEY AND A.CTKEY = B.CTKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = B.CTKEY AND C.CTCD_HDKEY = 'ACTYPE' AND C.CTCD_DTKEY = B.ACTYPE
+
+		<where>
+			AND A.CLOSDATE >= #{sysdate}
+			AND A.DELYN = 'N'
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+		</where>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.ACKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.ACKEY ~ #{value}
+					OR
+					A.ACNAME ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.ACKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ACNAME LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTWorkMstAcForRepCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAcForRepCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tworkMstAcForRep"/>
+	</select>
+
+	<select id="selectTworkMstAcForRep" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkMstAcForRep */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_Tcode"/>
+		SELECT
+		      B.ACKEY AS FIELD1
+			, B.ACNAME AS FIELD2
+			, C.CTCD_DTNAME AS FIELD3
+			, B.ACKEY
+			, B.ACNAME
+			, B.ACTYPE
+		<include refid="sql_tworkMstAcForRep"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTworkMstLegendCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkMstLegendCount */
+		SELECT COUNT(1)
+		FROM TWORK_MST_LEGEND_HD A
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.LGHDKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.LGHDKEY ~ #{value}
+					OR
+					A.LGHDNAME ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.LGHDKEY LIKE '%' || #{value} || '%'
+					OR
+					A.LGHDNAME LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</select>
+
+	<select id="selectTworkMstLegend" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkMstLegend */
+		SELECT
+			  A.LGHDKEY AS FIELD1
+			, A.LGHDNAME AS FIELD2
+		FROM TWORK_MST_LEGEND_HD A
+		WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.LGHDKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.LGHDKEY ~ #{value}
+					OR
+					A.LGHDNAME ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.LGHDKEY LIKE '%' || #{value} || '%'
+					OR
+					A.LGHDNAME LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</select>
+
+	<sql id="selectTworkInfoAnalyRefSql">
+		FROM TWORK_INFO_ANALY_HD A
+
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.ANALY_HDKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.ANALY_HDKEY ~ #{value}
+					OR
+					A.ANALY_TITLE ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.ANALY_HDKEY LIKE '%' || #{value} || '%'
+					OR
+					A.ANALY_TITLE LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTworkInfoAnalyCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkInfoAnalyCount */
+		SELECT COUNT(1)
+		<include refid="selectTworkInfoAnalyRefSql"/>
+	</select>
+
+	<select id="selectTworkInfoAnaly" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkInfoAnaly */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  A.ANALY_HDKEY AS FIELD1
+			, A.ANALY_TITLE AS FIELD2
+			, A.ANALY_HDKEY
+			, A.ANALY_TITLE
+		<include refid="selectTworkInfoAnalyRefSql"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="selectTworkInfoStatusRefSql">
+		FROM TWORK_INFO_STATUS_HD A
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.STATUS_HDKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.STATUS_HDKEY ~ #{value}
+					OR
+					A.DESCRIPTION ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.STATUS_HDKEY LIKE '%' || #{value} || '%'
+					OR
+					A.DESCRIPTION LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTworkInfoStatusCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkInfoStatusCount */
+		SELECT COUNT(1)
+		<include refid="selectTworkInfoStatusRefSql"/>
+	</select>
+
+	<select id="selectTworkInfoStatus" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkInfoStatus */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      STATUS_HDKEY AS FIELD1
+			, DESCRIPTION AS FIELD2
+			, STATUS_HDKEY
+			, DESCRIPTION
+		<include refid="selectTworkInfoStatusRefSql"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="selectTWorkInfoReqSql">
+		FROM TWORK_INFO_REQ_HD A
+		LEFT OUTER JOIN TWORK_MST_AC B
+			ON A.CTKEY = B.CTKEY AND A.OWKEY = B.OWKEY AND A.ACKEY = B.ACKEY AND A.DCKEY = B.DCKEY
+		LEFT OUTER JOIN TWORK_MST_STORE C
+			ON A.CTKEY = C.CTKEY AND A.OWKEY = C.OWKEY AND A.STORE_KEY = C.STORE_KEY AND A.DCKEY = C.DCKEY
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'REQHDTYPE' AND D.CTCD_DTKEY = A.REQHDTYPE
+
+		<where>
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+				AND A.OWKEY = #{owkey}
+			</if>
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND A.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.REQHDKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.REQHDKEY ~ #{value}
+						OR
+						A.ACKEY ~ #{value}
+						OR
+						B.ACNAME ~ #{value}
+						OR
+						A.STORE_KEY ~ #{value}
+						OR
+						C.STORE_NAME ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.REQHDKEY LIKE '%' || #{value} || '%'
+						OR
+						A.ACKEY LIKE '%' || #{value} || '%'
+						OR
+						B.ACNAME LIKE '%' || #{value} || '%'
+						OR
+						A.STORE_KEY LIKE '%' || #{value} || '%'
+						OR
+						C.STORE_NAME LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkInfoReqCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoReqCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="selectTWorkInfoReqSql"/>
+	</select>
+
+	<select id="selectTWorkInfoReqHd" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkInfoReqHd */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.REQHDKEY AS FIELD1
+			, A.OWKEY AS FIELD2
+			, A.REQUESTDATE  AS FIELD3
+		    , D.CTCD_DTNAME AS FIELD4
+			, A.ACKEY AS FIELD5
+			, B.ACNAME AS FIELD6
+			, A.STORE_KEY AS FIELD7
+			, C.STORE_NAME AS FIELD8
+			, A.REQHDKEY
+			, A.OWKEY
+			, A.REQUESTDATE
+			, A.REQHDTYPE
+			, A.ACKEY
+			, B.ACNAME
+			, A.STORE_KEY
+			, C.STORE_NAME
+		<include refid="selectTWorkInfoReqSql"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstToLc">
+		FROM
+			  TWORK_MST_AR A
+		INNER JOIN TWORK_MST_LC B
+				ON A.CTKEY = B.CTKEY
+			   AND A.ARKEY = B.ARKEY
+		WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		AND A.WRHOUS_SE = 'GNRL'
+		AND A.BONDTYPE = '1'
+		AND B.LCKEY NOT LIKE 'PICK%'
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND B.LCKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					B.LCKEY ~ #{value}
+					OR
+					B.LCTYPE ~ #{value}
+					OR
+					B.LCHOLDTYPE ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					B.LCKEY LIKE '%' || #{value} || '%'
+					OR
+					B.LCTYPE LIKE '%' || #{value} || '%'
+					OR
+					B.LCHOLDTYPE LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTWorkMstToLcCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLcCount */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstToLc"/>
+	</select>
+
+	<select id="selectTWorkMstToLc" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLc */
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  B.LCKEY AS FIELD1
+			, B.LCTYPE AS FIELD2
+			, B.LCHOLDTYPE AS FIELD3
+		<include refid="sql_tWorkMstToLc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstToLcMobeNormal">
+		FROM TWORK_MST_AR A
+		INNER JOIN TWORK_MST_LC B
+			ON A.CTKEY = B.CTKEY AND A.ARKEY = B.ARKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = 'LCTYPE' AND C.CTCD_DTKEY = A.LCTYPE
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'LCHOLDTYPE' AND D.CTCD_DTKEY = A.LCHOLDTYPE
+
+		<where>
+			AND A.WRHOUS_SE = 'GNRL'
+			AND B.LCKEY NOT LIKE 'PICK%'
+			AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND A.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND B.LCKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						B.LCKEY ~ #{value}
+						OR
+						B.LCTYPE ~ #{value}
+						OR
+						B.LCHOLDTYPE ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						B.LCKEY LIKE '%' || #{value} || '%'
+						OR
+						B.LCTYPE LIKE '%' || #{value} || '%'
+						OR
+						B.LCHOLDTYPE LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstToLcMoveNormalCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLcMoveNormalCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstToLcMobeNormal"/>
+	</select>
+
+	<select id="selectTWorkMstToLcMoveNormal" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLcMoveNormal */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  B.LCKEY AS FIELD1
+			, C.CTCD_DTNAME AS FIELD2
+			, D.CTCD_DTNAME AS FIELD3
+		    , B.LCKEY
+			, B.LCTYPE
+			, B.LCHOLDTYPE
+		<include refid="sql_tWorkMstToLcMobeNormal"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstToLcBon">
+		FROM TWORK_MST_AR A
+		INNER JOIN TWORK_MST_LC B
+			ON A.CTKEY = B.CTKEY AND A.ARKEY = B.ARKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = 'LCTYPE' AND C.CTCD_DTKEY = B.LCTYPE
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'LCHOLDTYPE' AND D.CTCD_DTKEY = B.LCHOLDTYPE
+		AND A.WRHOUS_SE = 'GNRL'
+		AND A.BONDTYPE = '2'
+		AND B.LCKEY NOT LIKE 'PICK%'
+		AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND B.LCKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					B.LCKEY ~ #{value}
+					OR
+					B.LCTYPE ~ #{value}
+					OR
+					B.LCHOLDTYPE ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					B.LCKEY LIKE '%' || #{value} || '%'
+					OR
+					B.LCTYPE LIKE '%' || #{value} || '%'
+					OR
+					B.LCHOLDTYPE LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<sql id="sql_tWorkMstToLcBon2">
+		FROM TWORK_MST_LC A
+		LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = 'LCTYPE' AND B.CTCD_DTKEY = A.LCTYPE
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = 'LCHOLDTYPE' AND C.CTCD_DTKEY = A.LCHOLDTYPE
+
+		WHERE A.LCKEY IN ('STAGE_A','STAGE_B','STAGE_C')
+		AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+		<if test="ctkeyList != null and ctkeyList.size > 0">
+			AND A.CTKEY IN
+			<foreach item="ctkey" collection="ctkeyList"
+					 open="(" separator="," close=")">
+				#{ctkey}
+			</foreach>
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+			<choose>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+					AND A.LCKEY = #{value}
+				</when>
+				<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+					AND (
+					A.LCKEY ~ #{value}
+					OR
+					A.LCTYPE ~ #{value}
+					OR
+					A.LCHOLDTYPE ~ #{value}
+					)
+				</when>
+				<otherwise>
+					AND (
+					A.LCKEY LIKE '%' || #{value} || '%'
+					OR
+					A.LCTYPE LIKE '%' || #{value} || '%'
+					OR
+					A.LCHOLDTYPE LIKE '%' || #{value} || '%'
+					)
+				</otherwise>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectTWorkMstToLcBonCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLcBonCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(*)
+		FROM (
+			SELECT B.LCKEY
+			<include refid="sql_tWorkMstToLcBon"/>
+			UNION ALL
+			SELECT A.LCKEY
+			<include refid="sql_tWorkMstToLcBon2"/>
+		)
+	</select>
+
+	<select id="selectTWorkMstToLcBon" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToLcBon */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+		SELECT
+			  B.LCKEY AS FIELD1
+			, B.LCTYPE AS FIELD2
+			, B.LCHOLDTYPE AS FIELD3
+		<include refid="sql_tWorkMstToLcBon"/>
+
+		UNION ALL
+
+		SELECT
+		      A.LCKEY
+			, A.LCTYPE
+			, A.LCHOLDTYPE
+		<include refid="sql_tWorkMstToLcBon2"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectAdminConfigList" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectAdminConfigList */
+		SELECT
+			  ADCSKEY AS KEY
+			, ADCSNM  AS NAME
+			, VALUE1
+			, VALUE2
+			, DEFAULTVALUE
+		FROM TADMIN_SET_ADCS
+	</select>
+
+	<select id="selectSystemConfigList" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectSystemConfigList */
+		SELECT SCKEY AS KEY
+		      ,SCNM  AS NAME
+		      ,VALUE1
+		      ,VALUE2
+		      ,DEFAULTVALUE
+		  FROM TADMIN_SET_SC
+		 <if test="sckey != null">
+		 WHERE SCKEY = #{sckey}
+		 </if>
+	</select>
+
+	<resultMap id="selectPopupCommonCode" type="java.util.HashMap">
+		<result property="fn_get_master_impos" column="FN_GET_MASTER_IMPOS" />
+		<result property="field1" column="FIELD1" />
+		<result property="field2" column="FIELD2" />
+		<result property="field3" column="FIELD3" />
+		<result property="field4" column="FIELD4" />
+		<result property="field5" column="FIELD5" />
+		<result property="field6" column="FIELD6" />
+		<result property="field7" column="FIELD7" />
+		<result property="field8" column="FIELD8" />
+		<result property="field9" column="FIELD9" />
+		<result property="field10" column="FIELD10" />
+		<result property="field11" column="FIELD11" />
+		<result property="field12" column="FIELD12" />
+		<result property="field13" column="FIELD13" />
+		<result property="field14" column="FIELD14" />
+		<result property="field15" column="FIELD15" />
+		<result property="field16" column="FIELD16" />
+		<result property="field17" column="FIELD17" />
+		<result property="field18" column="FIELD18" />
+		<result property="field19" column="FIELD19" />
+		<result property="field20" column="FIELD20" />
+		<result property="field1_desc" column="FIELD1_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field2_desc" column="FIELD2_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field3_desc" column="FIELD3_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field4_desc" column="FIELD4_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field5_desc" column="FIELD5_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field6_desc" column="FIELD6_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field7_desc" column="FIELD7_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field8_desc" column="FIELD8_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field9_desc" column="FIELD9_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field10_desc" column="FIELD10_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field11_desc" column="FIELD11_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field12_desc" column="FIELD12_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field13_desc" column="FIELD13_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field14_desc" column="FIELD14_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field15_desc" column="FIELD15_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field16_desc" column="FIELD16_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field17_desc" column="FIELD17_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field18_desc" column="FIELD18_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field19_desc" column="FIELD19_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="field20_desc" column="FIELD20_DESC" typeHandler="CodeDescTypeHandler"/>
+	</resultMap>
+
+	<select id="selectTAdminMstOw" resultMap="selectPopupCommonCode">
+		<include refid="sql_pagingTop"/>
+			SELECT 	OWKEY AS FIELD1
+					,OWNM AS FIELD2
+					,MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+			FROM 	TADMIN_MST_OW
+			WHERE DELYN = 'N'
+			  AND CLOSDATE >= #{sysdate}
+			<if test="owkeyList != null and owkeyList.size > 0" >
+										 AND OWKEY IN 
+										<foreach item="owkey" index="index" collection="owkeyList"
+											open="(" separator="," close=")">
+											#{owkey}
+										</foreach>
+			</if>
+			<if test="OWKEY_SELECTION_VALUE != null and OWKEY_SELECTION_VALUE != ''" >
+				AND OWKEY IN
+				<foreach item="OWKEY_SELECTION_VALUE" index="index" collection="OWKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{OWKEY_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+					<when test='opval !=null and opval.equals("eq")'>
+						AND OWKEY = #{value}
+					</when>
+					<otherwise>
+						AND (OWKEY LIKE '%' || #{value} || '%' OR OWNM LIKE '%' || #{value} || '%')
+					</otherwise>
+				</choose>
+			</if>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTAdminMstCt" resultMap="selectPopupCommonCode">
+		<include refid="sql_pagingTop"/>
+			SELECT 	CTKEY AS FIELD1
+					,CTNM AS FIELD2
+					,CTTYPE AS FIELD3
+					,'CTTYPE' || ';' || CTTYPE AS FIELD3_DESC
+			FROM 	TADMIN_MST_CT
+			WHERE	CLOSDATE >= #{sysdate}
+			  AND	DELYN = 'N'
+			<if test="ctkeyList != null and ctkeyList.size > 0" >
+										 AND A.CTKEY IN 
+										<foreach item="ctkey" index="index" collection="ctkeyList"
+											open="(" separator="," close=")">
+											#{ctkey}
+										</foreach>
+			</if>
+			<if test="CTKEY_SELECTION_VALUE != null and CTKEY_SELECTION_VALUE != ''" >
+				AND CTKEY IN
+				<foreach item="CTKEY_SELECTION_VALUE" index="index" collection="CTKEY_SELECTION_VALUE" open="(" separator="," close=")">
+					#{CTKEY_SELECTION_VALUE}
+				</foreach>
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)" >
+				<choose>
+					<when test='opval !=null and opval.equals("eq")'>
+						AND CTKEY = #{value}
+					</when>
+					<otherwise>
+						AND (CTKEY LIKE '%' || #{value} || '%' OR CTNM LIKE '%' || #{value} || '%')
+					</otherwise>
+				</choose>
+			</if>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<resultMap id="selectUserInfoMap" type="java.util.HashMap">
+		<result property="urkey" column="URKEY" />
+		<result property="urnm" column="URNM" />
+	</resultMap>
+
+	<select id="selectUserInfoList" fetchSize="1000" resultMap="selectUserInfoMap">
+		SELECT URKEY
+		       ,URNM
+		  FROM TADMIN_MST_UR
+	</select>
+
+
+	<resultMap id="staticManagerMap" type="java.util.HashMap" >
+		<result property="ctkey" 		column="CTKEY" />
+		<result property="ctcd_hdkey" 	column="CTCD_HDKEY" />
+		<result property="ctcd_dtkey" 	column="CTCD_DTKEY" />
+		<result property="ctcd_dtorder"	column="CTCD_DTORDER" />
+		<result property="ctcd_dtname"	column="CTCD_DTNAME" />
+		<result property="lakey" 		column="LAKEY" />
+	</resultMap>
+
+	<select id="selectTWorkMstCtcdDtList" fetchSize="1000" resultMap="staticManagerMap">
+		<![CDATA[
+		SELECT 	CTKEY
+			 ,CTCDHDKEY
+			 ,CTCDDTKEY
+			 ,CTCDDTNM
+			 ,LAKEY
+		FROM 	TWORK_MST_CTCD_DT
+		]]>
+	</select>
+
+	<select id="selectCountICxOWxCT" resultType="java.lang.Integer">
+		SELECT 	COUNT(1)
+		FROM 	TWORK_MST_IC
+		WHERE 	CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		  AND 	OWKEY = #{owkey}
+		  AND		ICKEY = #{ickey}
+	</select>
+
+	<select id="selectCountICUTxCT" resultType="java.lang.Integer">
+		SELECT 	COUNT(1)
+		FROM 	TWORK_MST_ICUT
+		WHERE 	CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		  AND 	ICUTKEY = #{icutkey}
+	</select>
+
+	<select id="getIcomMulLangMsg" resultType="java.lang.String">
+		SELECT 	DISPLAYMSG
+		FROM 	TADMIN_MST_MULAAPMSG_DT
+		WHERE 	MULAAPMSGHDKEY = #{msgcode}
+		  AND 	LAKEY = #{lakey}
+		GROUP BY DISPLAYMSG
+	</select>
+
+	<select id="selectSetscList" resultType="camelMap">
+		SELECT CTKEY
+		,CTCSKEY
+		,CTCSNM
+		,VALUE1
+		,VALUE2
+		,DEFAULTVALUE
+		FROM TWORK_SET_CTCS
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+				CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			</if>
+		</where>
+	</select>
+
+	<select id="selectSetsc" resultType="camelMap">
+		SELECT CTKEY
+			 ,CTCSKEY
+			 ,CTCSNAME
+			 ,VALUE1
+			 ,VALUE2
+			 ,DEFAULTVALUE
+		FROM TWORK_SET_CTCS
+		WHERE
+			CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		  AND CTCSKEY = #{ctcskey}
+	</select>
+
+	<insert id="saveFileInfo">
+		<selectKey keyProperty="filekey" resultType="string" order="BEFORE">
+			SELECT nextval('seq_tadmin_mst_file')
+		</selectKey>
+		/* adm-common-sql-oracle.xml - saveFileInfo */
+		INSERT INTO TADMIN_MST_FILE
+		(
+		FILEKEY
+		, FILESEQ
+		, APKEY
+		, MEKEY
+		, FILEPATH
+		, FILESIZE
+		, FILEEXTS
+		, ORIGFILENM
+		, SAVEFILENM
+		, REM
+		, INSERTDATE
+		, INSERTURKEY
+		, UPDATEDATE
+		, UPDATEURKEY
+		)
+		VALUES
+		(
+		#{filekey}
+		, #{fileseq}
+		, #{apkey}
+		, #{mekey}
+		, #{filepath}
+		, #{filesize}
+		, #{fileexts}
+		, #{origfilenm}
+		, #{savefilenm}
+		, #{rem}
+		, #{sysdate}
+		, #{surkey}
+		, #{sysdate}
+		, #{surkey}
+		)
+	</insert>
+
+	<sql id="sql_tWorkMstAsrt">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstAsrt - common Assort 모상품 조회 SQL */
+		SELECT ASRT.CTKEY
+			 , ASRT.OWKEY
+			 , ASRT.ASRTMASICKEY AS FIELD1
+			 , IC.ICNM AS FIELD2
+			 , ASRT.ASRTMASICKEY
+			 , IC.ICNM AS ASRTMASICNM
+		  FROM TWORK_MST_ASRT ASRT
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTMASICKEY
+
+		<where>
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND ASRT.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND ASRT.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			AND ASRT.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND ASRT.OWKEY = #{owkey}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND ASRT.ASRTMASICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						<if test="valueList != null and valueList.size > 0">
+							AND ASRT.ASRTMASICKEY IN
+							<foreach item="item" collection="valueList" open="(" separator="," close=")">
+								#{item}
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						AND (
+						ASRT.ASRTMASICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+
+		 GROUP BY
+		       ASRT.CTKEY
+			 , ASRT.OWKEY
+			 , ASRT.ASRTMASICKEY
+			 , IC.ICNM
+	</sql>
+
+	<select id="selectTWorkMstAsrtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAsrtCount - common Assort 모상품 카운트 */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_tWorkMstAsrt"/>
+		     )
+	</select>
+
+	<select id="selectTWorkMstAsrt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAsrt - common Assort 모상품 조회 */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_tWorkMstAsrt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstAsrtDt">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstAsrtDt - common Assort 자상품 조회 SQL */
+		  FROM TWORK_MST_ASRT ASRT
+		 INNER JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = ASRT.CTKEY
+		   AND IC.OWKEY = ASRT.OWKEY
+		   AND IC.ICKEY = ASRT.ASRTDTICKEY
+
+		<where>
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND ASRT.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND ASRT.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			AND ASRT.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND ASRT.OWKEY = #{owkey}
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND ASRT.ASRTDTICKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						<if test="valueList != null and valueList.size > 0">
+							AND ASRT.ASRTDTICKEY IN
+							<foreach item="item" collection="valueList" open="(" separator="," close=")">
+								#{item}
+							</foreach>
+						</if>
+					</when>
+					<otherwise>
+						AND (
+						ASRT.ASRTDTICKEY LIKE '%' || #{value} || '%'
+						OR
+						IC.ICNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+
+	</sql>
+
+	<select id="selectTWorkMstAsrtDtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAsrtDtCount - common Assort 자상품 카운트 */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstAsrtDt"/>
+	</select>
+
+	<select id="selectTWorkMstAsrtDt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstAsrtDt - common Assort 자상품 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT ASRT.CTKEY
+			 , ASRT.OWKEY
+			 , ASRT.ASRTDTICKEY AS FIELD1
+			 , IC.ICNM AS FIELD2
+			 , ASRT.COLOR AS FIELD3
+			 , ASRT.DESIGN AS FIELD4
+			 , ASRT.CHRT AS FIELD5
+		     , ASRT.ASRTDTICKEY
+			 , IC.ICNM AS ASRTDTICNM
+			 , ASRT.COLOR
+			 , ASRT.DESIGN
+			 , ASRT.CHRT
+		<include refid="sql_tWorkMstAsrtDt"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstDlvrycorp">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstDlvrycorp - 택배사 정보 SQL */
+		  FROM TWORK_MST_DLVRYCORP DC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = DC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = DC.OWKEY
+
+		<where>
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND DC.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND DC.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			   AND DC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			   AND DC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			   AND DC.DELYN <![CDATA[<>]]> 'Y'
+		</where>
+
+	</sql>
+
+	<select id="selectTWorkMstDlvrycorpCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstDlvrycorpCount - 택배사 정보 Count */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstDlvrycorp"/>
+	</select>
+
+	<select id="selectTWorkMstDlvrycorp" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstDlvrycorp - 택배사 정보 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT DC.DLVRYCORPCD AS FIELD1
+			 , DC.DLVRYCORPNM AS FIELD2
+		     , DC.DLVRYCORPCD
+			 , DC.DLVRYCORPNM
+			 , DC.CNTRCTCD
+			 , DC.CNTRCTSTATUS
+		<include refid="sql_tWorkMstDlvrycorp"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstDlvrycorpBox">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstDlvrycorp - 택배사 박스규격 정보 SQL */
+		  FROM TWORK_MST_DLVRYCORP_BOX DCB
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = DCB.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = DCB.OWKEY
+
+		<where>
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				AND DCB.CTKEY IN
+				<foreach item="ctkey" collection="ctkeyList"
+						 open="(" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				AND DCB.OWKEY IN
+				<foreach item="owkey" collection="owkeyList"
+						 open="(" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			   AND DCB.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			   AND DCB.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			   AND DCB.DELYN <![CDATA[<>]]> 'Y'
+		</where>
+
+	</sql>
+
+	<select id="selectTWorkMstDlvrycorpBoxCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstDlvrycorpBoxCount - 택배사 박스규격 마스터 Count */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstDlvrycorpBox"/>
+	</select>
+
+	<select id="selectTWorkMstDlvrycorpBox" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstDlvrycorpBox - 택배사 박스규격 마스터 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT DCB.BOXTYPECD AS FIELD1
+			 , DCB.BOXTYPENM AS FIELD2
+		     , DCB.DLVRYCORPCD
+			 , DCB.BOXTYPECD
+			 , DCB.BOXSPEC
+		<include refid="sql_tWorkMstDlvrycorpBox"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstStnPak">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstStnPak - 스테이션 마스터 패킹정보 SQL */
+		FROM TWORK_MST_STN STN
+	   INNER JOIN TWORK_MST_CT CT
+		  ON STN.CTKEY = CT.CTKEY
+	   WHERE STN.STNDIVCD = '30' /*30:패킹*/
+		 AND STN.USEYN = 'Y'
+		 AND STN.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		 AND STN.STNBARCODE = #{value}
+	</sql>
+
+	<select id="selectTworkMstStnPakCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkMstStnPakCount - 스테이션 마스터 패킹정보 Count */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstStnPak"/>
+	</select>
+
+	<select id="selectTworkMstStnPak" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkMstStnPak - 스테이션 마스터 패킹정보 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT STN.STNBARCODE AS FIELD1
+			 , 'STN NO. ' || STN.STNNO AS FIELD2
+		<include refid="sql_tWorkMstStnPak"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_tWorkMstCntr">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstCntr - 용기마스터 정보 SQL */
+		FROM TWORK_MST_CNTR CNTR
+	   INNER JOIN TWORK_MST_CT CT
+		  ON CNTR.CTKEY = CT.CTKEY
+	   INNER JOIN TWORK_MST_CTCD_DT DIV
+	      ON CT.CTKEY = DIV.CTKEY
+	     AND CNTR.CNTRDIVCD = DIV.CTCDDTKEY
+	     AND DIV.CTCDHDKEY = 'CNTRDIVCD'
+	   INNER JOIN TWORK_MST_CTCD_DT WKDIV
+	      ON CT.CTKEY = WKDIV.CTKEY
+	     AND CNTR.CNTRWKDIVCD::TEXT = WKDIV.CTCDDTKEY
+	     AND WKDIV.CTCDHDKEY = 'CNTRWKDIVCD'
+	   WHERE CNTR.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+	     AND CNTR.CNTRBARCODE = #{value}
+	     AND CNTR.CNTRWKDIVCD IN (10, 20)
+	     AND CNTR.USEYN = 'Y'
+	</sql>
+
+	<select id="selectTworkMstCntrCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTworkMstCntrCount - 용기마스터 정보 Count */
+		SELECT COUNT(1)
+		<include refid="sql_tWorkMstStnPak"/>
+	</select>
+
+	<select id="selectTworkMstCntr" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTworkMstCntr - 용기마스터 정보 조회 */
+		<include refid="sql_pagingTop"/>
+
+		SELECT CNTR.CNTRBARCODE AS FIELD1
+			 , WKDIV.CTCDDTNM || ' ' || DIV.CTCDDTNM AS FIELD2
+		<include refid="sql_tWorkMstCntr"/>
+
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_obHdKeyWblNo">
+		/* wms-common-sql-oracle.xml - sql_obHdKeyWblNo - 릴리즈코드/운송장번호 정보조회 SQL */
+	  SELECT CASE WHEN OBHD.OBHDKEY = #{value} THEN #{value}
+				  WHEN OBHD.WBLNO = #{value} THEN #{value}
+				  WHEN NISHD.OBNISNO = #{value} THEN OBHD.OBHDKEY
+			  END AS FIELD1
+		FROM TWORK_INFO_OB_HD OBHD
+	   INNER JOIN TWORK_MST_CT CT
+		  ON OBHD.CTKEY = CT.CTKEY
+	   INNER JOIN TWORK_MST_OW OW
+		  ON OBHD.OWKEY = OW.OWKEY
+		LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NISHD
+		  ON OBHD.CTKEY = NISHD.CTKEY
+		 AND OBHD.OWKEY = NISHD.OWKEY
+		 AND OBHD.OBHDKEY = NISHD.OBHDKEY
+		 AND NISHD.CNFRMYN = 'Y'
+	   WHERE OBHD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		 AND OBHD.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		<if test="value != null and value != ''">
+		 AND (OBHD.OBHDKEY = #{value}
+			  OR OBHD.WBLNO = #{value}
+			  OR NISHD.OBNISNO = #{value})
+		</if>
+	   GROUP BY
+			 OBHD.OBHDKEY
+		   , OBHD.WBLNO
+		   , NISHD.OBNISNO
+	</sql>
+
+	<select id="selectObHdKeyWblNoCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectObHdKeyWblNoCount - 릴리즈코드/운송장번호 정보조회 Count */
+		SELECT COUNT(1)
+		  FROM (
+		<include refid="sql_obHdKeyWblNo"/>
+		)
+	</select>
+
+	<select id="selectObHdKeyWblNo" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectObHdKeyWblNo - 릴리즈코드/운송장번호 정보조회 */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_obHdKeyWblNo"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+
+
+
+
+	<sql id="sql_selectTWorkMstLoc">
+		SELECT LC.LCKEY AS FIELD1
+			 , LC.LCTYPECD AS FIELD2
+			 , LC.LCSTORGTYPECD AS FIELD3
+			 , COUNT(DISTINCT IVLC.ICKEY) AS FIELD4
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' THEN MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)
+					ELSE '' END AS FIELD5
+			 , ZN.ZNNM AS FIELD6
+			 , AR.ARNM AS FIELD7
+			 , LC.CTKEY
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , LC.LCKEY
+			 , LC.LCTYPECD
+			 , LC.LCSTORGTYPECD
+			 , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+			 , LC.IVCNTRMGMTYN
+			 , COUNT(DISTINCT IVLC.ICKEY) AS SKUCOUNT
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' THEN MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)
+					ELSE '' END AS IVSERIALNO
+			 , MAX(IVLC.IVSERIALDIVCD) AS IVSERIALDIVCD
+			 , CASE WHEN COALESCE(LC.IVCNTRMGMTYN, 'N') = 'Y' AND MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END) IS NOT NULL THEN LC.LCKEY||' ['||MAX(CASE IVLC.IVSERIALNO WHEN 'NA' THEN '' ELSE IVLC.IVSERIALNO END)||']'
+					ELSE LC.LCKEY END AS LCKEYNM
+		  FROM TWORK_MST_LC LC
+		 INNER JOIN TWORK_MST_AR AR
+			ON AR.CTKEY = LC.CTKEY
+		   AND AR.ZNKEY = LC.ZNKEY
+		   AND AR.ARKEY = LC.ARKEY
+		 INNER JOIN TWORK_MST_ZN ZN
+			ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = LC.CTKEY
+		  LEFT JOIN TWORK_INFO_IVATXLC IVLC
+			ON IVLC.CTKEY = LC.CTKEY
+		   AND IVLC.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND IVLC.LCKEY = LC.LCKEY
+		   AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+		  LEFT JOIN TWORK_MST_CTCD_DT LCTYP
+			ON LCTYP.CTKEY = LC.CTKEY
+		   AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+		   AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+		   AND LCTYP.LAKEY = #{slakey}
+
+		<where>
+			AND LC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(znnm)">
+				AND ZN.ZNNM LIKE '%' || #{znnm} || '%'
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(zntypecd)">
+				AND ZN.ZNTYPECD = #{zntypecd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)">
+				AND (
+					AR.ARKEY LIKE '%' || #{arkey} || '%'
+				 OR
+					AR.ARNM LIKE '%' || #{arkey} || '%'
+				  )
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)">
+				AND LC.LCKEY LIKE '%' || #{lckey} || '%'
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				AND LC.LCKEY LIKE '%' || #{value} || '%'
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstorgtypecd)">
+				AND LC.LCSTORGTYPECD = #{lcstorgtypecd}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cellemptyyn)">
+			    <choose>
+					<when test='"Y".equals(cellemptyyn)'>
+						AND IVLC.LCKEY IS NULL
+					</when>
+					<when test='"N".equals(cellemptyyn)'>
+						AND IVLC.LCKEY IS NOT NULL
+					</when>
+				</choose>
+			</if>
+
+
+		</where>
+
+		 GROUP BY
+		       LC.CTKEY
+			 , LC.ZNKEY
+			 , ZN.ZNNM
+			 , LC.ARKEY
+			 , AR.ARNM
+			 , LC.LCKEY
+			 , LC.LCTYPECD
+			 , LC.LCSTORGTYPECD
+			 , LC.IVCNTRMGMTYN
+			 , LCTYP.CTCDDTNM
+	</sql>
+
+	<select id="selectTWorkMstLocCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLocCount - 로케이션 Count */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectTWorkMstLoc"/>
+			 )
+	</select>
+
+	<select id="selectTWorkMstLocList" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstLocCount - 로케이션 List */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectTWorkMstLoc"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_TWorkMstCtg">
+		  FROM TWORK_MST_CTG CTG
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = CTG.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = CTG.OWKEY
+
+		<where>
+			<if test="ctkeyList != null and ctkeyList.size > 0">
+				<foreach item="ctkey" collection="ctkeyList" open=" AND CTG.CTKEY IN (" separator="," close=")">
+					#{ctkey}
+				</foreach>
+			</if>
+
+			<if test="owkeyList != null and owkeyList.size > 0">
+				<foreach item="owkey" collection="owkeyList" open=" AND CTG.OWKEY IN (" separator="," close=")">
+					#{owkey}
+				</foreach>
+			</if>
+
+			AND CTG.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+			AND CTG.OWKEY = COALESCE(#{owkey}, #{sowkey})
+			AND CTG.DELYN <![CDATA[ <> ]]> 'Y'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(uprctgkey)">
+				AND CTG.UPRCTGKEY = #{uprctgkey}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctglv)">
+				AND CTG.CTGLV = #{ctglv}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND CTG.CTGKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						CTG.CTGKEY ~ #{value}
+						OR
+						CTG.CTGNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						CTG.CTGKEY LIKE '%' || #{value} || '%'
+						OR
+						CTG.CTGNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectItemCtgLevelList" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectItemCtgLevel1List - 카테고리 대/중/소 분류 */
+		<include refid="sql_pagingTop"/>
+		SELECT CTG.CTGKEY AS FIELD1
+			 , CTG.CTGNM AS FIELD2
+			 , CTG.CTGKEY
+			 , CTG.CTGNM
+			 , CTG.CTGLV
+			 , CTG.UPRCTGKEY
+		<include refid="sql_TWorkMstCtg"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTWorkMstBoxCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstBoxCount - BOX Count */
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="sql_selectTWorkMstBox"/>
+			 )
+	</select>
+
+	<select id="selectTWorkMstBoxList" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstBoxList - BOX List */
+		<include refid="sql_pagingTop"/>
+		<include refid="sql_selectTWorkMstBox"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<sql id="sql_selectTWorkMstBox">
+		SELECT BOX.BOXBARCODE AS FIELD1 /*박스바코드*/
+			 , BOX.BOXNM AS FIELD2 /*박스명*/
+			 , CD.CTCDDTNM AS FIELD3 /*박스구분코드명*/
+			 , BOX.WIDTH AS FIELD4 /*가로*/
+			 , BOX.DEPTH AS FIELD5 /*세로*/
+			 , BOX.HEIGHT AS FIELD6 /*높이*/
+			 , BOX.CBMSTARTRNG AS FIELD7 /*CBM시작범위*/
+			 , BOX.CBMCLOSRNG AS FIELD8 /*CBM종료범위*/
+			 , BOX.USEYN AS FIELD9 /*사용여부*/
+			 , BOX.CTKEY /*센터코드*/
+			 , BOX.BOXBARCODE /*박스바코드*/
+			 , BOX.BOXNM /*박스명*/
+			 , BOX.BOXDIVCD /*박스구분코드*/
+			 , CD.CTCDDTNM /*박스구분코드명*/
+			 , BOX.WIDTH /*가로*/
+			 , BOX.DEPTH /*세로*/
+			 , BOX.HEIGHT /*높이*/
+			 , BOX.CBMSTARTRNG /*CBM시작범위*/
+			 , BOX.CBMCLOSRNG /*CBM종료범위*/
+			 , BOX.ICKEY /*상폼코드*/
+			 , IC.ICNM /*상품명*/
+			 , BOX.USEYN /*사용여부*/
+		  FROM TWORK_MST_BOX BOX
+		 INNER JOIN TWORK_MST_CTCD_DT CD
+		    ON BOX.CTKEY = CD.CTKEY
+		   AND BOX.BOXDIVCD = CD.CTCDDTKEY
+		   AND CD.CTCDHDKEY = 'BOXDIVCD'
+		  LEFT OUTER JOIN TWORK_MST_IC IC
+		    ON BOX.CTKEY = IC.CTKEY
+		   AND BOX.ICKEY = IC.ICKEY
+		<where>
+			AND BOX.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND BOX.BOXNM = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						BOX.BOXBARCODE ~ #{value}
+						OR
+						BOX.BOXNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						BOX.BOXBARCODE ~ #{value}
+						OR
+						BOX.BOXNM ~ #{value}
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<sql id="sql_tWorkMstToCt">
+		/* wms-common-sql-oracle.xml - sql_tWorkMstToCt - common 센터 조회 SQL */
+		<where>
+			AND A.CLOSDATE <![CDATA[ >= ]]> #{sysdate}
+			AND A.CTTYPECD = '02'
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(value)">
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "=".equals(opval)'>
+						AND A.CTKEY = #{value}
+					</when>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(opval) and "IN".equals(opval)'>
+						AND (
+						A.CTKEY ~ #{value}
+						OR
+						A.CTNM ~ #{value}
+						OR
+						B.CTCDDTNM ~ #{value}
+						)
+					</when>
+					<otherwise>
+						AND (
+						A.CTKEY LIKE '%' || #{value} || '%'
+						OR
+						A.CTNM LIKE '%' || #{value} || '%'
+						OR
+						B.CTCDDTNM LIKE '%' || #{value} || '%'
+						)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTWorkMstToCtCount" resultType="java.lang.Integer">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToCtCount */
+		<include refid="sql_Tcode"/>
+		SELECT COUNT(1)
+		  FROM TWORK_MST_CT A
+		  LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY
+		   AND B.CTCDHDKEY = 'CTTYPE'
+		   AND B.CTCDDTKEY = A.CTTYPECD
+		<include refid="sql_tWorkMstToCt"/>
+	</select>
+
+	<select id="selectTWorkMstToCt" resultType="camelMap">
+		/* wms-common-sql-oracle.xml - selectTWorkMstToCt */
+		<include refid="sql_Tcode"/>
+		<include refid="sql_pagingTop"/>
+
+		SELECT A.CTKEY AS FIELD1
+			 , A.CTNM AS FIELD2
+			 , B.CTCDDTNM AS FIELD3
+			 , A.CTKEY
+			 , A.CTNM
+			 , A.CTTYPECD
+		  FROM TWORK_MST_CT A
+		  LEFT OUTER JOIN T_CODE B
+			ON B.CTKEY = A.CTKEY
+		   AND B.CTCDHDKEY = 'CTTYPE'
+		   AND B.CTCDDTKEY = A.CTTYPECD
+		<include refid="sql_tWorkMstToCt"/>
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<insert id="insertTadminInfoUrHs">
+		/* wms-common-sql-oracle.xml - insertTadminInfoUrHs */
+		INSERT INTO TADMIN_INFO_URHS (
+				ACSDATE
+			 ,  ACSURKEY
+			 ,  ACSIP
+			 ,  ACSUSKEY
+			 ,  SEARCHCOND
+			 ,  PRGRBIZ
+			 ,  INFOTGTCNT
+			 ,  INSERTDATE
+			 ,  INSERTURKEY
+			 ,  UPDATEDATE
+			 ,  UPDATEURKEY
+		) VALUES (
+				#{sysdate}
+			 ,  #{surkey}
+			 ,  #{acsip}
+			 ,  #{menuId}
+			 ,  #{resultParam}
+			 ,  #{method}
+			 ,  #{infotgtcnt}
+			 ,  #{sysdate}
+			 ,  #{surkey}
+			 ,  #{sysdate}
+			 ,  #{surkey}
+		 )
+	</insert>
+
+</mapper>

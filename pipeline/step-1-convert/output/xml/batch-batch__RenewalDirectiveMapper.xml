@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.RenewalDirectiveMapper">
+
+    <select id="selectRenewalDirectiveList" resultType="camelMap">
+		/* IbOrderInfoMapper.xml selectErpIbOrderHdInfoList */
+        SELECT #{owkey} AS OWKEY
+		     , CTKEY
+			 , ISTREGDATE
+			 , BFCHGICKEY
+			 , AFCHGICKEY
+			 , TRN_ID
+		FROM TORDER_EAI_RENEWAL_BATCH
+		WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+		AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+		ORDER BY  TRN_ID
+	</select>
+
+       
+</mapper>

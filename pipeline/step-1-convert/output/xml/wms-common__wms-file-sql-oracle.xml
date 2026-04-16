@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.wms.common.mapper.FileMapper">
+	<select id="selectFileInfoList" resultType="camelMap">
+		/* wms-file-sql-oracle.xml - selectFileInfoList */
+		SELECT CTKEY
+			 , FILEKEY
+			 , FILESEQNO
+			 , FILEPATH
+			 , FILESIZE
+			 , FILEEXTS
+			 , ORGFILENM
+			 , SAVFILENM
+			 , CMT
+		  FROM TWORK_INFO_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND FILEKEY = #{filekey}
+	</select>
+	
+	<select id="selectFileInfo" resultType="camelMap">
+		/* wms-file-sql-oracle.xml - selectFileInfo */
+		SELECT CTKEY
+			 , FILEKEY
+			 , FILESEQNO
+			 , FILEPATH
+			 , FILESIZE
+			 , FILEEXTS
+			 , ORGFILENM
+			 , SAVFILENM
+			 , CMT
+		  FROM TWORK_INFO_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND FILEKEY = #{filekey}
+		   AND FILESEQNO = #{fileseqno}
+	</select>
+	
+	<delete id="deleteFileInfo">
+	/* wms-file-sql-oracle.xml -deleteFileInfo */
+		DELETE FROM TWORK_INFO_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND FILEKEY = #{filekey}
+		   AND FILESEQNO = #{fileseqno}
+	</delete>
+	
+	<insert id="insertFileInfo">
+	/* wms-file-sql-oracle.xml - insertFileInfo */
+		INSERT INTO TWORK_INFO_FILE
+		(
+				  CTKEY
+				, FILEKEY
+				, FILESEQNO
+				, FILEPATH
+				, FILESIZE
+				, FILEEXTS
+				, ORGFILENM
+				, SAVFILENM
+				, CMT
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		)
+		VALUES
+		(
+				  #{ctkey}
+				, #{filekey}
+				, #{fileseqno}
+				, #{filepath}
+				, #{filesize}
+				, #{fileexts}
+				, #{orgfilenm}
+				, #{savfilenm}
+				, #{cmt}
+				, #{sysdate}
+				, #{surkey}
+				, #{sysdate}
+				, #{surkey}
+		)
+	</insert>
+	
+	<select id="getNewFileKey" resultType="java.lang.String">
+		/* wms-file-sql-oracle.xml - getNewFileKey */
+		SELECT nextval('seq_twork_info_file')
+	</select>
+
+</mapper>

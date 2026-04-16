@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapPerformanceMapper">
+
+    <select id="inboundSendTargetListASN" resultType="com.daiso.batch.biz.oms.vo.SapSendInboundVO">
+		/* SapPerformanceMapper.xml inboundSendTargetListASN  ASN BASE */
+        SELECT CH.EXTERNORDERKEY AS SENDKEY
+             , DENSE_RANK() OVER(ORDER BY CH.EXTERNORDERKEY) AS SEND_CNT
+             , CH.EXTERNORDERKEY
+		     , SD.EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+		     , CH.CTKEY
+		     , SD.ICKEY
+		     , 'RDC' || '_' ||  CH.EXTERNORDERKEY || '_' || LPAD(COALESCE(CH.SAPSENDSEQ, '0')+1::TEXT, 3, '0') AS SYSID
+		     , CH.DELIVERY_HD_DT AS OR_HD_DT
+		     , CASE WHEN IU.ICUNITQTY > 0 THEN TRUNC(SUM(SD.CFQTY)/IU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS CFQTY
+		     , CASE WHEN SD.UOM=#{boxuom} THEN #{boxexternuom} 
+		    		WHEN SD.UOM=#{boluom} THEN #{bolexternuom}
+		    		WHEN SD.UOM=#{eauom} THEN #{eaexternuom}
+		    		ELSE SD.UOM
+		       END AS UOM
+		     , MAX(CH.COMMENTS) AS COMMENTS
+		  FROM TORDER_INFO_CO_HD CH
+		  JOIN TORDER_INFO_SO_DT SD  
+		    ON CH.OWKEY = SD.OWKEY
+		   AND CH.EXTERNORDERKEY = SD.EXTERNORDERKEY
+		   AND SD.WKSTATUS <![CDATA[<>]]> '40'
+		   JOIN ( SELECT 
+                      CO.OWKEY
+                    , CO.CUSTOMERORDERKEY
+                    , CO.EXTERNORDERKEY
+                    , SUM(1) OVER( PARTITION BY  CO.EXTERNORDERKEY )  AS  TOT_CNT
+                    , SUM( CASE WHEN  CO.WKSTATUS ='COMPLETE' THEN 1 ELSE 0 END )  OVER( PARTITION BY  CO.EXTERNORDERKEY )  AS COMPLETE_CNT
+                   FROM TORDER_INFO_CO_HD CO
+		   		  WHERE CO.OWKEY = #{owkey}
+           			AND CO.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+           			AND CO.WKSTATUS <![CDATA[<>]]> 'CANCEL'
+          ) CHK_CO ON CHK_CO.OWKEY = CH.OWKEY AND CHK_CO.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY 
+		  JOIN TORDER_MST_ORTYPE OT
+		    ON CH.OWKEY = OT.OWKEY
+		   AND CH.OR_TYPE_CD = OT.OR_TYPE_CD   
+		   AND OT.DELYN = 'N'
+		  JOIN TORDER_INFO_ORTYPE_MAPPING OM
+		    ON CH.OWKEY = OM.OWKEY
+		   AND CH.EXTORDERTYPECD = OM.EXTERN_OR_TYPE_CD
+		   AND CH.OR_TYPE_CD = OM.OR_TYPE_CD
+		   AND OM.DELYN = 'N'
+		  JOIN TADMIN_MST_IC IC
+		    ON SD.OWKEY = IC.OWKEY
+		   AND SD.ICKEY = IC.ICKEY
+		  JOIN TADMIN_MST_ICUTXTYPE IU
+		    ON IC.OWKEY = IU.OWKEY
+		   AND IC.ICUNITKEY = IU.ICUNITKEY
+		   AND SD.UOM = IU.ICUNITTYPE
+		 WHERE CH.OWKEY = #{owkey}
+		   AND CH.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+		   AND OT.IBYN = 'Y'
+		   AND OT.OBYN = 'N'
+		   AND OM.TRANYN = 'Y'
+		   AND CH.WKSTATUS = 'COMPLETE'
+		   AND CHK_CO.TOT_CNT = CHK_CO.COMPLETE_CNT
+		   AND OT.PERFORMANCETYPE ='ASN'
+		   AND COALESCE(CH.SAPTRANSFAILYN, 'N') != 'P'
+		<if test="@com.kns.framework.util.StringUtil@isEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) <![CDATA[<=]]> 3 /*정상JOB*/
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) > 3 /*실패JOB*/
+		</if>
+		 GROUP BY CH.EXTERNORDERKEY
+		        , SD.EXTERNORDERDETAILKEY
+		        , CH.SAPSENDSEQ
+		        , CH.CTKEY
+		        , SD.ICKEY
+		        , CH.DELIVERY_HD_DT
+		        , IU.ICUNITQTY
+		        , SD.UOM
+		 ORDER BY CH.EXTERNORDERKEY
+		        , SD.EXTERNORDERDETAILKEY
+    </select>
+    
+    <select id="inboundSendTargetListSPLT" resultType="com.daiso.batch.biz.oms.vo.SapSendInboundVO">
+		/* SapPerformanceMapper.xml inboundSendTargetListSPLT  SPLT BASE */
+        SELECT CH.CUSTOMERORDERKEY AS SENDKEY
+        	 , DENSE_RANK() OVER(ORDER BY CH.CUSTOMERORDERKEY) AS SEND_CNT
+             , CH.CUSTOMERORDERKEY
+             , SD.CUSTOMERORDERDTKEY
+             , CH.EXTERNORDERKEY
+		     , SD.EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+		     , CH.CTKEY
+		     , SD.ICKEY
+		     , 'RDC' || '_' ||  CH.CUSTOMERORDERKEY || '_' || LPAD(COALESCE(CH.SAPSENDSEQ, '0')+1::TEXT, 3, '0') AS SYSID
+		     , CH.DELIVERY_HD_DT AS OR_HD_DT
+		     , CASE WHEN IU.ICUNITQTY > 0 THEN TRUNC(SUM(SD.CFQTY)/IU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS CFQTY
+		     , CASE WHEN SD.UOM=#{boxuom} THEN #{boxexternuom} 
+		    		WHEN SD.UOM=#{boluom} THEN #{bolexternuom}
+		    		WHEN SD.UOM=#{eauom} THEN #{eaexternuom}
+		    		ELSE SD.UOM
+		       END AS UOM
+		     , MAX(CH.COMMENTS) AS COMMENTS
+		  FROM TORDER_INFO_CO_HD CH
+		  JOIN TORDER_INFO_SO_DT SD  
+		    ON CH.OWKEY = SD.OWKEY
+		   AND CH.CUSTOMERORDERKEY = SD.CUSTOMERORDERKEY
+		  JOIN TORDER_MST_ORTYPE OT
+		    ON CH.OWKEY = OT.OWKEY
+		   AND CH.OR_TYPE_CD = OT.OR_TYPE_CD   
+		   AND OT.DELYN = 'N'
+		  JOIN TORDER_INFO_ORTYPE_MAPPING OM
+		    ON CH.OWKEY = OM.OWKEY
+		   AND CH.EXTORDERTYPECD = OM.EXTERN_OR_TYPE_CD
+		   AND CH.OR_TYPE_CD = OM.OR_TYPE_CD
+		   AND OM.DELYN = 'N'
+		  JOIN TADMIN_MST_IC IC
+		    ON SD.OWKEY = IC.OWKEY
+		   AND SD.ICKEY = IC.ICKEY
+		  JOIN TADMIN_MST_ICUTXTYPE IU
+		    ON IC.OWKEY = IU.OWKEY
+		   AND IC.ICUNITKEY = IU.ICUNITKEY
+		   AND SD.UOM = IU.ICUNITTYPE
+		 WHERE CH.OWKEY = #{owkey}
+		   AND CH.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+		   AND OT.IBYN = 'Y'
+		   AND OT.OBYN = 'N'
+		   AND OM.TRANYN = 'Y'
+		   AND CH.WKSTATUS = 'COMPLETE'
+		   AND OT.PERFORMANCETYPE ='SPLT'
+		   AND COALESCE(CH.SAPTRANSFAILYN, 'N') != 'P'
+		<if test="@com.kns.framework.util.StringUtil@isEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) <![CDATA[<=]]> 3 /*정상JOB*/
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) > 3 /*실패JOB*/
+		</if>	   
+		 GROUP BY CH.EXTERNORDERKEY
+		        , SD.EXTERNORDERDETAILKEY
+		        , CH.CUSTOMERORDERKEY
+		        , SD.CUSTOMERORDERDTKEY
+		        , CH.SAPSENDSEQ
+		        , CH.CTKEY
+		        , SD.ICKEY
+		        , CH.DELIVERY_HD_DT
+		        , IU.ICUNITQTY
+		        , SD.UOM
+		 ORDER BY CH.EXTERNORDERKEY
+		        , SD.EXTERNORDERDETAILKEY
+    </select>
+    
+    <select id="outboundSendTargetListASN" resultType="com.daiso.batch.biz.oms.vo.SapSendOutboundVO">
+		/* SapPerformanceMapper.xml outboundSendTargetListASN  ASN BASE */
+        SELECT CH.EXTERNORDERKEY AS SENDKEY
+             , DENSE_RANK() OVER(ORDER BY CH.EXTERNORDERKEY) AS SEND_CNT
+             , CH.EXTERNORDERKEY
+             , SD.EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+             , 'RDC' || '_' || CH.EXTERNORDERKEY || '_' || LPAD(COALESCE(CH.SAPSENDSEQ, '0')+1::TEXT, 3, '0') AS SYSID
+             , CH.DELIVERY_HD_DT AS OR_HD_DT
+             , CH.EXTORDERTYPECD AS EXTERN_OR_TYPE_CD
+             , CH.CTKEY
+             , SD.ICKEY
+             , CASE WHEN IU.ICUNITQTY > 0 THEN TRUNC(SUM(SD.CFQTY)/IU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS CFQTY
+             , CASE WHEN SD.UOM=#{boxuom} THEN #{boxexternuom} 
+                    WHEN SD.UOM=#{boluom} THEN #{bolexternuom}
+                    WHEN SD.UOM=#{eauom} THEN #{eaexternuom}
+                    ELSE SD.UOM
+               END AS UNIT
+             , CASE WHEN COALESCE(SU.ICUNITQTY, 0) > 0 THEN TRUNC(SUM(SD.CFQTY)/SU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS COVERTQTY
+             , CASE WHEN SD.SALEUNIT=#{boxuom} THEN #{boxexternuom} 
+                    WHEN SD.SALEUNIT=#{boluom} THEN #{bolexternuom}
+                    WHEN SD.SALEUNIT=#{eauom} THEN #{eaexternuom}
+                    ELSE SD.SALEUNIT
+               END AS SALEUNIT
+             , MAX(WP.EXPIREDATE) AS EXPIREDATE
+             , #{deliveryPersonId} AS DELIVERY_PERSON_ID
+             , CH.DELIVERY_NO
+          FROM TORDER_INFO_CO_HD CH
+          JOIN TORDER_INFO_SO_DT SD  
+            ON CH.OWKEY = SD.OWKEY
+           AND CH.EXTERNORDERKEY = SD.EXTERNORDERKEY
+           AND SD.WKSTATUS <![CDATA[<>]]> '40'
+          JOIN ( SELECT 
+                      CO.OWKEY
+                    , CO.CUSTOMERORDERKEY
+                    , CO.EXTERNORDERKEY
+                    , SUM(1) OVER( PARTITION BY  CO.EXTERNORDERKEY )  AS  TOT_CNT
+                    , SUM( CASE WHEN  CO.WKSTATUS ='COMPLETE' THEN 1 ELSE 0 END )  OVER( PARTITION BY  CO.EXTERNORDERKEY )  AS COMPLETE_CNT
+                   FROM TORDER_INFO_CO_HD CO
+                  WHERE CO.OWKEY = #{owkey}
+           			AND CO.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+           			AND CO.WKSTATUS <![CDATA[<>]]> 'CANCEL'
+          ) CHK_CO ON CHK_CO.OWKEY = CH.OWKEY AND CHK_CO.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY  
+          LEFT JOIN TORDER_INFO_WMS_PERFORMANCE WP
+            ON SD.OWKEY = WP.OWKEY
+           AND SD.EXTERNORDERKEY = WP.EXTERNORDERKEY
+           AND SD.EXTERNORDERDETAILKEY = WP.EXTERNORDERDETAILKEY
+           AND WP.DELYN = 'N'
+          JOIN TORDER_MST_ORTYPE OT
+            ON CH.OWKEY = OT.OWKEY
+           AND CH.OR_TYPE_CD = OT.OR_TYPE_CD   
+           AND OT.DELYN = 'N'
+          JOIN TORDER_INFO_ORTYPE_MAPPING OM
+            ON CH.OWKEY = OM.OWKEY
+           AND CH.EXTORDERTYPECD = OM.EXTERN_OR_TYPE_CD
+           AND CH.OR_TYPE_CD = OM.OR_TYPE_CD
+           AND OM.DELYN = 'N'
+          JOIN TADMIN_MST_IC IC
+            ON SD.OWKEY = IC.OWKEY
+           AND SD.ICKEY = IC.ICKEY
+          JOIN TADMIN_MST_ICUTXTYPE IU
+            ON IC.OWKEY = IU.OWKEY
+           AND IC.ICUNITKEY = IU.ICUNITKEY
+           AND SD.UOM = IU.ICUNITTYPE
+          LEFT JOIN TADMIN_MST_ICUTXTYPE SU
+            ON IC.OWKEY = SU.OWKEY
+           AND IC.ICUNITKEY = SU.ICUNITKEY
+           AND SD.SALEUNIT = SU.ICUNITTYPE
+         WHERE CH.OWKEY = #{owkey}
+           AND CH.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+           AND OT.IBYN = 'N'
+           AND OT.OBYN = 'Y'
+           AND OM.TRANYN = 'Y'
+           AND CH.WKSTATUS = 'COMPLETE'
+           AND OT.PERFORMANCETYPE ='ASN'
+           AND COALESCE(CH.SAPTRANSFAILYN, 'N') != 'P'
+           AND CHK_CO.TOT_CNT = CHK_CO.COMPLETE_CNT
+        <if test="@com.kns.framework.util.StringUtil@isEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) <![CDATA[<=]]> 3 /*정상JOB*/
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) > 3 /*실패JOB*/
+		</if>
+         GROUP BY CH.EXTERNORDERKEY
+                , SD.EXTERNORDERDETAILKEY
+                , CH.SAPSENDSEQ
+                , CH.DELIVERY_HD_DT
+                , CH.EXTORDERTYPECD
+                , CH.CTKEY
+                , SD.ICKEY
+                , IU.ICUNITQTY
+                , SU.ICUNITQTY
+                , SD.UOM
+                , SD.SALEUNIT
+                , CH.DELIVERY_NO
+         ORDER BY CH.EXTERNORDERKEY
+                , SD.EXTERNORDERDETAILKEY
+    </select>
+    
+    <select id="outboundSendTargetListSPLT" resultType="com.daiso.batch.biz.oms.vo.SapSendOutboundVO">
+		/* SapPerformanceMapper.xml outboundSendTargetListSPLT SPLIT BASE */
+        SELECT CH.CUSTOMERORDERKEY AS SENDKEY
+             , DENSE_RANK() OVER(ORDER BY CH.CUSTOMERORDERKEY) AS SEND_CNT
+             , CH.EXTERNORDERKEY
+             , SD.EXTERNORDERDETAILKEY AS EXTERNORDERLINENUM
+             , CH.CUSTOMERORDERKEY
+             , SD.CUSTOMERORDERDTKEY
+             , 'RDC' || '_' || CH.CUSTOMERORDERKEY || '_' || LPAD(COALESCE(CH.SAPSENDSEQ, '0')+1::TEXT, 3, '0') AS SYSID
+             , CH.DELIVERY_HD_DT AS OR_HD_DT
+             , CH.EXTORDERTYPECD AS EXTERN_OR_TYPE_CD
+             , CH.CTKEY
+             , SD.ICKEY
+             , CASE WHEN IU.ICUNITQTY > 0 THEN TRUNC(SUM(SD.CFQTY)/IU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS CFQTY
+             , CASE WHEN SD.UOM=#{boxuom} THEN #{boxexternuom} 
+                    WHEN SD.UOM=#{boluom} THEN #{bolexternuom}
+                    WHEN SD.UOM=#{eauom} THEN #{eaexternuom}
+                    ELSE SD.UOM
+               END AS UNIT
+             , CASE WHEN COALESCE(SU.ICUNITQTY, 0) > 0 THEN TRUNC(SUM(SD.CFQTY)/SU.ICUNITQTY, 3) ELSE SUM(SD.CFQTY) END AS COVERTQTY
+             , CASE WHEN SD.SALEUNIT=#{boxuom} THEN #{boxexternuom} 
+                    WHEN SD.SALEUNIT=#{boluom} THEN #{bolexternuom}
+                    WHEN SD.SALEUNIT=#{eauom} THEN #{eaexternuom}
+                    ELSE SD.SALEUNIT
+               END AS SALEUNIT
+             , MAX(WP.EXPIREDATE) AS EXPIREDATE
+             , #{deliveryPersonId} AS DELIVERY_PERSON_ID
+             , CH.DELIVERY_NO
+          FROM TORDER_INFO_CO_HD CH
+          JOIN TORDER_INFO_SO_DT SD  
+            ON CH.OWKEY = SD.OWKEY
+           AND CH.CUSTOMERORDERKEY = SD.CUSTOMERORDERKEY
+          LEFT JOIN TORDER_INFO_WMS_PERFORMANCE WP
+            ON SD.OWKEY = WP.OWKEY
+           AND SD.SO_HDKEY = WP.SO_HDKEY
+           AND SD.SO_DTKEY = WP.SO_DTKEY
+           AND WP.DELYN = 'N'
+          JOIN TORDER_MST_ORTYPE OT
+            ON CH.OWKEY = OT.OWKEY
+           AND CH.OR_TYPE_CD = OT.OR_TYPE_CD   
+           AND OT.DELYN = 'N'
+          JOIN TORDER_INFO_ORTYPE_MAPPING OM
+            ON CH.OWKEY = OM.OWKEY
+           AND CH.EXTORDERTYPECD = OM.EXTERN_OR_TYPE_CD
+           AND CH.OR_TYPE_CD = OM.OR_TYPE_CD
+           AND OM.DELYN = 'N'
+          JOIN TADMIN_MST_IC IC
+            ON SD.OWKEY = IC.OWKEY
+           AND SD.ICKEY = IC.ICKEY
+          JOIN TADMIN_MST_ICUTXTYPE IU
+            ON IC.OWKEY = IU.OWKEY
+           AND IC.ICUNITKEY = IU.ICUNITKEY
+           AND SD.UOM = IU.ICUNITTYPE
+          LEFT JOIN TADMIN_MST_ICUTXTYPE SU
+            ON IC.OWKEY = SU.OWKEY
+           AND IC.ICUNITKEY = SU.ICUNITKEY
+           AND SD.SALEUNIT = SU.ICUNITTYPE
+         WHERE CH.OWKEY = #{owkey}
+           AND CH.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+           AND OT.IBYN = 'N'
+           AND OT.OBYN = 'Y'
+           AND OM.TRANYN = 'Y'
+           AND CH.WKSTATUS = 'COMPLETE'
+           AND OT.PERFORMANCETYPE ='SPLT'
+           AND COALESCE(CH.SAPTRANSFAILYN, 'N') != 'P'
+		<if test="@com.kns.framework.util.StringUtil@isEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) <![CDATA[<=]]> 3 /*정상JOB*/
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(failJobYn)" >
+			AND COALESCE(CH.FAILCNT, 0) > 3 /*실패JOB*/
+		</if>         
+         GROUP BY CH.EXTERNORDERKEY
+                , SD.EXTERNORDERDETAILKEY
+                , CH.CUSTOMERORDERKEY
+                , SD.CUSTOMERORDERDTKEY
+                , CH.SAPSENDSEQ
+                , CH.DELIVERY_HD_DT
+                , CH.EXTORDERTYPECD
+                , CH.CTKEY
+                , SD.ICKEY
+                , IU.ICUNITQTY
+                , SU.ICUNITQTY
+                , SD.UOM
+                , SD.SALEUNIT
+                , CH.DELIVERY_NO
+         ORDER BY CH.EXTERNORDERKEY
+                , SD.EXTERNORDERDETAILKEY
+	</select>
+    
+    <select id="outboundSendDeliveryList" resultType="com.daiso.batch.biz.oms.vo.SapSendOutboundVO">
+		/* SapPerformanceMapper.xml outboundSendDeliveryList */
+        SELECT CH.EXTERNORDERKEY
+             , CH.CUSTOMERORDERKEY
+             , DR.URKEY AS DELIVERY_PERSON_ID
+             , ROLL.LDLEGID AS DELIVERY_NO
+          FROM TORDER_INFO_CO_HD CH
+          JOIN TORDER_MST_ORTYPE OT
+            ON CH.OWKEY = OT.OWKEY
+           AND CH.OR_TYPE_CD = OT.OR_TYPE_CD   
+           AND OT.DELYN = 'N'
+          JOIN TORDER_INFO_SO_HD SH  
+            ON CH.OWKEY = SH.OWKEY
+           AND CH.CUSTOMERORDERKEY = SH.CUSTOMERORDERKEY
+          JOIN TORDER_INFO_ORTYPE_MAPPING OM
+            ON CH.OWKEY = OM.OWKEY
+           AND CH.EXTORDERTYPECD = OM.EXTERN_OR_TYPE_CD
+           AND CH.OR_TYPE_CD = OM.OR_TYPE_CD
+           AND OM.DELYN = 'N'
+          JOIN TT_SHPM_LEG_T ROLL
+            ON SH.SO_HDKEY = ROLL.SHPMNO
+           AND ROLL.DELYN = 'N'
+          JOIN TT_LOAD_T LOAD 
+            ON ROLL.LDLEGID = LOAD.LDLEGID
+           AND ROLL.DELYN = LOAD.DELYN
+          JOIN TT_DRVR_T DR 
+            ON DR.DRVNO = LOAD.DRVNO
+         WHERE CH.OWKEY = #{owkey}
+           AND CH.DELIVERY_HD_DT BETWEEN #{startDate} AND #{endDate}
+           AND OT.IBYN = 'N'
+           AND OT.OBYN = 'Y'
+           AND OM.TRANYN = 'Y'
+           AND CH.WKSTATUS = 'COMPLETE'
+           AND CH.EXTERNORDERKEY IS NOT NULL
+         GROUP BY CH.EXTERNORDERKEY
+         		, CH.CUSTOMERORDERKEY
+                , DR.URKEY
+                , ROLL.LDLEGID   
+    </select>
+
+</mapper>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.item.mapper.ItemAsrtInfoMapper">
+
+    <select id="selectErpAsrtInfoList" resultType="camelMap">
+		/* ItemAsrtInfoMapper.xml selectErpAsrtInfoList */
+        SELECT TRN_ID
+             , MIN(SND_ROW) OVER (PARTITION BY TRN_ID) AS MINROW
+			 , MAX(SND_ROW) OVER (PARTITION BY TRN_ID) AS MAXROW
+             , ASSORTICKEY AS ASRTKEY
+			 , MASICICKEY AS ASRTREPKEY
+			 , ICNM AS ASRTNM
+			 , SMLCTG
+			 , QTY
+			 , ICIMGURL
+			 , ICCOLOR
+			 , ICDESIGN
+			 , ICCHRT
+             , 'ERP' AS INSERTSYSTM
+        FROM 
+        (
+			SELECT *
+			FROM TORDER_EAI_ASRT_BATCH
+	        WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+	          AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+		     ORDER BY TRN_ID, SND_ROW
+	     )
+	     WHERE ROWNUM  <![CDATA[ <= ]]> #{sendCnt}
+    </select>    
+    
+    <select id="selectWmsAsrtBatchInfoList" resultType="camelMap">
+		/* ItemAsrtInfoMapper.xml selectWmsAsrtBatchInfoList */
+		SELECT #{owkey} AS OWKEY
+		     , '09' AS CTKEY
+		     , ASRTREPKEY
+		FROM TORDER_WMS_ASRT_BATCH
+		WHERE REQDATE = #{startDate}
+		AND SENDSTATUS = 'N'
+		AND ROWNUM  <![CDATA[ <= ]]> #{sendCnt}
+    </select>
+    
+    <update id="updateTodayTarget">
+		/* ItemAsrtInfoMapper.xml - updateTodayTarget */
+		UPDATE  TORDER_WMS_ASRT_BATCH SET  
+		        SENDSTATUS = 'Y'
+		     ,  UPDATEDATE =  TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') 
+		     ,  UPDATEURKEY =  'batch asrt info'
+		WHERE   REQDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+		  AND   ASRTREPKEY =  #{asrtrepkey}
+	</update>
+	
+</mapper>

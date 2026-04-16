@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemGroupMapper">
+	
+	<select id="selectItemGroupCode" resultType="camelMap">
+		/* adm-item-itemgroup-sql-oracle.xml - selectItemGroupCode */
+		SELECT 	ICGRPNM
+			   ,ICGRPKEY
+		FROM 	TADMIN_MST_ICGR
+		WHERE   OWKEY = #{owkey}
+	</select>
+	
+	<select id="selectItemGroup" resultType="camelMap">
+		/* adm-item-itemgroup-sql-oracle.xml - selectItemGroup */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT'0' AS CHK
+				, OWKEY
+				, (SELECT OWNM FROM TADMIN_MST_OW OW WHERE OW.OWKEY = TADMIN_MST_ICGR.OWKEY) AS OWNM
+				, UPDATEDATE
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEURKEY
+				, ICGRPTYPE
+				, ICGRPNM
+				, ICGRPKEY
+				, CLOSDATE
+				, SAMFILENM
+				, IFYN
+			FROM TADMIN_MST_ICGR
+			<where><if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+			</where>
+			  <choose>
+				<when test='sortValue != null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+	<select id="selectItemGroupCount" resultType="java.lang.Integer" >
+		/* adm-item-itemgroup-sql-oracle.xml - selectItemGroupCount */
+		SELECT 	COUNT(1)  
+  		FROM 	TADMIN_MST_ICGR 
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   		#{SEARCH_CONDITION}
+			</if>
+		</where>						 
+	</select>
+	
+	<select id="selectCountTAdminMstIcgrXCt" resultType="java.lang.Integer" >
+		/* adm-item-itemgroup-sql-oracle.xml - selectCountTAdminMstIcgrXCt */
+		SELECT 	COUNT(1)  
+  		FROM 	TADMIN_MST_ICGRXCT
+	    WHERE	CTKEY = #{ctkey}
+	    AND     OWKEY = #{owkey}
+	    AND     ICGRPKEY = #{icgrpkey}
+	    AND     ICGRPTYPE = #{icgrptype}
+	</select>
+	
+	<select id="selectTAdminMstIcgrxct" resultType="camelMap">
+		/* adm-item-itemgroup-sql-oracle.xml - selectTAdminMstIcgrxct */
+		SELECT '0' AS CHK
+		    , A.INSERTDATE
+		    , A.UPDATEDATE
+		    , A.INSERTURKEY
+ 			, A.UPDATEURKEY
+		    , C.CLOSDATE
+		    , A.ICGRPKEY
+		    , C.ICGRPNM
+		    , B.CTKEY
+		    , B.CTNM
+		    , A.OWKEY
+		    , A.ICGRPTYPE
+		FROM TADMIN_MST_ICGRXCT A
+		INNER JOIN TADMIN_MST_CT B
+		        ON A.CTKEY = B.CTKEY
+		       AND B.DELYN = 'N'
+		INNER JOIN TADMIN_MST_ICGR C
+				ON A.ICGRPKEY = C.ICGRPKEY
+			   AND   A.OWKEY = C.OWKEY
+		WHERE A.ICGRPKEY = #{icgrpkey}
+		AND	  A.OWKEY = #{owkey}	
+	</select>
+	
+	<select id="selectTAdminMstCt" resultType="camelMap">
+		/* adm-item-itemgroup-sql-oracle.xml - selectTAdminMstCt */
+		SELECT '0' AS CHK
+		      ,CTKEY
+		      ,CTNM
+	  	FROM TADMIN_MST_CT
+	  	WHERE DELYN = 'N'
+		  AND MANAGEMENTYN = 'Y'
+
+	</select>
+
+	<insert id="insertTAdminMstIcgr">
+		/* adm-item-itemgroup-sql-oracle.xml - insertTAdminMstIcgr */
+		INSERT INTO TADMIN_MST_ICGR	(
+			UPDATEURKEY
+			,UPDATEDATE
+			,INSERTURKEY
+			,INSERTDATE
+			,ICGRPTYPE
+			,ICGRPNM
+			,ICGRPKEY
+			,CLOSDATE
+			,OWKEY
+			,SAMFILENM
+		)
+		VALUES (
+			#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{icgrptype}
+			,#{icgrpnm}
+			,#{icgrpkey}
+			,SUBSTR(#{closdate}, 0, 14)
+			,#{owkey}
+			,#{samfilenm}
+		) 	
+	</insert>	
+	
+	<update id="updateTAdminMstIcgr" >
+		/* adm-item-itemgroup-sql-oracle.xml - updateTAdminMstIcgr */
+		UPDATE 	TADMIN_MST_ICGR 
+		SET		UPDATEURKEY = #{surkey}
+				,UPDATEDATE  = #{sysdate}
+				,ICGRPNM    = #{icgrpnm}
+				,SAMFILENM = #{samfilenm}
+				,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+	    WHERE 	OWKEY = #{owkey}
+    	AND 	ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+	</update>
+	
+	<insert id="insertTAdminMstIcgrxct">
+		/* adm-item-itemgroup-sql-oracle.xml - insertTAdminMstIcgrxct */
+		/* Converted from: MERGE INTO TADMIN_MST_ICGRXCT ON CONFLICT */
+		INSERT INTO TADMIN_MST_ICGRXCT (
+				 UPDATEURKEY, UPDATEDATE, INSERTURKEY, INSERTDATE
+				,ICGRPTYPE, ICGRPKEY, CTKEY, OWKEY
+			) VALUES (
+				 #{surkey}, #{sysdate}, #{surkey}, #{sysdate}
+				,#{icgrptype}, #{icgrpkey}, #{ctkey}, #{owkey}
+			)
+		ON CONFLICT (OWKEY, ICGRPKEY, ICGRPTYPE, CTKEY) DO UPDATE SET
+				 UPDATEURKEY = #{surkey}
+				,UPDATEDATE = #{sysdate}
+	</insert>		
+
+	<select id="selectPkItemGroup" resultType="camelMap">
+		/* adm-item-itemgroup-sql-oracle.xml - selectPkItemGroup */
+		SELECT 	A.UPDATEURKEY
+				,A.UPDATEDATE
+				,A.INSERTURKEY
+				,A.INSERTDATE
+				,A.ICGRPTYPE
+				,A.ICGRPNM
+				,A.ICGRPKEY
+				,A.CLOSDATE
+				,A.OWKEY
+				,B.MASTERUPDATEIMPOS AS FN_GET_MASTER_IMPOS
+				,A.SAMFILENM
+		FROM 	TADMIN_MST_ICGR A
+		INNER JOIN TADMIN_MST_OW B
+				ON A.OWKEY = B.OWKEY
+	    WHERE 	A.OWKEY = #{owkey}
+	    AND		A.ICGRPKEY = #{icgrpkey}
+        AND 	A.ICGRPTYPE = #{icgrptype}
+	</select>
+	
+	<delete id="deleteTAdminMstIcgrxct">
+		/* adm-item-itemgroup-sql-oracle.xml - deleteTAdminMstIcgrxct */
+		DELETE
+	  	FROM 	TADMIN_MST_ICGRXCT	
+     	WHERE 	OWKEY = #{owkey}
+     	AND		ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+	
+	<delete id="deleteTAdminMstIcgr">
+		/* adm-item-itemgroup-sql-oracle.xml - deleteTAdminMstIcgr */
+		DELETE
+		FROM 	TADMIN_MST_ICGR	
+ 	    WHERE 	OWKEY = #{owkey}
+	    AND  	ICGRPKEY = #{icgrpkey}
+        AND 	ICGRPTYPE = #{icgrptype}
+	</delete>
+</mapper>	

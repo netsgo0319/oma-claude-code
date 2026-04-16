@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.oms.mapper.OrderManagerIcomMapper">
+	
+	<select id="selectOrDt" parameterType="orderDtVO" resultType="orderDtVO">
+		<![CDATA[			
+			SELECT ORHDKEY           
+				,ORDTKEY           
+				,OWKEY             
+				,ICKEY             
+				,ICUTKEY           
+				,SBKEY             
+				,ORQTY             
+				,CFQTY             
+				,UOM               
+				,COSTPRICE         
+				,SALEPRICE         
+				,ORIGIN_ICKEY      
+				,PRODUCTDATE       
+				,EXPIREDATE        
+				,ATTRIBUTE1        
+				,ATTRIBUTE2        
+				,ATTRIBUTE3        
+				,ATTRIBUTE4        
+				,ATTRIBUTE5        
+				,PRODUCTLOT        
+				,EXTERNORDERKEY    
+				,EXTERNORDERLINENUM
+				,WKSTATUS          
+				,UDF1              
+				,UDF2              
+				UDF3           
+			 FROM TORDER_INFO_OR_DT
+			WHERE ORHDKEY  = #{orhdkey}
+			    AND ORDTKEY = #{ordtkey}
+		]]>		 	
+	</select>
+	
+	<select id="selectOrDtList" parameterType="orderDtVO" resultType="orderDtVO">
+		<![CDATA[			
+			SELECT ORHDKEY           
+				,ORDTKEY           
+				,OWKEY             
+				,ICKEY             
+				,ICUTKEY           
+				,SBKEY             
+				,ORQTY             
+				,CFQTY             
+				,UOM               
+				,COSTPRICE         
+				,SALEPRICE         
+				,ORIGIN_ICKEY      
+				,PRODUCTDATE       
+				,EXPIREDATE        
+				,ATTRIBUTE1        
+				,ATTRIBUTE2        
+				,ATTRIBUTE3        
+				,ATTRIBUTE4        
+				,ATTRIBUTE5        
+				,PRODUCTLOT        
+				,EXTERNORDERKEY    
+				,EXTERNORDERLINENUM
+				,WKSTATUS          
+				,UDF1              
+				,UDF2              
+				UDF3           
+			 FROM TORDER_INFO_OR_DT
+			WHERE ORHDKEY  = #{orhdkey}
+		]]>		 	
+	</select>	
+
+	<update id="updateOrDtWorkStatus" parameterType="orderDtVO">
+		<![CDATA[			
+		UPDATE TORDER_INFO_OR_DT SET
+			cfqty = #{cfqty}
+			,WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE ORHDKEY  = #{orhdkey}
+			    AND ORDTKEY = #{ordtkey}
+		]]>
+	</update>
+	
+	<select id="selectOrHd" parameterType="orderHdVO" resultType="orderHdVO">
+		<![CDATA[			
+			SELECT ORHDKEY         
+				,OWKEY          
+				,ORHDDATE       
+				,ACKEY          
+				,ACNAME         
+				,ORHDTYPE       
+				,ORID           
+				,ORNAME         
+				,ORTEL          
+				,ORFAX          
+				,ORCONTACT      
+				,ORADDRESS1     
+				,ORADDRESS2     
+				,ORCITY         
+				,ORSTATE        
+				,ORZCKEY        
+				,ORCOUNTRYCODE  
+				,TEL            
+				,FAX            
+				,CONTACT        
+				,ADDRESS1       
+				,ADDRESS2       
+				,CITY           
+				,STATE          
+				,ZCKEY          
+				,COUNTRYCODE    
+				,DLCOMPANY      
+				,ODPAYTYPE      
+				,WKSTATUS       
+				,COMMENTS1      
+				,COMMENTS2      
+				,ULHSKEY        
+				,PACKAGEORDERKEY
+				,CTKEY          
+				,EXTERNORDERKEY 
+				,EXTERNORDERKEY2
+				,UDF1           
+				,UDF2           
+				,UDF3           
+				,INSERTDATE     
+				,INSERTURKEY    
+				,UPDATEDATE     
+				,UPDATEURKEY    
+				,BATCHNO        
+				,IFSTATUS                  
+			 FROM TORDER_INFO_OR_HD
+			WHERE ORHDKEY  = #{orhdkey}
+		]]>		 	
+	</select>	
+	
+	<update id="updateOrHdWorkStatus" parameterType="orderHdVO">
+		<![CDATA[			
+		UPDATE TORDER_INFO_OR_HD SET
+			WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE ORHDKEY  = #{orhdkey}
+		]]>
+	</update>	
+	
+	<update id="updateOrHd" parameterType="hashmap">
+		UPDATE TORDER_INFO_OR_HD SET
+			UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(waybillno)" >
+	 			, WAYBILLNO = #{waybillno}
+	 		</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orconfirmdate)" >
+	 			, ORCONFIRMDATE = #{orconfirmdate, typeHandler=GmtDateTimeFormatTypeHandler}
+	 		</if>		
+	 		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+	 			, CTKEY = #{ctkey}
+	 		</if>	
+		<where>  
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(orhdkey)" >
+				ORHDKEY = #{orhdkey}
+			</if>
+			<if test="ORHDKEY_LIST != null and ORHDKEY_LIST.size > 0" >
+				AND ORHDKEY IN 
+				<foreach item="ORHDKEY_LIST" index="index" collection="ORHDKEY_LIST"
+					open="(" separator="," close=")">
+					#{ORHDKEY_LIST}
+				</foreach>	
+			</if>
+		</where>
+	</update>	
+		
+</mapper>	

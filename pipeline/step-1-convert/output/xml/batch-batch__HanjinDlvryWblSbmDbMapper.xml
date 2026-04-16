@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.HanjinDlvryWblSbmDbMapper">
+
+	<!-- 한진택배 CST_ORD_MTR_VW_V2 STATUS 변경건 색인  -->
+	<select id="selectCstOrdMtrVwV2Status">
+		/* HanjinDlvryWblSbmDbMapper.selectCstOrdMtrVwV2Status 한진택배 CST_ORD_MTR_VW_V2 STATUS 변경건 색인 */
+		SELECT
+			MAX(COM_STA_COD) AS SBMSTATUSCD
+		FROM CST_ORD_MTR_VW_V2
+		WHERE COM_ORD_NUM = #{OBHDKEY}
+		AND COM_WBL_NUM = #{WBLNO}
+		AND COM_EDI_COD = #{EDICD}
+		AND COM_PIC_YMD = #{COLCTREQDAY}
+		AND COM_STA_COD IN ('Y', 'E')
+	</select>
+
+	<!-- 한진택배 CST_ORD_MTR_VW_V2 변경건 SEQ/ERRCD 색인  -->
+	<select id="selectCstOrdMtrVwV2Seq">
+		/* HanjinDlvryWblSbmDbMapper.selectCstOrdMtrVwV2Seq 한진택배 CST_ORD_MTR_VW_V2 변경건 SEQ/ERRCD 색인 */
+		SELECT
+			COM_SEQ AS SBMSEQ
+			,COM_STA_COD AS SBMSTATUSCD
+			,COM_ERR_COD AS SBMERRCD
+		FROM (
+			SELECT
+				COM_SEQ
+				,COM_STA_COD
+				,COM_ERR_COD,
+				ROW_NUMBER() OVER (ORDER BY COM_SEQ DESC) AS RN
+			FROM CST_ORD_MTR_VW_V2
+			WHERE COM_ORD_NUM = #{OBHDKEY}
+			AND COM_WBL_NUM = #{WBLNO}
+			AND COM_EDI_COD = #{EDICD}
+			AND COM_PIC_YMD = #{COLCTREQDAY}
+			AND COM_STA_COD = #{SBMSTATUSCD}
+		) VW
+		WHERE VW.RN = 1
+	</select>
+</mapper>

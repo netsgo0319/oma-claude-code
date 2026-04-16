@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnAttrModMapper">
+
+	<sql id="selectInvnAttrModRefSql">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - selectInvnAttrModRefSql - 재고 속성 변경 조회  SQL */
+			SELECT *
+			  FROM (
+	                   SELECT '0' AS CHK
+  							, A.CTKEY
+	                        , (SELECT CTNAME FROM TWORK_MST_CT CT WHERE CT.CTKEY = A.CTKEY) AS CTNAME
+	                        , A.IVATKEY
+	                        , A.IVATKEY AS ORG_IVATKEY
+	                        , A.LCKEY
+                            , A.ULCKEY
+                            , A.OWKEY
+                            , (SELECT OWNAME FROM TWORK_MST_OW OW WHERE OW.OWKEY = A.OWKEY) AS OWNAME
+                            , A.ICKEY
+                            , D.ICNAME
+                            , COALESCE(ROUND(A.TTQTY / E.ICUTQTY, 2), 0) AS TTQTY_UNIT
+                            , COALESCE(ROUND(A.AVQTY / E.ICUTQTY, 2), 0) AS AVQTY_UNIT
+                            , COALESCE(ROUND(A.ALQTY / E.ICUTQTY, 2), 0) AS ALQTY_UNIT
+                            , COALESCE(ROUND(A.PIQTY / E.ICUTQTY, 2), 0) AS PIQTY_UNIT
+                            , COALESCE(ROUND(A.PAQTY / E.ICUTQTY, 2), 0) AS PAQTY_UNIT
+                            , COALESCE(ROUND(A.LOQTY / E.ICUTQTY, 2), 0) AS LOQTY_UNIT
+                            , COALESCE(ROUND(A.HOQTY / E.ICUTQTY, 2), 0) AS HOQTY_UNIT
+                            , COALESCE(A.TTQTY, 0) AS TTQTY 
+                            , COALESCE(A.AVQTY, 0) AS AVQTY 
+                            , COALESCE(A.ALQTY, 0) AS ALQTY
+                            , COALESCE(A.PIQTY, 0) AS PIQTY
+                            , COALESCE(A.PAQTY, 0) AS PAQTY
+                            , COALESCE(A.LOQTY, 0) AS LOQTY
+                            , COALESCE(A.HOQTY, 0) AS HOQTY
+                            , B.UOM
+                            , B.UOM AS CHG_UOM
+                            , G.WRHOUS_SE	                          
+                            , B.PRODUCTDATE
+                            , B.PRODUCTLOT
+                            , B.EXPIREDATE
+		                    , A.IVATSTATUS
+                            , D.SPEC
+	                        , F.ACKEY
+	                        , F.ACNAME
+	                        , B.IBCONFIRMDATE
+	                        , COALESCE(B.NET_WGT, 0) AS NET_WGT
+	                        , COALESCE(B.CFQTY, 0) AS CFQTY
+	                        , B.LOGGRPCD
+	                        , B.ATTRIBUTE1
+	                        , B.ATTRIBUTE2
+	                        , B.ATTRIBUTE3
+	                        , B.ATTRIBUTE4
+	                        , B.ATTRIBUTE5
+	                        , B.ATTRIBUTE6
+	                        , B.ATTRIBUTE7
+	                        , B.ATTRIBUTE8
+	                        , B.ATTRIBUTE9
+	                        , A.ILBHSKEY
+	                        , A.INSERTDATE
+                            , A.INSERTURKEY
+                            , A.UPDATEDATE
+                            , A.UPDATEURKEY
+		                 FROM TWORK_INFO_IVATXLCXULC A
+		                INNER JOIN TWORK_INFO_IVAT B
+		                   ON A.CTKEY = B.CTKEY
+	                      AND A.OWKEY = B.OWKEY
+	                      AND A.IVATKEY = B.IVATKEY
+	                    INNER JOIN TWORK_MST_LC C
+	                       ON A.CTKEY = C.CTKEY
+	                      AND A.LCKEY = C.LCKEY
+	                    INNER JOIN TWORK_MST_IC D
+	                       ON A.CTKEY = D.CTKEY
+	                      AND A.OWKEY = D.OWKEY
+	                      AND A.ICKEY = D.ICKEY
+	                     LEFT OUTER JOIN TWORK_MST_ICUTXTYPE E
+	                       ON D.CTKEY = E.CTKEY
+	                      AND D.OWKEY = E.OWKEY
+	                      AND D.ICUTKEY = E.ICUTKEY
+	                      AND B.UOM = E.ICUTTYPE
+	                     LEFT OUTER JOIN TWORK_MST_AC F
+	                       ON D.CTKEY = F.CTKEY
+			              AND D.OWKEY = F.OWKEY
+			              AND D.ACKEY = F.ACKEY
+			             LEFT OUTER JOIN TWORK_MST_AR G
+			               ON A.CTKEY = G.CTKEY
+			              AND A.OWKEY = G.OWKEY
+			              AND C.ARKEY = G.ARKEY
+	                    WHERE 1=1
+	                      AND A.TTQTY <![CDATA[ > ]]> 0
+			  )
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			WHERE  #{SEARCH_CONDITION}
+			</if>				  
+	</sql>	
+	
+	
+	<select id="selectInvnAttrMod" resultType="camelMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvnAttrModRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY OWKEY , LCKEY , ICKEY , ULCKEY , IVATKEY    
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvnAttrModCount" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectInvnAttrModRefSql"/>
+		  ) 
+	</select>
+	
+	<select id="selectIvatInfoMap" resultType="camelMap" >
+	/* wms-inventory-invnattrmod-sql-oracle.xml - selectIvatInfoMap - 재고 속성 조회  SQL */
+		SELECT CTKEY
+			 , IVATKEY
+			 , OWKEY
+			 , ICKEY
+			 , PRODUCTDATE
+			 , EXPIREDATE
+			 , ATTRIBUTE1
+			 , ATTRIBUTE2
+			 , ATTRIBUTE3
+			 , ATTRIBUTE4
+			 , ATTRIBUTE5
+			 , PRODUCTLOT
+			 , IVATSTATUS
+			 , IBCONFIRMDATE
+			 , LOGGRPCD
+			 , ACKEY
+			 , STORE_KEY
+			 , ATTRIBUTE6
+			 , ATTRIBUTE7
+			 , ATTRIBUTE8
+			 , ATTRIBUTE9
+			 , IDNTFC_NO
+			 , BDDR_GNRL_ITEM_IBYN
+			 , CON_QTY
+			 , NET_WGT
+			 , CFQTY
+			 , PLT_TYPE
+			 , PLT_LOAD_QTY
+			 , PLT_LOAD_HEIGHT
+		  FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND UOM = #{chgUom}
+		   AND EXPIREDATE = #{expiredate}
+	</select>
+	
+	<select id="selectIvatxlcxulcMap" resultType="camelMap" >
+	/* wms-inventory-invnattrmod-sql-oracle.xml - selectIvatxlcxulcMap - 재고 조회  SQL */
+		SELECT CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , LCKEY
+			 , IVATKEY
+			 , COALESCE(TTQTY, 0) AS TTQTY 
+             , COALESCE(AVQTY, 0) AS AVQTY 
+             , COALESCE(ALQTY, 0) AS ALQTY
+             , COALESCE(PIQTY, 0) AS PIQTY
+             , COALESCE(PAQTY, 0) AS PAQTY
+             , COALESCE(LOQTY, 0) AS LOQTY
+             , COALESCE(HOQTY, 0) AS HOQTY
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY NOT IN ('ASRS', 'MSC', 'STAGE', 'PICKTO')					   
+	</select>
+	
+	<select id="selectIvatkeycount" resultType="java.lang.String" >
+	/* wms-inventory-invnattrmod-sql-oracle.xml - selectIvatkeycount - 재고 속성 키 조회  SQL */
+		SELECT FN_GET_KEYCOUNT_IVAT(#{ctkey} , #{surkey}) AS IVATKEY
+	</select>
+	
+	<insert id="insertTworkInfoIvat">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - insertTworkInfoIvat - 재고 속성 등록  SQL */
+		INSERT INTO TWORK_INFO_IVAT 
+			 (
+			 CTKEY
+			 , IVATKEY
+			 , OWKEY
+			 , ICKEY
+			 , PRODUCTDATE
+			 , EXPIREDATE
+			 , ATTRIBUTE1
+			 , ATTRIBUTE2
+			 , ATTRIBUTE3
+			 , ATTRIBUTE4
+			 , ATTRIBUTE5
+			 , PRODUCTLOT
+			 , IVATSTATUS
+			 , IBCONFIRMDATE
+			 , LOGGRPCD
+			 , ACKEY
+			 , STORE_KEY
+			 , ATTRIBUTE6
+			 , ATTRIBUTE7
+			 , ATTRIBUTE8
+			 , ATTRIBUTE9
+			 , IDNTFC_NO
+			 , BDDR_GNRL_ITEM_IBYN
+			 , CON_QTY
+			 , NET_WGT
+			 , CFQTY
+			 , PLT_TYPE
+			 , PLT_LOAD_QTY
+			 , PLT_LOAD_HEIGHT
+			 , UOM
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES 
+			 (
+			 #{ctkey}
+			 , #{ivatkey}
+			 , #{owkey}
+			 , #{ickey}
+			 , #{productdate}
+			 , #{expiredate}
+			 , #{attribute1}		/* TC/DC 구분 */
+			 , #{attribute2}		/* 일반/보세 구분  */
+			 , #{attribute3}
+			 , #{attribute4}
+			 , #{attribute5}
+			 , #{productlot}
+			 , #{ivatstatus}
+			 , COALESCE(#{ibconfirmdate}, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS'))
+			 , COALESCE(#{loggrpcd}, '1')
+			 , #{ackey}
+			 , #{storeKey}
+			 , #{attribute6}
+			 , #{attribute7}
+			 , #{attribute8}
+			 , #{attribute9}
+			 , #{idntfcNo}
+			 , #{bddrGnrlItemIbyn}
+			 , #{conQty}
+			 , #{netWgt}
+			 , #{cfqty}
+			 , #{pltType}
+			 , #{pltLoadQty}
+			 , #{pltLoadHeight}
+			 , #{chgUom}
+			 , TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 , TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , #{surkey}
+			 )
+	</insert>
+	
+	
+	<update id="updateTworkInfoIncreIvat">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - updateTworkInfoIncreIvat - 재고 속성 수정  SQL */
+		UPDATE TWORK_INFO_IVAT
+		   SET NET_WGT 		= NET_WGT + #{netWgt}
+		     , CFQTY 		= CFQTY + #{cfqty} 
+		     , UPDATEDATE 	= TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND ICKEY 		= #{ickey}
+		   AND IVATKEY 		= #{ivatkey}
+		   AND UOM			= #{chgUom}
+	</update>
+	
+	<update id="updateTworkInfoDecreIvat">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - updateTworkInfoDecreIvat - 재고 속성 수정  SQL */
+		UPDATE TWORK_INFO_IVAT
+		   SET NET_WGT 		= NET_WGT - #{netWgt}
+		     , CFQTY 		= CFQTY - #{cfqty} 
+		     , UPDATEDATE 	= TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY 		= #{ctkey}
+		   AND OWKEY 		= #{owkey}
+		   AND ICKEY 		= #{ickey}
+		   AND IVATKEY 		= #{orgIvatkey}
+		   AND UOM			= #{uom}
+	</update>
+	
+	<delete id="deleteTworkInfoIvat">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - deleteTworkInfoIvat - 재고 속성 삭제  SQL */
+		DELETE FROM TWORK_INFO_IVAT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND IVATKEY = #{orgIvatkey}
+		   AND UOM = #{uom}
+	</delete>
+	
+	<select id="selectInfoIvatxlcxulcCount" resultType="java.lang.Integer" >
+	/* wms-inventory-invnattrmod-sql-oracle.xml - selectInfoIvatxlcxulcCount - 재고 조회  SQL */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY NOT IN ('ASRS', 'MSC', 'STAGE', 'PICKTO')					   
+	</select>
+	
+	<update id="updateIvatxlcxulcQty">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - updateIvatxlcxulcQty - 재고 수량 추가  SQL */
+		UPDATE TWORK_INFO_IVATXLCXULC
+		   SET TTQTY = COALESCE(TTQTY, 0) + COALESCE(#{ttqty}, 0)
+		     , AVQTY = COALESCE(AVQTY, 0) + COALESCE(#{avqty}, 0)
+		     , ALQTY = COALESCE(ALQTY, 0) + COALESCE(#{alqty}, 0)
+		     , PIQTY = COALESCE(PIQTY, 0) + COALESCE(#{piqty}, 0)
+		     , PAQTY = COALESCE(PAQTY, 0) + COALESCE(#{paqty}, 0)
+		     , LOQTY = COALESCE(LOQTY, 0) + COALESCE(#{loqty}, 0)
+		     , HOQTY = COALESCE(HOQTY, 0) + COALESCE(#{hoqty}, 0)
+		     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{ivatkey}
+		   AND LCKEY NOT IN ('ASRS', 'MSC', 'STAGE', 'PICKTO')
+	</update>
+	
+	
+	<update id="updateIvatxlcxulcIvatkey">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - updateIvatxlcxulcIvatkey - 재고 속성키 수정  SQL */
+		UPDATE TWORK_INFO_IVATXLCXULC
+		   SET IVATKEY = #{ivatkey}
+		     , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDDHH24MISS')
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{orgIvatkey}
+	</update>
+	
+	<delete id="deleteIvatxlcxulcIvatkey">
+	/* wms-inventory-invnattrmod-sql-oracle.xml - deleteIvatxlcxulcIvatkey - 재고 삭제  SQL */
+		DELETE FROM TWORK_INFO_IVATXLCXULC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+		   AND LCKEY = #{lckey}
+		   AND IVATKEY = #{orgIvatkey}
+	</delete>
+	
+	<select id="selectIvat" resultType="camelMap">
+	/* wms-inbound-invnattrmod-sql-oracle.xml - selectIvat - 재고 정보 조회 SQL */
+		SELECT *
+		  FROM TWORK_INFO_IVAT A
+		 INNER JOIN TWORK_INFO_IVATXLCXULC B
+		    ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		   AND A.IVATKEY = B.IVATKEY 
+		 WHERE A.CTKEY            = #{ctkey}
+           AND A.OWKEY            = #{owkey}
+           AND B.LCKEY 			  = #{lckey}
+           AND A.IVATKEY 		  = #{ivatkey}
+           
+	</select>
+
+</mapper>

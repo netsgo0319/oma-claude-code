@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.B2bObOrderMapper">
+
+    <select id="selectErpB2bObOrderInfoList" resultType="camelMap">
+		/* B2bObOrderMapper.xml selectErpB2bObOrderInfoList */
+        SELECT TRN_ID
+             , REQORDERNO
+			 , SHMISTNO
+			 , OBNO
+			 , OBCNFRMDAY
+			 , FROMCTKEY
+			 , TOCTKEY
+			 , ORDERTYPE
+			 , ICKEY
+			 , FROMCTQTY
+			 , DLVYBOXNO
+		FROM TORDER_EAI_B2BOBORDER_BATCH
+		WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+		AND SND_DATE BETWEEN #{startDate} AND #{endDate} 
+		GROUP BY TRN_ID
+               , REQORDERNO
+			   , SHMISTNO
+			   , OBNO
+			   , OBCNFRMDAY
+			   , FROMCTKEY
+			   , TOCTKEY
+			   , ORDERTYPE
+			   , ICKEY
+			   , FROMCTQTY
+			   , DLVYBOXNO
+        ORDER BY REQORDERNO
+    </select>
+       
+</mapper>

@@ -1,0 +1,2312 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inbound.mapper.IbOrderReturnMapper">
+
+	<sql id="selectIbOrderReturnsql">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnsql - 입고반품 - 헤더 정보  SQL */
+		SELECT *
+		  FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , C.CTNM
+					 , A.OWKEY
+					 , A.IBHDTYPECD
+					 , A.OBHDKEY
+					 , A.CUSTORDNO
+					 , A.EXTORDERKEY
+					 , B.EXPORDERLINENO
+					 , A.IBHDKEY
+					 , B.IBDTKEY
+					 , 'false' AS COMBOSHOW
+					 , 'false' AS BTNSHOW
+					 , A.IBHDKEY AS SUPP1
+					 , B.WBLNO AS SUPP2
+					 , A.IBEXPCTDATE
+					 , A.RIRSNCD
+					 , pkg_crypto$decrypt(A.RECALLERNM, #{encKey}) AS RECALLERNM
+					 , A.RECALLERNM AS RECALLNM
+					 , A.RECALLERTELNO1
+					 , A.RECALLERTELNO2
+					 , B.DLVRYCORPCD
+					 , I.DLVRYCORPNM
+					 , B.WBLNO
+					 , B.RETSHIPDLVRYCORPCD
+					 , J.DLVRYCORPNM AS RETSHIPDLVRYCORPNM
+					 , B.RETSHIPWBLNO
+					 , COALESCE(A.RIPRGRSTATUSCD, '10') AS RIPRGRSTATUSCD
+					 , B.ICKEY
+					 , E.ICNM
+					 , F.BARCODE
+					 , B.EXPCTQTY
+					 , B.IBQTY + B.DMGQTY + B.DFCQTY + B.DONAQTY + B.FOODDMGQTY + B.MISOBQTY AS IBQTY
+					 , CASE WHEN (A.RIRSNCD = '80' OR A.RIRSNCD = '81') THEN B.EXPCTQTY
+						  	ELSE 0 END AS DSPSQTY
+					 , PRCS.CONT
+					 , IMFI.ORGFILENM
+					 , B.HOLDPRCSPCKYN
+				 	 , K.WBLPRGRSTATUSCD
+					 , COALESCE(A.RECALLERIYN, 'N') AS RECALLERIYN
+					 , CASE WHEN B.ISTRETSHIPQTY > 0 THEN 'Y'
+							ELSE 'N' END AS RETSHIPISTYN
+					 , A.IBCNFRMDATE
+					 , B.INSERTDATE
+					 , B.INSERTURKEY
+					 , B.UPDATEDATE
+					 , B.UPDATEURKEY
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN TWORK_INFO_IB_DT B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_CT C
+					ON A.CTKEY = C.CTKEY
+				 INNER JOIN TWORK_MST_IC E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND B.ICKEY = E.ICKEY
+				 INNER JOIN TWORK_MST_ICBARCODE F
+					ON A.CTKEY = F.CTKEY
+				   AND A.OWKEY = F.OWKEY
+				   AND B.ICKEY = F.ICKEY
+				   AND F.UOM   = 'EA'
+				   AND F.USEYN = 'Y'
+				  LEFT OUTER JOIN TWORK_MST_DLVRYCORP I
+					ON A.CTKEY = I.CTKEY
+				   AND A.OWKEY = I.OWKEY
+				   AND B.DLVRYCORPCD = I.DLVRYCORPCD
+				   AND I.DELYN = 'N'
+				  LEFT OUTER JOIN TWORK_MST_DLVRYCORP J
+					ON A.CTKEY = J.CTKEY
+				   AND A.OWKEY = J.OWKEY
+				   AND B.RETSHIPDLVRYCORPCD = J.DLVRYCORPCD
+				   AND J.DELYN = 'N'
+				  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO K
+					ON A.CTKEY = K.CTKEY
+		 		   AND A.OWKEY = K.OWKEY
+		   		   AND A.IBHDKEY = K.IBHDKEY
+				   AND B.WBLNO = K.WBLNO
+				  LEFT OUTER JOIN (
+									SELECT P.CTKEY
+										 , P.OWKEY
+										 , P.IBHDKEY
+										 , STRING_AGG(P.REGURKEY || ' : ' || P.CONT, CHR(10) ORDER BY P.SEQNO) AS CONT
+									  FROM TWORK_INFO_IBRI_PRCS P
+									 WHERE EXISTS (
+													SELECT 1
+													  FROM TWORK_INFO_IB_HD A2
+													 WHERE A2.CTKEY = P.CTKEY
+													   AND A2.OWKEY = P.OWKEY
+													   AND A2.IBHDKEY = P.IBHDKEY
+													   AND A2.IBHDTYPECD = '50'
+													   AND A2.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+													   AND A2.OWKEY = COALESCE(#{owkey}, #{sowkey})
+													   AND A2.IBEXPCTDATE BETWEEN #{reqdateFrom} || '000000' AND #{reqdateTo} || '235959'
+												)
+									 GROUP BY P.CTKEY, P.OWKEY, P.IBHDKEY
+								   ) PRCS
+					ON A.CTKEY = PRCS.CTKEY
+				   AND A.OWKEY = PRCS.OWKEY
+				   AND A.IBHDKEY = PRCS.IBHDKEY
+				  LEFT OUTER JOIN (
+									SELECT CTKEY
+										 , IBHDKEY
+										 , STRING_AGG(ORGFILENM, CHR(10) ORDER BY FILESEQNO) AS ORGFILENM
+									  FROM (
+											SELECT F.CTKEY
+												 , F.IBHDKEY
+												 , F.SEQNO AS FILESEQNO
+												 , substring(REGEXP_SUBSTR(F.IMGURL, '[^/]+$') from '^[^.]+') AS ORGFILENM
+											  FROM TWORK_INFO_IBRET_CUST_FILE F
+											 WHERE EXISTS (
+															SELECT 1
+															  FROM TWORK_INFO_IB_HD H
+															 WHERE H.CTKEY = F.CTKEY
+															   AND H.IBHDKEY = F.IBHDKEY
+															   AND H.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+															   AND H.OWKEY = COALESCE(#{owkey}, #{sowkey})
+															   AND H.IBEXPCTDATE BETWEEN #{reqdateFrom} || '000000' AND #{reqdateTo} || '235959'
+															   AND H.IBHDTYPECD = '50'
+														)
+											 UNION ALL
+											SELECT TIIW.CTKEY
+												 , TIIW.IBHDKEY
+												 , TIFL.FILESEQNO
+												 , TIFL.ORGFILENM
+											  FROM TWORK_INFO_IBRET_WBLNO TIIW
+											 INNER JOIN TWORK_INFO_FILE TIFL
+												ON TIIW.CTKEY = TIFL.CTKEY
+											   AND TIIW.FILEKEY = TIFL.FILEKEY
+											 WHERE EXISTS (
+															SELECT 1
+															  FROM TWORK_INFO_IB_HD H
+															 WHERE H.CTKEY = TIIW.CTKEY
+															   AND H.IBHDKEY = TIIW.IBHDKEY
+															   AND H.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+															   AND H.OWKEY = COALESCE(#{owkey}, #{sowkey})
+															   AND H.IBEXPCTDATE BETWEEN #{reqdateFrom} || '000000' AND #{reqdateTo} || '235959'
+															   AND H.IBHDTYPECD = '50'
+														)
+											)
+									  GROUP BY CTKEY, IBHDKEY
+									) IMFI
+				  ON A.CTKEY = IMFI.CTKEY
+				 AND A.IBHDKEY = IMFI.IBHDKEY
+				)
+		 WHERE 1=1
+	 	   AND IBHDTYPECD = '50'     /* 반품입고 */
+		   AND CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND IBEXPCTDATE BETWEEN #{reqdateFrom} || '000000' AND #{reqdateTo} || '235959'
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riprgrstatus)" >
+			AND RIPRGRSTATUSCD = #{riprgrstatus}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+			AND ICKEY = #{ickey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)" >
+			AND ICNM LIKE '%' || #{icnm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)" >
+			AND BARCODE = #{barcode}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(recallernm)" >
+			AND pkg_crypto$decrypt(RECALLNM,#{encKey}) LIKE '%' || #{recallernm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsntelno1)" >
+			AND pkg_crypto$decrypt(RECALLERTELNO1,#{encKey}) LIKE '%' || #{rcpprsntelno1} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsntelno2)" >
+			AND pkg_crypto$decrypt(RECALLERTELNO2,#{encKey}) LIKE '%' || #{rcpprsntelno2} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND WBLNO LIKE '%' || #{wblno} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(custordno)" >
+			AND CUSTORDNO LIKE '%' || #{custordno} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rirsncd)" >
+			AND RIRSNCD = #{rirsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblprgrstatuscd)" >
+			AND WBLPRGRSTATUSCD = #{wblprgrstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(extorderkey)" >
+			AND EXTORDERKEY LIKE '%' || #{extorderkey} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibcompldateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibcompldateTo)" >
+			AND IBCNFRMDATE BETWEEN #{ibcompldateFrom} || '000000' AND #{ibcompldateTo} || '235959'
+		</if>
+
+
+	</sql>
+
+	<select id="selectIbOrderReturnCount" resultType="java.lang.Integer" >
+	/* wms-inbound-iborderreturn-sql-oracle.xml - selectIborderReturnCount - 입고반품 - 헤더 건수 조회 */
+		SELECT  COUNT(1)
+		  FROM (
+			<include refid="selectIbOrderReturnsql"/>
+		  )
+	</select>
+	
+	<select id="selectIbOrderReturn" resultType="camelMap">
+	/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturn - 입고반품 - 헤더 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectIbOrderReturnsql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY IBHDKEY, WBLNO, CAST(IBDTKEY AS NUMERIC)
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectIbOrderReturnClaimAndWblCount" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnClaimAndWblCount - 입고반품 - 클레임 건수, 운송장 건수 조회 */
+		SELECT COUNT(DISTINCT A.EXTORDERKEY) AS CLAIM_COUNT /* 클레임 개수 */
+			 , COUNT(DISTINCT C.WBLNO)       AS WBL_COUNT   /* 운송장 개수 */
+		  FROM TWORK_INFO_IB_HD A
+		 INNER JOIN TWORK_INFO_IB_DT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.IBHDKEY = C.IBHDKEY
+		 INNER JOIN TWORK_MST_IC D
+ 			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND B.ICKEY = D.ICKEY
+		 INNER JOIN TWORK_MST_ICBARCODE E
+			ON A.CTKEY = E.CTKEY
+		   AND A.OWKEY = E.OWKEY
+		   AND B.ICKEY = E.ICKEY
+		   AND E.UOM   = 'EA'
+		   AND E.USEYN = 'Y'
+		 WHERE 1=1
+		   AND A.IBHDTYPECD = '50'     /* 반품입고 */
+		   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND A.IBEXPCTDATE BETWEEN #{reqdateFrom} || '000000' AND #{reqdateTo} || '235959'
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riprgrstatus)" >
+			AND A.RIPRGRSTATUSCD = #{riprgrstatus}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickey)" >
+			AND B.ICKEY = #{ickey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icnm)" >
+			AND D.ICNM LIKE '%' || #{icnm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(barcode)" >
+			AND E.BARCODE = #{barcode}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(recallernm)" >
+			AND pkg_crypto$decrypt(A.RECALLERNM,#{encKey}) LIKE '%' || #{recallernm} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsntelno1)" >
+			AND pkg_crypto$decrypt(A.RECALLERTELNO1,#{encKey}) LIKE '%' || #{rcpprsntelno1} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsntelno2)" >
+			AND pkg_crypto$decrypt(A.RECALLERTELNO2,#{encKey}) LIKE '%' || #{rcpprsntelno2} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND B.WBLNO LIKE '%' || #{wblno} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(custordno)" >
+			AND A.CUSTORDNO LIKE '%' || #{custordno} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rirsncd)" >
+			AND A.RIRSNCD = #{rirsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblprgrstatuscd)" >
+			AND C.WBLPRGRSTATUSCD = #{wblprgrstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(extorderkey)" >
+			AND A.EXTORDERKEY LIKE '%' || #{extorderkey} || '%'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibcompldateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(ibcompldateTo)" >
+			AND A.IBCNFRMDATE BETWEEN #{ibcompldateFrom} || '000000' AND #{ibcompldateTo} || '235959'
+		</if>
+	</select>
+
+	<select id="selectIbOrderReturnRecall" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnRecall - 입고반품 - 반송처리 조회 */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , A.OWKEY
+			 , A.OBHDKEY
+			 , B.OBDTKEY
+			 , A.EXTERNORDERKEY AS ORHDKEY
+			 , B.ORDTKEY
+			 , A.WBLNO
+			 , A.OBREQDATE
+			 , A.OBCNFRMDATE
+			 , A.RETREGREQYN
+			 , B.ICKEY
+			 , C.ICNM
+			 , B.CNFRMQTY
+			 , B.INITQTY
+			 , CASE WHEN D.WBLNO IS NOT NULL THEN 'Y'
+					ELSE 'N' END AS CLAIMREGYN
+			 , E.EXTORDERKEY
+		  FROM TWORK_INFO_OB_HD A
+		 INNER JOIN TWORK_INFO_OB_DT B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.OBHDKEY = B.OBHDKEY
+		 INNER JOIN TWORK_MST_IC C
+			ON B.CTKEY = C.CTKEY
+		   AND B.OWKEY = C.OWKEY
+		   AND B.ICKEY = C.ICKEY
+		  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND A.WBLNO = D.WBLNO
+		  LEFT OUTER JOIN TWORK_INFO_IB_HD E
+			ON D.CTKEY = E.CTKEY
+		   AND D.OWKEY = E.OWKEY
+		   AND D.IBHDKEY = E.IBHDKEY
+		 WHERE 1=1
+		   AND A.WBLNO IS NOT NULL
+		   AND B.CNFRMQTY > 0
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ordnm)" >
+			AND pkg_crypto$decrypt(A.ORDNM, #{encKey}) LIKE REPLACE(#{ordnm}, '*', '%')
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsnnm)" >
+			AND pkg_crypto$decrypt(A.RCPPRSNNM, #{encKey}) LIKE REPLACE(#{rcpprsnnm}, '*', '%')
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsntelno)" >
+			AND pkg_crypto$decrypt(A.RCPPRSNTELNO, #{encKey}) = #{rcpprsntelno}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsnzipcd)" >
+			AND A.RCPPRSNZIPCD = #{rcpprsnzipcd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsnaddr1)" >
+			AND pkg_crypto$decrypt(A.RCPPRSNADDR1, #{encKey}) = #{rcpprsnaddr1}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(rcpprsnaddr2)" >
+			AND pkg_crypto$decrypt(A.RCPPRSNADDR2, #{encKey}) = #{rcpprsnaddr2}
+		</if>
+        <if test="wblnoList != null and wblnoList.size > 0">
+            AND A.WBLNO IN
+                            <foreach collection="wblnoList" item="obwblno" open="(" separator="," close=")">
+                                #{obwblno}
+                            </foreach>
+        </if>
+
+		<if test="ickeyList != null and ickeyList.size > 0">
+			AND A.OBHDKEY IN (
+								SELECT OBHDKEY
+								  FROM TWORK_INFO_OB_DT
+								 WHERE 1=1
+			 					   AND ICKEY IN
+								<foreach collection="ickeyList" item="ickey" open="(" separator="," close=")">
+									#{ickey}
+								</foreach>
+								 GROUP BY OBHDKEY
+								HAVING COUNT(DISTINCT ICKEY) = #{ickeySize}
+							)
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obDateFrom) and @com.kns.framework.util.StringUtil@isNotEmpty(obDateTo)">
+			AND A.OBCNFRMDATE BETWEEN #{obDateFrom} || '000000' AND #{obDateTo} || '235959'
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(retregreqyn)">
+			AND A.RETREGREQYN = #{retregreqyn}
+		</if>
+		  ORDER BY ORHDKEY, OBHDKEY, CAST(OBDTKEY AS NUMERIC)
+
+	</select>
+
+	<select id="selectObHdInfoMap" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectObHdInfoMap - 입고반품 - 반송처리 - 출고 조회 */
+		SELECT *
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkey)">
+			AND OBHDKEY = #{obhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)">
+			AND WBLNO = #{wblno}
+		</if>
+
+	</select>
+
+	<select id="selectObHdInfoList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectObHdInfoList - 입고반품 - 반송처리 - 출고리스트 조회 */
+		SELECT *
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obhdkeyList)">
+		   AND OBHDKEY IN
+
+			<foreach item="obhdkey" collection="obhdkeyList" open="(" separator="," close=")">
+				#{obhdkey}
+			</foreach>
+
+		</if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblnoList)">
+			AND WBLNO IN
+
+			<foreach item="wblno" collection="wblnoList" open="(" separator="," close=")">
+				#{wblno}
+			</foreach>
+
+		</if>
+
+	</select>
+
+	<select id="selectObDtInfoList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectObDtInfoList - 입고반품 - 반송처리 - 출고 상세 조회 */
+		SELECT *
+		  FROM TWORK_INFO_OB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</select>
+
+	<update id="updateObHdRetregreqyn">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateObHdRetregreqyn - 입고반품 - 반송처리 - 헤더 전송저장 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET RETREGREQYN = #{retregreqyn}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateObDtRetregreqyn">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateObDtRetregreqyn - 입고반품 - 반송처리 - 상세 전송저장 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET RETREGREQYN = #{retregreqyn}
+		    , UPDATEDATE = #{sysdate}
+		    , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+ 		  AND OWKEY = #{owkey}
+		  AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="insertRecallRet">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - insertRecallRet - 입고반품 - 반송처리 - 반송 반품내역 저장 */
+		INSERT INTO TWORK_INFO_RECALL_RET
+		(
+			CTKEY
+			, OWKEY
+			, CUSTORDNO
+			, OBWBLNO
+			, RECALLWBLNO
+			, CLAIMREGYN
+			, CLAIMNO
+			, CONT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{custordno}
+			, #{obwblno}
+			, #{recallwblno}
+			, #{claimregyn}
+			, #{claimno}
+			, #{cont}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+
+	</update>
+
+	<update id="updateIbDtRetshipwnblno">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbDtRetshipwnblno - 입고반품 - 입고 상세 회송운송장번호 저장 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET RETSHIPWBLNO = SUBSTR(#{retshipwblno}, 1, 11) || MOD(SUBSTR(#{retshipwblno}, 1, 11), 7)
+			 , RETSHIPDLVRYCORPCD = #{retshipdlvrycorpcd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND IBDTKEY = #{ibdtkey}
+		   AND WBLNO = #{wblno}
+		   AND ISTRETSHIPQTY > 0
+
+	</update>
+
+	<select id="selectHanjinDlvryOrderInsert" resultType="hanjinDlvrOrderInsertReqDTO">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectHanjinDlvryOrderInsert - 입고반품 - 한진택배 request 생성 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , 'S' AS SVC_CAT_CD
+			 , A.CUSTORDNO AS CUST_ORD_NO
+			 , B.RETSHIPWBLNO AS WBLNO
+			 , D.CNTRCTNO AS CNTRACT_NO
+			 , TO_CHAR(CURRENT_TIMESTAMP + INTERVAL '1 days', 'YYYYMMDD') PICKUP_ASK_DT
+			 , E.ZIPCD AS SNDR_ZIP
+			 , E.ADDR1 AS SNDR_BASE_ADDR
+			 , E.ADDR2 AS SNDR_DTL_ADDR
+			 , E.CTNM AS SNDR_NM
+			 , E.TELNO AS SNDR_TEL_NO
+			 , NULL AS SNDR_MOBILE_NO
+			 , NULL AS SNDR_ASK_CNTENT
+			 , NULL AS SNDR_REF_CNTENT
+			 , A.RECALLERZIPCD AS RCVR_ZIP
+			 , pkg_crypto$decrypt(A.RECALLERADDR1,#{encKey}) AS RCVR_BASE_ADDR
+			 , pkg_crypto$decrypt(A.RECALLERADDR2, #{encKey}) AS RCVR_DTL_ADDR
+			 , pkg_crypto$decrypt(A.RECALLERNM,#{encKey})  AS RCVR_NM
+			 , pkg_crypto$decrypt(A.RECALLERTELNO1,#{encKey})  AS RCVR_TEL_NO
+			 , pkg_crypto$decrypt(A.RECALLERTELNO2,#{encKey})  AS RCVR_MOBILE_NO
+			 , NULL AS RCVR_ASK_CNTENT
+			 , NULL AS RCVR_REF_CNTENT
+			 , 'CD' AS PAY_TYP_CD
+			 , 'S' AS BOX_TYP_CD   /* 박스유형 S(~60cm), A(~80cm), B(~100cm), C(~120cm), D(~140cm), E(~160cm) */
+			 , NULL AS PRINT_MEMO1
+			 , NULL AS PRINT_MEMO2
+			 , NULL AS PRINT_MEMO3
+			 , NULL AS PRINT_MEMO4
+			 , C.ICNM AS COMODITY_NM
+			 , A.HOLDPRCSPCKYN
+		  FROM TWORK_INFO_IB_HD A
+		 INNER JOIN (
+					 SELECT CTKEY
+						  , OWKEY
+						  , IBHDKEY
+						  , ICKEY
+						  , RETSHIPDLVRYCORPCD
+						  , RETSHIPWBLNO
+					   FROM (
+							 SELECT CTKEY
+								  , OWKEY
+								  , IBHDKEY
+								  , ICKEY
+								  , RETSHIPDLVRYCORPCD
+								  , RETSHIPWBLNO
+								  , ROW_NUMBER() OVER (ORDER BY IBDTKEY ASC) AS RN
+							   FROM TWORK_INFO_IB_DT
+		 					  WHERE CTKEY = #{ctkey}
+								AND OWKEY = #{owkey}
+								AND IBHDKEY = #{ibhdkey}
+								AND IBDTKEY = #{ibdtkey}
+								AND WBLNO = #{wblno}
+						   ) WHERE RN = 1
+					) B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		 INNER JOIN TWORK_MST_IC C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND B.ICKEY = C.ICKEY
+		 INNER JOIN TWORK_MST_DLVRYCORP D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND B.RETSHIPDLVRYCORPCD = D.DLVRYCORPCD
+		   AND D.DELYN = 'N'
+		 INNER JOIN TWORK_MST_CT E
+			ON A.CTKEY = E.CTKEY
+		 WHERE 1=1
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+
+	</select>
+
+	<select id="selectComodityList" >
+		SELECT A.ICKEY AS COMODITY_CD
+		     , B.ICNM AS COMODITY_NM
+			 , A.ISTRETSHIPQTY AS COMODITY_CNT
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		 WHERE 1=1
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.WBLNO = #{wblno}
+		   AND A.ISTRETSHIPQTY > 0			/* 지시 회송 수량 */
+	</select>
+
+	<update id="updateIbHdRisbmstatus">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbHdRisbmstatus - 입고반품 - 입고헤더 접수상태 저장 */
+		UPDATE TWORK_INFO_IB_HD
+		SET RISBMSTATUSCD = #{risbmstatuscd}
+		  , UPDATEDATE = #{sysdate}
+		  , UPDATEURKEY = #{surkey}
+	  WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND IBHDKEY = #{ibhdkey}
+
+	</update>
+
+    <select id="selectReturnDetailInfoCheck" resultType="int">
+        /* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnDetailInfoCheck - 입고반품 - 반품정보 조회(작업자체크) */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_IB_HD A
+		 INNER JOIN TWORK_INFO_IBRET_WBLNO B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		 WHERE 1=1
+		   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(chkusrkey)" >
+			AND COALESCE(B.WKURKEY, ' ') <![CDATA[<>]]> #{chkusrkey}
+			AND B.WKURKEY IS NOT NULL
+			AND B.WBLPRGRSTATUSCD NOT IN ('40','60')
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND A.IBHDKEY IN (
+							SELECT IBHDKEY
+							  FROM TWORK_INFO_IBRET_WBLNO TW
+							 WHERE TW.WBLNO = #{wblno}
+							OR EXISTS (
+										SELECT 1
+										  FROM TWORK_INFO_RECALL_RET R
+										 WHERE R.CTKEY = A.CTKEY
+										   AND R.OWKEY = A.OWKEY
+										   AND R.CUSTORDNO = A.CUSTORDNO
+										   AND #{wblno} IN (R.OBWBLNO, R.RECALLWBLNO)
+							)
+			)
+		</if>
+    </select>
+
+	<select id="selectReturnWkurInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnWkurInfo - 반품 작업자 정보 조회 */
+		SELECT B.WKURKEY
+			 , C.URNM
+		  FROM TWORK_INFO_IB_HD A
+		 INNER JOIN TWORK_INFO_IBRET_WBLNO B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		 INNER JOIN TADMIN_MST_UR C
+			ON A.CTKEY = C.CTKEY
+		   AND B.WKURKEY = C.URKEY
+		 WHERE A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND B.WKURKEY IS NOT NULL
+		   AND A.IBHDKEY IN (
+								SELECT IBHDKEY
+								  FROM TWORK_INFO_IBRET_WBLNO TW
+							     WHERE TW.WBLNO = #{wblno}
+									OR EXISTS (
+												SELECT 1
+												FROM TWORK_INFO_RECALL_RET R
+												WHERE R.CTKEY = A.CTKEY
+												AND R.OWKEY = A.OWKEY
+												AND R.CUSTORDNO = A.CUSTORDNO
+												AND #{wblno} IN (R.OBWBLNO, R.RECALLWBLNO)
+											  )
+							 )
+		LIMIT 1
+	</select>
+
+	<select id="selectReturnDetailInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnDetailInfo - 입고반품 - 반품정보 조회 */
+		WITH CNT AS (
+					SELECT CTKEY
+						 , OWKEY
+						 , IBHDKEY
+						 , COUNT(*) AS CNT
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '00' THEN 1 ELSE 0 END) AS NEW
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '10' THEN 1 ELSE 0 END) AS RETURN
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '20' THEN 1 ELSE 0 END) AS HOLD
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '30' THEN 1 ELSE 0 END) AS PRGR
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '40' THEN 1 ELSE 0 END) AS COMPL
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '50' THEN 1 ELSE 0 END) AS IST
+						 , SUM(CASE WHEN WBLPRGRSTATUSCD = '60' THEN 1 ELSE 0 END) AS CANCEL
+					  FROM TWORK_INFO_IBRET_WBLNO
+					 GROUP BY CTKEY, OWKEY, IBHDKEY
+		)
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+				 	 , A.OWKEY
+				 	 , A.IBHDKEY
+				 	 , A.IBDTKEY
+				 	 , B.CUSTORDNO
+				 	 , B.OBHDKEY
+				 	 , B.ORHDKEY
+				 	 , B.EXTORDERKEY
+				 	 , B.IBEXPCTDATE
+				 	 , B.IBCNFRMDATE
+				 	 , A.DLVRYCORPCD
+				 	 , E.DLVRYCORPNM
+				 	 , D.WBLNO
+				 	 , A.RETSHIPWBLNO
+				 	 , pkg_crypto$decrypt(B.RECALLERNM, #{encKey}) AS RECALLERNM
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR1, #{encKey}) AS RECALLERADDR1
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR2, #{encKey}) AS RECALLERADDR2
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR1, #{encKey}) || ' ' || pkg_crypto$decrypt(B.RECALLERADDR2, #{encKey}) AS RECALLERADDR
+				 	 , B.RISBMSTATUSCD
+				 	 , B.RIPRGRSTATUSCD
+				 	 , B.RIRSNCD
+				 	 , B.RIDTRSNCONT
+				 	 , A.RIHOLDRSNCD
+				 	 , A.RIHOLDDTRSNCD
+					 , A.RIHOLDDTCONT
+					 , CASE WHEN C.CNT > 1 THEN D.WBLNO || '외 ' || (C.CNT - 1::INTEGER) || '건'
+					 		ELSE D.WBLNO END AS WBLNO_DISPLAY
+					 , RTRIM(
+							 CASE WHEN C.NEW  > 0 THEN '반품요청 ' || C.NEW || '건, ' ELSE '' END ||
+							 CASE WHEN C.RETURN > 0 THEN '반품상품 회수중 ' || C.RETURN || '건, ' ELSE '' END ||
+							 CASE WHEN C.HOLD > 0 THEN '보류요청 ' || C.HOLD || '건, ' ELSE '' END ||
+							 CASE WHEN C.PRGR > 0 THEN '반품진행중 ' || C.PRGR || '건, ' ELSE '' END ||
+							 CASE WHEN C.COMPL > 0 THEN '반품입고완료 ' || C.COMPL || '건, ' ELSE '' END ||
+							 CASE WHEN C.IST > 0 THEN '반품취소지시 ' || C.IST || '건, ' ELSE '' END ||
+							 CASE WHEN C.CANCEL > 0 THEN '반품취소 ' || C.CANCEL || '건, ' ELSE '' END , ', ') AS STATUS_SUMMARY
+					 , (
+						SELECT MAX(WBLPRGRSTATUSCD)
+						  FROM TWORK_INFO_IBRET_WBLNO
+						 WHERE CTKEY = A.CTKEY AND OWKEY = A.OWKEY AND IBHDKEY = A.IBHDKEY
+						   AND (
+								WBLNO = #{wblno}
+								OR EXISTS (
+											SELECT 1
+											FROM TWORK_INFO_RECALL_RET R
+											WHERE R.CTKEY = A.CTKEY
+											AND R.OWKEY = A.OWKEY
+											AND R.CUSTORDNO = B.CUSTORDNO
+											AND R.RECALLWBLNO = #{wblno}
+											AND R.OBWBLNO = D.WBLNO
+								)
+						   )
+					   ) AS WBLPRGRSTATUSCD
+					 , D.WKURKEY
+					 , A.IBCNFRMPRCSDATE
+					 , (CASE WHEN A.WBLNO = #{wblno} THEN A.HOLDPRCSPCKYN ELSE 'N' END) AS HOLDPRCSPCKYN
+					 , COALESCE(B.RECALLERIYN, 'N') AS RECALLERIYN
+					 , A.INSERTDATE
+					 , A.INSERTURKEY
+					 , D.UPDATEDATE
+					 , D.UPDATEURKEY
+					 , CASE WHEN A.WBLNO = D.WBLNO THEN 1 ELSE 2 END AS SORT_ORDER
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				  LEFT OUTER JOIN CNT C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.IBHDKEY = C.IBHDKEY
+				  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO D
+					ON A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.IBHDKEY = D.IBHDKEY
+				  LEFT OUTER JOIN TWORK_MST_DLVRYCORP E
+					ON D.CTKEY = E.CTKEY
+				   AND D.OWKEY = E.OWKEY
+				   AND D.DLVRYCORPCD = E.DLVRYCORPCD
+				   AND E.DELYN = 'N'
+			     WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+					AND A.IBHDKEY = #{ibhdkey}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+					AND (
+							D.WBLNO = #{wblno}
+							OR EXISTS (
+										SELECT 1
+										  FROM TWORK_INFO_RECALL_RET R
+										 WHERE R.CTKEY = A.CTKEY
+										   AND R.OWKEY = A.OWKEY
+										   AND R.CUSTORDNO = B.CUSTORDNO
+										   AND R.RECALLWBLNO = #{wblno}
+										   AND R.OBWBLNO = D.WBLNO
+							)
+					)
+				</if>
+				)
+		ORDER BY SORT_ORDER  -- 매칭된 DT를 먼저 선택
+		LIMIT 1
+	</select>
+
+	<select id="selectReturnDetailInfoPop" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnDetailInfoPop - 입고반품 - 반품정보 팝업 조회 */
+		WITH CNT AS (
+					SELECT CTKEY
+					 	 , OWKEY
+					 	 , IBHDKEY
+					 	 , COUNT(*) AS CNT
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '00' THEN 1 ELSE 0 END) AS NEW
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '10' THEN 1 ELSE 0 END) AS RETURN
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '20' THEN 1 ELSE 0 END) AS HOLD
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '30' THEN 1 ELSE 0 END) AS PRGR
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '40' THEN 1 ELSE 0 END) AS COMPL
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '50' THEN 1 ELSE 0 END) AS IST
+					 	 , SUM(CASE WHEN WBLPRGRSTATUSCD = '60' THEN 1 ELSE 0 END) AS CANCEL
+					  FROM TWORK_INFO_IBRET_WBLNO
+					 GROUP BY CTKEY, OWKEY, IBHDKEY
+		)
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+				 	 , A.OWKEY
+				 	 , A.IBHDKEY
+				 	 , A.IBDTKEY
+				 	 , B.CUSTORDNO
+				 	 , B.OBHDKEY
+				 	 , B.ORHDKEY
+				 	 , B.EXTORDERKEY
+				 	 , B.IBEXPCTDATE
+				 	 , B.IBCNFRMDATE
+				 	 , A.DLVRYCORPCD
+				 	 , E.DLVRYCORPNM
+				 	 , D.WBLNO
+				 	 , A.RETSHIPWBLNO
+				 	 , pkg_crypto$decrypt(B.RECALLERNM, #{encKey}) AS RECALLERNM
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR1, #{encKey}) AS RECALLERADDR1
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR2, #{encKey}) AS RECALLERADDR2
+				 	 , pkg_crypto$decrypt(B.RECALLERADDR1, #{encKey}) || ' ' || pkg_crypto$decrypt(B.RECALLERADDR2, #{encKey}) AS RECALLERADDR
+				 	 , B.RISBMSTATUSCD
+				 	 , B.RIPRGRSTATUSCD
+				 	 , B.RIRSNCD
+				 	 , B.RIDTRSNCONT
+				 	 , B.RIHOLDRSNCD
+				 	 , B.RIHOLDDTRSNCD
+				 	 , B.RIHOLDDTCONT
+				 	 , CASE WHEN C.CNT > 1 THEN D.WBLNO || '외 ' || (C.CNT - 1::INTEGER) || '건'
+				 	 		ELSE D.WBLNO END AS WBLNO_DISPLAY
+				 	 , RTRIM(
+							 CASE WHEN C.NEW  > 0 THEN '반품요청 ' || C.NEW || '건, ' ELSE '' END ||
+							 CASE WHEN C.RETURN > 0 THEN '반품상품 회수중 ' || C.RETURN || '건, ' ELSE '' END ||
+							 CASE WHEN C.HOLD > 0 THEN '보류요청 ' || C.HOLD || '건, ' ELSE '' END ||
+							 CASE WHEN C.PRGR > 0 THEN '반품진행중 ' || C.PRGR || '건, ' ELSE '' END ||
+							 CASE WHEN C.COMPL > 0 THEN '반품입고완료 ' || C.COMPL || '건, ' ELSE '' END ||
+							 CASE WHEN C.IST > 0 THEN '반품취소지시 ' || C.IST || '건, ' ELSE '' END ||
+							 CASE WHEN C.CANCEL > 0 THEN '반품취소 ' || C.CANCEL || '건, ' ELSE '' END
+						, ', ') AS STATUS_SUMMARY
+				 	 , D.WBLPRGRSTATUSCD
+				 	 , D.WKURKEY
+				 	 , A.IBCNFRMPRCSDATE
+				 	 , (CASE WHEN A.WBLNO = #{wblno} THEN A.HOLDPRCSPCKYN ELSE 'N' END) AS HOLDPRCSPCKYN
+				 	 , COALESCE(B.RECALLERIYN, 'N') AS RECALLERIYN
+				 	 , A.INSERTDATE
+				 	 , A.INSERTURKEY
+				 	 , D.UPDATEDATE
+				 	 , D.UPDATEURKEY
+				 	 , CASE WHEN A.WBLNO = D.WBLNO THEN 1 ELSE 2 END AS SORT_ORDER
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				  LEFT OUTER JOIN CNT C
+					ON A.CTKEY = C.CTKEY
+				   AND A.OWKEY = C.OWKEY
+				   AND A.IBHDKEY = C.IBHDKEY
+				  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO D
+					ON A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.IBHDKEY = D.IBHDKEY
+				  LEFT OUTER JOIN TWORK_MST_DLVRYCORP E
+					ON D.CTKEY = E.CTKEY
+				   AND D.OWKEY = E.OWKEY
+				   AND D.DLVRYCORPCD = E.DLVRYCORPCD
+				   AND E.DELYN = 'N'
+				 WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		)
+		ORDER BY SORT_ORDER  -- 매칭된 DT를 먼저 선택
+		LIMIT 1
+	</select>
+
+	<select id="selectIbOrderReturnSpcl" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnSpcl - 입고반품 - 반품정보 - 특이사항 조회 */
+		SELECT '0' AS CHK
+			 , CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , SEQNO
+			 , REGDIVCD
+			 , REGURKEY
+			 , CONT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INFO_IBRI_PRCS
+		 WHERE 1=1
+		   AND CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+			AND IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND IBHDKEY IN  (
+							SELECT IBHDKEY
+							  FROM TWORK_INFO_IBRET_WBLNO
+							 WHERE CTKEY = #{ctkey}
+							   AND OWKEY = #{owkey}
+							   AND WBLNO = #{wblno}
+							 UNION
+							SELECT H.IBHDKEY
+							  FROM TWORK_INFO_RECALL_RET R
+							 INNER JOIN TWORK_INFO_IB_HD H
+								ON R.CTKEY     = H.CTKEY
+   							   AND R.OWKEY     = H.OWKEY
+							   AND R.CUSTORDNO = H.CUSTORDNO
+							 WHERE R.CTKEY = #{ctkey}
+							   AND R.OWKEY = #{owkey}
+							   AND R.RECALLWBLNO = #{wblno}
+			)
+		 ORDER BY INSERTDATE
+		</if>
+	</select>
+
+	<select id="selectIbOrderReturnIcInfoByWblno" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnIcInfoByWblno - 입고 상세 운송장번호로 조회 */
+		SELECT '0' AS CHK
+			 , 'true' AS ORGDATA
+			 , A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , A.EXPCTQTY
+			 , A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY AS ORG_IBQTY
+			 , A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY AS IBQTY
+			 , A.IBQTY AS NORMALQTY
+			 , A.DMGQTY
+			 , A.DFCQTY
+			 , A.DONAQTY
+			 , A.FOODDMGQTY
+			 , A.MISOBQTY
+			 , A.RIHOLDABLEQTY
+			 , A.RIHOLDIMPSQTY
+			 , A.EXPDATE
+			 , A.RIDMGRSNCD
+			 , A.RIDFCRSNCONT
+			 , A.RIHOLDRSNCD
+			 , A.RIHOLDDTRSNCD
+			 , A.RIHOLDDTCONT
+			 , A.WBLNO
+			 , A.RIHOLDPRCSISTCD
+			 , A.HOLDPRCSPCKYN
+			 , A.UOM
+			 , A.DLVRYCORPCD
+			 , COALESCE(A.ISTIBQTY, 0) AS ISTIBQTY
+			 , COALESCE(A.ISTRETSHIPQTY, 0) AS ISTRETSHIPQTY
+			 , COALESCE(A.ISTDSPSQTY, 0) AS ISTDSPSQTY
+			 , A.RIPRGRSTATUSCD
+			 , C.WBLPRGRSTATUSCD
+			 , D.BARCODE
+			 , C.DLVRYCORPCD
+			 , A.PRCSISTCONT
+			 , (SELECT DISPLAYMSG FROM TADMIN_MST_MULAAPMSG_DT WHERE MULAAPMSGHDKEY = 'TXT_RI_PRCS') AS PRCS_BTN
+			 , B.EXPCKYN
+			 , B.EXPCKTYPECD
+			 , A.ICADDYN
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_MST_IC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.ICKEY = B.ICKEY
+		 INNER JOIN TWORK_INFO_IBRET_WBLNO C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.IBHDKEY = C.IBHDKEY
+		   AND A.WBLNO = C.WBLNO
+		 INNER JOIN TWORK_MST_ICBARCODE D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND A.ICKEY = D.ICKEY
+		   AND A.UOM   = D.UOM
+		   AND D.USEYN = 'Y'
+		 INNER JOIN TWORK_INFO_IB_HD H
+			ON A.CTKEY   = H.CTKEY
+		   AND A.OWKEY   = H.OWKEY
+		   AND A.IBHDKEY = H.IBHDKEY
+		 WHERE 1=1
+		   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+			AND A.IBHDKEY = #{ibhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND (
+				C.WBLNO = #{wblno}
+				OR EXISTS (
+							SELECT 1
+							  FROM TWORK_INFO_RECALL_RET RERE
+							 WHERE RERE.CTKEY     = H.CTKEY
+							   AND RERE.OWKEY     = H.OWKEY
+							   AND RERE.CUSTORDNO = H.CUSTORDNO
+							   AND (RERE.OBWBLNO = #{wblno} OR RERE.RECALLWBLNO = #{wblno})
+							   AND RERE.OBWBLNO   = A.WBLNO
+				)
+			)
+		</if>
+		ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+	</select>
+
+	<select id="selectIbOrderReturnIcInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnIcInfo - 입고반품 - 반품정보 - 상품 정보 조회 */
+		SELECT *
+		  FROM (
+				SELECT '0' AS CHK
+					 , 'true' AS ORGDATA
+					 , A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , MIN(A.IBDTKEY) AS IBDTKEY
+					 , A.ORHDKEY
+					 , E.CUSTORDNO
+					 , E.EXTORDERKEY
+					 , A.ICKEY
+					 , MAX(B.ICNM) AS ICNM
+					 , MAX(A.EXPCTQTY) AS EXPCTQTY
+					 , SUM(A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY) AS ORG_IBQTY
+					 , SUM(A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY) AS IBQTY
+					 , 0 AS NORMALQTY
+					 , 0 AS DMGQTY
+					 , 0 AS DFCQTY
+					 , 0 AS DONAQTY
+					 , 0 AS FOODDMGQTY
+					 , 0 AS MISOBQTY
+					 , 0 AS RIHOLDABLEQTY
+					 , 0 AS RIHOLDIMPSQTY
+					 , '' AS EXPDATE
+					 , '' AS RIDMGRSNCD
+					 , '' AS RIDFCRSNCONT
+					 , '' AS RIHOLDRSNCD
+					 , '' AS RIHOLDDTRSNCD
+					 , '' AS RIHOLDDTCONT
+					 , (
+						SELECT MAX(WBLNO)
+						  FROM TWORK_INFO_IBRET_WBLNO
+						 WHERE CTKEY = A.CTKEY AND OWKEY = A.OWKEY AND IBHDKEY = A.IBHDKEY
+						   AND (
+								WBLNO = #{wblno}
+								OR EXISTS (
+											SELECT 1
+											  FROM TWORK_INFO_RECALL_RET R
+											 WHERE R.CTKEY = A.CTKEY
+											   AND R.OWKEY = A.OWKEY
+											   AND R.CUSTORDNO = E.CUSTORDNO
+											   AND R.RECALLWBLNO = #{wblno}
+											   AND R.OBWBLNO = WBLNO
+								)
+							)
+						) AS WBLNO
+						, (
+							SELECT MAX(WBLPRGRSTATUSCD)
+							  FROM TWORK_INFO_IBRET_WBLNO
+							 WHERE CTKEY = A.CTKEY AND OWKEY = A.OWKEY AND IBHDKEY = A.IBHDKEY
+							   AND (
+									WBLNO = #{wblno}
+									OR EXISTS (
+												SELECT 1
+												  FROM TWORK_INFO_RECALL_RET R
+												 WHERE R.CTKEY = A.CTKEY
+												   AND R.OWKEY = A.OWKEY
+									 			   AND R.CUSTORDNO = E.CUSTORDNO
+												   AND R.RECALLWBLNO = #{wblno}
+												   AND R.OBWBLNO = WBLNO
+							   )
+						   )
+						) AS WBLPRGRSTATUSCD
+					 , '' AS RIHOLDPRCSISTCD
+					 , MAX(CASE WHEN A.WBLNO = #{wblno} THEN A.HOLDPRCSPCKYN ELSE 'N' END) AS HOLDPRCSPCKYN
+					 , MAX(A.UOM) AS UOM
+					 , MAX(A.SLPRCAMT) AS SLPRCAMT
+					 , MAX(A.RIPRGRSTATUSCD) AS RIPRGRSTATUSCD
+					 , MAX(D.BARCODE) AS BARCODE
+					 , (
+						SELECT MAX(DLVRYCORPCD)
+						  FROM TWORK_INFO_IBRET_WBLNO
+						 WHERE CTKEY = A.CTKEY
+						   AND OWKEY = A.OWKEY
+						   AND IBHDKEY = A.IBHDKEY
+						   
+LIMIT 1
+						) AS DLVRYCORPCD
+					 , MAX(CASE WHEN A.WBLNO = #{wblno} THEN A.PRCSISTCONT ELSE NULL END) AS PRCSISTCONT
+					 , MAX(B.EXPCKYN) AS EXPCKYN
+					 , MAX(B.EXPCKTYPECD) AS EXPCKTYPECD
+					 , MAX(A.ICADDYN) AS ICADDYN
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_MST_IC B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.ICKEY = B.ICKEY
+				 INNER JOIN TWORK_MST_ICBARCODE D
+					ON A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.ICKEY = D.ICKEY
+				   AND D.UOM   = 'EA'
+				   AND D.USEYN = 'Y'
+				 INNER JOIN TWORK_INFO_IB_HD E
+					ON A.CTKEY = E.CTKEY
+				   AND A.OWKEY = E.OWKEY
+				   AND A.IBHDKEY = E.IBHDKEY
+				 WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ibhdkey)" >
+					AND A.IBHDKEY = #{ibhdkey}
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+					AND EXISTS (
+								SELECT 1
+								  FROM TWORK_INFO_IBRET_WBLNO W
+								 WHERE W.CTKEY   = A.CTKEY
+								   AND W.OWKEY   = A.OWKEY
+								   AND W.IBHDKEY = A.IBHDKEY
+								   AND (
+										W.WBLNO = #{wblno}
+										OR EXISTS (
+													SELECT 1
+													  FROM TWORK_INFO_RECALL_RET R
+													 WHERE R.CTKEY = W.CTKEY AND R.OWKEY = W.OWKEY
+													   AND R.CUSTORDNO = E.CUSTORDNO
+													   AND R.RECALLWBLNO = #{wblno} AND R.OBWBLNO = W.WBLNO
+										)
+								   )
+					)
+				</if>
+				GROUP BY A.CTKEY, A.OWKEY, A.IBHDKEY, A.ICKEY, A.ORHDKEY , E.CUSTORDNO , E.EXTORDERKEY
+			   HAVING SUM(A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY + A.ISTRETSHIPQTY) <![CDATA[ < ]]> MAX(A.EXPCTQTY)
+		)
+		ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+	</select>
+
+	<select id="selectIbOrderReturnPopIcInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnPopIcInfo - 입고반품 - 반품 상품 정보 팝업 - 상품 조회 */
+		SELECT *
+		  FROM (
+				SELECT A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , MIN(A.IBDTKEY) AS IBDTKEY
+					 , A.ICKEY
+					 , MAX(B.ICNM) AS ICNM
+					 , MAX(A.EXPCTQTY) AS EXPCTQTY
+					 , SUM(A.IBQTY + A.DMGQTY + A.DFCQTY + A.DONAQTY + A.FOODDMGQTY + A.MISOBQTY) AS IBQTY
+					 , SUM(A.IBQTY) AS NORMALQTY
+					 , SUM(A.DMGQTY) AS DMGQTY
+					 , SUM(A.DFCQTY) AS DFCQTY
+					 , SUM(A.DONAQTY) AS DONAQTY
+					 , SUM(A.FOODDMGQTY) AS FOODDMGQTY
+					 , SUM(A.MISOBQTY) AS MISOBQTY
+					 , MAX(A.RIHOLDABLEQTY) AS RIHOLDABLEQTY
+					 , MAX(A.RIHOLDIMPSQTY) AS RIHOLDIMPSQTY
+					 , MAX(A.EXPDATE) AS EXPDATE
+					 , MAX(A.RIDMGRSNCD) AS RIDMGRSNCD
+					 , MAX(A.RIDFCRSNCONT) AS RIDFCRSNCONT
+					 , MAX(A.RIHOLDRSNCD) AS RIHOLDRSNCD
+					 , MAX(A.RIHOLDDTRSNCD) AS RIHOLDDTRSNCD
+					 , MAX(A.RIHOLDDTCONT) AS RIHOLDDTCONT
+					 , MAX(A.RIPRGRSTATUSCD) AS RIPRGRSTATUSCD
+					 , SUM(A.ISTIBQTY) AS ISTIBQTY
+					 , SUM(A.ISTRETSHIPQTY) AS ISTRETSHIPQTY
+					 , SUM(A.ISTDSPSQTY) AS ISTDSPSQTY
+					 , MAX(A.PRCSISTCONT) AS PRCSISTCONT
+				  FROM TWORK_INFO_IB_DT A
+			  	 INNER JOIN TWORK_MST_IC B
+					ON A.CTKEY = B.CTKEY
+			       AND A.OWKEY = B.OWKEY
+				   AND A.ICKEY = B.ICKEY
+				 WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				   AND A.IBHDKEY = #{ibhdkey}
+				 GROUP BY A.CTKEY, A.OWKEY, A.IBHDKEY, A.ICKEY
+		)
+		ORDER BY IBHDKEY, CAST(IBDTKEY AS NUMERIC)
+	</select>
+
+
+	<select id="selectIbReturnMstIc" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbReturnMstIc - 상품 조회 */
+		SELECT *
+		  FROM TWORK_MST_IC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<select id="selectIbdtkeyNext" resultType="string">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbdtkeyNext - 입고 상세 키 조회  */
+		SELECT CASE WHEN #{icaddyn} = 'Y'	AND NOT EXISTS (					/* 1. 상품 추가 모드(Y)이면서, 동시에 이전에 등록된 적이 없는 '진짜 새 상품'인 경우만 +100 */
+															SELECT 1
+															  FROM TWORK_INFO_IB_DT
+															 WHERE IBHDKEY = #{ibhdkey}
+															   AND ICKEY = #{ickey}
+															)
+					THEN (SELECT COALESCE(MAX(CAST(IBDTKEY AS NUMERIC)), 0) FROM TWORK_INFO_IB_DT WHERE IBHDKEY = #{ibhdkey}) + 100
+		/* 2. 그 외의 경우 (icaddyn='N' 이거나, 'Y'지만 이미 등록된 상품인 경우) */
+			   ELSE (SELECT COALESCE(MAX(CAST(IBDTKEY AS NUMERIC)), 0) FROM TWORK_INFO_IB_DT WHERE IBHDKEY = #{ibhdkey} AND ICKEY = #{ickey}) + 1
+				END
+
+	</select>
+
+	<insert id="insertIbdt"  parameterType="ibOrderDtVO">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - insertIbdt - 입고 상세 생성  */
+		INSERT INTO TWORK_INFO_IB_DT (
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, IBDTKEY
+			, UPRIBDTKEY
+			, ICKEY
+			, SBKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXPCTQTY
+			, IBQTY
+			, CNFRMQTY
+			, DMGQTY
+			, FOODDMGQTY
+			, MISOBQTY
+			, DFCQTY
+			, DONAQTY
+			, DSPSQTY
+			, RJQTY
+			, UOM
+			, CPAMT
+			, PRDCTDATE
+			, EXPDATE
+			, ORHDKEY
+			, ORDTKEY
+			, EXTORDERKEY
+			, EXPORDERLINENO
+			, SLPRCAMT
+			, IBNISRSNCD
+			, IBNISDTRSNCONT
+			, CLAIMSNDYN
+			, CLAIMRSNCONT
+			, ORGCHITNO
+			, ORGCHITSEQNO
+			, ORGCHITDATE
+			, ACKEY
+			, ICTMPRDIVCD
+			, DCKEY
+			, ILBHSKEY
+			, IBCNFRMPRCSDATE
+			, IBCNFRMURKEY
+			, IBDDLNDATE
+			, IBDDLNURKEY
+			, UPDATEKEY
+			, WKCHNLCD
+			, IBDTSTATUSCD
+			, WEIGHT
+			, PLCMSTATUSCD
+			, ASRTMASICKEY
+			, ASRTWKTGTYN
+			, ASRTWKCOMPLYN
+			, ASRTWKQTY
+			, DLVRYCORPCD
+			, WBLNO
+			, RETSHIPDLVRYCORPCD
+			, RETSHIPWBLNO
+			, FILEKEY
+			, RIDMGRSNCD
+			, RIDFCRSNCONT
+			, RIPRGRSTATUSCD
+			, RIHOLDABLEQTY
+			, RIHOLDIMPSQTY
+			, RIHOLDRSNCD
+			, RIHOLDDTRSNCD
+			, RIHOLDDTCONT
+			, ICADDYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			 ) VALUES (
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{ibdtkey}
+			, #{upribdtkey}
+			, #{ickey}
+			, #{sbkey}
+			, #{icunitkey}
+			, #{initqty}
+			, #{expctqty}
+			, #{ibqty}
+			, #{cnfrmqty}
+			, #{dmgqty}
+			, #{fooddmgqty}
+			, #{misobqty}
+			, #{dfcqty}
+			, #{donaqty}
+			, #{dspsqty}
+			, #{rjqty}
+			, #{uom}
+			, #{cpamt}
+			, #{prdctdate}
+			, #{expdate}
+			, #{orhdkey}
+			, #{ibdtkey}
+			, #{extorderkey}
+			, #{ibdtkey}
+			, #{slprcamt}
+			, #{ibnisrsncd}
+			, #{ibnisdtrsncont}
+			, COALESCE(#{claimsndyn}, 'N')
+			, #{claimrsncont}
+			, #{orgchitno}
+			, #{orgchitseqno}
+			, #{orgchitdate}
+			, #{ackey}
+			, #{ictmprdivcd}
+			, #{dckey}
+			, #{ilbhskey}
+			, #{ibcnfrmprcsdate}
+			, #{ibcnfrmurkey}
+			, #{ibddlndate}
+			, #{ibddlnurkey}
+			, #{updatekey}
+			, #{wkchnlcd}
+			, #{ibdtstatuscd}
+			, #{weight}
+			, #{plcmstatuscd}
+			, #{asrtmasickey}
+			, #{asrtwktgtyn}
+			, #{asrtwkcomplyn}
+			, #{asrtwkqty}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, #{retshipdlvrycorpcd}
+			, #{retshipwblno}
+			, #{filekey}
+			, #{ridmgrsncd}
+			, #{ridfcrsncont}
+			, #{riprgrstatuscd}
+			, COALESCE(#{riholdableqty}, 0)
+			, COALESCE(#{riholdimpsqty}, 0)
+			, #{riholdrsncd}
+			, #{riholddtrsncd}
+			, #{riholddtcont}
+			, #{icaddyn}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+			)
+	</insert>
+
+	<select id="selectReturnLckey" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnLckey - 반품 로케이션 조회  */
+		SELECT *
+		  FROM (
+				SELECT A.*
+				  FROM TWORK_MST_LC A
+				 INNER JOIN TWORK_MST_ZN B
+					ON A.CTKEY = B.CTKEY
+				   AND A.ZNKEY = B.ZNKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND B.ZNTYPECD = #{zntypecd}
+				   AND A.LCKEY != 'RETURN'
+				 ORDER BY LCKEY
+		       )
+		  LIMIT 1
+
+	</select>
+
+	<select id="selectIbOrderReturnIbdtInfoList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnIbdtInfoList - 입고 상세 상품 조건으로 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY   		= #{ctkey}
+		   AND OWKEY   		= #{owkey}
+		   AND IBHDKEY 		= #{ibhdkey}
+		   AND ICKEY 		= #{ickey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND WBLNO 		= #{wblno}
+		</if>
+	</select>
+
+	<update id="updateIbdtRiqty">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbdtRiqty - 입고 상세 수량 저장 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBQTY 			= COALESCE(#{ibqty}, 0)
+			 , DMGQTY 			= COALESCE(#{dmgqty}, 0)
+			 , DFCQTY 			= COALESCE(#{dfcqty}, 0)
+			 , DONAQTY 			= COALESCE(#{donaqty}, 0)
+			 , FOODDMGQTY       = COALESCE(#{fooddmgqty}, 0)
+			 , MISOBQTY  		= COALESCE(#{misobqty}, 0)
+			 , RIHOLDABLEQTY    = COALESCE(#{riholdableqty}, 0)
+			 , RIHOLDIMPSQTY    = COALESCE(#{riholdimpsqty}, 0)
+			 , RIDMGRSNCD 		= #{ridmgrsncd}
+			 , RIDFCRSNCONT 	= #{ridfcrsncont}
+			 , WKCHNLCD         = #{wkchnlcd}
+			 , IBCNFRMPRCSDATE  = #{ibcnfrmprcsdate}
+			 , EXPDATE  		= #{expdate}
+			 , DLVRYCORPCD  	= #{dlvrycorpcd}
+		<if test='	orgrow == "Y" ' >
+			 , WBLNO  			= #{wblno}
+		</if>
+			 , UPDATEDATE 		= #{sysdate}
+			 , UPDATEURKEY 		= #{surkey}
+		 WHERE CTKEY   			= #{ctkey}
+		   AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+		   AND ICKEY 			= #{ickey}
+		<if test='	orgrow != "Y" ' >
+			AND WBLNO  			= #{wblno}
+		</if>
+	</update>
+
+	<select id="selectIbdtRistatusCmplAndCancel" resultType="integer">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbdtRistatusCmplAndCancel - 입고 상세 진행상태 건수 조회 - 운송장 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY   			= #{ctkey}
+		   AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+		   AND WBLNO  			= #{wblno}
+		   AND RIPRGRSTATUSCD NOT IN ('40', '60')	/* 반품완료(40), 반품취소(60) */
+	</select>
+
+	<update id="updateIbWblprgrstatus">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbWblprgrstatus - 운송장진행상태코드 저장 */
+		UPDATE TWORK_INFO_IBRET_WBLNO
+		   SET UPDATEDATE 		= #{sysdate}
+			 , UPDATEURKEY 		= #{surkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblprgrstatuscd)" >
+			, WBLPRGRSTATUSCD  = #{wblprgrstatuscd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkurkey)" >
+			, WKURKEY  		= #{wkurkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkstartdate)" >
+			, WKSTARTDATE  	= #{wkstartdate}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wkclosdate)" >
+			, WKCLOSDATE  		= #{wkclosdate}
+		</if>
+
+		 WHERE CTKEY   			= #{ctkey}
+		   AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+		   AND WBLNO 			= #{wblno}
+	</update>
+
+	<select id="selectIbdtComplCnt" resultType="integer">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbdtComplCnt - 입고 상세 완료 건수 조회 */
+		SELECT COUNT(*)
+		  FROM (
+				SELECT ICKEY
+					 , SUM(CASE WHEN RIPRGRSTATUSCD IN ('40', '60')
+								THEN (IBQTY + DMGQTY + DFCQTY + DONAQTY + FOODDMGQTY + MISOBQTY + ISTRETSHIPQTY)
+								ELSE 0 END) AS SUM_TOTALQTY
+					 , MAX(EXPCTQTY) AS EXPCTQTY   -- 모두 같으니까 MAX 사용
+				  FROM TWORK_INFO_IB_DT
+				 WHERE CTKEY   = #{ctkey}
+				   AND OWKEY   = #{owkey}
+				   AND IBHDKEY = #{ibhdkey}
+				 GROUP BY ICKEY
+		)
+		WHERE SUM_TOTALQTY <![CDATA[ < ]]> EXPCTQTY
+
+	</select>
+
+	<select id="selectWblprgrstatusCmplCnt" resultType="integer">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectWblprgrstatusCmplCnt - 운송장 미완료 건수 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IBRET_WBLNO
+ 		 WHERE CTKEY   	= #{ctkey}
+		   AND OWKEY   	= #{owkey}
+		   AND IBHDKEY 	= #{ibhdkey}
+		   AND WBLPRGRSTATUSCD NOT IN ('40', '60')	   /* 반품입고완료 OR 반품취소 */
+	</select>
+
+	<update id="updateIbhdRiprgrstatus">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbhdRiprgrstatus - 반품 진행 상태 저장 */
+		UPDATE TWORK_INFO_IB_HD
+		   SET RIPRGRSTATUSCD	= #{riprgrstatuscd}
+		<if test="riprgrstatuscd == '40'" >
+			 , IBCNFRMDATE = #{sysdate}
+		</if>
+			 , UPDATEDATE 		= #{sysdate}
+			 , UPDATEURKEY 		= #{surkey}
+		 WHERE CTKEY   			= #{ctkey}
+		   AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+	</update>
+
+	<select id="selectIbDtInfoCloseList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbDtInfoCloseList - 반품 입고 상세 마감 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , DLVRYCORPCD
+			 , WBLNO
+			 , ICKEY
+			 , TRUNC(IBDTKEY::NUMERIC, -2) AS DTKEY
+			 , COALESCE(IBQTY, 0) + COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(MISOBQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS QTY  /* 수량(반품입고수량) */
+			 , IBQTY AS AVQTY  /* 가용(예정)수량 */
+			 , COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(MISOBQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS NAVQTY  /* 불용수량 */
+			 , IBQTY       /* 정상입고수량 */
+			 , DMGQTY      /* 파손수량 */
+			 , FOODDMGQTY  /* 식품파손수량 */
+			 , MISOBQTY    /* 오출고수량 */
+			 , DFCQTY      /* 불량수량 */
+			 , DONAQTY     /* 기부수량 */
+			 , ICADDYN
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<update id="updateIbdtRiprgrstatus">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbdtRiprgrstatus - 반품 상세 진행 상태 저장 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET RIPRGRSTATUSCD	= #{riprgrstatuscd}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dlvrycorpcd)" >
+			 , DLVRYCORPCD      = #{dlvrycorpcd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholdrsncd)" >
+			 , RIHOLDRSNCD = #{riholdrsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholddtrsncd)" >
+			 , RIHOLDDTRSNCD = #{riholddtrsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholddtcont)" >
+			 , RIHOLDDTCONT = #{riholddtcont}
+		</if>
+			 , UPDATEDATE 		= #{sysdate}
+			 , UPDATEURKEY 		= #{surkey}
+		 WHERE CTKEY   			= #{ctkey}
+	       AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+		<if test='	orgrow == "Y" ' >
+			AND ICKEY  			= #{ickey}
+		</if>
+		<if test='	riprgrstatuscd == "40" ' >
+			AND RIPRGRSTATUSCD != '60'
+		</if>
+	</update>
+
+	<update id="updateIbdtRiprgrstatusByWblno">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbdtRiprgrstatus - 반품 상세 진행 상태 저장 - 운송장 조건 */
+		UPDATE TWORK_INFO_IB_DT
+		   SET RIPRGRSTATUSCD	= #{riprgrstatuscd}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholdrsncd)" >
+			, RIHOLDRSNCD = #{riholdrsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholddtrsncd)" >
+			, RIHOLDDTRSNCD = #{riholddtrsncd}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(riholddtcont)" >
+			, RIHOLDDTCONT = #{riholddtcont}
+		</if>
+			 , UPDATEDATE 		= #{sysdate}
+			 , UPDATEURKEY 		= #{surkey}
+		 WHERE CTKEY   			= #{ctkey}
+		   AND OWKEY   			= #{owkey}
+		   AND IBHDKEY 			= #{ibhdkey}
+		   AND ICKEY  			= #{ickey}
+		   AND WBLNO  			= #{wblno}
+	</update>
+
+	<select id="selectReturnInfoOb" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnInfoOb - 입고반품 - 출고 주문 팝업 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.OBHDKEY
+			 , A.ORHDKEY
+			 , A.OBORDKEY
+			 , A.DLVRYCORPCD
+			 , B.DLVRYCORPNM
+			 , A.WBLNO
+			 , A.OBHDDAY
+			 , A.OBREQDATE
+			 , A.EXTERNORDERKEY
+			 , pkg_crypto$decrypt(A.ORDNM, #{encKey}) AS ORDNM
+			 , pkg_crypto$decrypt(A.RCPPRSNNM, #{encKey}) AS RCPPRSNNM
+			 , pkg_crypto$decrypt(A.RCPPRSNTELNO, #{encKey}) AS RCPPRSNTELNO
+			 , pkg_crypto$decrypt(A.RCPPRSNTELNO2, #{encKey}) AS RCPPRSNTELNO2
+			 , pkg_crypto$decrypt(A.RCPPRSNADDR1, #{encKey}) || pkg_crypto$decrypt(A.RCPPRSNADDR2, #{encKey}) AS RCPPRSNADDR
+			 , pkg_crypto$decrypt(A.RCPPRSNADDR1, #{encKey}) AS RCPPRSNADDR1
+			 , pkg_crypto$decrypt(A.RCPPRSNADDR2, #{encKey}) AS RCPPRSNADDR2
+			 , A.DLVYMSG
+		  FROM TWORK_INFO_OB_HD A
+		  LEFT OUTER JOIN TWORK_MST_DLVRYCORP B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.DLVRYCORPCD = B.DLVRYCORPCD
+		   AND B.DELYN = 'N'
+		 WHERE 1=1
+		  AND A.CTKEY = #{ctkey}
+		  AND A.OWKEY = #{owkey}
+		  AND A.EXTERNORDERKEY = #{custordno}
+	</select>
+
+
+	<select id="selectObIcInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectObIcInfo - 입고반품 - 출고반품 - 상품 정보 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.ICKEY
+			 , B.ICNM
+			 , A.CNFRMQTY
+			 , C.BARCODE
+		FROM TWORK_INFO_OB_DT A
+		LEFT OUTER JOIN TWORK_MST_IC B
+		  ON A.CTKEY = B.CTKEY
+		 AND A.OWKEY = B.OWKEY
+		 AND A.ICKEY = B.ICKEY
+		LEFT OUTER JOIN TWORK_MST_ICBARCODE C
+		  ON A.CTKEY = C.CTKEY
+		 AND A.OWKEY = C.OWKEY
+		 AND A.ICKEY = C.ICKEY
+		 AND A.UOM = C.UOM
+		 AND C.USEYN = 'Y'
+	   WHERE 1=1
+		 AND A.CTKEY = #{ctkey}
+		 AND A.OWKEY = #{owkey}
+		 AND A.EXTERNORDERKEY = #{custordno}
+	</select>
+
+	<select id="selectObprgrInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectObprgrInfo - 입고반품 - 출고정보 - 출고 진행 정보 조회 */
+		SELECT SOURCE
+			 , STATUSCD
+			 , STATUSNM
+			 , UPDATEURKEY
+			 , UPDATEDATE
+		  FROM (
+				SELECT 'OB_HD' AS SOURCE
+					 , A.OBSTATUSCD AS STATUSCD
+					 , B.CTCDDTNM AS STATUSNM
+					 , A.UPDATEURKEY
+					 , A.UPDATEDATE
+				  FROM TWORK_INFO_OB_HD A
+				 INNER JOIN TWORK_MST_CTCD_DT B
+					ON A.CTKEY = B.CTKEY
+				   AND B.CTCDHDKEY = 'OBSTATUSCD'
+				   AND B.LAKEY = 'KOR'
+				   AND A.OBSTATUSCD = B.CTCDDTKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.EXTERNORDERKEY = #{custordno}
+				 UNION ALL
+				SELECT 'PI_DT' AS SOURCE
+					 , B.PKWKSTATUSCD AS STATUSCD
+					 , C.CTCDDTNM     AS STATUSNM
+					 , B.UPDATEURKEY
+					 , B.UPDATEDATE
+				  FROM TWORK_INFO_OB_HD A
+				 INNER JOIN TWORK_INFO_PI_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.PIHDKEY = B.PIHDKEY
+				 INNER JOIN TWORK_MST_CTCD_DT C
+					ON A.CTKEY = C.CTKEY
+				   AND C.CTCDHDKEY = 'PKWKSTATUSCD'
+				   AND C.LAKEY = 'KOR'
+				   AND B.PKWKSTATUSCD = C.CTCDDTKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.EXTERNORDERKEY = #{custordno}
+				 UNION ALL
+				SELECT 'WA_HD' AS SOURCE
+					 , B.WAWKSTATUSCD   AS STATUSCD
+					 , C.CTCDDTNM   	AS STATUSNM
+					 , B.UPDATEURKEY
+					 , B.UPDATEDATE
+				  FROM TWORK_INFO_OB_HD A
+				 INNER JOIN TWORK_INFO_WA_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.WAHDKEY = B.WAHDKEY
+				 INNER JOIN TWORK_MST_CTCD_DT C
+					ON A.CTKEY = C.CTKEY
+				   AND C.CTCDHDKEY = 'WAWKSTATUSCD'
+				   AND C.LAKEY = 'KOR'
+				   AND B.WAWKSTATUSCD = C.CTCDDTKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.EXTERNORDERKEY = #{custordno}
+				)
+			ORDER BY UPDATEDATE, SOURCE
+	</select>
+
+	<select id="selectSeqnoReturnSpcl" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectSeqnoReturnSpcl - 입고반품 - 반품 특이사항 시퀀스 조회 */
+		  SELECT MAX(SEQNO) + 1 AS SEQNO
+			FROM TWORK_INFO_IBRI_PRCS
+		   WHERE 1=1
+			 AND CTKEY = #{ctkey}
+			 AND OWKEY = #{owkey}
+			 AND IBHDKEY = #{ibhdkey}
+		   GROUP BY CTKEY, OWKEY, IBHDKEY
+
+	</select>
+
+	<insert id="insertIbreturnPrcs"  parameterType="ibOrderRiPrcsVO">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - insertIbreturnPrcs - 입고반품 - 특이사항 추가 */
+		INSERT INTO TWORK_INFO_IBRI_PRCS (
+			   CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , SEQNO
+			 , REGDIVCD
+			 , REGURKEY
+			 , CONT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES (
+			   #{ctkey}
+			 , #{owkey}
+			 , #{ibhdkey}
+			 , #{seqno}
+			 , #{regdivcd}
+			 , #{surkey}
+			 , #{cont}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+
+	<update id="updateIbreturnPrcs"  parameterType="ibOrderRiPrcsVO">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbreturnPrcs - 입고반품 - 특이사항 수정 */
+		UPDATE TWORK_INFO_IBRI_PRCS
+		   SET CONT = #{cont}
+			 , REGURKEY = #{surkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND SEQNO = #{seqno}
+	</update>
+
+	<delete id="deleteIbreturnPrcs" parameterType="ibOrderRiPrcsVO">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - deleteIbreturnPrcs - 입고반품 - 특이사항 삭제 */
+
+		DELETE FROM TWORK_INFO_IBRI_PRCS
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND SEQNO = #{seqno}
+
+	</delete>
+
+	<select id="selectIbOrderReturnFile" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnFile - 입고반품 - 파일 조회 */
+		SELECT *
+		FROM (
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , '10' AS RETIBFILEDIVCD
+					 , B.SEQNO AS FILESEQNO
+					 , substring(REGEXP_SUBSTR(B.IMGURL, '[^/]+$') from '^[^.]+') AS ORGFILENM
+					 , NULL AS WBLNO
+					 , NULL AS FILEKEY
+					 , NULL AS FILEPATH
+					 , NULL AS FILESIZE
+					 , NULL AS FILEEXTS
+					 , NULL AS SAVFILENM
+					 , B.IMGURL AS CMT
+					 , '' AS ID
+					 , B.INSERTDATE
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN TWORK_INFO_IBRET_CUST_FILE B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		  		   AND A.IBHDKEY = #{ibhdkey}
+				 UNION ALL
+				SELECT '0' AS CHK
+					 , A.CTKEY
+					 , A.OWKEY
+					 , A.IBHDKEY
+					 , '20' AS RETIBFILEDIVCD
+					 , C.FILESEQNO
+					 , C.ORGFILENM
+					 , B.WBLNO
+					 , B.FILEKEY
+					 , C.FILEPATH
+					 , C.FILESIZE
+					 , C.FILEEXTS
+					 , C.SAVFILENM
+					 , C.CMT
+					 , '' AS ID
+					 , C.INSERTDATE
+				  FROM TWORK_INFO_IB_HD A
+				 INNER JOIN TWORK_INFO_IBRET_WBLNO B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_INFO_FILE C
+					ON A.CTKEY = C.CTKEY
+				   AND B.FILEKEY = C.FILEKEY
+				 WHERE 1=1
+				   AND A.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+				   AND A.OWKEY = COALESCE(#{owkey}, #{sowkey})
+				   AND A.IBHDKEY = #{ibhdkey}
+				GROUP BY A.CTKEY, A.OWKEY, A.IBHDKEY, C.FILESEQNO , C.ORGFILENM, B.WBLNO, B.FILEKEY , C.FILEPATH, C.FILESIZE, C.FILEEXTS, C.SAVFILENM, C.CMT, C.INSERTDATE
+		)
+		ORDER BY INSERTDATE
+	</select>
+
+	<select id="selectIbretWblnoMap" resultType="camelMap">
+	/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbretWblnoMap - 입고반품 - 운송장 내역 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND WBLNO = #{wblno}
+	</select>
+
+	<select id="selectIbOrderReturnFilekey" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnFilekey - 입고반품 - 파일키 조회 */
+		SELECT MAX(B.FILESEQNO) AS FILESEQNO
+			 , MAX(B.FILEKEY) AS FILEKEY
+		  FROM TWORK_INFO_IBRET_WBLNO A
+		 INNER JOIN TWORK_INFO_FILE B
+			ON A.CTKEY = B.CTKEY
+		   AND A.FILEKEY = B.FILEKEY
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.WBLNO = #{wblno}
+	</select>
+
+	<update id="updateIbretFilekey"  >
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateIbretFilekey - 입고반품 - 파일키 저장 */
+		UPDATE TWORK_INFO_IBRET_WBLNO
+		   SET FILEKEY = #{filekey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND WBLNO = #{wblno}
+	</update>
+
+
+	<select id="selectReturnWblInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnWblInfo - 입고반품 - 반품 운송장 조회 */
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.EXTORDERKEY
+			 , A.WBLNO
+			 , B.WBLPRGRSTATUSCD
+			 , A.ICKEY
+			 , C.ICNM
+			 , A.EXPCTQTY
+		  FROM TWORK_INFO_IB_DT A
+		  LEFT OUTER JOIN TWORK_INFO_IBRET_WBLNO B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		   AND A.WBLNO = B.WBLNO
+		INNER JOIN TWORK_MST_IC C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.ICKEY = C.ICKEY
+		 WHERE 1=1
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		 ORDER BY WBLNO, CAST(A.IBDTKEY AS NUMERIC)
+	</select>
+
+	<select id="selectIbretWblnoList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbretWblnoList - 입고반품 - 반품 운송장 내역 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+			AND WBLNO = #{wblno}
+		</if>
+	</select>
+
+	<select id="selectReturnWblFileList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnWblFileList - 입고반품 - 운송장 파일첨부 조회 */
+		SELECT A.WBLNO
+			 , B.CMT AS URL
+		  FROM TWORK_INFO_IBRET_WBLNO A
+		 INNER JOIN TWORK_INFO_FILE B
+			ON A.CTKEY = B.CTKEY
+		   AND A.FILEKEY = B.FILEKEY
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.WBLNO = #{wblno}
+	</select>
+
+	<select id="selectIbReturnWblInfo" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbReturnWblInfo - 입고반품 - 회송 운송장 접수 조회 */
+		SELECT REFND_TGT.CNTRCTNO AS csr_num
+			 , REFND_TGT.SVCDIV AS svc_div
+			 , REFND_TGT.IBHDKEY AS msg_key
+			 , REFND_TGT.ADDR AS address
+			 , REFND_TGT.CTZIPCD AS snd_zip
+			 , REFND_TGT.RECALLERZIPCD AS rcv_zip
+		     , REFND_TGT.CTKEY
+		     , REFND_TGT.OWKEY
+		     , REFND_TGT.IBHDKEY
+		     , REFND_TGT.RETSHIPDLVRYCORPCD
+		     , REFND_TGT.RETSHIPWBLNO
+		  FROM (
+				SELECT A.CTKEY
+					 , A.OWKEY
+					 , A.RETSHIPDLVRYCORPCD
+					 , A.RETSHIPWBLNO
+					 , A.IBHDKEY
+					 , D.CNTRCTNO
+					 , 'GN' AS SVCDIV
+					 , TRIM(pkg_crypto$decrypt(B.RECALLERADDR1, #{encKey}))||' '||TRIM(pkg_crypto$decrypt(B.RECALLERADDR2, #{encKey})) ADDR
+					 , C.ZIPCD AS CTZIPCD
+				 	 , B.RECALLERZIPCD
+				  FROM TWORK_INFO_IB_DT A
+				 INNER JOIN TWORK_INFO_IB_HD B
+					ON A.CTKEY = B.CTKEY
+				   AND A.OWKEY = B.OWKEY
+				   AND A.IBHDKEY = B.IBHDKEY
+				 INNER JOIN TWORK_MST_CT C
+					ON A.CTKEY = C.CTKEY
+				 INNER JOIN TWORK_MST_DLVRYCORP D
+					ON A.CTKEY = D.CTKEY
+				   AND A.OWKEY = D.OWKEY
+				   AND A.RETSHIPDLVRYCORPCD = D.DLVRYCORPCD
+				   AND D.DELYN = 'N'
+				 WHERE A.CTKEY = #{ctkey}
+				   AND A.OWKEY = #{owkey}
+				   AND A.IBHDKEY = #{ibhdkey}
+				   AND A.IBDTKEY = #{ibdtkey}
+				 GROUP BY A.CTKEY
+					 , A.OWKEY
+					 , A.RETSHIPDLVRYCORPCD
+					 , A.RETSHIPWBLNO
+					 , D.CNTRCTNO
+					 , A.IBHDKEY
+					 , B.RECALLERADDR1
+					 , B.RECALLERADDR2
+					 , C.ZIPCD
+					 , B.RECALLERZIPCD
+			   ) REFND_TGT
+	</select>
+
+	<select id="selectDlvrycorp" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectDlvrycorp - 입고반품 - 택배사 조회 */
+		SELECT DLVRYCORPCD
+		     , DLVRYCORPNM
+		  FROM TWORK_MST_DLVRYCORP
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND DELYN = 'N'
+	</select>
+
+	<select id="selectRetshipList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectRetshipList - 입고반품 - 회송운송장 조회 */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , A.OWKEY
+			 , A.IBHDKEY
+			 , A.IBDTKEY
+			 , A.EXTORDERKEY
+			 , A.RETSHIPDLVRYCORPCD
+			 , D.DLVRYCORPNM AS RETSHIPDLVRYCORPNM
+			 , A.RETSHIPWBLNO
+			 , A.WBLNO
+			 , A.ICKEY
+			 , C.ICNM
+			 , A.ISTRETSHIPQTY
+			 , B.WBLPRGRSTATUSCD
+			 , A.DLVRYCORPCD
+		  FROM TWORK_INFO_IB_DT A
+		 INNER JOIN TWORK_INFO_IBRET_WBLNO B
+			ON A.CTKEY = B.CTKEY
+		   AND A.OWKEY = B.OWKEY
+		   AND A.IBHDKEY = B.IBHDKEY
+		   AND A.WBLNO = B.WBLNO
+		 INNER JOIN TWORK_MST_IC C
+			ON A.CTKEY = C.CTKEY
+		   AND A.OWKEY = C.OWKEY
+		   AND A.ICKEY = C.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_DLVRYCORP D
+			ON A.CTKEY = D.CTKEY
+		   AND A.OWKEY = D.OWKEY
+		   AND A.RETSHIPDLVRYCORPCD = D.DLVRYCORPCD
+		   AND D.DELYN = 'N'
+		 WHERE 1=1
+		   AND A.CTKEY = #{ctkey}
+		   AND A.OWKEY = #{owkey}
+		   AND A.IBHDKEY = #{ibhdkey}
+		   AND A.ISTRETSHIPQTY > 0
+		 ORDER BY A.WBLNO
+	</select>
+
+	<select id="selectIbDtByWblno" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbDtByWblno - 입고반품 - 입고상세 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_DT
+  		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+		   AND ICKEY = #{ickey}
+		   AND WBLNO = #{wblno}
+	</select>
+
+	<select id="selectDmgRsnCtcd" resultType="string">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectDmgRsnCtcd - 입고반품 - 파손 사유 공통코드 조회 */
+
+		SELECT CTCDDTNM
+		  FROM TWORK_MST_CTCD_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND CTCDHDKEY = 'RIDMGRSNCD'
+		   AND LAKEY = 'KOR'
+		   AND CTCDDTKEY = #{ridmgrsncd}
+
+	</select>
+
+	<select id="selectReturnHoldRsnCtcd" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnHoldRsnCtcd - 입고반품 - 보류 사유 공통코드 조회 */
+
+		SELECT CTCDDTKEY AS FIELD1
+			 , CTCDDTNM AS FIELD2
+		  FROM TWORK_MST_CTCD_DT
+		 WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND CTCDHDKEY = 'CD_00572'
+		   AND LAKEY = 'KOR'
+		<if test=" type == 'HOLD' " >
+ 		   AND CTCDDTKEY NOT IN ('05', '06')
+		</if>
+		<if test=" type == 'RECALL' " >
+			AND CTCDDTKEY IN ('05', '06')
+		</if>
+		ORDER BY CAST(CTCDDTKEY AS NUMERIC)
+
+	</select>
+
+	<select id="selectReturnHoldRsnDtlCtcd" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnHoldRsnDtlCtcd - 입고반품 - 보류 상세 사유 공통코드 조회 */
+
+		SELECT CTCDDTKEY AS FIELD1
+			 , CTCDDTNM AS FIELD2
+			 , UPRCTCDDTKEY
+ 		  FROM TWORK_MST_CTCD_DT
+		 WHERE CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		   AND CTCDHDKEY = 'CD_00592'
+		   AND LAKEY = 'KOR'
+		<if test=" type == 'HOLD' " >
+			AND UPRCTCDDTKEY NOT IN ('05', '06')
+		</if>
+		<if test=" type == 'RECALL' " >
+			AND UPRCTCDDTKEY IN ('05', '06')
+		</if>
+		ORDER BY CAST(CTCDDTKEY AS NUMERIC)
+
+	</select>
+
+	<update id="updateVaildRecallSndExcelUploadList">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - updateVaildRecallSndExcelUploadList */
+		UPDATE TWORK_UPLOAD_RECALL_SEND TUM
+		   SET (TUM.ERROR_CD) = (
+									SELECT T.ERROR_CD
+									  FROM (
+											SELECT ULHSKEY
+												 , SEQ
+												 , CASE WHEN TMP.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_NULL'
+												 		WHEN CT.CTKEY IS NULL THEN 'TXT_UPLOAD_VALID_CTKEY_INVALID'
+														WHEN TMP.WBLNO IS NULL THEN 'TXT_UPLOAD_VALID_WBLNO_NULL'
+														WHEN HD.WBLNO IS NULL THEN 'TXT_UPLOAD_VALID_WBLNO_INVALID'
+														WHEN HD.RETREGREQYN = 'Y' THEN 'TXT_UPLOAD_VALID_RETREGREQYN_INVALID'
+														 END AS ERROR_CD
+		 									  FROM TWORK_UPLOAD_RECALL_SEND TMP
+											  LEFT JOIN TWORK_MST_CT CT
+											    ON TMP.CTKEY = CT.CTKEY
+											  LEFT JOIN TWORK_INFO_OB_HD HD
+												ON TMP.CTKEY = HD.CTKEY
+											   AND TMP.OWKEY = HD.OWKEY
+											   AND TMP.WBLNO = HD.WBLNO
+											 WHERE TMP.ULHSKEY = #{upldkey}
+											 GROUP BY TMP.ULHSKEY
+													, TMP.SEQ
+													, TMP.CTKEY
+													, CT.CTKEY
+													, TMP.WBLNO
+													, HD.WBLNO
+												    , HD.RETREGREQYN
+										 ) T
+									 WHERE TUM.ULHSKEY = T.ULHSKEY
+									   AND TUM.SEQ = T.SEQ
+								)
+		 WHERE TUM.ULHSKEY = #{upldkey}
+	</update>
+
+	<select id="selectRecallSndExcelUploadCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectRecallSndExcelUploadCount */
+		SELECT COUNT(1)
+		  FROM TWORK_UPLOAD_RECALL_SEND
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter)'>
+			<choose>
+				<when test='"Y".equals(filter)'>
+					AND ERROR_CD IS NOT NULL
+				</when>
+				<when test='"N".equals(filter)'>
+					AND ERROR_CD IS NULL
+				</when>
+			</choose>
+		</if>
+	</select>
+
+	<select id="selectRecallSndExcelUploadList" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectRecallSndExcelUploadList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+
+		SELECT '0' AS CHK
+			 , ULHSKEY
+			 , SEQ
+			 , CTKEY
+			 , OWKEY
+			 , WBLNO
+			 , ERROR_CD
+			 , ERROR_COMMENTS
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_UPLOAD_RECALL_SEND
+		 WHERE ULHSKEY = #{upldkey}
+
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(filter) and "Y".equals(filter)'>
+			AND ERROR_CD IS NOT NULL
+		</if>
+
+		ORDER BY SEQ
+
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<delete id="deleteRecallSndExcelUpload">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - deleteRecallSndExcelUpload */
+		DELETE FROM TWORK_UPLOAD_RECALL_SEND
+		 WHERE ULHSKEY = #{ulhskey}
+		   AND SEQ = #{seq}
+	</delete>
+
+	<select id="selectIbOrderReturnAsrt" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectIbOrderReturnAsrt */
+		SELECT OD.ICKEY
+			 , IC.ICNM
+			 , IC.EXPCKYN
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDTYPECD = '10'  /* 배송출고 */
+		   AND OH.EXTERNORDERKEY = #{custordno}
+		   AND OD.ICKEY =  (
+							SELECT ASRTMASICKEY
+							  FROM TWORK_MST_ASRT
+							 WHERE CTKEY = #{ctkey}
+							   AND OWKEY = #{owkey}
+							   AND ASRTDTICKEY = #{ickey}
+							)
+	</select>
+
+	<sql id="selectIbOrderReturnStatusReportSql">
+		SELECT * FROM (
+			SELECT '0' AS CHK
+					, SUBSTR(IH.IBHDDATE,0,4) AS TASKYEAR -- 년
+					, SUBSTR(IH.IBHDDATE,5,2) AS TASKMONTH --월
+					<if test='"20".equals(div)'>
+						, IH.IBHDDATE AS TASKDATE
+					</if>
+					, COUNT(DISTINCT IH.IBHDKEY) AS REORDERCNT -- 반품주문건수( 미회수 반품 포함 ) 1대
+					, COUNT(DISTINCT RW.WBLNO) AS REWBLNOCNT -- 반품운송장건수 N건
+					, COUNT(DISTINCT CASE WHEN RW.WBLPRGRSTATUSCD = '40' THEN RW.WBLNO ELSE NULL END) AS IBCNFM --운송장 기준 처리 완료 건수
+					, COUNT(DISTINCT CASE WHEN RW.WBLPRGRSTATUSCD IN ('10','20','30') THEN RW.WBLNO ELSE NULL END) AS IBCNT -- 운송장 미처리(보류) 건수- 보류기준 합의 필요
+					-- 3. 상세(Detail) - 전체
+					, COUNT(CASE WHEN ID.INITQTY > 0 THEN 1 END)       AS TOTCNT          /*요청수량*/
+					, SUM(ID.INITQTY)                AS TOTQTY
+					, SUM(ID.INITQTY * IC.SLPRC)     AS TOTAMT
+					-- 4. 상세 - 정상 (IBQTY 기준)
+					, COUNT(CASE WHEN ID.IBQTY > 0 THEN 1 END)   AS IBCNT2       /*입고수량*/
+					, SUM(ID.IBQTY)                              AS IBQTY       /* */
+					, SUM(ID.IBQTY * IC.SLPRC)                   AS IBAMT       /* 정상 금액*/
+					-- 5. 상세 - 파손
+					, COUNT(CASE WHEN ID.DMGQTY > 0 THEN 1 END)  AS DMGCNT      /*파손 수량*/
+					, SUM(ID.DMGQTY)                             AS DMGQTY
+					, SUM(ID.DMGQTY * IC.SLPRC)                  AS DMGAMT
+					-- 6. 상세 - 불량
+					, COUNT(CASE WHEN ID.DFCQTY > 0 THEN 1 END)  AS DFCCNT      /*불량 수량*/
+					, SUM(ID.DFCQTY)                             AS DFCQTY
+					, SUM(ID.DFCQTY * IC.SLPRC)                  AS DFCAMT
+					-- 7. 상세 - 기부
+					, COUNT(CASE WHEN ID.DONAQTY > 0 THEN 1 END) AS DONCNT      /*기부 수량*/
+					, SUM(ID.DONAQTY)                            AS DONQTY
+					, SUM(ID.DONAQTY * IC.SLPRC)                 AS DONAMT
+					-- 8. 상세 - 식품파손
+					, COUNT(CASE WHEN ID.FOODDMGQTY > 0 THEN 1 END) AS FDMGCNT  /* 식품파손수량*/
+					, SUM(ID.FOODDMGQTY)                            AS FDMGQTY
+					, SUM(ID.FOODDMGQTY * IC.SLPRC)                 AS FDMGAMT
+					-- 9. 상세 - 오출고
+					, COUNT(CASE WHEN ID.MISOBQTY > 0 THEN 1 END) AS MISOBCNT  /* 오출고수량*/
+					, SUM(ID.MISOBQTY)                            AS MISOBQTY
+					, SUM(ID.MISOBQTY * IC.SLPRC)                 AS MISOBAMT
+			FROM TWORK_INFO_IB_HD IH
+			INNER JOIN TWORK_INFO_IB_DT ID
+					ON IH.CTKEY = ID.CTKEY
+					AND IH.OWKEY = ID.OWKEY
+					AND IH.IBHDKEY = ID.IBHDKEY -- WMS 입고(반품)번호
+			LEFT OUTER JOIN              -- 미회송 반품 포함
+					TWORK_INFO_IBRET_WBLNO RW
+					ON ID.CTKEY = RW.CTKEY
+					AND ID.OWKEY = RW.OWKEY
+					AND ID.IBHDKEY = RW.IBHDKEY -- WMS 입고(반품)번호
+					AND ID.WBLNO = RW.WBLNO
+			LEFT OUTER JOIN TWORK_MST_IC IC
+					ON IC.CTKEY = ID.CTKEY
+					AND IC.OWKEY = ID.OWKEY
+					AND IC.ICKEY = ID.ICKEY
+			WHERE IH.CTKEY = '09'
+				AND IH.IBHDTYPECD = '50' -- 입고유형:반품
+				AND IH.RIPRGRSTATUSCD = '40' /*입고완료*/
+			GROUP BY
+			IH.IBHDDATE
+			<if test='"20".equals(div)'>
+				, IH.IBHDDATE DESC
+			</if>
+		)
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+			AND #{SEARCH_CONDITION}
+		</if>
+		ORDER BY TASKYEAR DESC ,  TASKMONTH DESC
+
+	</sql>
+
+	<select id="selectIbOrderReturnStatusReportCount"  resultType="int">
+		SELECT COUNT(1)
+		FROM (
+		<include refid="selectIbOrderReturnStatusReportSql"/>
+		)
+	</select>
+
+	<select id="selectIbOrderReturnStatusReport"  resultType="camelMap">
+		${GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectIbOrderReturnStatusReportSql"/>
+		${GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+</mapper>

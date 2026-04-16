@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.purchaseorder.mapper.PoManagerMapper">
+	
+	<select id="selectPoDt" parameterType="poDtVO" resultType="poDtVO">
+		<![CDATA[
+			SELECT A.CTKEY, A.POHDKEY, A.PODTKEY
+			    , A.OWKEY, A.ICKEY, A.SBKEY, A.SBKEY, A.ICUTKEY
+			    , A.EXQTY, A.CFQTY, A.UOM, A.COSTPRICE, A.WKSTATUS
+			    , A.UDF1, A.UDF2, A.UDF3
+			    , B.POHDTYPE
+			 FROM TWORK_INFO_PO_DT A
+			    ,TWORK_INFO_PO_HD B
+			WHERE A.CTKEY = B.CTKEY
+			    AND A.POHDKEY = B.POHDKEY
+			    AND A.CTKEY = #{ctkey}
+			    AND A.POHDKEY = #{pohdkey}
+			    AND A.PODTKEY = #{podtkey}	
+		]]>		 	
+	</select>		
+
+	<select id="selectPoDtList" parameterType="poDtVO" resultType="poDtVO">
+		<![CDATA[
+			SELECT A.CTKEY, A.POHDKEY, A.PODTKEY
+			    , A.OWKEY, A.ICKEY, A.SBKEY, A.SBKEY, A.ICUTKEY
+			    , A.EXQTY, A.CFQTY, A.UOM, A.COSTPRICE, A.WKSTATUS
+			    , A.UDF1, A.UDF2, A.UDF3
+			    , B.POHDTYPE
+			 FROM TWORK_INFO_PO_DT A
+			    ,TWORK_INFO_PO_HD B
+			WHERE A.CTKEY = B.CTKEY
+			    AND A.POHDKEY = B.POHDKEY
+			    AND A.CTKEY = #{ctkey}
+			    AND A.POHDKEY = #{pohdkey}				
+		]]>
+			<if test="listWkstatus != null and listWkstatus.size > 0" >
+				AND A.WKSTATUS IN 
+				<foreach item="listWkstatus" index="index" collection="listWkstatus"
+					open="(" separator="," close=")">
+					#{listWkstatus}
+				</foreach>
+			</if>				
+	</select>	
+	
+	<select id="selectPoDtByInbOrDtList" parameterType="inbOrderDtVO" resultType="poDtVO">
+		<![CDATA[
+			SELECT A.CTKEY, A.POHDKEY, A.PODTKEY
+			    , A.OWKEY, A.ICKEY, A.SBKEY, A.SBKEY, A.ICUTKEY
+			    , A.EXQTY, A.CFQTY, A.UOM, A.COSTPRICE, A.WKSTATUS
+			    , A.UDF1, A.UDF2, A.UDF3
+			    , B.POHDTYPE
+			 FROM TWORK_INFO_PO_DT A
+			    ,TWORK_INFO_PO_HD B
+			WHERE A.CTKEY = B.CTKEY
+			    AND A.CTKEY = #{ctkey}
+			    AND A.POHDKEY = #{pohdkey}	
+			    AND A.OWKEY = #{owkey}
+			    AND A.ICKEY = #{ickey}
+		]]>	
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(uom)" >
+				AND A.UOM = #{uom}
+			</if>		    
+			ORDER BY A.PODTKEY ASC
+	 	
+	</select>	
+
+	<select id="selectPoHd" parameterType="poHdVO" resultType="poHdVO">
+		<![CDATA[
+		SELECT CTKEY, POHDKEY, OWKEY, POHDTYPE, POHDDATE
+		    , DELIVERYDATE, ACKEY, ACNAME
+		    , POCONFIRMDATE, POCLOSINGDATE
+		    , WKSTATUS, UDF1, UDF2, UDF3
+		 FROM TWORK_INFO_PO_HD
+			WHERE CTKEY = #{ctkey}
+			    AND POHDKEY = #{pohdkey}
+		]]>		 	
+	</select>	
+		
+	<update id="updatePoDtCfQty" parameterType="poDtVO">
+		<![CDATA[
+		UPDATE TWORK_INFO_PO_DT SET
+			CFQTY = CFQTY + #{ibqty}
+			,NET_WGT = NET_WGT + #{net_wgt_in}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND POHDKEY = #{pohdkey}
+			AND PODTKEY = #{podtkey}	
+		]]>		   
+	</update>	
+	
+	<update id="updatePoDtWorkStatus" parameterType="inbOrderDtVO">
+		<![CDATA[	
+		UPDATE TWORK_INFO_PO_DT SET
+			WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND POHDKEY = #{pohdkey}
+			AND PODTKEY = #{podtkey}
+		]]>		 
+	</update>
+	
+	<update id="updatePoHdWorkStatus" parameterType="inbOrderHdVO">
+		<![CDATA[	
+		UPDATE TWORK_INFO_PO_HD SET
+			WKSTATUS = #{wkstatus}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{updateurkey}
+		WHERE CTKEY = #{ctkey}
+		    AND POHDKEY = #{pohdkey}
+		]]>		 
+	</update>	
+	
+</mapper>	

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.OwnerTmsMapper">
+
+	<insert id="insertTOrderMstOw">
+		/* tms-master-owner-sql-oracle.xml - insertTOrderMstOw */
+		INSERT INTO TT_MST_OW	(
+			ZIPCODE
+			,UPDATEURKEY
+			,UPDATEDATE
+			,TEL2
+			,TEL1
+			,STATE
+			,OWNAME
+			,OWKEY
+			,REGNO
+			,BUSINESSTYPE
+			,BUSINESSCATEGORY
+			,INSERTURKEY
+			,INSERTDATE
+			,FAX
+			,COUNTRYCODE
+			,CONTACT
+			,CITY
+			,CEO
+			,ADDRESS2
+			,ADDRESS1
+			,DIMENSION_UOM
+			,WEIGHT_UOM	
+			,UDF1
+			,UDF2
+			,UDF3
+			,BOXTYPE
+			,LAKEY
+            ,CURRTYP
+            ,BRCDTYP
+            ,DELSTTVRFTYP
+            ,ALWMXDYN
+            ,EMAIL
+            ,WEBURL
+            ,UOMTYP
+            ,LOGGRPCD
+            ,CUSTTYPE
+            ,STTCD
+            ,ADDRID
+            ,CLOSDATE
+		)
+		VALUES	(
+			#{zipcode}
+			,#{surkey}
+			,#{sysdate}
+			,#{tel2}
+			,#{tel1}
+			,#{state}
+			,#{owname}
+			,#{owkey}
+			,#{regno}
+			,#{businesstype}
+			,#{businesscategory}
+			,#{surkey}
+			,#{sysdate}
+			,#{fax}
+			,#{countrycode}
+			,#{contact}
+			,#{city}
+			,#{ceo}
+			,#{address2}
+			,#{address1}
+			,#{dimension_uom}
+			,#{weight_uom}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{boxtype}
+			,#{lakey}
+            ,#{currtyp}
+            ,#{brcdtyp}
+            ,#{delsttvrftyp}
+            ,#{alwmxdyn}
+            ,#{email}
+            ,#{weburl}
+            ,#{uomtyp}
+            ,#{loggrpcd}
+            ,#{custtype}
+            ,#{sttcd}
+            ,#{addrid}
+            ,#{closdate}
+		)	
+	</insert>	
+	
+	<update id="updateTOrderMstOw">
+		/* tms-master-owner-sql-oracle.xml - updateTOrderMstOw */
+		UPDATE 	TT_MST_OW
+		SET		ZIPCODE      		= #{zipcode}
+				,UPDATEURKEY  		= #{surkey}
+				,UPDATEDATE   		= #{sysdate}
+				,TEL2         		= #{tel2}
+				,TEL1         		= #{tel1}
+				,STATE        		= #{state}
+				,OWNAME       		= #{owname}
+				,REGNO       		= #{regno}
+		        ,BUSINESSTYPE   	= #{businesstype}
+		        ,BUSINESSCATEGORY	= #{businesscategory} 
+				,FAX          		= #{fax}
+				,COUNTRYCODE  		= #{countrycode}
+				,CONTACT      		= #{contact}
+				,CITY         		= #{city}
+				,CEO          		= #{ceo}
+				,ADDRESS2     		= #{address2}
+				,ADDRESS1     		= #{address1}
+				,DIMENSION_UOM		= #{dimension_uom}
+				,WEIGHT_UOM			= #{weight_uom}
+				,UDF1				= #{udf1}
+				,UDF2				= #{udf2}
+				,UDF3				= #{udf3}
+				,BOXTYPE			= #{boxtype}
+				,LAKEY				= #{lakey}
+	            ,CURRTYP			= #{currtyp}
+	            ,BRCDTYP			= #{brcdtyp}
+	            ,DELSTTVRFTYP		= #{delsttvrftyp}
+	            ,ALWMXDYN			= #{alwmxdyn}
+	            ,EMAIL				= #{email}
+	            ,WEBURL				= #{weburl}
+	            ,UOMTYP				= #{uomtyp}
+	            ,LOGGRPCD			= #{loggrpcd}
+	            ,CUSTTYPE			= #{custtype}
+	            ,STTCD				= #{sttcd}
+	            ,ADDRID				= #{addrid}
+	            ,BILLTOCUSTCD   	= #{billtocustcd}
+				,DELYN 				= #{delyn}
+		WHERE	OWKEY = #{owkey} 
+	</update>
+
+	<delete id="deleteTOrderMstOw">
+		/* tms-master-center-sql-oracle.xml - deleteTOrderMstOw */
+		UPDATE  TT_MST_OW
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{sysdate}
+		WHERE	OWKEY = #{owkey} 
+	</delete>	
+	 
+</mapper>	

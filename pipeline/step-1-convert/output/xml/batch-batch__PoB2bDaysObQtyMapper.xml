@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.po.mapper.PoB2bDaysObQtyMapper">
+
+    <select id="selectErpPoB2bDaysObQtyList" resultType="camelMap">
+		/* PoB2bDaysObQtyMapper.xml selectErpPoB2bDaysObQtyList */
+      SELECT TRN_ID
+           , CTKEY
+           , ICKEY
+           , CRITDAY
+           , AVQTY
+           , PREIBQTY
+           , IBEXPCTDAY
+           , IBEXPCTQTY
+           , AVGOBQTY
+        FROM (
+              SELECT TRN_ID
+                   , CTKEY
+                   , ICKEY
+                   , CRITDAY
+                   , AVQTY
+                   , PREIBQTY
+                   , IBEXPCTDAY
+                   , IBEXPCTQTY
+                   , AVGOBQTY
+                   , DENSE_RANK() OVER (ORDER BY  TRN_ID  DESC) TRN_RK
+                FROM TORDER_EAI_B2BAVGOBQTY_BATCH
+               WHERE SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+                 AND SND_DATE BETWEEN #{startDate} AND #{endDate}
+              -- AND SND_DATE BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '1 days', 'YYYYMMDD') AND TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD')
+               GROUP BY TRN_ID
+                      , CTKEY
+                      , ICKEY
+                      , CRITDAY
+                      , AVQTY
+                      , PREIBQTY
+                      , IBEXPCTDAY
+                      , IBEXPCTQTY
+                      , AVGOBQTY
+               ORDER BY TRN_ID
+        )
+       WHERE TRN_RK = 1
+    </select>    
+</mapper>

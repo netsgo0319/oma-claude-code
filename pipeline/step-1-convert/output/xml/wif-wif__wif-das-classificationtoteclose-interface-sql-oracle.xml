@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.das.classiftoteclose.mapper.ClassifToteCloseMapper">
+	<select id="getClassificationToteCloseWaveSeq" resultType="camelMap">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - getClassificationToteCloseWaveSeq - 분류토트마감 웨이브 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getClassificationToteCloseOrderSeq" resultType="camelMap">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - getClassificationToteCloseOrderSeq - 분류토트마감 오더 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getClassificationToteCloseItemSeq" resultType="camelMap">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - getClassificationToteCloseItemSeq - 분류토트마감 아이템 Sequence 조회 SQL */
+		SELECT nextval('seq_twif_das_classiftote_clos_item') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertClassificationToteCloseWave" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseWaveVO">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - insertClassificationToteCloseWave - 분류토트마감 웨이브 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteCloseOrder" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseOrderVO">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - insertClassificationToteCloseOrder - 분류토트마감 오더 INSERT SQL */
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,DASCELLBRCD
+			,CLASSIFTOTEBRCD
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{dasCellBrcd}
+			,#{classifToteBrcd}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertClassificationToteCloseItem" parameterType="com.daiso.wif.rest.in.das.classiftoteclose.vo.ClassifToteCloseItemVO">
+		/* wif-das-classificationtoteclose-interface-sql-oracle.xml - insertClassificationToteCloseItem - 분류토트마감 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_das_classiftote_clos_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_DAS_CLASSIFTOTE_CLOS_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,ICNM
+			,ICBRCD
+			,ICBRCD2
+			,QTY
+			,EMPNOBRCD
+			,FINGERSCANNERID
+			,WKPRCSDATE1
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{icNm}
+			,#{icBrcd}
+			,#{icBrcd2}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{fingerScannerId}
+			,#{wkPrcsDate1}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+</mapper>

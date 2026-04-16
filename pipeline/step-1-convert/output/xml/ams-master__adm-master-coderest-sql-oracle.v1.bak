@@ -1,0 +1,1532 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.ams.master.mapper.OwnerAdminCodeRestMapper">
+	
+	<sql id="LV_ICCTG">
+		SELECT T.OWKEY
+		     , T.CTGKEY    /*상품대/중/소코드*/
+			 , T.CTGLV    /*상품대/중/소구분*/
+			 , T.CTGNM    /*상품대/중/소명*/
+			 , T.UPPERCTGKEY    /*상위상품분류*/
+			 , T.ICGRKEY		
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+		  		/*3레벨*/
+				SELECT L3.OWKEY
+				     , L3.OWCDDTKEY AS CTGKEY    /*상품대/중/소코드*/
+					 , 3 AS CTGLV    /*상품대/중/소구분*/
+					 , L3.OWCDDTNM AS CTGNM    /*상품대/중/소명*/
+					 , L2.OWCDDTKEY AS UPPERCTGKEY    /*상위상품분류*/
+					 , L0.OWCDDTKEY AS ICGRKEY
+				  FROM TADMIN_MST_OWCD_DT L3
+				  LEFT JOIN TADMIN_MST_OWCD_DT L2
+				    ON L3.OWKEY = L2.OWKEY
+				   AND L3.OWCDDTKEY LIKE L2.OWCDDTKEY || '%'
+				   AND L2.OWCDHDKEY = #{lv2Ctgkeys}
+				  LEFT JOIN TADMIN_MST_OWCD_DT L0  
+				    ON L3.OWKEY = L0.OWKEY
+				   AND L3.OWCDDTKEY LIKE L0.OWCDDTKEY || '%'
+				   AND L0.OWCDHDKEY = #{lv0Ctgkeys}
+				 WHERE L3.OWCDHDKEY = #{lv3Ctgkeys}
+				   AND L3.OWKEY = #{owkey}
+				
+				UNION ALL
+						   
+				/*2레벨*/   
+				SELECT L2.OWKEY
+				     , L2.OWCDDTKEY AS CTGKEY    /*상품대/중/소코드*/
+					 , 2 AS CTGLV    /*상품대/중/소구분*/
+					 , L2.OWCDDTNM AS CTGNM    /*상품대/중/소명*/
+					 , L1.OWCDDTKEY AS UPPERCTGKEY    /*상위상품분류*/
+					 , L0.OWCDDTKEY AS ICGRKEY
+				  FROM TADMIN_MST_OWCD_DT L2   
+				  LEFT JOIN TADMIN_MST_OWCD_DT L1
+				    ON L2.OWKEY = L1.OWKEY
+				   AND L2.OWCDDTKEY LIKE L1.OWCDDTKEY || '%'
+				   AND L1.OWCDHDKEY = #{lv1Ctgkeys}
+				  LEFT JOIN TADMIN_MST_OWCD_DT L0  
+				    ON L2.OWKEY = L0.OWKEY
+				   AND L2.OWCDDTKEY LIKE L0.OWCDDTKEY || '%'
+				   AND L0.OWCDHDKEY = #{lv0Ctgkeys}
+				 WHERE L2.OWCDHDKEY = #{lv2Ctgkeys}
+				   AND L2.OWKEY = #{owkey}
+				
+				UNION ALL
+				   		
+				/*1레벨*/ 
+				SELECT L1.OWKEY
+				     , L1.OWCDDTKEY AS CTGKEY    /*상품대/중/소코드*/
+					 , 1 AS CTGLV    /*상품대/중/소구분*/
+					 , L1.OWCDDTNM AS CTGNM    /*상품대/중/소명*/
+					 , 'DIR' AS UPPERCTGKEY    /*상위상품분류*/ 
+					 , L0.OWCDDTKEY AS ICGRKEY
+				  FROM TADMIN_MST_OWCD_DT L1  
+				  LEFT JOIN TADMIN_MST_OWCD_DT L0  
+				    ON L1.OWKEY = L0.OWKEY
+				   AND L1.OWCDDTKEY LIKE L0.OWCDDTKEY || '%'
+				   AND L0.OWCDHDKEY = #{lv0Ctgkeys}
+				 WHERE L1.OWCDHDKEY = #{lv1Ctgkeys}
+				   AND L1.OWKEY = #{owkey}
+          	   ) T
+		    ON ID.OWCDDTKEY = T.CTGKEY
+		   AND ID.OWKEY = T.OWKEY
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt}
+		   AND ID.OWCDHDKEY IN
+			    <foreach item="ctgkeys" index="index" collection="ctgkeys"  open="(" separator="," close=")">
+			           #{ctgkeys}
+                </foreach>
+	</sql>
+	
+	<insert id="insertInterfaceCodeList">
+		/* adm-master-coderest-sql-oracle.xml  insertInterfaceCodeList */
+		INSERT INTO TADMIN_INTF_OWCD_HD
+		(
+		      OWKEY    /*화주*/
+			, OWCDHDKEY    /*화주공통 헤더키*/
+			, OWCDHDNM    /*화주공통 헤더명*/
+			, DELYN    /*삭제여부*/
+			, REQUESTDT    /*요청일자*/
+			, IFID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+			SELECT #{owkey} AS OWKEY    /*화주*/
+				 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+				 , #{item.owcdHdname} AS OWCDHDNM    /*화주공통 헤더명*/
+				 , 'N' AS DELYN    /*삭제여부*/
+			     , #{requestDt} AS REQUESTDT       /*요청일자*/
+			     , #{interfaceId} AS IFID       /*인터페이스 마스터 ID*/
+			     , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+			     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+			     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+			     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		</foreach>
+	</insert>
+	
+	<insert id="insertInterfaceCodeDetailList">
+		/* adm-master-coderest-sql-oracle.xml  insertInterfaceCodeDetailList */
+		INSERT INTO TADMIN_INTF_OWCD_DT
+		(
+		      OWKEY    /*화주*/
+			, OWCDHDKEY    /*화주공통 헤더키*/
+			, OWCDDTKEY    /*화주공통 상세키*/
+			, OWCDDTNM    /*화주공통 상세명*/
+			, DELYN    /*삭제여부*/
+			, REQUESTDT    /*요청일자*/
+			, IFID    /*인터페이스 마스터 ID*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+			SELECT #{owkey} AS OWKEY    /*화주*/
+				 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+				 , #{item.owcdDtkey} AS OWCDDTKEY    /*화주공통 상세키*/
+				 , #{item.owcdDtname} AS OWCDDTNM    /*화주공통 상세명*/
+				 , 'N' AS DELYN    /*삭제여부*/
+				 , #{requestDt} AS REQUESTDT    /*요청일자*/
+				 , #{interfaceId} AS IFID    /*인터페이스 마스터 ID*/
+				 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+			     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+			     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+			     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		</foreach>
+	</insert>
+	
+	<update id="updateAdminCodes">
+		/* adm-master-coderest-sql-oracle.xml  updateAdminCodes */
+		UPDATE TADMIN_MST_OWCD_HD H
+		   SET (				      
+					  OWCDHDNM    /*화주 기준코드 공통 명*/
+					, DELYN    /*삭제여부*/
+					, UPDATEDATE    /*수정 일시*/
+					, UPDATEURKEY    /*수정 사용자 ID*/
+				)
+			 = (
+			 	SELECT T.OWCDHDNM    /*화주 기준코드 공통 명*/
+					 , T.DELYN    /*삭제여부*/
+				     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+				     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+				  FROM TADMIN_INTF_OWCD_HD T
+				 WHERE T.IFID = #{interfaceId}
+				   AND T.REQUESTDT = #{requestDt} 
+				   AND T.OWKEY = H.OWKEY
+		   		   AND T.OWCDHDKEY = H.OWCDHDKEY
+			   )
+		 WHERE EXISTS (
+		 				SELECT 1
+		 				  FROM TADMIN_INTF_OWCD_HD T
+		 				 WHERE T.IFID = #{interfaceId}
+				   		   AND T.REQUESTDT = #{requestDt}
+				   		   AND T.OWKEY = H.OWKEY
+				   		   AND T.OWCDHDKEY = H.OWCDHDKEY
+		 			  )			   
+	</update>
+	
+	<insert id="insertAdminCodes">
+		/* adm-master-coderest-sql-oracle.xml  insertAdminCodes */
+		INSERT INTO TADMIN_MST_OWCD_HD
+		(
+		      OWKEY    /*화주코드*/
+			, OWCDHDKEY    /*화주 기준 코드 공통 코드*/
+			, OWCDHDNM    /*화주 기준코드 공통 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT T.OWKEY    /*화주코드*/
+			 , T.OWCDHDKEY    /*화주 기준 코드 공통 코드*/
+			 , T.OWCDHDNM    /*화주 기준코드 공통 명*/
+			 , T.DELYN    /*삭제여부*/
+			 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM TADMIN_INTF_OWCD_HD T
+		  LEFT JOIN TADMIN_MST_OWCD_HD H
+		    ON T.OWKEY = H.OWKEY
+		   AND T.OWCDHDKEY = H.OWCDHDKEY
+		 WHERE T.IFID = #{interfaceId}
+		   AND T.REQUESTDT = #{requestDt} 
+		   AND H.OWKEY IS NULL
+	</insert>
+	
+	<update id="updateAdminCodeDetails">
+		/* adm-master-coderest-sql-oracle.xml updateAdminCodeDetails */
+		UPDATE TADMIN_MST_OWCD_DT H
+		   SET (				      
+					  OWCDDTNM    /*화주 기준 코드 상세 명*/
+					, DELYN    /*삭제여부*/
+					, UPDATEDATE    /*수정 일시*/
+					, UPDATEURKEY    /*수정 사용자 ID*/
+				)
+			 = (
+			 	SELECT T.OWCDDTNM    /*화주 기준 코드 상세 명*/
+					 , T.DELYN    /*삭제여부*/
+				     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+				     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+				  FROM TADMIN_INTF_OWCD_DT T
+				 WHERE T.IFID = #{interfaceId}
+				   AND T.REQUESTDT = #{requestDt}
+				   AND T.OWKEY = H.OWKEY
+		   		   AND T.OWCDHDKEY = H.OWCDHDKEY
+		   		   AND T.OWCDDTKEY = H.OWCDDTKEY
+		   		   AND H.LAKEY = 'KOR' 
+			   )
+		 WHERE EXISTS (
+		 				SELECT 1
+		 				  FROM TADMIN_INTF_OWCD_DT T
+		 				 WHERE T.IFID = #{interfaceId}
+				   		   AND T.REQUESTDT = #{requestDt}
+				   		   AND T.OWKEY = H.OWKEY
+				   		   AND T.OWCDHDKEY = H.OWCDHDKEY
+				   		   AND T.OWCDDTKEY = H.OWCDDTKEY
+				   		   AND H.LAKEY = 'KOR'
+		 			  )			   
+	</update>
+	
+	<insert id="insertAdminCodeDetails">
+		/* adm-master-coderest-sql-oracle.xml  insertAdminCodeDetails */
+		INSERT INTO TADMIN_MST_OWCD_DT
+		(
+			  OWKEY    /*화주코드*/
+			, OWCDHDKEY    /*화주 기준 코드 공통 코드*/
+			, OWCDDTKEY    /*화주 기준 코드 상세 코드*/
+			, LAKEY    /*국가별 언어 코드*/
+			, OWCDDTORDER    /*화주 기준 코드 상세 순서*/
+			, OWCDDTNM    /*화주 기준 코드 상세 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT TT.OWKEY    /*화주코드*/
+			 , TT.OWCDHDKEY    /*화주 기준 코드 공통 코드*/
+			 , TT.OWCDDTKEY    /*화주 기준 코드 상세 코드*/
+			 , 'KOR' AS LAKEY    /*국가별 언어 코드*/
+			 , ROW_NUMBER() OVER(PARTITION BY TT.OWCDHDKEY ORDER BY TT.OWCDDTKEY) + COALESCE(RM.OWCDDTORDER, 0) AS OWCDDTORDER  /*화주 기준 코드 상세 순서*/
+			 , TT.OWCDDTNM    /*화주 기준 코드 상세 명*/
+			 , TT.DELYN    /*삭제여부*/
+			 , #{interfaceDate} AS INSERTDATE       /*입력 일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY       /*입력 사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE       /*수정 일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY       /*수정 사용자 ID*/
+		  FROM (
+		  		SELECT T.OWKEY    /*화주코드*/
+					 , T.OWCDHDKEY    /*화주 기준 코드 공통 코드*/
+					 , T.OWCDDTKEY    /*화주 기준 코드 상세 코드*/
+					 , T.OWCDDTNM    /*화주 기준 코드 상세 명*/
+					 , T.DELYN    /*삭제여부*/
+					 , CASE WHEN DT.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS DTYN
+				  FROM TADMIN_INTF_OWCD_DT T
+				  LEFT JOIN TADMIN_MST_OWCD_DT DT
+				    ON T.OWKEY = DT.OWKEY
+				   AND T.OWCDHDKEY = DT.OWCDHDKEY
+				   AND T.OWCDDTKEY = DT.OWCDDTKEY
+				   AND DT.LAKEY = 'KOR'
+				 WHERE T.IFID = #{interfaceId}
+				   AND T.REQUESTDT = #{requestDt}
+		  	   ) TT
+		  LEFT JOIN (
+		  			SELECT MAX(OWCDDTORDER) AS OWCDDTORDER
+			             , T2.OWCDHDKEY
+			         FROM TADMIN_INTF_OWCD_DT T1
+			         JOIN TADMIN_MST_OWCD_DT T2
+			           ON T1.OWKEY = T2.OWKEY
+			          AND T1.OWCDHDKEY = T2.OWCDHDKEY
+			          AND T1.OWCDDTKEY = T2.OWCDDTKEY
+			          AND T2.LAKEY = 'KOR'
+			        WHERE T1.IFID = #{interfaceId}
+		   			  AND T1.REQUESTDT = #{requestDt}        
+			        GROUP BY T2.OWCDHDKEY
+		  			) RM
+			ON TT.OWCDHDKEY = RM.OWCDHDKEY
+		 WHERE TT.DTYN = 'Y'
+	</insert>
+	
+	<update id="updateAdminIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  updateAdminIcgrs */
+		UPDATE TADMIN_MST_ICGR M
+		   SET (ICGRPNM, IFYN, UPDATEDATE, UPDATEURKEY)
+		     = (SELECT ID.OWCDDTNM AS ICGRNM    /*LC명(상품그룹명)*/
+		             , 'Y' AS IFYN
+		             , #{interfaceDate} AS UPDATEDATE
+		             , #{interfaceUrkey} AS UPDATEURKEY
+		          FROM TADMIN_INTF_OWCD_DT ID
+		          JOIN (
+	          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+						SELECT #{item} AS OWCD_HDKEY 
+					</foreach>
+		          	   ) GRP
+		            ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		         WHERE ID.IFID = #{interfaceId}
+   				   AND ID.REQUESTDT = #{requestDt} 
+   				   AND ID.OWKEY = M.OWKEY
+		           AND ID.OWCDDTKEY = M.ICGRPKEY
+		           AND M.ICGRPTYPE = 'CATEGORY'
+		       )
+		 WHERE M.ICGRPTYPE = 'CATEGORY'
+		   AND EXISTS (
+		                SELECT 1
+		                  FROM TADMIN_INTF_OWCD_DT ID
+		                  JOIN (
+			          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+								SELECT #{item} AS OWCD_HDKEY 
+							</foreach>
+				          	   ) GRP
+		                    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		                 WHERE ID.IFID = #{interfaceId}
+   						   AND ID.REQUESTDT = #{requestDt} 
+   						   AND ID.OWKEY = M.OWKEY
+		                   AND ID.OWCDDTKEY = M.ICGRPKEY
+		              )  
+	</update>
+	
+	<insert id="insertAdminIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  insertAdminIcgrs */
+		INSERT INTO TADMIN_MST_ICGR
+		(
+		      OWKEY    /*화주코드*/
+		    , ICGRPKEY    /*LC구분(상품그룹)*/
+		    , ICGRPTYPE    /*상품그룹유형*/
+		    , ICGRPNM    /*LC명(상품그룹명)*/
+		    , IFYN
+		    , CLOSDATE    /**/
+		    , INSERTDATE    /*입력일시*/
+		    , INSERTURKEY    /*입력사용자 ID*/
+		    , UPDATEDATE    /*수정일시*/
+		    , UPDATEURKEY    /*수정사용자 ID*/
+		    , SAMFILENM    /**/
+		)
+		SELECT ID.OWKEY    /*화주코드*/
+		     , ID.OWCDDTKEY AS ICGRPKEY    /*LC구분(상품그룹)*/
+		     , 'CATEGORY' AS ICGRPTYPE    /*상품그룹유형*/
+		     , ID.OWCDDTNM AS ICGRPNM    /*LC명(상품그룹명)*/
+		     , 'Y' AS IFYN
+		     , #{closdate} AS CLOSDATE    /**/
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+		     , NULL AS SAMFILENAME    /**/
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+      		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+				SELECT #{item} AS OWCD_HDKEY 
+			</foreach>
+          	   ) GRP
+		    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		  LEFT JOIN TADMIN_MST_ICGR M
+		    ON ID.OWKEY = M.OWKEY
+		   AND ID.OWCDDTKEY = M.ICGRPKEY
+		   AND M.ICGRPTYPE = 'CATEGORY'
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt} 
+		   AND M.OWKEY IS NULL
+	</insert>
+	
+	<insert id="insertAdminIcgrxcts">
+		/* adm-master-coderest-sql-oracle.xml  insertAdminIcgrxcts */
+		INSERT INTO TADMIN_MST_ICGRXCT
+		(
+		      OWKEY    /*화주코드*/
+			, ICGRKEY    /*상품그룹*/
+			, ICGRTYPE    /*상품그룹유형*/
+			, CTKEY    /*센터코드*/
+		    , INSERTDATE    /*입력일시*/
+		    , INSERTURKEY    /*입력사용자 ID*/
+		    , UPDATEDATE    /*수정일시*/
+		    , UPDATEURKEY    /*수정사용자 ID*/
+		)
+		SELECT ID.OWKEY    /*화주코드*/
+		     , ID.OWCDDTKEY AS ICGRKEY    /*LC구분(상품그룹)*/
+		     , 'CATEGORY' AS ICGRTYPE    /*상품그룹유형*/
+		     , CT.CTKEY    
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+      		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+				SELECT #{item} AS OWCD_HDKEY 
+			</foreach>
+          	   ) GRP
+		    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+          JOIN TADMIN_MST_CT CT
+		    ON CT.DELYN = 'N'
+		   AND CT.MANAGEMENTYN = 'Y'		    
+		  LEFT JOIN TADMIN_MST_ICGRXCT M
+		    ON ID.OWKEY = M.OWKEY
+		   AND ID.OWCDDTKEY = M.ICGRKEY
+		   AND M.ICGRTYPE = 'CATEGORY'
+		   AND CT.CTKEY = M.CTKEY		   
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt} 
+		   AND M.OWKEY IS NULL
+	</insert>
+	
+	<update id="updateWmsIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  updateWmsIcgrs */
+		UPDATE TWORK_MST_ICGR M
+		   SET (ICGRNAME, UPDATEDATE, UPDATEURKEY)
+		     = (SELECT ID.OWCDDTNM AS ICGRNAME    /*LC명(상품그룹명)*/
+		             , #{interfaceDate} AS UPDATEDATE
+		             , #{interfaceUrkey} AS UPDATEURKEY
+		          FROM TADMIN_INTF_OWCD_DT ID
+		          JOIN (
+	          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+						SELECT #{item} AS OWCD_HDKEY 
+					</foreach>
+		          	   ) GRP
+		            ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+				  JOIN TADMIN_MST_ICGRXCT CT
+				    ON ID.OWKEY = CT.OWKEY
+				   AND ID.OWCDDTKEY = CT.ICGRKEY
+				   AND CT.ICGRTYPE = 'CATEGORY'
+		         WHERE ID.IFID = #{interfaceId}
+   				   AND ID.REQUESTDT = #{requestDt} 
+   				   AND ID.OWKEY = M.OWKEY
+		           AND ID.OWCDDTKEY = M.ICGRKEY
+		           AND CT.CTKEY = M.CTKEY
+		       )
+		 WHERE M.ICGRTYPE = 'CATEGORY'
+		   AND EXISTS (
+		                SELECT 1
+		                  FROM TADMIN_INTF_OWCD_DT ID
+		                  JOIN (
+			          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+								SELECT #{item} AS OWCD_HDKEY 
+							</foreach>
+				          	   ) GRP
+		                    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		                  JOIN TADMIN_MST_ICGRXCT CT
+						    ON ID.OWKEY = CT.OWKEY
+						   AND ID.OWCDDTKEY = CT.ICGRKEY
+						   AND CT.ICGRTYPE = 'CATEGORY'
+		                 WHERE ID.IFID = #{interfaceId}
+   						   AND ID.REQUESTDT = #{requestDt} 
+   						   AND ID.OWKEY = M.OWKEY
+		                   AND ID.OWCDDTKEY = M.ICGRKEY
+		                   AND CT.CTKEY = M.CTKEY
+		              )  
+	</update>
+	
+	<insert id="insertWmsIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  insertWmsIcgrs */
+		INSERT INTO TWORK_MST_ICGR
+		(
+		      CTKEY    /*센터 코드*/
+			, OWKEY    /*화주 코드*/
+			, ICGRKEY    /*물품 그룹 코드*/
+			, ICGRTYPE    /*물품 그룹 유형*/
+			, ICGRNAME    /*물품 그룹명*/
+			, CLOSDATE    /*종료 일시*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+			, SAMFILENAME    /*SAM파일명*/
+		)
+		SELECT CT.CTKEY    /*센터 코드*/
+		     , ID.OWKEY    /*화주코드*/
+		     , ID.OWCDDTKEY AS ICGRKEY    /*LC구분(상품그룹)*/
+		     , 'CATEGORY' AS ICGRTYPE    /*상품그룹유형*/
+		     , ID.OWCDDTNM AS ICGRNAME    /*LC명(상품그룹명)*/
+		     , #{closdate} AS CLOSDATE    /**/
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+		     , NULL AS SAMFILENAME    /**/
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+      		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+				SELECT #{item} AS OWCD_HDKEY 
+			</foreach>
+          	   ) GRP
+		    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		  JOIN TADMIN_MST_CT CT
+		    ON CT.DELYN = 'N'
+		   AND CT.MANAGEMENTYN = 'Y'
+		  LEFT JOIN TWORK_MST_ICGR M
+		    ON ID.OWKEY = M.OWKEY
+		   AND ID.OWCDDTKEY = M.ICGRKEY
+		   AND CT.CTKEY = M.CTKEY
+		   AND M.ICGRTYPE = 'CATEGORY'
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt} 
+		   AND M.OWKEY IS NULL
+	</insert>
+	
+	<update id="updateTmsIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  updateTmsIcgrs */
+		UPDATE TT_MST_ICGR M
+		   SET (ICGRNAME, UPDATEDATE, UPDATEURKEY)
+		     = (SELECT ID.OWCDDTNM AS ICGRNAME    /*LC명(상품그룹명)*/
+		             , #{interfaceDate} AS UPDATEDATE
+		             , #{interfaceUrkey} AS UPDATEURKEY
+		          FROM TADMIN_INTF_OWCD_DT ID
+		          JOIN (
+	          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+						SELECT #{item} AS OWCD_HDKEY 
+					</foreach>
+		          	   ) GRP
+		            ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		         WHERE ID.IFID = #{interfaceId}
+   				   AND ID.REQUESTDT = #{requestDt} 
+   				   AND ID.OWKEY = M.OWKEY
+		           AND ID.OWCDDTKEY = M.ICGRKEY
+		           AND M.ICGRTYPE = 'CATEGORY'
+		       )
+		 WHERE M.ICGRTYPE = 'CATEGORY'
+		   AND EXISTS (
+		                SELECT 1
+		                  FROM TADMIN_INTF_OWCD_DT ID
+		                  JOIN (
+			          		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+								SELECT #{item} AS OWCD_HDKEY 
+							</foreach>
+				          	   ) GRP
+		                    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		                 WHERE ID.IFID = #{interfaceId}
+   						   AND ID.REQUESTDT = #{requestDt} 
+   						   AND ID.OWKEY = M.OWKEY
+		                   AND ID.OWCDDTKEY = M.ICGRKEY
+		              )  
+	</update>
+	
+	<insert id="insertTmsIcgrs">
+		/* adm-master-coderest-sql-oracle.xml  insertTmsIcgrs */
+		INSERT INTO TT_MST_ICGR
+		(
+		      OWKEY    /*화주코드*/
+		    , ICGRKEY    /*상품그룹*/
+		    , ICGRTYPE    /*상품그룹유형*/
+		    , ICGRNAME    /*상품그룹명*/
+		    , CLOSDATE    /**/
+		    , INSERTDATE    /*입력일시*/
+		    , INSERTURKEY    /*입력사용자 ID*/
+		    , UPDATEDATE    /*수정일시*/
+		    , UPDATEURKEY    /*수정사용자 ID*/
+		    , SAMFILENAME    /**/
+		)
+		SELECT ID.OWKEY    /*화주코드*/
+		     , ID.OWCDDTKEY AS ICGRKEY    /*(상품그룹)*/
+		     , 'CATEGORY' AS ICGRTYPE    /*상품그룹유형*/
+		     , ID.OWCDDTNM AS ICGRNAME    /*(상품그룹명)*/
+		     , #{closdate} AS CLOSDATE    /**/
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+		     , NULL AS SAMFILENAME    /**/
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+      		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+				SELECT #{item} AS OWCD_HDKEY 
+			</foreach>
+          	   ) GRP
+		    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+		  LEFT JOIN TT_MST_ICGR M
+		    ON ID.OWKEY = M.OWKEY
+		   AND ID.OWCDDTKEY = M.ICGRKEY
+		   AND M.ICGRTYPE = 'CATEGORY'
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt} 
+		   AND M.OWKEY IS NULL
+	</insert>
+	
+	<insert id="insertTmsIcgrxcts">
+		/* adm-master-coderest-sql-oracle.xml  insertTmsIcgrxcts */
+		INSERT INTO TT_MST_ICGRXCT
+		(
+		      OWKEY    /*화주코드*/
+			, ICGRKEY    /*상품그룹*/
+			, ICGRTYPE    /*상품그룹유형*/
+			, CTKEY    /*센터코드*/
+		    , INSERTDATE    /*입력일시*/
+		    , INSERTURKEY    /*입력사용자 ID*/
+		    , UPDATEDATE    /*수정일시*/
+		    , UPDATEURKEY    /*수정사용자 ID*/
+		)
+		SELECT ID.OWKEY    /*화주코드*/
+		     , ID.OWCDDTKEY AS ICGRKEY    /*LC구분(상품그룹)*/
+		     , 'CATEGORY' AS ICGRTYPE    /*상품그룹유형*/
+		     , CT.CTKEY    
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+		  FROM TADMIN_INTF_OWCD_DT ID
+		  JOIN (
+      		<foreach collection="groupcodes" item="item" separator="UNION ALL">
+				SELECT #{item} AS OWCD_HDKEY 
+			</foreach>
+          	   ) GRP
+		    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+          JOIN TADMIN_MST_CT CT
+		    ON CT.DELYN = 'N'
+		   AND CT.MANAGEMENTYN = 'Y'		    
+		  LEFT JOIN TT_MST_ICGRXCT M
+		    ON ID.OWKEY = M.OWKEY
+		   AND ID.OWCDDTKEY = M.ICGRKEY
+		   AND M.ICGRTYPE = 'CATEGORY'
+		   AND CT.CTKEY = M.CTKEY		   
+		 WHERE ID.IFID = #{interfaceId}
+		   AND ID.REQUESTDT = #{requestDt} 
+		   AND M.OWKEY IS NULL
+	</insert>
+	
+	<update id="updateAdminIcctg">
+		/* adm-master-coderest-sql-oracle.xml  updateAdminIcctg */
+		UPDATE TADMIN_MST_CTG M 
+		   SET (  CTGNM    /*상품대/중/소명*/
+				, UPPERCTGKEY    /*상위상품분류*/
+				, ICGRPKEY /*상품그룹코드*/
+				, IFYN
+				, UPDATEDATE    /*수정일시*/
+				, UPDATEURKEY    /*수정사용자*/
+			    )
+			 = (
+			 	SELECT T.CTGNM    /*상품대/중/소명*/
+					 , T.UPPERCTGKEY    /*상위상품분류*/
+					 , T.ICGRKEY
+					 , 'Y' AS IFYN
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      			<include refid="LV_ICCTG"/>
+			      	   ) T
+                 WHERE T.OWKEY = M.OWKEY
+                   AND T.CTGKEY = M.CTGKEY			      	   
+			   )
+		 WHERE M.OWKEY = #{owkey}
+		   AND EXISTS (
+		   				SELECT 1
+					      FROM TADMIN_INTF_OWCD_DT ID
+		                 WHERE ID.IFID = #{interfaceId}
+		   				   AND ID.REQUESTDT = #{requestDt}
+		   				   AND ID.OWCDHDKEY IN
+						    <foreach item="ctgkeys" index="index" collection="ctgkeys"  open="(" separator="," close=")">
+						           #{ctgkeys}
+			                </foreach>
+                		   AND ID.OWKEY = M.OWKEY
+		                   AND ID.OWCDDTKEY = M.CTGKEY
+		   			  )
+	</update>
+	
+	<insert id="insertAdminIcctg">
+		/* adm-master-coderest-sql-oracle.xml  insertAdminIcctg */
+		INSERT INTO TADMIN_MST_CTG
+		(
+			  CTGKEY    /*상품대/중/소코드*/
+			, CTGLV    /*상품대/중/소구분*/
+			, OWKEY    /*화주*/
+			, CTGNM    /*상품대/중/소명*/
+			, UPPERCTGKEY    /*상위상품분류*/
+			, URKEY    /*담당MD사번*/
+			, CLOSDATE    /*종료일시*/
+			, IFYN
+			, DELYN    /*삭제여부*/
+			, ICGRPKEY    /*상품그룹코드*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자*/
+
+		) 
+	 	SELECT T.CTGKEY    /*상품대/중/소코드*/
+			 , T.CTGLV    /*상품대/중/소구분*/
+			 , T.OWKEY
+			 , T.CTGNM    /*상품대/중/소명*/
+			 , T.UPPERCTGKEY    /*상위상품분류*/
+			 , NULL AS URKEY
+		 	 , #{closdate} AS CLOSDATE    /**/
+		 	 , 'Y' AS IFYN
+		 	 , 'N' AS DELYN
+			 , T.ICGRKEY
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+	      FROM (
+	      		SELECT LI.CTGKEY    /*상품대/중/소코드*/
+					 , LI.CTGLV    /*상품대/중/소구분*/
+					 , LI.OWKEY
+					 , LI.CTGNM    /*상품대/중/소명*/
+					 , LI.UPPERCTGKEY    /*상위상품분류*/
+					 , LI.ICGRKEY
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS DTYN
+				  FROM (
+				  		<include refid="LV_ICCTG"/>
+				  	   ) LI
+				  LEFT JOIN TADMIN_MST_CTG M
+				    ON LI.OWKEY = M.OWKEY
+           		   AND LI.CTGKEY = M.CTGKEY
+	      	   ) T
+         WHERE T.DTYN = 'Y'	   
+	</insert>
+	
+	<update id="updateWmsIcctg">
+		/* adm-master-coderest-sql-oracle.xml  updateWmsIcctg */
+		UPDATE TWORK_MST_CTG M 
+		   SET (  CTGNAME    /*상품대/중/소명*/
+				, UPPERCTGKEY    /*상위상품분류*/
+				, ICGRKEY /*상품그룹코드*/
+				, UPDATEDATE    /*수정일시*/
+				, UPDATEURKEY    /*수정사용자*/
+			    )
+			 = (
+			 	SELECT T.CTGNAME    /*상품대/중/소명*/
+					 , T.UPPERCTGKEY    /*상위상품분류*/
+					 , T.ICGRKEY
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      			<include refid="LV_ICCTG"/>
+			      	   ) T
+			      JOIN TADMIN_MST_ICGRXCT CT
+				    ON T.OWKEY = CT.OWKEY
+				   AND T.ICGRKEY = CT.ICGRKEY
+				   AND CT.ICGRTYPE = 'CATEGORY'
+                 WHERE T.OWKEY = M.OWKEY
+                   AND T.CTGKEY = M.CTGKEY	
+                   AND CT.CTKEY = M.CTKEY	
+                   AND T.CTGLEVEL = M.CTGLEVEL	      	   
+			   )
+		 WHERE M.OWKEY = #{owkey}
+		   AND EXISTS (
+		   				SELECT 1
+					      FROM (
+					      			<include refid="LV_ICCTG"/>
+					      	   ) T
+					      JOIN TADMIN_MST_ICGRXCT CT
+						    ON T.OWKEY = CT.OWKEY
+						   AND T.ICGRKEY = CT.ICGRKEY
+						   AND CT.ICGRTYPE = 'CATEGORY'
+		                 WHERE T.OWKEY = M.OWKEY
+		                   AND T.CTGKEY = M.CTGKEY	
+		                   AND CT.CTKEY = M.CTKEY
+		                   AND T.CTGLEVEL = M.CTGLEVEL
+		   			  )
+	</update>
+	
+	<insert id="insertWmsIcctg">
+		/* adm-master-coderest-sql-oracle.xml  insertWmsIcctg */
+		INSERT INTO TWORK_MST_CTG
+		(
+			  CTKEY    /*센터코드*/
+			, CTGKEY    /*상품대/중/소코드*/
+			, CTGLEVEL    /*상품대/중/소구분*/
+			, OWKEY    /*화주*/
+			, CTGNAME    /*상품대/중/소명*/
+			, UPPERCTGKEY    /*상위상품분류*/
+			, URKEY    /*담당MD사번*/
+			, CLOSDATE    /*종료일시*/
+			, DELYN    /*삭제여부*/
+			, ICGRKEY    /*상품그룹코드*/
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자*/
+		) 
+	 	SELECT T.CTKEY 		/*센터코드*/
+	 	     , T.CTGKEY    /*상품대/중/소코드*/
+			 , T.CTGLEVEL    /*상품대/중/소구분*/
+			 , T.OWKEY
+			 , T.CTGNAME    /*상품대/중/소명*/
+			 , T.UPPERCTGKEY    /*상위상품분류*/
+			 , NULL AS URKEY
+		 	 , #{closdate} AS CLOSDATE    /**/
+		 	 , 'N' AS DELYN
+			 , T.ICGRKEY
+		     , #{interfaceDate} AS INSERTDATE    /*입력일시*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자 ID*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+	      FROM (
+	      		SELECT LI.CTGKEY    /*상품대/중/소코드*/
+					 , LI.CTGLEVEL    /*상품대/중/소구분*/
+					 , LI.OWKEY
+					 , CT.CTKEY
+					 , LI.CTGNAME    /*상품대/중/소명*/
+					 , LI.UPPERCTGKEY    /*상위상품분류*/
+					 , LI.ICGRKEY
+					 , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS DTYN
+				  FROM (
+				  		<include refid="LV_ICCTG"/>
+				  	   ) LI
+				  JOIN TADMIN_MST_ICGRXCT CT
+				    ON LI.OWKEY = CT.OWKEY
+				   AND LI.ICGRKEY = CT.ICGRKEY
+				   AND CT.ICGRTYPE = 'CATEGORY'
+				  LEFT JOIN TWORK_MST_CTG M
+				    ON LI.OWKEY = M.OWKEY
+           		   AND LI.CTGKEY = M.CTGKEY
+           		   AND CT.CTKEY = M.CTKEY
+           		   AND LI.CTGLEVEL = M.CTGLEVEL
+	      	   ) T
+         WHERE T.DTYN = 'Y'	   
+	</insert>
+	
+	<insert id="insertWcsIcctg">
+		/* wms-item-itemrest-sql-oracle.xml  insertWcsIcctg */
+		INSERT INTO TWORK_INTF_CTGWCS
+		(
+			  CTKEY
+			, OWKEY
+			, CTGLEVEL
+			, CTGKEY
+			, IF_YN
+			, INSERTDATE    /*입력일시*/
+			, INSERTURKEY    /*입력사용자*/
+			, UPDATEDATE    /*수정일시*/
+			, UPDATEURKEY    /*수정사용자*/
+		)
+		SELECT T.CTKEY
+			 , T.OWKEY
+			 , T.CTGLEVEL AS CTGLEVEL    /*상품대/중/소구분*/
+		     , T.CTGKEY    /*상품대/중/소코드*/
+			 , 'N' AS IF_YN
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM (
+		  		SELECT CT.CTKEY
+					 , L.OWKEY
+					 , L.CTGLEVEL    /*상품대/중/소구분*/
+				     , L.CTGKEY    /*상품대/중/소코드*/
+				     , CASE WHEN M.OWKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (	
+				  		/*상품대/중/소   :  2~4 LEVEL*/			  
+				  		SELECT LI.OWKEY
+							 , (LI.CTGLEVEL + 1) AS CTGLEVEL    /*상품대/중/소구분*/
+						     , LI.CTGKEY    /*상품대/중/소코드*/
+						     , LI.ICGRKEY
+						  FROM (
+						  		<include refid="LV_ICCTG"/>
+						  	   ) LI
+						  	   
+						UNION ALL
+						
+						/*상품그룹   :  1 LEVEL*/
+						SELECT ID.OWKEY    /*화주코드*/
+						     , 1 AS CTGLEVEL
+						     , ID.OWCDDTKEY AS CTGKEY    /*LC구분(상품그룹)*/
+						     , ID.OWCDDTKEY AS ICGRKEY
+						  FROM TADMIN_INTF_OWCD_DT ID
+						  JOIN (
+						    <foreach collection="groupcodes" item="item" separator="UNION ALL">
+						        SELECT #{item} AS OWCD_HDKEY 
+						    </foreach>
+						       ) GRP
+						    ON ID.OWCDHDKEY = GRP.OWCD_HDKEY
+						 WHERE ID.IFID = #{interfaceId}
+						   AND ID.REQUESTDT = #{requestDt} 
+				  	   ) L
+				  JOIN TADMIN_MST_ICGRXCT CT
+				    ON L.OWKEY = CT.OWKEY
+				   AND L.ICGRKEY = CT.ICGRKEY
+				   AND CT.ICGRTYPE = 'CATEGORY'
+				  JOIN TWORK_SET_CTCS WCT
+				    ON CT.CTKEY = WCT.CTKEY
+				   AND WCT.CTCSKEY = 'AUTOWH_IF_YN'	
+				   AND WCT.VALUE1 = 'YES'
+				  LEFT JOIN TWORK_INTF_CTGWCS M
+				    ON CT.CTKEY = M.CTKEY
+				   AND L.OWKEY = M.OWKEY
+		   		   AND L.CTGKEY = M.CTGKEY
+		   		   AND M.IF_YN = 'N'
+		       ) T
+		 WHERE T.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateAmsCodes">
+		/* adm-master-coderest-sql-oracle.xml  updateAmsCodes */
+		UPDATE TADMIN_MST_ADCD_HD M 
+		   SET (  ADCDHDNM    /*관리자 기준코드 공통 명*/
+				, UPDATEDATE    /*수정 일시*/
+				, UPDATEURKEY    /*수정 사용자 ID*/
+			    )
+			 = (
+			 	SELECT OH.OWCDHDNM AS ADCDHDNM
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_HD OH
+			        ON T.OWCDHDKEY = OH.OWCDHDKEY
+				   AND OH.IFID = #{interfaceId}
+				   AND OH.REQUESTDT = #{requestDt} 
+                 WHERE T.ADCDHDKEY = M.ADCDHDKEY
+			   )
+		 WHERE EXISTS (
+		   				SELECT 1
+					      FROM (
+					      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+									SELECT #{owkey} AS OWKEY    /*화주*/
+										 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+										 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+								</foreach>	
+					      	   ) T
+					      JOIN TADMIN_INTF_OWCD_HD OH
+					        ON T.OWCDHDKEY = OH.OWCDHDKEY
+						   AND OH.IFID = #{interfaceId}
+						   AND OH.REQUESTDT = #{requestDt} 
+						 WHERE T.ADCDHDKEY = M.ADCDHDKEY
+		   			  )
+	</update>
+	
+	<insert id="insertAmsCodes">
+		/* wms-item-itemrest-sql-oracle.xml  insertAmsCodes */
+		INSERT INTO TADMIN_MST_ADCD_HD
+		(
+			  ADCDHDKEY    /*관리자 기준 코드 공통 코드*/
+			, ADCDHDNM    /*관리자 기준코드 공통 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+
+		)
+		SELECT T.ADCDHDKEY    /*관리자 기준 코드 공통 코드*/
+			 , T.ADCDHDNM    /*관리자 기준코드 공통 명*/
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM (
+		  		SELECT T.ADCDHDKEY
+					 , OH.OWCDHDNM AS ADCDHDNM
+					 , CASE WHEN M.ADCD_HDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_HD OH
+			        ON T.OWCDHDKEY = OH.OWCDHDKEY
+				   AND OH.IFID = #{interfaceId}
+				   AND OH.REQUESTDT = #{requestDt}
+				  LEFT JOIN TADMIN_MST_ADCD_HD M
+				    ON T.ADCDHDKEY = M.ADCDHDKEY
+		       ) T
+		 WHERE T.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateAmsDetailCodes">
+		/* adm-master-coderest-sql-oracle.xml  updateAmsDetailCodes */
+		UPDATE TADMIN_MST_ADCD_DT M 
+		   SET (
+					  ADCDDTNM    /*관리자 기준 코드 상세 명*/
+					, UPDATEDATE    /*수정 일시*/
+					, UPDATEURKEY    /*수정 사용자 ID*/
+
+			    )
+			 = (
+			 	SELECT OD.OWCDDTNM AS ADCDHDNM
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt} 
+                 WHERE T.ADCDHDKEY = M.ADCDHDKEY
+                   AND OD.OWCDDTKEY = M.ADCDDTKEY
+                   AND M.LAKEY = 'KOR' 
+			   )
+		 WHERE EXISTS (
+		   				SELECT 1
+					      FROM (
+					      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+									SELECT #{owkey} AS OWKEY    /*화주*/
+										 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+										 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+								</foreach>	
+					      	   ) T
+					      JOIN TADMIN_INTF_OWCD_DT OD
+					        ON T.OWCDHDKEY = OD.OWCDHDKEY
+						   AND OD.IFID = #{interfaceId}
+						   AND OD.REQUESTDT = #{requestDt}
+						 WHERE T.ADCDHDKEY = M.ADCDHDKEY
+		                   AND OD.OWCDDTKEY = M.ADCDDTKEY
+		                   AND M.LAKEY = 'KOR'
+		   			  )
+	</update>
+	
+	<insert id="insertAmsDetailCodes">
+		/* wms-item-itemrest-sql-oracle.xml  insertAmsDetailCodes */
+		INSERT INTO TADMIN_MST_ADCD_DT
+		(
+			  ADCDHDKEY    /*관리자 기준 코드 공통 코드*/
+			, ADCDDTKEY    /*관리자 기준 코드 상세 코드*/
+			, LAKEY    /*국가별 언어 코드*/
+			, ADCDDTORDER    /*관리자 기준 코드 상세 순서*/
+			, ADCDDTNM    /*관리자 기준 코드 상세 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+
+		)
+		SELECT TT.ADCDHDKEY    /*관리자 기준 코드 공통 코드*/
+			 , TT.ADCDDTKEY    /*관리자 기준 코드 상세 코드*/
+			 , 'KOR' AS LAKEY    /*국가별 언어 코드*/
+			 , ROW_NUMBER() OVER(PARTITION BY TT.ADCD_HDKEY ORDER BY TT.ADCD_DTKEY) + COALESCE(RM.ADCDDTORDER, 0) AS ADCDDTORDER  /*관리자 기준 코드 상세 순서*/
+			 , TT.ADCDDTNM    /*관리자 기준 코드 상세 명*/
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM (
+		  		SELECT T.ADCDHDKEY
+					 , OD.OWCDDTKEY AS ADCDDTKEY
+					 , OD.OWCDDTNM AS ADCDDTNM
+					 , CASE WHEN M.ADCDHDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt}
+				  LEFT JOIN TADMIN_MST_ADCD_DT M
+				    ON T.ADCDHDKEY = M.ADCDHDKEY
+                   AND OD.OWCDDTKEY = M.ADCDDTKEY
+                   AND M.LAKEY = 'KOR'
+		       ) TT
+		  LEFT JOIN (
+		  		SELECT MAX(M.ADCDDTORDER) AS ADCDDTORDER
+		             , T.ADCDHDKEY
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt}
+				  JOIN TADMIN_MST_ADCD_DT M
+				    ON T.ADCDHDKEY = M.ADCDHDKEY
+                   AND OD.OWCDDTKEY = M.ADCDDTKEY
+                   AND M.LAKEY = 'KOR'
+                 GROUP BY T.ADCDHDKEY
+		       ) RM
+		    ON TT.ADCDHDKEY = RM.ADCDHDKEY
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateWmsCodes">
+		/* adm-master-coderest-sql-oracle.xml  updateWmsCodes */
+		UPDATE TWORK_MST_CTCD_HD M 
+		   SET (  CTCD_HDNAME    /*센터 기준 공통 코드 명*/
+				, UPDATEDATE    /*수정 일시*/
+				, UPDATEURKEY    /*수정 사용자 ID*/
+			    )
+			 = (
+			 	SELECT OH.OWCDHDNM AS CTCD_HDNAME
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_HD OH
+			        ON T.OWCDHDKEY = OH.OWCDHDKEY
+				   AND OH.IFID = #{interfaceId}
+				   AND OH.REQUESTDT = #{requestDt} 
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'  
+                 WHERE T.ADCDHDKEY = M.CTCD_HDKEY
+                   AND CT.CTKEY = M.CTKEY	
+			   )
+		 WHERE EXISTS (
+		   				SELECT 1
+					      FROM (
+					      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+									SELECT #{owkey} AS OWKEY    /*화주*/
+										 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+										 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+								</foreach>	
+					      	   ) T
+					      JOIN TADMIN_INTF_OWCD_HD OH
+					        ON T.OWCDHDKEY = OH.OWCDHDKEY
+						   AND OH.IFID = #{interfaceId}
+						   AND OH.REQUESTDT = #{requestDt} 
+						  JOIN TADMIN_MST_CT CT
+						    ON CT.DELYN = 'N'
+						   AND CT.MANAGEMENTYN = 'Y'  
+		                 WHERE T.ADCDHDKEY = M.CTCD_HDKEY
+		                   AND CT.CTKEY = M.CTKEY
+		   			  )
+	</update>
+	
+	<insert id="insertWmsCodes">
+		/* wms-item-itemrest-sql-oracle.xml  insertWmsCodes */
+		INSERT INTO TWORK_MST_CTCD_HD
+		(
+			  CTKEY   /*센터 코드*/
+			, CTCD_HDKEY   /*센터 기준 코드 공통 코드*/
+			, CTCD_HDNAME   /*센터 기준 공통 코드 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+
+		)
+		SELECT T.CTKEY
+		     , T.ADCDHDKEY AS CTCD_HDKEY
+			 , T.ADCDHDNM AS CTCD_HDNAME
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM (
+		  		SELECT T.ADCDHDKEY
+					 , OH.OWCDHDNM AS ADCDHDNM
+					 , CT.CTKEY
+					 , CASE WHEN M.CTCD_HDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_HD OH
+			        ON T.OWCDHDKEY = OH.OWCDHDKEY
+				   AND OH.IFID = #{interfaceId}
+				   AND OH.REQUESTDT = #{requestDt}
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'  
+				  LEFT JOIN TWORK_MST_CTCD_HD M
+				    ON T.ADCDHDKEY = M.CTCD_HDKEY
+				   AND CT.CTKEY = M.CTKEY
+		       ) T
+		 WHERE T.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateWmsDetailCodes">
+		/* adm-master-coderest-sql-oracle.xml  updateWmsDetailCodes */
+		UPDATE TWORK_MST_CTCD_DT M 
+		   SET (   	  
+					  CTCD_DTNAME   /*센터 기준 코드 상세 명*/
+					, UPDATEDATE    /*수정 일시*/
+					, UPDATEURKEY    /*수정 사용자 ID*/
+
+			    )
+			 = (
+			 	SELECT OD.OWCDDTNM AS CTCD_DTNAME
+					 , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+		     		 , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+			      FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt} 
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'
+                 WHERE T.ADCDHDKEY = M.CTCD_HDKEY
+                   AND OD.OWCDDTKEY = M.CTCD_DTKEY
+                   AND CT.CTKEY = M.CTKEY
+                   AND M.LAKEY = 'KOR' 
+			   )
+		 WHERE EXISTS (
+		   				SELECT 1
+					      FROM (
+					      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+									SELECT #{owkey} AS OWKEY    /*화주*/
+										 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+										 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+								</foreach>	
+					      	   ) T
+					      JOIN TADMIN_INTF_OWCD_DT OD
+					        ON T.OWCDHDKEY = OD.OWCDHDKEY
+						   AND OD.IFID = #{interfaceId}
+						   AND OD.REQUESTDT = #{requestDt}
+						  JOIN TADMIN_MST_CT CT
+						    ON CT.DELYN = 'N'
+						   AND CT.MANAGEMENTYN = 'Y'
+		                 WHERE T.ADCDHDKEY = M.CTCD_HDKEY
+		                   AND OD.OWCDDTKEY = M.CTCD_DTKEY
+		                   AND CT.CTKEY = M.CTKEY
+		                   AND M.LAKEY = 'KOR' 
+		   			  )
+	</update>
+	
+	<insert id="insertWmsDetailCodes">
+		/* wms-item-itemrest-sql-oracle.xml  insertWmsDetailCodes */
+		INSERT INTO TWORK_MST_CTCD_DT
+		(
+			  CTKEY   /*센터 코드*/
+			, CTCD_HDKEY   /*센터 기준 코드 공통 코드*/
+			, CTCD_DTKEY   /*센터 기준 코드 상세 코드*/
+			, LAKEY    /*국가별 언어 코드*/
+			, CTCD_DTORDER   /*센터 기준 코드 상세 순서*/
+			, CTCD_DTNAME   /*센터 기준 코드 상세 명*/
+			, DELYN    /*삭제여부*/
+			, INSERTDATE    /*입력 일시*/
+			, INSERTURKEY    /*입력 사용자 ID*/
+			, UPDATEDATE    /*수정 일시*/
+			, UPDATEURKEY    /*수정 사용자 ID*/
+
+		)
+		SELECT TT.CTKEY
+		     , TT.ADCDHDKEY AS CTCD_HDKEY
+			 , TT.ADCDDTKEY AS CTCD_DTKEY
+			 , 'KOR' AS LAKEY    /*국가별 언어 코드*/
+			 , ROW_NUMBER() OVER(PARTITION BY TT.ADCDHDKEY ORDER BY TT.ADCDDTKEY) + COALESCE(RM.ADCDDTORDER, 0) AS CTCDDTORDER
+			 , TT.ADCDDTNM AS CTCD_DTNAME
+			 , 'N' AS DELYN
+			 , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+		     , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+		     , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+		     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+		  FROM (
+		  		SELECT T.ADCDHDKEY
+					 , OD.OWCDDTKEY AS ADCDDTKEY
+					 , OD.OWCDDTNM AS ADCDDTNM
+					 , CT.CTKEY
+					 , CASE WHEN M.CTCD_HDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt}
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'
+				  LEFT JOIN TWORK_MST_CTCD_DT M
+				    ON T.ADCDHDKEY = M.CTCD_HDKEY
+                   AND OD.OWCDDTKEY = M.CTCD_DTKEY
+                   AND CT.CTKEY = M.CTKEY
+                   AND M.LAKEY = 'KOR'
+		       ) TT
+		  LEFT JOIN (
+		  		SELECT MAX(M.CTCDDTORDER) AS ADCDDTORDER
+		             , T.ADCDHDKEY
+		             , CT.CTKEY
+				  FROM (
+			      		<foreach collection="interfaceList" item="item" separator="UNION ALL">
+							SELECT #{owkey} AS OWKEY    /*화주*/
+								 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+								 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+						</foreach>	
+			      	   ) T
+			      JOIN TADMIN_INTF_OWCD_DT OD
+			        ON T.OWCDHDKEY = OD.OWCDHDKEY
+				   AND OD.IFID = #{interfaceId}
+				   AND OD.REQUESTDT = #{requestDt}
+				  JOIN TADMIN_MST_CT CT
+				    ON CT.DELYN = 'N'
+				   AND CT.MANAGEMENTYN = 'Y'
+				  JOIN TWORK_MST_CTCD_DT M
+				    ON T.ADCDHDKEY = M.CTCD_HDKEY
+                   AND OD.OWCDDTKEY = M.CTCD_DTKEY
+                   AND CT.CTKEY = M.CTKEY
+                   AND M.LAKEY = 'KOR'
+                 GROUP BY T.ADCDHDKEY, CT.CTKEY
+		       ) RM
+		    ON TT.ADCDHDKEY = RM.ADCDHDKEY
+		   AND TT.CTKEY = RM.CTKEY
+		 WHERE TT.SAVEYN = 'Y'
+	</insert>
+	
+	<update id="updateTmsCodes">
+        /* adm-master-coderest-sql-oracle.xml  updateTmsCodes */
+        UPDATE TT_MST_TMCD_HD M 
+           SET (  TMCD_HDNAME    /*관리자 기준 공통 코드 명*/
+                , UPDATEDATE    /*수정 일시*/
+                , UPDATEURKEY    /*수정 사용자 ID*/
+                )
+             = (
+                SELECT OH.OWCDHDNM AS TMCD_HDNAME
+                     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+                     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+                  FROM (
+                        <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                            SELECT #{owkey} AS OWKEY    /*화주*/
+                                 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                        </foreach>  
+                       ) T
+                  JOIN TADMIN_INTF_OWCD_HD OH
+                    ON T.OWCDHDKEY = OH.OWCDHDKEY
+                   AND OH.IFID = #{interfaceId}
+                   AND OH.REQUESTDT = #{requestDt} 
+                 WHERE T.ADCDHDKEY = M.TMCD_HDKEY
+               )
+         WHERE EXISTS (
+                        SELECT 1
+                          FROM (
+                                <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                                    SELECT #{owkey} AS OWKEY    /*화주*/
+                                         , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                         , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                                </foreach>  
+                               ) T
+                          JOIN TADMIN_INTF_OWCD_HD OH
+                            ON T.OWCDHDKEY = OH.OWCDHDKEY
+                           AND OH.IFID = #{interfaceId}
+                           AND OH.REQUESTDT = #{requestDt} 
+                         WHERE T.ADCDHDKEY = M.TMCD_HDKEY
+                      )
+    </update>
+    
+    <insert id="insertTmsCodes">
+        /* Tms-item-itemrest-sql-oracle.xml  insertTmsCodes */
+        INSERT INTO TT_MST_TMCD_HD
+        (
+              TMCD_HDKEY   /*관리자 기준 코드 공통 코드*/
+            , TMCD_HDNAME   /*관리자 기준 공통 코드 명*/
+            , DELYN    /*삭제여부*/
+            , INSERTDATE    /*입력 일시*/
+            , INSERTURKEY    /*입력 사용자 ID*/
+            , UPDATEDATE    /*수정 일시*/
+            , UPDATEURKEY    /*수정 사용자 ID*/
+
+        )
+        SELECT T.ADCDHDKEY AS TMCD_HDKEY
+             , T.ADCDHDNM AS TMCD_HDNAME
+             , 'N' AS DELYN
+             , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+             , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+             , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+             , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+          FROM (
+                SELECT T.ADCDHDKEY
+                     , OH.OWCDHDNM AS ADCDHDNM
+                     , CASE WHEN M.TMCD_HDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+                  FROM (
+                        <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                            SELECT #{owkey} AS OWKEY    /*화주*/
+                                 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                        </foreach>  
+                       ) T
+                  JOIN TADMIN_INTF_OWCD_HD OH
+                    ON T.OWCDHDKEY = OH.OWCDHDKEY
+                   AND OH.IFID = #{interfaceId}
+                   AND OH.REQUESTDT = #{requestDt}
+                  LEFT JOIN TT_MST_TMCD_HD M
+                    ON T.ADCDHDKEY = M.TMCD_HDKEY
+               ) T
+         WHERE T.SAVEYN = 'Y'
+    </insert>
+    
+    <update id="updateTmsDetailCodes">
+        /* adm-master-coderest-sql-oracle.xml  updateTmsDetailCodes */
+        UPDATE TT_MST_TMCD_DT M 
+           SET (      
+                      TMCD_DTNAME   /*관리자 기준 코드 상세 명*/
+                    , UPDATEDATE    /*수정 일시*/
+                    , UPDATEURKEY    /*수정 사용자 ID*/
+
+                )
+             = (
+                SELECT OD.OWCDDTNM AS TMCD_DTNAME
+                     , #{interfaceDate} AS UPDATEDATE    /*수정일시*/
+                     , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자 ID*/
+                  FROM (
+                        <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                            SELECT #{owkey} AS OWKEY    /*화주*/
+                                 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                        </foreach>  
+                       ) T
+                  JOIN TADMIN_INTF_OWCD_DT OD
+                    ON T.OWCDHDKEY = OD.OWCDHDKEY
+                   AND OD.IFID = #{interfaceId}
+                   AND OD.REQUESTDT = #{requestDt} 
+                 WHERE T.ADCD_HDKEY = M.TMCD_HDKEY  
+                   AND OD.OWCDDTKEY = M.TMCD_DTKEY
+                   AND M.LAKEY = 'KOR' 
+               )
+         WHERE EXISTS (
+                        SELECT 1
+                          FROM (
+                                <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                                    SELECT #{owkey} AS OWKEY    /*화주*/
+                                         , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                         , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                                </foreach>  
+                               ) T
+                          JOIN TADMIN_INTF_OWCD_DT OD
+                            ON T.OWCDHDKEY = OD.OWCDHDKEY
+                           AND OD.IFID = #{interfaceId}
+                           AND OD.REQUESTDT = #{requestDt}
+                         WHERE T.ADCDHDKEY = M.TMCD_HDKEY
+                           AND OD.OWCDDTKEY = M.TMCD_DTKEY
+                           AND M.LAKEY = 'KOR' 
+                      )
+    </update>
+    
+    <insert id="insertTmsDetailCodes">
+        /* Tms-item-itemrest-sql-oracle.xml  insertTmsDetailCodes */
+        INSERT INTO TT_MST_TMCD_DT
+        (
+              TMCD_HDKEY   /*관리자 기준 코드 공통 코드*/
+            , TMCD_DTKEY   /*관리자 기준 코드 상세 코드*/
+            , LAKEY    /*국가별 언어 코드*/
+            , TMCD_DTORDER   /*관리자 기준 코드 상세 순서*/
+            , TMCD_DTNAME   /*관리자 기준 코드 상세 명*/
+            , DELYN    /*삭제여부*/
+            , INSERTDATE    /*입력 일시*/
+            , INSERTURKEY    /*입력 사용자 ID*/
+            , UPDATEDATE    /*수정 일시*/
+            , UPDATEURKEY    /*수정 사용자 ID*/
+
+        )
+        SELECT TT.ADCDHDKEY AS TMCD_HDKEY
+             , TT.ADCDDTKEY AS TMCD_DTKEY
+             , 'KOR' AS LAKEY    /*국가별 언어 코드*/
+             , ROW_NUMBER() OVER(PARTITION BY TT.ADCDHDKEY ORDER BY TT.ADCDDTKEY) + COALESCE(RM.ADCDDTORDER, 0) AS TMCD_DTORDER
+             , TT.ADCDDTNM AS TMCD_DTNAME
+             , 'N' AS DELYN
+             , #{interfaceDate} AS INSERTDATE    /*입력일자*/
+             , #{interfaceUrkey} AS INSERTURKEY    /*입력사용자*/
+             , #{interfaceDate} AS UPDATEDATE    /*수정일자*/
+             , #{interfaceUrkey} AS UPDATEURKEY    /*수정사용자*/
+          FROM (
+                SELECT T.ADCD_HDKEY
+                     , OD.OWCDDTKEY AS ADCDDTKEY
+                     , OD.OWCDDTNAME AS ADCDDTNM
+                     , CASE WHEN M.TMCD_HDKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+                  FROM (
+                        <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                            SELECT #{owkey} AS OWKEY    /*화주*/
+                                 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                        </foreach>  
+                       ) T
+                  JOIN TADMIN_INTF_OWCD_DT OD
+                    ON T.OWCDHDKEY = OD.OWCDHDKEY
+                   AND OD.IFID = #{interfaceId}
+                   AND OD.REQUESTDT = #{requestDt}
+                  LEFT JOIN TT_MST_TMCD_DT M
+                    ON T.ADCD_HDKEY = M.TMCD_HDKEY  
+                   AND OD.OWCD_DTKEY = M.TMCD_DTKEY
+                   AND M.LAKEY = 'KOR'
+               ) TT
+          LEFT JOIN (
+                SELECT MAX(M.TMCD_DTORDER) AS ADCDDTORDER
+                     , T.ADCDHDKEY
+                  FROM (
+                        <foreach collection="interfaceList" item="item" separator="UNION ALL">
+                            SELECT #{owkey} AS OWKEY    /*화주*/
+                                 , #{item.owcdHdkey} AS OWCDHDKEY    /*화주공통 헤더키*/
+                                 , #{item.adcdHdkey} AS ADCDHDKEY    /*화주공통 헤더명*/
+                        </foreach>  
+                       ) T
+                  JOIN TADMIN_INTF_OWCD_DT OD
+                    ON T.OWCDHDKEY = OD.OWCDHDKEY
+                   AND OD.IFID = #{interfaceId}
+                   AND OD.REQUESTDT = #{requestDt}
+                  JOIN TT_MST_TMCD_DT M
+                    ON T.ADCDHDKEY = M.TMCD_HDKEY
+                   AND OD.OWCDDTKEY = M.TMCD_DTKEY
+                   AND M.LAKEY = 'KOR'
+                 GROUP BY T.ADCDHDKEY
+               ) RM
+            ON TT.ADCDHDKEY = RM.ADCDHDKEY
+         WHERE TT.SAVEYN = 'Y'
+    </insert>
+</mapper>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.CloseOrderSoSendMapper">
+
+    <select id="selectCloseOrderList" resultType="com.daiso.batch.biz.oms.vo.CloseOrderSoSearchVO$CloseOrderSoSendVO">
+		/* CloseOrderSoSendMapper.xml selectCloseOrderList  */
+		SELECT T.OWKEY
+		     , T.SOHDKEY
+		  FROM (
+		  		SELECT SH.OWKEY
+				     , SH.SOHDKEY
+				     , ROW_NUMBER() OVER(ORDER BY SH.SOHDKEY) AS SEQ
+				  FROM TORDER_INFO_SO_HD SH
+				  JOIN TORDER_MST_ORTYPE OT
+		            ON SH.OWKEY = OT.OWKEY
+		           AND SH.ORDERTYPECD = OT.ORDERTYPECD
+				 WHERE SH.OWKEY = #{owkey}
+				   AND SH.DLVYEXPCTDAY BETWEEN #{startDate} AND #{endDate}
+				   AND SH.WKSTATUS IN ('00', '15') /*SO상태 생성, 분배오류*/
+				   AND (
+						COALESCE(SH.NISYN, 'N') != 'Y' /*결품제외*/
+						OR 
+						(
+						COALESCE(SH.NISYN, 'N') = 'Y'
+						AND COALESCE(SH.FRONTYN, 'N') = 'Y' 
+						AND SH.OPENCHKYN IS NOT NULL
+					    )
+					   )
+				   AND SH.BATWKSTATUS = #{wkstatus}
+		           AND SH.BATEXECID = #{batExecId}
+				   AND OT.EOSENDTYPE = 'BATCH'
+		  	   ) T
+		 WHERE COALESCE(#{sendCnt}, 10) >= T.SEQ
+		 ORDER BY T.SEQ 
+    </select>
+
+
+	<update id="updateCloseOrderLock" >
+	/* CloseOrderSoSendMapper.xml updateCloseOrderLock  */
+	UPDATE TORDER_INFO_SO_HD SH
+	   SET BATEXECID = #{batExecId}
+	     , WKSTATUS = CASE -- 분배오류건(15)은 SO재생성 처리를 할 수 있도록 작업생성(00)르 변경
+                         WHEN SH.WKSTATUS = '15' THEN '00'
+                         ELSE SH.WKSTATUS
+                         END
+	 WHERE SH.ctid IN (
+		   SELECT RID
+			 FROM (
+				   SELECT SH2.ctid AS RID,
+						  ROW_NUMBER() OVER (ORDER BY SH2.SOHDKEY) AS SEQ
+					 FROM TORDER_INFO_SO_HD SH2
+					 JOIN TORDER_MST_ORTYPE OT
+					   ON SH2.OWKEY = OT.OWKEY
+					  AND SH2.ORDERTYPECD = OT.ORDERTYPECD
+					WHERE SH2.OWKEY = #{owkey}
+					  AND SH2.DLVYEXPCTDAY BETWEEN #{startDate} AND #{endDate}
+					  AND SH2.WKSTATUS IN ('00','15')
+					  AND (
+						   COALESCE(SH2.NISYN, 'N') != 'Y' 
+						   OR 
+						   (
+						   COALESCE(SH2.NISYN, 'N') = 'Y'
+						   AND COALESCE(SH2.FRONTYN, 'N') = 'Y' 
+						   AND SH2.OPENCHKYN IS NOT NULL
+						   )
+						  )
+					  AND SH2.BATWKSTATUS = #{wkstatus}
+					  AND (
+                       SH2.WKSTATUS = '15' -- 분배오류건(15)은 SO재생성 처리를 할 수 있도록 작업생성(00)르 변경 
+                       OR (
+                            SH2.WKSTATUS = '00'
+                            AND SH2.BATEXECID IS NULL
+                          )
+                       )   -- ★ 방어 핵심
+					  AND OT.EOSENDTYPE = 'BATCH'
+				  ) T
+			WHERE COALESCE(#{sendCnt}, 10) >= T.SEQ
+		 )
+	</update>
+
+</mapper>

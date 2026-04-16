@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.DlvryMasterApiMapper">
+
+
+    <!-- 택배사 마스터 I/F 조회 -->
+    <select id="selectInterfaceDlvryMstCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectInterfaceDlvryMstCount - 택배사 마스터 I/F 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_INTF_DLVRYCORP_RCV
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND CNTRCTCD = #{cntrctcd}
+    </select>
+
+    <!-- 택배사 마스터 I/F Insert -->
+    <insert id="insertInterfaceDlvryMst" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertInterfaceDlvryMst - 택배사 마스터 I/F Insert */
+        INSERT INTO TWORK_INTF_DLVRYCORP_RCV
+        (
+            CTKEY            /* 센터코드 */
+          , OWKEY            /* 화주코드 */
+          , DLVRYCORPCD      /* 택배사코드 */
+          , DLVRYCORPNM      /* 택배사명 */
+          , CNTRCTCD         /* 계약코드 */
+          , CNTRCTNO         /* 계약번호 */
+          , CNTRCTSTATUS     /* 계약상태 */
+          , CNTRCTSTARTDAY   /* 계약시작일 */
+          , CNTRCTCLOSEDAY   /* 계약종료일 */
+          , TSDNOTIRT        /* 임계치알림율 */
+          , DELYN            /* 삭제여부 */
+          , PRCSYN           /* 처리여부 */
+          , PRCSDATE         /* 처리일시 */
+          , RCVDATE          /* 수신일시 */
+          , INSERTDATE       /* 입력일시 */
+          , INSERTURKEY      /* 입력자 */
+          , UPDATEDATE       /* 수정일시 */
+          , UPDATEURKEY      /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{dlvrycorpnm}
+          , #{cntrctcd}
+          , #{cntrctno}
+          , #{cntrctstatus}
+          , #{cntrctstartday}
+          , #{cntrctcloseday}
+          , #{tsdnotirt}
+          , #{delyn}
+          , 'N'
+          , NULL
+          , #{sysdate}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 마스터 I/F Update -->
+    <update id="updateInterfaceDlvryMst" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryMst - 택배사 마스터 I/F Update */
+        UPDATE TWORK_INTF_DLVRYCORP_RCV
+           SET DLVRYCORPNM    = #{dlvrycorpnm}     /* 택배사명 */
+             , CNTRCTCD       = #{cntrctcd}        /* 계약코드 */
+             , CNTRCTNO       = #{cntrctno}        /* 계약번호 */
+             , CNTRCTSTATUS   = #{cntrctstatus}    /* 계약상태 */
+             , CNTRCTSTARTDAY = #{cntrctstartday}  /* 계약시작일 */
+             , CNTRCTCLOSEDAY = #{cntrctcloseday}  /* 계약종료일 */
+             , TSDNOTIRT      = #{tsdnotirt}       /* 임계치알림율 */
+             , DELYN          = #{delyn}           /* 삭제여부 */
+             , PRCSYN         = 'N'                /* 처리여부 */
+             , PRCSDATE       = NULL               /* 처리일시 */
+             , RCVDATE        = #{sysdate}         /* 수신일시 */
+             , UPDATEDATE     = #{sysdate}         /* 수정일시 */
+             , UPDATEURKEY    = #{surkey}          /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND CNTRCTCD = #{cntrctcd}
+    </update>
+
+
+    <!-- 택배사 박스규격 I/F 조회 -->
+    <select id="selectInterfaceDlvryBoxCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectInterfaceDlvryBoxCount - 택배사 박스규격 I/F 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_INTF_DLVRYCORP_BOX_RCV
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND BOXTYPECD = #{boxtypecd}
+    </select>
+
+    <!-- 택배사 박스규격 I/F Insert -->
+    <insert id="insertInterfaceDlvryBox" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertInterfaceDlvryBox - 택배사 박스규격 I/F Insert */
+        INSERT INTO TWORK_INTF_DLVRYCORP_BOX_RCV
+        (
+            CTKEY        /* 센터코드 */
+          , OWKEY        /* 화주코드 */
+          , DLVRYCORPCD  /* 택배사코드 */
+          , BOXTYPECD    /* 박스타입코드 */
+          , BOXTYPENM    /* 박스타입명 */
+          , BOXSPEC      /* 박스규격 */
+          , DELYN        /* 삭제여부 */
+          , PRCSYN       /* 처리여부 */
+          , PRCSDATE     /* 처리일시 */
+          , RCVDATE      /* 수신일시 */
+          , INSERTDATE   /* 입력일시 */
+          , INSERTURKEY  /* 입력자 */
+          , UPDATEDATE   /* 수정일시 */
+          , UPDATEURKEY  /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{boxtypecd}
+          , #{boxtypenm}
+          , #{boxspec}
+          , #{delyn}
+          , 'N'
+          , NULL
+          , #{sysdate}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 박스규격 I/F Update -->
+    <update id="updateInterfaceDlvryBox" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryBox - 택배사 박스규격 I/F Update */
+        UPDATE TWORK_INTF_DLVRYCORP_BOX_RCV
+           SET BOXTYPENM   = #{boxtypenm} /* 박스타입명 */
+             , BOXSPEC     = #{boxspec}   /* 박스규격 */
+             , DELYN       = #{delyn}     /* 삭제여부 */
+             , PRCSYN      = 'N'          /* 처리여부 */
+             , PRCSDATE    = NULL         /* 처리일시 */
+             , RCVDATE     = #{sysdate}   /* 수신일시 */
+             , UPDATEDATE  = #{sysdate}   /* 수정일시 */
+             , UPDATEURKEY = #{surkey}    /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND BOXTYPECD = #{boxtypecd}
+    </update>
+
+    <!-- 택배사 운송장 I/F 조회 -->
+    <select id="selectInterfaceDlvryWblCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectInterfaceDlvryWblCount - 택배사 운송장 I/F 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_INTF_DLVRYCORP_WBL_RCV
+        WHERE CTKEY = #{ctkey}
+          AND OWKEY = #{owkey}
+          AND DLVRYCORPCD = #{dlvrycorpcd}
+          AND ISSUSEQ = #{issuseq}
+    </select>
+
+    <!-- 택배사 운송장 I/F Insert -->
+    <insert id="insertInterfaceDlvryWbl" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertInterfaceDlvryWbl - 택배사 운송장 I/F Insert */
+        INSERT INTO TWORK_INTF_DLVRYCORP_WBL_RCV
+        (
+            CTKEY        /* 센터코드 */
+          , OWKEY        /* 화주코드 */
+          , DLVRYCORPCD  /* 택배사코드 */
+          , ISSUSEQ      /* 발급순번 */
+          , WBLFROMNO    /* 운송장대역FROM */
+          , WBLTONO      /* 운송장대역TO */
+          , DELYN        /* 삭제여부 */
+          , PRCSYN       /* 처리여부 */
+          , PRCSDATE     /* 처리일시 */
+          , RCVDATE      /* 수신일시 */
+          , INSERTDATE   /* 입력일시 */
+          , INSERTURKEY  /* 입력자 */
+          , UPDATEDATE   /* 수정일시 */
+          , UPDATEURKEY  /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{issuseq}
+          , #{wblfromno}
+          , #{wbltono}
+          , #{delyn}
+          , 'N'
+          , NULL
+          , #{sysdate}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 운송장 I/F Update -->
+    <update id="updateInterfaceDlvryWbl" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryWbl - 택배사 운송장 I/F Update */
+        UPDATE TWORK_INTF_DLVRYCORP_WBL_RCV
+           SET WBLFROMNO   = #{wblfromno} /* 운송장대역FROM */
+             , WBLTONO     = #{wbltono}   /* 운송장대역TO */
+             , DELYN       = #{delyn}     /* 삭제여부 */
+             , PRCSYN      = 'N'          /* 처리여부 */
+             , PRCSDATE    = NULL         /* 처리일시 */
+             , RCVDATE     = #{sysdate}   /* 수신일시 */
+             , UPDATEDATE  = #{sysdate}   /* 수정일시 */
+             , UPDATEURKEY = #{surkey}    /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND ISSUSEQ = #{issuseq}
+    </update>
+
+    <!-- 택배사 마스터 정보 Count 조회 -->
+    <select id="selectDlvryMstCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectDlvryMstCount - 택배사 마스터 정보 Count 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_MST_DLVRYCORP
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND CNTRCTCD = #{cntrctcd}
+    </select>
+
+    <!-- 택배사 마스터 정보 Insert -->
+    <insert id="insertDlvryMst" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertDlvryMst - 택배사 마스터 정보 Insert */
+        INSERT INTO TWORK_MST_DLVRYCORP
+        (
+            CTKEY           /* 센터코드 */
+          , OWKEY           /* 화주코드 */
+          , DLVRYCORPCD     /* 택배사코드 */
+          , DLVRYCORPNM     /* 택배사명 */
+          , CNTRCTCD        /* 계약코드 */
+          , CNTRCTNO        /* 계약번호 */
+          , CNTRCTSTATUS    /* 계약상태 */
+          , CNTRCTSTARTDAY  /* 계약시작일 */
+          , CNTRCTCLOSEDAY  /* 계약종료일 */
+          , TSDNOTIRT       /* 임계치알림율 */
+          , DELYN           /* 삭제여부 */
+          , INSERTDATE      /* 입력일시 */
+          , INSERTURKEY     /* 입력자 */
+          , UPDATEDATE      /* 수정일시 */
+          , UPDATEURKEY     /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{dlvrycorpnm}
+          , #{cntrctcd}
+          , #{cntrctno}
+          , #{cntrctstatus}
+          , #{cntrctstartday}
+          , #{cntrctcloseday}
+          , #{tsdnotirt}
+          , #{delyn}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 마스터 정보 Update -->
+    <update id="updateDlvryMst" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateDlvryMst - 택배사 마스터 정보 Update */
+        UPDATE TWORK_MST_DLVRYCORP
+           SET DLVRYCORPNM     = #{dlvrycorpnm}     /* 택배사명 */
+             , CNTRCTCD        = #{cntrctcd}        /* 계약코드 */
+             , CNTRCTNO        = #{cntrctno}        /* 계약번호 */
+             , CNTRCTSTATUS    = #{cntrctstatus}    /* 계약상태 */
+             , CNTRCTSTARTDAY  = #{cntrctstartday}  /* 계약시작일 */
+             , CNTRCTCLOSEDAY  = #{cntrctcloseday}  /* 계약종료일 */
+             , TSDNOTIRT       = #{tsdnotirt}       /* 임계치알림율 */
+             , DELYN           = CASE WHEN #{cntrctstatus} = '2' THEN 'Y'
+                                      ELSE #{delyn}
+                                 END   /* 삭제여부 */
+             , UPDATEDATE      = #{sysdate}         /* 수정일시 */
+             , UPDATEURKEY     = #{surkey}          /* 수정자 */
+        WHERE CTKEY = #{ctkey}
+        AND OWKEY = #{owkey}
+        AND DLVRYCORPCD = #{dlvrycorpcd}
+        AND CNTRCTCD = #{cntrctcd}
+    </update>
+
+    <!-- 택배사 박스규격 조회 -->
+    <select id="selectDlvryBoxCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectDlvryBoxCount - 택배사 박스규격 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_MST_DLVRYCORP_BOX
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND BOXTYPECD = #{boxtypecd}
+    </select>
+
+    <!-- 택배사 박스규격 Insert -->
+    <insert id="insertDlvryBox" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertDlvryBox - 택배사 박스규격 Insert */
+        INSERT INTO TWORK_MST_DLVRYCORP_BOX
+        (
+            CTKEY        /* 센터코드 */
+          , OWKEY        /* 화주코드 */
+          , DLVRYCORPCD  /* 택배사코드 */
+          , BOXTYPECD    /* 박스타입코드 */
+          , BOXTYPENM    /* 박스타입명 */
+          , BOXSPEC      /* 박스규격 */
+          , DELYN        /* 삭제여부 */
+          , INSERTDATE   /* 입력일시 */
+          , INSERTURKEY  /* 입력자 */
+          , UPDATEDATE   /* 수정일시 */
+          , UPDATEURKEY  /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{boxtypecd}
+          , #{boxtypenm}
+          , #{boxspec}
+          , #{delyn}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 박스규격 Update -->
+    <update id="updateDlvryBox" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateDlvryBox - 택배사 박스규격 Update */
+        UPDATE TWORK_MST_DLVRYCORP_BOX
+           SET BOXTYPENM   = #{boxtypenm} /* 박스타입명 */
+             , BOXSPEC     = #{boxspec}   /* 박스규격 */
+             , DELYN       = #{delyn}     /* 삭제여부 */
+             , UPDATEDATE  = #{sysdate}   /* 수정일시 */
+             , UPDATEURKEY = #{surkey}    /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND BOXTYPECD = #{boxtypecd}
+    </update>
+
+    <!-- 택배사 운송장 조회 -->
+    <select id="selectDlvryWblCount" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO" resultType="java.lang.Integer">
+        /* wms-master-dlvry-sql-oracle.xml - selectDlvryWblCount - 택배사 운송장 조회 */
+        SELECT COUNT(1)
+          FROM TWORK_MST_DLVRYCORP_WBL
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND ISSUSEQ = #{issuseq}
+    </select>
+
+    <!-- 택배사 운송장 Insert -->
+    <insert id="insertDlvryWbl" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - insertDlvryWbl - 택배사 운송장 Insert */
+        INSERT INTO TWORK_MST_DLVRYCORP_WBL
+        (
+            CTKEY        /* 센터코드 */
+          , OWKEY        /* 화주코드 */
+          , DLVRYCORPCD  /* 택배사코드 */
+          , ISSUSEQ      /* 발급순번 */
+          , WBLFROMNO    /* 운송장대역FROM */
+          , WBLTONO      /* 운송장대역TO */
+          , WBLCURRNO    /* 현재운송장 번호 */
+          , DELYN        /* 삭제여부 */
+          , INSERTDATE   /* 입력일시 */
+          , INSERTURKEY  /* 입력자 */
+          , UPDATEDATE   /* 수정일시 */
+          , UPDATEURKEY  /* 수정자 */
+        )
+        VALUES
+        (
+            #{ctkey}
+          , #{owkey}
+          , #{dlvrycorpcd}
+          , #{issuseq}
+          , #{wblfromno}
+          , #{wbltono}
+          , NULL
+          , #{delyn}
+          , #{sysdate}
+          , #{surkey}
+          , #{sysdate}
+          , #{surkey}
+        )
+    </insert>
+
+    <!-- 택배사 운송장 Update -->
+    <update id="updateDlvryWbl" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateDlvryWbl - 택배사 운송장 Update */
+        UPDATE TWORK_MST_DLVRYCORP_WBL
+           SET WBLFROMNO   = #{wblfromno} /* 운송장대역FROM */
+             , WBLTONO     = #{wbltono}   /* 운송장대역TO */
+             , DELYN       = #{delyn}     /* 삭제여부 */
+             , UPDATEDATE  = #{sysdate}   /* 수정일시 */
+             , UPDATEURKEY = #{surkey}    /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND ISSUSEQ = #{issuseq}
+    </update>
+
+    <!-- 택배사 운송장 Delete -->
+    <update id="deleteDlvryWbl" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - deleteDlvryWbl - 택배사 운송장 Delete */
+        UPDATE TWORK_MST_DLVRYCORP_WBL
+           SET DELYN       = 'Y'     /* 삭제여부 */
+             , UPDATEDATE  = #{sysdate}   /* 수정일시 */
+             , UPDATEURKEY = #{surkey}    /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+    </update>
+
+    <!-- 택배사 마스터 I/F 테이블 처리여부 Update -->
+    <update id="updateInterfaceDlvryMstPrcs" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryMstPrcs - 택배사 마스터 I/F 테이블 처리여부 Update */
+        UPDATE TWORK_INTF_DLVRYCORP_RCV
+           SET PRCSYN         = #{prcsyn}                /* 처리여부 */
+             , PRCSDATE       = CASE WHEN #{prcsyn} = 'Y' THEN #{sysdate} ELSE NULL END   /* 처리일시 */
+             , UPDATEDATE     = #{sysdate}         /* 수정일시 */
+             , UPDATEURKEY    = #{surkey}          /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+    </update>
+
+    <!-- 택배사 박스규격 정보 I/F 테이블 처리여부 Update -->
+    <update id="updateInterfaceDlvryBoxPrcs" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryBoxDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryBoxPrcs - 택배사 박스규격 정보 I/F 테이블 처리여부 Update */
+        UPDATE TWORK_INTF_DLVRYCORP_BOX_RCV
+           SET PRCSYN         = #{prcsyn}                /* 처리여부 */
+             , PRCSDATE       = CASE WHEN #{prcsyn} = 'Y' THEN #{sysdate} ELSE NULL END   /* 처리일시 */
+             , UPDATEDATE     = #{sysdate}         /* 수정일시 */
+             , UPDATEURKEY    = #{surkey}          /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND BOXTYPECD = #{boxtypecd}
+    </update>
+
+    <!-- 택배사 운송장 정보 I/F 테이블 처리여부 Update -->
+    <update id="updateInterfaceDlvryWblPrcs" parameterType="com.daiso.wms.api.in.dto.DlvryMasterRequestDTO$DlvryWblDetailDTO">
+        /* wms-master-dlvry-sql-oracle.xml - updateInterfaceDlvryWblPrcs - 택배사 운송장 정보 I/F 테이블 처리여부 Update */
+        UPDATE TWORK_INTF_DLVRYCORP_WBL_RCV
+           SET PRCSYN         = #{prcsyn}                /* 처리여부 */
+             , PRCSDATE       = CASE WHEN #{prcsyn} = 'Y' THEN #{sysdate} ELSE NULL END   /* 처리일시 */
+             , UPDATEDATE     = #{sysdate}         /* 수정일시 */
+             , UPDATEURKEY    = #{surkey}          /* 수정자 */
+         WHERE CTKEY = #{ctkey}
+           AND OWKEY = #{owkey}
+           AND DLVRYCORPCD = #{dlvrycorpcd}
+           AND ISSUSEQ = #{issuseq}
+    </update>
+
+</mapper>

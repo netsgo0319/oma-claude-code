@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.report.mapper.statistics_period_damage_defect_statusMapper">
+
+	<sql id="DamageDefectPeriodsql">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrdersql - 입고현황 - 주문별 현황 - 입고 주문 조회  SQL */
+		WITH
+			/* ============================================================
+			* 1) 반품 원본
+			* ============================================================ */
+			IB_BASE AS (
+				SELECT
+					A.CTKEY
+					, A.OWKEY
+					, TO_DATE(SUBSTR(B.IBEXPCTDATE, 1, 8), 'YYYYMMDD') AS BASE_DATE
+					, A.ICKEY
+					, COALESCE(A.CNFRMQTY, 0) AS CNFRMQTY
+					, COALESCE(A.DMGQTY, 0) AS DMGQTY
+					, COALESCE(A.DFCQTY, 0) AS DFCQTY
+					, COALESCE(A.DONAQTY, 0) AS DONAQTY
+					, COALESCE(A.FOODDMGQTY, 0) AS FOODDMGQTY
+					, COALESCE(A.CPAMT, 0) AS CPAMT
+				FROM TWORK_INFO_IB_DT A
+				JOIN TWORK_INFO_IB_HD B
+				ON A.CTKEY   = B.CTKEY
+				AND A.OWKEY   = B.OWKEY
+				AND A.IBHDKEY = B.IBHDKEY
+				WHERE A.CTKEY = '09'
+				AND A.OWKEY = 'DAISO'
+				AND B.IBHDTYPECD = '50'
+			),
+
+			/* ============================================================
+			* 2) 물류내 재고 원본
+			* ============================================================ */
+			STOCK_BASE AS (
+				SELECT
+					IVLC.CTKEY
+					, IVLC.OWKEY
+					, TO_DATE(SUBSTR((IVLC.UPDATEDATE)::TEXT,1,8),'YYYYMMDD') AS STOCKDATE
+					, IVLC.ICKEY
+					, COALESCE(IVLC.TOTQTY, 0) AS TOTQTY
+					, COALESCE(IC.SLPRC, 0)    AS SLPRC
+					, ZN.ZNKEY
+				FROM TWORK_INFO_IVATXLC IVLC
+				JOIN TWORK_MST_LC LC
+				ON LC.CTKEY = IVLC.CTKEY
+				AND LC.LCKEY = IVLC.LCKEY
+				JOIN TWORK_MST_ZN ZN
+				ON ZN.CTKEY = LC.CTKEY
+				AND ZN.ZNKEY = LC.ZNKEY
+				JOIN TWORK_MST_IC IC
+				ON IC.CTKEY = IVLC.CTKEY
+				AND IC.OWKEY = IVLC.OWKEY
+				AND IC.ICKEY = IVLC.ICKEY
+				WHERE IVLC.CTKEY = '09'
+				AND IVLC.OWKEY = 'DAISO'
+			),
+
+			/* ============================================================
+			* 3) 반품 집계
+			* ============================================================ */
+			IB_RET AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, BASE_DATE
+					, COUNT(DISTINCT CASE WHEN CNFRMQTY > 0 THEN ICKEY END) AS rtn_all_sku
+					, SUM(CNFRMQTY)                                       AS rtn_all_ea
+					, SUM(CNFRMQTY * CPAMT)                               AS rtn_all_amt
+
+					, COUNT(DISTINCT CASE WHEN DMGQTY > 0 THEN ICKEY END) AS rtn_dmg_sku
+					, SUM(DMGQTY)                                        AS rtn_dmg_ea
+					, SUM(DMGQTY * CPAMT)                                AS rtn_dmg_amt
+
+					, COUNT(DISTINCT CASE WHEN DFCQTY > 0 THEN ICKEY END) AS rtn_bad_sku
+					, SUM(DFCQTY)                                        AS rtn_bad_ea
+					, SUM(DFCQTY * CPAMT)                                AS rtn_bad_amt
+
+					, COUNT(DISTINCT CASE WHEN DONAQTY > 0 THEN ICKEY END) AS rtn_don_sku
+					, SUM(DONAQTY)                                        AS rtn_don_ea
+					, SUM(DONAQTY * CPAMT)                                AS rtn_don_amt
+
+					, COUNT(DISTINCT CASE WHEN FOODDMGQTY > 0 THEN ICKEY END) AS rtn_food_sku
+					, SUM(FOODDMGQTY)                                        AS rtn_food_ea
+					, SUM(FOODDMGQTY * CPAMT)                                AS rtn_food_amt
+				FROM IB_BASE
+				GROUP BY CTKEY, OWKEY, BASE_DATE
+			),
+
+			/* ============================================================
+			* 4) 물류내 재고 집계
+			* ============================================================ */
+			STOCK_RET AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, STOCKDATE
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY IN ('DMS','DFS','DNS') AND TOTQTY > 0 THEN ICKEY END) AS wh_all_sku
+					, SUM(CASE WHEN ZNKEY IN ('DMS','DFS','DNS') THEN TOTQTY ELSE 0 END)                  AS wh_all_ea
+					, SUM(CASE WHEN ZNKEY IN ('DMS','DFS','DNS') THEN TOTQTY * SLPRC ELSE 0 END)          AS wh_all_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DMS' AND TOTQTY>0 THEN ICKEY END) AS wh_dmg_sku
+					, SUM(CASE WHEN ZNKEY='DMS' THEN TOTQTY ELSE 0 END)               AS wh_dmg_ea
+					, SUM(CASE WHEN ZNKEY='DMS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_dmg_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DFS' AND TOTQTY>0 THEN ICKEY END) AS wh_bad_sku
+					, SUM(CASE WHEN ZNKEY='DFS' THEN TOTQTY ELSE 0 END)               AS wh_bad_ea
+					, SUM(CASE WHEN ZNKEY='DFS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_bad_amt
+
+					, COUNT(DISTINCT CASE WHEN ZNKEY='DNS' AND TOTQTY>0 THEN ICKEY END) AS wh_don_sku
+					, SUM(CASE WHEN ZNKEY='DNS' THEN TOTQTY ELSE 0 END)               AS wh_don_ea
+					, SUM(CASE WHEN ZNKEY='DNS' THEN TOTQTY * SLPRC ELSE 0 END)        AS wh_don_amt
+
+					, 0 AS wh_food_sku
+					, 0 AS wh_food_ea
+					, 0 AS wh_food_amt
+				FROM STOCK_BASE
+				GROUP BY CTKEY, OWKEY, STOCKDATE
+			),
+
+			/* ============================================================
+			* 5) 전체 SKU (중복 제거)
+			* ============================================================ */
+			ALL_SKU AS (
+				SELECT
+					CTKEY
+					, OWKEY
+					, 기준일자
+					, COUNT(DISTINCT ICKEY) AS all_sku
+				FROM (
+					SELECT CTKEY, OWKEY, BASE_DATE AS 기준일자, ICKEY FROM IB_BASE WHERE CNFRMQTY > 0
+					UNION
+					SELECT CTKEY, OWKEY, STOCKDATE AS 기준일자, ICKEY FROM STOCK_BASE
+					WHERE ZNKEY IN ('DMS','DFS','DNS') AND TOTQTY > 0
+				)
+				GROUP BY CTKEY, OWKEY, 기준일자
+			)
+
+			/* ============================================================
+			* 6) 최종 SELECT (넥사크로 바인드 대응)
+			* ============================================================ */
+			SELECT
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'YYYY') AS year,
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'MM')   AS month,
+				TO_CHAR(COALESCE(I.BASE_DATE, S.STOCKDATE),'DD')   AS day,
+
+				COALESCE(A.all_sku, 0)                                   AS all_sku,
+				COALESCE(I.rtn_all_ea, 0) + COALESCE(S.wh_all_ea, 0)           AS all_ea,
+				COALESCE(I.rtn_all_amt, 0) + COALESCE(S.wh_all_amt, 0)         AS all_amt,
+
+				COALESCE(I.rtn_all_sku, 0)  AS rtn_all_sku,
+				COALESCE(I.rtn_all_ea, 0)   AS rtn_all_ea,
+				COALESCE(I.rtn_all_amt, 0)  AS rtn_all_amt,
+
+				COALESCE(S.wh_all_sku, 0)   AS wh_all_sku,
+				COALESCE(S.wh_all_ea, 0)    AS wh_all_ea,
+				COALESCE(S.wh_all_amt, 0)   AS wh_all_amt,
+
+				COALESCE(I.rtn_dmg_sku, 0)  AS rtn_dmg_sku,
+				COALESCE(I.rtn_dmg_ea, 0)   AS rtn_dmg_ea,
+				COALESCE(I.rtn_dmg_amt, 0)  AS rtn_dmg_amt,
+
+				COALESCE(I.rtn_bad_sku, 0)  AS rtn_bad_sku,
+				COALESCE(I.rtn_bad_ea, 0)   AS rtn_bad_ea,
+				COALESCE(I.rtn_bad_amt, 0)  AS rtn_bad_amt,
+
+				COALESCE(I.rtn_don_sku, 0)  AS rtn_don_sku,
+				COALESCE(I.rtn_don_ea, 0)   AS rtn_don_ea,
+				COALESCE(I.rtn_don_amt, 0)  AS rtn_don_amt,
+
+				COALESCE(I.rtn_food_sku, 0) AS rtn_food_sku,
+				COALESCE(I.rtn_food_ea, 0)  AS rtn_food_ea,
+				COALESCE(I.rtn_food_amt, 0) AS rtn_food_amt,
+
+				COALESCE(S.wh_dmg_sku, 0)   AS wh_dmg_sku,
+				COALESCE(S.wh_dmg_ea, 0)    AS wh_dmg_ea,
+				COALESCE(S.wh_dmg_amt, 0)   AS wh_dmg_amt,
+
+				COALESCE(S.wh_bad_sku, 0)   AS wh_bad_sku,
+				COALESCE(S.wh_bad_ea, 0)    AS wh_bad_ea,
+				COALESCE(S.wh_bad_amt, 0)   AS wh_bad_amt,
+
+				COALESCE(S.wh_don_sku, 0)   AS wh_don_sku,
+				COALESCE(S.wh_don_ea, 0)    AS wh_don_ea,
+				COALESCE(S.wh_don_amt, 0)   AS wh_don_amt,
+
+				COALESCE(S.wh_food_sku, 0)  AS wh_food_sku,
+				COALESCE(S.wh_food_ea, 0)   AS wh_food_ea,
+				COALESCE(S.wh_food_amt, 0)  AS wh_food_amt,
+
+				0 AS exp_sku,
+				0 AS exp_ea,
+				0 AS exp_amt
+
+			FROM IB_RET I
+			FULL OUTER JOIN STOCK_RET S
+			ON I.CTKEY = S.CTKEY
+			AND I.OWKEY = S.OWKEY
+			AND I.BASE_DATE = S.STOCKDATE
+			LEFT JOIN ALL_SKU A
+			ON A.CTKEY = COALESCE(I.CTKEY, S.CTKEY)
+			AND A.OWKEY = COALESCE(I.OWKEY, S.OWKEY)
+			AND A.기준일자 = COALESCE(I.BASE_DATE, S.STOCKDATE)
+			ORDER BY year, month, day;
+
+	</sql>
+
+
+	<select id="DamageDefectPeriodCount" resultType="java.lang.Integer">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbOrderCount - 입고현황 - 주문별 현황 - 입고 주문 건수 조회 */
+		SELECT COUNT(1)
+		FROM (
+		<include refid="DamageDefectPeriodsql"/>
+		) cnt
+	</select>
+
+	<select id="selectIbOrderDamagedefactByPeriod" resultType="camelMap">
+		/* wms-inbound-iborderreport-sql-oracle.xml - selectIbHd - 입고현황 - 주문별 현황 - 입고 주문 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="DamageDefectPeriodsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+
+</mapper>

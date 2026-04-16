@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.wms.mapper.OutboundBoxExportMapper">
+
+	<!--부자재(출고박스)반출 인터페이스 송신 대상 조회-->
+	<select id="selectOutboundBoxExportForInterfaceSend" resultType="com.daiso.batch.biz.wms.dto.OutboundSubicExportRequestDTO$OutboundSubicExportDetailDTO">
+		/* OutboundBoxExportMapper.xml - selectOutboundBoxExportForInterfaceSend - 부자재(출고박스)반출 인터페이스 송신 대상 조회 */
+		SELECT BX.ICKEY, COUNT(BX.BOXBARCODE) QTY
+		FROM TWORK_INFO_OB_HD OH
+			INNER JOIN TWORK_MST_BOX BX
+				ON OH.CTKEY = BX.CTKEY
+				AND OH.PCKGBOXBARCODE = BX.BOXBARCODE
+			INNER JOIN TWORK_MST_IC IC
+				ON BX.CTKEY = IC.CTKEY
+				AND BX.ICKEY = IC.ICKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = #{owkey}
+		AND OH.OBDDLNSNDRSLTCD = '20' /* 출고마감인터페이스 송신 정상 */
+		AND OH.OBBOXEXPTSNDYN = 'N' /* 출고박스반출 인터페이스 미송신 */
+		AND OBCNFRMDATE <![CDATA[ >= ]]> TO_CHAR(TO_DATE(#{day},'YYYYMMDD') - 1, 'YYYYMMDD') || '000000'
+		AND OBCNFRMDATE <![CDATA[ < ]]> TO_CHAR(TO_DATE(#{day},'YYYYMMDD'),     'YYYYMMDD') || '000000'
+		GROUP BY BX.ICKEY
+	</select>
+
+	<!--부자재(출고박스)반출 인터페이스 송신 여부 UPDATE-->
+	<update id="updateOutboundBoxExportSendInterface">
+		/* OutboundBoxExportMapper.xml - updateOutboundBoxExportSendInterface - 부자재(출고박스)반출 인터페이스 송신 여부 UPDATE */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBBOXEXPTSNDYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = 'BATCH'
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBDDLNSNDRSLTCD = '20' /* 출고마감인터페이스 송신 정상 */
+		AND OBBOXEXPTSNDYN = 'N' /* 출고박스반출 인터페이스 미송신 */
+		AND OBCNFRMDATE <![CDATA[ >= ]]> TO_CHAR(TO_DATE(#{day},'YYYYMMDD') - 1, 'YYYYMMDD') || '000000'
+		AND OBCNFRMDATE <![CDATA[ < ]]> TO_CHAR(TO_DATE(#{day},'YYYYMMDD'),     'YYYYMMDD') || '000000'
+	</update>
+</mapper>

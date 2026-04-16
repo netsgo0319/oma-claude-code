@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapCancelResultMapper">
+
+    <select id="cancelResultSendTargetList" resultType="com.daiso.batch.biz.oms.vo.SapCancelResultVO">
+		/* SapCancelResultMapper.xml cancelResultSendTargetList */
+		SELECT 'RDC' || #{sysdate} || '_' || A.EXTERNORDERKEY AS SYSID
+		     , A.BATCHKEY
+			 , A.OWKEY
+			 , A.EXTERNORDERKEY
+			 , A.CUSTORDKEY AS CUSTOMERORDERKEY
+			 , A.REGDT
+			 , A.PRCSYN AS PROCESSYN
+			 , A.PRCSDATE AS PROCESSDATE
+			 , A.BATEXECID AS BAT_EXEC_ID
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TORDER_BATCH_CANCEL_RESULT A
+		  JOIN TORDER_INFO_CO_HD CH
+		    ON A.OWKEY = CH.OWKEY
+		   AND A.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY
+		  JOIN TORDER_MST_ORTYPE OT
+		    ON CH.OWKEY = OT.OWKEY
+		   AND CH.OR_TYPE_CD = OT.OR_TYPE_CD
+		 WHERE A.OWKEY = #{owkey} 
+		   AND A.REGDT BETWEEN #{startDate} AND #{endDate}
+		   AND COALESCE(A.PROCESSYN, 'N') = 'N'
+		   AND OT.IBYN = #{ibyn}
+		   AND OT.OBYN = #{obyn}
+    </select>
+   
+</mapper>

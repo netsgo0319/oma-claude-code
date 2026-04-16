@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.ams.master.mapper.MasterAdminCodeMapper">
+
+	<select id="selectAdminCodeInfo" resultType="camelMap" >
+		/* adm-master-admincode-sql-oracle.xml - selectAdminCodeInfo */
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(GRIDPAGING_ROWNUMTYPE_TOP)" >
+			#{GRIDPAGING_ROWNUMTYPE_TOP}
+		</if>
+			SELECT '0' AS CHK
+			     , ADCDHDKEY
+			     , ADCDHDNM
+			     , DELYN
+     		     , INSERTDATE
+	   		  	 , UPDATEDATE
+	   		  	 , INSERTURKEY AS INSERTURNAME
+ 				 , UPDATEURKEY AS UPDATEURNAME
+			  FROM TADMIN_MST_ADCD_HD	
+		    <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				 	   #{SEARCH_CONDITION}
+				</if>	
+				<if test="adcdhdkey != null">
+		    	  	   AND ADCDHDKEY = #{adcdhdkey}
+		    	</if>		
+			</where>	
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(GRIDPAGING_ROWNUMTYPE_BOTTOM)" >
+			#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+		</if>
+	</select>
+	
+	<select id="selectAdminCode" resultType="camelMap" >
+	/* adm-master-admincode-sql-oracle.xml - selectAdminCode */
+			SELECT '0' AS CHK
+			     , ADCDHDKEY
+			     , ADCDHDNM
+				 , DELYN
+     		     , INSERTDATE
+	   		  	 , UPDATEDATE
+	   		  	 , INSERTURKEY AS INSERTURNAME
+ 				 , UPDATEURKEY AS UPDATEURNAME
+			  FROM TADMIN_MST_ADCD_HD	
+		    <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				 	   #{SEARCH_CONDITION}
+				</if>	
+				<if test="adcdhdkey != null">
+		    	  	   AND ADCDHDKEY = #{adcdhdkey}
+		    	</if>		
+			</where>	
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+						</choose> 
+	</select>
+	
+	<select id="selectAdminCodeCountInfo" resultType="java.lang.Integer" >
+		/* adm-master-admincode-sql-oracle.xml - selectAdminCodeCountInfo */
+			SELECT count(1)
+			  FROM TADMIN_MST_ADCD_HD	
+	    	 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				 	   #{SEARCH_CONDITION}
+				</if>	
+				<if test="adcdhdkey != null">
+		    	  	   AND ADCDHDKEY = #{adcdhdkey}
+		    	</if>		
+			</where>				 
+	</select>	
+	
+	
+	<insert id="insertAdminCodeInfo">
+		INSERT INTO TADMIN_MST_ADCD_HD
+		(
+		      ADCDHDKEY
+		    , ADCDHDNM
+			, DELYN
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{adcdhdkey}
+		    ,#{adcdhdnm}
+			,#{delyn}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+	
+	
+	
+	<update id="updateAdminCodeInfo">
+		/* adm-master-admincode-sql-oracle.xml - updateAdminCodeInfo */
+		UPDATE TADMIN_MST_ADCD_HD
+		   SET ADCDHDNM = #{adcdhdnm}
+		     , DELYN       = #{delyn}
+			 , UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE ADCDHDKEY  = #{adcdhdkey}
+	</update>
+			
+	
+	<update id="deleteAdminCodeInfo">
+		/* adm-master-admincode-sql-oracle.xml - deleteAdminCodeInfo */
+		UPDATE TADMIN_MST_ADCD_HD
+		   SET DELYN       = 'Y'
+		   	  ,UPDATEDATE  = #{sysdate}
+		   	  ,UPDATEURKEY = #{surkey}
+		WHERE ADCDHDKEY   = #{adcdhdkey}
+	</update>
+		
+		
+	<select id="selectDetailAdminCodeInfo" resultType="camelMap" >
+		/* adm-master-admincode-sql-oracle.xml - selectDetailAdminCodeInfo */
+			SELECT A.ADCDHDKEY
+			     , A.ADCDDTKEY
+			     , A.LAKEY AS LANGKEY
+			 	 , B.ADCDDTNM AS LANGNAME
+			     , A.ADCDDTORDER
+			     , A.ADCDDTNM
+			     , A.ADCDDTVALUE
+			     , A.CMT
+				 , A.DELYN
+  			     , A.INSERTDATE
+   			     , A.UPDATEDATE
+   			     , A.INSERTURKEY AS INSERTURNAME
+ 				 , A.UPDATEURKEY AS UPDATEURNAME
+			  FROM TADMIN_MST_ADCD_DT A
+				INNER JOIN TADMIN_MST_ADCD_DT B
+						ON B.ADCDHDKEY ='LAKEY'
+					   AND B.ADCDDTKEY = A.LAKEY
+					   AND B.LAKEY = #{slakey}
+	    	 WHERE A.ADCDHDKEY = #{adcdhdkey}
+			<if test="langkey != null">
+				AND A.LAKEY = #{langkey}
+			</if>
+	    	 <if test="adcddtkey != null">
+	    	   AND A.ADCDDTKEY = #{adcddtkey}
+	    	 </if>
+	    	 ORDER BY A.ADCDDTORDER ASC
+	</select>	
+	
+	
+	<select id="selectDetailAdminCodeCountInfo" resultType="java.lang.Integer" >
+		/* adm-master-admincode-sql-oracle.xml - selectDetailAdminCodeCountInfo */
+			SELECT count(1)
+			  FROM TADMIN_MST_ADCD_DT
+		     WHERE ADCDHDKEY = #{adcdhdkey}
+     	     <if test="adcddtkey != null">
+	    	   AND ADCDDTKEY = #{adcddtkey}
+	    	 </if>
+			<if test="langkey != null">
+				AND LAKEY = #{langkey}
+			</if>
+	</select>	
+
+	<insert id="insertDetailAdminCodeInfo">
+		/* adm-master-admincode-sql-oracle.xml - insertDetailAdminCodeInfo */
+		INSERT INTO TADMIN_MST_ADCD_DT
+		(
+		      ADCDHDKEY
+		    , ADCDDTKEY
+		    , LAKEY
+		    , ADCDDTORDER
+		    , ADCDDTNM
+		    , ADCDDTVALUE
+		    , CMT
+			, DELYN
+		    , INSERTDATE
+			, INSERTURKEY
+   		  	, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+		     #{adcdhdkey}
+		    ,#{adcddtkey}
+		    ,#{langkey}
+		    ,#{adcddtorder}
+		    ,#{adcddtnm}
+ 		    ,#{adcddtvalue}
+   		    ,#{cmt}
+			,#{delyn}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>
+
+	<update id="updateDetailAdminCodeInfo">
+		/* adm-master-admincode-sql-oracle.xml - updateDetailAdminCodeInfo */
+		UPDATE TADMIN_MST_ADCD_DT
+		   SET ADCDDTORDER = #{adcddtorder}
+		     , ADCDDTNM  = #{adcddtnm}
+			 , ADCDDTVALUE = #{adcddtvalue}
+			 , CMT     = #{cmt}
+			 , DELYN     	= #{delyn}
+			 , UPDATEDATE   = #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+	     WHERE ADCDHDKEY = #{adcdhdkey}
+	       AND ADCDDTKEY = #{adcddtkey}
+	       AND LAKEY = #{langkey}
+	</update>
+
+	<update id="deleteDetailAdminCodeInfo">
+		/* adm-master-admincode-sql-oracle.xml - deleteDetailAdminCodeInfo */
+		UPDATE TADMIN_MST_ADCD_DT
+		   SET DELYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+		   	 , UPDATEURKEY = #{surkey}
+		WHERE ADCDHDKEY  = #{adcdhdkey}
+		<if test="adcddtkey != null">
+			AND ADCDDTKEY = #{adcddtkey}
+		</if>
+		<if test="langkey != null">
+			AND LAKEY = #{langkey}
+		</if>
+	</update>
+
+</mapper>

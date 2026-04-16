@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.StoreTmsMapper">
+
+	<delete id="deleteTTMstStore">
+		/* tms-master-store-sql-oracle.xml - deleteTTMstStore */
+	   UPDATE
+	   TT_MST_STORE
+	   SET DELYN = 'Y'
+	   		, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+	   	  ,CLOSDATE		= #{closdate}
+	    WHERE
+		      STORE_KEY = #{storeKey}
+	</delete>
+
+	<insert id="insertTTMstStore">
+		/* tms-master-store-sql-oracle.xml - insertTTMstStore */
+	   MERGE INTO TT_MST_STORE STORE
+	        USING (SELECT 
+				         #{storeKey}   AS STORE_KEY  
+				        ,#{storeName}  AS STORE_NAME
+				        ,'0'            AS FCTYPE     
+				        ,#{address1}    AS ADDRESS1   
+				        ,#{address2}    AS ADDRESS2   
+				        ,#{ownerName}  AS OWNER_NAME
+				        ,#{regno}       AS REGNO      
+				        ,#{closedate} AS CLOSEDATE
+				        ,#{tel1}        AS TEL1       
+				        ,#{tel2}        AS TEL2       
+				        ,#{scNm}       AS SV_NM
+				        ,#{sysdate}      AS INSERTDATE
+				        ,#{surkey}  AS INSERTURKEY
+				        ,#{sysdate}      AS UPDATEDATE
+				        ,#{surkey}  AS UPDATEURKEY
+				        ,#{zipcode}     AS ZIPCODE
+				        ,#{addrid}      AS ADDRID
+	                    ,#{custType}    AS CUST_TYPE
+	                    ,#{custTypeDetail} AS CUST_TYPE_DETAIL
+				        ,SUBSTR(#{closdate}, 0, 14) AS CLOSDATE
+				        ,'0'            AS STORE_TYPE) IN_STORE
+	           ON (STORE.STORE_KEY = IN_STORE.STORE_KEY)
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET 
+				     STORE.STORE_NAME  = IN_STORE.STORE_NAME 
+				    ,STORE.FCTYPE      = IN_STORE.FCTYPE     
+				    ,STORE.ADDRESS1    = IN_STORE.ADDRESS1   
+				    ,STORE.ADDRESS2    = IN_STORE.ADDRESS2   
+				    ,STORE.OWNER_NAME  = IN_STORE.OWNER_NAME 
+				    ,STORE.REGNO       = IN_STORE.REGNO      
+				    ,STORE.CLOSEDATE   = IN_STORE.CLOSEDATE  
+				    ,STORE.TEL1        = IN_STORE.TEL1       
+				    ,STORE.TEL2        = IN_STORE.TEL2       
+				    ,STORE.SV_NM       = IN_STORE.SV_NM      
+				    ,STORE.UPDATEDATE  = IN_STORE.UPDATEDATE 
+				    ,STORE.UPDATEURKEY = IN_STORE.UPDATEURKEY
+				    ,STORE.ZIPCODE     = IN_STORE.ZIPCODE    
+				    ,STORE.ADDRID      = IN_STORE.ADDRID     
+				    ,STORE.CLOSDATE = IN_STORE.CLOSDATE
+				    ,STORE.STORE_TYPE  = IN_STORE.STORE_TYPE
+	       			,STORE.CUST_TYPE   = IN_STORE.CUST_TYPE
+			  		,STORE.CUST_TYPE_DETAIL   = IN_STORE.CUST_TYPE_DETAIL
+	   WHEN NOT MATCHED
+	   THEN
+			INSERT 
+			(
+			     STORE.STORE_KEY
+			    ,STORE.STORE_NAME
+			    ,STORE.FCTYPE
+			    ,STORE.ADDRESS1
+			    ,STORE.ADDRESS2
+			    ,STORE.OWNER_NAME
+			    ,STORE.REGNO
+			    ,STORE.CLOSEDATE
+			    ,STORE.TEL1
+			    ,STORE.TEL2
+			    ,STORE.SV_NM
+			    ,STORE.INSERTDATE
+			    ,STORE.INSERTURKEY
+			    ,STORE.UPDATEDATE
+			    ,STORE.UPDATEURKEY
+			    ,STORE.ZIPCODE
+			    ,STORE.ADDRID
+			    ,STORE.CLOSDATE
+			    ,STORE.STORE_TYPE
+			    ,STORE.CUST_TYPE
+			    ,STORE.CUST_TYPE_DETAIL
+			) VALUES (
+		         IN_STORE.STORE_KEY  
+		        ,IN_STORE.STORE_NAME 
+		        ,IN_STORE.FCTYPE     
+		        ,IN_STORE.ADDRESS1   
+		        ,IN_STORE.ADDRESS2   
+		        ,IN_STORE.OWNER_NAME 
+		        ,IN_STORE.REGNO      
+		        ,IN_STORE.CLOSEDATE  
+		        ,IN_STORE.TEL1       
+		        ,IN_STORE.TEL2       
+		        ,IN_STORE.SV_NM      
+		        ,IN_STORE.INSERTDATE 
+		        ,IN_STORE.INSERTURKEY
+		        ,IN_STORE.UPDATEDATE 
+		        ,IN_STORE.UPDATEURKEY
+		        ,IN_STORE.ZIPCODE    
+		        ,IN_STORE.ADDRID     
+		        ,IN_STORE.CLOSDATE
+		        ,IN_STORE.STORE_TYPE
+				,IN_STORE.CUST_TYPE
+				,IN_STORE.CUST_TYPE_DETAIL
+			)
+	</insert>
+	
+	<update id="updateTTMstStore">
+		/* tms-master-store-sql-oracle.xml - updateTTMstStore */
+		UPDATE TT_MST_STORE
+			SET ZIPCODE				= #{zipcode}
+			  ,ADDRESS1				= #{address1}
+			  ,ADDRESS2				= #{address2}
+			<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ifyn) and "N".equals(ifyn)'>
+			  ,OWNER_NAME				= #{ownerName}
+			  ,STORE_NAME				= #{storeName}
+			  ,TEL1					= #{tel1}
+			  ,SV_NM					= #{scNm}
+			  ,REGNO					= #{regno}
+			  ,CLOSEDATE				= #{closedate}
+			  ,TEL2					= #{tel2}
+			  ,ADDRID					= #{addrid}
+			  ,DELYN 					= #{delyn}
+			  ,CLOSDATE			= SUBSTR(#{closdate}, 0, 14)
+			  ,CUST_TYPE			= #{custType}
+			  ,CUST_TYPE_DETAIL   = #{custTypeDetail}
+			</if>
+			,UPDATEDATE				= #{sysdate}
+			,UPDATEURKEY			= #{surkey}
+		 WHERE 
+		 	STORE_KEY = #{storeKey}
+	</update>
+	 
+	<select id="selectPkCntTTMstStorexct" resultType="java.lang.Integer" >
+		/* tms-master-store-sql-oracle.xml - selectPkCntTTMstStorexct */
+		SELECT COUNT(1)  
+		  FROM TT_MST_STORE
+		 WHERE CTKEY = #{ctkey}
+		   STORE_KEY = #{storeKey}
+	</select>
+	
+	<insert id="insertTTMstStorexct">
+		/* tms-master-store-sql-oracle.xml - insertTTMstStorexct */
+	   MERGE INTO TT_MST_STOREXCT STOREXCT
+	        USING ( SELECT 
+					     #{surkey}  AS UPDATEURKEY
+					     ,#{sysdate}   AS UPDATEDATE
+					     ,#{surkey} AS INSERTURKEY
+					     ,#{sysdate}   AS INSERTDATE
+					     ,#{ctkey}                                               AS CTKEY      
+					     ,#{storeKey}                                           AS STORE_KEY
+					     ,#{dckey}                                               AS DCKEY      
+					     ,'02'                                                   AS ICGRKEY
+	               ) IN_STOREXCT
+	           ON (
+	                 STOREXCT.CTKEY = IN_STOREXCT.CTKEY
+	                 AND STOREXCT.STORE_KEY = IN_STOREXCT.STORE_KEY
+	               )
+	   WHEN MATCHED
+	   THEN
+	      UPDATE SET 
+	                 STOREXCT.UPDATEURKEY = IN_STOREXCT.UPDATEURKEY
+	                ,STOREXCT.UPDATEDATE  = IN_STOREXCT.UPDATEDATE 
+	                ,STOREXCT.ICGRKEY     = IN_STOREXCT.ICGRKEY    
+	   WHEN NOT MATCHED
+	   THEN
+			 INSERT
+			 (
+				  STOREXCT.UPDATEURKEY
+				 ,STOREXCT.UPDATEDATE
+				 ,STOREXCT.INSERTURKEY
+				 ,STOREXCT.INSERTDATE
+				 ,STOREXCT.CTKEY
+				 ,STOREXCT.STORE_KEY
+				 ,STOREXCT.DCKEY
+				 ,STOREXCT.ICGRKEY
+			  ) VALUES (
+				  IN_STOREXCT.UPDATEURKEY
+				 ,IN_STOREXCT.UPDATEDATE 
+				 ,IN_STOREXCT.INSERTURKEY
+				 ,IN_STOREXCT.INSERTDATE 
+				 ,IN_STOREXCT.CTKEY      
+				 ,IN_STOREXCT.STORE_KEY  
+				 ,IN_STOREXCT.DCKEY      
+				 ,IN_STOREXCT.ICGRKEY    
+			  )
+	</insert>
+	
+	<update id="updateTTMstStorexct">
+		/* tms-master-store-sql-oracle.xml - updateTTMstStorexct */
+		UPDATE TT_MST_STOREXCT
+		SET   DELYN = 'N'
+			, CLOSDATE = #{closdate}
+			, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		WHERE CTKEY = #{ctkey}
+		AND   STORE_KEY = #{storeKey}
+	</update>
+	
+	
+	<delete id="deleteTTMstStorexct">
+		/* tms-master-store-sql-oracle.xml - deleteTTMstStorexct */
+		UPDATE TT_MST_STOREXCT
+		 SET DELYN = 'Y'
+		 	, UPDATEURKEY = #{surkey}
+			, UPDATEDATE = #{sysdate}
+		 WHERE 
+		 STORE_KEY = #{storeKey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(dckey)" >
+			AND DCKEY = #{dckey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrkey)" >
+			AND ICGRKEY = #{icgrkey}
+		</if>
+	</delete>
+</mapper>	

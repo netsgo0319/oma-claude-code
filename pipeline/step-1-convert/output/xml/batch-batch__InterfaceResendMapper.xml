@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.ams.system.mapper.InterfaceResendMapper">
+
+    <select id="getResendTarget" resultType="com.daiso.batch.biz.ams.system.vo.IfResendResVO">
+		/* InterfaceResendMapper.xml getResendTarget */
+        SELECT A.ifid AS ORGIFID
+            ,  0      AS RETRYCNT
+            ,  B.MAXRETRY
+            ,  'E' AS STATUS
+            ,  'InterfaceResendJob' AS INSERTURKEY
+            ,  TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS INSERTDATE
+            ,  'InterfaceResendJob' AS UPDATEURKEY
+            ,  TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS UPDATEDATE
+          FROM INTERFACE_LOG A
+          INNER JOIN INTERFACE_RESENDTARGET B
+                  ON A.IFNM = B.IFNM
+                 AND B.RESENDYN = 'Y'
+        WHERE (
+                (
+                    #{fromdt} = #{todt}
+                    AND A.REQDT = #{fromdt}
+                    AND A.REQTM BETWEEN #{fromtm} AND #{totm}
+                )
+                OR
+                (
+                    #{fromdt} <![CDATA[ <> ]]> #{todt}
+                    AND (
+                            (A.REQDT = #{fromdt} AND A.REQTM <![CDATA[ >= ]]> #{fromtm})
+                            OR
+                            ( A.REQDT = #{todt} AND A.REQTM <![CDATA[ <= ]]> #{totm} )
+                        )
+                )
+            )
+          AND A.STATUS = 'E'
+          AND NOT EXISTS (
+            SELECT 1
+              FROM INTERFACE_RESENDLIST C
+             WHERE C.ORGIFID = A.IFID
+                OR C.CURIFID = A.IFID
+          )
+        ORDER BY IFID
+    </select>
+
+    <insert id="insertResendList" parameterType="com.daiso.batch.biz.ams.system.vo.IfResendResVO">
+        /* InterfaceResendMapper.xml insertResendList */
+        INSERT INTO INTERFACE_RESENDLIST
+            (ORGIFID, RETRYCNT, MAXRETRY, STATUS, INSERTURKEY, INSERTDATE, UPDATEURKEY, UPDATEDATE)
+        SELECT *
+          FROM (
+        <foreach collection="list" index="index" item="target" separator="UNION ALL">
+            SELECT
+                #{target.orgifid},
+                #{target.retrycnt},
+                #{target.maxretry},
+                #{target.status},
+                #{target.inserturkey},
+                #{target.insertdate},
+                #{target.updateurkey},
+                #{target.updatedate}
+        </foreach>
+        )
+    </insert>
+
+    <resultMap id="ifResultVO" type="com.daiso.batch.biz.ams.system.vo.IfResendResVO">
+        <result property="orgifid" column="ORGIFID"/>
+        <result property="ifnm" column="IFNM"/>
+        <result property="reqdata" column="REQDATA" jdbcType="CLOB"/>
+    </resultMap>
+
+    <select id="getRequestDataList" resultMap="ifResultVO">
+        /* InterfaceResendMapper.xml getRequestDataList */
+        SELECT IFID AS ORGIFID
+            ,  IFNM
+            ,  REQDATA
+          FROM INTERFACE_LOG
+         WHERE IFID IN (
+                SELECT ORGIFID
+                  FROM INTERFACE_RESENDLIST
+                 WHERE STATUS = 'E'
+                   AND RETRYCNT <![CDATA[ < ]]> MAXRETRY
+             )
+    </select>
+
+    <update id="updateResultResend" parameterType="com.daiso.batch.biz.ams.system.vo.IfResendResVO">
+        /* InterfaceResendMapper.xml updateResultResend */
+        UPDATE INTERFACE_RESENDLIST
+           SET CURIFID = #{curifid}
+             , STATUS  = #{status}
+             , RETRYCNT = RETRYCNT + 1
+             , UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')
+             , UPDATEURKEY = 'InterfaceResendJob'
+         WHERE ORGIFID = #{orgifid}
+    </update>
+</mapper>

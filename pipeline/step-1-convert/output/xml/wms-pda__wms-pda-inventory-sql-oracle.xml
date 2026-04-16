@@ -1,0 +1,1468 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.pda.mapper.PdaInventoryMapper">
+
+	<!--2025-08-21-->
+   <sql id="invn">
+      /* 재고조회 / 임박재고조회 */
+      SELECT DISTINCT
+      		 T.SEARCHSEQ
+           , T.CTKEY
+           , T.OWKEY
+           , T.ICKEY
+           , T.ICNM
+           , T.REFLCKEY
+           , T.IVATKEY
+           , T.IMGURL
+           , T.EXPCKYN
+           , T.EXPDATE
+	       , CASE WHEN T.EXPDATE IS NULL THEN '-'
+		          ELSE SUBSTR(T.EXPDATE, 0, 4) || '-' || SUBSTR(T.EXPDATE, 5, 2) || '-' || SUBSTR(T.EXPDATE, 7, 2)
+		      END AS EXPDATETEXT /* 유통기한 */
+           , T.LCKEY
+           , T.ZNTYPECD
+           , CASE WHEN T.IVSERIALNO IS NULL THEN '-'
+                  ELSE T.IVSERIALNO
+               END AS IVSERIALNO /* 팔레트번호 */
+           , T.LCKEY || CASE WHEN T.IVSERIALNO != '' THEN ' [' || T.IVSERIALNO || ']'
+                           ELSE ''
+                       END AS LCKEYNM /* STEP1. 로케이션 */
+           , T.LCSTORGTYPECD /* 창고구분 */
+           , T.LCSTORGTYPENM /* 창고구분명 */
+           , T.IVSTATUSNM /* 재고상태 */
+           , T.CTNICUNITQTY /* CTN입수량 */
+           , T.ALQTY
+           , T.HOLDQTY
+           , T.IVINVSTGTYN /* 조사대상여부 */
+           , T.RACKNO /* 랙번호 */
+           , T.AVQTY
+           , CASE WHEN T.CTNQTY > 0 THEN '(' || T.CTNQTY || 'ctn' ||
+                                            CASE WHEN T.REMAINAVQTY > 0 THEN ' + ' || T.REMAINAVQTY || 'ea)'
+                                          		 ELSE ')'
+                                        	 END
+                           		    WHEN T.REMAINAVQTY > 0 THEN '(' || T.REMAINAVQTY || 'ea)'
+                             		ELSE NULL
+              END AS AVQTYTEXT /* 가용수량 TEXT */
+           , COUNT(DISTINCT T.ICKEY) OVER (PARTITION BY T.CTKEY) AS SKUCNT /* SKU 수 */
+           , SUM(T.AVQTY) OVER (PARTITION BY T.CTKEY) AS TOTAVQTY /* 총가용수량 */
+           , CASE WHEN T.IMMTIVDATE IS NULL THEN '-'
+                  ELSE SUBSTR(T.IMMTIVDATE, 0, 4) || '-' || SUBSTR(T.IMMTIVDATE, 5, 2) || '-' || SUBSTR(T.IMMTIVDATE, 7, 2)
+              END AS IMMTIVDATE /* 유통기한임박일자 */
+           , CASE WHEN T.OBIMPSCRITDATE IS NULL THEN '-'
+                  ELSE SUBSTR(T.OBIMPSCRITDATE, 0, 4) || '-' || SUBSTR(T.OBIMPSCRITDATE, 5, 2) || '-' || SUBSTR(T.OBIMPSCRITDATE, 7, 2)
+              END AS OBIMPSCRITDATE /* 출고불가일자 */
+        FROM (
+		<if test='(@com.kns.framework.util.StringUtil@isNotEmpty(nstchk)) and (@com.kns.framework.util.StringUtil@isEmpty(ivatkey))'> /* 무재고포함이 null이 아니고 ivatkey가 없으면 */
+			 SELECT 1 AS SEARCHSEQ
+        	 	  , IC.CTKEY
+        	 	  , IC.OWKEY
+        	 	  , IC.ICKEY
+        	 	  , IC.ICNM
+        	 	  , IC.LCKEY AS REFLCKEY
+        	 	  , '10' AS ZNTYPECD
+        	 	  , IC.IMGURL
+                  , IC.EXPCKYN
+                  , '' AS LCKEY
+                  , '' AS IVATKEY
+                  , LC.LCSTORGTYPECD /* 창고구분 */
+                  , LC.RACKNO /* 랙번호 */
+                  , NULL AS IVSERIALNO
+                  , NULL AS IVSTATUSNM /* 재고상태 */
+                  , 0 AS AVQTY /* 가용수량 */
+                  , 0 AS ALQTY /* 할당수량 */
+                  , 0 AS HOLDQTY /* 보류수량 */
+                  , 0 AS CTNICUNITQTY /* CTN입수량 */
+                  , 0 AS CTNQTY /* CTN 환산가용수량 */
+                  , 0 AS REMAINAVQTY /* 잔여 EA */
+                  , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+                  , NULL AS EXPDATE /* 유통기한 */
+                  , NULL AS IVINVSTGTYN /* 조사대상여부 */
+                  , NULL AS IMMTIVDATE /* 유통기한임박일자 */
+                  , NULL AS OBIMPSCRITDATE /* 출고불가일자 */
+        	   FROM TWORK_MST_IC IC
+        	   LEFT JOIN TWORK_MST_LC LC
+		              ON LC.CTKEY = IC.CTKEY
+		             AND LC.LCKEY = IC.LCKEY
+		       LEFT JOIN TWORK_MST_CTCD_DT LCTYP
+	                  ON LCTYP.CTKEY      = IC.CTKEY
+	                 AND LCTYP.CTCDHDKEY  = 'LCSTORGTYPECD'
+	                 AND LCTYP.CTCDDTKEY  = LC.LCSTORGTYPECD
+	                 AND LCTYP.LAKEY      = #{lakey}
+        	   LEFT JOIN TWORK_INFO_IVATXLC IL
+        	   		  ON IC.CTKEY = IL.CTKEY
+        	   		 AND IC.OWKEY = IL.OWKEY
+        	   		 AND IC.ICKEY = IL.ICKEY
+        	  WHERE IC.CTKEY = #{sctkey}
+                AND IC.OWKEY = #{sowkey}
+        	    AND IL.ICKEY IS NULL
+        	    <if test='ickey != "" and ickey != null'>
+	               AND IC.ICKEY = #{ickey}
+	            </if>
+	            <if test='lckey != "" and lckey != null'>
+	               AND IC.LCKEY = #{lckey}
+	            </if>
+	            <if test='tabIndex == 0 and (barcode != "" and barcode != null)'> /* 입력값이 null이 아닐때 */
+                  <choose>
+                      <when test='radioVal == "icbarcode"'> /* 라디오 값이 상품바코드일때 */
+                          AND IC.ICKEY IN (
+	                                        SELECT ICKEY
+	                                          FROM TWORK_MST_ICBARCODE
+	                                         WHERE CTKEY   = IC.CTKEY
+	                                           AND OWKEY   = IC.OWKEY
+	                                           AND USEYN   = 'Y'
+	                                           AND BARCODE = #{barcode}
+										  )
+                      </when>
+                      <when test='radioVal == "ickeyNm"'> /* 상품코드/명 일때 */
+                          AND (IC.ICKEY = #{barcode} OR IC.ICNM LIKE '%' || #{barcode} || '%')
+                      </when>
+                      <when test='radioVal == "lckey"'> /* 로케이션일때 */
+                          AND IC.LCKEY LIKE #{barcode} || '%' 
+                      </when>
+                  </choose>
+              </if>
+		 UNION ALL
+		</if>
+             SELECT 2 AS SEARCHSEQ
+             	  , IVL.CTKEY
+                  , IVL.OWKEY
+                  , IVL.ICKEY
+                  , IC.ICNM
+                  , IC.LCKEY AS REFLCKEY
+                  , ZN.ZNTYPECD
+                  , IC.IMGURL
+                  , IC.EXPCKYN
+                  , IVL.LCKEY
+                  , IVL.IVATKEY
+                  , LC.LCSTORGTYPECD /* 창고구분 */
+                  , LC.RACKNO /* 랙번호 */
+                  , CASE WHEN LC.IVCNTRMGMTYN = 'Y' AND IVL.IVSERIALNO != 'NA' THEN IVL.IVSERIALNO
+                       ELSE ''
+                     END AS IVSERIALNO /* 팔레트번호 */
+                  , IVSTAT.CTCDDTNM AS IVSTATUSNM /* 재고상태 */
+                  , IVL.AVQTY /* 가용수량 */
+                  , IVL.ALQTY /* 할당수량 */
+                  , IVL.HOLDQTY /* 보류수량 */
+                  , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+                  , DATE_TRUNC('day', IVL.AVQTY / CTN.ICUNITQTY)::DATE AS CTNQTY /* CTN 환산가용수량 */
+                  , IVL.AVQTY - (DATE_TRUNC('day', IVL.AVQTY / CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINAVQTY /* 잔여 EA */
+                  , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+                  , IVAT.EXPDATE /* 유통기한 */
+                  , IVL.IVINVSTGTYN /* 조사대상여부 */
+                  , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN
+                          TO_CHAR(
+                                 (TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS)
+                                + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IMMT.IMMTIVCRITRT, 0) / 100))::DATE,'YYYYMMDD') || '000000'
+                          ELSE NULL
+                     END AS IMMTIVDATE /* 유통기한임박일자 */
+                  , CASE WHEN IC.EXPCKYN = 'Y' AND IC.EXPCKTYPECD = 'E' THEN
+                          TO_CHAR(
+                                (TO_DATE(SUBSTR(IVAT.EXPDATE,1,8),'YYYYMMDD') - IC.EXPCNVRSNDAYS)
+                                + DATE_TRUNC('day', IC.EXPCNVRSNDAYS * (COALESCE(IC.OBIMPSCRITRT, 0) / 100))::DATE,'YYYYMMDD') || '000000'
+                          ELSE NULL
+                     END AS OBIMPSCRITDATE /* 출고불가일자 */
+              FROM TWORK_INFO_IVATXLC IVL
+         INNER JOIN TWORK_INFO_IVAT IVAT
+                ON IVAT.CTKEY       = IVL.CTKEY
+               AND IVAT.OWKEY       = IVL.OWKEY
+               AND IVAT.IVATKEY     = IVL.IVATKEY
+               AND IVAT.ICKEY       = IVL.ICKEY
+        INNER JOIN TWORK_MST_LC LC
+                ON LC.CTKEY         = IVL.CTKEY
+               AND LC.LCKEY         = IVL.LCKEY
+        INNER JOIN TWORK_MST_ZN ZN
+        	    ON ZN.CTKEY        = LC.CTKEY
+               AND ZN.ZNKEY        = LC.ZNKEY
+        INNER JOIN TWORK_MST_IC IC
+                ON IC.CTKEY         = IVL.CTKEY
+               AND IC.OWKEY         = IVL.OWKEY
+               AND IC.ICKEY         = IVL.ICKEY
+               AND IC.UOM           = 'EA'
+               AND IC.ICGRPKEY     != 'SM' /* 부자재 제외 */
+        INNER JOIN TWORK_MST_CTCD_DT LCTYP
+                ON LCTYP.CTKEY      = IC.CTKEY
+               AND LCTYP.CTCDHDKEY  = 'LCSTORGTYPECD'
+               AND LCTYP.CTCDDTKEY  = LC.LCSTORGTYPECD
+               AND LCTYP.LAKEY      = #{lakey}
+        INNER JOIN TWORK_MST_CTCD_DT IVSTAT
+                ON IVSTAT.CTKEY     = IC.CTKEY
+               AND IVSTAT.CTCDHDKEY = 'IVSTATUSCD'
+               AND IVSTAT.CTCDDTKEY = IVL.IVSTATUSCD
+               AND IVSTAT.LAKEY     = #{lakey}
+         LEFT JOIN TWORK_MST_ICUTXTYPE CTN
+                ON CTN.CTKEY         = IC.CTKEY
+               AND CTN.OWKEY         = IC.OWKEY
+               AND CTN.ICKEY         = IC.ICKEY
+               AND CTN.ICUNITTYPECD  = 'CTN'
+         LEFT JOIN TWORK_MST_IMMT_IV_CRIT IMMT
+                ON IMMT.CTKEY        = IC.CTKEY
+             WHERE IVL.CTKEY         = #{sctkey}
+               AND IVL.OWKEY         = #{sowkey}
+               AND IVL.TOTQTY <![CDATA[>]]> 0
+              <if test='ickey != "" and ickey != null'>
+               AND IVL.ICKEY = #{ickey}
+              </if>
+              <if test='lckey != "" and lckey != null'>
+               AND IVL.LCKEY = #{lckey}
+              </if>
+              <if test='ivatkey != "" and ivatkey != null'>
+               AND IVL.IVATKEY = #{ivatkey}
+              </if>
+              <if test='tabIndex == 1'> /* 임박탭일때 */
+                  /* 임박재고조회 */
+                  AND IC.EXPCKYN = 'Y'
+              </if>
+              <if test='tabIndex == 0 or (barcode != "" and barcode != null)'> /* 재고탭이거나 입력값이 null이 아닐때 */
+                  <choose>
+                      <when test='radioVal == "icbarcode"'> /* 라디오 값이 상품바코드일때 */
+                          AND IVL.ICKEY IN (
+                                        SELECT ICKEY
+                                          FROM TWORK_MST_ICBARCODE
+                                         WHERE CTKEY   = IVL.CTKEY
+                                           AND OWKEY   = IVL.OWKEY
+                                           AND USEYN   = 'Y'
+                                           AND BARCODE = #{barcode}
+                                       )
+                      </when>
+                      <when test='radioVal == "ickeyNm"'> /* 상품코드/명 일때 */
+                          AND (IVL.ICKEY = #{barcode} OR IC.ICNM LIKE '%' || #{barcode} || '%')
+                      </when>
+                      <when test='radioVal == "lckey"'> /* 로케이션일때 */
+                          AND IVL.LCKEY LIKE #{barcode} || '%' 
+                      </when>
+                  </choose>
+              </if>
+            ) T
+	   <if test='tabIndex == 1'> /* 임박탭일때 */
+          /* 임박재고조회 */
+          WHERE SUBSTR(T.IMMTIVDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+             OR SUBSTR(T.OBIMPSCRITDATE,0,8) <![CDATA[<=]]> TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+      </if>
+      ORDER BY T.SEARCHSEQ
+      		  , CAST(T.ZNTYPECD AS NUMERIC)
+      		  , CASE WHEN T.LCSTORGTYPECD IS NULL THEN '10'
+	      		  	 WHEN T.LCSTORGTYPECD IN ('40', '50', '60', '70') THEN T.LCSTORGTYPECD
+                     ELSE '90'
+                END
+              , T.LCSTORGTYPECD
+              , T.ICKEY
+              , T.LCKEY
+   </sql>
+
+   <!--2025-08-21-->
+   <select id="selectInvnList" resultType="camelMap">
+      /* wms-pda-inventory-sql-oracle.xml - selectInvnList - 재고조회 / 임박재고조회 */
+      <include refid="invn"/>
+   </select>
+
+   <!--2025-08-21-->
+   <sql id="invnDt">
+   /* 재고조회 - 상품상세정보 버튼 */
+   SELECT DISTINCT
+          CASE WHEN ASRTMASIC.ICKEY IS NOT NULL THEN 'Y'
+               ELSE 'N'
+           END AS ASRTYN -- 상품마스터의 ASRTYN(아소트여부)는 정확성이 불확실(MD가관리): 'N'이면 아소트탭버튼 안보이게
+     	   /********** 기본정보 **********/
+          , IC.ICKEY AS OICKEY
+          , IC.ICNM AS OICNM
+          , IC.IMGURL
+          , IC.SEASON
+          , ICSTAT.CTCDDTNM AS ICSTATUS  /* 상품상태 */
+          , LV1.CTGKEY AS LV1CTGKEY
+          , LV1.CTGNM  AS LV1CTGNM
+          , LV2.CTGKEY AS LV2CTGKEY
+          , LV2.CTGNM  AS LV2CTGNM
+          , LV3.CTGKEY AS LV3CTGKEY
+          , LV3.CTGNM  AS LV3CTGNM
+          , ICTYPE.CTCDDTNM AS ICTYPENM /* 상품형태 */
+          , IC.LCKEY /* 대표로케이션 */
+          , IC.ROBSORTERICYN /* 로봇소터여부 */
+          , IC.PKOTICYN /* 덕용상품여부 */
+          , IC.DFSHPMTRYN /* 이형물여부 */
+          , IC.COMPYN /* 구성품여부 */
+          , IC.COMPCONT /* 구성품내용 */
+     	   /********** 추가정보 **********/
+          , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN단위수량 */
+          , INN.ICUNITQTY AS INNICUNITQTY /* INN단위수량 */
+          , IC.BARCODEATTACHYN /* 바코드부착여부 */
+          , EABARCODE.BARCODE  AS EABARCODE /* EA바코드 */
+          , INNBARCODE.BARCODE AS INNBARCODE /* 중포바코드 */
+          , CTNBARCODE.BARCODE AS CTNBARCODE /* CTN바코드 */
+          , CASE WHEN ASRTDT.COLOR IS NULL THEN '-'
+                 ELSE ASRTDT.COLOR
+             END AS COLOR
+          , CASE WHEN ASRTDT.DESIGN IS NULL THEN '-'
+                 ELSE ASRTDT.DESIGN
+             END AS DESIGN
+          , CASE WHEN ASRTDT.COLOR IS NULL THEN '-'
+                 ELSE ASRTDT.CHRT
+             END AS CHRT
+     	   /********** 유통기한 **********/
+          , IC.EXPCKYN /* 유통기한관리여부 */
+          , COALESCE(EXPCKTYPE.CTCDDTNM, '없음') AS EXPCKTYPE /* 유통기한관리유형 */
+          , IC.EXPCNVRSNDAYS /* 유통기한변환기준일 */
+          , IC.OBIMPSCRITRT /* 출고불가기준율 */
+     	   /********** 규격 **********/
+          , COALESCE(EA.WIDTH, 0) AS EAWIDTH
+          , COALESCE(EA."DEPTH", 0) AS EADEPTH
+          , COALESCE(EA.HEIGHT, 0) AS EAHEIGHT
+          , COALESCE(EA.VOL, 0) AS EAVOL /* EA부피(CBM) */
+          , COALESCE(EA.WEIGHT, 0) AS EAWEIGHT /* EA중량 */
+          , COALESCE(INN.WIDTH, 0) AS INNWIDTH
+          , COALESCE(INN."DEPTH", 0) AS INNDEPTH
+          , COALESCE(INN.HEIGHT, 0) AS INNHEIGHT
+          , COALESCE(INN.VOL, 0) AS INNVOL /* INN부피(CBM) */
+          , COALESCE(INN.WEIGHT, 0) AS INNWEIGHT /* INN중량 */
+          , COALESCE(CTN.WIDTH, 0) AS CTNWIDTH
+          , COALESCE(CTN."DEPTH", 0) AS CTNDEPTH
+          , COALESCE(CTN.HEIGHT, 0) AS CTNHEIGHT
+          , COALESCE(CTN.VOL, 0) AS CTNVOL /* CTN부피(CBM) */
+          , COALESCE(CTN.WEIGHT, 0) AS CTNWEIGHT /* CTN중량 */
+     	   /********** 아소트 **********/
+          , ASRTMASIC.ICKEY
+          , ASRTMASIC.ICNM
+          , COALESCE(EAASRTMAS.WIDTH, 0) AS ASRTWIDTH
+          , COALESCE(EAASRTMAS."DEPTH", 0) AS ASRTDEPTH
+          , COALESCE(EAASRTMAS.HEIGHT, 0) AS ASRTHEIGHT
+          , COALESCE(EAASRTMAS.VOL, 0) AS ASRTVOL /* 모상품부피(CBM) */
+          , COALESCE(EAASRTMAS.WEIGHT, 0) AS ASRTWEIGHT /* 모상품중량 */
+       FROM TWORK_MST_IC IC
+       /* 카테고리 3 → 2 → 1 */
+       INNER JOIN TWORK_MST_CTG LV3
+               ON LV3.CTKEY           		 = IC.CTKEY
+              AND LV3.OWKEY           		 = IC.OWKEY
+              AND LV3.CTGKEY          		 = IC.CTGKEY
+              AND LV3.CTGLV           		 = '3'
+              AND COALESCE(LV3.DELYN, 'N') 		 = 'N'
+       INNER JOIN TWORK_MST_CTG LV2
+               ON LV2.CTKEY           		 = LV3.CTKEY
+              AND LV2.OWKEY           		 = LV3.OWKEY
+              AND LV2.CTGKEY          		 = LV3.UPRCTGKEY
+              AND LV2.CTGLV           		 = '2'
+              AND COALESCE(LV2.DELYN, 'N') 		 = 'N'
+       INNER JOIN TWORK_MST_CTG LV1
+               ON LV1.CTKEY  		   		 = LV2.CTKEY
+              AND LV1.OWKEY  		   		 = LV2.OWKEY
+              AND LV1.CTGKEY 		   		 = LV2.UPRCTGKEY
+              AND LV1.CTGLV  		   		 = '1'
+              AND COALESCE(LV2.DELYN, 'N') 		 = 'N'
+        /* 유통기한체크유형 */
+        LEFT JOIN TWORK_MST_CTCD_DT EXPCKTYPE
+               ON EXPCKTYPE.CTKEY     		 = IC.CTKEY
+              AND EXPCKTYPE.CTCDHDKEY 		 = 'EXPCKTYPECD'
+              AND EXPCKTYPE.CTCDDTKEY 		 = IC.EXPCKTYPECD
+              AND EXPCKTYPE.LAKEY     		 = #{slakey}
+        /* 단위유형 */
+        LEFT JOIN TWORK_MST_ICUTXTYPE CTN
+               ON CTN.CTKEY 		   		 = IC.CTKEY
+              AND CTN.OWKEY 		   		 = IC.OWKEY
+              AND CTN.ICKEY 		   		 = IC.ICKEY
+              AND CTN.ICUNITTYPECD    		 = 'CTN'
+        LEFT JOIN TWORK_MST_ICUTXTYPE INN
+               ON INN.CTKEY  		   		 = IC.CTKEY
+              AND INN.OWKEY  		   		 = IC.OWKEY
+              AND INN.ICKEY  		   		 = IC.ICKEY
+              AND INN.ICUNITTYPECD    		 = 'INN'
+        LEFT JOIN TWORK_MST_ICUTXTYPE EA
+               ON EA.CTKEY   	   	   		 = IC.CTKEY
+              AND EA.OWKEY   	   	   		 = IC.OWKEY
+              AND EA.ICKEY   	   	   		 = IC.ICKEY
+              AND EA.ICUNITTYPECD 	   		 = 'EA'
+        /* 바코드 */
+        LEFT JOIN TWORK_MST_ICBARCODE EABARCODE
+               ON EABARCODE.CTKEY 	   		 = IC.CTKEY
+              AND EABARCODE.OWKEY 	   		 = IC.OWKEY
+              AND EABARCODE.ICKEY 	   		 = IC.ICKEY
+              AND EABARCODE.UOM   	   		 = 'EA'
+              AND EABARCODE.USEYN 	   		 = 'Y'
+        LEFT JOIN TWORK_MST_ICBARCODE INNBARCODE
+               ON INNBARCODE.CTKEY    		 = IC.CTKEY
+              AND INNBARCODE.OWKEY    		 = IC.OWKEY
+              AND INNBARCODE.ICKEY    		 = IC.ICKEY
+              AND INNBARCODE.UOM      		 = 'INN'
+              AND INNBARCODE.USEYN    		 = 'Y'
+        LEFT JOIN TWORK_MST_ICBARCODE CTNBARCODE
+               ON CTNBARCODE.CTKEY    		 = IC.CTKEY
+              AND CTNBARCODE.OWKEY    		 = IC.OWKEY
+              AND CTNBARCODE.ICKEY    		 = IC.ICKEY
+              AND CTNBARCODE.UOM      		 = 'CTN'
+              AND CTNBARCODE.USEYN    		 = 'Y'
+        /* 상품상태 */
+        LEFT JOIN TWORK_MST_CTCD_DT ICSTAT
+               ON ICSTAT.CTKEY       		 = IC.CTKEY
+              AND ICSTAT.CTCDHDKEY   		 = 'GDSTS_DIV'
+              AND ICSTAT.CTCDDTKEY   		 = IC.ICOPERSTATUSCD
+              AND ICSTAT.LAKEY       		 = #{slakey}
+       	/* 상품형태 */
+        LEFT JOIN TWORK_MST_CTCD_DT ICTYPE
+               ON ICTYPE.CTKEY       		 = IC.CTKEY
+              AND ICTYPE.CTCDHDKEY   		 = 'ICTYPECD'
+              AND ICTYPE.CTCDDTKEY   		 = IC.OLNICTYPECD
+              AND ICTYPE.LAKEY       		 = #{slakey}
+        /* 아소트 */
+        LEFT JOIN TWORK_MST_ASRT ASRTDT
+               ON ASRTDT.CTKEY        		 = IC.CTKEY
+              AND ASRTDT.OWKEY        		 = IC.OWKEY
+              AND ASRTDT.ASRTDTICKEY  		 = IC.ICKEY
+              AND ASRTDT.QTY <![CDATA[>]]> 0
+        LEFT JOIN TWORK_MST_ASRT ASRTMAS
+               ON ASRTMAS.CTKEY 	    	 = IC.CTKEY
+              AND ASRTMAS.OWKEY 	    	 = IC.OWKEY
+              AND ASRTMAS.ASRTMASICKEY 		 = COALESCE(ASRTDT.ASRTMASICKEY, IC.ICKEY)
+        LEFT JOIN TWORK_MST_IC ASRTMASIC
+               ON ASRTMASIC.CTKEY 			 = ASRTMAS.CTKEY
+              AND ASRTMASIC.OWKEY 			 = ASRTMAS.OWKEY
+              AND ASRTMASIC.ICKEY 			 = ASRTMAS.ASRTMASICKEY
+              AND ASRTMASIC.UOM   			 = 'EA'
+              AND ASRTMASIC.ICOPERSTATUSCD  != '9' /* 9:단종 */
+        LEFT JOIN TWORK_MST_ICUTXTYPE EAASRTMAS
+               ON EAASRTMAS.CTKEY 		  	 = ASRTMASIC.CTKEY
+              AND EAASRTMAS.OWKEY 		  	 = ASRTMASIC.OWKEY
+              AND EAASRTMAS.ICKEY 		  	 = ASRTMASIC.ICKEY
+              AND EAASRTMAS.ICUNITTYPECD 	 = 'EA'
+            /* 조건 */
+            WHERE IC.CTKEY 				     = #{ctkey}
+              AND IC.OWKEY 				     = #{owkey}
+              AND IC.ICKEY 				     = #{ickey}
+              AND IC.UOM   				     = 'EA'
+   </sql>
+
+   <!--2025-08-21-->
+   <select id="selectInvnDtList" resultType="camelMap">
+      /* wms-pda-inventory-sql-oracle.xml - selectInvnDtList - 재고조회 / 임박재고조회 */
+      <include refid="invnDt"/>
+   </select>
+
+    <!--2025-08-21-->
+    <sql id="invnExpItem">
+        /* 유통기한별 재고리스트(유통기한버튼 클릭),
+        IVATKEY 조건은 팝업의 STEP2 조회 시 적용 */
+        SELECT T.*
+             , SUM(AVQTY) OVER(PARTITION BY T.CTKEY) AS TOTAVQTY /* 총 가용수량 */
+             , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN 입수량 */
+             , DATE_TRUNC('day', T.AVQTY / CTN.ICUNITQTY)::DATE AS CTNQTY /* CTN 환산 가용수량 (소수점 제거) */
+             , T.AVQTY - (DATE_TRUNC('day', T.AVQTY / CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINAVQTY /* CTN 환산 후 남은 가용수량 */
+          FROM (
+               SELECT IVL.CTKEY
+                    , IVL.OWKEY
+                    , IVL.ICKEY
+                    , IC.ICNM
+                    , IVL.IVATKEY
+                    , CASE WHEN IVAT.EXPDATE IS NULL THEN '-'
+                           ELSE SUBSTR(IVAT.EXPDATE, 0, 4) || '-' || SUBSTR(IVAT.EXPDATE, 5, 2) || '-' || SUBSTR(IVAT.EXPDATE, 7, 2)
+                       END AS EXPDATE
+                <if test='ivatkey != "" and ivatkey != null'> /* STEP2. 조회 */
+                    , IVL.LCKEY
+                    , LC.LCSTORGTYPECD /* 창고구분 */
+                    , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+                </if>
+                    , SUM(IVL.AVQTY) AS AVQTY /* 가용수량 */
+                    , COUNT(IVL.LCKEY) AS LCKEYCNT /* 로케이션수 */
+                 FROM TWORK_INFO_IVATXLC IVL
+           INNER JOIN TWORK_INFO_IVAT IVAT
+                   ON IVAT.CTKEY      = IVL.CTKEY
+                  AND IVAT.OWKEY      = IVL.OWKEY
+                  AND IVAT.IVATKEY    = IVL.IVATKEY
+                  AND IVAT.ICKEY      = IVL.ICKEY
+           INNER JOIN TWORK_MST_LC LC
+                   ON LC.CTKEY        = IVL.CTKEY
+                  AND LC.LCKEY        = IVL.LCKEY
+           INNER JOIN TWORK_MST_IC IC  /* 상품마스터 */
+                   ON IC.CTKEY        = IVL.CTKEY
+                  AND IC.OWKEY        = IVL.OWKEY
+                  AND IC.ICKEY        = IVL.ICKEY
+                  AND IC.UOM          = 'EA'
+                  AND IC.ICGRPKEY    != 'SM'   /* 부자재 제외 */
+        <if test='ivatkey != "" and ivatkey != null'> /* STEP2. 조회 */
+           INNER JOIN TWORK_MST_CTCD_DT LCTYP  /* 로케이션유형 */
+                   ON LCTYP.CTKEY     = IC.CTKEY
+                  AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+                  AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+                  AND LCTYP.LAKEY     = #{lakey}
+        </if>
+                WHERE IVL.CTKEY       = #{ctkey}
+                  AND IVL.OWKEY       = #{owkey}
+                  AND IVL.ICKEY       = #{ickey}
+              <if test='ivatkey != "" and ivatkey != null'> /* STEP2. 조회 */
+                  AND IVL.IVATKEY     = #{ivatkey}
+              </if>
+                  AND IVL.TOTQTY <![CDATA[>]]> 0
+        GROUP BY IVL.CTKEY, IVL.OWKEY, IVL.ICKEY, IC.ICNM, IVL.IVATKEY, IVAT.EXPDATE
+                <if test='ivatkey != "" and ivatkey != null'> /* STEP2. 조회 */
+                    , IVL.LCKEY, LCTYP.CTCDDTNM, LC.LCSTORGTYPECD
+                </if>
+                ) T
+        LEFT JOIN TWORK_MST_ICUTXTYPE CTN   /* CTN 상품단위유형 */
+               ON CTN.CTKEY        = T.CTKEY
+              AND CTN.OWKEY        = T.OWKEY
+              AND CTN.ICKEY        = T.ICKEY
+              AND CTN.ICUNITTYPECD = 'CTN'
+        <if test='ivatkey != "" and ivatkey != null'>/* STEP2. 조회 */
+           ORDER BY T.EXPDATE
+                  , CASE WHEN LCSTORGTYPENM LIKE '경량%' THEN 0
+                         ELSE 1
+                     END
+        </if>
+    </sql>
+
+    <!--2025-08-21-->
+    <select id="selectInvnExpItemList" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnExpItemList - 유통기한별 재고리스트(유통기한버튼 클릭) */
+        <include refid="invnExpItem"/>
+    </select>
+
+	<!--2025-08-29-->
+	<sql id="ta">
+		/* 재고지시이동 조회 STEP1 */
+		SELECT TH.CTKEY
+		     , TH.OWKEY
+		     , TH.TAHDKEY
+		     , TH.CMT /* 비고 */
+			 , COUNT(*) AS ROWCNT /* ROW 수 */
+			 , SUM(CASE WHEN TD.TAWKDTSTATUSCD = '20' THEN 1
+			     	 	ELSE 0
+			    	END) AS COMPLCNT /* 완료 수 */
+			 , SUM(CASE WHEN TD.TAWKDTSTATUSCD = '10' THEN 1
+			     		ELSE 0
+			        END) AS EXPTCNT /* 반출 수 */
+		  FROM TWORK_INFO_TA_HD TH
+	INNER JOIN TWORK_INFO_TA_DT TD
+		    ON TH.CTKEY 			  = TD.CTKEY
+		   AND TH.OWKEY 			  = TD.OWKEY
+		   AND TH.TAHDKEY 			  = TD.TAHDKEY
+		 WHERE TH.CTKEY 			  = #{sctkey}
+		   AND TH.OWKEY 			  = #{sowkey}
+		   AND SUBSTR(TH.REGDATE,0,8) = #{regdate}
+		   AND TH.TATYPECD 			  = '10' /* 10:재고이동 */
+		   AND TH.TAWKSTATUSCD <![CDATA[<]]> '20'
+	  GROUP BY TH.CTKEY, TH.OWKEY, TH.TAHDKEY, TH.CMT
+	  ORDER BY TH.TAHDKEY
+	</sql>
+
+	<!--2025-08-29-->
+	<select id="selectTaList" resultType="camelMap">
+		/* wms-pda-inventory-sql-oracle.xml - selectTaList - 재고지시이동 조회 STEP1 */
+		<include refid="ta"/>
+	</select>
+
+    <!--2025-08-29-->
+    <sql id="taFilter">
+        /* STEP2. 필터 : 구역 콤보 */
+        SELECT DISTINCT AR.ARKEY AS CODE
+             , AR.ARKEY || ' : ' || AR.ARNM AS NAME
+          FROM TWORK_INFO_TA_HD  TH
+    INNER JOIN TWORK_INFO_TA_DT TD
+            ON TH.CTKEY     = TD.CTKEY
+           AND TH.OWKEY     = TD.OWKEY
+           AND TH.TAHDKEY   = TD.TAHDKEY
+    INNER JOIN TWORK_MST_LC LC
+            ON LC.CTKEY     = TD.CTKEY
+           AND LC.LCKEY     = TD.FRLCKEY
+    INNER JOIN TWORK_MST_AR AR
+            ON AR.CTKEY     = LC.CTKEY
+           AND AR.ZNKEY     = LC.ZNKEY
+           AND AR.ARKEY     = LC.ARKEY
+         WHERE TH.CTKEY     = #{ctkey}
+           AND TH.OWKEY     = #{owkey}
+           AND SUBSTR(TH.REGDATE, 0, 8) = #{regdate}
+           AND TH.TAHDKEY   = #{tahdkey}
+           AND TH.TATYPECD  = '10' /* 10: 재고이동 */
+      ORDER BY AR.ARKEY
+    </sql>
+
+    <!--2025-08-29-->
+    <select id="selectTaFilterList" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectTaFilterList - STEP2. 필터 : 구역 콤보 */
+        <include refid="taFilter"/>
+    </select>
+
+    <!--2025-08-29-->
+    <sql id="taFrLoc">
+        /* STEP2. 재고지시이동 출발Loc 조회 */
+        SELECT T.CTKEY
+             , T.OWKEY
+             , T.TAHDKEY
+             , T.TADTKEY
+             , T.ARKEY
+             , T.FRLCKEY
+             , T.ICKEY
+             , T.ICNM
+             , CASE WHEN MIN(T.TAWKDTSTATUSCD) = '20' THEN '완료'
+                    ELSE '미완료'
+            END AS WKSTATUS /* 작업상태 */
+             , T.TOLCKEY
+             , T.BARCODE
+             , T.MOVECNTRNO
+        FROM (
+             SELECT DISTINCT TH.CTKEY
+                   , TH.OWKEY
+                   , TH.TAHDKEY
+                   , TD.TADTKEY
+                   , AR.ARKEY
+                   , TD.FRLCKEY
+                   /* 도착LOC */
+                   , (SELECT STRING_AGG(DISTINCT td2.TOLCKEY, ',' ORDER BY td2.TOLCKEY) FROM TWORK_INFO_TA_DT td2 WHERE td2.CTKEY = TD.CTKEY AND td2.OWKEY = TD.OWKEY AND td2.TAHDKEY = TH.TAHDKEY AND td2.FRLCKEY = TD.FRLCKEY) AS TOLCKEY
+                   , TD.ICKEY
+                   , IC.ICNM
+                   /* 상품바코드 */
+                   , (SELECT STRING_AGG(DISTINCT icb2.BARCODE, ',' ORDER BY icb2.BARCODE) FROM TWORK_MST_ICBARCODE icb2 WHERE icb2.CTKEY = TD.CTKEY AND icb2.OWKEY = TD.OWKEY AND icb2.ICKEY = TD.ICKEY AND icb2.USEYN = 'Y') AS BARCODE
+                   , TD.TAWKDTSTATUSCD
+                   /* 이동용기번호 */
+                   , (SELECT STRING_AGG(DISTINCT td3.MOVECNTRNO, ',' ORDER BY td3.MOVECNTRNO) FROM TWORK_INFO_TA_DT td3 WHERE td3.CTKEY = TD.CTKEY AND td3.OWKEY = TD.OWKEY AND td3.TAHDKEY = TH.TAHDKEY AND td3.FRLCKEY = TD.FRLCKEY) AS MOVECNTRNO
+                FROM TWORK_INFO_TA_HD TH
+          INNER JOIN TWORK_INFO_TA_DT TD
+                  ON TH.CTKEY         = TD.CTKEY
+                 AND TH.OWKEY         = TD.OWKEY
+                 AND TH.TAHDKEY       = TD.TAHDKEY
+          INNER JOIN TWORK_MST_IC IC   /* 상품마스터 */
+                  ON IC.CTKEY         = TD.CTKEY
+                 AND IC.OWKEY         = TD.OWKEY
+                 AND IC.ICKEY         = TD.ICKEY
+                 AND IC.UOM           = 'EA'
+          INNER JOIN TWORK_MST_LC LC
+                  ON LC.CTKEY         = TD.CTKEY
+                 AND LC.LCKEY         = TD.FRLCKEY
+          INNER JOIN TWORK_MST_AR AR
+                  ON AR.CTKEY         = LC.CTKEY
+                 AND AR.ZNKEY         = LC.ZNKEY
+                 AND AR.ARKEY         = LC.ARKEY
+          INNER JOIN TWORK_MST_ICBARCODE ICB
+                  ON ICB.CTKEY        = IC.CTKEY
+                 AND ICB.OWKEY        = IC.OWKEY
+                 AND ICB.ICKEY        = IC.ICKEY
+                 AND ICB.USEYN        = 'Y'
+               WHERE TH.CTKEY         = #{ctkey}
+                 AND TH.OWKEY         = #{owkey}
+                 AND SUBSTR(TH.REGDATE, 0, 8) = #{regdate}
+                 AND TH.TAHDKEY       = #{tahdkey}
+                 AND TH.TATYPECD      = '10' /* 10: 재고이동 */
+             ) T
+        GROUP BY T.CTKEY, T.OWKEY, T.TAHDKEY, T.TADTKEY, T.ARKEY, T.FRLCKEY, T.ICKEY, T.ICNM, T.TOLCKEY, T.BARCODE, T.MOVECNTRNO
+        ORDER BY T.FRLCKEY, T.ICKEY
+    </sql>
+
+    <!--2025-08-29-->
+    <select id="selectTaFrLocList" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectTaFrLocList - STEP2. 재고지시이동 출발Loc 조회 */
+        <include refid="taFrLoc"/>
+    </select>
+
+	<!--2025-08-29-->
+	<sql id="taWk">
+		/* 재고지시이동 출발 -> 도착조회 STEP3 */
+		SELECT TH.CTKEY
+		     , TH.OWKEY
+		     , TH.TAHDKEY
+		     , TH.CMT /* 비고 */
+		     , TD.TADTKEY
+			 , TD.ICKEY
+		     , IC.ICNM
+		     , CASE WHEN TD.EXPDATE IS NULL THEN '-'
+		            ELSE SUBSTR(TD.EXPDATE, 0, 4) || '-' || SUBSTR(TD.EXPDATE, 5, 2) || '-' || SUBSTR(TD.EXPDATE, 7, 2)
+		        END AS EXPDATE /* 유통기한 */
+		     , IC.EXPCKYN /* 유통기한 관리여부 */
+		     , TD.IVATKEY
+			 , TD.TAWKDTSTATUSCD /* 상세작업상태 */
+		     , CASE WHEN TD.TAWKDTSTATUSCD = '00' THEN '지시'
+		            WHEN TD.TAWKDTSTATUSCD = '10' THEN '반출'
+		            WHEN TD.TAWKDTSTATUSCD = '20' THEN '완료'
+		        END AS TAWKDTSTATUSNM
+			 , TD.FRLCKEY
+		     , TD.TOLCKEY
+		     , CASE
+                   WHEN TD.TAWKDTSTATUSCD = '00' THEN
+                       CASE WHEN MOD(TD.ISTQTY, ICUT.ICUNITQTY) = 0 THEN (TD.ISTQTY / ICUT.ICUNITQTY)::TEXT
+                            ELSE TO_CHAR(TRUNC(TD.ISTQTY / ICUT.ICUNITQTY, 1), '0.9')
+                        END || ' ' || TD.UOM
+                   WHEN TD.TAWKDTSTATUSCD = '10' THEN
+                       CASE WHEN MOD(TD.OUTQTY, ICUT.ICUNITQTY) = 0 THEN (TD.OUTQTY / ICUT.ICUNITQTY)::TEXT
+                            ELSE TO_CHAR(TRUNC(TD.OUTQTY / ICUT.ICUNITQTY, 1), '0.9')
+                        END || ' ' || TD.UOM
+                   ELSE
+                       CASE WHEN MOD(TD.INQTY, ICUT.ICUNITQTY) = 0 THEN (TD.INQTY / ICUT.ICUNITQTY)::TEXT
+                            ELSE TO_CHAR(TRUNC(TD.INQTY / ICUT.ICUNITQTY, 1), '0.9')
+                        END || ' ' || TD.UOM
+                END AS QTYNM /* 상태수량명칭 */
+			 , COALESCE(TD.MOVECNTRNO, 'NA') AS MOVECNTRNO /* 이동용기번호('NA'면 화면에서 '-'처리 */
+			 , TD.MOVECNTRDIVCD /* 이동용기구분코드 */
+		  FROM TWORK_INFO_TA_HD TH
+	INNER JOIN TWORK_INFO_TA_DT TD
+	        ON TH.CTKEY 		 = TD.CTKEY
+	       AND TH.OWKEY 		 = TD.OWKEY
+	       AND TH.TAHDKEY 		 = TD.TAHDKEY
+	INNER JOIN TWORK_MST_IC IC /*상품마스터*/
+	    	ON IC.CTKEY 		 = TD.CTKEY
+	       AND IC.OWKEY 		 = TD.OWKEY
+	       AND IC.ICKEY 		 = TD.ICKEY
+	       AND IC.UOM 			 = 'EA'
+    INNER JOIN TWORK_MST_ICUTXTYPE ICUT /* 상품단위유형 */
+			ON ICUT.CTKEY 		 = TD.CTKEY
+		   AND ICUT.OWKEY 		 = TD.OWKEY
+		   AND ICUT.ICKEY 		 = TD.ICKEY
+		   AND ICUT.ICUNITTYPECD = TD.UOM
+	     WHERE TH.CTKEY 		 = #{ctkey}
+		   AND TH.OWKEY 		 = #{owkey}
+		   AND TH.TAHDKEY 		 = #{tahdkey}
+           AND SUBSTR(TH.REGDATE, 0, 8) = #{regdate}
+		   AND TH.TATYPECD 		 = '10' /* 10:재고이동 */
+		   AND TH.TAWKSTATUSCD  != '20'
+	       AND TD.FRLCKEY        = #{frlckey}
+		   AND TD.ICKEY          = #{ickey}
+	  ORDER BY TD.TOLCKEY
+	</sql>
+
+	<!--2025-08-29-->
+	<select id="selectTaWkList" resultType="camelMap">
+		/* wms-pda-inventory-sql-oracle.xml - selectTaWkList - 재고지시이동 조회 STEP3 */
+		<include refid="taWk"/>
+	</select>
+
+	<!--2025-08-29-->
+	<sql id="taWkDt">
+        /* STEP4. 재고지시이동조회 */
+        SELECT T.*
+             , CASE WHEN T.ICUNITAVQTY > 0 THEN '(' || T.ICUNITAVQTY || LOWER(T.UOM)
+                         || CASE WHEN T.REMAINAVQTY > 0 THEN ' + ' || T.REMAINAVQTY || 'ea)' ELSE ')' END
+                    WHEN T.REMAINAVQTY > 0 THEN '(' || T.REMAINAVQTY || 'ea)'
+                    ELSE ''
+                END AS AVQTYTEXT /* 전산수량TEXT내용 */
+             , CASE WHEN T.TOCNTRNO = 'NA' THEN '-'
+                    ELSE T.TOCNTRNO
+                 END AS TOCNTRNOTEXT /* 화면표시용 도착예정용기 */
+          FROM (
+                SELECT TH.CTKEY
+                     , TH.OWKEY
+                     , TH.TAHDKEY
+                     , TD.TADTKEY
+                     , TD.ICKEY
+                     , IC.ICNM
+                     , TD.EXPDATE
+                     , CASE WHEN TD.EXPDATE IS NULL THEN '-'
+                            ELSE SUBSTR(TD.EXPDATE, 0, 4) || '-' || SUBSTR(TD.EXPDATE, 5, 2) || '-' || SUBSTR(TD.EXPDATE, 7, 2)
+                        END AS EXPDATETEXT /* 화면표시용 유통기한 */
+                     , TD.IVATKEY
+                     , TD.TAWKDTSTATUSCD /* 상세작업상태 */
+                     , CASE WHEN TD.TAWKDTSTATUSCD = '10' THEN '반출'
+                            WHEN TD.TAWKDTSTATUSCD = '20' THEN '완료'
+                            ELSE '지시'
+                        END AS TAWKDTSTATUSNM /* 작업상태명 */
+                      , TD.IVMOVERSNCD /* 재고이동사유 */
+                      , RSN.CTCDDTNM AS IVMOVERSNNM /* 재고이동사유명 */
+                      , TD.FRLCKEY
+                      , TD.TOLCKEY
+                      , COALESCE(IL.IVSERIALNO, 'NA') AS TOCNTRNO /* 도착예정용기('NA'면 화면에서 '-' 처리) */
+                      , TD.UOM /* 단위 */
+                      , ICUT.ICUNITQTY /* 단위수량 */
+                      , TD.ISTQTY
+                      , CASE WHEN MOD(TD.ISTQTY, ICUT.ICUNITQTY) = 0 THEN (TD.ISTQTY / ICUT.ICUNITQTY)::TEXT
+                             ELSE TO_CHAR(TRUNC(TD.ISTQTY / ICUT.ICUNITQTY, 1), '0.9')
+                         END || ' ' || TD.UOM AS ISTQTYNM /* 지시수량명칭(화면보여주기용) : 지시탭,반출탭 */
+                      , TD.OUTQTY / ICUT.ICUNITQTY AS EDITOUTQTY /* 반출수량EDIT용 : 지시탭 */
+                      , TD.OUTQTY /* 반출수량(EA): 지시탭저장용 */
+                      , CASE WHEN TD.MOVECNTRNO IS NULL OR TD.MOVECNTRNO = 'NA' THEN NULL
+                             ELSE TD.MOVECNTRNO
+                         END AS MOVECNTRNO /* 이동용기번호 : 지시탭,반출탭(화면표시용) */
+                      , TD.MOVECNTRDIVCD /* 이동용기구분코드 */
+                      , CASE WHEN MOD(TD.OUTQTY, ICUT.ICUNITQTY) = 0 THEN (TD.OUTQTY / ICUT.ICUNITQTY)::TEXT
+                             ELSE TO_CHAR(TRUNC(TD.OUTQTY / ICUT.ICUNITQTY, 1), '0.9')
+                         END || ' ' || TD.UOM AS OUTQTYNM /* 반출수량명칭(화면보여주기용) : 반출탭에서만 */
+                      , '' AS PLCMCNTRNO /* 적치용기번호: 반출탭 */
+                      , TRUNC((TD.INQTY/ICUT.ICUNITQTY), 1) AS EDITINQTY /* 완료수량EDIT용 : 반출탭 */
+                      , TD.INQTY /* 완료수량(EA): 반출탭저장용 */
+                      , FRIL.AVQTY /* 가용수량 */
+                      , DATE_TRUNC('day', FRIL.AVQTY / ICUT.ICUNITQTY)::DATE AS ICUNITAVQTY /* 단위재고가용수량 */
+                      , FRIL.AVQTY - (DATE_TRUNC('day', FRIL.AVQTY / ICUT.ICUNITQTY)::DATE * ICUT.ICUNITQTY) AS REMAINAVQTY /* 남은가용수량 */
+                      , LC.LCSTORGTYPECD /* 로케이션 보관 유형 코드 */
+                      , LC.IVCNTRMGMTYN /* 재고용기관리여부 */
+                   FROM TWORK_INFO_TA_HD TH
+             INNER JOIN TWORK_INFO_TA_DT TD
+                     ON TH.CTKEY          = TD.CTKEY
+                    AND TH.OWKEY          = TD.OWKEY
+                    AND TH.TAHDKEY        = TD.TAHDKEY
+             INNER JOIN TWORK_MST_IC IC
+                     ON IC.CTKEY          = TD.CTKEY
+                    AND IC.OWKEY          = TD.OWKEY
+                    AND IC.ICKEY          = TD.ICKEY
+                    AND IC.UOM            = 'EA'
+             INNER JOIN TWORK_MST_CTCD_DT RSN
+                     ON RSN.CTKEY         = TD.CTKEY
+                    AND RSN.CTCDHDKEY     = 'IVMOVERSNCD'
+                    AND RSN.CTCDDTKEY     = TD.IVMOVERSNCD
+                    AND RSN.LAKEY         = #{slakey}
+             INNER JOIN TWORK_MST_ICUTXTYPE ICUT
+                     ON ICUT.CTKEY        = TD.CTKEY
+                    AND ICUT.OWKEY        = TD.OWKEY
+                    AND ICUT.ICKEY        = TD.ICKEY
+                    AND ICUT.ICUNITTYPECD = TD.UOM
+             INNER JOIN TWORK_INFO_IVATXLC FRIL
+                     ON FRIL.CTKEY        = TD.CTKEY
+                    AND FRIL.OWKEY        = TD.OWKEY
+                    AND FRIL.ICKEY        = TD.ICKEY
+                    AND FRIL.LCKEY        = TD.FRLCKEY
+                    AND FRIL.IVATKEY      = TD.IVATKEY
+              LEFT JOIN TWORK_MST_LC LC
+                     ON TH.CTKEY          = LC.CTKEY
+                     AND TD.TOLCKEY       = LC.LCKEY
+              LEFT JOIN (
+                        SELECT CTKEY
+                             , OWKEY
+                             , LCKEY
+                             , MAX(CASE WHEN IVSERIALNO = 'NA' THEN '' ELSE IVSERIALNO END) AS IVSERIALNO
+                          FROM TWORK_INFO_IVATXLC
+                         WHERE CTKEY = #{ctkey}
+                           AND OWKEY = #{owkey}
+                           AND TOTQTY <![CDATA[>]]>  0
+                      GROUP BY CTKEY, OWKEY, LCKEY
+                       ) IL
+                     ON IL.CTKEY    = TD.CTKEY
+                    AND IL.OWKEY    = TD.OWKEY
+                    AND IL.LCKEY    = TD.TOLCKEY
+                  WHERE TH.CTKEY    = #{ctkey}
+                    AND TH.OWKEY    = #{owkey}
+                    AND TH.TAHDKEY  = #{tahdkey}
+                    AND TD.TADTKEY  = #{tadtkey}
+                    AND TH.TATYPECD = '10' /* 10: 재고이동 */
+               ) T
+    </sql>
+
+	<!--2025-08-29-->
+	<select id="selectTaWkDtList" resultType="camelMap">
+		/* wms-pda-inventory-sql-oracle.xml - selectTaWkDtList - 재고지시이동 조회 STEP3 */
+		<include refid="taWkDt"/>
+	</select>
+
+    <select id="selectFrLocPop" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectFrLocPop - 관리자이동 - Fr로케이션 팝업조회 */
+        SELECT DISTINCT
+               T.CTKEY
+             , T.OWKEY
+             , T.ICKEY
+             , T.ICNM
+             , T.REFLCKEY
+             , T.IVATKEY
+             , T.EXPDATE /* 유통기한(저장용)*/
+             , CASE WHEN T.EXPDATE IS NULL THEN '-'
+		            ELSE SUBSTR(T.EXPDATE, 0, 4) || '-' || SUBSTR(T.EXPDATE, 5, 2) || '-' || SUBSTR(T.EXPDATE, 7, 2)
+		        END AS EXPDATETEXT /* 유통기한(화면용) */
+             , T.LCKEY AS FRLCKEY
+             , T.IVSERIALNO /* 팔레트번호 */
+             , T.LCKEY || CASE WHEN T.IVSERIALNO != '' THEN ' [' || T.IVSERIALNO || ']'
+                               ELSE ''
+                           END AS FRLCKEYNM /* 로케이션(화면용) */
+             , T.LCSTORGTYPECD /* 창고구분 */
+             , T.LCSTORGTYPENM /* 창고구분명 */
+             , T.RACKNO
+             , T.IVSTATUSNM /* 재고상태 */
+             , T.CTNICUNITQTY /* CTN입수량 */
+             , T.INNICUNITQTY /* INN입수량 */
+             , T.AVQTY
+             , T.UOM
+             , CASE WHEN T.CTNQTY > 0 THEN '(' || T.CTNQTY || 'ctn' ||
+                                      CASE WHEN T.REMAINAVQTY > 0 THEN ' + ' || T.REMAINAVQTY || 'ea)'
+                                           ELSE ')'
+                                       END
+                    WHEN T.REMAINAVQTY > 0 THEN '(' || T.REMAINAVQTY || 'ea)'
+                    ELSE ''
+                END AS AVQTYTEXT
+             , 0 AS CFQTY /* STEP1.STEP2.입력수량(DataSet에 자동컬럼생성을 위해 미리 0으로 조회) */
+             , 0 AS CFCTNQTY /* STEP1.STEP2.입력CTN수량(DataSet에 자동컬럼생성을 위해 미리 0으로 조회) */
+             , 0 AS CFINNQTY /* STEP2.입력INN수량(DataSet에 자동컬럼생성을 위해 미리 0으로 조회) */
+          FROM (
+               SELECT IVL.CTKEY
+                    , IVL.OWKEY
+                    , IVL.ICKEY
+                    , IC.ICNM
+                    , IC.LCKEY AS REFLCKEY
+                    , IVL.IVATKEY
+                    , IVAT.EXPDATE /* 유통기한 */
+                    , IVL.LCKEY
+                    , IC.UOM
+                    , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+                    , LC.LCSTORGTYPECD /* 창고구분 */
+                    , LC.RACKNO /* 랙번호 */
+                    , CASE WHEN LC.IVCNTRMGMTYN = 'Y' AND IVL.IVSERIALNO != 'NA' THEN IVL.IVSERIALNO
+                           ELSE ''
+                       END AS IVSERIALNO /* 팔레트번호 */
+                    , IVSTAT.CTCDDTNM AS IVSTATUSNM /* 재고상태 */
+                    , IVL.AVQTY /* 가용수량 */
+                    , COALESCE(CTN.ICUNITQTY, 0) AS CTNICUNITQTY  /* CTN입수량 */
+                    , COALESCE(INN.ICUNITQTY, 0) AS INNICUNITQTY  /* INN입수량 */
+                    , DATE_TRUNC('day', IVL.AVQTY/CTN.ICUNITQTY)::DATE AS CTNQTY
+                    /* CTN환산가용수량(소숫점제거) */
+                    , IVL.AVQTY - (DATE_TRUNC('day', IVL.AVQTY/CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINAVQTY /* CTN환산 후 남은가용수량 */
+                 FROM TWORK_INFO_IVATXLC IVL
+           INNER JOIN TWORK_INFO_IVAT IVAT
+                   ON IVAT.CTKEY       = IVL.CTKEY
+                  AND IVAT.OWKEY       = IVL.OWKEY
+                  AND IVAT.IVATKEY     = IVL.IVATKEY
+                  AND IVAT.ICKEY       = IVL.ICKEY
+           INNER JOIN TWORK_MST_LC LC
+                   ON LC.CTKEY         = IVL.CTKEY
+                  AND LC.LCKEY         = IVL.LCKEY
+           INNER JOIN TWORK_MST_IC IC /* 상품마스터 */
+                   ON IC.CTKEY         = IVL.CTKEY
+                  AND IC.OWKEY         = IVL.OWKEY
+                  AND IC.ICKEY         = IVL.ICKEY
+                  AND IC.UOM           = 'EA'
+                  AND IC.ICGRPKEY     != 'SM' /* 부자재 제외 */
+           INNER JOIN TWORK_MST_CTCD_DT LCTYP /* 로케이션유형 */
+                   ON LCTYP.CTKEY      = IC.CTKEY
+                  AND LCTYP.CTCDHDKEY  = 'LCSTORGTYPECD'
+                  AND LCTYP.CTCDDTKEY  = LC.LCSTORGTYPECD
+                  AND LCTYP.LAKEY      = #{slakey}
+           INNER JOIN TWORK_MST_CTCD_DT IVSTAT /* 재고상태 */
+                   ON IVSTAT.CTKEY     = IC.CTKEY
+                  AND IVSTAT.CTCDHDKEY = 'IVSTATUSCD'
+                  AND IVSTAT.CTCDDTKEY = IVL.IVSTATUSCD
+                  AND IVSTAT.LAKEY     = #{slakey}
+            LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 단위 */
+                   ON CTN.CTKEY        = IC.CTKEY
+                  AND CTN.OWKEY        = IC.OWKEY
+                  AND CTN.ICKEY        = IC.ICKEY
+                  AND CTN.ICUNITTYPECD = 'CTN'
+            LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 단위 */
+                   ON INN.CTKEY        = IC.CTKEY
+                  AND INN.OWKEY        = IC.OWKEY
+                  AND INN.ICKEY        = IC.ICKEY
+                  AND INN.ICUNITTYPECD = 'INN'
+                WHERE IVL.CTKEY        = #{sctkey}
+                  AND IVL.OWKEY        = #{sowkey}
+                  AND IVL.AVQTY <![CDATA[>]]> 0
+             <choose>
+                 <when test='radioVal == "icbarcode"'>
+                     AND IVL.ICKEY IN (
+                                      SELECT ICKEY
+                                        FROM TWORK_MST_ICBARCODE
+                                       WHERE CTKEY   = IVL.CTKEY
+                                         AND OWKEY   = IVL.OWKEY
+                                         AND USEYN   = 'Y'
+                                         AND (ICKEY = #{value} OR BARCODE = #{value})
+                                      )
+                 </when>
+                 <when test='radioVal == "ickeynm"'>
+                     AND (IVL.ICKEY LIKE #{value} || '%'
+                      OR IC.ICNM LIKE '%' || #{value} || '%')
+                 </when>
+                 <when test='radioVal == "location"'>
+                     AND IVL.LCKEY LIKE #{value} || '%'
+                 </when>
+             </choose>
+            ) T
+        ORDER BY T.ICKEY, T.LCKEY, T.EXPDATE
+    </select>
+
+    <select id="selectToLocPop" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectToLocPop - 관리자이동 - To로케이션 팝업조회 */
+        SELECT T.*
+             , T.LCKEY || CASE WHEN T.TOIVSERIALNO IS NOT NULL THEN ' [' || T.TOIVSERIALNO || ']'
+                                ELSE ''
+                            END AS TOLCKEYNM /* 로케이션(화면용) */
+             , CASE WHEN T.TOIVSERIALNO IS NULL THEN NULL
+                    ELSE '[' || T.TOIVSERIALNO || ']'
+                 END AS POPIVSERIALNO
+             , '' AS PLCMCNTRNO /* 적치용기번호 */
+          FROM (
+                SELECT LC.LCKEY
+                     , LC.LCTYPECD
+                     , LC.LCSTORGTYPECD
+                     , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션유형명 */
+                     , LC.CTKEY
+                     , LC.IVCNTRMGMTYN
+                     , ZN.ZNKEY
+                     , ZN.ZNNM
+                     , ZN.ZNTYPECD
+                     , CASE WHEN LC.IVCNTRMGMTYN = 'Y' AND IVLC.IVSERIALNO != 'NA' THEN IVLC.IVSERIALNO
+                            ELSE ''
+                        END AS TOIVSERIALNO /* 팔레트번호 */
+                     , COALESCE(COUNT(DISTINCT IVLC.ICKEY), 0) || ' SKU' AS SKUCOUNT
+                  	  FROM TWORK_MST_LC LC
+		        INNER JOIN TWORK_MST_AR AR
+		            	ON AR.CTKEY        = LC.CTKEY
+		               AND AR.ZNKEY        = LC.ZNKEY
+		               AND AR.ARKEY        = LC.ARKEY
+		        INNER JOIN TWORK_MST_ZN ZN
+		        	    ON ZN.CTKEY        = LC.CTKEY
+		               AND ZN.ZNKEY        = LC.ZNKEY
+		         LEFT JOIN TWORK_INFO_IVATXLC IVLC
+		            	ON IVLC.CTKEY      = LC.CTKEY
+		               AND IVLC.OWKEY      = COALESCE(#{owkey}, #{sowkey})
+		               AND IVLC.LCKEY      = LC.LCKEY
+		               AND IVLC.TOTQTY <![CDATA[ > ]]> 0
+		        INNER JOIN TWORK_MST_CTCD_DT LCTYP
+		            	ON LCTYP.CTKEY     = LC.CTKEY
+		               AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+		               AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+		             WHERE LC.CTKEY        = #{sctkey}
+		               AND LCTYP.LAKEY     = #{slakey}
+		           <if test='zntype != "" and zntype != null'>
+					   AND ZN.ZNTYPECD = #{zntype}
+                   </if>
+                   <if test='cboStorgtype != "" and cboStorgtype != null'>
+					   AND LC.LCSTORGTYPECD = #{cboStorgtype}
+                   </if>
+                   <choose>
+                       <when test='radioVal == "Y"'>
+                          AND IVLC.LCKEY IS NULL
+                       </when>
+                       <when test='radioVal == "N"'>
+                          AND IVLC.LCKEY IS NOT NULL
+                       </when>
+                   </choose>
+                   <if test='lckey != "" and lckey != null'>
+					   AND LC.LCKEY LIKE #{lckey}||'%'
+                   </if>
+              GROUP BY LC.LCKEY, LC.LCTYPECD, LC.LCSTORGTYPECD, LCTYP.CTCDDTNM, LC.CTKEY, IVLC.IVSERIALNO, LC.IVCNTRMGMTYN
+                     , ZN.ZNKEY, ZN.ZNNM, ZN.ZNTYPECD
+            ) T
+		ORDER BY T.LCKEY ASC
+    </select>
+
+    <select id="selectIcImgRegList" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectIcImgRegList - 상품이미지등록 조회 */
+        SELECT DISTINCT IC.CTKEY
+             , IC.OWKEY
+             , IC.ICKEY
+             , IC.ICNM
+             , CASE WHEN ASRTMASIC.ICKEY IS NULL THEN '일반'
+                    ELSE CASE WHEN IC.ASRTREPKEY IS NULL THEN '아소트(모)'
+                              ELSE '아소트(자)'
+                              END
+                    END AS DIVNM /* 구분 */
+             , ICSTAT.CTCDDTNM AS ICSTATUS /* 운영상태 */
+             , CASE WHEN IC.IMGURL IS NULL THEN 'X' ELSE 'O' END IMGOX /* 상품이미지OX */
+             , IC.IMGURL /* 상품이미지 */
+             , NULL AS SAVEIMG /* 저장할이미지URL : 화면에서 이미지 저장시 넣기.. */
+             , CASE WHEN ASRTDT.COLOR IS NULL THEN '-'
+                    ELSE ASRTDT.COLOR
+                END AS COLOR /* 색상 */
+             , CASE WHEN ASRTDT.DESIGN IS NULL THEN '-'
+                    ELSE ASRTDT.DESIGN
+                END AS DESIGN/* 디자인 */
+             , CASE WHEN ASRTDT.CHRT IS NULL THEN '-'
+                    ELSE ASRTDT.CHRT
+                END AS CHRT/* 캐릭터 */
+          FROM TWORK_MST_IC IC /*상품마스터*/
+          INNER JOIN TWORK_MST_CTCD_DT ICSTAT /* 상품상태 */
+                  ON ICSTAT.CTKEY = IC.CTKEY
+                 AND ICSTAT.CTCDHDKEY = 'GDSTS_DIV'
+                 AND ICSTAT.CTCDDTKEY = IC.ICOPERSTATUSCD
+                 AND ICSTAT.LAKEY = #{slakey}
+          LEFT JOIN TWORK_MST_ASRT ASRTDT /* 아소트자상품정보 */
+                 ON ASRTDT.CTKEY = IC.CTKEY
+                AND ASRTDT.OWKEY = IC.OWKEY
+                AND ASRTDT.ASRTDTICKEY = IC.ICKEY
+                AND ASRTDT.QTY > 0
+          LEFT JOIN TWORK_MST_ASRT ASRTMAS /* 아소트모상품정보 */
+                 ON ASRTMAS.CTKEY = IC.CTKEY
+                AND ASRTMAS.OWKEY = IC.OWKEY
+                AND ASRTMAS.ASRTMASICKEY = COALESCE(ASRTDT.ASRTMASICKEY, IC.ICKEY)
+          LEFT JOIN TWORK_MST_IC ASRTMASIC
+                 ON ASRTMASIC.CTKEY = ASRTMAS.CTKEY
+                AND ASRTMASIC.OWKEY = ASRTMAS.OWKEY
+                AND ASRTMASIC.ICKEY = ASRTMAS.ASRTMASICKEY
+                AND ASRTMASIC.UOM = 'EA'
+                AND ASRTMASIC.ICOPERSTATUSCD != '9' /* 40:단종 */
+          WHERE IC.CTKEY = #{sctkey}
+            AND IC.OWKEY = #{sowkey}
+            AND IC.UOM = 'EA'
+            <choose>
+                <when test='rdoSearch == "icbarcode"'>
+                    AND IC.ICKEY IN (SELECT ICKEY
+                                       FROM TWORK_MST_ICBARCODE
+                                      WHERE CTKEY = IC.CTKEY
+                                        AND OWKEY = IC.OWKEY
+                                        AND USEYN = 'Y'
+                                        AND BARCODE = #{value}
+                                    )
+                </when>
+                <when test='rdoSearch == "ickey"'>
+                    AND IC.ICKEY LIKE #{value} || '%'
+                </when>
+                <when test='rdoSearch == "icnm"'>
+                    AND IC.ICNM LIKE '%' || #{value} || '%'
+                </when>
+            </choose>
+          ORDER BY IC.ICKEY
+    </select>
+
+    <select id="selectRefLcChageList" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectRefLcChageList - 대표 로케이션 변경 화면 리스트 조회 */
+        SELECT IC.CTKEY, IC.OWKEY
+			 , IC.ICKEY, IC.ICNM
+			 , IC.LCKEY AS PRELCKEY
+			 , CASE WHEN IC.LCKEY IS NULL THEN '없음'
+                    ELSE IC.LCKEY
+                END AS POPLCKEY /* 확인팝업용 LCKEY */
+			 , LC.LCSTORGTYPECD /* 로케이션보관유형 */
+			 , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 로케이션보관유형명 */
+			 , '' AS RECOLCKEY /* 변경된 로케이션 : 입력 */
+             , '' AS ICKEYMIXCGYN /* 상품혼재여부 */
+          FROM TWORK_MST_IC IC
+		  LEFT JOIN TWORK_MST_LC LC
+				 ON LC.CTKEY = IC.CTKEY
+				AND LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_CTCD_DT LCTYP /* 로케이션유형 */
+				 ON LCTYP.CTKEY = IC.CTKEY
+				AND LCTYP.CTCDHDKEY = 'LCSTORGTYPECD'
+				AND LCTYP.CTCDDTKEY = LC.LCSTORGTYPECD
+				AND LCTYP.LAKEY = #{slakey}
+		 WHERE IC.CTKEY = #{sctkey}
+		   AND IC.OWKEY = #{sowkey}
+		   AND IC.UOM = 'EA'
+		<choose> 
+			<when test='radioVal == "icbarcode"'>
+				AND IC.ICKEY IN ( SELECT ICKEY 
+									FROM TWORK_MST_ICBARCODE 
+								   WHERE CTKEY = IC.CTKEY
+									 AND OWKEY = IC.OWKEY
+									 AND USEYN = 'Y'
+									 AND BARCODE = #{value}
+								 )
+			</when>
+			<when test='radioVal == "ickeynm"'>
+				AND (IC.ICKEY LIKE #{value} || '%'
+                    OR IC.ICNM   LIKE '%' || #{value} || '%')
+			</when>
+			<when test='radioVal == "reflckey"'>
+                 AND IC.LCKEY LIKE #{value} || '%'
+             </when>
+		</choose>
+		 ORDER BY IC.ICKEY, IC.LCKEY
+    </select>
+
+    <update id="saveImgUrl">
+        /* wms-pda-inventory-sql-oracle.xml - saveImgUrl - 상품이미지URL 저장 */
+        UPDATE TWORK_MST_IC
+           SET IMGURL = #{imgurl}
+            ,  UPDATEDATE = #{sysdate}
+            ,  UPDATEURKEY = #{surkey}
+         WHERE CTKEY = #{sctkey}
+           AND OWKEY = #{sowkey}
+           AND ICKEY = #{ickey}
+    </update>
+
+    <select id="selectChgLocChk" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectChgLocChk- 로케이션 변경 체크  SQL */
+        SELECT *
+          FROM TWORK_MST_IC
+         WHERE CTKEY      = #{ctkey}
+           AND OWKEY      = #{owkey}
+           AND ICKEY      = #{ickey}
+           AND #{frlckey} = #{tolckey}
+    </select>
+
+    <select id="selectInvnCountList1" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnCountList1 - 재고실사 - step1 */
+        /* 재고실사 조회 STEP1.*/
+        SELECT TH.CTKEY
+             , TH.OWKEY
+             , TH.TAHDKEY
+             , TH.IVINVSTYPECD /* 재고조사유형 */
+             , TH.CMT /* 비고 */
+             , COUNT(*) AS ROWCNT /* ROW 수 */
+             , SUM(CASE WHEN TD.PISPCKYN = 'Y' THEN 1 ELSE 0 END) AS COMPLCNT /* 확인 수 */
+             , SUM(CASE WHEN TD.PISPCKYN = 'Y' AND TD.IVQTY = TD.PISPQTY THEN 1 ELSE 0 END) AS EXPTCNT /* 일치 수 */
+          FROM TWORK_INFO_TA_HD TH
+    INNER JOIN TWORK_INFO_TA_DT TD
+            ON TH.CTKEY               = TD.CTKEY
+           AND TH.OWKEY               = TD.OWKEY
+           AND TH.TAHDKEY             = TD.TAHDKEY
+         WHERE TH.CTKEY               = #{sctkey}
+           AND TH.OWKEY               = #{sowkey}
+           AND SUBSTR(TH.REGDATE,0,8) = #{regdate}
+           AND TH.TATYPECD            = '30' /* 30:재고실사 */
+           AND TH.TAWKSTATUSCD        = '30' /* 30:재고조사시작 */
+        <if test='ivinvstypecd != "00"'> /* 콤보박스(조사유형)이 전체가 아니면 */
+           AND TH.IVINVSTYPECD = #{ivinvstypecd}
+        </if>
+      GROUP BY TH.CTKEY, TH.OWKEY, TH.TAHDKEY, TH.IVINVSTYPECD, TH.CMT
+      ORDER BY TH.TAHDKEY
+    </select>
+
+    <select id="selectInvnCountList2" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnCountList2 - 재고실사 - step2, 3 */
+        /* 재고실사 조회 STEP2. */
+        SELECT T.CTKEY
+             , T.OWKEY
+             , T.TAHDKEY
+             , T.CMT
+             , T.TADTKEY
+             , T.ICKEY
+             , T.ICNM
+             , T.EXPCKYN /* 유통기한체크여부 */
+             , T.EXPDATE
+             , T.IVATKEY
+             , T.PISPCKYN /* 실사확인여부 */
+             , T.FRLCKEY
+             , T.IVATCNT /* 로케이션 유통기한별 상품수량 */
+             , T.CTNICUNITQTY /* CTN입수량 */
+             , T.INNICUNITQTY /* INN입수량 */
+             , T.IVQTY /* 전산수량: EA */
+             , T.PISPQTY /* 실사수량, 실사확인수량: EA */
+             , 0 AS CTNPISPQTY /* 화면표시용 CTN수량 */
+             , 0 AS INNPISPQTY /* 화면표시용 INN수량 */
+             , 0 AS EAPISPQTY /* 화면표시용 INN수량 */
+             , T.LCSTORGTYPECD
+             , T.RACKNO
+             , T.LCSTORGTYPENM
+             , CASE WHEN T.CTNIVQTY > 0 THEN '(' || T.CTNIVQTY||'ctn' ||
+                                        CASE WHEN T.REMAINIVQTY > 0 THEN ' + '|| T.REMAINIVQTY ||'ea)'
+                                                                    ELSE ')'
+                                         END WHEN T.REMAINIVQTY > 0 THEN '(' || T.REMAINIVQTY ||'ea)'
+                                                                    ELSE '' END AS IVQTYTEXT /* 전산수량 TEXT내용 */
+             , CASE WHEN T.CTNPISPQTY > 0 THEN '(' || T.CTNPISPQTY || 'ctn' ||
+                                          CASE WHEN T.REMAINPISPQTY > 0 THEN ' + '|| T.REMAINPISPQTY ||'ea)'
+                                                                        ELSE ')' END
+                                               WHEN T.REMAINPISPQTY > 0 THEN '('|| T.REMAINPISPQTY ||'ea)'
+                                                                        ELSE ''
+                                           END AS PISPQTYTEXT /* 실사수량 TEXT내용 */
+             , CASE WHEN T.EXPDATE IS NULL OR T.EXPCKYN = 'N' THEN '-'
+                    ELSE SUBSTR(T.EXPDATE, 0, 4) || '-' || SUBSTR(T.EXPDATE, 5, 2) || '-' || SUBSTR(T.EXPDATE, 7, 2)
+                END AS EXPDATETEXT /* 유통기한 텍스트 */
+             , CASE WHEN T.PISPCKYN = 'N' THEN '지시'
+                    WHEN T.PISPCKYN = 'Y' THEN '확인'
+                                          ELSE ''
+                END AS PISPCKTEXT
+         FROM (
+               SELECT TH.CTKEY
+                    , TH.OWKEY
+                    , TH.TAHDKEY
+                    , TH.CMT
+                    , TD.TADTKEY
+                    , TD.ICKEY
+                    , IC.ICNM
+                    , IC.EXPCKYN /* 유통기한체크여부 */
+                    , TD.EXPDATE
+                    , TD.IVATKEY
+                    , TD.PISPCKYN /* 실사확인여부 */
+                    , TD.FRLCKEY
+                    , LC.LCSTORGTYPECD /* 창고유형 */
+                    , LC.RACKNO /* 랙번호 */
+                    , LCTYP.CTCDDTNM AS LCSTORGTYPENM /* 창고구분명 */
+                    , (
+                      SELECT COUNT(IVATKEY)
+                        FROM TWORK_INFO_IVATXLC
+                       WHERE CTKEY = TD.CTKEY
+                         AND OWKEY = TD.OWKEY
+                         AND LCKEY = TD.FRLCKEY
+                         AND TOTQTY <![CDATA[>]]> 0
+                      ) AS IVATCNT /* 로케이션 유통기한별 상품수량 */
+                    , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+                    , INN.ICUNITQTY AS INNICUNITQTY /* INN입수량 */
+                    , TD.IVQTY /* 전산수량: EA */
+                    , TD.PISPQTY + (TD.INNPISPQTY*INN.ICUNITQTY) + (TD.CTNPISPQTY*CTN.ICUNITQTY) AS PISPQTY /* 실사수량, 실사확인수량: EA */
+                    , DATE_TRUNC('day', TD.IVQTY/CTN.ICUNITQTY)::DATE AS CTNIVQTY /* CTN전산수량(소숫점제거) */
+                    , DATE_TRUNC('day', (TD.PISPQTY + (TD.INNPISPQTY*INN.ICUNITQTY))/CTN.ICUNITQTY)::DATE + TD.CTNPISPQTY AS CTNPISPQTY /* CTN실사수량(소숫점제거) */
+                    , TD.IVQTY - (DATE_TRUNC('day', TD.IVQTY/CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINIVQTY /* CTN환산 후 남은전산수량 */
+                    , (TD.PISPQTY + (TD.INNPISPQTY*INN.ICUNITQTY)) - (DATE_TRUNC('day', (TD.PISPQTY + (TD.INNPISPQTY*INN.ICUNITQTY))/CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINPISPQTY /* CTN환산 후 남은실사수량 */
+                 FROM TWORK_INFO_TA_HD TH
+           INNER JOIN TWORK_INFO_TA_DT TD
+                   ON TH.CTKEY         = TD.CTKEY
+                  AND TH.OWKEY         = TD.OWKEY
+                  AND TH.TAHDKEY       = TD.TAHDKEY
+           INNER JOIN TWORK_MST_IC IC /* 상품마스터 */
+                   ON IC.CTKEY         = TD.CTKEY
+                  AND IC.OWKEY         = TD.OWKEY
+                  AND IC.ICKEY         = TD.ICKEY
+                  AND IC.UOM           = 'EA'
+           INNER JOIN TWORK_MST_LC LC
+                   ON LC.CTKEY         = TH.CTKEY
+                  AND LC.LCKEY         = TD.FRLCKEY
+           INNER JOIN TWORK_MST_CTCD_DT LCTYP /* 로케이션유형 */
+                   ON LCTYP.CTKEY      = IC.CTKEY
+                  AND LCTYP.CTCDHDKEY  = 'LCSTORGTYPECD'
+                  AND LCTYP.CTCDDTKEY  = LC.LCSTORGTYPECD
+                  AND LCTYP.LAKEY      = #{slakey}
+           LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+                  ON CTN.CTKEY         = IC.CTKEY
+                 AND CTN.OWKEY         = IC.OWKEY
+                 AND CTN.ICKEY         = IC.ICKEY
+                 AND CTN.ICUNITTYPECD  = 'CTN'
+           LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+                  ON INN.CTKEY         = IC.CTKEY
+                 AND INN.OWKEY         = IC.OWKEY
+                 AND INN.ICKEY         = IC.ICKEY
+                 AND INN.ICUNITTYPECD  = 'INN'
+               WHERE TH.CTKEY          = #{ctkey}
+                 AND TH.OWKEY          = #{owkey}
+                 AND TH.TAHDKEY        = #{tahdkey}
+                 AND TH.TATYPECD       = '30' /* 30: 재고실사 */
+                 AND TH.TAWKSTATUSCD   = '30' /* 30: 재고조사 시작 */
+              ) T
+             ORDER BY T.PISPCKYN, T.FRLCKEY, T.ICKEY, T.EXPDATE
+    </select>
+
+    <select id="selectInvnCountRefresh" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnCountRefresh - 재고실사 - 현재고 새로고침 */
+        SELECT T.TOTQTY /* 총 재고수량(EA) */
+             , CASE WHEN T.CTNTOTQTY > 0 THEN '(' || T.CTNTOTQTY || 'ctn' ||
+                    CASE WHEN T.REMAINTOTQTY > 0 THEN ' + ' || T.REMAINTOTQTY || 'ea)' /* CTN 계산 후 남은 EA 수량 표시 */
+                                                 ELSE ')' /* CTN만 존재할 경우 */ END
+                         WHEN T.REMAINTOTQTY > 0 THEN '(' || T.REMAINTOTQTY || 'ea)' /* CTN 없고 EA만 존재할 경우 */
+                                                 ELSE '' /* 재고 0일 경우 빈 문자열 */
+                     END AS TOTQTYTEXT /* 전산수량 TEXT 내용 */
+          FROM (
+                SELECT IL.TOTQTY /* 재고총수량(EA) */
+                     , DATE_TRUNC('day', IL.TOTQTY / CTN.ICUNITQTY)::DATE AS CTNTOTQTY /* CTN 단위로 환산한 총수량(소수점 제거) */
+                     , IL.TOTQTY - (DATE_TRUNC('day', IL.TOTQTY / CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINTOTQTY /* CTN 환산 후 남은 EA 수량 */
+                  FROM TWORK_INFO_IVATXLC IL /* 재고 테이블 */
+             LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 단위 정보 */
+                    ON CTN.CTKEY        = IL.CTKEY
+                   AND CTN.OWKEY        = IL.OWKEY
+                   AND CTN.ICKEY        = IL.ICKEY
+                   AND CTN.ICUNITTYPECD = 'CTN'
+                 WHERE IL.CTKEY         = #{ctkey} /* 회사 코드 */
+                   AND IL.OWKEY         = #{owkey} /* 운영 코드 */
+                   AND IL.LCKEY         = #{lckey} /* 로케이션 키 */
+                   AND IL.ICKEY         = #{ickey} /* 상품 키 */
+                   AND IL.IVATKEY       = #{ivatkey} /* 재고 트랜잭션 키 */
+               ) T
+    </select>
+
+    <select id="selectInvnCountLocPop" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnCountLocPop - 재고실사 - 재고추가 팝업 */
+        /* 재고실사 조회 STEP3. 로케이션 재고추가 팝업 조회 */
+        SELECT DISTINCT '0' AS CHK
+             , CASE WHEN TD.TADTKEY IS NOT NULL THEN 'N'
+                    ELSE 'Y'
+                END AS CHKUSEYN
+             , T.CTKEY
+             , T.OWKEY
+             , T.ICKEY
+             , T.ICNM
+             , T.EXPCKYN /* 유통기한체크여부 */
+             , T.IVATKEY
+             , T.EXPDATE
+             , T.TOTQTY
+             , '0' AS QTY /* 로케이션에 재고 추가 시에는 조사상태 '지시'로 설정하기 위해 QTY 0으로 전송 */
+             , T.ICUNITTYPECD /* 상품단위유형코드 */
+             , #{tahdkey} AS TAHDKEY
+             , MIN(TD.TADTKEY) OVER (PARTITION BY TD.TAHDKEY) AS TADTKEY
+             , #{lckey} AS LCKEY
+             , CASE WHEN T.CTNTOTQTY > 0 THEN  '(' || T.CTNTOTQTY || 'ctn' ||
+                    CASE WHEN T.REMAINTOTQTY > 0 THEN ' + ' || T.REMAINTOTQTY || 'ea)' /* CTN 계산 후 남은 EA 수량 표시 */
+                                                 ELSE ')' /* CTN만 존재할 경우 */ END
+                         WHEN T.REMAINTOTQTY > 0 THEN '(' || T.REMAINTOTQTY || 'ea)' /* CTN 없고 EA만 존재할 경우 */
+                                                  ELSE '' /* 재고 0일 경우 빈 문자열 */
+                END AS TOTQTYTEXT /* 전산수량 TEXT내용 */
+             , CASE WHEN T.EXPDATE IS NULL OR T.EXPCKYN = 'N' THEN '-'
+                    ELSE SUBSTR(T.EXPDATE, 0, 4) || '-' || SUBSTR(T.EXPDATE, 5, 2) || '-' || SUBSTR(T.EXPDATE, 7, 2)
+                END AS EXPDATETEXT /* 유통기한 텍스트 */
+         FROM (
+              SELECT IL.CTKEY
+                   , IL.OWKEY
+                   , IL.ICKEY
+                   , IC.ICNM
+                   , IC.EXPCKYN /* 유통기한체크여부 */
+                   , IL.IVATKEY
+                   , IVAT.EXPDATE
+                   , IL.TOTQTY /* 재고총수량: EA */
+                   , DATE_TRUNC('day', IL.TOTQTY / CTN.ICUNITQTY)::DATE AS CTNTOTQTY /* CTN재고총수량(소숫점제거) */
+                   , IL.TOTQTY - (DATE_TRUNC('day', IL.TOTQTY / CTN.ICUNITQTY)::DATE * CTN.ICUNITQTY) AS REMAINTOTQTY /* CTN환산 후 남은재고총수량 */
+                   , 'EA' AS ICUNITTYPECD /* 상품단위유형코드 */
+                FROM TWORK_INFO_IVATXLC IL
+          INNER JOIN TWORK_INFO_IVAT IVAT
+                  ON IVAT.CTKEY       = IL.CTKEY
+                 AND IVAT.OWKEY       = IL.OWKEY
+                 AND IVAT.IVATKEY     = IL.IVATKEY
+          INNER JOIN TWORK_MST_IC IC /* 상품마스터 */
+                  ON IC.CTKEY         = IL.CTKEY
+                 AND IC.OWKEY         = IL.OWKEY
+                 AND IC.ICKEY         = IL.ICKEY
+                 AND IC.UOM           = 'EA'
+           LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+                  ON CTN.CTKEY        = IL.CTKEY
+                 AND CTN.OWKEY        = IL.OWKEY
+                 AND CTN.ICKEY        = IL.ICKEY
+                 AND CTN.ICUNITTYPECD = 'CTN'
+               WHERE IL.CTKEY         = #{ctkey}
+                 AND IL.OWKEY         = #{owkey}
+                 AND IL.LCKEY         = #{lckey}
+                 AND IL.TOTQTY <![CDATA[>]]> 0
+              ) T
+           LEFT JOIN TWORK_INFO_TA_DT TD
+                  ON TD.CTKEY         = T.CTKEY
+                 AND TD.OWKEY         = T.OWKEY
+                 AND TD.ICKEY         = T.ICKEY
+                 AND TD.IVATKEY       = T.IVATKEY
+                 AND TD.TAHDKEY       = #{tahdkey}
+            </select>
+
+    <select id="selectInvnCountNewIc" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectInvnCountNewIc - 재고실사 - 무재고추가 상품 정보 조회*/
+        /* 재고실사 신규추가 STEP4.
+        (상품바코드 스캔시 조회하고 저장시 해당 DATASET을 던진다.) */
+        SELECT IC.CTKEY
+             , IC.OWKEY
+             , IC.ICKEY
+             , IC.ICNM
+             , IC.EXPCKYN /* 유통기한 관리여부 */
+             , CTN.ICUNITQTY AS CTNICUNITQTY /* CTN입수량 */
+             , INN.ICUNITQTY AS INNICUNITQTY /* INN입수량 */
+             , '' AS TAHDKEY /* 작업지시 헤더코드 */
+             , '' AS LCKEY /* 로케이션: 콜백에서 lckey 넣어주기.. */
+             , '' AS EXPDATE /* 유통기한: 입력 */
+             , 0 AS QTY /* 입력수량 */
+             , 0 AS CTNPISPQTY /* 화면표시용 CTN수량 */
+             , 0 AS INNPISPQTY /* 화면표시용 INN수량 */
+             , 'EA' AS ICUNITTYPECD /* 상품단위유형코드 */
+             , #{barcode} AS BARCODE
+             , CASE WHEN IC.ICOPERSTATUSCD = '1' THEN '진행'
+                    WHEN IC.ICOPERSTATUSCD = '6' THEN '가등록'
+                    WHEN IC.ICOPERSTATUSCD = '7' THEN '신상품'
+                    WHEN IC.ICOPERSTATUSCD = '9' THEN '단종'
+                    ELSE '-'
+                END AS ICOPERSTATUSCD /* 상품운영상태 */
+          FROM TWORK_MST_IC IC /* 상품마스터 */
+    INNER JOIN (
+               SELECT DISTINCT
+                      CTKEY
+                    , OWKEY
+                    , ICKEY
+                 FROM TWORK_MST_ICBARCODE
+                WHERE CTKEY     = #{ctkey}
+                  AND OWKEY     = #{owkey}
+                  AND (ICKEY = #{barcode} OR BARCODE   = #{barcode})
+               ) ICB
+            ON ICB.CTKEY        = IC.CTKEY
+           AND ICB.OWKEY        = IC.OWKEY
+           AND ICB.ICKEY        = IC.ICKEY
+     LEFT JOIN TWORK_MST_ICUTXTYPE CTN /* CTN 상품단위유형 */
+            ON CTN.CTKEY        = IC.CTKEY
+           AND CTN.OWKEY        = IC.OWKEY
+           AND CTN.ICKEY        = IC.ICKEY
+           AND CTN.ICUNITTYPECD = 'CTN'
+     LEFT JOIN TWORK_MST_ICUTXTYPE INN /* INN 상품단위유형 */
+            ON INN.CTKEY        = IC.CTKEY
+           AND INN.OWKEY        = IC.OWKEY
+           AND INN.ICKEY        = IC.ICKEY
+           AND INN.ICUNITTYPECD = 'INN'
+         WHERE IC.CTKEY         = #{ctkey}
+           AND IC.OWKEY         = #{owkey}
+           AND IC.UOM           = 'EA'
+      ORDER BY IC.ICKEY
+    </select>
+
+    <select id="selectRefLc" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectRefLc - 대표로케이션 변경 - 해당 대표 로케이션 상품 조회 */
+        SELECT *
+          FROM TWORK_MST_IC
+         WHERE CTKEY = #{sctkey}
+          AND OWKEY  = #{sowkey}
+          AND LCKEY  = #{lckey}
+    </select>
+
+    <select id="selectPltCntrChk" resultType="camelMap">
+        /* wms-pda-inventory-sql-oracle.xml - selectPltCntrChk - 팔레트랙 용기 조회 */
+        SELECT *
+          FROM TWORK_MST_CNTR
+         WHERE CTKEY       = #{sctkey}
+           AND CNTRBARCODE = #{cntrbarcode}
+           AND CNTRDIVCD   = '10'
+           AND USEYN       = 'Y'
+    </select>
+
+</mapper>

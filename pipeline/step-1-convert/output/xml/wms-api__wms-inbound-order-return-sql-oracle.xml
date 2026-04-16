@@ -1,0 +1,904 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.in.mapper.InboundOrderReturnApiMapper">
+
+	<!--입고 반품 헤더 수신 인터페이스 조회-->
+	<select id="selectInterfaceInboundHeaderReturn" parameterType="inboundOrderReturnRequestDTO" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInterfaceInboundHeaderReturn - 입고 반품 헤더 수신 인터페이스 조회 */
+	    SELECT CTKEY
+			, OWKEY
+			, ORHDKEY
+			, CUSTORDNO
+			, EXTORDERKEY
+			, RECALLERNM
+			, RECALLERZIPCD
+			, RECALLERADDR1
+			, RECALLERADDR2
+			, RECALLERTELNO1
+			, RECALLERTELNO2
+			, RIRSNCD
+			, RIDTRSNCONT
+		    , RECALLERIYN
+			, CMT1
+			, CMT2
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		 FROM TWORK_INTF_RET_HD_RCV
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND CUSTORDNO = #{custordno}
+		  AND EXTORDERKEY = #{extorderkey}
+	</select>
+
+	<!--입고 반품 헤더 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundHeaderReturn" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInterfaceInboundHeaderReturn - 입고 반품 헤더 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_RET_HD_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 반품 상세 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundDetailReturn" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInterfaceInboundDetailReturn - 입고 반품 상세 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_RET_DT_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 반품 파일 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundFileReturn" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInterfaceInboundFileReturn - 입고 반품 파일 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_RET_CUST_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 반품 운송장 수신 인터페이스 삭제-->
+	<delete id="deleteInterfaceInboundWblReturn" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInterfaceInboundWblReturn - 입고 반품 운송장 수신 인터페이스 삭제 */
+		DELETE FROM TWORK_INTF_RET_WBL_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 반품 헤더 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundHeaderReturn" parameterType="inboundOrderReturnRequestDTO">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInterfaceInboundHeaderReturn - 입고 반품 헤더 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_RET_HD_RCV
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, CUSTORDNO
+			, EXTORDERKEY
+			, RECALLERNM
+			, RECALLERZIPCD
+			, RECALLERADDR1
+			, RECALLERADDR2
+			, RECALLERTELNO1
+			, RECALLERTELNO2
+			, RIRSNCD
+			, RIDTRSNCONT
+		    , RECALLERIYN
+			, CMT1
+			, CMT2
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{orhdkey}
+			, #{custordno}
+			, #{extorderkey}
+			, #{recallernm}
+			, #{recallerzipcd}
+			, #{recalleraddr1}
+			, #{recalleraddr2}
+			, #{recallertelno1}
+			, #{recallertelno2}
+			, #{rirsncd}
+			, #{ridtrsncont}
+		    , #{recalleriyn}
+			, #{cmt1}
+			, #{cmt2}
+			, 'N'
+			, NULL
+			, #{sysdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 상세 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundDetailReturn" parameterType="inboundOrderReturnDetailDTO">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInterfaceInboundDetailReturn - 입고 반품 상세 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_RET_DT_RCV
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, ORDTKEY
+			, DLVRYCORPCD
+			, WBLNO
+			, ICKEY
+			, INITQTY
+			, EXPCTQTY
+			, UOM
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{orhdkey}
+			, #{ordtkey}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, #{ickey}
+			, #{initqty}
+			, #{expctqty}
+			, #{uom}
+			, 'N'
+			, NULL
+			, #{sysdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 파일 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundFileReturn" parameterType="inboundOrderReturnDetailDTO">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInterfaceInboundFileReturn - 입고 반품 파일 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_RET_CUST_FILE
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, IMGSEQ
+			, IMGURL
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{orhdkey}
+			, #{imgseq}
+			, #{imgurl}
+			, 'N'
+			, NULL
+			, #{sysdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 운송장 수신 인터페이스 등록-->
+	<insert id="insertInterfaceInboundWblReturn" parameterType="inboundOrderReturnDetailDTO">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInterfaceInboundWblReturn - 입고 반품 운송장 수신 인터페이스 등록 */
+		INSERT INTO TWORK_INTF_RET_WBL_RCV
+		(
+			CTKEY
+			, OWKEY
+			, ORHDKEY
+			, DLVRYCORPCD
+			, WBLNO
+			, PRCSYN
+			, PRCSDATE
+			, RCVDATE
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{orhdkey}
+			, #{dlvrycorpcd}
+			, #{wblno}
+			, 'N'
+			, NULL
+			, #{sysdate}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 헤더 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundHeaderList" parameterType="inboundOrderReturnRequestDTO" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInterfaceInboundHeaderList - 입고 반품 헤더 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , CUSTORDNO
+			 , EXTORDERKEY
+			 , RECALLERNM
+			 , RECALLERZIPCD
+			 , RECALLERADDR1
+			 , RECALLERADDR2
+			 , RECALLERTELNO1
+			 , RECALLERTELNO2
+			 , RIRSNCD
+			 , RIDTRSNCONT
+			 , RECALLERIYN
+			 , CMT1
+			 , CMT2
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_RET_HD_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND PRCSYN = 'N'
+		   AND TO_DATE(RCVDATE, 'YYYYMMDDHH24MISS') + INTERVAL '1' DAY <![CDATA[ > ]]> CURRENT_TIMESTAMP
+	</select>
+
+	<!--입고 반품 상세 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundDetailList" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInterfaceInboundDetailList - 입고 반품 상세 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , ORDTKEY
+			 , DLVRYCORPCD
+			 , WBLNO
+			 , ICKEY
+			 , INITQTY
+			 , EXPCTQTY
+			 , UOM
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_RET_DT_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!--입고 반품 운송장 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundWblList" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInterfaceInboundWblList - 입고 반품 운송장 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , DLVRYCORPCD
+			 , WBLNO
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_RET_WBL_RCV
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!--입고 반품 파일 수신 인터페이스 - 등록 대상 조회-->
+	<select id="selectInterfaceInboundFileList" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInterfaceInboundFileList - 입고 반품 파일 수신 인터페이스 - 등록 대상 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , ORHDKEY
+			 , IMGSEQ  AS SEQNO
+			 , IMGURL
+			 , PRCSYN
+			 , PRCSDATE
+			 , RCVDATE
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_INTF_RET_CUST_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!-- 입고 헤더 건수 조회 -->
+	<select id="selectInboundHeaderCount" resultType="integer">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInboundHeaderCount - 입고 헤더 건수 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!-- 입고 헤더 조회 -->
+	<select id="selectInboundHeader" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInboundHeader - 입고 헤더 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</select>
+
+	<!-- 입고 상세 조회 -->
+	<select id="selectInboundDetailList" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectInboundDetailList - 입고 상세 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , IBHDKEY
+			 , DLVRYCORPCD
+			 , WBLNO
+			 , ICKEY
+		     , TRUNC(IBDTKEY::NUMERIC, -2) AS DTKEY
+             , COALESCE(IBQTY, 0) + COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS QTY  /* 수량(반품입고수량) */
+             , IBQTY AS AVQTY  /* 가용(예정)수량 */
+             , COALESCE(DMGQTY, 0) + COALESCE(FOODDMGQTY, 0) + COALESCE(DFCQTY, 0) + COALESCE(DONAQTY, 0) AS NAVQTY  /* 불용수량 */
+             , IBQTY       /* 정상입고수량 */
+             , DMGQTY      /* 파손수량 */
+             , FOODDMGQTY  /* 식품파손수량 */
+             , DFCQTY      /* 불량수량 */
+             , DONAQTY     /* 기부수량 */
+			 , ICADDYN
+		  FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY   = #{ctkey}
+		   AND OWKEY   = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<!--입고 헤더 삭제-->
+	<delete id="deleteInboundHeader" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInboundHeader - 입고 헤더 삭제 */
+		DELETE FROM TWORK_INFO_IB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 상세 삭제-->
+	<delete id="deleteInboundDetail" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInboundDetail - 입고 상세 삭제 */
+		DELETE FROM TWORK_INFO_IB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</delete>
+
+	<!--입고 반품 운송장 삭제-->
+	<delete id="deleteInboundReturnWblno" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInboundReturnWblno - 입고 반품 운송장 삭제 */
+		DELETE FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</delete>
+
+	<!--입고 반품 파일 삭제-->
+	<delete id="deleteInboundFile" >
+		/* wms-inbound-order-return-sql-oracle.xml - deleteInboundFile - 입고 반품 파일 삭제 */
+		DELETE FROM TWORK_INFO_IBRET_CUST_FILE
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</delete>
+
+	<!--상품 조회-->
+	<select id="selectMstIc" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectMstIc - 상품 조회 */
+		SELECT *
+		 FROM TWORK_MST_IC
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</select>
+
+	<!--아소트 조회-->
+	<select id="selectMstAsrt" resultType="integer">
+		/* wms-inbound-order-return-sql-oracle.xml - selectMstAsrt - 아소트 조회 */
+		SELECT COUNT(*)
+		  FROM TWORK_MST_ASRT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND QTY > 0
+		   AND (ASRTMASICKEY = #{ickey} OR ASRTDTICKEY = #{ickey})
+	</select>
+
+	<!--입고 반품 주문 정보 상세 등록-->
+	<insert id="insertInboundOrderDetail">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInboundOrderDetail - 입고 반품 주문 정보 상세 등록 */
+		INSERT INTO TWORK_INFO_IB_DT
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, IBDTKEY
+			, UPRIBDTKEY
+			, ICKEY
+			, SBKEY
+			, ICUNITKEY
+			, INITQTY
+			, EXPCTQTY
+			, IBQTY
+			, CNFRMQTY
+			, DMGQTY
+			, FOODDMGQTY
+			, DFCQTY
+			, DONAQTY
+			, NONQTY
+			, DSPSQTY
+			, RJQTY
+			, UOM
+			, CPAMT
+			, PRDCTDATE
+			, EXPDATE
+			, ORHDKEY
+			, ORDTKEY
+			, EXTORDERKEY
+			, EXPORDERLINENO
+			, SLPRCAMT
+			, IBNISRSNCD
+			, IBNISDTRSNCONT
+			, CLAIMSNDYN
+			, CLAIMRSNCONT
+			, ORGCHITNO
+			, ORGCHITDATE
+			, ACKEY
+			, ORGCHITSEQNO
+			, ICTMPRDIVCD
+			, DCKEY
+			, ILBHSKEY
+			, IBCNFRMPRCSDATE
+			, IBCNFRMURKEY
+			, IBDDLNDATE
+			, IBDDLNURKEY
+			, UPDATEKEY
+			, WKCHNLCD
+			, IBDTSTATUSCD
+			, WEIGHT
+			, PLCMSTATUSCD
+			, ASRTMASICKEY
+			, ASRTWKTGTYN
+			, ASRTWKCOMPLYN
+			, ASRTWKQTY
+			, DLVRYCORPCD
+			, FILEKEY
+			, RIDMGRSNCD
+			, RIDFCRSNCONT
+			, RIPRGRSTATUSCD
+			, RIHOLDABLEQTY
+			, RIHOLDIMPSQTY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{ibdtkey}
+			, #{upribdtkey}
+			, #{ickey}
+			, #{sbkey}
+			, COALESCE(#{icunitkey}, #{ickey})
+			, #{initqty}
+			, #{expctqty}
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, 0
+			, #{uom}
+			, #{cpamt}
+			, #{prdctdate}
+			, #{expdate}
+			, #{orhdkey}
+			, #{ordtkey}
+			, #{extorderkey}
+			, #{exporderlineno}
+			, #{slprcamt}
+			, #{ibnisrsncd}
+			, #{ibnisdtrsncont}
+			, 'N'
+			, #{claimrsncont}
+			, #{orgchitno}
+			, #{orgchitdate}
+			, #{ackey}
+			, #{orgchitseqno}
+			, #{ictmprdivcd}
+			, #{dckey}
+			, #{ilbhskey}
+			, #{ibcnfrmprcsdate}
+			, #{ibcnfrmurkey}
+			, #{ibddlndate}
+			, #{ibddlnurkey}
+			, #{updatekey}
+			, #{wkchnlcd}
+			, #{ibdtstatuscd}
+			, 0
+			, #{plcmstatuscd}
+			, #{asrtmasickey}
+			, #{asrtwktgtyn}
+			, 'N'
+			, 0
+			, #{dlvrycorpcd}
+			, #{filekey}
+			, #{ridmgrsncd}
+			, #{ridfcrsncont}
+			, #{riprgrstatuscd}
+			, 0
+			, 0
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+    )
+	</insert>
+
+	<!--입고 반품 주문 정보 헤더 등록-->
+	<insert id="insertInboundOrderHeader">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInboundOrderHeader - 입고 반품 주문 정보 헤더 등록 */
+		INSERT INTO TWORK_INFO_IB_HD
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, IBHDTYPECD
+			, IBHDDATE
+			, IBEXPCTDATE
+			, ACKEY
+			, ACNM
+			, IBCNFRMDATE
+			, IBDDLNDATE
+			, CUSTORDNO
+			, ORHDKEY
+			, EXTORDERKEY
+			, B2BOBCNFRMYN
+			, CLAIMSNDYN
+			, CLAIMRSNCONT
+			, RETSHIPDLVRYCORPCD
+			, RETSHIPWBLNO
+			, POHDKEY
+			, OBHDKEY
+			, OBWBLNO
+			, STORE_KEY
+			, DCKEY
+			, FRCTKEY
+			, IBDDLNURKEY
+			, RIRSNCD
+			, RIDTRSNCONT
+			, RECALLERNM
+			, RECALLERZIPCD
+			, RECALLERADDR1
+			, RECALLERADDR2
+			, RECALLERTELNO1
+			, RECALLERTELNO2
+			, RECALLERIYN
+			, FILEKEY
+			, IBSTATUSCD
+			, RISBMSTATUSCD
+			, RIPRGRSTATUSCD
+			, RIHOLDRSNCD
+			, RIHOLDDTCONT
+			, CMT1
+			, CMT2
+			, UPDATEKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{ibhdtypecd}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')||'000000'
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')||'000000'
+			, #{ackey}
+			, #{acname}
+			, #{ibcnfrmdate}
+			, #{ibddlndate}
+			, #{custordno}
+			, #{orhdkey}
+			, #{extorderkey}
+			, 'N'
+			, 'N'
+			, #{claimrsncont}
+			, #{retshipdlvrycorpcd}
+			, #{retshipwblno}
+			, #{pohdkey}
+			, #{obhdkey}
+			, #{obwblno}
+			, #{storeKey}
+			, #{dckey}
+			, #{frctkey}
+			, #{ibddlnurkey}
+			, #{rirsncd}
+			, #{ridtrsncont}
+			, #{recallernm}
+			, #{recallerzipcd}
+			, #{recalleraddr1}
+			, #{recalleraddr2}
+			, #{recallertelno1}
+			, #{recallertelno2}
+		  	, #{recalleriyn}
+			, #{filekey}
+			, #{ibstatuscd}
+			, #{risbmstatuscd}
+			, #{riprgrstatuscd}
+			, #{riholdrsncd}
+			, #{riholddtcont}
+			, #{cmt1}
+			, #{cmt2}
+			, #{updatekey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품반품 운송장 내역 등록-->
+	<insert id="insertInboundOrderWblno">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInboundOrderWblno - 입고 반품반품 운송장 내역 등록 */
+		INSERT INTO TWORK_INFO_IBRET_WBLNO
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, SEQNO
+			, WBLDIVCD
+		    , DLVRYCORPCD
+			, WBLNO
+			, WBLPRGRSTATUSCD
+			, CONT
+			, FILEKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{seqno}
+			, '20'
+		    , #{dlvrycorpcd}
+			, #{wblno}
+			, '10'
+			, #{cont}
+			, #{filekey}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 주문 정보 헤더 등록-->
+	<insert id="insertInboundOrderFile">
+		/* wms-inbound-order-return-sql-oracle.xml - insertInboundOrderFile - 입고 반품 주문 정보 파일 등록 */
+		INSERT INTO TWORK_INFO_IBRET_CUST_FILE
+		(
+			CTKEY
+			, OWKEY
+			, IBHDKEY
+			, SEQNO
+			, IMGURL
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ibhdkey}
+			, #{seqno}
+			, #{imgurl}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+	</insert>
+
+	<!--입고 반품 헤더 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundHeaderReturn">
+	/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundHeaderReturn - 입고 반품 헤더 수신 인터페이스 처리 UPDATE */
+		UPDATE TWORK_INTF_RET_HD_RCV
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!--입고 반품 상세 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundDetailReturn">
+		/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundDetailReturn - 입고 반품 상세 수신 인터페이스 처리 UPDATE */
+		UPDATE TWORK_INTF_RET_DT_RCV
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!--입고 반품 운송장 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundWblReturn">
+		/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundWblReturn - 입고 반품 운송장 수신 인터페이스 처리 UPDATE */
+		UPDATE TWORK_INTF_RET_WBL_RCV
+		   SET PRCSYN = 'Y'
+		     , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!--입고 반품 파일 수신 인터페이스 처리 UPDATE-->
+	<update id="updateInterfaceInboundFileReturn">
+		/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundFileReturn - 입고 반품 파일 수신 인터페이스 처리 UPDATE */
+		UPDATE TWORK_INTF_RET_CUST_FILE
+		   SET PRCSYN = 'Y'
+			 , PRCSDATE = #{sysdate}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!-- 반송 반품 내역 클레임 저장 -->
+	<update id="updateRecallRetClaimReg">
+		/* wms-inbound-order-return-sql-oracle.xml - updateRecallRetClaimReg - 반송 반품 내역 클레임 저장 */
+		UPDATE TWORK_INFO_RECALL_RET
+		   SET CLAIMREGYN = 'Y'
+			 , CLAIMNO = #{claimno}
+			 , CONT = #{cont}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND CUSTORDNO = #{custordno}
+	</update>
+
+	<!--입고 헤더 UPDATE-->
+	<update id="updateInboundHeader">
+		/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundFileReturn - 입고 헤더 UPDATE */
+		UPDATE TWORK_INFO_IB_HD
+		   SET IBSTATUSCD = '99'
+			 , RIPRGRSTATUSCD = '40'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<!--입고 상세 UPDATE-->
+	<update id="updateInboundDetail">
+		/* wms-inbound-order-return-sql-oracle.xml - updateInterfaceInboundFileReturn - 입고 상세 UPDATE */
+		UPDATE TWORK_INFO_IB_DT
+		   SET IBDTSTATUSCD = '99'
+			 , RIPRGRSTATUSCD = '40'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORHDKEY = #{orhdkey}
+	</update>
+
+	<select id="selectIbretWblnoList" resultType="camelMap">
+		/* wms-inbound-order-return-sql-oracle.xml - selectIbretWblnoList - 반품 운송장 내역 조회 */
+		SELECT *
+		  FROM TWORK_INFO_IBRET_WBLNO
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND IBHDKEY = #{ibhdkey}
+	</select>
+
+	<select id="selectReturnLckey" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectReturnLckey - 반품 로케이션 조회  */
+		SELECT *
+		  FROM (
+				SELECT A.*
+				  FROM TWORK_MST_LC A
+				 INNER JOIN TWORK_MST_ZN B
+					ON A.CTKEY = B.CTKEY
+				   AND A.ZNKEY = B.ZNKEY
+				 WHERE A.CTKEY = #{ctkey}
+				   AND B.ZNTYPECD = '170'
+				   AND A.LCKEY != 'RETURN'
+				 ORDER BY LCKEY
+		) AS sub_1
+		LIMIT 1
+
+	</select>
+
+	<select id="selectInboundReturnWblnoSbm" resultType="camelMap">
+		/* wms-inbound-iborderreturn-sql-oracle.xml - selectInboundReturnWblnoSbm - 운송장 접수 내역 조회 */
+		SELECT CTKEY
+		     , CLAIMNO
+		     , CUSTORDNO
+		     , DLVRYCORPCD
+		     , WBLNO
+		     , RICUSTORDNO
+		     , CONT
+		     , INSERTDATE
+		     , INSERTURKEY
+		     , UPDATEDATE
+		     , UPDATEURKEY
+		  FROM TWORK_INFO_IBRET_WBLNO_SBM
+		 WHERE CTKEY = #{ctkey}
+		   AND CUSTORDNO = #{custordno}
+		   AND WBLNO = #{wblno}
+
+	</select>
+
+
+
+
+</mapper>

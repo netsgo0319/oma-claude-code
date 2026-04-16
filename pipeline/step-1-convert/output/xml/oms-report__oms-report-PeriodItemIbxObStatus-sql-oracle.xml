@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.report.mapper.PeriodItemIbxObStatusMapper">
+
+	<select id="selectPeriodItemIbXObStatusList" resultType="camelMap">
+		/* oms-report-PeriodItemIbXObStatus-sql-oracle.xml selectPeriodItemIbXObStatusList */
+		SELECT OWKEY
+		     , CTKEY
+		     , CTNM
+		     , ICKEY
+			 , ICNM
+			 , ASRTKEY
+			 , ASRTNM
+			 , MAX(IC_INN)     AS ICINN
+			 , MAX(IC_CTN)     AS ICCTN
+			 , MAX(IC_CPP)     AS ICCPP
+			 , MAX(LV1CTGNM)   AS LV1CTGNM
+			 , MAX(LV2CTGNM)   AS LV2CTGNM
+			 , MAX(LV3CTGNM)   AS LV3CTGNM
+		     , SUM(IBCNFRMQTY) AS IBCNFRMQTY
+		     , SUM(IBCNFRMINN) AS IBCNFRMINN
+			 , SUM(IBCNFRMCTN) AS IBCNFRMCTN
+		     , SUM(IBSLPRC)    AS IBSLPRC
+		     , SUM(OBCNFRMQTY) AS OBCNFRMQTY
+			 , SUM(OBCNFRMINN) AS OBCNFRMINN
+			 , SUM(OBCNFRMCTN) AS OBCNFRMCTN
+		     , SUM(OBSLPRC)    AS OBSLPRC
+		FROM (
+				SELECT CNFRMDAY
+		             , OWKEY
+		             , CTKEY
+		             , CTNM
+		             , ICKEY
+		             , ICNM
+		             , ASRTKEY
+		             , ASRTNM
+		             , IBCNFRMQTY
+		             , CASE WHEN IBCNFRMQTY IS NULL OR IBCNFRMQTY = 0 THEN 0
+			        		ELSE ROUND(IBCNFRMQTY / IC_INN, 2)
+			           END AS IBCNFRMINN
+			         , CASE WHEN IBCNFRMQTY IS NULL OR IBCNFRMQTY = 0 THEN 0
+			        		ELSE ROUND(IBCNFRMQTY / IC_CTN, 2)
+			           END AS IBCNFRMCTN
+		             , ROUND(IBCNFRMQTY * SLPRC, 2) AS IBSLPRC
+		             , OBCNFRMQTY
+			         , CASE WHEN OBCNFRMQTY IS NULL OR OBCNFRMQTY = 0 THEN 0
+			        		ELSE ROUND(OBCNFRMQTY / IC_INN, 2)
+			           END AS OBCNFRMINN
+			         , CASE WHEN OBCNFRMQTY IS NULL OR OBCNFRMQTY = 0 THEN 0
+			        		ELSE ROUND(OBCNFRMQTY / IC_CTN, 2)
+			           END AS OBCNFRMCTN
+		             , ROUND(OBCNFRMQTY * SLPRC, 2) AS OBSLPRC
+					 , IC_INN
+					 , IC_CTN
+					 , IC_CPP
+					 , LV1CTGNM
+                     , LV2CTGNM
+                     , LV3CTGNM
+				FROM (
+					SELECT   HD.CNFRMDAY
+		                   , HD.OWKEY                         /* 화주코드 */
+						   , HD.CTKEY                         /* 센터코드 */
+		                   , CT.CTNM
+						   , IC.ICKEY                         /* 모상품 */
+				           , IC.ICNM                          /* 모상품명 */
+				           , ASRT.ASRTKEY                     /* 자상품 */
+				           , ASRT.ASRTNM                      /* 자상품명 */
+				           , IC.ASRTYN                        /* 아소트여부 */
+						   , COALESCE(CASE WHEN TP.IBYN = 'Y' THEN DT.CNFRMQTY END, 0) AS IBCNFRMQTY
+						   , COALESCE(CASE WHEN TP.OBYN = 'Y' THEN DT.CNFRMQTY END, 0) AS OBCNFRMQTY
+		                   , IC_INN
+		                   , IC_CTN
+		                   , IC_CPP
+		                   , SLPRC
+		                   , CTG.LV1CTGNM
+                           , CTG.LV2CTGNM
+                           , CTG.LV3CTGNM
+					FROM TORDER_INFO_SO_HD HD
+					INNER JOIN TORDER_INFO_SO_DT DT
+							ON HD.OWKEY = DT.OWKEY
+						   AND HD.SOHDKEY = DT.SOHDKEY
+					INNER JOIN TORDER_MST_ORTYPE TP
+							ON HD.OWKEY = TP.OWKEY
+						   AND HD.ORDERTYPECD = TP.ORDERTYPECD
+					INNER JOIN TORDER_MST_IC IC
+							ON DT.OWKEY = IC.OWKEY
+						   AND DT.ICKEY = IC.ICKEY
+					INNER JOIN TORDER_MST_ICXCT ICXCT
+							ON IC.OWKEY = ICXCT.OWKEY
+						   AND IC.ICKEY = ICXCT.ICKEY
+					INNER JOIN TORDER_MST_CT CT
+							ON ICXCT.CTKEY = CT.CTKEY
+					INNER JOIN (
+								SELECT ICKEY
+									 , OWKEY
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CPP' THEN ICUNITQTY END), 1) AS IC_CPP
+								FROM TORDER_MST_ICUTXTYPE
+								WHERE OWKEY = #{owkey}
+								GROUP BY ICKEY, OWKEY
+						   ) S_ICUT
+						   ON IC.OWKEY = S_ICUT.OWKEY
+						  AND IC.ICKEY = S_ICUT.ICKEY
+					LEFT JOIN TORDER_MST_ASRT ASRT
+						   ON IC.OWKEY = ASRT.OWKEY
+						  AND IC.ICKEY = ASRT.ASRTREPKEY
+						  AND DT.OLNICKEY = ASRT.ASRTKEY
+				    LEFT JOIN (
+						(SELECT A.OWKEY
+							  , A.CTGKEY AS LV1CTGKEY
+							  , A.CTGNM  AS LV1CTGNM
+							  , B.CTGKEY AS LV2CTGKEY
+							  , B.CTGNM  AS LV2CTGNM
+							  , C.CTGKEY AS LV3CTGKEY
+							  , C.CTGNM  AS LV3CTGNM
+						FROM TORDER_MST_CTG A
+						INNER JOIN TORDER_MST_CTG B
+								ON A.OWKEY = B.OWKEY
+							   AND A.CTGKEY  = B.UPPERCTGKEY
+							   AND A.CTGLV::INTEGER + 1 = B.CTGLV::INTEGER
+						INNER JOIN TORDER_MST_CTG C
+								ON B.OWKEY = C.OWKEY
+							   AND B.CTGKEY  = C.UPPERCTGKEY
+							   AND B.CTGLV::INTEGER + 1 = C.CTGLV::INTEGER
+						)
+					  ) CTG
+						 ON IC.OWKEY = CTG.OWKEY
+						AND IC.CTGKEY = CTG.LV3CTGKEY
+					WHERE HD.WKSTATUS = #{soCompleteWkstatus}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+				) F
+		) T
+		GROUP BY OWKEY, CTKEY, CTNM, ICKEY,	ICNM, ASRTKEY, ASRTNM
+	</select>
+
+	<select id="selectMonthIbXObStatusList_BACKUP" resultType="camelMap">
+		/* oms-report-MonthIbXObStatus-sql-oracle.xml selectMonthIbXObStatusList */
+		SELECT YEAR
+		     , MONTH
+		     , OWKEY
+		     , CTKEY
+		     , CTNM
+		     , IBCNFRMQTY
+		     , CASE WHEN IBCNFRMQTY IS NULL OR IBCNFRMQTY = 0 THEN 0
+					ELSE ROUND(IBCNFRMQTY / IC_INN, 2)
+			   END AS IBCNFRMINN
+			 , CASE WHEN IBCNFRMQTY IS NULL OR IBCNFRMQTY = 0 THEN 0
+					ELSE ROUND(IBCNFRMQTY / IC_CTN, 2)
+			   END AS IBCNFRMCTN
+		     , ROUND(IBCNFRMQTY * SLPRC, 2) AS IBSLPRC
+		     , OBCNFRMQTY
+			 , CASE WHEN OBCNFRMQTY IS NULL OR OBCNFRMQTY = 0 THEN 0
+					ELSE ROUND(OBCNFRMQTY / IC_INN, 2)
+			   END AS OBCNFRMINN
+			 , CASE WHEN OBCNFRMQTY IS NULL OR OBCNFRMQTY = 0 THEN 0
+					ELSE ROUND(OBCNFRMQTY / IC_CTN, 2)
+			   END AS OBCNFRMCTN
+		     , ROUND(OBCNFRMQTY * SLPRC, 2) AS OBSLPRC
+		FROM (
+					SELECT   TO_CHAR(TO_DATE(HD.CNFRMDAY, 'YYYYMMDD'), 'yyyy') AS YEAR
+						   , TO_CHAR(TO_DATE(HD.CNFRMDAY, 'YYYYMMDD'), 'mm') AS MONTH
+						   , HD.OWKEY                         /* 화주코드 */
+						   , HD.CTKEY                         /* 센터코드 */
+		                   , CT.CTNM
+						   , COALESCE(SUM(CASE WHEN TP.IBYN = 'Y' THEN DT.CNFRMQTY END), 0) AS IBCNFRMQTY
+						   , COALESCE(SUM(CASE WHEN TP.OBYN = 'Y' THEN DT.CNFRMQTY END), 0) AS OBCNFRMQTY
+						   , AVG(IC.SLPRC) AS SLPRC
+						   , AVG(S_ICUT.IC_INN) AS IC_INN
+						   , AVG(S_ICUT.IC_CTN) AS IC_CTN
+					FROM TORDER_INFO_SO_HD HD
+					INNER JOIN TORDER_INFO_SO_DT DT
+							ON HD.OWKEY = DT.OWKEY
+						   AND HD.SOHDKEY = DT.SOHDKEY
+					INNER JOIN TORDER_MST_ORTYPE TP
+							ON HD.OWKEY = TP.OWKEY
+						   AND HD.ORDERTYPECD = TP.ORDERTYPECD
+					INNER JOIN TORDER_MST_IC IC
+							ON DT.OWKEY = IC.OWKEY
+						   AND DT.ICKEY = IC.ICKEY
+					INNER JOIN TORDER_MST_ICXCT ICXCT
+							ON IC.OWKEY = ICXCT.OWKEY
+						   AND IC.ICKEY = ICXCT.ICKEY
+					INNER JOIN TORDER_MST_CT CT
+							ON ICXCT.CTKEY = CT.CTKEY
+					INNER JOIN (
+								SELECT ICKEY
+									 , OWKEY
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'INN' THEN ICUNITQTY END), 1) AS IC_INN
+									 , COALESCE(SUM(CASE WHEN ICUNITTYPE = 'CTN' THEN ICUNITQTY END), 1) AS IC_CTN
+								FROM TORDER_MST_ICUTXTYPE
+								WHERE OWKEY = #{owkey}
+								GROUP BY ICKEY, OWKEY
+						   ) S_ICUT
+						   ON IC.OWKEY = S_ICUT.OWKEY
+						  AND IC.ICKEY = S_ICUT.ICKEY
+					WHERE HD.WKSTATUS = #{soCompleteWkstatus}
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+						AND #{SEARCH_CONDITION}
+					</if>
+					GROUP BY HD.OWKEY, HD.CTKEY, CT.CTNM, TO_CHAR(TO_DATE(HD.CNFRMDAY, 'YYYYMMDD'), 'yyyy'), TO_CHAR(TO_DATE(HD.CNFRMDAY, 'YYYYMMDD'), 'mm')
+		) T
+		WHERE CONCAT(T.YEAR, T.MONTH) BETWEEN #{orHddateFr} AND  #{orHddateTo}
+	</select>
+
+</mapper>
+	

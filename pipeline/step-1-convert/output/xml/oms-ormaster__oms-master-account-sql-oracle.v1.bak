@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.ormaster.mapper.AccountMapper">
+
+	<select id="selectTOrderMstAc" resultType="camelMap" >
+		/* oms-master-account-sql-oracle.xml - selectTOrderMstAc */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT '0' AS CHK
+		      , A.OWKEY
+		      , B.OWNM
+		      , A.ACKEY
+		      , A.ACNM
+		      , A.ACGRP
+		      , A.ACSTATUS
+		      , A.CUSTTYPE
+		      , A.ZIPCD
+		      , A.ADDR1
+		      , A.ADDR2
+		      , A.CEO
+		      , A.TEL1
+		      , A.SALESPERSONKEY
+		      , A.SALESPERSONNM
+		      , A.REPACKEY
+		      , A.BIZTYPE
+		      , A.BIZCTG
+		      , A.REGNO
+		      , A.SELADDR1
+		      , A.SELADDR2
+		      , A.IFYN
+		      , A.DELYN
+		      , A.INSERTDATE
+		      , A.INSERTURKEY
+		      , A.UPDATEDATE
+		      , A.UPDATEURKEY
+		FROM TORDER_MST_AC A
+		INNER JOIN TORDER_MST_OW B
+		        ON A.OWKEY = B.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				#{SEARCH_CONDITION}
+			</if>
+<!--			<if test="ackey != null">-->
+<!--				AND ACKEY = #{ackey}-->
+<!--			</if>-->
+		</where>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC , ACKEY ASC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+  
+	<select id="selectTOrderMstAcCount" resultType="java.lang.Integer" >
+		/* oms-master-account-sql-oracle.xml - selectTOrderMstAcCount */
+        SELECT count(1)
+	    FROM TORDER_MST_AC A
+		INNER JOIN TORDER_MST_OW B
+		        ON A.OWKEY = B.OWKEY
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="checkAccount" resultType="java.lang.Integer" >
+		/* oms-master-account-sql-oracle.xml - checkAccount */
+		SELECT count(1)
+		FROM TORDER_MST_AC
+		<if test="ackey != null">
+		WHERE ACKEY = #{ackey}
+		</if>
+	</select>	
+		
+	<insert id="insertAccount">
+		/* oms-master-account-sql-oracle.xml - insertAccount */
+		INSERT INTO TORDER_MST_AC
+		(
+		     OWKEY
+		   , ACKEY
+		   , ACNM
+		   , ACGRP
+		   , ACSTATUS
+		   , CUSTTYPE
+		   , ZIPCD
+		   , ADDR1
+		   , ADDR2
+		   , CEO
+		   , TEL1
+		   , SALESPERSONKEY
+		   , SALESPERSONNM
+		   , REPACKEY
+		   , BIZTYPE
+		   , BIZCTG
+		   , REGNO
+		   , SELADDR1
+		   , SELADDR2
+		   , IFYN
+		   , DELYN
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)
+		VALUES
+		(
+		    #{owkey}
+		  , #{ackey}
+		  , #{acnm}
+		  , #{acgrp}
+		  , #{acstatus}
+		  , #{custtype}
+		  , #{zipcd}
+		  , #{addr1}
+		  , #{addr2}
+		  , #{ceo}
+		  , #{tel1}
+		  , #{salespersonkey}
+		  , #{salespersonnm}
+		  , #{repackey}
+		  , #{biztype}
+		  , #{bizctg}
+		  , #{regno}
+		  , #{seladdr1}
+		  , #{seladdr2}
+		  , COALESCE(#{ifyn}, 'N')
+		  , COALESCE(#{delyn}, 'Y')
+		  , #{sysdate}
+		  , #{surkey}
+		  , #{sysdate}
+		  , #{surkey}
+		)
+	</insert>
+		
+	<update id="updateAccount">
+		/* oms-master-account-sql-oracle.xml - updateAccount */
+		UPDATE TORDER_MST_AC
+		SET ACNM           = #{acnm}
+          , ACGRP          = #{acgrp}
+		  , ACSTATUS       = #{acstatus}
+		  , ZIPCD          = #{zipcd}
+		  , ADDR1          = #{addr1}
+		  , ADDR2          = #{addr2}
+		  , CEO            = #{ceo}
+		  , TEL1           = #{tel1}
+		  , SALESPERSONKEY = #{salespersonkey}
+		  , SALESPERSONNM  = #{salespersonnm}
+		  , REPACKEY       = #{repackey}
+		  , BIZTYPE        = #{biztype}
+		  , BIZCTG         = #{bizctg}
+		  , REGNO          = #{regno}
+		  , DELYN          = #{delyn}
+		  , UPDATEDATE     = #{sysdate}
+		  , UPDATEURKEY    = #{surkey}
+		WHERE ACKEY  = #{ackey}
+	</update>
+		
+	<delete id="deleteAccount">
+		/* oms-master-account-sql-oracle.xml - deleteAccount */
+		UPDATE TORDER_MST_AC
+		SET DELYN        = #{delyn}
+		  , UPDATEDATE   = #{sysdate}
+		  , UPDATEURKEY  = #{surkey}
+		WHERE ACKEY  = #{ackey}
+	</delete>
+	
+</mapper>
+	

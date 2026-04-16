@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.daiso.oms.api.in.mapper.SubicObPerfmansApiMapper">
+
+	<insert id="insertIntfSubicObPerfmansWmsToOms">
+		/* oms-po-subicObPerfmansBatch-sql-oracle.xml - insertIntfSubicObPerfmansWmsToOms */
+		INSERT INTO TORDER_INTF_WMS_SUBIC_PERFORMANCE (
+		     CTKEY
+           , OWKEY
+           , ICKEY
+           , QTY
+		   , REQUESTDT
+		   , IFID
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		) VALUES (
+		     #{ctkey}
+           , #{owkey}
+           , #{ickey}
+           , #{qty}
+		   , #{requestDt}
+		   , #{ifid}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+
+		)
+	</insert>
+
+	<insert id="insertSubicPerfmansSoHd">
+		<selectKey keyColumn="sohdkey" keyProperty="sohdkey" order="BEFORE" resultType="String">
+			SELECT #{requestDt} || #{orderNoType} || LPAD(nextval('seq_torder_info_so_hd')::TEXT, 6, '0')
+		</selectKey>
+		INSERT INTO TORDER_INFO_SO_HD
+		(    OWKEY
+		   , SOHDKEY
+		   , DLVYEXPCTDAY
+		   , ORDERISTDAY
+		   , ORDERTYPECD
+		   , WKSTATUS
+		   , CTKEY
+		   , POTYPE
+		   , INSERTDATE
+		   , INSERTURKEY
+		   , UPDATEDATE
+		   , UPDATEURKEY
+		)  VALUES(
+			 #{owkey}
+		   , #{sohdkey}
+		   , #{requestDt}
+		   , #{requestDt}
+		   , '170' -- 부자재출고 (주문유형코드)
+		   , #{compWkstatus} -- 작업완료 (주문기준코드 : SOSTATUS)
+		   , #{ctkey}
+		   , '04' -- 발주유형 : 04(부자재)
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		)
+	</insert>
+
+	<insert id="insertSubicPerfmansSoDt">
+		INSERT INTO TORDER_INFO_SO_DT (
+			OWKEY
+		  , SOHDKEY
+		  , SODTKEY
+		  , ICKEY
+		  , UOM
+		  , INITQTY
+		  , EXPCTQTY
+		  , CNFRMQTY
+		  , DLVYEXPCTDAY
+		  , ORDERISTDAY
+		  , WKSTATUS
+		  , INSERTDATE
+		  , INSERTURKEY
+		  , UPDATEDATE
+		  , UPDATEURKEY
+		)  VALUES(
+			 #{owkey}
+		   , #{sohdkey}
+		   , #{sodtkey}
+		   , #{ickey}
+		   , 'EA'
+		   , #{qty}
+		   , #{qty}
+		   , #{qty}
+		   , #{requestDt}
+		   , #{requestDt}
+		   , #{compWkstatus} -- 작업완료 (주문기준코드 : SOSTATUS)
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		   , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+		   , #{interfaceUrkey}
+		)
+	</insert>
+
+	<select id="selectReqOrderSoHd" resultType="camelMap" >
+		SELECT OWKEY
+              , SOHDKEY
+              , DLVYEXPCTDAY
+              , ORDERISTDAY
+              , ORDERTYPECD
+              , WKSTATUS
+              , CTKEY
+              , DLVYACKEY
+              , STOREKEY
+              , BILLKEY
+              , PAYERKEY
+              , ACKEY
+              , LOGGRPCD
+              , ORGORDERKEY
+              , FROMTOCTKEY
+              , ICGRTYPE
+              , ICGRKEY
+              , POTYPE
+              , RFRNCKEY
+              , SALESEMPID
+              , DLVYEMPID
+              , EDIYN
+              , CMT
+              , CNLYN
+              , CNLDATE
+              , CNLEMPID
+              , ORDERSNDYN
+              , ORDERSNDDATE
+              , ORDERSNDUSERID
+              , COHDKEY
+              , EXTORDERTYPECD
+              , ORDERERRCD
+              , ORDERERRCMT
+              , ORDERRSNCD
+              , ADDCMT01
+              , RECPNM
+              , RECPADDRHD
+              , RECPADDRDT
+              , RECPZIPCD
+              , RECPTEL01
+              , RECPTEL02
+              , BUYER
+              , BUYERADDRHD
+              , BUYERADDRDT
+              , BUYERZIPCD
+              , BUYERTEL01
+              , BUYERTEL02
+              , RECALLER
+              , RECALLERADDRHD
+              , RECALLERADDRDT
+              , RECALLERZIPCD
+              , RECALLERTEL01
+              , RECALLERTEL02
+              , RIRSNCD
+              , CLAIMNO
+              , DLVYMETHDCD
+              , DLVYMETHDDTCD
+              , MALORDERDIV
+              , NISYN
+              , NISCNLRNGDIV
+              , PAYMTCOMPLDAY
+              , PARTERID
+              , ACCESSKEY
+              , ADDCMT02
+              , SHMISTNO
+              , 'Y'  AS FRONT_YN
+              , INSERTDATE
+              , INSERTURKEY
+              , UPDATEDATE
+              , UPDATEURKEY
+		FROM TORDER_INFO_SO_HD
+		WHERE OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sohdkeyList)" >
+			AND SOHDKEY IN
+			<foreach item="sohdkey" index="index" collection="sohdkeyList"   open="(" separator="," close=")">
+			   #{sohdkey}
+			</foreach>
+		</if>
+	</select>
+
+	<select id="selectReqOrderSoDt" resultType="camelMap" >
+		SELECT B.OWKEY
+             , B.SOHDKEY
+             , B.SODTKEY
+             , B.ICKEY
+             , B.OLNICKEY
+             , B.ICUTKEY
+             , B.UOM
+             , B.INITQTY
+             , B.EXPCTQTY
+             , B.CNFRMQTY
+             , B.SNDQTY
+             , B.DLVYEXPCTDAY
+             , B.ORDERISTDAY
+             , B.OBAMT
+             , B.TTWEIGHT
+             , B.WEIGHTUNIT
+             , B.VOL
+             , B.VOLUNIT
+             , B.LOGGRPCD
+             , B.CMT
+             , B.PRDCTLOT
+             , B.PRDCTDAY
+             , B.WKSTATUS
+             , B.RFRNCKEY
+             , B.RFRNCDTKEY
+             , B.ORGORDERKEY
+             , B.ORGORDERDTKEY
+             , B.CNFRMYN
+             , B.CNLYN
+             , B.NISCMT
+             , B.RICMT
+             , B.COHDKEY
+             , B.CODTKEY
+             , B.ORDERERRCD
+             , B.ORDERERRCMT
+             , B.ICGRKEY
+             , B.ICGRTYPE
+             , B.SPEC
+             , B.DLVYCNTRUNIT
+             , B.MALBOXQTY
+             , B.MALPCSQTY
+             , B.NISQTY
+             , B.NISYN
+             , B.INSERTDATE
+             , B.INSERTURKEY
+             , B.UPDATEDATE
+             , B.UPDATEURKEY
+        FROM TORDER_INFO_SO_HD A
+        INNER JOIN TORDER_INFO_SO_DT B
+		        ON A.OWKEY = B.OWKEY
+		       AND A.SOHDKEY = B.SOHDKEY
+		WHERE B.OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sohdkeyList)" >
+			AND B.SOHDKEY IN
+			<foreach item="sohdkey" index="index" collection="sohdkeyList"   open="(" separator="," close=")">
+			   #{sohdkey}
+			</foreach>
+		</if>
+	</select>
+
+</mapper>
+	

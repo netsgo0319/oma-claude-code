@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvnUlcByUlcMapper">
+
+	
+	<insert id="insertUlcByUlc" parameterType="invnUlcByUlcVO">
+		<![CDATA[
+		INSERT INTO TWORK_INFO_ULCXULC (
+				CTKEY       
+				,ULCKEY    
+				,OWKEY      
+				,ICKEY    
+				,IVATKEY  
+				,UPPERULCKEY
+				,INSERTDATE 
+				,INSERTURKEY
+				,UPDATEDATE 
+				,UPDATEURKEY				
+			) VALUES (
+				 #{ctkey}
+				,#{ulckey}
+				,#{owkey}
+				,#{ickey}
+				,#{ivatkey}
+				,#{upperulckey}
+			    ,#{sysdate}
+			  	,#{inserturkey}
+			  	,#{sysdate}
+		      	,#{updateurkey}
+			)
+		]]>	
+	</insert>
+	
+</mapper>		

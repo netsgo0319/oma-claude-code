@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObMoveObManagerMapper">
+
+	<!--출고헤더 별 미확정 용기 카운트 조회-->
+	<select id="selectContainerCountMoveOutboundUnConfirmed" resultType="camelMap">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - selectContainerCountMoveOutboundUnConfirmed - 출고헤더 별 미확정 용기 카운트 조회 */
+		SELECT
+			SUM(CASE WHEN MC.CNFRMYN = 'N' THEN 1 ELSE 0 END) CNT
+		FROM TWORK_INFO_OB_HD OBHD
+			INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+				ON OBHD.CTKEY = MC.CTKEY
+				AND OBHD.OWKEY = MC.OWKEY
+				AND OBHD.OBHDKEY = MC.OBHDKEY
+		WHERE OBHD.CTKEY = #{ctkey}
+		AND OBHD.OWKEY = #{owkey}
+		AND OBHD.OBHDKEY = #{obhdkey}
+		AND MC.CNTRDDLNYN = 'Y'
+		AND OBHD.CNTRWKCOMPLYN = 'Y'
+	</select>
+
+	<!--출고상세 조회 BY 이고 용기-->
+	<select id="selectOutboundDetailListByContainer" resultType="camelMap">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - selectOutboundDetailListByContainer - 출고상세 조회 BY 이고 용기 */
+		SELECT
+			OBDT.CTKEY
+			,OBDT.OWKEY
+			,OBDT.OBHDKEY
+			,MC.CNTRBARCODE
+			,OBDT.OBDTKEY
+		FROM TWORK_INFO_OB_HD OBHD
+			INNER JOIN TWORK_INFO_OB_DT OBDT /*출고 상세 정보*/
+				ON OBHD.CTKEY = OBDT.CTKEY
+				AND OBHD.OWKEY = OBDT.OWKEY
+				AND OBHD.OBHDKEY = OBDT.OBHDKEY
+			INNER JOIN TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세 정보*/
+				ON OBDT.CTKEY = MCDT.CTKEY
+				AND OBDT.OWKEY = MCDT.OWKEY
+				AND OBDT.OBHDKEY = MCDT.OBHDKEY
+				AND OBDT.OBDTKEY = MCDT.OBDTKEY
+			INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+				ON MCDT.CTKEY = MC.CTKEY
+				AND MCDT.OWKEY = MC.OWKEY
+				AND MCDT.OBHDKEY = MC.OBHDKEY
+				AND MCDT.CNTRBARCODE = MC.CNTRBARCODE
+		WHERE OBHD.CTKEY = #{ctkey}
+		AND OBHD.OWKEY = #{owkey}
+		AND OBHD.OBHDKEY = #{obhdkey}
+		AND MC.CNTRBARCODE = #{cntrbarcode}
+		AND MC.CNTRDDLNYN = 'Y'
+		AND MC.CNFRMYN = 'N'
+		AND OBHD.CNTRWKCOMPLYN = 'Y'
+		GROUP BY OBDT.CTKEY
+				,OBDT.OWKEY
+				,OBDT.OBHDKEY
+				,MC.CNTRBARCODE
+				,OBDT.OBDTKEY
+		ORDER BY OBDT.OBHDKEY
+				,MC.CNTRBARCODE
+				,OBDT.OBDTKEY
+	</select>
+
+	<!--이고용기 상세조회 BY 출고 상세-->
+	<select id="selectContainerDetailListByOutboundDetailKey" resultType="camelMap">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - selectContainerDetailListByOutboundDetailKey - 이고용기 상세조회 BY 출고 상세 */
+		SELECT
+			MCDT.CTKEY
+			,MCDT.OWKEY
+			,MCDT.OBHDKEY
+			,MCDT.OBDTKEY
+			,MCDT.CNTRBARCODE
+			,MCDT.ICKEY
+			,MCDT.IVATKEY
+			,MCDT.UOM
+			,MCDT.QTY
+		    ,OBHD.PIHDKEY
+		FROM TWORK_INFO_MVOB_CNTR_DT MCDT /*이고 용기 상세 정보*/
+			INNER JOIN TWORK_INFO_MVOB_CNTR MC /*이고 용기 정보*/
+				ON MCDT.CTKEY = MC.CTKEY
+				AND MCDT.OWKEY = MC.OWKEY
+				AND MCDT.OBHDKEY = MC.OBHDKEY
+				AND MCDT.CNTRBARCODE = MC.CNTRBARCODE
+			INNER JOIN TWORK_INFO_OB_HD OBHD
+				ON MC.CTKEY = OBHD.CTKEY
+				AND MC.OWKEY = OBHD.OWKEY
+				AND MC.OBHDKEY = OBHD.OBHDKEY
+		WHERE MCDT.CTKEY = #{ctkey}
+		AND MCDT.OWKEY = #{owkey}
+		AND MCDT.OBHDKEY = #{obhdkey}
+		AND MCDT.OBDTKEY = #{obdtkey}
+		AND MCDT.CNTRBARCODE = #{cntrbarcode}
+		AND MC.CNTRDDLNYN = 'Y'
+		AND MC.CNFRMYN = 'N'
+		AND OBHD.CNTRWKCOMPLYN = 'Y'
+	</select>
+
+
+	<!--피킹상세 LIST BY 이고용기상세-->
+	<select id="selectPickingDetailListByMoveOutboundConfirmed" resultType="camelMap">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - selectPickingDetailListByOutboundConfirmed - 출고확정에 의한 PICKTO 재고차감 대상 조회 */
+		SELECT
+			CTKEY
+			,OWKEY
+			,IVATKEY
+			,ICKEY
+			,LCKEY
+			,(CNFRMQTY - OBCNFRMQTY - RVSQTY) AS REMAINQTY
+			,PIHDKEY
+			,PIDTKEY
+			,OBHDKEY
+			,OBDTKEY
+		FROM TWORK_INFO_PI_DT
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+		AND ICKEY = #{ickey}
+		AND IVATKEY = #{ivatkey}
+		AND (CNFRMQTY - OBCNFRMQTY - RVSQTY) > 0
+		AND PKDTWKSTATUSCD = '10'
+		ORDER BY IVATKEY, LCKEY
+	</select>
+
+	<!--이고용기 출고확정처리-->
+	<update id="updateMoveOutboundContainerConfirm">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - updateMoveOutboundContainerConfirm - 이고용기 출고확정처리 */
+		UPDATE TWORK_INFO_MVOB_CNTR
+		SET CNFRMYN = 'Y'
+			,CNFRMDATE = #{sysdate}
+			,CNFRMURKEY = #{surkey}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<!--이고주문 결품처리-->
+	<update id="updateMoveOutboundDetailNisQty">
+		/* wms-outbound-obMoveObManager-sql-oracle.xml - updateMoveOutboundDetailNisQty - 이고용기 출고확정처리 */
+		UPDATE TWORK_INFO_OB_DT
+		SET NISQTY = NISQTY + #{nisqty}
+			,UPDATEDATE = #{sysdate}
+			,UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND OBHDKEY = #{obhdkey}
+		AND OBDTKEY = #{obdtkey}
+	</update>
+</mapper>	

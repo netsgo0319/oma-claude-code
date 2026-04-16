@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.po.mapper.PoObQtyAvgMapper">
+
+    <select id ="getAplydays">
+        /* com.daiso.batch.biz.oms.po.mapper.PoObQtyAvgMapper.getAplydays */
+        SELECT
+            #{owkey} as owkey
+            , COUNT(1) AS CNT
+            , CASE
+                WHEN OBQTYCRITCAL = '01'
+                THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month'), 'YYYYMM') || '01'
+                WHEN OBQTYCRITCAL = '02'
+                THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month') - 30, 'YYYYMMDD')
+                ELSE TO_CHAR(TO_DATE(#{endDate},'YYYYMMDD') - 30, 'YYYYMMDD')
+                END AS START_DATE
+            , CASE
+                WHEN OBQTYCRITCAL = '01'
+                THEN TO_CHAR((DATE_TRUNC('month', (TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month')) + INTERVAL '1 month - 1 day')::DATE, 'YYYYMMDD')
+                WHEN OBQTYCRITCAL = '02'
+                THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month'), 'YYYYMMDD')
+                ELSE TO_CHAR(TO_DATE(#{endDate},'YYYYMMDD'), 'YYYYMMDD')
+                END AS END_DATE
+            , CASE WHEN OBQTYCRITCAL IN ('01','02') THEN 'BF' ELSE 'CUR' END AS TERM_GB
+            , HWSETYN
+            , OBQTYCRITCAL
+            , APLYDAYS
+        FROM TORDER_MST_OBAVGQTY
+        WHERE OWKEY =#{owkey}
+        GROUP BY
+        CASE
+            WHEN OBQTYCRITCAL = '01'
+            THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month'), 'YYYYMM') || '01'
+            WHEN OBQTYCRITCAL = '02'
+            THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month') - 30, 'YYYYMMDD')
+            ELSE TO_CHAR(TO_DATE(#{endDate},'YYYYMMDD') - 30, 'YYYYMMDD')
+            END
+        , CASE
+            WHEN OBQTYCRITCAL = '01'
+            THEN TO_CHAR((DATE_TRUNC('month', (TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month')) + INTERVAL '1 month - 1 day')::DATE, 'YYYYMMDD')
+            WHEN OBQTYCRITCAL = '02'
+            THEN TO_CHAR((TO_DATE(#{endDate},'YYYYMMDD') + (-12) * INTERVAL '1 month'), 'YYYYMMDD')
+            ELSE TO_CHAR(TO_DATE(#{endDate},'YYYYMMDD'), 'YYYYMMDD')
+            END
+        , CASE WHEN OBQTYCRITCAL IN ('01','02') THEN 'BF' ELSE 'CUR' END
+        , HWSETYN
+        , OBQTYCRITCAL
+        , APLYDAYS
+    </select>
+
+
+    <select id ="insertPoObQtyAvg">
+        /* com.daiso.batch.biz.oms.po.mapper.PoObQtyAvgMapper.insertPoObQtyAvg */
+        <![CDATA[
+        INSERT INTO TORDER_INFO_OBSTAT_AVG
+        (
+          OWKEY,
+          CTKEY,
+          ICKEY,
+          QTY,
+          INSERTDATE,
+          INSERTURKEY,
+          UPDATEDATE,
+          UPDATEURKEY
+        )
+        SELECT
+            r.OWKEY,
+            r.CTKEY,
+            r.ICKEY,
+            CEIL( SUM(r.QTY) / NULLIF(COUNT(*), 0) )      AS AVGQTY,
+            TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')           AS INSERTDATE,
+            'BATCH'                                        AS INSERTURKEY,
+            TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')           AS UPDATEDATE,
+            'BATCH'                                        AS UPDATEURKEY
+        FROM (
+            SELECT
+                t.*,
+                DENSE_RANK() OVER (
+                    PARTITION BY t.OWKEY, t.CTKEY, t.ICKEY
+                    ORDER BY t.CRITDAY DESC
+                ) AS DR
+            FROM TORDER_INFO_ORDER_STAT t
+            WHERE t.QTY > 0
+              AND t.CRITDAY BETWEEN #{startDate} AND #{endDate}
+              AND EXISTS (
+                    SELECT 1
+                    FROM TORDER_MST_OBAVGQTY m
+                    WHERE m.OWKEY = t.OWKEY
+                      AND m.CTKEY = t.CTKEY
+                      AND m.ICKEY = t.ICKEY
+                      AND m.APLYDAYS = #{aplydays}
+                      AND m.OBQTYCRITCAL NOT IN ('07' ,'08' )
+                      AND m.HWSETYN  = #{hwsetyn}
+              )
+        ) r
+        WHERE r.DR <= #{aplydays}
+        GROUP BY r.OWKEY, r.CTKEY, r.ICKEY
+        ]]>
+    </select>
+
+
+    <select id ="insertPoObQtyAvgRange">
+        /* com.daiso.batch.biz.oms.po.mapper.PoObQtyAvgMapper.insertPoObQtyAvgRange */
+        INSERT INTO TORDER_INFO_OBSTAT_AVG
+        (
+            OWKEY,
+            CTKEY,
+            ICKEY,
+            QTY,
+            INSERTDATE,
+            INSERTURKEY,
+            UPDATEDATE,
+            UPDATEURKEY
+        )
+        SELECT
+            T.OWKEY,
+            T.CTKEY,
+            T.ICKEY,
+            CEIL(SUM(T.QTY) / NULLIF(J.APLYDAYS, 0)) AS AVGQTY,
+            TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS INSERTDATE,
+            'BATCH' AS INSERTURKEY,
+            TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS') AS UPDATEDATE,
+            'BATCH' AS UPDATEURKEY
+        FROM TORDER_INFO_ORDER_STAT T
+        JOIN TORDER_MST_OBAVGQTY J
+            ON J.OWKEY = T.OWKEY
+            AND J.CTKEY = T.CTKEY
+            AND J.ICKEY = T.ICKEY
+        WHERE T.CRITDAY BETWEEN #{startDate} AND #{endDate}
+        AND J.HWSETYN = 'N'
+        AND J.OBQTYCRITCAL NOT IN ('04' ,'05' ,'06' )
+        GROUP BY
+            T.OWKEY,
+            T.CTKEY,
+            T.ICKEY,
+            J.APLYDAYS
+    </select>
+
+    <select id ="insertPoObQtyAvgManual">
+        /* com.daiso.batch.biz.oms.po.mapper.PoObQtyAvgMapper.insertPoObQtyAvgManual */
+        INSERT INTO TORDER_INFO_OBSTAT_AVG
+        (
+            OWKEY, CTKEY, ICKEY, QTY,
+            INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+        )
+        SELECT
+            T.OWKEY,
+            T.CTKEY,
+            T.ICKEY,
+            CEIL( SUM(T.QTY) / NULLIF(J.APLYDAYS, 0) ) AS AVGQTY,
+            TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS INSERTDATE,
+            'BATCH'                               AS INSERTURKEY,
+            TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS UPDATEDATE,
+            'BATCH'                               AS UPDATEURKEY
+        FROM TORDER_INFO_ORDER_STAT T
+        JOIN TORDER_MST_OBAVGQTY J
+        ON J.OWKEY = T.OWKEY
+        AND J.CTKEY = T.CTKEY
+        AND J.ICKEY = T.ICKEY
+        AND T.CRITDAY BETWEEN J.OBFROMDAY AND J.OBTODAY
+        AND J.HWSETYN = 'Y'         -- 수기건만 집계
+        GROUP BY
+         T.OWKEY, T.CTKEY, T.ICKEY, J.APLYDAYS
+    </select>
+
+
+    <insert id="insertPoObQtyAvg_back">
+		/* PoObQtyAvgMapper.xml insertPoObQtyAvg */
+        INSERT INTO TORDER_INFO_OBSTAT_AVG
+        (
+            OWKEY
+          , CTKEY
+          , ICKEY
+          , QTY
+          , INSERTDATE
+          , INSERTURKEY
+          , UPDATEDATE
+          , UPDATEURKEY
+        )
+        SELECT T.OWKEY
+             , T.CTKEY
+             , T.ICKEY
+             , T.QTY
+             , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS INSERTDATE
+			 , 'BATCH'                             AS INSERTURKEY
+			 , TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS') AS UPDATEDATE
+			 , 'BATCH'                             AS UPDATEURKEY
+        FROM (
+            <![CDATA[
+            SELECT OB.OWKEY
+                 , OB.CTKEY
+                 , OB.ICKEY
+                 , CASE WHEN OB.HWSETYN = 'Y' THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                     FROM TORDER_INFO_ORDER_STAT S
+                                                     WHERE S.OWKEY = OB.OWKEY
+                                                       AND S.CTKEY = OB.CTKEY
+                                                       AND S.ICKEY = OB.ICKEY
+                                                       AND S.CRITDAY BETWEEN OB.OBFROMDAY AND OB.OBTODAY
+                                                 )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '01' THEN  ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR(CEIL((CURRENT_TIMESTAMP + (-12) * INTERVAL '1 month'), 'MM'), 'yyyyMMdd') AND TO_CHAR((DATE_TRUNC('month', (CURRENT_TIMESTAMP + (-12) * INTERVAL '1 month')) + INTERVAL '1 month - 1 day')::DATE, 'yyyyMMdd')
+                                                                        )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '02'  THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR((CEIL(CURRENT_TIMESTAMP) + (-12) * INTERVAL '1 month') - 6, 'yyyyMMdd') AND TO_CHAR((CEIL(CURRENT_TIMESTAMP) + (-12) * INTERVAL '1 month'), 'yyyyMMdd')
+                                                                         )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '03'  THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '30 days', 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+                                                                         )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '04'  THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '6 days', 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+                                                                         )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '05'  THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - (COALESCE(OB.APLYDAYS, 0)), 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+                                                                         )
+                    WHEN OB.HWSETYN = 'N' AND OBQTYCRITCAL = '06'  THEN ( SELECT CEIL(SUM(QTY) / COALESCE(OB.APLYDAYS, 1)) QTY
+                                                                          FROM TORDER_INFO_ORDER_STAT S
+                                                                          WHERE S.OWKEY = OB.OWKEY
+                                                                            AND S.CTKEY = OB.CTKEY
+                                                                            AND S.ICKEY = OB.ICKEY
+                                                                            AND S.CRITDAY BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '13 days', 'yyyyMMdd') AND TO_CHAR(CURRENT_TIMESTAMP, 'yyyyMMdd')
+                                                                         )
+                    ELSE 0
+                    END  AS QTY
+            FROM TORDER_MST_OBAVGQTY OB
+            UNION ALL
+            SELECT OWKEY
+                 , CTKEY
+                 , ICKEY
+                 , CEIL(SUM(QTY) / 7) AS QTY
+            FROM (
+                 SELECT OS.OWKEY
+                      , OS.CTKEY
+                      , OS.ICKEY
+                      , OS.CRITDAY
+                      , SUM(OS.QTY) AS QTY
+                      , ROW_NUMBER() OVER (PARTITION BY OS.OWKEY, OS.CTKEY, OS.ICKEY ORDER BY OS.CRITDAY DESC, OS.ICKEY) AS NUM
+                 FROM TORDER_INFO_ORDER_STAT OS
+                 WHERE OS.QTY > 0
+                   AND NOT EXISTS ( SELECT 1
+                                    FROM TORDER_MST_OBAVGQTY E
+                                    WHERE OS.OWKEY = E.OWKEY
+                                      AND OS.CTKEY = E.CTKEY
+                                      AND OS.ICKEY = E.ICKEY
+                                  )
+                 GROUP BY OS.OWKEY
+                        , OS.CTKEY
+                        , OS.ICKEY
+                        , OS.CRITDAY
+                 ORDER BY OS.ICKEY
+            ) WHERE NUM <= 7
+              GROUP BY OWKEY
+                     , CTKEY
+                     , ICKEY
+             ]]>
+        ) T
+        LEFT JOIN TORDER_INFO_OBSTAT_AVG AV
+        ON T.OWKEY = AV.OWKEY
+        AND T.CTKEY = AV.CTKEY
+        AND T.ICKEY = AV.ICKEY
+        WHERE AV.ICKEY IS NULL
+    </insert>
+
+
+    <delete id="deleteAllObstatAvg">
+		/* PoObQtyAvgMapper.xml deleteAllObstatAvg */
+        TRUNCATE TABLE TORDER_INFO_OBSTAT_AVG
+    </delete>
+
+</mapper>

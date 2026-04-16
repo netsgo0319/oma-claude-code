@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.mapper.SapItemsExpiartionDateByShiptoPartyBatchMapper">
+
+	<update id="updateBatchTable" >
+		/* SapItemsExpiartionDateByShiptoPartyBatchMapper.xml updateBatchTable 전송결과 배치 갱신 */
+		UPDATE  TWORK_BATCH_STORE_IC_EXPIRE
+            SET PROCESSYN = CASE WHEN #{saptransfailyn}='Y' THEN 'N' ELSE 'Y' END
+               ,PROCESSDATE = #{interfaceDate}
+               ,UPDATEDATE = #{interfaceDate}
+               ,UPDATEURKEY = #{btchNm}
+        WHERE  BATCHKEY = #{batchkey}
+	</update>
+
+</mapper>

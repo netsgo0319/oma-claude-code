@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.pda.mapper.PdaOutboundProcessMapper">
+	<!--피킹헤더 별 용기바코드 COUNT 조회-->
+	<select id="selectPickingContainerRegistCount">
+		SELECT COUNT(*)
+		FROM TWORK_INFO_PK_CNTR_INFO
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</select>
+
+	<!-- PDA출고관리 피킹용기추가 -->
+	<insert id="insertPickingContainer">
+		INSERT INTO TWORK_INFO_PK_CNTR_INFO
+		(
+			CTKEY
+			,OWKEY
+			,PIHDKEY
+			,CNTRBARCODE
+			,CNTRDDLNYN
+			,CNTRWKURKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{ctkey}
+			,#{owkey}
+			,#{pihdkey}
+			,#{cntrbarcode}
+			,'N'
+			,#{cntrwkurkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<!-- PDA출고관리 피킹용기변경 -->
+	<update id="updatePickingContainer">
+		UPDATE TWORK_INFO_PK_CNTR_INFO
+		SET CNTRBARCODE = #{newcntrbarcode}
+			, CNTRWKURKEY = #{cntrwkurkey}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{cntrwkurkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+
+	<!-- PDA출고관리 피킹용기마감 -->
+	<update id="updatePickingContainerDeadline">
+		UPDATE TWORK_INFO_PK_CNTR_INFO
+		SET CNTRDDLNYN = #{cntrddlnyn}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{cntrwkurkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND PIHDKEY = #{pihdkey}
+		AND CNTRBARCODE = #{cntrbarcode}
+	</update>
+	
+</mapper>

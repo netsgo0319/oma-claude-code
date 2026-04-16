@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.AccountWmsMapper">
+
+	<update id="deleteTWorkMstAcAll">
+	/* wms-master-account-sql-oracle.xml  deleteTWorkMstAcAll */
+		
+		UPDATE TWORK_MST_AC
+		   SET  DELYN = 'Y'
+			 	,CLOSDATE  = #{closdate}
+		        ,UPDATEDATE   = #{sysdate}
+		        ,UPDATEURKEY  = #{surkey}
+		 WHERE 
+		 		ACKEY = #{ackey}
+		 	AND OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</update>
+	
+		<delete id="deleteTWorkMstAc">
+	/* wms-master-account-sql-oracle.xml  deleteTWorkMstAc */
+		UPDATE TWORK_MST_AC
+		   SET  DELYN = #{delyn}
+			 	,CLOSDATE  = #{closdate}
+		        ,UPDATEDATE   = #{sysdate}
+		        ,UPDATEURKEY  = #{surkey}
+		 WHERE 
+		 		ACKEY = #{ackey}
+		 	AND OWKEY = #{owkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+			AND CTKEY = #{ctkey}
+		</if>
+	</delete>
+
+
+	<insert id="insertTWorkMstAc">
+	/* wms-master-account-sql-oracle.xml  insertTWorkMstAc */
+		INSERT INTO TWORK_MST_AC
+		(
+	         CTKEY
+	        ,OWKEY
+	        ,ACKEY 
+	        ,ACTYPE 
+	        ,ACNAME 
+	        ,REGNO
+			,BUSINESSTYPE
+			,BUSINESSCATEGORY 
+	        ,COUNTRYCODE 
+	        ,ADDRESS1 
+	        ,ADDRESS2 
+	        ,CITY
+	        ,STATE 
+	        ,ZIPCODE 
+	        ,TEL1 
+	        ,TEL2 
+	        ,FAX 
+	        ,CONTACT 
+	        ,CEO 
+	        ,UDF1
+	        ,UDF2
+	        ,UDF3
+	        ,REP_ACKEY
+	        ,REP_ACTYPE
+	        ,ICGRKEY
+	        ,ADDRID
+	        ,EMAIL
+	        ,REGDATE
+	        ,CLOSDATE
+	        ,INSERTDATE 
+	        ,INSERTURKEY 
+	        ,UPDATEDATE 
+	        ,UPDATEURKEY 
+	        ,DCKEY
+	        ,DELYN
+			,CUST_TYPE
+			,CUST_TYPE_DETAIL
+		) VALUES (
+		     #{ctkey}
+		    ,#{owkey}
+	        ,#{ackey}
+	        ,#{actype}
+	        ,#{acname}
+	        ,#{regno}
+	        ,#{businesstype}
+	        ,#{businesscategory}
+	        ,#{countrycode}
+	        ,#{address1}
+	        ,#{address2}
+	        ,#{city}
+	        ,#{state}
+	        ,#{zipcode}
+	        ,#{tel1}
+	        ,#{tel2}
+	        ,#{fax}
+	        ,#{contact}
+	        ,#{ceo}
+	        ,#{udf1}
+	        ,#{udf2}
+	        ,#{udf3}
+	        ,#{repAckey}
+	        ,#{repActype}
+	        ,'02'
+	        ,#{addrid}
+	        ,#{email}
+	        ,#{regdate}
+	        ,#{closdate}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+	        ,#{dckey}
+	        ,'N'
+			,#{custType}
+			,#{custTypeDetail}
+		) 		
+	</insert>
+	
+	<select id="selectPkCntTWorkMstAc" resultType="java.lang.Integer" >
+	/* wms-master-account-sql-oracle.xml  selectPkCntTWorkMstAc */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_AC
+		 WHERE
+		       CTKEY = #{ctkey}
+		   AND ACKEY = #{ackey}
+		   AND OWKEY = #{owkey}
+	</select>
+	
+	
+	<update id="updateTWorkMstAc">
+	/* wms-master-account-sql-oracle.xml  updateTWorkMstAc */
+		UPDATE TWORK_MST_AC
+		   SET   ZIPCODE        		= #{zipcode}
+				,ADDRESS1       		= #{address1}
+				,ADDRESS2       		= #{address2}
+				<if test='@com.kns.framework.util.StringUtil@isNotEmpty(ifyn) and "N".equals(ifyn)'>
+				,ACTYPE					= #{actype}
+				,ACNAME        	 		= #{acname}
+				,REGNO       			= #{regno}
+				,BUSINESSTYPE   		= #{businesstype}
+		        ,BUSINESSCATEGORY		= #{businesscategory}     
+		        ,COUNTRYCODE    		= #{countrycode}
+		        ,CITY         			= #{city}
+		        ,STATE          		= #{state}      
+		        ,TEL1           		= #{tel1}
+		        ,TEL2           		= #{tel2}       
+		        ,FAX            		= #{fax}        
+		        ,CONTACT        		= #{contact}    
+		        ,CEO            		= #{ceo} 
+		        ,UDF1            		= #{udf1} 
+		        ,UDF2            		= #{udf2} 
+		        ,UDF3            		= #{udf3}        
+				,REP_ACKEY				= #{repAckey}
+		        ,REP_ACTYPE				= #{repActype}
+		        ,ICGRKEY				= #{icgrkey}
+			 	,DELYN					= #{delyn}
+		        ,ADDRID					= #{addrid}
+		        ,REGDATE				= #{regdate}
+		        ,EMAIL					= #{email}
+		        ,CLOSDATE    		= #{closdate}
+				,CUST_TYPE				= #{custType}
+				,CUST_TYPE_DETAIL  		= #{custTypeDetail}
+				</if>
+		        ,UPDATEDATE     		= #{sysdate}
+		        ,UPDATEURKEY    		= #{surkey}
+		 WHERE 
+		 	  ACKEY = #{ackey}
+		 AND  OWKEY = #{owkey}
+	</update>
+	 
+</mapper>	

@@ -1,0 +1,951 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObOrdSepMapper">
+
+	<sql id="selectObBaseRefSql">
+				/* wms-outbound-obOrdSep-sql-oracle.xml - selectObBaseRefSql - WMS > 출고 관리 > 출고편집 조회 SQL */
+				SELECT ROW_NUMBER() OVER (ORDER BY CTKEY, OBORDKEY) AS RNO
+					 , OB.*
+				  FROM (
+						SELECT OH.CTKEY /*센터코드*/
+							 , OH.OWKEY /*화주코드*/
+							 , OH.OBHDDAY /*주문지시일시*/
+							 , OH.OBREQDATE /*출고희망일자*/
+							 , OH.OBORDKEY /*오더코드*/
+							 , OH.OBHDKEY /*릴리즈코드*/
+							 , OH.EXTERNORDERKEY /*고객주문번호*/
+							 , OH.OBHDTYPECD /*출고유형*/
+							 , OH.OBSTATUSCD /*출고상태*/
+							 , OH.ORDSEPTYPECD /*주문유형*/
+							 , OH.WKTYPECD /*작업유형*/
+							 , OH.WBLNO /*송장번호*/
+							 , OH.RECOMBOXBARCODE /*추천박스*/
+							 , BOX.BOXNM /*추천박스명*/
+							 , OH.CMT /*비고*/
+							 , OH.ORDSEPURKEY /*주문분리자*/
+							 , OH.ORDSEPDATE /*주문분리일시*/
+							 , OH.INSERTURKEY /*등록자*/
+							 , OH.INSERTDATE /*등록일시*/
+							 , OH.UPDATEURKEY /*수정자*/
+							 , OH.UPDATEDATE /*수정일시*/
+							 , OH.WAHDKEY
+							 , OH.CLASSIFSPECCD
+							 , OH.OBWKISTURKEY
+							 , MAX(GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0))) AS MAXLEN /*상품길이*/
+							 , (CASE WHEN SUM(CASE WHEN OD.EXPCTQTY > COALESCE(ICUTXCTN.ICUNITQTY, 0) THEN 1 ELSE 0 END) > 0 THEN 'O'
+						 		 	 WHEN SUM(CASE WHEN OD.EXPCTQTY = COALESCE(ICUTXCTN.ICUNITQTY, 0) THEN 1 ELSE 0 END) > 0 THEN 'Y'
+						 		 	 ELSE 'N' END) AS CTN_YN /*카톤입수여부*/
+							 , (CASE WHEN SUM(CASE WHEN OD.EXPCTQTY > COALESCE(ICUTXINN.ICUNITQTY, 0) THEN 1 ELSE 0 END) > 0 THEN 'O'
+									 WHEN SUM(CASE WHEN OD.EXPCTQTY = COALESCE(ICUTXINN.ICUNITQTY, 0) THEN 1 ELSE 0 END) > 0 THEN 'Y'
+									 ELSE 'N' END) AS INN_YN /*중포입수여부*/
+							 , (CASE WHEN SUM(CASE IC.PKOTICYN WHEN 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y' ELSE 'N' END) AS PKOTICYN /*덕용여부*/
+							 , (CASE WHEN SUM(CASE IC.ROBSORTERICYN WHEN 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y' ELSE 'N' END) AS ROBSORTERICYN /*로봇여부*/
+							 , COUNT(OD.ICKEY) AS SKU
+							 , SUM(OD.EXPCTQTY) AS PCS
+							 , TRUNC(
+									SUM(
+										CASE WHEN IC.PCKGOVLPYN = 'Y'
+										THEN ((COALESCE(ICUTX.WIDTH, 0) + (COALESCE(IC.OVLPPCKGWIDTHVAL, 0) * (OD.INITQTY- 1::INTEGER))) *
+											(COALESCE(ICUTX.DEPTH, 0) + (COALESCE(IC.OVLPPCKGDEPTHVAL, 0) * (OD.INITQTY- 1::INTEGER))) *
+											(COALESCE(ICUTX.HEIGHT, 0) + (COALESCE(IC.OVLPPCKGHEIGHTVAL, 0) * (OD.INITQTY- 1::INTEGER)))) * 0.000000001
+										ELSE COALESCE(ICUTX.VOL, 0) * OD.INITQTY END
+									), 7) AS CBM /*총CBM*/
+							 , (OH.WEIGHT / 1000) AS WEIGHT /*총중량*/
+							 , SUM(CASE WHEN IC.ROBSORTERICYN = 'N' THEN OD.EXPCTQTY ELSE 0 END) AS FBQTY /*이형물QTY*/
+							 , SUM(IC.SLPRC * OD.EXPCTQTY) AS TOT_SLPRC /*총단가*/
+							 , MAX(CASE WHEN OH.ORDSEPTYPECD = '10' AND OD.EXPCTQTY >= ICUTXCTN.ICUNITQTY
+									 		THEN (CASE
+												WHEN GREATEST(COALESCE(ICUTXCTN.WIDTH, 0), COALESCE(ICUTXCTN.DEPTH, 0), COALESCE(ICUTXCTN.HEIGHT, 0)) <![CDATA[ <= ]]> 500
+												 AND (ICUTXCTN.WIDTH + ICUTXCTN.DEPTH + ICUTXCTN.HEIGHT
+													  - GREATEST(COALESCE(ICUTXCTN.WIDTH, 0), COALESCE(ICUTXCTN.DEPTH, 0), COALESCE(ICUTXCTN.HEIGHT, 0))
+													  - LEAST(COALESCE(ICUTXCTN.WIDTH, 0), COALESCE(ICUTXCTN.DEPTH, 0), COALESCE(ICUTXCTN.HEIGHT, 0))) <![CDATA[ <= ]]> 500
+												 AND LEAST(COALESCE(ICUTXCTN.WIDTH, 0), COALESCE(ICUTXCTN.DEPTH, 0), COALESCE(ICUTXCTN.HEIGHT, 0)) <![CDATA[ <= ]]> 350
+												THEN 'Y'
+												ELSE 'N'
+											END)
+									 	ELSE NULL
+							   		END) AS AUTOLBYN_CTN /*카톤오토라벨러가능여부*/
+							 , MAX(CASE WHEN OH.ORDSEPTYPECD = '10' AND OD.EXPCTQTY >= ICUTXINN.ICUNITQTY
+											THEN (CASE
+												WHEN GREATEST(COALESCE(ICUTXINN.WIDTH, 0), COALESCE(ICUTXINN.DEPTH, 0), COALESCE(ICUTXINN.HEIGHT, 0)) <![CDATA[ <= ]]> 500
+												 AND (ICUTXINN.WIDTH + ICUTXINN.DEPTH + ICUTXINN.HEIGHT
+													  - GREATEST(COALESCE(ICUTXINN.WIDTH, 0), COALESCE(ICUTXINN.DEPTH, 0), COALESCE(ICUTXINN.HEIGHT, 0))
+													  - LEAST(COALESCE(ICUTXINN.WIDTH, 0), COALESCE(ICUTXINN.DEPTH, 0), COALESCE(ICUTXINN.HEIGHT, 0))) <![CDATA[ <= ]]> 500
+												 AND LEAST(COALESCE(ICUTXINN.WIDTH, 0), COALESCE(ICUTXINN.DEPTH, 0), COALESCE(ICUTXINN.HEIGHT, 0)) <![CDATA[ <= ]]> 350
+												THEN 'Y'
+												ELSE 'N'
+											END)
+									 	ELSE NULL
+							   		END) AS AUTOLBYN_INN /*중포오토라벨러가능여부*/
+						  FROM TWORK_INFO_OB_HD OH
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)
+								or (@com.kns.framework.util.StringUtil@isNotEmpty(OVERSCHCOMBO) and @com.kns.framework.util.StringUtil@isNotEmpty(OVERSCHEDIT))
+								or (@com.kns.framework.util.StringUtil@isNotEmpty(MAXLENFR) and @com.kns.framework.util.StringUtil@isNotEmpty(MAXLENTO))
+								or @com.kns.framework.util.StringUtil@isNotEmpty(HIGHFRQNCYDMGYN)
+								">
+						 INNER JOIN (
+									SELECT OH.CTKEY
+										 , OH.OWKEY
+										 , OH.OBHDKEY
+									  FROM TWORK_INFO_OB_HD OH
+									 INNER JOIN TWORK_INFO_OB_DT OD
+										ON OH.CTKEY = OD.CTKEY
+									   AND OH.OWKEY = OD.OWKEY
+									   AND OH.OBHDKEY = OD.OBHDKEY
+									 INNER JOIN TWORK_MST_IC IC
+										ON OD.CTKEY = IC.CTKEY
+									   AND OD.OWKEY = IC.OWKEY
+									   AND OD.ICKEY = IC.ICKEY
+									INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+										ON OD.CTKEY = ICUTX.CTKEY
+									   AND OD.OWKEY = ICUTX.OWKEY
+									   AND OD.ICKEY = ICUTX.ICKEY
+									   AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+									   AND OD.UOM = ICUTX.ICUNITTYPECD
+									 WHERE OH.CTKEY = #{CTKEY}
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY) or @com.kns.framework.util.StringUtil@isNotEmpty(sowkey)">
+									   AND OH.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+									</if>
+									   AND OH.OBHDDAY BETWEEN #{OBHDDAY_FROM} AND #{OBHDDAY_TO}
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+									   AND OD.ICKEY IN
+										<foreach collection="ICKEY.split(',')" item="ickey" open="(" separator="," close=")">
+											#{ickey}
+										</foreach>
+									</if>
+
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(HIGHFRQNCYDMGYN)">
+									   AND IC.HIGHFRQNCYDMGYN = #{HIGHFRQNCYDMGYN}
+									</if>
+
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OVERSCHCOMBO) and @com.kns.framework.util.StringUtil@isNotEmpty(OVERSCHEDIT)">
+								<choose>
+									<when test='OVERSCHCOMBO.equals("CBM")'>
+									   AND (ICUTX.VOL * OD.EXPCTQTY) > #{OVERSCHEDIT}
+									</when>
+									<when test='OVERSCHCOMBO.equals("WEIGHT")'>
+									   AND (ICUTX.WEIGHT * OD.EXPCTQTY) / 1000 > #{OVERSCHEDIT}
+									</when>
+									<when test='OVERSCHCOMBO.equals("PCS")'>
+									   AND OD.EXPCTQTY > #{OVERSCHEDIT}
+									</when>
+									<when test='OVERSCHCOMBO.equals("SLPRC")'>
+										AND IC.SLPRC * OD.EXPCTQTY > #{OVERSCHEDIT}
+									</when>
+								</choose>
+							</if>
+									<if test="@com.kns.framework.util.StringUtil@isNotEmpty(MAXLENFR) and @com.kns.framework.util.StringUtil@isNotEmpty(MAXLENTO)">
+									   AND GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0)) BETWEEN #{MAXLENFR} AND #{MAXLENTO}
+									</if>
+									 GROUP BY
+										   OH.CTKEY
+										 , OH.OWKEY
+										 , OH.OBHDKEY
+							   ) FIL
+							ON OH.CTKEY = FIL.CTKEY
+						   AND OH.OWKEY = FIL.OWKEY
+						   AND OH.OBHDKEY = FIL.OBHDKEY
+				</if>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(INCICKEY)">
+						 INNER JOIN (
+									SELECT CTKEY
+										 , OWKEY
+										 , OBHDKEY
+									  FROM (
+											SELECT OH.CTKEY
+												 , OH.OWKEY
+												 , OH.OBHDKEY
+												 , SUM(CASE WHEN OD.ICKEY IN
+																	<foreach collection="INCICKEY.split(',')" item="ickey" open="(" separator="," close=")">
+																		#{ickey}
+																	</foreach>
+														THEN 1 ELSE 0 END) IN_CNT
+												 , SUM(CASE WHEN OD.ICKEY NOT IN
+																	<foreach collection="INCICKEY.split(',')" item="ickey" open="(" separator="," close=")">
+																		#{ickey}
+																	</foreach>
+														THEN 1 ELSE 0 END) OUT_CNT
+												 , COUNT(*) CNT
+											  FROM TWORK_INFO_OB_HD OH
+											 INNER JOIN TWORK_INFO_OB_DT OD
+												ON OH.CTKEY = OD.CTKEY
+											   AND OH.OWKEY = OD.OWKEY
+											   AND OH.OBHDKEY = OD.OBHDKEY
+											 WHERE OH.CTKEY = #{CTKEY}
+											   AND OH.OBSTATUSCD = '00'
+											   AND OH.OBHDTYPECD IN ('10','20')
+											   AND OH.WAHDKEY IS NULL
+											<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OWKEY) or @com.kns.framework.util.StringUtil@isNotEmpty(sowkey)">
+											   AND OH.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+											</if>
+											   AND OH.OBHDDAY BETWEEN #{OBHDDAY_FROM} AND #{OBHDDAY_TO}
+											 GROUP BY
+												   OH.CTKEY
+												 , OH.OWKEY
+												 , OH.OBHDKEY
+										   )
+									 WHERE IN_CNT > 0 AND OUT_CNT = 0
+							   ) INCICKEY
+							ON OH.CTKEY = INCICKEY.CTKEY
+						   AND OH.OWKEY = INCICKEY.OWKEY
+						   AND OH.OBHDKEY = INCICKEY.OBHDKEY
+				</if>
+						 INNER JOIN TWORK_INFO_OB_DT OD
+							ON OH.CTKEY = OD.CTKEY
+						   AND OH.OWKEY = OD.OWKEY
+						   AND OH.OBHDKEY = OD.OBHDKEY
+						 INNER JOIN TWORK_MST_IC IC
+							ON OD.CTKEY = IC.CTKEY
+						   AND OD.OWKEY = IC.OWKEY
+						   AND OD.ICKEY = IC.ICKEY
+						 INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+							ON OD.CTKEY = ICUTX.CTKEY
+						   AND OD.OWKEY = ICUTX.OWKEY
+						   AND OD.ICKEY = ICUTX.ICKEY
+						   AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+						   AND OD.UOM = ICUTX.ICUNITTYPECD
+						  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXCTN
+							ON OD.CTKEY = ICUTXCTN.CTKEY
+						   AND OD.OWKEY = ICUTXCTN.OWKEY
+						   AND OD.ICKEY = ICUTXCTN.ICKEY
+						   AND OD.ICUNITKEY = ICUTXCTN.ICUNITKEY
+					   	   AND ICUTXCTN.ICUNITTYPECD = 'CTN'
+						  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXINN
+							ON OD.CTKEY = ICUTXINN.CTKEY
+						   AND OD.OWKEY = ICUTXINN.OWKEY
+						   AND OD.ICKEY = ICUTXINN.ICKEY
+						   AND OD.ICUNITKEY = ICUTXINN.ICUNITKEY
+						   AND ICUTXINN.ICUNITTYPECD = 'INN'
+						  LEFT OUTER JOIN TWORK_MST_BOX BOX
+							ON OH.CTKEY = BOX.CTKEY
+						   AND OH.RECOMBOXBARCODE = BOX.BOXBARCODE
+						 WHERE OH.CTKEY = #{CTKEY}
+						   AND OH.OWKEY = COALESCE(#{OWKEY}, #{sowkey})
+						   AND OH.OBHDDAY BETWEEN #{OBHDDAY_FROM} AND #{OBHDDAY_TO}
+						   AND OH.OBSTATUSCD = '00'
+						   AND OH.OBHDTYPECD IN ('10','20')
+						   AND OH.WAHDKEY IS NULL
+						 GROUP BY
+							   OH.CTKEY /*센터코드*/
+							 , OH.OWKEY /*화주코드*/
+							 , OH.OBHDDAY /*주문지시일시*/
+							 , OH.OBREQDATE /*출고희망일자*/
+							 , OH.OBORDKEY /*오더코드*/
+							 , OH.OBHDKEY /*릴리즈코드*/
+							 , OH.EXTERNORDERKEY /*고객주문번호*/
+							 , OH.OBHDTYPECD /*출고유형*/
+							 , OH.OBSTATUSCD /*출고상태*/
+							 , OH.ORDSEPTYPECD /*주문유형*/
+							 , OH.WKTYPECD /*작업유형*/
+							 , OH.WBLNO /*송장번호*/
+							 , OH.RECOMBOXBARCODE /*추천박스*/
+							 , BOX.BOXNM /*추천박스명*/
+							 , OH.CMT /*비고*/
+							 , OH.ORDSEPURKEY /*주문분리자*/
+							 , OH.ORDSEPDATE /*주문분리일시*/
+							 , OH.INSERTURKEY /*등록자*/
+							 , OH.INSERTDATE /*등록일시*/
+							 , OH.UPDATEURKEY /*수정자*/
+							 , OH.UPDATEDATE /*수정일시*/
+							 , OH.CBM /*CBM*/
+							 , OH.WEIGHT /*중량*/
+							 , OH.WAHDKEY
+							 , OH.CLASSIFSPECCD
+							 , OH.OBWKISTURKEY
+					   ) OB
+				 WHERE
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					   #{SEARCH_CONDITION}
+					</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(CTNYN)">
+				<choose>
+					<when test='CTNYN.equals("O")'>
+				  AND CTN_YN IN ('O', 'Y')
+					</when>
+					<otherwise>
+				  AND CTN_YN = #{CTNYN}
+					</otherwise>
+				</choose>
+			</if>
+	</sql>
+
+	<sql id="selectObSepRefSql">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepRefSql - WMS > 출고 관리 > 출고편집 조회 SQL */
+		WITH OB_RESULT AS (
+			SELECT 0 AS CHK
+				 , OB.RNO
+				 , OB.CTKEY /*센터코드*/
+				 , OB.OWKEY /*화주코드*/
+				 , OB.OBHDDAY /*주문지시일시*/
+				 , OB.OBREQDATE /*출고희망일자*/
+				 , OB.OBORDKEY /*오더코드*/
+				 , OB.OBHDKEY /*릴리즈코드*/
+				 , OB.EXTERNORDERKEY /*고객주문번호*/
+				 , OB.OBHDTYPECD /*출고유형*/
+				 , OB.OBSTATUSCD /*출고상태*/
+				 , OD.ICKEY /*상품코드*/
+				 , IC.ICNM /*상품명*/
+				 , IC.SLPRC * OD.EXPCTQTY AS AMT /*단가*/
+				 , OD.INITQTY /*주문수량*/
+				 , OD.EXPCTQTY /*예정수량*/
+				 , CASE WHEN IC.PCKGOVLPYN = 'Y'
+						THEN ((COALESCE(ICUTX.WIDTH, 0) + (COALESCE(IC.OVLPPCKGWIDTHVAL, 0) * (OD.INITQTY- 1::INTEGER))) *
+							(COALESCE(ICUTX.DEPTH, 0) + (COALESCE(IC.OVLPPCKGDEPTHVAL, 0) * (OD.INITQTY- 1::INTEGER))) *
+							(COALESCE(ICUTX.HEIGHT, 0) + (COALESCE(IC.OVLPPCKGHEIGHTVAL, 0) * (OD.INITQTY- 1::INTEGER)))) * 0.000000001
+						ELSE COALESCE(ICUTX.VOL, 0) * OD.INITQTY END AS CBM_IND /*CBM*/
+			 	 , (ICUTX.WEIGHT * OD.EXPCTQTY) / 1000 AS WEIGHT_IND /*중량*/
+				 , ICUTXCTN.ICUNITQTY AS ICUNITQTY_CTN /*카톤입수*/
+				 , ICUTXINN.ICUNITQTY AS ICUNITQTY_INN /*중포입수*/
+				 , IC.PKOTICYN /*덕용여부*/
+				 , IC.ROBSORTERICYN /*로봇여부*/
+				 , (IC.SLPRC * OD.INITQTY) AS SLPRC /*금액*/
+				 , OB.ORDSEPTYPECD /*주문유형*/
+				 , OB.WKTYPECD /*작업유형*/
+				 , OB.CBM /*총CBM*/
+			 	 , OB.WEIGHT /*총중량*/
+				 , OB.WBLNO /*송장번호*/
+				 , OB.RECOMBOXBARCODE /*추천박스*/
+				 , OB.BOXNM /*추천박스명*/
+				 , OB.CMT /*비고*/
+				 , OB.ORDSEPURKEY /*주문분리자*/
+				 , OB.ORDSEPDATE /*주문분리일시*/
+				 , OB.INSERTURKEY /*등록자*/
+				 , OB.INSERTDATE /*등록일시*/
+				 , OB.UPDATEURKEY /*수정자*/
+				 , OB.UPDATEDATE /*수정일시*/
+				 , OB.WAHDKEY
+				 , OD.OBDTSTATUSCD
+				 , OB.CTN_YN
+				 , OB.TOT_SLPRC /*총단가*/
+				 , OB.AUTOLBYN_CTN /*카톤오토라벨러가능여부*/
+				 , OB.AUTOLBYN_INN /*중포오토라벨러가능여부*/
+				 , IC.HIGHFRQNCYDMGYN	/*고빈도파손여부*/
+			  FROM (
+					<include refid="selectObBaseRefSql"/>
+			) OB
+			INNER JOIN TWORK_INFO_OB_DT OD
+			   ON OB.CTKEY = OD.CTKEY
+			  AND OB.OWKEY = OD.OWKEY
+			  AND OB.OBHDKEY = OD.OBHDKEY
+			INNER JOIN TWORK_MST_IC IC
+			   ON OD.CTKEY = IC.CTKEY
+			  AND OD.OWKEY = IC.OWKEY
+			  AND OD.ICKEY = IC.ICKEY
+			INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+			   ON OD.CTKEY = ICUTX.CTKEY
+			  AND OD.OWKEY = ICUTX.OWKEY
+			  AND OD.ICKEY = ICUTX.ICKEY
+			  AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+			  AND OD.UOM = ICUTX.ICUNITTYPECD
+			 LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXCTN
+			   ON OD.CTKEY = ICUTXCTN.CTKEY
+			  AND OD.OWKEY = ICUTXCTN.OWKEY
+			  AND OD.ICKEY = ICUTXCTN.ICKEY
+			  AND OD.ICUNITKEY = ICUTXCTN.ICUNITKEY
+			  AND ICUTXCTN.ICUNITTYPECD = 'CTN'
+			 LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXINN
+			   ON OD.CTKEY = ICUTXINN.CTKEY
+			  AND OD.OWKEY = ICUTXINN.OWKEY
+			  AND OD.ICKEY = ICUTXINN.ICKEY
+			  AND OD.ICUNITKEY = ICUTXINN.ICUNITKEY
+			  AND ICUTXINN.ICUNITTYPECD = 'INN'
+		)
+	</sql>
+
+	<select id="selectObSepCount" resultType="java.lang.Integer" >
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepCount - WMS > 출고 관리 > 출고편집 조회 카운트 */
+		<include refid="selectObSepRefSql"/>
+		SELECT COUNT(1)
+		  FROM OB_RESULT
+	</select>
+
+	<select id="selectObSepObHdCount" resultType="java.lang.Integer" >
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepObHdCount - WMS > 출고 관리 > 출고편집 헤더 카운트 */
+		<include refid="selectObSepRefSql"/>
+		SELECT COUNT(DISTINCT OBHDKEY)
+		  FROM OB_RESULT
+	</select>
+
+	<select id="selectObSep" fetchSize="1000" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSep - WMS > 출고 관리 > 출고편집 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectObSepRefSql"/>
+		SELECT *
+		  FROM OB_RESULT
+		 ORDER BY
+			   OBORDKEY
+			 , OBHDKEY
+			 , ICKEY
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectObSepSummarySep" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepSummarySep - WMS > 출고 관리 > 출고편집 > 출고요약장표 조회(주문유형) */
+		SELECT ORDSEPTYPECD
+			 , COUNT(*) AS SEP_CNT
+			 , ROUND(RATIO_TO_REPORT(COUNT(*)) OVER() * 100, 2) AS SEP_RATIO
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OBHDDAY BETWEEN #{obhddayFr} AND #{obhddayTo}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wktypecd)">
+		   AND WKTYPECD = #{wktypecd}
+		</if>
+		   AND OBSTATUSCD = '00'
+		   AND OBHDTYPECD IN ('10','20')
+		   AND WAHDKEY IS NULL
+		 GROUP BY
+			   ORDSEPTYPECD
+		 ORDER BY
+			   ORDSEPTYPECD
+	</select>
+
+	<select id="selectObSepSummaryWk" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObOrdSummaryWk - WMS > 출고 관리 > 출고 현황 > 출고요약장표 조회(작업유형) */
+		SELECT WKTYPECD
+			 , COUNT(*) AS WK_CNT
+			 , ROUND(RATIO_TO_REPORT(COUNT(*)) OVER() * 100, 2) AS WK_RATIO
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OBHDDAY BETWEEN #{obhddayFr} AND #{obhddayTo}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wktypecd)">
+		   AND WKTYPECD = #{wktypecd}
+		</if>
+		   AND OBSTATUSCD = '00'
+		   AND OBHDTYPECD IN ('10','20')
+		   AND WAHDKEY IS NULL
+		 GROUP BY
+			   WKTYPECD
+		 ORDER BY
+			   WKTYPECD
+	</select>
+
+	<sql id="sql_obSepIcOrdQty">
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OD.ICKEY
+		     , IC.ICNM
+		     , IC.LCKEY
+			 , COUNT(DISTINCT OH.OBHDKEY) AS ORDCNT
+			 , SUM(OD.EXPCTQTY) AS ORDQTY
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OD.CTKEY = OH.CTKEY
+		   AND OD.OWKEY = OH.OWKEY
+		   AND OD.OBHDKEY = OH.OBHDKEY
+		  LEFT JOIN TWORK_MST_IC IC
+			ON IC.CTKEY = OD.CTKEY
+		   AND IC.OWKEY = OD.OWKEY
+		   AND IC.ICKEY = OD.ICKEY
+		WHERE OH.CTKEY = #{ctkey}
+		AND OH.OWKEY = COALESCE(#{owkey}, #{sowkey})
+		   AND OH.OBHDDAY BETWEEN RPAD(#{frdate}, 14, '0') AND RPAD(#{todate}, 14, '0')
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wktypecd)">
+			AND	OH.WKTYPECD = #{wktypecd}
+		</if>
+
+		   AND OH.OBSTATUSCD = '00'
+		   AND OH.OBHDTYPECD IN ('10','20')
+		   AND OH.WAHDKEY IS NULL
+
+		<if test="ickeyArr != null and ickeyArr.size > 0" >
+			<foreach collection="ickeyArr" item="item" open=" AND OD.ICKEY IN (" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+
+		  GROUP BY OH.CTKEY
+			 , OH.OWKEY
+			 , OD.ICKEY
+			 , IC.ICNM
+		     , IC.LCKEY
+	</sql>
+
+	<select id="selectObSepIcOrdQtyCount" resultType="java.lang.Integer">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepIcOrdQtyCount - WMS > 출고 관리 > 출고 현황 > 상품별주문수량 Count 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="sql_obSepIcOrdQty"/>
+			 )
+	</select>
+
+	<select id="selectObSepIcOrdQtyList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepIcOrdQtyList - WMS > 출고 관리 > 출고 현황 > 상품별주문수량 조회 */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="sql_obSepIcOrdQty"/>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectobSepWorkTypeChgAllList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectobSepWorkTypeChgAllList - WMS > 출고 관리 > 출고편집 > 작업유형설정 - 검색조회결과 전체 대상(미대상) 조회 */
+		<include refid="selectObSepRefSql"/>
+		SELECT DISTINCT
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBORDKEY
+			 , OH.OBHDKEY
+			 , OH.WKTYPECD
+			 , #{worktypecd} AS TOWKTYPECD
+		  FROM OB_RESULT OH
+		 ORDER BY
+			   OH.OBORDKEY
+			 , OH.OBHDKEY
+	</select>
+
+	<select id="selectobSepStgAllList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectobSepStgAllList - WMS > 출고 관리 > 출고편집 > 자동분리 - 검색조회결과 전체 대상(미대상) 조회 */
+		<include refid="selectObSepRefSql"/>
+		SELECT CTKEY
+			 , OWKEY
+			 , OBORDKEY
+			 , OBHDKEY
+			 , (CASE WHEN CNT = N_CNT AND WAHDKEY IS NULL THEN 'Y' ELSE 'N' END) AS PROC_YN
+		  FROM (
+				SELECT OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBORDKEY
+					 , OH.OBHDKEY
+					 , OH.WAHDKEY
+					 , COUNT(*) AS CNT
+					 , SUM(CASE WHEN OH.OBDTSTATUSCD = '00' THEN 1 ELSE 0 END) AS N_CNT
+				  FROM OB_RESULT OH
+				 GROUP BY
+					   OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBORDKEY
+					 , OH.OBHDKEY
+					 , OH.WAHDKEY
+			   ) OB
+		 ORDER BY
+			   OBORDKEY
+		 	 , OBHDKEY
+	</select>
+
+	<delete id="deleteObSepTempStg">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - deleteObSepTempStg - WMS > 출고 관리 > 출고편집 > 자동분리 - 저장한 임시 전략 삭제 */
+		DELETE FROM TWORK_INFO_ORD_SEP_TEMP
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ORDSEPTEMPCD = #{ordseptempcd}
+	</delete>
+
+	<select id="selectObSepAbsAllOrdkeyList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepAbsAllOrdkeyList - WMS > 출고 관리 > 출고편집 > 병합 - 검색조회결과 처리 가능 오더 코드 조회 */
+		<include refid="selectObSepRefSql"/>
+		SELECT DISTINCT
+			   CTKEY
+			 , OWKEY
+			 , OBORDKEY
+		  FROM OB_RESULT
+		 ORDER BY
+			   OBORDKEY
+	</select>
+
+	<select id="selectobSepAbsAllList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectobSepAbsAllList - WMS > 출고 관리 > 출고편집 > 병합 - 검색조회결과 전체 대상(미대상) 조회 */
+		<include refid="selectObSepRefSql"/>
+		SELECT DISTINCT
+			   CTKEY
+			 , OWKEY
+			 , OBORDKEY
+			 , OBHDKEY
+		  FROM OB_RESULT
+		 ORDER BY
+			   OBORDKEY
+			 , OBHDKEY
+	</select>
+
+	<select id="selectObSepAbsPageOrdkeyList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepAbsPageOrdkeyList - WMS > 출고 관리 > 출고편집 > 병합 - 현재페이지 처리 가능 오더 코드 조회 */
+		SELECT DISTINCT
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBORDKEY
+		  FROM TWORK_INFO_OB_HD OH
+		 WHERE
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(list) and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+				( OH.CTKEY = #{item.ctkey}
+				   AND OH.OWKEY = #{item.owkey}
+				   AND OH.OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+			   1 = 2
+		   </otherwise>
+		</choose>
+		 ORDER BY
+			   OH.OBORDKEY
+	</select>
+
+	<select id="selectObSepAbsSelOrdkeyList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepAbsSelOrdkeyList - WMS > 출고 관리 > 출고편집 > 병합 - 선택대상 처리 가능 오더 코드 조회 */
+		SELECT DISTINCT
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBORDKEY
+		  FROM TWORK_INFO_OB_HD OH
+		 WHERE
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(sellist) and sellist.size > 0">
+				<foreach collection="sellist" item="item" open=" (" separator=" OR " close=")">
+				( OH.CTKEY = #{item.ctkey}
+				   AND OH.OWKEY = #{item.owkey}
+				   AND OH.OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+			   1 = 2
+		   </otherwise>
+		</choose>
+	 ORDER BY
+		   OH.OBORDKEY
+	</select>
+
+	<select id="selectObSepPopAutoSep" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopAutoSep - WMS > 출고 관리 > 출고편집 > 자동분리 - 전략 헤더 조회 */
+		SELECT 0 AS CHK
+			 , INFO.CTKEY /*센터코드*/
+			 , INFO.OWKEY /*화주코드*/
+			 , INFO.ORDSEPSTGCD /*주문 분리 전략코드*/
+			 , MST.ORDSEPSTGNM /*주문 분리 전략명*/
+			 , INFO.ORDSEPPRI /*주문 분리 우선 순위*/
+			 , INFO.ORDSEPCRITCD /*주문 분리 기준코드*/
+			 , INFO.QTY /*PCS*/
+			 , INFO.QTYRNGCD /*PCS구간*/
+			 , INFO.VOL /*CBM*/
+			 , INFO.VOLRNGCD /*CBM구간*/
+			 , INFO.WEIGHT /*중량*/
+			 , INFO.WEIGHTRNGCD /*중량구간*/
+			 , '' AS ICKEY
+			 , '' AS ICNM
+		  FROM TWORK_INFO_ORD_SEP_STG_MSTR MST
+		 INNER JOIN TWORK_INFO_ORD_SEP_STG INFO
+			ON MST.CTKEY = INFO.CTKEY
+		   AND MST.OWKEY = INFO.OWKEY
+		   AND MST.ORDSEPSTGCD = INFO.ORDSEPSTGCD
+		  WHERE MST.CTKEY = #{ctkey}
+			AND MST.OWKEY = #{owkey}
+			AND MST.USEYN = 'Y'
+	</select>
+
+	<select id="selectObSepPopObdtInfoMst" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopObdtInfoMst - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 - 출고주문 정보조회 */
+		SELECT DISTINCT
+			   OHR.CTKEY /*센터코드*/
+			 , OHR.OWKEY /*화주코드*/
+			 , OHR.OBORDKEY /*오더코드*/
+			 , OHR.ORHDKEY /*S/O주문번호*/
+			 , OHR.EXTERNORDERKEY /*고객주문번호*/
+			 , OHR.OBHDDAY /*출고예정일*/
+			 , OHR.OBREQDATE /*출고예정일자*/
+			 , OHR.OBHDTYPECD /*출고유형*/
+			 , pkg_crypto$decrypt(OHR.ORDNM, #{encKey}) AS ORDNM /*주문자명*/
+			 , pkg_crypto$decrypt(OHR.RCPPRSNNM, #{encKey}) AS RCPPRSNNM /*수령인명*/
+			 , pkg_crypto$decrypt(OHR.RCPPRSNTELNO, #{encKey}) AS RCPPRSNTELNO /*전화번호*/
+			 , pkg_crypto$decrypt(OHR.RCPPRSNADDR1, #{encKey}) AS RCPPRSNADDR1 /*주소1*/
+			 , OHR.DLVYMSG /*배송메세지*/
+			 , OHR.CMT /*비고*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_ORD_HD OHR
+		    ON OH.CTKEY = OHR.CTKEY
+		   AND OH.OWKEY = OHR.OWKEY
+		   AND OH.OBORDKEY = OHR.OBORDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND (OH.OBHDKEY = #{obhdkey}
+		      		OR OH.OBORDKEY = #{obhdkey})
+	</select>
+
+	<select id="selectObSepPopObdtInfoHd" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopObdtInfoHd - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 - 출고 정보 조회 */
+		SELECT 0 AS CHK
+			 , OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.OBHDKEY /*출고번호*/
+			 , OH.OBSTATUSCD /*출고상태*/
+			 , OH.CBM /*체적*/
+			 , (OH.WEIGHT / 1000) AS WEIGHT /*중량*/
+			 , OH.ORDSEPTYPECD /*주문분리유형*/
+			 , OH.ORDSEPCRITCD /*주문분리기준*/
+			 , OH.ORDSEPCRITVAL /*주문분리기준값*/
+			 , OH.ORDSEPURKEY /*주문분리자*/
+			 , OH.ORDSEPDATE /*주문분리일시*/
+			 , OH.RECOMBOXBARCODE /*추천포장박스*/
+			 , BOX.BOXNM /*박스명*/
+			 , OH.WKTYPECD /*작업유형*/
+			 , OH.OBORDKEY /*출고주문번호*/
+		  FROM TWORK_INFO_OB_HD OH
+		  LEFT OUTER JOIN TWORK_MST_BOX BOX
+		    ON OH.CTKEY = BOX.CTKEY
+		   AND OH.RECOMBOXBARCODE = BOX.BOXBARCODE
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND (OH.OBHDKEY = #{obhdkey}
+					OR OH.OBORDKEY = #{obhdkey})
+		 ORDER BY
+			   OH.OBHDKEY
+	</select>
+
+	<select id="selectObSepPopObdtInfoDt" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopObdtInfoDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 - 출고 상세정보 조회 */
+		SELECT 0 AS CHK
+			 , OD.CTKEY /*센터코드*/
+			 , OD.OWKEY /*화주코드*/
+			 , OH.OBORDKEY /*오더코드*/
+			 , OD.OBHDKEY /*출고번호*/
+			 , OD.OBDTKEY /*출고주문상세번호*/
+			 , OD.ICKEY /*상품코드*/
+			 , IC.ICNM /*상품명*/
+			 , ICUTX.VOL * OD.EXPCTQTY AS CBM
+			 , (ICUTX.WEIGHT * OD.EXPCTQTY) / 1000 AS WEIGHT
+			 , IC.SLPRC /*단가*/
+		     , IC.HIGHFRQNCYDMGYN	/*고빈도파손여부*/
+		     , GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0)) AS MAXLENGTH
+			 , IC.ROBSORTERICYN /*로봇상품여부*/
+			 , OD.OBDTSTATUSCD /*출고상세상태*/
+			 , OD.UOM /*단위*/
+			 , OD.EXPCTQTY /*예정수량*/
+			 , 0 AS SEPQTY /*분리수량*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		  LEFT JOIN TWORK_MST_IC IC
+			ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTX
+		    ON IC.CTKEY = ICUTX.CTKEY
+		   AND IC.OWKEY = ICUTX.OWKEY
+		   AND IC.ICKEY = ICUTX.ICKEY
+		   AND IC.ICUNITKEY = ICUTX.ICUNITKEY
+		   AND ICUTX.ICUNITTYPECD = OD.UOM
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		 ORDER BY
+			   OD.OBHDKEY
+			 , OD.OBDTKEY
+	</select>
+
+	<select id="selectObSepPopInfoRvtList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopInfoRvtList - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 원복 - 출고 정보 조회 */
+		SELECT CTKEY
+			 , OWKEY
+			 , OBORDKEY
+		  FROM (
+				SELECT OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBORDKEY
+					 , COUNT(*) AS CNT
+					 , SUM(CASE WHEN OD.OBDTSTATUSCD = '00' THEN 1 ELSE 0 END) AS N_CNT
+				  FROM TWORK_INFO_OB_HD OH
+				 INNER JOIN TWORK_INFO_OB_DT OD
+					ON OH.CTKEY = OD.CTKEY
+				   AND OH.OWKEY = OD.OWKEY
+				   AND OH.OBHDKEY = OD.OBHDKEY
+				 WHERE OH.CTKEY = #{ctkey}
+				   AND OH.OWKEY = #{owkey}
+				   AND OH.OBORDKEY = #{obordkey}
+				   AND OH.WAHDKEY IS NULL
+				 GROUP BY
+					   OH.CTKEY
+					 , OH.OWKEY
+					 , OH.OBORDKEY
+		)
+		WHERE CNT = N_CNT
+	</select>
+
+	<delete id="deleteObSepPopInfoRvtObDt">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObSepPopInfoRvtObDt - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 원복 - 기존 출고정보 상세 삭제 */
+		DELETE FROM TWORK_INFO_OB_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBORDKEY = #{obordkey}
+	</delete>
+
+	<delete id="deleteObSepPopInfoRvtObHd">
+		/* wms-outbound-ObOrdSepManagerMapper-sql-oracle.xml - deleteObSepPopInfoRvtObHd - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 원복 - 기존 출고정보 헤더 삭제 */
+		DELETE FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBORDKEY = #{obordkey}
+	</delete>
+
+	<select id="selectObSepPopInfoAbsList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopInfoAbsList - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 병합 - 출고 정보 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OH.OBORDKEY
+		  FROM TWORK_INFO_OB_HD OH
+		 WHERE
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(list) and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+				( OH.CTKEY = #{item.ctkey}
+				   AND OH.OWKEY = #{item.owkey}
+				   AND OH.OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+		       1 = 2
+		   </otherwise>
+		</choose>
+		   AND OH.OBSTATUSCD = '00'
+		   AND OH.WAHDKEY IS NULL
+		 ORDER BY
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+	</select>
+
+	<select id="selectObSepPopInfoManualList" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepPopInfoManualList - WMS > 출고 관리 > 출고편집 > 출고주문정보 상세 > 수동분리 - 출고 정보 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(nonYn) and nonYn.equals("Y")' >
+			 , 'NOT_STATUS_NOT_ABS' AS ERR_CODE
+		</if>
+		  FROM TWORK_INFO_OB_HD OH
+		 WHERE
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(list) and list.size > 0">
+				<foreach collection="list" item="item" open=" (" separator=" OR " close=")">
+				( OH.CTKEY = #{item.ctkey}
+				   AND OH.OWKEY = #{item.owkey}
+				   AND OH.OBHDKEY = #{item.obhdkey})
+				</foreach>
+			</when>
+		   <otherwise>
+			   1 = 2
+		   </otherwise>
+		</choose>
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(nonYn) and nonYn.equals("N")' >
+		   AND OH.OBSTATUSCD = '00'
+		   AND OH.WAHDKEY IS NULL
+		</if>
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(nonYn) and nonYn.equals("Y")' >
+		   AND (OH.OBSTATUSCD NOT IN ('00')
+			   OR OH.WAHDKEY IS NOT NULL)
+		</if>
+		 ORDER BY
+			   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+	</select>
+
+	<select id="selectObSepExcel" resultType="camelMap">
+		/* wms-outbound-obOrdSep-sql-oracle.xml - selectObSepExcel - WMS > 출고 관리 > 출고편집 조회 */
+		SELECT OB.RNO
+			 , OB.CTKEY /*센터코드*/
+			 , OB.OWKEY /*화주코드*/
+			 , OB.OBHDDAY /*주문지시일시*/
+			 , OB.OBREQDATE /*출고희망일자*/
+			 , OB.OBORDKEY /*오더코드*/
+			 , OB.OBHDKEY /*릴리즈코드*/
+			 , OB.EXTERNORDERKEY /*고객주문번호*/
+<!--			 , OB.OBHDTYPECD /*출고유형*/-->
+			 , CD1.CTCDDTNM AS OBHDTYPECD /*출고유형*/
+<!--			 , OB.OBSTATUSCD /*출고상태*/-->
+			 , CD2.CTCDDTNM AS OBSTATUSCD /*출고상태*/
+			 , OD.ICKEY /*상품코드*/
+			 , IC.ICNM /*상품명*/
+			 , IC.SLPRC AS AMT /*단가*/
+			 , OD.INITQTY /*주문수량*/
+			 , OD.EXPCTQTY /*예정수량*/
+			 , ICUTX.VOL * OD.EXPCTQTY AS CBM_IND /*CBM*/
+			 , (ICUTX.WEIGHT * OD.EXPCTQTY) / 1000 AS WEIGHT_IND /*중량*/
+			 , ICUTXCTN.ICUNITQTY AS ICUNITQTY_CTN /*카톤입수*/
+			 , ICUTXINN.ICUNITQTY AS ICUNITQTY_INN /*중포입수*/
+			 , IC.PKOTICYN /*덕용여부*/
+			 , IC.ROBSORTERICYN /*로봇여부*/
+			 , (IC.SLPRC * OD.INITQTY) AS SLPRC /*금액*/
+<!--			 , OB.ORDSEPTYPECD /*주문유형*/-->
+			 , CD3.CTCDDTNM AS ORDSEPTYPECD  /*주문유형*/
+<!--			 , OB.WKTYPECD /*작업유형*/-->
+			 , CD4.CTCDDTNM AS WKTYPECD  /*작업유형*/
+			 , OB.CBM /*총CBM*/
+			 , OB.WEIGHT /*총중량*/
+			 , OB.WBLNO /*송장번호*/
+			 , OB.RECOMBOXBARCODE /*추천박스*/
+			 , OB.BOXNM /*추천박스명*/
+			 , OB.CMT /*비고*/
+			 , OB.ORDSEPURKEY /*주문분리자*/
+			 , OB.ORDSEPDATE /*주문분리일시*/
+			 , OB.INSERTURKEY /*등록자*/
+			 , OB.INSERTDATE /*등록일시*/
+			 , OB.UPDATEURKEY /*수정자*/
+			 , OB.UPDATEDATE /*수정일시*/
+			 , OB.WAHDKEY
+<!--			 , OD.OBDTSTATUSCD-->
+			 , CD5.CTCDDTNM AS OBDTSTATUSCD /*출고상세상태*/
+			 , OB.CTN_YN
+			 , OB.TOT_SLPRC /*총단가*/
+			 , OB.AUTOLBYN_CTN /*카톤오토라벨러가능여부*/
+			 , OB.AUTOLBYN_INN /*중포오토라벨러가능여부*/
+			 , IC.HIGHFRQNCYDMGYN	/*고빈도파손여부*/
+		  FROM (
+				<include refid="selectObBaseRefSql"/>
+		) OB
+		INNER JOIN TWORK_INFO_OB_DT OD
+		   ON OB.CTKEY = OD.CTKEY
+		  AND OB.OWKEY = OD.OWKEY
+		  AND OB.OBHDKEY = OD.OBHDKEY
+		INNER JOIN TWORK_MST_IC IC
+		   ON OD.CTKEY = IC.CTKEY
+		  AND OD.OWKEY = IC.OWKEY
+		  AND OD.ICKEY = IC.ICKEY
+		INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+		   ON OD.CTKEY = ICUTX.CTKEY
+		  AND OD.OWKEY = ICUTX.OWKEY
+		  AND OD.ICKEY = ICUTX.ICKEY
+		  AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+		  AND OD.UOM = ICUTX.ICUNITTYPECD
+		 LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXCTN
+		   ON OD.CTKEY = ICUTXCTN.CTKEY
+		  AND OD.OWKEY = ICUTXCTN.OWKEY
+		  AND OD.ICKEY = ICUTXCTN.ICKEY
+		  AND OD.ICUNITKEY = ICUTXCTN.ICUNITKEY
+		  AND ICUTXCTN.ICUNITTYPECD = 'CTN'
+		 LEFT OUTER JOIN TWORK_MST_ICUTXTYPE ICUTXINN
+		   ON OD.CTKEY = ICUTXINN.CTKEY
+		  AND OD.OWKEY = ICUTXINN.OWKEY
+		  AND OD.ICKEY = ICUTXINN.ICKEY
+		  AND OD.ICUNITKEY = ICUTXINN.ICUNITKEY
+		  AND ICUTXINN.ICUNITTYPECD = 'INN'
+		INNER JOIN TWORK_MST_CTCD_DT CD1 /*출고유형*/
+		   ON OB.CTKEY = CD1.CTKEY
+		  AND OB.OBHDTYPECD = CD1.CTCDDTKEY
+		  AND CD1.CTCDHDKEY = 'OBHDTYPECD'
+		INNER JOIN TWORK_MST_CTCD_DT CD2 /*출고상태*/
+		    ON OB.CTKEY = CD2.CTKEY
+		   AND OB.OBSTATUSCD = CD2.CTCDDTKEY
+		   AND CD2.CTCDHDKEY = 'OBSTATUSCD'
+		 INNER JOIN TWORK_MST_CTCD_DT CD3 /*주문유형*/
+		    ON OB.CTKEY = CD3.CTKEY
+		   AND OB.ORDSEPTYPECD = CD3.CTCDDTKEY
+		   AND CD3.CTCDHDKEY = 'ORDSEPTYPECD'
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CD4 /*작업유형*/
+		    ON OB.CTKEY = CD4.CTKEY
+		   AND OB.WKTYPECD = CD4.CTCDDTKEY
+		   AND CD4.CTCDHDKEY = 'WKTYPECD'
+		 INNER JOIN TWORK_MST_CTCD_DT CD5 /*출고상세상태*/
+		    ON OD.CTKEY = CD5.CTKEY
+		   AND OD.OBDTSTATUSCD = CD5.CTCDDTKEY
+		   AND CD5.CTCDHDKEY = 'OBSTATUSCD'
+		 ORDER BY
+		       OBORDKEY
+			 , OBHDKEY
+			 , ICKEY
+	</select>
+</mapper>

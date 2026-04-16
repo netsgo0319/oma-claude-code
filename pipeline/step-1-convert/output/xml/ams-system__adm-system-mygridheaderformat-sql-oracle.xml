@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.MyGridHeaderFormatMapper">
+	
+	
+	<resultMap id="selectTAdminMstUrdfusMap" type="java.util.HashMap">
+		<result property="urkey" column="URKEY" />
+		<result property="uskey" column="USKEY" />
+		<result property="usgridid" column="USGRIDID" />
+		<result property="urdfusinfo" column="URDFUSINFO" javaType="java.lang.String" jdbcType="CLOB" typeHandler="org.apache.ibatis.type.ClobTypeHandler"/>
+		<result property="urdfusinfoinit" column="URDFUSINFOINIT" javaType="java.lang.String" jdbcType="CLOB" typeHandler="org.apache.ibatis.type.ClobTypeHandler"/>
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+	</resultMap>
+
+	<select id="selectTAdminMstUrdfus" resultMap="selectTAdminMstUrdfusMap">
+		/* adm-system-mygridheaderformat-sql-oracle.xml - selectTAdminMstUrdfus */
+		SELECT URKEY
+			 , USKEY
+			 , USGRIDID
+			 , URDFUSINFO
+			 , URDFUSINFOINIT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TADMIN_MST_URDFUS
+         WHERE URKEY = #{surkey}
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(uskey)">
+        	AND USKEY = #{uskey}
+        </if>
+
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(usgridid)">
+         AND USGRIDID = #{usgridid}
+        </if>
+	</select>
+
+
+	<insert id="insertTAdminMstUrdfus">
+		/* adm-system-mygridheaderformat-sql-oracle.xml - insertTAdminMstUrdfus */
+		INSERT INTO TADMIN_MST_URDFUS (
+			   URKEY
+			 , USKEY
+			 , USGRIDID
+			 , URDFUSINFO
+			 , URDFUSINFOINIT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		)
+		VALUES (
+			   #{surkey}
+			 , #{uskey}
+			 , #{usgridid}
+			 , #{urdfusinfo}
+			 , #{urdfusinfoinit}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)	
+	</insert>
+
+	<update id="udpateTAdminMstUrdfus">
+		/* adm-system-mygridheaderformat-sql-oracle.xml - udpateTAdminMstUrdfus */
+		UPDATE TADMIN_MST_URDFUS
+		SET URDFUSINFO = #{urdfusinfo}
+		WHERE URKEY = #{surkey}
+		  AND USKEY = #{uskey}
+		  AND USGRIDID = #{usgridid}
+	</update>
+
+	<delete id="deleteTAdminMstUrdfus">
+		/* adm-system-mygridheaderformat-sql-oracle.xml - deleteTAdminMstUrdfus */
+		DELETE 
+	      FROM	TADMIN_MST_URDFUS
+	     WHERE	URKEY = #{surkey}
+	       AND	USKEY = #{uskey}
+	       AND	USGRIDID = #{usgridid}
+	</delete>
+	
+</mapper>	

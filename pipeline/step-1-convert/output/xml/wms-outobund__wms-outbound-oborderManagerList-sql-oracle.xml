@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObOrderListManagerMapper">
+
+	<select id="selectObOrdReWkList" resultType="camelMap">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - selectObOrdReWkList - WMS > 출고 관리 > 출고 현황 > 재작업 - 재작업 리스트 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.INITQTY
+			 , OD.NISQTY
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.OBSTATUSCD = #{obstatuscd}
+		   AND OD.OBDTSTATUSCD = #{obstatuscd}
+	</select>
+
+	<update id="updateObOrdReWkProcObDt">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - updateObOrdReWkProcObDt - WMS > 출고 관리 > 출고 현황 > 재작업 - 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = '00'
+			 , EXPCTQTY = #{initqty}
+			 , NISQTY = NISQTY - #{nisqty}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<select id="selectObOrdNisCnlList" resultType="camelMap">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - selectObOrdNisCnlList - WMS > 출고 관리 > 출고 현황 > 결품취소 - 결품취소 리스트 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OD.OBDTKEY
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.OBSTATUSCD = #{obstatuscd}
+		   AND OD.OBDTSTATUSCD = #{obstatuscd}
+	</select>
+
+	<update id="updateObNisCnlObDt">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - updateObNisCnlObDt - WMS > 출고 관리 > 출고 현황 > 결품취소 - 릴리즈 상세 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = #{obstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</update>
+
+	<update id="updateObNisCnlObHd">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - updateObNisCnlObHd - WMS > 출고 관리 > 출고 현황 > 결품취소 - 릴리즈 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET OBSTATUSCD = #{obstatuscd}
+		     , OBDDLNSNDRSLTCD = '00' /*출고 마감 송신 결과 코드 - 대기(00)*/
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectObOrdWkCnlList" resultType="camelMap">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - selectObOrdWkCnlList - WMS > 출고 관리 > 출고 현황 > 작업취소 - 취소주문 정보 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.OBORDKEY /*원주문코드*/
+			 , OH.OBHDKEY /*릴리즈코드*/
+			 , OH.WAHDKEY /*웨이브헤더코드*/
+			 , OH.OBSTATUSCD /*출고상태*/
+			 , CASE WHEN OH.WKTYPECD IS NULL
+					THEN (CASE WHEN OH.ORDSEPTYPECD = '10' THEN 'UW' ELSE 'DW' END)
+					ELSE OH.WKTYPECD END AS WKTYPECD /*작업유형*/
+			 , OH.PREOBHDKEY /*이전릴리즈코드*/
+			 , OH.WKCNLREQYN /*작업 취소 요청 여부*/
+			 , COALESCE(WH.WAWKSTATUSCD, '00') AS WAWKSTATUSCD /*웨이브 작업 상태*/
+			 , COALESCE(WH.CLASSIFPLANSNDYN, 'N') AS CLASSIFPLANSNDYN /*분류계획 전송여부*/
+			 , (CASE WHEN OBSTATUSCD IN ('05','10') AND COALESCE(WH.CLASSIFPLANSNDYN, 'N') = 'N' THEN '97' ELSE NULL END) AS OBSTATUSCD_UP
+		  FROM TWORK_INFO_OB_HD OH
+		  LEFT OUTER JOIN TWORK_INFO_WA_HD WH
+		    ON OH.CTKEY = WH.CTKEY
+		   AND OH.OWKEY = WH.OWKEY
+		   AND OH.WAHDKEY = WH.WAHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+	</select>
+
+	<select id="selectObOrdWkCnlAlDtList" resultType="camelMap">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - selectObOrdWkCnlAlDtList - WMS > 출고 관리 > 출고 현황 > 작업취소 - 할당상세 리스트 조회 */
+		SELECT OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+			 , OD.OBDTKEY
+		  FROM TWORK_INFO_OB_DT OD
+		 WHERE OD.CTKEY = #{ctkey}
+		   AND OD.OWKEY = #{owkey}
+		   AND OD.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTSTATUSCD IN ('05','10')
+	</select>
+
+	<update id="updateWkCnlObHd">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - updateWkCnlObHd - WMS > 출고 관리 > 출고 현황 > 작업취소 - 릴리즈 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WKCNLREQYN = 'Y'
+		     , OBDDLNSNDRSLTCD = '00' /*출고 마감 송신 결과 코드 - 대기(00)*/
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(obstatuscdUp)">
+			 , OBSTATUSCD = #{obstatuscdUp}
+			 , OBCNFRMDATE = #{sysdate}
+		</if>
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateWkCnlObDt">
+		/* wms-outbound-obOrderListManagerMapper-sql-oracle.xml - updateWkCnlObDt - WMS > 출고 관리 > 출고 현황 > 작업취소 - 릴리즈 상세 상태값 업데이트 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET OBDTSTATUSCD = #{obstatuscdUp}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+</mapper>	

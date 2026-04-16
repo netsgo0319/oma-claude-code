@@ -1,0 +1,2726 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.outbound.mapper.ObWaveMgmtManagerMapper">
+	<sql id="selectObWaveMgmtPopSchSql">
+			/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopSchSql - WMS > 출고 관리 > 웨이브관리 - 생성 조회 조건 */
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('SKU')" >
+			   AND SKU > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('PCS')" >
+			   AND PCS > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('CBM')" >
+			   AND CBM > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('WEIGHT')" >
+			   AND WEIGHT > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('MAXLEN')" >
+			   AND MAXLEN > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('RBRATIO')" >
+			   AND RBRATIO > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cboover) and cboover.equals('FBPCS')" >
+			   AND FBPCS > #{edtover}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(skufr) and @com.kns.framework.util.StringUtil@isNotEmpty(skuto)" >
+			   AND SKU BETWEEN #{skufr} AND #{skuto}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(pcsfr) and @com.kns.framework.util.StringUtil@isNotEmpty(pcsto)" >
+			   AND PCS BETWEEN #{pcsfr} AND #{pcsto}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cbmfr) and @com.kns.framework.util.StringUtil@isNotEmpty(cbmto)" >
+			   AND CBM BETWEEN #{cbmfr} AND #{cbmto}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(weightfr) and @com.kns.framework.util.StringUtil@isNotEmpty(weightto)" >
+			   AND WEIGHT BETWEEN #{weightfr} AND #{weightto}
+			</if>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(maxlenfr) and @com.kns.framework.util.StringUtil@isNotEmpty(maxlento)" >
+			   AND MAXLEN BETWEEN #{maxlenfr} AND #{maxlento}
+			</if>
+	</sql>
+
+	<sql id="selectObWaveMgmtPopDasSql">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopDasSql - WMS > 출고 관리 > 생성 > DAS 작업 계획 설정 > DAS 출고 대상 SQL */
+		WITH OB_BASE AS (
+			SELECT OH.CTKEY
+				 , OH.OWKEY
+				 , OH.OBHDKEY
+				 , OH.CLASSIFSPECCD
+				 , OH.CBM
+				 , (OH.WEIGHT / 1000) AS WEIGHT
+				 , OH.RECOMBOXBARCODE
+				 , GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0)) AS MAXLEN
+				 , OD.ICKEY
+				 , OD.EXPCTQTY
+				 , OD.OBDTKEY
+				 , IC.PKOTICYN /*덕용여부*/
+				 , IC.ROBSORTERICYN /*로봇여부*/
+			  FROM TWORK_INFO_OB_HD OH
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON OD.CTKEY = IC.CTKEY
+			   AND OD.OWKEY = IC.OWKEY
+			   AND OD.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+				ON OD.CTKEY = ICUTX.CTKEY
+			   AND OD.OWKEY = ICUTX.OWKEY
+			   AND OD.ICKEY = ICUTX.ICKEY
+			   AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+			   AND OD.UOM = ICUTX.ICUNITTYPECD
+			 WHERE OH.CTKEY = #{ctkey}
+			   AND OH.OWKEY = #{owkey}
+			   AND OH.WKTYPECD = 'DW'
+			   AND OH.WAHDKEY IS NULL
+			   AND OH.OBSTATUSCD = '00'
+			   AND OH.OBHDTYPECD IN ('10','20')
+			   AND OH.OBHDDAY BETWEEN #{obhddayfr} AND #{obhddayto}
+		), OB_INFO AS (
+			SELECT A.*
+				 , ROW_NUMBER() OVER(PARTITION BY CLASSIFSPECCD ORDER BY CLASSIFSPECCD, OBHDKEY ASC, OBHDKEY ASC) AS ROWNO
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , OBHDKEY /*릴리즈코드*/
+						 , CLASSIFSPECCD
+						 , RECOMBOXBARCODE
+						 , CBM
+						 , WEIGHT
+						 , ROW_NUMBER() OVER (ORDER BY CTKEY) AS RNO
+						 , COUNT(ICKEY) AS SKU
+						 , SUM(EXPCTQTY) AS PCS
+						 , MAX(MAXLEN) AS MAXLEN
+						 , ROUND(COUNT(CASE WHEN ROBSORTERICYN = 'Y' THEN 1 END) * 100 / COUNT(*), 0) AS RBRATIO
+						 , SUM(CASE WHEN ROBSORTERICYN = 'N' THEN EXPCTQTY ELSE 0 END) AS FBPCS
+						 , COUNT(OBDTKEY) AS OBDT_CNT
+					  FROM OB_BASE
+					 GROUP BY
+						   CTKEY
+						 , OWKEY
+						 , OBHDKEY /*릴리즈코드*/
+						 , CLASSIFSPECCD
+						 , RECOMBOXBARCODE
+						 , CBM
+						 , WEIGHT
+					) A
+			 WHERE 1=1
+				<include refid="selectObWaveMgmtPopSchSql"/>
+		), OB_SKU AS (
+			SELECT OB.CTKEY
+				 , OB.OWKEY
+				 , OB.CLASSIFSPECCD
+				 , COUNT(DISTINCT OD.ICKEY) SKU
+			  FROM OB_INFO OB
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OB.CTKEY = OD.CTKEY
+			   AND OB.OWKEY = OD.OWKEY
+			   AND OB.OBHDKEY = OD.OBHDKEY
+			  GROUP BY
+					OB.CTKEY
+				  , OB.OWKEY
+				  , OB.CLASSIFSPECCD
+		)
+	</sql>
+
+	<sql id="selectObWaveMgmtPopDasSkuSql">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopDasSkuSql - WMS > 출고 관리 > 생성 > DAS 작업 계획 설정 > DAS 출고 대상(SKU 집중화) SQL */
+		, ITEM_RANK AS (
+			/* [1단계] 품목코드별 등장 건수 순위 */
+		    SELECT
+		    	 DT.CTKEY
+		    	, DT.OWKEY
+		        , DT.ICKEY
+		        , HD.CLASSIFSPECCD
+		        , COUNT(DISTINCT DT.OBHDKEY) AS OBHD_CNT
+		        , ROW_NUMBER() OVER(PARTITION BY HD.CLASSIFSPECCD ORDER BY COUNT(DISTINCT DT.OBHDKEY) DESC) AS ITEM_RK
+		    FROM OB_INFO HD
+		    	INNER JOIN TWORK_INFO_OB_DT DT
+		    		ON HD.CTKEY = DT.CTKEY
+		    		AND HD.OWKEY = DT.OWKEY
+		    		AND HD.OBHDKEY = DT.OBHDKEY
+		    GROUP BY  DT.CTKEY, DT.OWKEY, DT.ICKEY, HD.CLASSIFSPECCD
+		), HD_MATCH AS (
+			/* [2단계] 품목 우선순위별로, 그 품목을 포함한 헤더-규격 조합 매핑 */
+		    SELECT
+		    	HD.CTKEY
+		    	, HD.OWKEY
+		    	, HD.OBHDKEY
+		        , HD.CLASSIFSPECCD
+		        , IR.ICKEY
+		        , IR.ITEM_RK
+		    FROM OB_INFO HD
+		    	INNER JOIN TWORK_INFO_OB_DT DT
+		    		ON HD.CTKEY = DT.CTKEY
+		    		AND HD.OWKEY = DT.OWKEY
+		    		AND HD.OBHDKEY = DT.OBHDKEY
+			    INNER JOIN ITEM_RANK IR
+			    	ON DT.CTKEY = IR.CTKEY
+			    	AND DT.OWKEY = IR.OWKEY
+			    	AND DT.ICKEY = IR.ICKEY
+			    	AND HD.CLASSIFSPECCD = IR.CLASSIFSPECCD
+		), OB_RANK AS (
+		    /* [3단계] 규격별로, 품목 우선순위를 기준으로 헤더 순위를 매김 */
+		    SELECT OBINFO.CTKEY
+					 , OBINFO.OWKEY
+					 , OBINFO.OBHDKEY
+					 , OBINFO.CLASSIFSPECCD
+					 , OBINFO.CBM
+					 , OBINFO.WEIGHT
+					 , OBINFO.RECOMBOXBARCODE
+					 , OBINFO.MAXLEN
+					 , OBINFO.SKU
+					 , OBINFO.PCS
+					 , OBINFO.OBDT_CNT
+					 , OB.RK AS RKNO
+		    FROM (SELECT
+			    	CTKEY
+			    	, OWKEY
+			    	, OBHDKEY
+			        , CLASSIFSPECCD
+			        , MIN(ITEM_RK) AS BEST_ITEM_RK  -- 헤더가 가진 품목 중 가장 높은 우선순위
+			        , ROW_NUMBER() OVER(PARTITION BY CLASSIFSPECCD ORDER BY MIN(ITEM_RK)) AS RK
+		    	FROM HD_MATCH
+			    GROUP BY CTKEY, OWKEY, CLASSIFSPECCD, OBHDKEY) OB
+			    INNER JOIN OB_INFO OBINFO
+					ON OB.CTKEY = OBINFO.CTKEY
+					AND OB.OWKEY = OBINFO.OWKEY
+					AND OB.OBHDKEY = OBINFO.OBHDKEY
+					AND OB.CLASSIFSPECCD = OBINFO.CLASSIFSPECCD
+		)
+	</sql>
+
+	<select id="selectObWaveMgmtPopCreateObListSku" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateObListSku - WMS > 출고 관리 > 생성 > DAS 작업 계획 설정 > 주문 배정 주문건 조회(대,중,소)(SKU 집중화) 조회 */
+		<include refid="selectObWaveMgmtPopDasSql"/>
+		<include refid="selectObWaveMgmtPopDasSkuSql"/>
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , CLASSIFSPECCD
+			 , RECOMBOXBARCODE
+			 , CBM AS VOL
+			 , WEIGHT
+			 , SKU AS TTICCNT
+			 , PCS AS TTICQTY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS DASSTNBARCODE
+		  FROM OB_RANK
+		 WHERE
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(spec)" >
+			   CLASSIFSPECCD = #{spec} AND RKNO <![CDATA[ <= ]]> #{cnt}
+			</if>
+	</select>
+
+	<select id="selectObWaveMgmtPopCreateObList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateObList - WMS > 출고 관리 > 웨이브관리 > 생성 > 저장 > 주문 배정 주문건 조회(대,중,소)  */
+		<include refid="selectObWaveMgmtPopDasSql"/>
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , CLASSIFSPECCD
+			 , RECOMBOXBARCODE
+			 , CBM AS VOL
+			 , WEIGHT
+			 , SKU AS TTICCNT
+			 , PCS AS TTICQTY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS DASSTNBARCODE
+		  FROM OB_INFO
+		 WHERE
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(spec)" >
+			   CLASSIFSPECCD = #{spec} AND ROWNO <![CDATA[ <= ]]> #{cnt}
+			</if>
+	</select>
+
+	<update id="updateObWaveMgmtPopCreateObList">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtPopCreateObList - WMS > 출고 관리 > 웨이브관리 > 생성 > 저장 > 주문 배정 주문건 업데이트(대,중,소)  */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = #{wahdkey}
+			  , DASSTNBARCODE = #{dasstnbarcode}
+			  , UPDATEDATE = #{sysdate}
+			  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<insert id="obWaveMgmtPopCreateWaDtInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreateWaDtInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 상세 저장 */
+		INSERT INTO TWORK_INFO_WA_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통 코드*/
+			, OBHDKEY /*릴리즈 코드*/
+			, RECOMBOXBARCODE /*추천 박스 바코드*/
+			, CLASSIFSPECCD /*분류 규격 코드*/
+			, VOL /*부피*/
+			, WEIGHT /*중량*/
+			, TTICCNT /*총 상품 개수*/
+			, TTICQTY /*총 상품 수량*/
+			, STNBARCODE /*스테이션바코드*/
+			, DELYN /*삭제여부*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통 코드*/
+			, #{obhdkey} /*릴리즈 코드*/
+			, #{recomboxbarcode} /*추천 박스 바코드*/
+			, #{classifspeccd} /*분류 규격 코드*/
+			, #{vol} /*부피*/
+			, (CASE COALESCE(#{weight}, 0) WHEN 0 THEN 0 ELSE #{weight} * 1000 END) /*중량*/
+			, #{tticcnt} /*총 상품 개수*/
+			, #{tticqty} /*총 상품 수량*/
+			, #{stnbarcode} /*스테이션바코드*/
+			, 'N' /*삭제여부*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectObWaveMgmtPopCreateDasCell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateDasCell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 셀 정보 조회 */
+		WITH CELLINFO AS (
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(cellNoList) and cellNoList.size > 0">
+				<foreach collection="cellNoList" item="item" separator=" UNION ALL ">
+				SELECT #{item.ctkey} AS CTKEY, #{item.owkey} AS OWKEY, #{item.wahdkey} AS WAHDKEY, #{item.stnbarcode} AS STNBARCODE, #{item.classifspeccd} AS CLASSIFSPECCD, #{item.cellno} AS CELLNO
+				</foreach>
+			</when>
+		   <otherwise>
+				SELECT '' AS CTKEY, '' AS OWKEY, '' AS WAHDKEY, '' AS STNBARCODE, '' AS CLASSIFSPECCD, '' AS CELLNO
+		   </otherwise>
+		</choose>
+		), CELLRSLT AS (
+			SELECT INFO.CTKEY
+				 , INFO.OWKEY
+				 , INFO.WAHDKEY
+				 , INFO.STNBARCODE
+				 , STC.CELLBARCODE
+				 , INFO.CLASSIFSPECCD
+				 , INFO.CELLNO
+				 , ROW_NUMBER() OVER(PARTITION BY STC.CTKEY, STC.STNBARCODE, INFO.CLASSIFSPECCD ORDER BY STC.GRPNO ASC, COALESCE(CAST(STC.PRINO AS NUMERIC), 99) ASC, CAST(STC.CELLNO AS NUMERIC) ASC) AS ROWNO
+			  FROM CELLINFO INFO
+			 INNER JOIN TWORK_MST_STNWKCELL STC
+				ON INFO.CTKEY = STC.CTKEY
+			   AND INFO.STNBARCODE = STC.STNBARCODE
+			   AND INFO.CELLNO = (STC.DIRTDIVCD || STC.CELLNO)
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , WAHDKEY
+			 , STNBARCODE
+			 , CELLBARCODE
+			 , CLASSIFSPECCD
+			 , CELLNO
+			 , ROWNO AS PRINO
+		  FROM CELLRSLT
+<!--		 WHERE-->
+<!--			   ((CLASSIFSPECCD = 'S' AND ROWNO <![CDATA[ <= ]]> #{sCnt})-->
+<!--				OR (CLASSIFSPECCD = 'M' AND ROWNO <![CDATA[ <= ]]> #{mCnt})-->
+<!--				OR (CLASSIFSPECCD = 'L' AND ROWNO <![CDATA[ <= ]]> #{lCnt}))-->
+	</select>
+
+	<insert id="obWaveMgmtPopCreateDasCellInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreateDasCellInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 셀 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_CELL
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통 코드*/
+			, STNBARCODE /*스테이션 바코드*/
+			, CELLBARCODE /*셀바코드*/
+			, CLASSIFSPECCD /*분류규격코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통 코드*/
+			, #{stnbarcode} /*스테이션 바코드*/
+			, #{cellbarcode} /*셀바코드*/
+			, #{classifspeccd} /*분류규격코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectObWaveMgmtPopCreateDasPltCell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateDasPltCell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS PLT 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '20' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoPlt}
+	</select>
+
+	<select id="selectObWaveMgmtPopCreateDasLight1Cell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateDasLight1Cell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS Light1 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '10' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.CLASSIFTYPECD = '10' /*분류유형코드 - 10:중분류 유형1, 20:중분류 유형2*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoLight1}
+	</select>
+
+	<select id="selectObWaveMgmtPopCreateDasLight2Cell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateDasLight2Cell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS Light2 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '10' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.CLASSIFTYPECD = '20' /*분류유형코드 - 10:중분류 유형1, 20:중분류 유형2*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoLight2}
+	</select>
+
+	<insert id="obWaveMgmtPopCreateDasMidCellInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreateDasMidCellInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 중분류 셀 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_STN_LC
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브공통코드*/
+			, STNBARCODE /*스테이션바코드*/
+			, MDLCLASSIFSTNBARCODE /*중분류스테이션바코드*/
+			, MDLCLASSIFCELLBARCODE /*중분류셀바코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브공통코드*/
+			, #{stnbarcode} /*스테이션바코드*/
+			, #{mdlclassifstnbarcode} /*중분류스테이션바코드*/
+			, #{mdlclassifcellbarcode} /*중분류셀바코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<insert id="obWaveMgmtPopCreateDasStnInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreateDasStnInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 스테이션 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_STN
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 헤더코드*/
+			, STNBARCODE /*스테이션 바코드*/
+			, CLASSIFSPECCD /*분류 규격 코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 헤더코드*/
+			, #{stnbarcode} /*스테이션 바코드*/
+			, #{classifspeccd} /*분류 규격 코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<sql id="selectObWaveMgmtPopRbSql">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopRbSql - WMS > 출고 관리 > 생성 > 로봇합포 작업 계획 설정 > 로봇합포 출고 대상 SQL */
+		WITH OB_BASE AS (
+			SELECT OH.CTKEY
+				 , OH.OWKEY
+				 , OH.OBHDKEY
+				 , OH.CBM
+				 , (OH.WEIGHT / 1000) AS WEIGHT
+				 , OH.CLASSIFSPECCD
+				 , OH.RECOMBOXBARCODE
+				 , (CASE BOX.BOXDIVCD WHEN '10' THEN BOX.BOXNM ELSE '그외' END) BOXNM
+				 , OH.ORDSEPTYPECD
+				 , IC.ROBSORTERICYN
+				 , GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0)) AS MAXLEN
+				 , OD.OBDTKEY
+				 , OD.ICKEY
+				 , OD.EXPCTQTY
+			  FROM TWORK_INFO_OB_HD OH
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON OD.CTKEY = IC.CTKEY
+			   AND OD.OWKEY = IC.OWKEY
+			   AND OD.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+				ON OD.CTKEY = ICUTX.CTKEY
+			   AND OD.OWKEY = ICUTX.OWKEY
+			   AND OD.ICKEY = ICUTX.ICKEY
+			   AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+			   AND OD.UOM = ICUTX.ICUNITTYPECD
+			 INNER JOIN TWORK_MST_BOX BOX
+				ON OH.CTKEY = BOX.CTKEY
+			   AND OH.RECOMBOXBARCODE = BOX.BOXBARCODE
+			 WHERE OH.CTKEY = #{ctkey}
+			   AND OH.OWKEY = #{owkey}
+			   AND OH.WKTYPECD = 'RW'
+			   AND OH.WAHDKEY IS NULL
+			   AND OH.OBSTATUSCD = '00'
+			   AND OH.OBHDTYPECD IN ('10','20')
+			   AND OH.OBHDDAY BETWEEN #{obhddayfr} AND #{obhddayto}
+		), RB_OB_INFO AS (
+			SELECT A.*
+				 , ROW_NUMBER() OVER(PARTITION BY RB_BOXNM ORDER BY RB_BOXNM, RB_OBHDKEY ASC) AS RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , OBHDKEY AS RB_OBHDKEY /*릴리즈코드*/
+						 , BOXNM AS RB_BOXNM
+						 , CBM
+						 , WEIGHT
+						 , ROW_NUMBER() OVER (ORDER BY CTKEY) AS RNO
+						 , COUNT(ICKEY) AS SKU
+						 , SUM(EXPCTQTY) AS PCS
+						 , MAX(MAXLEN) AS MAXLEN
+						 , ROUND(COUNT(CASE WHEN ROBSORTERICYN = 'Y' THEN 1 END) * 100 / COUNT(*), 0) AS RBRATIO
+						 , SUM(CASE WHEN ROBSORTERICYN = 'N' THEN EXPCTQTY ELSE 0 END) AS FBPCS
+						 , COUNT(OBDTKEY) AS OBDT_CNT
+					  FROM OB_BASE
+					 WHERE ORDSEPTYPECD = '30'
+					 GROUP BY
+						   CTKEY
+						 , OWKEY
+						 , OBHDKEY /*릴리즈코드*/
+						 , BOXNM
+						 , CBM
+						 , WEIGHT
+					) A
+			 WHERE 1=1
+			<include refid="selectObWaveMgmtPopSchSql"/>
+		), RB_ITEM_RANK AS (
+			/* [1단계] 품목코드별 등장 건수 순위 */
+			SELECT DT.CTKEY
+				 , DT.OWKEY
+				 , DT.ICKEY
+				 , HD.RB_BOXNM
+				 , COUNT(DISTINCT DT.OBHDKEY) AS OBHD_CNT
+				 , ROW_NUMBER() OVER(PARTITION BY HD.RB_BOXNM ORDER BY COUNT(DISTINCT DT.OBHDKEY) DESC) AS ITEM_RK
+			  FROM RB_OB_INFO HD
+			 INNER JOIN OB_BASE DT
+				ON HD.CTKEY = DT.CTKEY
+			   AND HD.OWKEY = DT.OWKEY
+			   AND HD.RB_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '30'
+			 GROUP BY
+				   DT.CTKEY
+				 , DT.OWKEY
+				 , DT.ICKEY
+				 , HD.RB_BOXNM
+		), RB_HD_MATCH AS (
+			/* [2단계] 품목 우선순위별로, 그 품목을 포함한 헤더-규격 조합 매핑 */
+			SELECT HD.CTKEY
+				 , HD.OWKEY
+				 , HD.RB_OBHDKEY
+				 , HD.RB_BOXNM
+				 , IR.ICKEY
+				 , IR.ITEM_RK
+			  FROM RB_OB_INFO HD
+			 INNER JOIN OB_BASE DT
+				ON HD.CTKEY = DT.CTKEY
+			   AND HD.OWKEY = DT.OWKEY
+			   AND HD.RB_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '30'
+			 INNER JOIN RB_ITEM_RANK IR
+				ON DT.CTKEY = IR.CTKEY
+			   AND DT.OWKEY = IR.OWKEY
+			   AND DT.ICKEY = IR.ICKEY
+			   AND HD.RB_BOXNM = IR.RB_BOXNM
+		), RB_OB_RANK AS (
+			/* [3단계] 규격별로, 품목 우선순위를 기준으로 헤더 순위를 매김 */
+			SELECT OBINFO.CTKEY
+				 , OBINFO.OWKEY
+				 , OBINFO.RB_OBHDKEY
+				 , OBINFO.RB_BOXNM
+				 , OBINFO.CBM
+				 , OBINFO.WEIGHT
+				 , OBINFO.MAXLEN
+				 , OBINFO.SKU
+				 , OBINFO.PCS
+				 , OBINFO.OBDT_CNT
+				 , OB.RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , RB_OBHDKEY
+						 , RB_BOXNM
+						 , MIN(ITEM_RK) AS BEST_ITEM_RK  -- 헤더가 가진 품목 중 가장 높은 우선순위
+						 , ROW_NUMBER() OVER(PARTITION BY RB_BOXNM ORDER BY MIN(ITEM_RK)) AS RK
+					  FROM RB_HD_MATCH
+					 GROUP BY CTKEY, OWKEY, RB_BOXNM, RB_OBHDKEY
+					) OB
+			 INNER JOIN RB_OB_INFO OBINFO
+				ON OB.CTKEY = OBINFO.CTKEY
+			   AND OB.OWKEY = OBINFO.OWKEY
+			   AND OB.RB_OBHDKEY = OBINFO.RB_OBHDKEY
+			   AND OB.RB_BOXNM = OBINFO.RB_BOXNM
+			  LEFT OUTER JOIN OB_BASE DT
+				ON OB.CTKEY = DT.CTKEY
+			   AND OB.OWKEY = DT.OWKEY
+			   AND OB.RB_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '30'
+			 GROUP BY
+				   OBINFO.CTKEY
+				 , OBINFO.OWKEY
+				 , OBINFO.RB_OBHDKEY
+				 , OBINFO.RB_BOXNM
+				 , OBINFO.CBM
+				 , OBINFO.WEIGHT
+				 , OBINFO.MAXLEN
+				 , OBINFO.SKU
+				 , OBINFO.PCS
+				 , OBINFO.OBDT_CNT
+				 , OB.RK
+		), OB_RB AS (
+			SELECT OB.CTKEY
+				 , OB.OWKEY
+				 , OB.RB_OBHDKEY
+				 , OB.RB_BOXNM
+				 , OB.CBM
+				 , OB.WEIGHT
+				 , DT.CLASSIFSPECCD
+				 , DT.RECOMBOXBARCODE
+				 , OB.MAXLEN
+				 , OB.SKU
+				 , OB.PCS AS RB_PCS
+				 , OB.OBDT_CNT
+				 , OB.RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , RB_OBHDKEY
+						 , RB_BOXNM
+						 , CBM
+						 , WEIGHT
+						 , MAXLEN
+						 , SKU
+						 , PCS
+						 , OBDT_CNT
+						 , RK
+			<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(rbSkuChk) and rbSkuChk.equals("20")'>
+					  FROM RB_OB_RANK
+					</when>
+					<otherwise>
+					  FROM RB_OB_INFO
+					</otherwise>
+			</choose>
+					 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list) and list.size > 0">
+					<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+							(RB_BOXNM = #{item.boxnm} AND RK <![CDATA[ <= ]]> #{item.noCellSet})
+					</foreach>
+				</if>
+				 ) OB
+			  LEFT OUTER JOIN OB_BASE DT
+				ON OB.CTKEY = DT.CTKEY
+			   AND OB.OWKEY = DT.OWKEY
+			   AND OB.RB_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '30'
+			 GROUP BY
+				   OB.CTKEY
+				 , OB.OWKEY
+				 , OB.RB_OBHDKEY
+				 , OB.RB_BOXNM
+				 , OB.CBM
+				 , OB.WEIGHT
+				 , DT.CLASSIFSPECCD
+				 , DT.RECOMBOXBARCODE
+				 , OB.MAXLEN
+				 , OB.SKU
+				 , OB.PCS
+				 , OB.OBDT_CNT
+				 , OB.RK
+		), MX_OB_INFO AS (
+			SELECT A.*
+				 , ROW_NUMBER() OVER(PARTITION BY MX_BOXNM ORDER BY MX_BOXNM, MX_OBHDKEY ASC) AS RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , OBHDKEY AS MX_OBHDKEY /*릴리즈코드*/
+						 , BOXNM AS MX_BOXNM
+						 , CBM
+						 , WEIGHT
+						 , ROW_NUMBER() OVER (ORDER BY CTKEY) AS RNO
+						 , COUNT(ICKEY) AS SKU
+						 , SUM(EXPCTQTY) AS PCS
+						 , MAX(MAXLEN) AS MAXLEN
+						 , ROUND(COUNT(CASE WHEN ROBSORTERICYN = 'Y' THEN 1 END) * 100 / COUNT(*), 0) AS RBRATIO
+						 , SUM(CASE WHEN ROBSORTERICYN = 'N' THEN EXPCTQTY ELSE 0 END) AS FBPCS
+						 , COUNT(OBDTKEY) AS OBDT_CNT
+					  FROM OB_BASE
+					 WHERE ORDSEPTYPECD = '40'
+					 GROUP BY
+						   CTKEY
+						 , OWKEY
+						 , OBHDKEY /*릴리즈코드*/
+						 , BOXNM
+						 , CBM
+						 , WEIGHT
+					) A
+			 WHERE 1=1
+			<include refid="selectObWaveMgmtPopSchSql"/>
+		), MX_ITEM_RANK AS (
+			/* [1단계] 품목코드별 등장 건수 순위 */
+			SELECT DT.CTKEY
+				 , DT.OWKEY
+				 , DT.ICKEY
+				 , HD.MX_BOXNM
+				 , COUNT(DISTINCT DT.OBHDKEY) AS OBHD_CNT
+				 , ROW_NUMBER() OVER(PARTITION BY HD.MX_BOXNM ORDER BY COUNT(DISTINCT DT.OBHDKEY) DESC) AS ITEM_RK
+			  FROM MX_OB_INFO HD
+			 INNER JOIN OB_BASE DT
+				ON HD.CTKEY = DT.CTKEY
+			   AND HD.OWKEY = DT.OWKEY
+			   AND HD.MX_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '40'
+			 GROUP BY
+				   DT.CTKEY
+				 , DT.OWKEY
+				 , DT.ICKEY
+				 , HD.MX_BOXNM
+		), MX_HD_MATCH AS (
+			/* [2단계] 품목 우선순위별로, 그 품목을 포함한 헤더-규격 조합 매핑 */
+			SELECT HD.CTKEY
+				 , HD.OWKEY
+				 , HD.MX_OBHDKEY
+				 , HD.MX_BOXNM
+				 , IR.ICKEY
+				 , IR.ITEM_RK
+			  FROM MX_OB_INFO HD
+			 INNER JOIN OB_BASE DT
+				ON HD.CTKEY = DT.CTKEY
+			   AND HD.OWKEY = DT.OWKEY
+			   AND HD.MX_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '40'
+			 INNER JOIN MX_ITEM_RANK IR
+				ON DT.CTKEY = IR.CTKEY
+			   AND DT.OWKEY = IR.OWKEY
+			   AND DT.ICKEY = IR.ICKEY
+			   AND HD.MX_BOXNM = IR.MX_BOXNM
+		), MX_OB_RANK AS (
+			/* [3단계] 규격별로, 품목 우선순위를 기준으로 헤더 순위를 매김 */
+			SELECT OBINFO.CTKEY
+				 , OBINFO.OWKEY
+				 , OBINFO.MX_OBHDKEY
+				 , OBINFO.MX_BOXNM
+				 , OBINFO.CBM
+				 , OBINFO.WEIGHT
+				 , DT.RECOMBOXBARCODE
+				 , OBINFO.MAXLEN
+				 , OBINFO.SKU
+				 , OBINFO.PCS
+				 , OBINFO.OBDT_CNT
+				 , OB.RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , MX_OBHDKEY
+						 , MX_BOXNM
+						 , MIN(ITEM_RK) AS BEST_ITEM_RK  -- 헤더가 가진 품목 중 가장 높은 우선순위
+						 , ROW_NUMBER() OVER(PARTITION BY MX_BOXNM ORDER BY MIN(ITEM_RK)) AS RK
+					  FROM MX_HD_MATCH
+					 GROUP BY CTKEY, OWKEY, MX_BOXNM, MX_OBHDKEY
+					) OB
+			 INNER JOIN MX_OB_INFO OBINFO
+				ON OB.CTKEY = OBINFO.CTKEY
+			   AND OB.OWKEY = OBINFO.OWKEY
+			   AND OB.MX_OBHDKEY = OBINFO.MX_OBHDKEY
+			   AND OB.MX_BOXNM = OBINFO.MX_BOXNM
+			  LEFT OUTER JOIN OB_BASE DT
+				ON OB.CTKEY = DT.CTKEY
+			   AND OB.OWKEY = DT.OWKEY
+			   AND OB.MX_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '40'
+			 GROUP BY
+				   OBINFO.CTKEY
+				 , OBINFO.OWKEY
+				 , OBINFO.MX_OBHDKEY
+				 , OBINFO.MX_BOXNM
+				 , OBINFO.CBM
+				 , OBINFO.WEIGHT
+				 , DT.RECOMBOXBARCODE
+				 , OBINFO.MAXLEN
+				 , OBINFO.SKU
+				 , OBINFO.PCS
+				 , OBINFO.OBDT_CNT
+				 , OB.RK
+		), OB_MX AS (
+			SELECT OB.CTKEY
+				 , OB.OWKEY
+				 , OB.MX_OBHDKEY
+				 , OB.MX_BOXNM
+				 , OB.CBM
+				 , OB.WEIGHT
+				 , DT.CLASSIFSPECCD
+				 , DT.RECOMBOXBARCODE
+				 , OB.MAXLEN
+				 , OB.SKU
+				 , OB.PCS AS MX_PCS
+				 , OB.OBDT_CNT
+				 , OB.RK
+			  FROM (
+					SELECT CTKEY
+						 , OWKEY
+						 , MX_OBHDKEY
+						 , MX_BOXNM
+						 , CBM
+						 , WEIGHT
+						 , MAXLEN
+						 , SKU
+						 , PCS
+						 , OBDT_CNT
+						 , RK
+				<choose>
+					<when test='@com.kns.framework.util.StringUtil@isNotEmpty(rbSkuChk) and rbSkuChk.equals("20")'>
+					  FROM MX_OB_RANK
+					</when>
+					<otherwise>
+					  FROM MX_OB_INFO
+					</otherwise>
+				</choose>
+					 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(list) and list.size > 0">
+					<foreach collection="list" item="item" open=" AND (" separator=" OR " close=")">
+							(MX_BOXNM = #{item.boxnm} AND RK <![CDATA[ <= ]]> #{item.fbCellSet})
+					</foreach>
+				</if>
+				 ) OB
+			  LEFT OUTER JOIN OB_BASE DT
+				ON OB.CTKEY = DT.CTKEY
+			   AND OB.OWKEY = DT.OWKEY
+			   AND OB.MX_OBHDKEY = DT.OBHDKEY
+			   AND DT.ORDSEPTYPECD = '40'
+			 GROUP BY
+				   OB.CTKEY
+				 , OB.OWKEY
+				 , OB.MX_OBHDKEY
+				 , OB.MX_BOXNM
+				 , OB.CBM
+				 , OB.WEIGHT
+				 , DT.CLASSIFSPECCD
+				 , DT.RECOMBOXBARCODE
+				 , OB.MAXLEN
+				 , OB.SKU
+				 , OB.PCS
+				 , OB.OBDT_CNT
+				 , OB.RK
+		), OB_MX_RB AS (
+			SELECT MX.CTKEY
+				 , MX.OWKEY
+				 , MX.MX_OBHDKEY AS MX_RB_OBHDKEY
+				 , MX.MX_BOXNM
+				 , MX.CBM
+				 , MX.WEIGHT
+				 , OB.RECOMBOXBARCODE
+				 , MX.MAXLEN
+				 , MX.SKU
+				 , MX.MX_PCS AS MX_RB_PCS
+				 , MX.OBDT_CNT
+				 , MX.RK
+			  FROM OB_MX MX
+			 INNER JOIN OB_BASE OB
+				ON MX.CTKEY = OB.CTKEY
+			   AND MX.OWKEY = OB.OWKEY
+			   AND MX.MX_OBHDKEY = OB.OBHDKEY
+			   AND OB.ORDSEPTYPECD = '40'
+			   AND OB.ROBSORTERICYN = 'Y'
+			 GROUP BY
+				   MX.CTKEY
+				 , MX.OWKEY
+				 , MX.MX_OBHDKEY
+				 , MX.MX_BOXNM
+				 , MX.CBM
+				 , MX.WEIGHT
+				 , OB.RECOMBOXBARCODE
+				 , MX.MAXLEN
+				 , MX.SKU
+				 , MX.MX_PCS
+				 , MX.OBDT_CNT
+				 , MX.RK
+		), OB_MX_FB AS (
+			SELECT MX.CTKEY
+				 , MX.OWKEY
+				 , MX.MX_OBHDKEY AS MX_FB_OBHDKEY
+				 , MX.MX_BOXNM
+				 , MX.CBM
+				 , MX.WEIGHT
+				 , OB.RECOMBOXBARCODE
+				 , MX.MAXLEN
+				 , MX.SKU
+				 , MX.MX_PCS AS MX_FB_PCS
+				 , MX.OBDT_CNT
+				 , MX.RK
+			  FROM OB_MX MX
+			 INNER JOIN OB_BASE OB
+				ON MX.CTKEY = OB.CTKEY
+			   AND MX.OWKEY = OB.OWKEY
+			   AND MX.MX_OBHDKEY = OB.OBHDKEY
+			   AND OB.ORDSEPTYPECD = '40'
+			   AND OB.ROBSORTERICYN = 'N'
+			 GROUP BY
+				   MX.CTKEY
+				 , MX.OWKEY
+				 , MX.MX_OBHDKEY
+				 , MX.MX_BOXNM
+				 , MX.CBM
+				 , MX.WEIGHT
+				 , OB.RECOMBOXBARCODE
+				 , MX.MAXLEN
+				 , MX.SKU
+				 , MX.MX_PCS
+				 , MX.OBDT_CNT
+				 , MX.RK
+		)
+	</sql>
+
+	<select id="selectObWaveMgmtPopCreateRbObList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateRbObList - WMS > 출고 관리 > 생성 > 로봇 작업 계획 설정 > 출고 분석 현황 조회(로봇합포) */
+		<include refid="selectObWaveMgmtPopRbSql"/>
+		SELECT RB.CTKEY
+			 , RB.OWKEY
+			 , RB.RB_OBHDKEY AS OBHDKEY
+			 , RB.CLASSIFSPECCD
+			 , RB.RECOMBOXBARCODE
+			 , RB.CBM AS VOL
+			 , RB.WEIGHT
+			 , RB.SKU AS TTICCNT
+			 , RB.RB_PCS AS TTICQTY
+			 , NULL AS WAHDKEY
+		  FROM OB_RB RB
+		 UNION ALL
+		SELECT MX.CTKEY
+			 , MX.OWKEY
+			 , MX.MX_OBHDKEY AS OBHDKEY
+			 , MX.CLASSIFSPECCD
+			 , MX.RECOMBOXBARCODE
+			 , MX.CBM AS VOL
+			 , MX.WEIGHT
+			 , MX.SKU AS TTICCNT
+			 , MX.MX_PCS AS TTICQTY
+			 , NULL AS WAHDKEY
+		  FROM OB_MX MX
+	</select>
+
+	<sql id="selectObWaveMgmtPopSimpleSql">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopSimpleSql - WMS > 출고 관리 > 생성 > 단포 작업 계획 설정 > 단포 출고 대상 SQL */
+		WITH OB_BASE AS (
+			SELECT OH.CTKEY
+				 , OH.OWKEY
+				 , OH.OBHDKEY
+				 , OH.CBM
+				 , (OH.WEIGHT / 1000) AS WEIGHT
+				 , OH.CLASSIFSPECCD
+				 , OH.RECOMBOXBARCODE
+				 , GREATEST(COALESCE(ICUTX.WIDTH, 0), COALESCE(ICUTX.DEPTH, 0), COALESCE(ICUTX.HEIGHT, 0)) AS MAXLEN
+				 , OD.ICKEY
+				 , OD.EXPCTQTY
+				 , OD.OBDTKEY
+				 , IC.PKOTICYN /*덕용여부*/
+				 , IC.ROBSORTERICYN /*로봇여부*/
+			  FROM TWORK_INFO_OB_HD OH
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON OD.CTKEY = IC.CTKEY
+			   AND OD.OWKEY = IC.OWKEY
+			   AND OD.ICKEY = IC.ICKEY
+			 INNER JOIN TWORK_MST_ICUTXTYPE ICUTX
+				ON OD.CTKEY = ICUTX.CTKEY
+			   AND OD.OWKEY = ICUTX.OWKEY
+			   AND OD.ICKEY = ICUTX.ICKEY
+			   AND OD.ICUNITKEY = ICUTX.ICUNITKEY
+			   AND OD.UOM = ICUTX.ICUNITTYPECD
+			 WHERE OH.CTKEY = #{ctkey}
+			   AND OH.OWKEY = #{owkey}
+			   AND OH.WKTYPECD = #{wktypecd}
+			   AND OH.WAHDKEY IS NULL
+			   AND OH.OBSTATUSCD = '00'
+			   AND OH.OBHDTYPECD IN ('10','20')
+			   AND OH.OBHDDAY BETWEEN #{obhddayfr} AND #{obhddayto}
+		), IC_INFO AS (
+			SELECT A.*
+				 , ROW_NUMBER() OVER(ORDER BY A.OBHDKEY ASC) AS ROWNO
+			  FROM (
+					SELECT OB.CTKEY
+						 , OB.OWKEY
+						 , OB.OBHDKEY
+						 , OB.CLASSIFSPECCD
+						 , OB.RECOMBOXBARCODE
+						 , INFO.SKU
+						 , INFO.PCS
+						 , INFO.CBM
+						 , INFO.WEIGHT
+						 , INFO.MAXLEN
+						 , INFO.RBRATIO
+						 , INFO.FBPCS
+					  FROM OB_BASE OB
+					 INNER JOIN (
+							SELECT CTKEY
+								 , OWKEY
+								 , OBHDKEY /*릴리즈코드*/
+								 , ROW_NUMBER() OVER (ORDER BY CTKEY) AS RNO
+								 , COUNT(ICKEY) AS SKU
+								 , SUM(EXPCTQTY) AS PCS
+								 , SUM(CBM) AS CBM
+								 , SUM(WEIGHT) AS WEIGHT
+								 , MAX(MAXLEN) AS MAXLEN
+								 , SUM(CASE WHEN ROBSORTERICYN = 'N' THEN EXPCTQTY ELSE 0 END) AS FBPCS
+								 , ROUND(COUNT(CASE WHEN ROBSORTERICYN = 'Y' THEN 1 END) * 100 / COUNT(*), 0) AS RBRATIO
+							  FROM OB_BASE
+							 GROUP BY
+								   CTKEY
+								 , OWKEY
+								 , OBHDKEY /*릴리즈코드*/
+						 ) INFO
+						ON OB.CTKEY = INFO.CTKEY
+					   AND OB.OWKEY = INFO.OWKEY
+					   AND OB.OBHDKEY = INFO.OBHDKEY
+					 GROUP BY
+						   OB.CTKEY
+						 , OB.OWKEY
+						 , OB.OBHDKEY
+						 , OB.CLASSIFSPECCD
+						 , OB.RECOMBOXBARCODE
+						 , INFO.SKU
+						 , INFO.PCS
+						 , INFO.CBM
+						 , INFO.WEIGHT
+						 , INFO.MAXLEN
+						 , INFO.RBRATIO
+						 , INFO.FBPCS
+					) A
+			 WHERE 1=1
+				<include refid="selectObWaveMgmtPopSchSql"/>
+		)
+	</sql>
+
+	<sql id="selectObWaveMgmtPopSimpleSkuSql">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopSimpleSkuSql - WMS > 출고 관리 > 생성 > 단포 작업 계획 설정 > 단포 출고 대상(SKU 집중화) SQL */
+		, ITEM_RANK AS (
+			/* [1단계] 품목코드별 등장 건수 순위 */
+		    SELECT
+		    	 DT.CTKEY
+		    	, DT.OWKEY
+		        , DT.ICKEY
+		        , COUNT(DISTINCT DT.OBHDKEY) AS OBHD_CNT
+		        , ROW_NUMBER() OVER(ORDER BY COUNT(DISTINCT DT.OBHDKEY) DESC) AS ITEM_RK
+		    FROM IC_INFO HD
+		    	INNER JOIN TWORK_INFO_OB_DT DT
+		    		ON HD.CTKEY = DT.CTKEY
+		    		AND HD.OWKEY = DT.OWKEY
+		    		AND HD.OBHDKEY = DT.OBHDKEY
+		    GROUP BY  DT.CTKEY, DT.OWKEY, DT.ICKEY
+		) , HD_MATCH AS (
+		    /* [2단계] 품목 우선순위별로, 그 품목을 포함한 헤더 조합 매핑 */
+		    SELECT
+		    	HD.CTKEY
+		    	, HD.OWKEY
+		    	, HD.OBHDKEY
+		        , IR.ICKEY
+		        , IR.ITEM_RK
+		    FROM IC_INFO HD
+		    	INNER JOIN TWORK_INFO_OB_DT DT
+		    		ON HD.CTKEY = DT.CTKEY
+		    		AND HD.OWKEY = DT.OWKEY
+		    		AND HD.OBHDKEY = DT.OBHDKEY
+			    INNER JOIN ITEM_RANK IR
+			    	ON DT.CTKEY = IR.CTKEY
+			    	AND DT.OWKEY = IR.OWKEY
+			    	AND DT.ICKEY = IR.ICKEY
+		)
+		, OB_RANK AS (
+			/* [3단계] 품목 우선순위를 기준으로 헤더 순위를 매김 */
+		    SELECT OBINFO.CTKEY
+					 , OBINFO.OWKEY
+					 , OBINFO.OBHDKEY
+					 , OBINFO.CBM
+					 , OBINFO.WEIGHT
+					 , OBINFO.CLASSIFSPECCD
+					 , OBINFO.RECOMBOXBARCODE
+					 , OBINFO.MAXLEN
+					 , OBINFO.SKU
+					 , OBINFO.PCS
+					 , OB.RK AS RKNO
+		    FROM (SELECT
+			    	CTKEY
+			    	, OWKEY
+			    	, OBHDKEY
+			        , MIN(ITEM_RK) AS BEST_ITEM_RK  /* 헤더가 가진 품목 중 가장 높은 우선순위 */
+			        , ROW_NUMBER() OVER(ORDER BY MIN(ITEM_RK)) AS RK
+		    	FROM HD_MATCH
+			    GROUP BY CTKEY, OWKEY, OBHDKEY) OB
+			    INNER JOIN IC_INFO OBINFO
+					ON OB.CTKEY = OBINFO.CTKEY
+					AND OB.OWKEY = OBINFO.OWKEY
+					AND OB.OBHDKEY = OBINFO.OBHDKEY
+		)
+	</sql>
+
+	<select id="selectObWaveMgmtPopCreateSimpleObListSku" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateSimpleObListSku - WMS > 출고 관리 > 생성 > 저장 > 단포 작업 계획 설정 > 단포 주문 배정 주문건 조회(SKU 집중화) 조회 */
+		<include refid="selectObWaveMgmtPopSimpleSql"/>
+		<include refid="selectObWaveMgmtPopSimpleSkuSql"/>
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , CLASSIFSPECCD
+			 , RECOMBOXBARCODE
+			 , CBM AS VOL
+			 , WEIGHT
+			 , SKU AS TTICCNT
+			 , PCS AS TTICQTY
+			 , #{wahdkey} AS WAHDKEY
+		  FROM OB_RANK
+		 WHERE 1=1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sObCnt)" >
+		   AND RKNO <![CDATA[ <= ]]> #{sObCnt}
+			</if>
+	</select>
+
+	<select id="selectObWaveMgmtPopCreateSimpleObList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreateSimpleObList - WMS > 출고 관리 > 생성 > 저장 > 단포 작업 계획 설정 > 단포 주문 배정 주문건 조회 조회 */
+		<include refid="selectObWaveMgmtPopSimpleSql"/>
+		SELECT CTKEY
+			 , OWKEY
+			 , OBHDKEY
+			 , CLASSIFSPECCD
+			 , RECOMBOXBARCODE
+			 , CBM AS VOL
+			 , WEIGHT
+			 , SKU AS TTICCNT
+			 , PCS AS TTICQTY
+			 , #{wahdkey} AS WAHDKEY
+		  FROM IC_INFO
+		 WHERE 1=1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(sObCnt)" >
+		   AND ROWNO <![CDATA[ <= ]]> #{sObCnt}
+			</if>
+	</select>
+
+	<select id="selectobWaveMgmtPopCreateWaHdWarnd" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtPopCreateWaHdWarnd - WMS > 출고 관리 > 생성 > 저장 > 웨이브 헤더 회차 조회 */
+		SELECT COALESCE(MAX(TO_NUMBER(COALESCE(WARND, 0))), 0) + 1 AS WARND
+		  FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDDAY = #{wahdday}
+<!--		   AND WKTYPECD = #{wktypecd}-->
+	</select>
+
+	<select id="selectobWaveMgmtPopWaHdDlvrycorpcd" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtPopWaHdDlvrycorpcd - WMS > 출고 관리 > 생성 > 웨이브의 릴리즈코드 중 택배접수가 된 건의 택배사코드 조회 */
+		SELECT DLVRYCORPCD
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND DLVRYCORPCD IS NOT NULL
+		   
+LIMIT 1
+	</select>
+
+	<update id="updateObWaveMgmtPopWaHdDlvrycorpcd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtPopWaHdDlvrycorpcd - WMS > 출고 관리 > 생성 > 웨이브헤더 택배사코드 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET DLVRYCORPCD = #{dlvrycorpcd}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<insert id="obWaveMgmtPopCreateWaHdInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreateWaHdInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 헤더 저장 */
+		INSERT INTO TWORK_INFO_WA_HD
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통코드*/
+			, WAHDDAY /*웨이브 헤더 일자*/
+			, WAHDNM /*웨이브 헤더 명*/
+			, WARND /*웨이브 회차*/
+			, WAWKSTATUSCD /*웨이브 작업 상태 코드*/
+			, WKTYPECD /*작업 유형 코드*/
+			, ORDALTMTTYPECD /*주문 배정 유형 코드*/
+			, DLVRYCORPCD /*택배사 코드*/
+			, CLASSIFPLANSNDYN /*분류계획전송여부*/
+			, LOCPLANSNDYN /*로케이션계획전송여부*/
+			, PIHDKEY /*피킹헤더코드*/
+			, CMT /*비고*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통코드*/
+			, #{wahdday} /*웨이브 헤더 일자*/
+			, #{wahdnm} /*웨이브 헤더 명*/
+			, #{warnd} /*웨이브 회차*/
+			, #{wawkstatuscd} /*웨이브 작업 상태 코드*/
+			, #{wktypecd} /*작업 유형 코드*/
+			, #{ordaltmttypecd} /*주문 배정 유형 코드*/
+			, #{dlvrycorpcd} /*택배사 코드*/
+			, #{classifplansndyn} /*분류계획전송여부*/
+			, #{locplansndyn} /*로케이션계획전송여부*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{cmt} /*비고*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectobWaveMgmtWkClassCellInfo" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassCellInfo - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 릴리즈코드와 DAS 매핑 데이터 조회 */
+		SELECT SN.CTKEY
+			 , SN.OWKEY
+			 , SN.STNBARCODE
+			 , SN.CLASSIFSPECCD
+			 , CL.CELLBARCODE
+			 , STC.GRPNO
+			 , STC.PRINO
+		  FROM TWORK_INFO_WA_DAS_STN SN
+		 INNER JOIN TWORK_INFO_WA_DAS_CELL CL
+			ON SN.CTKEY = CL.CTKEY
+		   AND SN.OWKEY = CL.OWKEY
+		   AND SN.WAHDKEY = CL.WAHDKEY
+		   AND SN.STNBARCODE = CL.STNBARCODE
+		 INNER JOIN TWORK_MST_STNWKCELL STC
+			ON CL.CTKEY = STC.CTKEY
+		   AND CL.STNBARCODE = STC.STNBARCODE
+		   AND CL.CELLBARCODE = STC.CELLBARCODE
+		 WHERE SN.CTKEY = #{ctkey}
+		   AND SN.OWKEY = #{owkey}
+		   AND SN.WAHDKEY = #{wahdkey}
+		   AND (STC.GRPNO IS NULL OR STC.PRINO IS NULL)
+	</select>
+
+	<select id="selectobWaveMgmtWkClassMappingList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassMappingList - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 릴리즈코드와 DAS 매핑 데이터 조회 */
+		WITH WA_BASE AS (
+			SELECT WH.CTKEY /*센터코드*/
+				 , WH.OWKEY /*화주코드*/
+				 , WH.WAHDKEY /*웨이브헤더코드*/
+				 , OH.OBHDKEY /*릴리즈코드*/
+				 , OH.DASSTNBARCODE /*DAS 스테이션 바코드*/
+				 , OH.CLASSIFSPECCD /*분류 규격 코드*/
+				 , OH.WEIGHT /*중량*/
+				 , COUNT(DISTINCT OD.ICKEY) AS SKU
+				 , ROW_NUMBER() OVER(PARTITION BY WH.CTKEY, OH.DASSTNBARCODE, OH.CLASSIFSPECCD ORDER BY WH.CTKEY ASC, OH.DASSTNBARCODE ASC, OH.CLASSIFSPECCD, OH.WEIGHT DESC, OH.OBHDKEY) AS ROWNO
+			  FROM TWORK_INFO_WA_HD WH
+			 INNER JOIN TWORK_INFO_OB_HD OH
+				ON WH.CTKEY = OH.CTKEY
+			   AND WH.OWKEY = OH.OWKEY
+			   AND WH.WAHDKEY = OH.WAHDKEY
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 INNER JOIN TWORK_MST_IC IC
+				ON OD.CTKEY = IC.CTKEY
+			   AND OD.OWKEY = IC.OWKEY
+			   AND OD.ICKEY = IC.ICKEY
+			 WHERE WH.CTKEY = #{ctkey}
+			   AND WH.OWKEY = #{owkey}
+			   AND WH.WAHDKEY = #{wahdkey}
+			   AND WH.WKTYPECD IN ('DW')
+			 GROUP BY
+				   WH.CTKEY /*센터코드*/
+				 , WH.OWKEY /*화주코드*/
+				 , WH.WAHDKEY /*웨이브헤더코드*/
+				 , OH.OBHDKEY /*고객코드(릴리즈코드)*/
+				 , OH.DASSTNBARCODE /*중분류그룹*/
+				 , OH.CLASSIFSPECCD /*분류 규격 코드*/
+				 , OH.WEIGHT /*중량*/
+		), DASS_CELL AS (
+			SELECT SN.CTKEY
+				 , SN.OWKEY
+				 , SN.STNBARCODE
+				 , CL.CLASSIFSPECCD
+				 , CL.CELLBARCODE
+				 , STC.GRPNO
+				 , COALESCE(STC.PRINO, 99) AS PRINO
+				 , ROW_NUMBER() OVER(PARTITION BY STC.CTKEY, STC.STNBARCODE, CL.CLASSIFSPECCD ORDER BY STC.GRPNO ASC, COALESCE(CAST(STC.PRINO AS NUMERIC), 99) ASC, CAST(STC.CELLNO AS NUMERIC) ASC) AS ROWNO
+			  FROM TWORK_INFO_WA_DAS_STN SN
+			 INNER JOIN TWORK_INFO_WA_DAS_CELL CL
+				ON SN.CTKEY = CL.CTKEY
+			   AND SN.OWKEY = CL.OWKEY
+			   AND SN.WAHDKEY = CL.WAHDKEY
+			   AND SN.STNBARCODE = CL.STNBARCODE
+			 INNER JOIN TWORK_MST_STNWKCELL STC
+				ON CL.CTKEY = STC.CTKEY
+			   AND CL.STNBARCODE = STC.STNBARCODE
+			   AND CL.CELLBARCODE = STC.CELLBARCODE
+			 WHERE SN.CTKEY = #{ctkey}
+			   AND SN.OWKEY = #{owkey}
+			   AND SN.WAHDKEY = #{wahdkey}
+		)
+		SELECT WA.CTKEY /*센터코드*/
+			 , WA.OWKEY /*화주코드*/
+			 , WA.WAHDKEY /*웨이브헤더코드*/
+			 , WA.OBHDKEY /*고객코드(릴리즈코드)*/
+			 , CL.CELLBARCODE /*DAS셀 바코드*/
+			 , WA.DASSTNBARCODE /*중분류그룹*/
+			 , WA.WEIGHT /*중량*/
+			 , ROW_NUMBER() OVER(PARTITION BY WA.CTKEY, WA.DASSTNBARCODE, WA.CLASSIFSPECCD, CL.GRPNO ORDER BY WA.CTKEY ASC, WA.DASSTNBARCODE ASC, WA.CLASSIFSPECCD ASC, CL.GRPNO ASC, WA.SKU  DESC, CL.PRINO ASC, WA.OBHDKEY) AS ROWNO
+		  FROM WA_BASE WA
+		 INNER JOIN DASS_CELL CL
+		    ON WA.CTKEY = CL.CTKEY
+		   AND WA.DASSTNBARCODE = CL.STNBARCODE
+		   AND WA.CLASSIFSPECCD = CL.CLASSIFSPECCD
+		   AND WA.ROWNO = CL.ROWNO
+	</select>
+
+	<update id="updateObWaveMgmtWkClassObHdMapping">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtWkClassObHdMapping - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 릴리즈 헤더에 CELL_BARCODE 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET DASCELLBARCODE = #{cellbarcode}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateObWaveMgmtWkClassDasCellMapping">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtWkClassDasCellMapping - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - DAS CELL에 릴리즈코드 업데이트 */
+		UPDATE TWORK_INFO_WA_DAS_CELL
+		   SET OBHDKEY = #{obhdkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND STNBARCODE = #{dasstnbarcode}
+		   AND CELLBARCODE = #{cellbarcode}
+	</update>
+
+	<select id="selectobWaveMgmtWkClassList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassList - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 웨이브 릴리즈 리스트 조회 */
+		SELECT WH.CTKEY /*센터코드*/
+			 , WH.OWKEY /*화주코드*/
+			 , WH.WAHDKEY /*웨이브공통코드*/
+			 , OH.OBHDKEY /*릴리즈코드*/
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WH.CTKEY = OH.CTKEY
+		   AND WH.OWKEY = OH.OWKEY
+		   AND WH.WAHDKEY = OH.WAHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WH.WKTYPECD IN ('DW','RW','PW')
+		   AND WH.WAWKSTATUSCD IN ('20','25')
+		   AND COALESCE(WH.CLASSIFPLANSNDYN, 'N') = 'N'
+		   AND OH.OBSTATUSCD = '10'
+	</select>
+
+	<select id="selectobWaveMgmtWkClassRbYNList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassRbYNList - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 상품 마스터 로봇 소터여부 조회 */
+		SELECT OD.CTKEY
+			 , OD.OWKEY
+			 , OD.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ICKEY
+			 , COALESCE(IC.ROBSORTERICYN, 'N') AS ROBSORTERICYN
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+		    ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+		    ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.WAHDKEY = #{wahdkey}
+	</select>
+
+	<insert id="updateobWaveMgmtWkClassRbYN">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateobWaveMgmtWkClassRbYN - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 상품 마스터 로봇 소터여부 조회 */
+		UPDATE TWORK_INFO_OB_DT
+		   SET ROBSORTERICYN = #{robsortericyn}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+		   AND OBDTKEY = #{obdtkey}
+	</insert>
+
+	<select id="selectobWaveMgmtWkClassSend2Level" resultType="com.daiso.wms.api.wif.dto.ClassOrderListRequestDTO$OrderListDTO">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassSend2Level - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 분류계획 2Level 조회 */
+		SELECT OH.OBHDKEY /*고객코드(릴리즈코드)*/
+			 , REPLACE(OH.DASCELLBARCODE,'-','') AS DASCELLBARCODE /*DAS셀 바코드*/
+			 , OH.DASSTNBARCODE /*중분류그룹*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN BOX.BOXNM ELSE '' END) AS RECOMBOXBARCODE /*포장박스사이즈*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN (CASE WHEN (SUM(CASE IC.ROBSORTERICYN WHEN 'N' THEN 1 ELSE 0 END)) > 0 THEN 'Y' ELSE 'N' END) ELSE '' END) AS YNOTHER /*이형물 존재여부*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN OH.WBLNO ELSE '' END) AS WBLNO /*송장번호*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DPRTSPOTTMNLNM ELSE '' END) AS DPRTSPOTTMNLNM /*발송지 터미널명*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DPRTSPOTTMNLCD ELSE '' END) AS DPRTSPOTTMNLCD /*발송지 터미널코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DESTSPOTTMNLNM ELSE '' END) AS DESTSPOTTMNLNM /*도착지 터미널명*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DESTSPOTTMNLCD ELSE '' END) AS DESTSPOTTMNLCD /*도착치 터미널코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DESTSPOTPOSTOFICCD ELSE '' END) AS DESTSPOTPOSTOFICCD /*집배점 코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DESTSPOTPOSTOFICNM ELSE '' END) AS DESTSPOTPOSTOFICNM /*집배점 명*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.RGONDIV ELSE '' END) AS RGONDIV /*권역구분*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.HUBCD ELSE '' END) AS HUBCD /*허브코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.MDLCLASSIFCD ELSE '' END) AS MDLCLASSIFCD /*중분코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DLVYEMPCLASSIFCD ELSE '' END) AS DLVYEMPCLASSIFCD /*배송사원 분류코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DLVYEMPCD ELSE '' END) AS DLVYEMPCD /*배송사원 코드*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.DLVYEMPNM ELSE '' END) AS DLVYEMPNM /*배송 사원명*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN ''  ELSE '' END) AS DSTRAN /*운임*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.MEMO1 || HS.MEMO2 || HS.MEMO3 || HS.MEMO4 ELSE '' END) AS DSMEMO /*메모*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN OH.RCPPRSNADDR1 ELSE '' END) AS RCPPRSNADDR1 /*받는분 주소*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN OH.RCPPRSNADDR2 ELSE '' END) AS RCPPRSNADDR2 /*받는분 주소1*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HP.ADDRPRINFO ELSE '' END) AS ADDRPRINFO /*받는분 주소약칭*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.RCPPRSNNM ELSE '' END) AS RCPPRSNNM /*받는분이름*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.RCPPRSNTELNO ELSE '' END) AS RCPPRSNTELNO /*받는분전화*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.RCPPRSNTELNO2 ELSE '' END) AS RCPPRSNTELNO2 /*받는분핸드폰*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.SNDPRSNADDR1 || HS.SNDPRSNADDR2 ELSE '' END) AS SNDADDR /*보내는분주소*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.SNDPRSNNM ELSE '' END) AS SNDPRSNNM /*보내는분이름*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.SNDPRSNTELNO ELSE '' END) AS SNDPRSNTELNO /*보내는분전화*/
+			 , (CASE WHEN WH.WKTYPECD IN ('RW','PW') THEN HS.SNDPRSNTELNO2 ELSE '' END) AS SNDPRSNTELNO2 /*보내는분핸드폰*/
+			 , OH.WEIGHT /*중량*/
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WH.CTKEY = OH.CTKEY
+		   AND WH.OWKEY = OH.OWKEY
+		   AND WH.WAHDKEY = OH.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		 INNER JOIN TWORK_INFO_HANJIN_PR HP
+			ON OH.CTKEY = HP.CTKEY
+		   AND OH.OWKEY = HP.OWKEY
+		   AND OH.OBORDKEY = HP.OBORDKEY
+		 INNER JOIN TWORK_INFO_HANJIN_SBM HS
+			ON OH.CTKEY = HS.CTKEY
+		   AND OH.OWKEY = HS.OWKEY
+		   AND OH.OBHDKEY = HS.OBHDKEY
+		   AND OH.WBLNO = HS.WBLNO
+		  LEFT OUTER JOIN  TWORK_MST_BOX BOX
+		    ON OH.CTKEY = BOX.CTKEY
+		   AND OH.RECOMBOXBARCODE = BOX.BOXBARCODE
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		 GROUP BY
+			   OH.OBHDKEY /*고객코드(릴리즈코드)*/
+			 , OH.DASCELLBARCODE /*DAS셀 바코드*/
+			 , OH.DASSTNBARCODE /*중분류그룹*/
+			 , BOX.BOXNM /*포장박스사이즈*/
+			 , OH.WBLNO /*송장번호*/
+			 , HP.DPRTSPOTTMNLNM /*발송지 터미널명*/
+			 , HP.DPRTSPOTTMNLCD /*발송지 터미널코드*/
+			 , HP.DESTSPOTTMNLNM /*도착지 터미널명*/
+			 , HP.DESTSPOTTMNLCD /*도착치 터미널코드*/
+			 , HP.DESTSPOTPOSTOFICCD /*집배점 코드*/
+			 , HP.DESTSPOTPOSTOFICNM /*집배점 명*/
+			 , HP.RGONDIV /*권역구분*/
+			 , HP.HUBCD /*허브코드*/
+			 , HP.MDLCLASSIFCD /*중분코드*/
+			 , HP.DLVYEMPCLASSIFCD /*배송사원 분류코드*/
+			 , HP.DLVYEMPCD /*배송사원 코드*/
+			 , HP.DLVYEMPNM /*배송 사원명*/
+			 , HS.MEMO1
+			 , HS.MEMO2
+			 , HS.MEMO3
+			 , HS.MEMO4 /*메모*/
+			 , OH.RCPPRSNADDR1 /*받는분 주소1*/
+			 , OH.RCPPRSNADDR2 /*받는분 주소2*/
+			 , HP.ADDRPRINFO /*받는분 주소약칭*/
+			 , HS.RCPPRSNNM /*받는분이름*/
+			 , HS.RCPPRSNTELNO /*받는분전화*/
+			 , HS.RCPPRSNTELNO2 /*받는분핸드폰*/
+			 , HS.SNDPRSNADDR1 /*보내는분주소*/
+			 , HS.SNDPRSNADDR2 /*보내는분주소*/
+			 , HS.SNDPRSNNM /*보내는분이름*/
+			 , HS.SNDPRSNTELNO /*보내는분전화*/
+			 , HS.SNDPRSNTELNO2 /*보내는분핸드폰*/
+			 , OH.WEIGHT /*중량*/
+			 , WH.WKTYPECD
+		 ORDER BY
+			   OH.DASSTNBARCODE ASC
+			 , OH.WEIGHT DESC
+			 , OH.OBHDKEY ASC
+	</select>
+
+	<select id="selectobWaveMgmtWkClassSend3Level" resultType="com.daiso.wms.api.wif.dto.ClassOrderListRequestDTO$OrderListDTO$ItemListDTO">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassSend3Level - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 분류계획 3Level 조회 */
+		SELECT WH.CTKEY /*센터코드*/
+			 , WH.OWKEY /*화주코드*/
+			 , WH.WAHDKEY /*웨이브공통코드*/
+			 , OH.OBHDKEY /*릴리즈코드*/
+			 , OD.ICKEY /*상품코드*/
+			 , IC.ICNM /*상품명*/
+			 , CASE WHEN WH.WKTYPECD = 'PW' THEN ICBINN.BARCODE ELSE ICBEA.BARCODE END AS BARCODE /*상품바코드1*/
+			 , CASE WHEN WH.WKTYPECD = 'PW' THEN ICBCTN.BARCODE ELSE ICBEA.BARCODE END AS BARCODE2 /*상품바코드2*/
+			 , OD.ALQTY /*오더수량*/
+			 , IC.LCKEY /*보관로케이션*/
+			 , (CASE IC.ROBSORTERICYN WHEN 'N' THEN 'Y' ELSE 'N' END) AS ROBSORTERICYN /*이형물여부*/
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WH.CTKEY = OH.CTKEY
+		   AND WH.OWKEY = OH.OWKEY
+		   AND WH.WAHDKEY = OH.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_MST_IC IC
+			ON OD.CTKEY = IC.CTKEY
+		   AND OD.OWKEY = IC.OWKEY
+		   AND OD.ICKEY = IC.ICKEY
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBEA
+			ON OD.CTKEY = ICBEA.CTKEY
+		   AND OD.OWKEY = ICBEA.OWKEY
+		   AND OD.ICKEY = ICBEA.ICKEY
+		   AND OD.UOM = ICBEA.UOM
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBINN
+			ON OD.CTKEY = ICBINN.CTKEY
+		   AND OD.OWKEY = ICBINN.OWKEY
+		   AND OD.ICKEY = ICBINN.ICKEY
+		   AND ICBINN.UOM = 'INN'
+		  LEFT OUTER JOIN TWORK_MST_ICBARCODE ICBCTN
+			ON OD.CTKEY = ICBCTN.CTKEY
+		   AND OD.OWKEY = ICBCTN.OWKEY
+		   AND OD.ICKEY = ICBCTN.ICKEY
+		   AND ICBCTN.UOM = 'CTN'
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OD.ALQTY > 0
+	</select>
+
+	<select id="selectobWaveMgmtWkClassSend1Level" resultType="com.daiso.wms.api.wif.dto.ClassOrderListRequestDTO">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtWkClassSend1Level - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 분류계획 1Level 조회 */
+		SELECT WH.CTKEY /*센터코드*/
+			 , WH.OWKEY /*화주코드*/
+			 , WH.WAHDDAY /*작업일자*/
+			 , WH.WAHDKEY /*웨이브헤더코드*/
+			 , CD.CTCDDTKEY /*장비구분*/
+			 , WH.WAHDDAY AS WKDATE /*작업일자*/
+			 , #{surkey} AS WAVESENDER /*웨이브 송신자*/
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_MST_CTCD_DT CD
+			ON WH.CTKEY = CD.CTKEY
+		   AND CD.CTCDHDKEY = 'FACTYPE'
+		   AND WH.WKTYPECD = CD.CTCDDTVAL
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+	</select>
+
+	<update id="updateObWaveMgmtWkClassSendWaHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtWkClassSendWaHd - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 웨이브 헤더에 분류계획 전송여부 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET CLASSIFPLANSNDYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<select id="selectObWaveMgmtDasCellList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtDasCellList - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - DAS 셀 정보 조회 */
+		SELECT DISTINCT
+			   WH.CTKEY
+			 , WH.OWKEY
+			 , WH.WAHDKEY
+			 , SN.STNBARCODE
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DAS_STN SN
+			ON WH.CTKEY = SN.CTKEY
+		   AND WH.OWKEY = SN.OWKEY
+		   AND WH.WAHDKEY = SN.WAHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WH.WKTYPECD IN ('DW')
+	</select>
+
+	<select id="selectObWaveMgmtClassList" resultType="com.daiso.wms.api.wif.dto.ClassLocationListRequestDTO$OrderListDTO$MidStationListDTO">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtClassList - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 중분류 셀 정보 조회 */
+		SELECT LC.MDLCLASSIFCELLBARCODE
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DAS_STN_LC LC
+			ON WH.CTKEY = LC.CTKEY
+		   AND WH.OWKEY = LC.OWKEY
+		   AND WH.WAHDKEY = LC.WAHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WH.WKTYPECD IN ('DW')
+		   AND LC.STNBARCODE = #{stnbarcode}
+	</select>
+
+	<select id="selectObWaveMgmtDas" resultType="com.daiso.wms.api.wif.dto.ClassLocationListRequestDTO">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtDas - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 중분류 DAS 로케이션 1LEVEL */
+		SELECT WH.CTKEY /*센터코드*/
+			 , WH.OWKEY /*화주코드*/
+			 , WH.WAHDDAY /*작업일자*/
+			 , WH.WAHDKEY /*웨이브헤더코드*/
+			 , CD.CTCDDTKEY /*장비구분*/
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_MST_CTCD_DT CD
+			ON WH.CTKEY = CD.CTKEY
+		   AND CD.CTCDHDKEY = 'FACTYPE'
+		   AND WH.WKTYPECD = CD.CTCDDTVAL
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WH.WKTYPECD IN ('DW')
+	</select>
+
+	<update id="updateObWaveMgmtWkClassDasSendWaHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtWkClassDasSendWaHd - WMS > 출고 관리 > 웨이브관리 > 분류계획전송 - 웨이브 헤더에 로케이션계획전송여부 전송여부 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET LOCPLANSNDYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<update id="updateWaveMgmtPopInfo_T01_Add_WaAddProcObHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtPopInfo_T01_Add_WaAddProcObHd - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 추가 - 릴리즈 헤더에 WAVE 공통코드, 스테이션 바코드 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = #{wahdkey}
+			 , DASSTNBARCODE = #{stnbarcode}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateWaveMgmtPopInfo_T01_Add_WaAddProcWaDt">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtPopInfo_T01_Add_WaAddProcWaDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 추가 - 웨이브 상세 데이터 업데이트 */
+		UPDATE TWORK_INFO_WA_DT
+		   SET DELYN = 'N'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectWaveMgmtPopInfo_T01_Add_WaAddProcWaDt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopInfo_T01_Add_WaAddProcWaDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 추가 - 웨이브 저장을 위한 주문정보 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , OH.OBHDKEY
+			 , OH.RECOMBOXBARCODE
+			 , OH.CLASSIFSPECCD
+			 , OH.CBM AS VOL
+			 , OH.WEIGHT
+			 , COUNT(DISTINCT OD.ICKEY) AS TTICCNT
+			 , SUM(OD.EXPCTQTY) AS TTICQTY
+			 , (SELECT OBHDKEY FROM TWORK_INFO_WA_DT WD WHERE WD.CTKEY = OH.CTKEY AND WD.OWKEY = OH.OWKEY AND WD.WAHDKEY = #{wahdkey} AND WD.OBHDKEY = OH.OBHDKEY) AS WADTYN
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+		    ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		 GROUP BY
+		 	   OH.CTKEY
+			 , OH.OWKEY
+			 , OH.WAHDKEY
+			 , OH.OBHDKEY
+			 , OH.RECOMBOXBARCODE
+			 , OH.CLASSIFSPECCD
+			 , OH.CBM
+			 , OH.WEIGHT
+	</select>
+
+	<insert id="insertWaveMgmtPopInfo_T01_Add_WaAddProcWaDt">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - insertWaveMgmtPopInfo_T01_Add_WaAddProcWaDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 추가 - 웨이브 상세 저장 */
+		INSERT INTO TWORK_INFO_WA_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통 코드*/
+			, OBHDKEY /*릴리즈 코드*/
+			, RECOMBOXBARCODE /*추천 박스 바코드*/
+			, CLASSIFSPECCD /*분류 규격 코드*/
+			, VOL /*부피*/
+			, WEIGHT /*중량*/
+			, TTICCNT /*총 상품 개수*/
+			, TTICQTY /*총 상품 수량*/
+			, DELYN /*삭제여부*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통 코드*/
+			, #{obhdkey} /*릴리즈 코드*/
+			, #{recomboxbarcode} /*추천 박스 바코드*/
+			, #{classifspeccd} /*분류 규격 코드*/
+			, #{vol} /*부피*/
+			, (CASE COALESCE(#{weight}, 0) WHEN 0 THEN 0 ELSE #{weight} * 1000 END) /*중량*/
+			, #{tticcnt} /*총 상품 개수*/
+			, #{tticqty} /*총 상품 수량*/
+			, 'N' /*삭제여부*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<delete id="deleteWaveMgmtPopInfo_T01_Add_WaAddProcWaDt">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtPopInfo_T01_Add_WaAddProcWaDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 추가 - 이전 웨이브의 릴리즈 코드 삭제 */
+		DELETE FROM TWORK_INFO_WA_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND OBHDKEY = #{oriobhdkey}
+		   AND DELYN = 'Y'
+	</delete>
+
+	<select id="selectWaveMgmtPopInfo_T01_Add_WaExcepList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopInfo_T01_Add_WaExcepList - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 제외 > 출고주문 제외 대상 조회 */
+		SELECT WH.CTKEY
+			 , WH.OWKEY
+			 , WH.WAHDKEY
+			 , WD.OBHDKEY
+			 , OD.OBDTKEY
+			 , OH.DASSTNBARCODE
+			 , OD.ALQTY
+			 , OD.OBDTSTATUSCD
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DT WD
+		    ON WH.CTKEY = WD.CTKEY
+		   AND WH.OWKEY = WD.OWKEY
+		   AND WH.WAHDKEY = WD.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD OH
+		    ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.WAHDKEY = OH.WAHDKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+		    ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WD.OBHDKEY = #{obhdkey}
+		   AND WH.WAWKSTATUSCD IN ('05','10','11','15','20','25')
+		   AND OH.OBSTATUSCD IN ('00','01','05','10')
+		   AND WD.DELYN = 'N'
+	</select>
+
+	<update id="updateWaveMgmtPopInfo_T01_Add_WaExcep_ObHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtPopInfo_T01_Add_WaExcep_ObHd - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 제외 - 릴리즈 헤더 수정 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET DASSTNBARCODE = NULL
+			 , DASCELLBARCODE = NULL
+			 , WAHDKEY = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<update id="updateWaveMgmtPopInfo_T01_Add_WaExcep_WaDt">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtPopInfo_T01_Add_WaExcep_WaDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 제외 - 웨이브 제외 */
+		UPDATE TWORK_INFO_WA_DT
+		   SET STNBARCODE = #{dasstnbarcode}
+			 , DELYN = 'Y'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectWaveMgmtPopInfo_T01_WaExcep_ObHdCnt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopInfo_T01_WaExcep_ObHdCnt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 제외 - 제외 안된 릴리즈 코드가 있는지 확인 */
+		SELECT WH.CTKEY
+			 , WH.OWKEY
+			 , WH.WAHDKEY
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DT WD
+		    ON WH.CTKEY = WD.CTKEY
+		   AND WH.OWKEY = WD.OWKEY
+		   AND WH.WAHDKEY = WD.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD OH
+		    ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.WAHDKEY = OH.WAHDKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WD.DELYN = 'N'
+	</select>
+
+	<update id="updateWaveMgmtPopInfo_T01_WaExcep_WaHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtPopInfo_T01_WaExcep_WaHd - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 제외 - 웨이브 헤더 상태값 업데이트 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET WAWKSTATUSCD = #{wawkstatuscd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<select id="selectwaveMgmtPopInfo_T01_ReAllocate_WaAddAlObDt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectwaveMgmtPopInfo_T01_ReAllocate_WaAddAlObDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 재할당 - 웨이브에 재할당할 대상 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ICKEY
+			 , OD.EXPCTQTY
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DT WD
+			ON WH.CTKEY = WD.CTKEY
+		   AND WH.OWKEY = WD.OWKEY
+		   AND WH.WAHDKEY = WD.WAHDKEY
+		   AND WD.DELYN = 'N'
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND WH.WAWKSTATUSCD IN ('00','05','10','11','15','20','25')
+		   AND OD.OBDTSTATUSCD IN ('00','05')
+		   AND OD.EXPCTQTY > 0
+		   AND OD.EXPCTQTY > OD.ALQTY
+	</select>
+
+	<select id="selectwaveMgmtPopInfo_T01_StockOut_ObDt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectwaveMgmtPopInfo_T01_StockOut_ObDt - WMS > 출고 관리 > 웨이브관리 > 웨이브 정보 상세 > 출고 계획 > 미할당처리 - 웨이브에 미할당처리 대상 조회 */
+		SELECT OH.CTKEY
+			 , OH.OWKEY
+			 , OH.OBHDKEY
+			 , OD.OBDTKEY
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DT WD
+			ON WH.CTKEY = WD.CTKEY
+		   AND WH.OWKEY = WD.OWKEY
+		   AND WH.WAHDKEY = WD.WAHDKEY
+		   AND WD.DELYN = 'N'
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OD.OBDTSTATUSCD IN ('00', '05')
+		   AND WH.WAWKSTATUSCD IN ('00','05','10','11','15','20','25')
+		   AND OD.EXPCTQTY > 0
+		   AND OD.EXPCTQTY > OD.ALQTY
+	</select>
+
+	<select id="selectObWaDelAldt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaDelAldt - WMS > 출고 관리 > 웨이브관리 > 삭제 - 출고주문 할당취소 대상 조회 */
+		SELECT WH.CTKEY
+			 , WH.OWKEY
+			 , WH.WAHDKEY
+			 , WD.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ALQTY
+		  FROM TWORK_INFO_WA_HD WH
+		 INNER JOIN TWORK_INFO_WA_DT WD
+			ON WH.CTKEY = WD.CTKEY
+		   AND WH.OWKEY = WD.OWKEY
+		   AND WH.WAHDKEY = WD.WAHDKEY
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.WAHDKEY = OH.WAHDKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE WH.CTKEY = #{ctkey}
+		   AND WH.OWKEY = #{owkey}
+		   AND WH.WAHDKEY = #{wahdkey}
+		   AND WH.WAWKSTATUSCD IN ('05','10','11','15','20','25','30')
+		   AND OH.OBSTATUSCD IN ('05','10')
+		   AND WD.DELYN = 'N'
+		   AND OD.ALQTY > 0
+	</select>
+
+	<update id="updateWaveMgmtObHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateWaveMgmtObHd - WMS > 출고 관리 > 웨이브관리 > 삭제 - 릴리즈 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = NULL
+			 , DASSTNBARCODE = NULL
+			 , DASCELLBARCODE = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<delete id="deleteWaveMgmtWaDtDelete">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtWaDtDelete - WMS > 출고 관리 > 웨이브관리 > 삭제 - 웨이브 상세 삭제 */
+		DELETE FROM TWORK_INFO_WA_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteWaveMgmtWaHdDelete">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtWaHdDelete - WMS > 출고 관리 > 웨이브관리 > 삭제 - 웨이브 헤더 삭제 */
+		DELETE FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteWaveMgmtStn">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtStn - WMS > 출고 관리 > 웨이브관리 > 삭제 - 웨이브 DAS STN 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_STN
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteWaveMgmtCell">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtCell - WMS > 출고 관리 > 웨이브관리 > 삭제 - 웨이브 DAS CELL 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_CELL
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteWaveMgmtLc">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteWaveMgmtLc - WMS > 출고 관리 > 웨이브관리 > 삭제 - 웨이브 LC 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_STN_LC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<select id="selectWaHdRngChgWarnd" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaHdRngChgWarnd - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 회차 조회 */
+		SELECT COALESCE(MAX(TO_NUMBER(COALESCE(WARND, 0))), 0) + 1 AS WARND
+		  FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDDAY = #{wahdday}
+	</select>
+
+	<update id="updateWaHdRngChgObHd">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgObHd - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 릴리즈 헤더 웨이브 공통코드, DAS 매칭 정보 변경 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = #{wahdkey}
+			 , DASCELLBARCODE = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<update id="updateWaHdRngChgWaDt">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgWaDt - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 웨이브 상세의 웨이브공통코드 변경 */
+		UPDATE TWORK_INFO_WA_DT
+		   SET WAHDKEY = #{wahdkey}
+			 , STNBARCODE = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<update id="updateWaHdRngChgWaHd">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgWaHd - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 웨이브 헤더의 웨이브공통코드 및 회차 변경 */
+		UPDATE TWORK_INFO_WA_HD
+		   SET WAHDKEY = #{wahdkey}
+			 , WARND = #{warnd}
+			 , CLASSIFPLANSNDYN = 'N'
+			 , LOCPLANSNDYN = 'N'
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<update id="updateWaHdRngChgStn">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgStn - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 웨이브 스테이션 웨이브헤더키 변경 */
+		UPDATE TWORK_INFO_WA_DAS_STN
+		   SET WAHDKEY = #{wahdkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<update id="updateWaHdRngChgCell">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgCell - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 웨이브 소분류셀 웨이브헤더키 변경 */
+		UPDATE TWORK_INFO_WA_DAS_CELL
+		   SET WAHDKEY = #{wahdkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<update id="updateWaHdRngChgLc">
+		/* wms-outbound-obWaveMgmt-sql-oracle.xml - updateWaHdRngChgLc - WMS > 출고 관리 > 웨이브관리 > 회차변경 - 웨이브 중분류 웨이브헤더키 변경 */
+		UPDATE TWORK_INFO_WA_DAS_STN_LC
+		   SET WAHDKEY = #{wahdkey}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{oriwahdkey}
+	</update>
+
+	<select id="selectWaveMgmtPopTaskList_pkCnfrmCnlHdProc" resultType="camelMap">
+			/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_pkCnfrmCnlHdProc - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 피킹확정취소 - 피킹 확정 리스트 조회 */
+			SELECT WA.CTKEY /*센터코드*/
+				 , WA.OWKEY /*화주코드*/
+				 , WD.OBHDKEY /*릴리즈코드(출고공통코드)*/
+				 , OD.OBDTKEY /*릴리즈상세코드(출고상세코드)*/
+				 , WA.PIHDKEY /*피킹헤더코드*/
+				 , PD.PIDTKEY /*피킹상세코드*/
+				 , PD.PKDTWKSTATUSCD /*피킹상세 작업상태 코드*/
+				 , PD.EXPCTQTY /*예정수량*/
+				 , PD.CNFRMQTY /*확정수량*/
+				 , PD.IVATKEY /*재고속성코드*/
+				 , PD.ICKEY /*상품코드*/
+				 , PD.LCKEY /*로케이션코드*/
+				 , PD.FROMLCKEY /*FROM 로케이션코드*/
+				 , PD.TOLCKEY /*TO 로케이션코드*/
+			  FROM TWORK_INFO_WA_HD WA
+			 INNER JOIN TWORK_INFO_WA_DT WD
+				ON WA.CTKEY = WD.CTKEY
+			   AND WA.OWKEY = WD.OWKEY
+			   AND WA.WAHDKEY = WD.WAHDKEY
+			   AND WD.DELYN = 'N'
+			 INNER JOIN TWORK_INFO_OB_HD OH
+				ON WD.CTKEY = OH.CTKEY
+			   AND WD.OWKEY = OH.OWKEY
+			   AND WD.OBHDKEY = OH.OBHDKEY
+			 INNER JOIN TWORK_INFO_OB_DT OD
+				ON OH.CTKEY = OD.CTKEY
+			   AND OH.OWKEY = OD.OWKEY
+			   AND OH.OBHDKEY = OD.OBHDKEY
+			 INNER JOIN TWORK_INFO_PI_DT PD
+				ON OD.CTKEY = PD.CTKEY
+			   AND OD.OWKEY = PD.OWKEY
+			   AND OD.OBHDKEY = PD.OBHDKEY
+			   AND OD.OBDTKEY = PD.OBDTKEY
+			 WHERE WA.CTKEY = #{ctkey}
+			   AND WA.OWKEY = #{owkey}
+			   AND WD.OBHDKEY = #{obhdkey}
+			   AND WA.WKTYPECD = 'PW'
+			   AND OH.OBSTATUSCD IN ('25','30')
+			   AND PD.PKDTWKSTATUSCD = '10'
+			 ORDER BY PD.IVATKEY, PD.LCKEY
+		</select>
+
+	<select id="selectWaveMgmtPopTaskList_PkCnfrmHdProc" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_PkCnfrmHdProc - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 피킹확정 - 피킹 지시 리스트 조회 */
+		SELECT WA.CTKEY /*센터코드*/
+			 , WA.OWKEY /*화주코드*/
+			 , WD.OBHDKEY /*릴리즈코드(출고공통코드)*/
+			 , OD.OBDTKEY /*릴리즈상세코드(출고상세코드)*/
+			 , WA.PIHDKEY /*피킹헤더코드*/
+			 , PD.PIDTKEY /*피킹상세코드*/
+			 , PD.PKDTWKSTATUSCD /*피킹상세 작업상태 코드*/
+			 , PD.EXPCTQTY /*예정수량*/
+			 , (PD.EXPCTQTY - PD.CNFRMQTY) AS CNFRMQTY /*잔여수량*/
+			 , PD.IVATKEY /*재고속성코드*/
+			 , PD.ICKEY /*상품코드*/
+			 , PD.FROMLCKEY /*FROM 로케이션코드*/
+			 , PD.TOLCKEY /*TO 로케이션코드*/
+		  FROM TWORK_INFO_WA_HD WA
+		 INNER JOIN TWORK_INFO_WA_DT WD
+			ON WA.CTKEY = WD.CTKEY
+		   AND WA.OWKEY = WD.OWKEY
+		   AND WA.WAHDKEY = WD.WAHDKEY
+		   AND WD.DELYN = 'N'
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 INNER JOIN TWORK_INFO_PI_DT PD
+			ON OD.CTKEY = PD.CTKEY
+		   AND OD.OWKEY = PD.OWKEY
+		   AND OD.OBHDKEY = PD.OBHDKEY
+		   AND OD.OBDTKEY = PD.OBDTKEY
+		 WHERE WA.CTKEY = #{ctkey}
+		   AND WA.OWKEY = #{owkey}
+		   AND WD.OBHDKEY = #{obhdkey}
+		   AND WA.WKTYPECD = 'PW'
+		   AND WA.WAWKSTATUSCD IN ('40','50')
+		   AND OH.OBSTATUSCD IN ('20','25')
+		   AND PD.PKDTWKSTATUSCD = '00'
+	</select>
+
+	<select id="selectWaveMgmtPopTaskList_nisHoldMap" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_nisHoldMap - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 결품보류 - 이전릴리즈 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.WAHDKEY /*웨이브 공통 코드*/
+			 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+			 , OH.PCKGSTNBARCODE /*포장 스테이션 바코드*/
+			 , OH.PCKGBOXBARCODE /*포장 박스 유형 코드*/
+			 , OH.PREOBHDKEY
+			 , COALESCE(OHC.CNT, 0) AS CNT
+		  FROM TWORK_INFO_OB_HD OH
+		  LEFT OUTER JOIN (
+					SELECT OH.CTKEY /*센터코드*/
+						 , OH.OWKEY /*화주코드*/
+						 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+						 , COUNT(*) AS CNT
+					  FROM TWORK_INFO_OB_HD OH
+					 WHERE OH.CTKEY = #{ctkey}
+					   AND OH.OWKEY = #{owkey}
+					   AND OH.PREOBHDKEY = #{obhdkey}
+					 GROUP BY
+						   OH.CTKEY /*센터코드*/
+						 , OH.OWKEY /*화주코드*/
+						 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+				) OHC
+			ON OH.CTKEY = OHC.CTKEY
+		   AND OH.OWKEY = OHC.OWKEY
+		   AND OH.OBHDKEY = OHC.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.WKTYPECD = 'PW'
+		   AND OH.OBSTATUSCD IN ('25','30')
+	</select>
+
+	<select id="selectWaveMgmtPopTaskList_nisHoldList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_nisHoldList - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 결품보류 - 결품 처리 리스트 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+			 , OD.OBDTKEY /*릴리즈상세코드(출고상세코드)*/
+			 , OD.ICKEY /*상품코드*/
+			 , 0 AS TOPAKQTY /*패킹수량*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.WKTYPECD = 'PW'
+		   AND OH.OBSTATUSCD IN ('25','30')
+	</select>
+
+	<select id="selectWaveMgmtPopTaskList_obComplProc" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_obComplProc - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 출고완료 - 피킹 확정 리스트 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.WAHDKEY /*웨이브 공통 코드*/
+			 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+			 , OH.PCKGSTNBARCODE /*포장 스테이션 바코드*/
+			 , OH.PCKGBOXBARCODE /*포장 박스 유형 코드*/
+			 , OH.PREOBHDKEY
+			 , COALESCE(OHC.CNT, 0) AS CNT
+		  FROM TWORK_INFO_OB_HD OH
+		  LEFT OUTER JOIN (
+		 			SELECT OH.CTKEY /*센터코드*/
+						 , OH.OWKEY /*화주코드*/
+						 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+						 , COUNT(*) AS CNT
+					  FROM TWORK_INFO_OB_HD OH
+					 WHERE OH.CTKEY = #{ctkey}
+				   	   AND OH.OWKEY = #{owkey}
+				   	   AND OH.PREOBHDKEY = #{obhdkey}
+					 GROUP BY
+						   OH.CTKEY /*센터코드*/
+						 , OH.OWKEY /*화주코드*/
+						 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+				) OHC
+			ON OH.CTKEY = OHC.CTKEY
+		   AND OH.OWKEY = OHC.OWKEY
+		   AND OH.OBHDKEY = OHC.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.WKTYPECD = 'PW'
+		   AND OH.OBSTATUSCD IN ('25','30')
+	</select>
+
+	<select id="selectWaveMgmtPopTaskList_packList" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectWaveMgmtPopTaskList_packList - WMS > 출고 관리 > 웨이브관리 > 작업현황 > 주문별 > 출고완료 - 패킹 상품 리스트 조회 */
+		SELECT OH.CTKEY /*센터코드*/
+			 , OH.OWKEY /*화주코드*/
+			 , OH.OBHDKEY /*릴리즈코드(출고공통코드)*/
+			 , OD.OBDTKEY /*릴리즈상세코드(출고상세코드)*/
+			 , OD.ICKEY /*상품코드*/
+			 , OD.PKQTY AS TOPAKQTY /*패킹수량*/
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.WKTYPECD = 'PW'
+		   AND OH.OBSTATUSCD IN ('25','30')
+		 ORDER BY OD.ICKEY
+	</select>
+
+
+
+
+
+
+
+
+	<!--	 ************************************************* 웨이브관리 > 생성 > 저장 > 신규 ********************************************************** -->
+	<update id="updateObWaveMgmtPopCreObList">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtPopCreObList - WMS > 출고 관리 > 웨이브관리 > 생성 > 저장 > 주문 배정 주문건 업데이트(대,중,소)  */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = #{wahdkey}
+			  , UPDATEDATE = #{sysdate}
+			  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND OBHDKEY = #{obhdkey}
+		  AND WKTYPECD = #{wktypecd}
+		  AND OBSTATUSCD = '00'
+		  AND (CASE WHEN #{wktypecd} = 'DW' THEN CLASSIFSPECCD WHEN #{wktypecd} = 'RW' THEN RECOMBOXBARCODE ELSE '1' END)
+				= (CASE WHEN #{wktypecd} = 'DW' THEN #{classifspeccd} WHEN #{wktypecd} = 'RW' THEN #{recomboxbarcode} ELSE '1' END)
+	</update>
+
+	<insert id="obWaveMgmtPopCreWaDtInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreWaDtInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 상세 저장 */
+		INSERT INTO TWORK_INFO_WA_DT
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통 코드*/
+			, OBHDKEY /*릴리즈 코드*/
+			, RECOMBOXBARCODE /*추천 박스 바코드*/
+			, CLASSIFSPECCD /*분류 규격 코드*/
+			, VOL /*부피*/
+			, WEIGHT /*중량*/
+			, TTICCNT /*총 상품 개수*/
+			, TTICQTY /*총 상품 수량*/
+			, DELYN /*삭제여부*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통 코드*/
+			, #{obhdkey} /*릴리즈 코드*/
+			, #{recomboxbarcode} /*추천 박스 바코드*/
+			, #{classifspeccd} /*분류 규격 코드*/
+			, #{vol} /*부피*/
+			, (CASE #{weight} WHEN 0 THEN 0 ELSE #{weight} * 1000 END) /*중량*/
+			, #{tticcnt} /*총 상품 개수*/
+			, #{tticqty} /*총 상품 수량*/
+			, 'N' /*삭제여부*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<update id="updateObWaveMgmtPopCreObHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaveMgmtPopCreObHd - WMS > 출고 관리 > 웨이브관리 > 생성 > 저장 > 주문 배정 주문건 업데이트(대,중,소)  */
+		UPDATE TWORK_INFO_OB_HD
+		   SET DASSTNBARCODE = #{stnbarcode}
+			  , UPDATEDATE = #{sysdate}
+			  , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND OBHDKEY = #{obhdkey}
+	</update>
+
+	<select id="selectObWaveMgmtPopCreaDasCell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreaDasCell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 셀 정보 조회 */
+		WITH CELLINFO AS (
+		<choose>
+			<when test="@com.kns.framework.util.StringUtil@isNotEmpty(cellNoList) and cellNoList.size > 0">
+				<foreach collection="cellNoList" item="item" separator=" UNION ALL ">
+				SELECT #{item.ctkey} AS CTKEY, #{item.owkey} AS OWKEY, #{item.wahdkey} AS WAHDKEY, #{item.stnbarcode} AS STNBARCODE, #{item.classifspeccd} AS CLASSIFSPECCD, #{item.cellno} AS CELLNO
+				</foreach>
+			</when>
+		   <otherwise>
+				SELECT '' AS CTKEY, '' AS OWKEY, '' AS WAHDKEY, '' AS STNBARCODE, '' AS CLASSIFSPECCD, '' AS CELLNO
+		   </otherwise>
+		</choose>
+		), CELLRSLT AS (
+			SELECT INFO.CTKEY
+				 , INFO.OWKEY
+				 , INFO.WAHDKEY
+				 , INFO.STNBARCODE
+				 , STC.CELLBARCODE
+				 , INFO.CLASSIFSPECCD
+				 , INFO.CELLNO
+				 , ROW_NUMBER() OVER(PARTITION BY STC.CTKEY, STC.STNBARCODE, INFO.CLASSIFSPECCD ORDER BY STC.GRPNO ASC, COALESCE(CAST(STC.PRINO AS NUMERIC), 99) ASC, CAST(STC.CELLNO AS NUMERIC) ASC) AS ROWNO
+			  FROM CELLINFO INFO
+			 INNER JOIN TWORK_MST_STNWKCELL STC
+				ON INFO.CTKEY = STC.CTKEY
+			   AND INFO.STNBARCODE = STC.STNBARCODE
+			   AND INFO.CELLNO = (STC.DIRTDIVCD || STC.CELLNO)
+		)
+		SELECT CTKEY
+			 , OWKEY
+			 , WAHDKEY
+			 , STNBARCODE
+			 , CELLBARCODE
+			 , CLASSIFSPECCD
+			 , CELLNO
+			 , ROWNO AS PRINO
+		  FROM CELLRSLT
+	</select>
+
+	<insert id="obWaveMgmtPopCreDasCellInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreDasCellInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 셀 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_CELL
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통 코드*/
+			, STNBARCODE /*스테이션 바코드*/
+			, CELLBARCODE /*셀바코드*/
+			, CLASSIFSPECCD /*분류규격코드*/
+			, OBHDKEY /*릴리즈코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통 코드*/
+			, #{stnbarcode} /*스테이션 바코드*/
+			, #{cellbarcode} /*셀바코드*/
+			, #{classifspeccd} /*분류규격코드*/
+			, #{obhdkey} /*릴리즈코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectObWaveMgmtPopCreDasPltCell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreDasPltCell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS PLT 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '20' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoPlt}
+	</select>
+
+	<select id="selectObWaveMgmtPopCreDasLight1Cell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreDasLight1Cell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS Light1 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '10' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.CLASSIFTYPECD = '10' /*분류유형코드 - 10:중분류 유형1, 20:중분류 유형2*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoLight1}
+	</select>
+
+	<select id="selectObWaveMgmtPopCreDasLight2Cell" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaveMgmtPopCreDasLight2Cell - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS Light2 셀 정보 조회 */
+		SELECT MST.CTKEY
+			 , #{owkey} AS OWKEY
+			 , #{wahdkey} AS WAHDKEY
+			 , #{stnbarcode} AS STNBARCODE
+			 , CST.STNBARCODE AS MDLCLASSIFSTNBARCODE
+			 , CST.CELLBARCODE AS MDLCLASSIFCELLBARCODE
+		  FROM TWORK_MST_STN MST
+		 INNER JOIN TWORK_MST_STNWKCELL CST
+			ON MST.CTKEY = CST.CTKEY
+		   AND MST.STNBARCODE = CST.STNBARCODE
+		   AND CST.USEYN = 'Y'
+		 WHERE MST.CTKEY = #{ctkey}
+		   AND MST.STNDIVCD = '20' /*설비구분코드 - 10:DAS-소분류, 20:DAS-중분류*/
+		   AND MST.CLASSIFDIVCD = '10' /*분류구분코드 - 10:경량랙, 20:팔레트랙*/
+		   AND MST.CLASSIFTYPECD = '20' /*분류유형코드 - 10:중분류 유형1, 20:중분류 유형2*/
+		   AND MST.USEYN = 'Y'
+		   AND CST.CELLNO = #{cellnoLight2}
+	</select>
+
+	<insert id="obWaveMgmtPopCreDasMidCellInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreDasMidCellInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 중분류 셀 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_STN_LC
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브공통코드*/
+			, STNBARCODE /*스테이션바코드*/
+			, MDLCLASSIFSTNBARCODE /*중분류스테이션바코드*/
+			, MDLCLASSIFCELLBARCODE /*중분류셀바코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브공통코드*/
+			, #{stnbarcode} /*스테이션바코드*/
+			, #{mdlclassifstnbarcode} /*중분류스테이션바코드*/
+			, #{mdlclassifcellbarcode} /*중분류셀바코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<insert id="obWaveMgmtPopCreDasStnInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreDasStnInsert - WMS > 출고 관리 > 생성 > 저장 > 웨이브 DAS 스테이션 정보 저장 */
+		INSERT INTO TWORK_INFO_WA_DAS_STN
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 헤더코드*/
+			, STNBARCODE /*스테이션 바코드*/
+			, CLASSIFSPECCD /*분류 규격 코드*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 헤더코드*/
+			, #{stnbarcode} /*스테이션 바코드*/
+			, #{classifspeccd} /*분류 규격 코드*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectobWaveMgmtPopCreWaHdWarnd" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtPopCreWaHdWarnd - WMS > 출고 관리 > 생성 > 저장 > 웨이브 헤더 회차 조회 */
+		SELECT COALESCE(MAX(TO_NUMBER(COALESCE(WARND, 0))), 0) + 1 AS WARND
+		  FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDDAY = #{wahdday}
+<!--		   AND WKTYPECD = #{wktypecd}-->
+	</select>
+
+	<select id="selectobWaveMgmtPopCreDlvrycorpcd" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectobWaveMgmtPopCreDlvrycorpcd - WMS > 출고 관리 > 생성 > 웨이브의 릴리즈코드 중 택배접수가 된 건의 택배사코드 조회 */
+		SELECT DLVRYCORPCD
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+		   AND DLVRYCORPCD IS NOT NULL
+		   
+LIMIT 1
+	</select>
+
+	<insert id="obWaveMgmtPopCreWaHdInsert">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - obWaveMgmtPopCreWaHdInsert - WMS > 출고 관리 > 생성 > > 저장 > 웨이브 헤더 저장 */
+		INSERT INTO TWORK_INFO_WA_HD
+		(
+			CTKEY /*센터코드*/
+			, OWKEY /*화주코드*/
+			, WAHDKEY /*웨이브 공통코드*/
+			, WAHDDAY /*웨이브 헤더 일자*/
+			, WAHDNM /*웨이브 헤더 명*/
+			, WARND /*웨이브 회차*/
+			, WAWKSTATUSCD /*웨이브 작업 상태 코드*/
+			, WKTYPECD /*작업 유형 코드*/
+			, ORDALTMTTYPECD /*주문 배정 유형 코드*/
+			, DLVRYCORPCD /*택배사 코드*/
+			, CLASSIFPLANSNDYN /*분류계획전송여부*/
+			, LOCPLANSNDYN /*로케이션계획전송여부*/
+			, PIHDKEY /*피킹헤더코드*/
+			, CMT /*비고*/
+			, INSERTDATE /*입력일시*/
+			, INSERTURKEY /*입력자*/
+			, UPDATEDATE /*수정일시*/
+			, UPDATEURKEY /*수정자*/
+		)
+		VALUES
+		(
+			#{ctkey} /*센터코드*/
+			, #{owkey} /*화주코드*/
+			, #{wahdkey} /*웨이브 공통코드*/
+			, #{wahdday} /*웨이브 헤더 일자*/
+			, #{wahdnm} /*웨이브 헤더 명*/
+			, #{warnd} /*웨이브 회차*/
+			, #{wawkstatuscd} /*웨이브 작업 상태 코드*/
+			, #{wktypecd} /*작업 유형 코드*/
+			, #{ordaltmttypecd} /*주문 배정 유형 코드*/
+			, #{dlvrycorpcd} /*택배사 코드*/
+			, #{classifplansndyn} /*분류계획전송여부*/
+			, #{locplansndyn} /*로케이션계획전송여부*/
+			, #{pihdkey} /*피킹헤더코드*/
+			, #{cmt} /*비고*/
+			, #{sysdate} /*입력일시*/
+			, #{surkey} /*입력자*/
+			, #{sysdate} /*수정일시*/
+			, #{surkey} /*수정자*/
+		)
+	</insert>
+
+	<select id="selectObWaFailAldt" resultType="camelMap">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaFailAldt - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 출고주문 할당취소 대상 조회 */
+		SELECT WD.CTKEY
+			 , WD.OWKEY
+			 , WD.WAHDKEY
+			 , WD.OBHDKEY
+			 , OD.OBDTKEY
+			 , OD.ALQTY
+		  FROM TWORK_INFO_WA_DT WD
+		 INNER JOIN TWORK_INFO_OB_HD OH
+			ON WD.CTKEY = OH.CTKEY
+		   AND WD.OWKEY = OH.OWKEY
+		   AND WD.WAHDKEY = OH.WAHDKEY
+		   AND WD.OBHDKEY = OH.OBHDKEY
+		 INNER JOIN TWORK_INFO_OB_DT OD
+			ON OH.CTKEY = OD.CTKEY
+		   AND OH.OWKEY = OD.OWKEY
+		   AND OH.OBHDKEY = OD.OBHDKEY
+		 WHERE WD.CTKEY = #{ctkey}
+		   AND WD.OWKEY = #{owkey}
+		   AND WD.WAHDKEY = #{wahdkey}
+		   AND OH.OBSTATUSCD IN ('05','10')
+		   AND WD.DELYN = 'N'
+		   AND OD.ALQTY > 0
+	</select>
+
+	<update id="updateObWaFailObHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - updateObWaFailObHd - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 릴리즈 헤더 업데이트 */
+		UPDATE TWORK_INFO_OB_HD
+		   SET WAHDKEY = NULL
+			 , DASSTNBARCODE = NULL
+			 , DASCELLBARCODE = NULL
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</update>
+
+	<delete id="deleteObWaFailWaDt">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteObWaFailWaDt - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 웨이브 상세 삭제 */
+		DELETE FROM TWORK_INFO_WA_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteObWaFailWaHd">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteObWaFailWaHd - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 웨이브 헤더 삭제 */
+		DELETE FROM TWORK_INFO_WA_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteObWaFailStn">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteObWaFailStn - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 웨이브 DAS STN 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_STN
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deleteObWaFailCell">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deleteObWaFailCell - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 웨이브 DAS CELL 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_CELL
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<delete id="deletebWaFailLc">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - deletebWaFailLc - WMS > 출고 관리 > 웨이브관리 > 생성 > 실패시 삭제 - 웨이브 LC 정보 삭제 */
+		DELETE FROM TWORK_INFO_WA_DAS_STN_LC
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND WAHDKEY = #{wahdkey}
+	</delete>
+
+	<select id="selectObWaAddValidate" resultType="java.lang.Integer">
+		/* wms-outbound-obWaveMgmtManager-sql-oracle.xml - selectObWaAddValidate - WMS > 출고 관리 > 웨이브관리 > 출고 계획 - 추가 Validate */
+		SELECT COUNT(1)
+		  FROM TWORK_INFO_OB_HD OH
+		 INNER JOIN TWORK_MST_BOX BOX
+			ON OH.CTKEY = BOX.CTKEY
+		   AND OH.RECOMBOXBARCODE = BOX.BOXBARCODE
+		 WHERE OH.CTKEY = #{ctkey}
+		   AND OH.OWKEY = #{owkey}
+		   AND OH.OBHDKEY = #{obhdkey}
+		   AND OH.WKTYPECD = #{wktypecd}
+		   AND OH.OBSTATUSCD = '00'
+		   AND OH.OBHDTYPECD IN ('10','20')
+		   AND OH.WAHDKEY IS NULL
+	<choose>
+		<when test="wktypecd.equals('DW')">
+		   AND OH.CLASSIFSPECCD = #{classifspeccd}
+		</when>
+		<when test="wktypecd.equals('RW')">
+		   AND (CASE WHEN BOX.BOXDIVCD = '10' THEN BOX.BOXNM ELSE '그외' END) = #{oriboxnm}
+		</when>
+	</choose>
+	</select>
+</mapper>

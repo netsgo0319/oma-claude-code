@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.master.mapper.CalendarMapper">
+
+	<select id="selectCalendar" resultType="camelMap">
+		/* adm-master-calendar-sql-oracle-xml - selectCalendar */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		                    SELECT '0' AS CHK
+								  ,CFULLDATE
+								  ,CYEAR
+								  ,CMONTH
+								  ,CDATE
+								  ,'WEEKDAY' || ';' || DAYWEEK AS DAYWEEK_DESC
+								  ,DAYWEEK 
+								  ,DAYTITLE
+								  ,'YESORNO' || ';' || ISBASICHOLIDAY AS ISBASICHOLIDAY_DESC
+								  ,ISBASICHOLIDAY
+								  ,'YESORNO' || ';' || ISEXTRAHOLIDAY AS ISEXTRAHOLIDAY_DESC
+								  ,ISEXTRAHOLIDAY
+								  ,INSERTDATE
+								  ,UPDATEDATE
+								  ,INSERTURKEY
+ 								  ,UPDATEURKEY
+		                     FROM TADMIN_MST_CAL A
+						 <where>
+							<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+							   AND #{SEARCH_CONDITION}
+							</if>
+						</where>
+						<choose>
+							<when test='sortValue !=null and sortValue != ""'>	
+								<if test='sortValue == "DESC" and colName !=null'>
+								ORDER BY #{colName} DESC
+								</if>
+								<if test='sortValue == "ASC" and colName !=null'>
+								ORDER BY #{colName} ASC
+								</if>	
+							</when>	
+							<otherwise>
+								ORDER BY CFULLDATE DESC
+							</otherwise>
+						</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectPkCalendar" resultType="camelMap">
+		/* adm-master-calendar-sql-oracle-xml - selectPkCalendar */
+		SELECT 
+			   CFULLDATE
+			  ,CYEAR
+			  ,CMONTH
+			  ,CDATE
+			  ,DAYWEEK
+			  ,DAYTITLE
+			  ,ISBASICHOLIDAY
+			  ,ISEXTRAHOLIDAY
+			  ,INSERTDATE
+			  ,INSERTURKEY
+			  ,UPDATEDATE
+			  ,UPDATEURKEY
+		 FROM TADMIN_MST_CAL
+		WHERE
+			  CFULLDATE	= SUBSTR(#{cfulldate} , 1, 8)
+	</select>
+
+	<select id="selectCalendarCount" resultType="java.lang.Integer" >
+		/* adm-master-calendar-sql-oracle-xml - selectCalendarCount */
+			SELECT COUNT(1)  
+			  FROM TADMIN_MST_CAL A
+			 <where>
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				   AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+	</select>
+	
+	<insert id="insertCalendar" >
+		/* adm-master-calendar-sql-oracle-xml - insertCalendar */
+		<![CDATA[	  	
+			INSERT INTO TADMIN_MST_CAL(
+				   CFULLDATE
+				  ,CYEAR
+				  ,CMONTH
+				  ,CDATE
+				  ,DAYWEEK
+				  ,DAYTITLE
+				  ,ISBASICHOLIDAY
+				  ,ISEXTRAHOLIDAY
+				  ,INSERTDATE
+				  ,INSERTURKEY
+				  ,UPDATEDATE
+				  ,UPDATEURKEY
+			    ) VALUES (
+				  	 #{cfulldate}
+				  	,#{cyear}
+				  	,#{cmonth}
+				  	,#{cdate}
+				  	,#{dayweek}
+				  	,#{daytitle}
+				  	,#{isbasicholiday}
+				  	,#{isextraholiday}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)
+		]]>				
+	</insert>
+	
+	<update id="updateCalendar">
+		/* adm-master-calendar-sql-oracle-xml - updateCalendar */
+			UPDATE TADMIN_MST_CAL 
+			   SET
+				  DAYTITLE = #{daytitle}      
+				 ,ISBASICHOLIDAY = #{isbasicholiday}
+				 ,ISEXTRAHOLIDAY = #{isextraholiday}
+				 ,UPDATEDATE = #{sysdate}
+				 ,UPDATEURKEY = #{surkey}
+			WHERE 
+				  CFULLDATE	= #{cfulldate}
+	</update>
+	
+	<delete id="deleteCalendar">
+		/* adm-master-calendar-sql-oracle-xml - deleteCalendar */
+			DELETE 
+			  FROM TADMIN_MST_CAL
+			 WHERE CFULLDATE	= #{cfulldate}
+	</delete>
+
+	<select id="selectDupCalendar" resultType="java.lang.Integer">
+		/* adm-master-calendar-sql-oracle-xml - selectDupCalendar */
+		SELECT COUNT(1)
+		FROM TADMIN_MST_CAL
+		WHERE CFULLDATE	= SUBSTR(#{cfulldate} , 1, 8)
+	</select>
+
+</mapper>	

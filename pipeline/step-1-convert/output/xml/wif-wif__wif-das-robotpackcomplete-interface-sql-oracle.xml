@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.in.robotsorter.rspackcomplete.mapper.PackCompleteMapper">
+	<select id="getRobDasPackCompleteResultWaveSeq" resultType="camelMap">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - getRobDasPackCompleteResultWaveSeq - RobotDAS 포장완료 Result Wave Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_wa') AS WAVE_SEQ
+	</select>
+
+	<select id="getRobDasPackCompleteResultOrderSeq" resultType="camelMap">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - getRobDasPackCompleteResultOrderSeq - RobotDAS 포장완료 Result Order Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_order') AS ORDER_SEQ
+	</select>
+
+	<select id="getRobDasPackCompleteResultItemSeq" resultType="camelMap">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - getRobDasPackCompleteResultItemSeq - RobotDAS 포장완료 Result Item Sequence 조회 SQL */
+		SELECT nextval('seq_twif_robdas_pakcompl_ic') AS ITEM_SEQ
+	</select>
+
+	<insert id="insertRobDasPackCompleteResultWave" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultWaveVO">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - insertRobDasIntegrationResultWave - RobotDAS 포장완료 Result 웨이브 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_WA
+		(
+			WASEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,WAHDDAY
+			,IFCD
+			,WIFIFID
+			,IFID
+			,IFREQDT
+			,IFTYPE
+			,IFSRCMODULE
+			,IFTGTMODULE
+			,IFSTATUS
+			,IFERRCD
+			,IFERRMSG
+			,IFPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,IFRETRYYN
+			,IFRETRYIFID
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{waHdDay}
+			,#{ifCd}
+			,#{wifIfId}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{ifType}
+			,#{ifSrcModule}
+			,#{ifTgtModule}
+			,#{ifStatus}
+			,#{ifErrCd}
+			,#{ifErrMsg}
+			,#{ifPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ifretryyn}
+			,#{ifretryifid}
+		)
+	</insert>
+
+	<insert id="insertRobDasPackCompleteResultOrder" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultOrderVO">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - insertRobDasIntegrationResultOrder - RobotDAS 포장완료 Result 오더 INSERT SQL */
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_ORDER
+		(
+			WASEQ
+			,ORDERSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,WBLNO
+			,BOXSIZE
+			,WKPRCSDATE
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{wblNo}
+			,#{boxSize}
+			,#{wkPrcsDate}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<insert id="insertRobDasPackCompleteResultItem" parameterType="com.daiso.wif.rest.in.robotsorter.rspackcomplete.vo.PackCompleteResultItemVO">
+		/* wif-das-robotpackcomplete-sql-oracle.xml - insertRobDasPackCompleteResultItem - RobotDAS 포장완료 Result 상품 INSERT SQL */
+		<selectKey keyProperty="itemSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_robdas_pakcompl_ic') AS ITEM_SEQ
+		</selectKey>
+		INSERT INTO TWIF_ROBDAS_PAKCOMPL_IC
+		(
+			WASEQ
+			,ORDERSEQ
+			,ITEMSEQ
+			,CTKEY
+			,OWKEY
+			,WAHDKEY
+			,OBHDKEY
+			,ICKEY
+			,QTY
+			,EMPNOBRCD
+			,ORD
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES
+		(
+			#{waSeq}
+			,#{orderSeq}
+			,#{itemSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{waHdKey}
+			,#{obHdKey}
+			,#{icKey}
+			,#{qty}
+			,#{empNoBrcd}
+			,#{ord}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+</mapper>

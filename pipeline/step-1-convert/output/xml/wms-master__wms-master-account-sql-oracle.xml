@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.master.mapper.AccountMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectAccount">
+		FROM TWORK_MST_AC A
+		     INNER JOIN TWORK_MST_CT B
+				ON A.CTKEY = B.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND  #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectAccountCount" resultType="java.lang.Integer">
+		/* wms-master-account-sql-oracle.xml - selectAccountCount */
+		SELECT COUNT(*)
+		<include refid="sql_selectAccount"/>
+	</select>
+
+	<select id="selectAccountList" resultType="camelMap">
+		/* wms-master-account-sql-oracle.xml - selectAccountList */
+		<include refid="sql_pagingTop"/>
+		SELECT
+		      A.CTKEY
+			, B.CTNM
+			, A.ACKEY
+			, A.ACNM
+			, A.ACTYPECD
+			, A.CONTACT
+		    , A.CONTACTTELNO
+			, A.INSERTDATE
+			, A.INSERTURKEY
+			, A.UPDATEDATE
+			, A.UPDATEURKEY
+		<include refid="sql_selectAccount"/>
+		ORDER BY
+			A.UPDATEDATE DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectAccount" resultType="camelMap">
+		/* wms-master-account-sql-oracle.xml - selectAccount */
+		WITH T_CODE AS (
+			SELECT
+				  A.CTKEY
+				, A.CTCD_HDKEY
+				, B.CTCD_DTKEY
+				, B.CTCD_DTNAME
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCD_HDKEY = A.CTCD_HDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+				AND A.CTKEY = #{ctkey}
+				AND B.LAKEY = #{slakey}
+			</where>
+		)
+		SELECT
+			  A.CTKEY
+			, A.OWKEY
+			, B.OWNAME
+			, A.ACTYPE
+			, A.ACKEY
+			, A.REGNO
+			, A.ACNAME
+			, A.BUSINESSCATEGORY
+			, A.BUSINESSTYPE
+			, A.ADDRESS1
+			, A.ADDRESS2
+			, A.ZIPCODE
+			, A.CONTACT
+			, A.TEL1
+			, A.TEL2
+			, A.FAX
+			, A.CEO
+			, A.CLOSDATE
+			, A.ACICGRTYPE
+			, C.CTCD_DTNAME AS ACICGRTYPENAME
+			, A.PO_WEEKDAY
+			, D.CTCD_DTNAME AS PO_WEEKDAYNAME
+			, A.CUST_ID
+			, E.CTCD_DTNAME AS CUST_NAME
+			, A.UDF1
+			, A.UDF2
+			, A.UDF3
+		FROM
+		    TWORK_MST_AC A
+		LEFT OUTER JOIN TWORK_MST_OW B
+			ON B.OWKEY = A.OWKEY
+		LEFT OUTER JOIN T_CODE C
+			ON C.CTKEY = A.CTKEY AND C.CTCD_HDKEY = '21' AND C.CTCD_DTKEY = A.ACICGRTYPE
+		LEFT OUTER JOIN T_CODE D
+			ON D.CTKEY = A.CTKEY AND D.CTCD_HDKEY = 'WEEKDAY' AND D.CTCD_DTKEY = A.PO_WEEKDAY
+		LEFT OUTER JOIN T_CODE E
+			ON E.CTKEY = A.CTKEY AND E.CTCD_HDKEY = '21' AND E.CTCD_DTKEY = A.CUST_ID
+		WHERE A.CTKEY = #{ctkey}
+		AND A.OWKEY = #{owkey}
+		AND A.ACKEY = #{ackey}
+	</select>
+
+	<update id="updateAccount">
+		/* wms-master-account-sql-oracle.xml - updateAccount */
+		UPDATE TWORK_MST_AC
+		SET
+			  ACICGRTYPE = #{acicgrtype}
+			, PO_WEEKDAY = #{poWeekday}
+			, CUST_ID = #{custId}
+			, UPDATEDATE = #{sysdate}
+			, UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		AND OWKEY = #{owkey}
+		AND ACKEY = #{ackey}
+	</update>
+	 
+</mapper>	

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wif.rest.common.mapper.WifCommonMapper">
+	<select id="getItemBarcodeExistsYn" resultType="java.lang.String">
+		/* wif-cmm-interface-sql-oracle.xml - getItemBarcodeExistsYn - 체적기 I/F 수신 시 상품바코드 존재여부 조회 SQL */
+		SELECT CASE COUNT(*) WHEN 0 THEN 'N' ELSE 'Y' END AS ITEM_BARCODE_EXISTS
+		  FROM TWORK_MST_ICBARCODE
+		 WHERE CTKEY 	= #{ctKey}
+		   AND OWKEY 	= #{owKey}
+		   AND BARCODE 	= #{icBrcd}
+		   AND USEYN 	= 'Y'
+	</select>
+
+	<select id="getNonExistingItems" resultType="java.lang.String">
+		/* wif-cmm-interface-sql-oracle.xml - getNonExistingItems - 상품코드 미존재 조회 SQL */
+        SELECT REQ_ITEM.ITEM_CODE AS MISSING_ICKEY
+          FROM
+               (
+                <foreach collection="itemCodes" item="itemCode" separator="UNION ALL">
+                    SELECT #{itemCode} AS ITEM_CODE
+                </foreach>
+               ) REQ_ITEM
+          LEFT JOIN TWORK_MST_IC ITEM
+		    ON REQ_ITEM.ITEM_CODE 	= ITEM.ICKEY
+		   AND ITEM.CTKEY 			= #{ctKey}
+		   AND ITEM.OWKEY 			= #{owKey}
+		   AND ITEM.DELYN 			= 'N'
+		 WHERE ITEM.ICKEY IS NULL
+    </select>
+
+	<insert id="insertIfValidContent">
+		/* wif-cmm-interface-sql-oracle.xml - insertIfValidContent - Interface Validation INSERT SQL */
+		<selectKey keyProperty="hisSeq" resultType="string" order="BEFORE">
+			SELECT nextval('seq_twif_cmm_ifvl_his') AS HIS_SEQ
+		</selectKey>
+		INSERT INTO TWIF_CMM_IFVL_HIS
+		(
+			HISSEQ
+			, CTKEY
+			, OWKEY
+			, IFCD
+			, IFID
+			, IFREQDT
+			, VALIDCONT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		)
+		VALUES
+		(
+			#{hisSeq}
+			,#{ctKey}
+			,#{owKey}
+			,#{ifCd}
+			,#{ifId}
+			,#{ifReqDt}
+			,#{validCont}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)
+	</insert>
+
+	<update id="updateInterfaceStatusResult" parameterType="map">
+		/* wif-cmm-interface-sql-oracle.xml - updateInterfaceStatusResult - Interface Status Result UPDATE SQL */
+		UPDATE ${tableName}
+		   SET IFSTATUS		= #{ifStatus}
+			   ,IFERRCD		= #{ifErrCd}
+			   ,IFERRMSG	= SUBSTRING(#{ifErrMsg} FROM 1 FOR 999)
+			   ,IFPRCSDATE	= #{sysdate}
+			   ,UPDATEDATE  = #{sysdate}
+			   ,UPDATEURKEY = #{surkey}
+		 WHERE WASEQ 		= #{waSeq}
+	</update>
+
+	<select id="getInterfaceLogIfId" resultType="camelMap">
+		/*  wif-cmm-interface-interface-sql-oracle.xml - getInterfaceLogIfId - TWIF_CMM_INTERFACE_LOG Sequence 조회 SQL */
+		SELECT nextval('seq_twif_cmm_interface_log') AS IFID
+	</select>
+
+</mapper>

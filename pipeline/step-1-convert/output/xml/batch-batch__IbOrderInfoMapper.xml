@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.order.mapper.IbOrderInfoMapper">
+
+    <select id="selectErpIbOrderHdInfoList" resultType="camelMap">
+		/* IbOrderInfoMapper.xml selectErpIbOrderHdInfoList */
+        SELECT EAI.REQORDERNO -- H/D
+		   	 , EAI.IBEXPCTDAY  AS ORDERISTDAY
+			 , COALESCE(REQ.IBEXPCTDAY, EAI.IBEXPCTDAY) AS DLVYEXPCTDAY
+			 , EAI.FROMCTKEY -- H
+			 , EAI.TOCTKEY -- H
+			 , EAI.ORDERTYPE -- H
+			 --, EAI.SHMISTNO -- H
+			 , EAI.TRN_ID
+		FROM TORDER_EAI_IBORDER_BATCH EAI
+		LEFT OUTER JOIN TORDER_INFO_REQORDER REQ
+		             ON EAI.REQORDERNO = REQ.REQORDERNO
+		WHERE EAI.SND_PROC_TYP IN ('N','E','R') <!-- E : 에러, R : 대기, S : 성공  * 성공된 것 제외하고 다시 조회-->
+		AND EAI.SND_DATE BETWEEN #{startDate} AND #{endDate} 
+		GROUP BY EAI.TRN_ID
+               , EAI.REQORDERNO
+               , EAI.IBEXPCTDAY
+               , EAI.FROMCTKEY
+               , EAI.TOCTKEY
+               , EAI.ORDERTYPE
+               --, EAI.SHMISTNO
+               , REQ.IBEXPCTDAY
+        ORDER BY EAI.REQORDERNO
+    </select>
+    
+    <select id="selectErpIbOrderDtInfoList" resultType="camelMap">
+		/* IbOrderInfoMapper.xml selectErpIbOrderDtInfoList */
+        SELECT EAI.REQORDERNO -- H/D
+        	 , EAI.SHMISTNO
+			 , EAI.ICKEY -- D
+			 , 'EA' AS ISTUNIT -- D
+			 , (EAI.IBEXPCTQTY)::TEXT AS IBEXPCTQTY -- D
+			 , EAI.TRN_ID
+		FROM TORDER_EAI_IBORDER_BATCH EAI
+		WHERE EAI.SND_PROC_TYP IN ('N','E','R')
+		AND EAI.SND_DATE BETWEEN #{startDate} AND #{endDate}
+		ORDER BY EAI.REQORDERNO, EAI.ICKEY
+    </select>
+       
+</mapper>

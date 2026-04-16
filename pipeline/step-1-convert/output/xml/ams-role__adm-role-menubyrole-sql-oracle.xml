@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.role.mapper.MenuByRoleMapper">
+	
+	<resultMap id="selectMenuByRoleMap" type="java.util.HashMap">
+		<result property="isleaf" column="ISLEAF" />
+		<result property="mekey" column="MEKEY" />
+		<result property="mename" column="MENAME" />
+		<result property="leaf" column="LEAF" />
+		<result property="checked" column="CHECKED" javaType="boolean"/>
+		<result property="uprmekey" column="UPRMEKEY" />
+		<result property="eqtype" column="EQTYPE" />
+		<result property="melvl" column="MELVL" />
+	</resultMap>
+
+	<select id="selectApplicationByRoleCount" resultType="java.lang.Integer" >
+		/* adm-role-menubyrole-sql-oracle.xml - selectApplicationByRoleCount */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT DISTINCT RO.ROKEY
+				  FROM TADMIN_MST_RO RO
+				 INNER JOIN TADMIN_MST_ROXAPGT ROXAPGT
+						 ON ROXAPGT.ROKEY = RO.ROKEY
+				 INNER JOIN TADMIN_MST_AP AP
+						 ON AP.APKEY = ROXAPGT.APKEY
+				  LEFT JOIN TADMIN_MST_ROXMEGT ROME
+						 ON ROME.ROKEY = RO.ROKEY
+				  LEFT JOIN TADMIN_MST_ME ME
+						 ON ME.MEKEY = ROME.MEKEY
+				 WHERE 1 = 1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				AND (ME.MEKEY IS NULL OR ME.EQTYPE = #{eqtype})
+			)
+	</select>
+
+	<select id="selectApplicationByRole" resultType="camelMap" >
+		/* adm-role-menubyrole-sql-oracle.xml - selectApplicationByRole */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		SELECT DISTINCT ROXAPGT.ROKEY AS ROKEY
+			 , RO.RONM AS RONM
+			 , ROXAPGT.APKEY AS APKEY
+			 , AP.APNM AS APNM
+			 , RO.INSERTDATE AS INSERTDATE
+			 , RO.UPDATEDATE AS UPDATEDATE
+			 , RO.INSERTURKEY AS INSERTURKEY
+			 , RO.UPDATEURKEY AS UPDATEURKEY
+		  FROM TADMIN_MST_RO RO
+		 INNER JOIN TADMIN_MST_ROXAPGT ROXAPGT
+				 ON ROXAPGT.ROKEY = RO.ROKEY
+		 INNER JOIN TADMIN_MST_AP AP
+				 ON AP.APKEY = ROXAPGT.APKEY
+		  LEFT JOIN TADMIN_MST_ROXMEGT ROME
+				 ON ROME.ROKEY = RO.ROKEY
+		  LEFT JOIN TADMIN_MST_ME ME
+				 ON ME.MEKEY = ROME.MEKEY
+		 WHERE 1 = 1
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				AND #{SEARCH_CONDITION}
+			</if>
+			AND (ME.MEKEY IS NULL OR ME.EQTYPE = #{eqtype})
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectMenuByRoleNexa" resultMap="selectMenuByRoleMap">
+		/* adm-role-menubyrole-sql-oracle.xml - selectMenuByRoleNexa */
+        SELECT MEKEY
+             , COALESCE(MENAME, MEKEY)AS MENAME
+             , ISLEAF
+             , UPRMEKEY
+             , LEAF
+             , CHECKED
+             , EQTYPE
+             , MELVL
+          FROM (
+                SELECT A.MEKEY
+                      ,(SELECT D.DISPLAYMSG
+                          FROM TADMIN_MST_MULAAPMSG_HD C
+                          INNER JOIN TADMIN_MST_MULAAPMSG_DT D
+                          		  ON C.MULAAPMSGHDKEY = D.MULAAPMSGHDKEY
+                         WHERE C.CLOSDATE >= #{sysdate}
+                           AND D.MSGTYPE = 'MENU'
+                           AND D.LAKEY = #{lakey}
+                           AND C.MULAAPMSGHDKEY = A.MENM
+                        ) AS MENAME
+                      ,A.ISLEAF
+                      ,A.UPRMEKEY
+                      ,CASE A.ISLEAF WHEN 'Y' THEN 'true' ELSE 'false' END AS LEAF
+                      ,(SELECT COUNT ( * )
+                          FROM TADMIN_MST_ROXMEGT
+                         WHERE MEKEY = A.MEKEY
+                           AND ROKEY = #{rokey}) AS CHECKED
+                      ,A.EQTYPE
+                      ,A.MELVL
+                 FROM (
+                        WITH RECURSIVE deleted_tree AS (
+                            SELECT A.MEKEY, A.MENM, A.ISLEAF, A.UPRMEKEY, A.EQTYPE, A.USEYN, A.APKEY, A.USKEY, A.MEORDER
+                            FROM TADMIN_MST_ME A
+                            WHERE A.DELYN = 'Y'
+                              AND A.APKEY = #{apkey}
+                                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqtype)" >
+                                    AND A.EQTYPE = #{eqtype}
+                                </if>
+                            UNION ALL
+                            SELECT m.MEKEY, m.MENM, m.ISLEAF, m.UPRMEKEY, m.EQTYPE, m.USEYN, m.APKEY, m.USKEY, m.MEORDER
+                            FROM TADMIN_MST_ME m
+                            INNER JOIN deleted_tree d ON m.UPRMEKEY = d.MEKEY
+                            WHERE m.APKEY = #{apkey}
+                                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqtype)" >
+                                    AND m.EQTYPE = #{eqtype}
+                                </if>
+                        ),
+                        active_menu AS (
+                            SELECT A.MEKEY, A.MENM, A.ISLEAF, A.UPRMEKEY, A.EQTYPE, A.USEYN, A.APKEY, A.USKEY, A.MEORDER
+                            FROM TADMIN_MST_ME A
+                            WHERE 1=1
+                              AND A.APKEY = #{apkey}
+                                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(eqtype)" >
+                                    AND A.EQTYPE = #{eqtype}
+                                </if>
+                            EXCEPT
+                            SELECT MEKEY, MENM, ISLEAF, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MEORDER
+                            FROM deleted_tree
+                        ),
+                        menu_hier AS (
+                            SELECT MEKEY, MENM, ISLEAF, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MEORDER,
+                                   0 AS MELVL,
+                                   ARRAY[MEORDER::TEXT, MEKEY] AS sort_path
+                            FROM active_menu
+                            WHERE UPRMEKEY = '0'
+                            UNION ALL
+                            SELECT am.MEKEY, am.MENM, am.ISLEAF, am.UPRMEKEY, am.EQTYPE, am.USEYN, am.APKEY, am.USKEY, am.MEORDER,
+                                   mh.MELVL + 1,
+                                   mh.sort_path || am.MEORDER::TEXT || am.MEKEY
+                            FROM active_menu am
+                            INNER JOIN menu_hier mh ON am.UPRMEKEY = mh.MEKEY
+                        )
+                        SELECT MEKEY, MENM, ISLEAF, UPRMEKEY, EQTYPE, USEYN, APKEY, USKEY, MELVL, sort_path
+                        FROM menu_hier
+                        ORDER BY sort_path
+                      ) A
+                INNER JOIN TADMIN_MST_URSCR B
+                 		ON A.USKEY = B.USKEY
+					   AND A.APKEY = B.APKEY
+                WHERE A.APKEY = #{apkey}
+                  AND A.MELVL >= 0
+             )
+	</select>
+	
+	<select id="selectTAdminMstRoxmegt" resultType="camelMap" >
+		/* adm-role-menubyrole-sql-oracle.xml - selectTAdminMstRoxmegt */
+		SELECT ROKEY
+		       ,MEKEY
+		  FROM TADMIN_MST_ROXMEGT
+		 WHERE ROKEY = #{rokey}
+	</select>
+	
+	<insert id="insertTAdminMstRoxmegt">
+		/* adm-role-menubyrole-sql-oracle.xml - insertTAdminMstRoxmegt */
+		INSERT INTO TADMIN_MST_ROXMEGT (
+			 ROKEY
+			 ,MEKEY
+			 ,EQTYPE
+			 ,INSERTURKEY
+			 ,INSERTDATE
+			 ,UPDATEURKEY
+			 ,UPDATEDATE
+		) VALUES ( 
+			 #{rokey}
+			 ,#{mekey}
+			 ,#{eqtype}
+			 ,#{surkey}
+			 ,#{sysdate}
+			 ,#{surkey}
+			 ,#{sysdate}
+		)	
+	</insert>
+	
+	<delete id="deleteTAdminMstRoxmegt">
+		/* adm-role-menubyrole-sql-oracle.xml - deleteTAdminMstRoxmegt */
+		DELETE 
+		  FROM TADMIN_MST_ROXMEGT
+		 <where>
+		 	<choose>
+				<when test="apkey != null">
+					ROKEY = #{rokey}
+		   			AND MEKEY IN (SELECT MEKEY FROM TADMIN_MST_ME WHERE APKEY = #{apkey})
+				</when>
+				<otherwise>
+					ROKEY = #{rokey}
+					AND MEKEY = #{mekey}
+				</otherwise>
+			</choose>
+		 </where>
+	</delete>
+	
+</mapper>	

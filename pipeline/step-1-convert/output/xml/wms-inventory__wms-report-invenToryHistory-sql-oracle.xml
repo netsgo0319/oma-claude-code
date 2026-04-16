@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.inventory.mapper.InvenToryHistoryMapper">
+
+	<resultMap id="selectInvenToryHistoryRefMap" type="java.util.HashMap">
+		<result property="owname" 				column="OWNAME" />
+		<result property="owkey" 			    column="OWKEY" />
+		<result property="icname" 				column="ICNAME" />
+		<result property="ickey" 				column="ICKEY" />
+		<result property="ibconfirmdate" 		column="IBCONFIRMDATE" />
+		<result property="bl_no" 			    column="BL_NO"/>
+		<result property="lot_no" 			    column="LOT_NO" />
+		<result property="expiredate" 			column="EXPIREDATE" />
+		<result property="productdate" 			column="PRODUCTDATE" />
+		<result property="uom" 				    column="UOM" />
+		<result property="spec" 				column="SPEC" />
+		<result property="wms_ttqty" 	        column="WMS_TTQTY" />
+		<result property="ibs_ttqty" 			column="IBS_TTQTY" />
+		<result property="nwill_qty"			column="NWILL_QTY" />
+		<result property="ok_gb"			    column="OK_GB" />
+		<result property="ivatkey"		        column="IVATKEY" />
+		<result property="insertdate"		    column="INSERTDATE" />
+		<result property="updatedate"		    column="UPDATEDATE" />
+		<result property="wms_avqty"		    column="WMS_AVQTY" />
+		<result property="wms_res_qty"		    column="WMS_RES_QTY" />
+    </resultMap>
+		
+	
+	<resultMap id="selectInvenToryHistoryExcelMap" type="java.util.HashMap" extends="selectInvenToryHistoryRefMap" >
+		<result property="productdate" column="PRODUCTDATE" typeHandler="GmtDateTimeFormatTypeHandler"/>
+		<result property="expiredate" column="EXPIREDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="ibconfirmdate" column="IBCONFIRMDATE" typeHandler="GmtDateFormatTypeHandler"/>
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+	</resultMap> 	
+	
+	<sql id="selectInvenToryHistoryRefSql"> 	
+		SELECT *
+		  FROM (
+		SELECT A.OWNAME , A.OWKEY , A.ICNAME , A.ICKEY ,A.IVATKEY , SUM(A.TTQTY) WMS_TTQTY , SUM(A.AVQTY) WMS_AVQTY ,SUM(E.RESQTY) WMS_RES_QTY , SUM(ST_QTY) NWILL_QTY , 
+		       A.IBCONFIRMDATE , A.BL_NO , A.LOT_NO, A.EXPIREDATE, A.PRODUCTDATE, A.UOM, A.SPEC , 
+		       CASE WHEN SUM(A.TTQTY) = SUM(ST_QTY) THEN 'Y' ELSE 'N' END AS OK_GB       
+		  FROM (SELECT AR.CTKEY , AR.OWKEY , AR.OWNAME , AR.ICKEY ,AR.ICNAME , AR.IVATKEY , SUM(TTQTY) TTQTY , SUM(AVQTY) AVQTY , AR.IBCONFIRMDATE , AR.BL_NO , AR.LOT_NO, AR.EXPIREDATE, 
+		               AR.PRODUCTDATE, AR.UOM, AR.SPEC
+		          FROM WMS.VW_IVATXLCXULC_AR AR 
+		         GROUP BY AR.CTKEY , AR.OWKEY , AR.OWNAME , AR.ICKEY ,AR.ICNAME , AR.IVATKEY, AR.IBCONFIRMDATE , AR.BL_NO , AR.LOT_NO, AR.EXPIREDATE, 
+		               AR.PRODUCTDATE, AR.UOM, AR.SPEC ) A, 
+		       (SELECT OWKEY  , ICKEY , MST_KEY , SUM(ST_QTY) ST_QTY
+		          FROM SCM_IFS.VW_INTF_STOCK 
+		         GROUP BY OWKEY  , ICKEY , MST_KEY
+		         )C  ,
+		       (SELECT A.CTKEY , A.OWKEY ,A.ICKEY , A.IVATKEY , (A.BASE_STOCK + A.IN_QTY - A.OUT_QTY) RESQTY, (COALESCE(B.WEIGHT, 0)  / 1000) WEIGHT , 
+		        COALESCE((CASE WHEN C.CFQTY = 0  AND C.NET_WGT = 0  THEN  0 
+		                  WHEN C.CFQTY != 0 AND C.NET_WGT = 0  THEN  0
+		                  WHEN C.CFQTY = 0  AND C.NET_WGT != 0 THEN  0 
+		                                                       ELSE ( C.NET_WGT  / C.CFQTY) END ), 0) AV_WGT                                                   
+		           FROM TWORK_INFO_DAILY_LIST A , TADMIN_MST_IC B , TWORK_INFO_IVAT C
+		          WHERE (A.BASE_STOCK > 0 OR A.IN_QTY > 0 OR A.OUT_QTY > 0)
+		            AND A.OWKEY = B.OWKEY 
+		            AND A.ICKEY = B.ICKEY 
+		            AND A.CTKEY = C.CTKEY
+		            AND A.IVATKEY = C.IVATKEY
+		            AND A.TO_DAY = TO_CHAR(CURRENT_TIMESTAMP , 'YYYYMMDD')  ) E
+		 WHERE A.CTKEY = '100'
+		   AND A.CTKEY = E.CTKEY
+		   AND A.OWKEY = E.OWKEY
+		   AND A.ICKEY = E.ICKEY
+		   AND A.IVATKEY = E.IVATKEY 
+		   AND A.OWKEY = TRIM(C.OWKEY)
+		   AND A.ICKEY = TRIM(C.ICKEY)
+		   AND A.IVATKEY = TRIM(C.MST_KEY) 
+		 GROUP BY A.OWNAME , A.OWKEY , A.ICNAME , A.ICKEY, A.IVATKEY ,A.IBCONFIRMDATE , A.BL_NO , A.LOT_NO, A.EXPIREDATE, A.PRODUCTDATE, A.UOM, A.SPEC  
+		 ORDER BY A.OWNAME , A.ICKEY , A.IVATKEY ) AA 
+		 WHERE AA.WMS_TTQTY  =  AA.NWILL_QTY
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+	        AND #{SEARCH_CONDITION}
+			</if>
+	</sql>
+	
+	<select id="selectInvenToryHistory" resultMap="selectInvenToryHistoryRefMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			<include refid="selectInvenToryHistoryRefSql"/>
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectInvenToryHistoryCount" resultType="java.lang.Integer" >
+       SELECT  COUNT(1)
+          FROM    (
+            <include refid="selectInvenToryHistoryRefSql"/>
+        ) 
+	</select>
+	
+		<select id="selectInvenToryHistorySum" resultMap="selectInvenToryHistoryRefMap">
+		SELECT SUM(WMS_TTQTY) AS WMS_TTQTY, SUM(NWILL_QTY) AS NWILL_QTY
+		  FROM (
+		  	<include refid="selectInvenToryHistoryRefSql"/>	
+		  ) 
+	</select>
+	
+</mapper>

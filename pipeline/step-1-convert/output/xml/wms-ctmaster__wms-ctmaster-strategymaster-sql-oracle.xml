@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.StrategyMasterMapper">
+	
+	<select id="selectStrategyMaster" resultType="camelMap">
+	/* wms-ctmaster-strategymaster-sql-oracle.xml - selectStrategyMaster - 전략 마스터 조회  SQL */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT	'0' AS CHK
+  				    ,STGKEY
+				 	,STGDESC
+				   	,STGTYPE
+				   	,#{ctkey} || ';' || 'STGTYPE' || ';' || STGTYPE AS STGTYPE_DESC 
+				   	,SYSTYPE
+				   	,#{ctkey} || ';' || 'STGSYSTYPE' || ';' || SYSTYPE AS SYSTYPE_DESC 
+				   	,DFVAL
+				   	,RMK
+				   	,JAVABEANID
+			  		,USEYN
+			  		,#{ctkey} || ';' || 'YESORNO' || ';' || USEYN AS USEYN_DESC
+				  	,INSERTDATE
+				  	,INSERTURKEY
+			  		,UPDATEDATE
+			  		,UPDATEURKEY						  					  
+			  FROM	TWORK_MST_STG
+			 <where>
+			 	<if test="stgkey != null"> 
+			 		AND STGKEY = #{stgkey}
+			 	</if>							 
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+			</where>
+			<choose>
+				<when test='sortValue != null and sortValue != ""'>
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectStrategyMasterCount" resultType="java.lang.Integer" >
+	/* wms-ctmaster-strategymaster-sql-oracle.xml - selectStrategyMasterCount - 전략 마스터 건수 조회  SQL */
+		SELECT	COUNT(1)  
+		  FROM	TWORK_MST_STG 
+		 <where>
+		 	<if test="stgkey != null"> 
+		 		STGKEY = #{stgkey}
+		 	</if>							 
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			    #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</select>
+
+	<insert id="insertTWorkMstStg" >	
+	/* wms-ctmaster-strategymaster-sql-oracle.xml - insertTWorkMstStg - 전략 마스터 등록  SQL */
+		INSERT INTO TWORK_MST_STG
+				(
+			    	STGKEY
+			       ,STGDESC
+			       ,STGTYPE
+			       ,SYSTYPE
+			       ,DFVAL
+			       ,RMK
+			       ,JAVABEANID
+			       ,USEYN
+			       ,INSERTDATE
+			       ,INSERTURKEY
+			       ,UPDATEDATE
+			       ,UPDATEURKEY			      	
+			    ) 
+			    VALUES 
+			    (
+					#{stgkey}
+					,#{stgdesc}
+					,#{stgtype}
+					,#{systype}
+					,#{dfval}
+					,#{rmk}
+					,#{javabeanid}
+					,#{useyn}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+				)			
+	</insert>
+
+ 	<update id="updateTWorkMstStg">
+ 	/* wms-ctmaster-strategymaster-sql-oracle.xml - updateTWorkMstStg - 전략 마스터 수정  SQL */
+ 		UPDATE	TWORK_MST_STG
+ 		   SET	UPDATEDATE  		= #{sysdate}
+		        ,UPDATEURKEY 		= #{surkey}
+			    ,STGDESC    		= #{stgdesc}
+		        ,STGTYPE    		= #{stgtype}
+		        ,SYSTYPE        	= #{systype}
+		        ,DFVAL 				= #{dfval}
+		        ,RMK 				= #{rmk}
+		        ,JAVABEANID 		= #{javabeanid}
+		        ,USEYN 				= #{useyn}
+		 WHERE	STGKEY 				= #{stgkey}
+ 	</update>	
+
+ 	<delete id="deleteTWorkMstStg">
+ 	/* wms-ctmaster-strategymaster-sql-oracle.xml - deleteTWorkMstStg - 전략 마스터 삭제  SQL */	
+			DELETE 
+			 FROM	TWORK_MST_STG
+			WHERE	STGKEY = #{stgkey}	
+	</delete>
+
+</mapper>

@@ -1,0 +1,625 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.ctmaster.mapper.IcGradeMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<delete id="deleteTworkInfoIcGrade">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - deleteTworkInfoIcGrade */
+		DELETE
+		  FROM TWORK_INFO_IC_GRADE
+		 WHERE CTKEY = #{ctkey}
+	</delete>
+
+	<insert id="insertTworkInfoIcGrade">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - insertTworkInfoIcGrade */
+		INSERT INTO TWORK_INFO_IC_GRADE (
+			   CTKEY
+			 , OWKEY
+			 , ICKEY
+			 , CRITDAY
+			 , FROBDAY
+			 , TOOBDAY
+			 , OBQTY
+			 , CTNOBQTY
+			 , PLTOBQTY
+			 , OBCBM
+			 , AVGOBQTY
+			 , AVGCTNOBQTY
+			 , AVGPLTOBQTY
+			 , AVGOBCBM
+			 , CNVRTOBQTY
+			 , CNVRTCTNOBQTY
+			 , CNVRTPLTOBQTY
+			 , CNVRTOBCBM
+			 , DSBTGRADECD
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		SELECT A.CTKEY
+			 , A.OWKEY
+			 , A.ICKEY
+			 , SUBSTR(#{sysdate}, 0, 8)
+			 , #{obcnfrmfrdate}
+			 , #{obcnfrmtodate}
+			 , A.OBQTY
+			 , A.OBQTY / CTN.ICUNITQTY AS CTNOBQTY
+			 , CASE WHEN PLT.ICUNITQTY IS NOT NULL THEN A.OBQTY / PLT.ICUNITQTY
+					WHEN CTN.CPPQTY IS NOT NULL THEN A.OBQTY / CTN.ICUNITQTY / (CASE WHEN CTN.CPPQTY = 0 THEN 1 ELSE CTN.CPPQTY END)
+					ELSE 0 END AS PLTOBQTY
+			 , A.OBQTY * EA.VOL AS OBCBM
+			 , A.AVGOBQTY
+			 , A.AVGOBQTY / CTN.ICUNITQTY AS AVGCTNOBQTY
+			 , CASE WHEN PLT.ICUNITQTY IS NOT NULL THEN A.AVGOBQTY / PLT.ICUNITQTY
+					WHEN CTN.CPPQTY IS NOT NULL THEN A.AVGOBQTY / CTN.ICUNITQTY / (CASE WHEN CTN.CPPQTY = 0 THEN 1 ELSE CTN.CPPQTY END)
+					ELSE 0 END AS AVGPLTOBQTY
+			 , A.AVGOBQTY * EA.VOL AS AVGOBCBM
+			 , A.AVGOBQTY * GH.IVAVDAYS AS CNVRTOBQTY
+			 , (A.AVGOBQTY / CTN.ICUNITQTY) * GH.IVAVDAYS AS CNVRTCTNOBQTY
+			 , (CASE WHEN PLT.ICUNITQTY IS NOT NULL THEN A.AVGOBQTY / PLT.ICUNITQTY
+					WHEN CTN.CPPQTY IS NOT NULL THEN A.AVGOBQTY / CTN.ICUNITQTY / (CASE WHEN CTN.CPPQTY = 0 THEN 1 ELSE CTN.CPPQTY END)
+					ELSE 0 END) * GH.IVAVDAYS AS CNVRTPLTOBQTY
+			 , (A.AVGOBQTY * EA.VOL) * GH.IVAVDAYS AS CNVRTOBCBM
+			 , A.DSBTGRADECD
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		  FROM (
+			   SELECT A.CTKEY
+					, A.OWKEY
+					, A.ICKEY
+					, A.ICUNITKEY
+					, A.UOM
+					, A.DSBTGRADECD
+					, SUM(A.CNFRMQTY) AS OBQTY
+					, AVG(A.CNFRMQTY) AS AVGOBQTY
+				 FROM (
+					  SELECT OD.CTKEY
+						   , OD.OWKEY
+						   , OD.ICKEY
+						   , OD.ICUNITKEY
+						   , OD.UOM
+						   , SUM(OD.CNFRMQTY) AS CNFRMQTY	-- 확정수량으로 변경
+						   , IC.DSBTGRADECD
+						FROM TWORK_INFO_OB_DT OD
+-- 						FROM TWORK_INFO_OB_HD OH
+-- 					   INNER JOIN TWORK_INFO_OB_DT OD
+-- 						  ON OD.CTKEY = OH.CTKEY
+-- 						 AND OD.OWKEY = OH.OWKEY
+-- 						 AND OD.OBHDKEY = OH.OBHDKEY
+					   INNER JOIN TWORK_MST_CT CT
+						  ON CT.CTKEY = OD.CTKEY
+					   INNER JOIN TWORK_MST_OW OW
+						  ON OW.OWKEY = OD.OWKEY
+					   INNER JOIN TWORK_MST_IC IC
+						  ON IC.CTKEY = OD.CTKEY
+						 AND IC.OWKEY = OD.OWKEY
+						 AND IC.ICKEY = OD.ICKEY
+					   WHERE OD.CTKEY = #{ctkey}
+						 AND OD.OBCNFRMDATE BETWEEN #{obcnfrmfrdate} AND #{obcnfrmtodate}
+					   GROUP BY
+						     OD.CTKEY
+						   , OD.OWKEY
+						   , OD.ICKEY
+						   , OD.ICUNITKEY
+						   , OD.UOM
+						   , IC.DSBTGRADECD
+						   , SUBSTR(OD.OBCNFRMDATE, 0, 8)
+						   ) A
+				GROUP BY
+					  A.CTKEY
+					, A.OWKEY
+					, A.ICKEY
+					, A.ICUNITKEY
+					, A.UOM
+					, A.DSBTGRADECD
+			 ) A
+		 INNER JOIN TWORK_MST_GRADE_HD GH
+			ON GH.CTKEY = A.CTKEY
+		  LEFT JOIN TWORK_MST_ICUTXTYPE EA
+			ON EA.CTKEY = A.CTKEY
+		   AND EA.OWKEY = A.OWKEY
+		   AND EA.ICKEY = A.ICKEY
+		   AND EA.ICUNITKEY = A.ICUNITKEY
+		   AND EA.ICUNITTYPECD = A.UOM
+		   AND EA.ICUNITTYPECD = 'EA'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE CTN
+			ON CTN.CTKEY = A.CTKEY
+		   AND CTN.OWKEY = A.OWKEY
+		   AND CTN.ICKEY = A.ICKEY
+		   AND CTN.ICUNITKEY = A.ICUNITKEY
+		   AND CTN.ICUNITTYPECD = 'CTN'
+		  LEFT JOIN TWORK_MST_ICUTXTYPE PLT
+			ON PLT.CTKEY = A.CTKEY
+		   AND PLT.OWKEY = A.OWKEY
+		   AND PLT.ICKEY = A.ICKEY
+		   AND PLT.ICUNITKEY = A.ICUNITKEY
+		   AND PLT.ICUNITTYPECD = 'PLT'
+	</insert>
+
+	<sql id="sql_selectTworkInfoIcGrade">
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IC.OWKEY
+		  LEFT JOIN TWORK_INFO_IC_GRADE GRADE
+			ON GRADE.CTKEY = IC.CTKEY
+		   AND GRADE.OWKEY = IC.OWKEY
+		   AND GRADE.ICKEY = IC.ICKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_ZN ZN
+		 	ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE EA
+			ON EA.CTKEY = IC.CTKEY
+		   AND EA.OWKEY = IC.OWKEY
+		   AND EA.ICKEY = IC.ICKEY
+		   AND EA.UOM = 'EA'
+		  LEFT JOIN TWORK_MST_ICBARCODE INN
+			ON INN.CTKEY = IC.CTKEY
+		   AND INN.OWKEY = IC.OWKEY
+		   AND INN.ICKEY = IC.ICKEY
+		   AND INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE CTN
+			ON CTN.CTKEY = IC.CTKEY
+		   AND CTN.OWKEY = IC.OWKEY
+		   AND CTN.ICKEY = IC.ICKEY
+		   AND CTN.UOM = 'CTN'
+
+		<where>
+			AND IC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrtfrqty)">
+				AND GRADE.CNVRTOBQTY <![CDATA[ >= ]]> #{cnvrtfrqty}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrttoqty)">
+				AND GRADE.CNVRTOBQTY <![CDATA[ <= ]]> #{cnvrttoqty}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrtfrcbm)">
+				AND GRADE.CNVRTOBCBM <![CDATA[ >= ]]> #{cnvrtfrcbm}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrttocbm)">
+				AND GRADE.CNVRTOBCBM <![CDATA[ <= ]]> #{cnvrttocbm}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(gradeyn)">
+				AND GRADE.ICKEY IS NOT NULL
+				<choose>
+					<when test='"Y".equals(gradeyn)'>
+						AND COALESCE(GRADE.DSBTGRADECD, 'NULL') != COALESCE(IC.DSBTGRADECD, 'NULL')
+					</when>
+					<when test='"N".equals(gradeyn)'>
+						AND COALESCE(GRADE.DSBTGRADECD, 'NULL') = COALESCE(IC.DSBTGRADECD, 'NULL')
+					</when>
+					<otherwise>
+						AND 1 = 2
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectTworkInfoIcGradeCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectTworkInfoIcGradeCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectTworkInfoIcGrade"/>
+	</select>
+
+	<select id="selectTworkInfoIcGradeList" resultType="camelMap">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectTworkInfoIcGradeList */
+		<include refid="sql_pagingTop"/>
+
+		SELECT '0' AS CHK
+			 , IC.CTKEY
+			 , CT.CTNM
+			 , IC.OWKEY
+			 , OW.OWNM
+			 , IC.ICKEY
+			 , IC.ICNM
+			 , IC.ICTYPECD
+		     , GRADE.ICKEY AS GR_ICKEY
+			 , GRADE.CRITDAY
+			 , GRADE.FROBDAY
+			 , GRADE.TOOBDAY
+			 , GRADE.OBQTY
+			 , GRADE.CTNOBQTY
+			 , GRADE.PLTOBQTY
+			 , GRADE.OBCBM
+			 , GRADE.AVGOBQTY
+			 , GRADE.AVGCTNOBQTY
+			 , GRADE.AVGPLTOBQTY
+			 , GRADE.AVGOBCBM
+			 , GRADE.CNVRTOBQTY
+			 , GRADE.CNVRTCTNOBQTY
+			 , GRADE.CNVRTPLTOBQTY
+			 , GRADE.CNVRTOBCBM
+			 , IC.LCKEY
+			 , LC.LCSTORGTYPECD
+			 , IC.DSBTGRADECD
+			 , GRADE.CMT
+			 , LC.ZNKEY AS LCZONE
+			 , EA.BARCODE AS EABARCODE
+			 , INN.BARCODE AS INNBARCODE
+			 , CTN.BARCODE AS CTNBARCODE
+		<include refid="sql_selectTworkInfoIcGrade"/>
+		ORDER BY
+			  IC.CTKEY
+			, IC.OWKEY
+			, IC.ICKEY
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectTworkInfoIcGradeExcelList" resultType="camelMap">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectTworkInfoIcGradeExcelList */
+		  WITH T_CODE AS (
+			SELECT
+			      B.CTKEY
+			    , B.CTCDHDKEY
+				, B.CTCDDTKEY
+				, B.CTCDDTNM
+			FROM TWORK_MST_CTCD_HD A
+			INNER JOIN TWORK_MST_CTCD_DT B
+				ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+			<where>
+				AND A.DELYN = 'N'
+				AND B.DELYN = 'N'
+
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+						AND B.LAKEY = #{lakey}
+				</if>
+
+				AND A.CTCDHDKEY IN ('LCSTORGTYPECD', 'CTDSBTGRADECD')
+			</where>
+		)
+		SELECT IC.CTKEY
+			 , CT.CTNM
+			 , IC.OWKEY
+			 , OW.OWNM
+			 , IC.ICKEY
+			 , IC.ICNM
+		     , GRADE.ICKEY AS GR_ICKEY
+			 , GRADE.CRITDAY
+			 , GRADE.FROBDAY
+			 , GRADE.TOOBDAY
+			 , COALESCE(GRADE.OBQTY, 0) AS OBQTY
+			 , COALESCE(GRADE.CTNOBQTY, 0) AS CTNOBQTY
+			 , COALESCE(GRADE.PLTOBQTY, 0) AS PLTOBQTY
+			 , COALESCE(GRADE.OBCBM, 0) AS OBCBM
+			 , COALESCE(GRADE.AVGOBQTY, 0) AS AVGOBQTY
+			 , COALESCE(GRADE.AVGCTNOBQTY, 0) AS AVGCTNOBQTY
+			 , COALESCE(GRADE.AVGPLTOBQTY, 0) AS AVGPLTOBQTY
+			 , COALESCE(GRADE.AVGOBCBM, 0) AS AVGOBCBM
+			 , COALESCE(GRADE.CNVRTOBQTY, 0) AS CNVRTOBQTY
+			 , COALESCE(GRADE.CNVRTCTNOBQTY, 0) AS CNVRTCTNOBQTY
+			 , COALESCE(GRADE.CNVRTPLTOBQTY, 0) AS CNVRTPLTOBQTY
+			 , COALESCE(GRADE.CNVRTOBCBM, 0) AS CNVRTOBCBM
+			 , IC.LCKEY
+			 , CD1.CTCDDTNM AS LCSTORGTYPECD
+			 , CD2.CTCDDTNM AS DSBTGRADECD
+			 , GRADE.CMT
+			 , LC.ZNKEY AS LCZONE
+			 , EA.BARCODE AS EABARCODE
+			 , INN.BARCODE AS INNBARCODE
+			 , CTN.BARCODE AS CTNBARCODE
+		  FROM TWORK_MST_IC IC
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = IC.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON OW.OWKEY = IC.OWKEY
+		  LEFT JOIN TWORK_INFO_IC_GRADE GRADE
+			ON GRADE.CTKEY = IC.CTKEY
+		   AND GRADE.OWKEY = IC.OWKEY
+		   AND GRADE.ICKEY = IC.ICKEY
+		  LEFT JOIN TWORK_MST_LC LC
+			ON LC.CTKEY = IC.CTKEY
+		   AND LC.LCKEY = IC.LCKEY
+		  LEFT JOIN TWORK_MST_ZN ZN
+		 	ON ZN.CTKEY = LC.CTKEY
+		   AND ZN.ZNKEY = LC.ZNKEY
+		  LEFT JOIN TWORK_MST_ICBARCODE EA
+			ON EA.CTKEY = IC.CTKEY
+		   AND EA.OWKEY = IC.OWKEY
+		   AND EA.ICKEY = IC.ICKEY
+		   AND EA.UOM = 'EA'
+		  LEFT JOIN TWORK_MST_ICBARCODE INN
+			ON INN.CTKEY = IC.CTKEY
+		   AND INN.OWKEY = IC.OWKEY
+		   AND INN.ICKEY = IC.ICKEY
+		   AND INN.UOM = 'INN'
+		  LEFT JOIN TWORK_MST_ICBARCODE CTN
+			ON CTN.CTKEY = IC.CTKEY
+		   AND CTN.OWKEY = IC.OWKEY
+		   AND CTN.ICKEY = IC.ICKEY
+		   AND CTN.UOM = 'CTN'
+		  LEFT JOIN T_CODE CD1
+			ON CD1.CTKEY = IC.CTKEY
+		   AND CD1.CTCDHDKEY = 'LCSTORGTYPECD'
+		   AND CD1.CTCDDTKEY = LC.LCSTORGTYPECD
+		  LEFT JOIN T_CODE CD2
+			ON CD2.CTKEY = IC.CTKEY
+		   AND CD2.CTCDHDKEY = 'CTDSBTGRADECD'
+		   AND CD2.CTCDDTKEY = IC.DSBTGRADECD
+
+		<where>
+			AND IC.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrtfrqty)">
+				AND GRADE.CNVRTOBQTY <![CDATA[ >= ]]> #{cnvrtfrqty}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrttoqty)">
+				AND GRADE.CNVRTOBQTY <![CDATA[ <= ]]> #{cnvrttoqty}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrtfrcbm)">
+				AND GRADE.CNVRTOBCBM <![CDATA[ >= ]]> #{cnvrtfrcbm}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(cnvrttocbm)">
+				AND GRADE.CNVRTOBCBM <![CDATA[ <= ]]> #{cnvrttocbm}
+			</if>
+
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(gradeyn)">
+				AND GRADE.ICKEY IS NOT NULL
+				<choose>
+					<when test='"Y".equals(gradeyn)'>
+						AND COALESCE(GRADE.DSBTGRADECD, 'NULL') != COALESCE(IC.DSBTGRADECD, 'NULL')
+					</when>
+					<when test='"N".equals(gradeyn)'>
+						AND COALESCE(GRADE.DSBTGRADECD, 'NULL') = COALESCE(IC.DSBTGRADECD, 'NULL')
+					</when>
+					<otherwise>
+						AND 1 = 2
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+
+		ORDER BY
+			  IC.CTKEY
+			, IC.OWKEY
+			, IC.ICKEY
+	</select>
+
+	<update id="updateIcDsbtgradecd">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - updateIcDsbtgradecd */
+		UPDATE TWORK_MST_IC
+		   SET DSBTGRADECD = #{newDsbtgradecd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectDayAvgObQtyInfoMap" resultType="camelMap">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectDayAvgObQtyInfoMap */
+		SELECT T1.CTKEY				/* 센터코드 */
+		     , CT.CTNM
+             , T1.AVDAYS            /* 가용일수 */
+			 , T1.CRITDAYS			/* 기준일수 */
+			 , T1.OBQTYCALCRITCD	/* 출고량산정기준코드 */
+			 , T1.INSERTDATE
+			 , T1.INSERTURKEY
+			 , T1.UPDATEDATE
+			 , T1.UPDATEURKEY
+		  FROM TWORK_MST_DAY_AVG_OBQTY T1
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = T1.CTKEY
+		 WHERE T1.CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectDayAvgObQtyDupCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectDayAvgObQtyDupCheckCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_DAY_AVG_OBQTY
+		 WHERE CTKEY = #{ctkey}
+	</select>
+
+	<insert id="insertTworkMstDayAvgObqty">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - insertTworkMstDayAvgObqty */
+		INSERT INTO TWORK_MST_DAY_AVG_OBQTY (
+			   CTKEY				/* 센터코드 */
+             , AVDAYS               /* 가용일수 */
+			 , CRITDAYS				/* 기준일수 */
+			 , OBQTYCALCRITCD		/* 출고량산정기준코드 */
+			 , INSERTDATE			/* 입력일자 */
+			 , INSERTURKEY			/* 입력사용자 */
+			 , UPDATEDATE			/* 수정일자 */
+			 , UPDATEURKEY			/* 수정사용자 */
+			 )
+		VALUES (
+		       #{ctkey}
+             , #{avdays}
+             , #{critdays}
+             , #{obqtycalcritcd}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateTworkMstDayAvgObqty">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - updateTworkMstDayAvgObqty */
+		UPDATE TWORK_MST_DAY_AVG_OBQTY
+		   SET AVDAYS = #{avdays}
+             , CRITDAYS = #{critdays}
+		     , OBQTYCALCRITCD = #{obqtycalcritcd}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+	</update>
+
+	<select id="selectIcGradeMstMap" resultType="camelMap">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectIcGradeMstMap */
+		SELECT GH.CTKEY
+		     , CT.CTNM
+			 , GH.IVAVDAYS
+			 , GH.CMT
+			 , GH.INSERTDATE
+			 , GH.INSERTURKEY
+			 , GH.UPDATEDATE
+			 , GH.UPDATEURKEY
+		  FROM TWORK_MST_GRADE_HD GH
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = GH.CTKEY
+		 WHERE GH.CTKEY = #{ctkey}
+	</select>
+
+	<select id="selectIcGradeMstList" resultType="camelMap">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectIcGradeMstList */
+		SELECT '0' AS CHK
+		     , GD.CTKEY
+			 , GD.DSBTGRADECD
+		     , CD.CTCDDTNM AS DSBTGRADECDNM
+			 , GD.CNVRTQTY
+			 , GD.CNVRTUOM
+			 , GD.CNVRTDIVCD
+			 , GD.CNVRTCBM
+			 , GD.CNVRTCBMDIVCD
+			 , GD.CMT
+			 , GD.INSERTDATE
+			 , GD.INSERTURKEY
+			 , GD.UPDATEDATE
+			 , GD.UPDATEURKEY
+		  FROM TWORK_MST_GRADE_DT GD
+		  LEFT JOIN (
+				SELECT B.CTKEY
+					 , B.CTCDHDKEY
+					 , B.CTCDDTKEY
+					 , B.CTCDDTNM
+					 , B.CTCDDTORD
+				  FROM TWORK_MST_CTCD_HD A
+				 INNER JOIN TWORK_MST_CTCD_DT B
+					ON B.CTKEY = A.CTKEY AND B.CTCDHDKEY = A.CTCDHDKEY
+
+				<where>
+					AND A.DELYN = 'N'
+					AND B.DELYN = 'N'
+
+					<if test="@com.kns.framework.util.StringUtil@isNotEmpty(lakey)">
+							AND B.LAKEY = #{lakey}
+					</if>
+
+					AND A.CTCDHDKEY = 'CTDSBTGRADECD'
+				</where>
+			 ) CD
+			ON CD.CTKEY = GD.CTKEY
+		   AND CD.CTCDHDKEY = 'CTDSBTGRADECD'
+		   AND CD.CTCDDTKEY = GD.DSBTGRADECD
+		 WHERE GD.CTKEY = COALESCE(#{ctkey}, #{sctkey})
+		 ORDER BY
+			   CD.CTCDDTORD
+	</select>
+
+	<select id="selectIcGradeMstDupCheckCount" resultType="java.lang.Integer">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - selectIcGradeMstDupCheckCount */
+		SELECT COUNT(1)
+		  FROM TWORK_MST_GRADE_HD
+		 WHERE CTKEY = #{ctkey}
+	</select>
+
+	<insert id="insertIcGradeMstHd">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - insertIcGradeMstHd */
+		INSERT INTO TWORK_MST_GRADE_HD (
+			   CTKEY
+			 , IVAVDAYS
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 )
+		VALUES (
+		       #{ctkey}
+             , #{ivavdays}
+             , #{cmt}
+             , #{sysdate}
+             , #{surkey}
+             , #{sysdate}
+             , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateIcGradeMstHd">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - updateIcGradeMstHd */
+		UPDATE TWORK_MST_GRADE_HD
+		   SET IVAVDAYS = #{ivavdays}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+	</update>
+
+	<insert id="insertIcGradeMstDt">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - insertIcGradeMstDt */
+		INSERT INTO TWORK_MST_GRADE_DT (
+			   CTKEY
+			 , DSBTGRADECD
+			 , CNVRTQTY
+			 , CNVRTUOM
+			 , CNVRTDIVCD
+			 , CNVRTCBM
+			 , CNVRTCBMDIVCD
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		     )
+		VALUES (
+			   #{ctkey}
+			 , #{dsbtgradecd}
+			 , #{cnvrtqty}
+			 , #{cnvrtuom}
+			 , #{cnvrtdivcd}
+			 , #{cnvrtcbm}
+			 , #{cnvrtcbmdivcd}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateIcGradeMstDt">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - updateIcGradeMstDt */
+		UPDATE TWORK_MST_GRADE_DT
+		   SET CNVRTQTY = #{cnvrtqty}
+		     , CNVRTUOM = #{cnvrtuom}
+		     , CNVRTCBM = #{cnvrtcbm}
+			 , UPDATEDATE = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND DSBTGRADECD = #{dsbtgradecd}
+	</update>
+
+	<delete id="deleteIcGradeMstDt">
+		/* wms-ctmaster-icgrade-sql-oracle.xml - deleteIcGradeMstDt */
+		DELETE
+		  FROM TWORK_MST_GRADE_DT
+		 WHERE CTKEY = #{ctkey}
+		   AND DSBTGRADECD = #{dsbtgradecd}
+	</delete>
+
+</mapper>

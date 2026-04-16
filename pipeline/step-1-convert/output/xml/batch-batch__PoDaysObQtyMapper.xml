@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.daiso.batch.biz.oms.po.mapper.PoDaysObQtyMapper">
+
+    <select id="insertPoDaysObQty">
+		/* PoDaysObQtyMapper.xml insertPoDaysObQty */
+        INSERT INTO TORDER_INFO_ORDER_STAT
+        (
+           OWKEY
+         , CTKEY
+         , CRITDAY
+         , ICKEY
+         , QTY
+         , INSERTDATE
+         , INSERTURKEY
+         , UPDATEDATE
+         , UPDATEURKEY
+        )
+        SELECT
+            H.OWKEY                              AS OWKEY,
+            H.CTKEY                              AS CTKEY,
+            H.ORDERISTDAY                        AS CRITDAY,
+            D.ICKEY                              AS ICKEY,
+            SUM(D.EXPCTQTY)                      AS QTY,
+            TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')  AS INSERTDATE,
+            'BATCH'                              AS INSERTURKEY,
+            TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')  AS UPDATEDATE,
+            'BATCH'                              AS UPDATEURKEY
+        FROM TORDER_INFO_SO_HD H
+        JOIN TORDER_INFO_SO_DT D
+        ON D.OWKEY = H.OWKEY
+        AND D.SOHDKEY = H.SOHDKEY
+        WHERE  H.ORDERISTDAY BETWEEN #{startDate} AND #{endDate}
+        AND EXISTS (
+                SELECT 1
+                FROM TORDER_MST_ORTYPE T
+                WHERE T.OWKEY = H.OWKEY
+                AND T.ORDERTYPECD = H.ORDERTYPECD
+                AND T.STATYN = 'Y'
+        )
+        AND EXISTS (
+                SELECT 1
+                FROM TORDER_MST_OW O
+                WHERE O.OWKEY = H.OWKEY
+        )
+        GROUP BY
+        H.OWKEY, H.CTKEY, D.ICKEY, H.ORDERISTDAY
+        HAVING SUM(D.EXPCTQTY)  <![CDATA[ > ]]> 0
+    </select>    
+</mapper>

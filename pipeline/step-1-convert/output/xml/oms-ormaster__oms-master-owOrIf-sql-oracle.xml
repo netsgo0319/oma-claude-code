@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OwOrIfIcomMapper">
+	
+	<select id="selectOrIfCount" resultType="java.lang.Integer" >
+		/* oms-master-owOrIf-sql-oracle.xml selectOrIfCount */
+        SELECT COUNT(1)
+          FROM TORDER_INFO_IF_MAPPING A
+		  JOIN TORDER_MST_IF_SET B	
+		    ON A.OWKEY = B.OWKEY 
+		   AND A.EXTORDERTYPECD = B.EXTORDERTYPECD 
+		   AND A.HDDTDIV = B.HDDTDIV
+		  JOIN TORDER_MST_EXTERN ME
+		    ON A.OWKEY = ME.OWKEY
+		   AND A.EXTORDERTYPECD = ME.EXTORDERTYPECD
+		  JOIN TORDER_MST_ORCD_DT DT
+		    ON A.HDDTDIV = DT.ORDERCOMDTKEY
+		   AND DT.ORDERCOMHDKEY = 'HDDTDIV'
+		   AND DT.LAKEY = #{lakey}
+		  JOIN TORDER_MST_OW O	
+		    ON A.OWKEY = O.OWKEY	     
+		 WHERE 1=1		   
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		 	   AND #{SEARCH_CONDITION}
+		</if>			
+	</select>
+	
+	<select id="selectOrIfList" resultType="camelMap" >
+		/* oms-master-owOrIf-sql-oracle.xml selectOrIfList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT '0' AS CHK
+				     , A.OWKEY
+				     , O.OWNM AS OWKEYNM
+				     , A.EXTORDERTYPECD				     
+				     , A.EXTORDERTYPECD || ':' || ME.EXTORDERTYPENM AS EXTORDERTYPENM
+				     , A.HDDTDIV
+				     , A.HDDTDIV || ':' || DT.ORDERCOMDTNM AS HDDTDIVNM
+				     , A.IFCOL
+				     , C.COMMENTS AS IFCOLNM
+				     , A.COCOL
+				     , COALESCE(A.DELYN, 'N') AS DELYN
+				     , A.INSERTDATE
+				     , A.INSERTURKEY
+				     , A.UPDATEDATE
+				     , A.UPDATEURKEY
+				  FROM TORDER_INFO_IF_MAPPING A
+				  JOIN TORDER_MST_IF_SET B  
+				    ON A.OWKEY = B.OWKEY 
+				   AND A.EXTORDERTYPECD = B.EXTORDERTYPECD 
+				   AND A.HDDTDIV = B.HDDTDIV      
+				  LEFT JOIN USER_COL_COMMENTS C
+				    ON B.IFTBNM = C.TABLE_NAME
+				   AND A.IFCOL = C.COLUMN_NAME
+				  LEFT JOIN USER_TAB_COLUMNS CI
+				    ON B.IFTBNM = CI.TABLE_NAME
+				   AND A.IFCOL = CI.COLUMN_NAME
+				  JOIN TORDER_MST_EXTERN ME
+				    ON A.OWKEY = ME.OWKEY
+		   		   AND A.EXTORDERTYPECD = ME.EXTORDERTYPECD
+				  JOIN TORDER_MST_ORCD_DT DT
+				    ON A.HDDTDIV = DT.ORDERCOMDTKEY
+				   AND DT.ORDERCOMHDKEY = 'HDDTDIV'
+				   AND DT.LAKEY = #{lakey}
+				  JOIN TORDER_MST_OW O
+				    ON A.OWKEY = O.OWKEY
+				 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				       AND #{SEARCH_CONDITION}
+				</if>
+				<if test="owkey != null">
+		    	  	   AND A.OWKEY = #{owkey}
+		    	</if>			    	
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY CI.COLUMN_ID
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+	
+	<select id="selectOrIfCocolumn" resultType="camelMap" >
+		/* oms-master-owOrIf-sql-oracle.xml selectOrIfCocolumn */
+		SELECT A.COLUMN_NAME AS FIELD1
+		     , COALESCE(B.COMMENTS, A.COLUMN_NAME) AS FIELD2
+		  FROM USER_TAB_COLUMNS A
+		  LEFT JOIN USER_COL_COMMENTS B
+		    ON A.TABLE_NAME = B.TABLE_NAME
+		   AND A.COLUMN_NAME = B.COLUMN_NAME     
+		 WHERE A.TABLE_NAME = #{tableName}
+		 ORDER BY A.COLUMN_ID		 
+	</select>		
+	
+	<select id="checkOwOrIfInfo" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+		  FROM TORDER_INFO_IF_MAPPING	
+    	 WHERE OWKEY = #{owkey}
+    	   AND EXTORDERTYPECD = #{extordertypecd}
+    	   AND HDDTDIV = #{hddtdiv}
+    	   AND IFCOL = #{ifcol}
+	</select>	
+	
+	<insert id="insertOwOrIf">
+	/* oms-master-owOrIf-sql-oracle.xml insertOwOrIf */
+		INSERT INTO TORDER_INFO_IF_MAPPING
+		(
+		      OWKEY
+			, EXTORDERTYPECD
+			, HDDTDIV
+			, IFCOL
+			, COCOL
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		)
+		VALUES
+		(
+		      #{owkey}
+			, #{extordertypecd}
+			, #{hddtdiv}
+			, #{ifcol}
+			, #{cocol}
+		    , #{delyn}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+	
+	<update id="updateOwOrIf">
+	/* oms-master-owOrIf-sql-oracle.xml updateOwOrIf */
+		UPDATE TORDER_INFO_IF_MAPPING
+		   SET COCOL		= #{cocol}
+		     , DELYN        = #{delyn}
+		     , UPDATEDATE   = #{sysdate}
+		     , UPDATEURKEY  = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND EXTORDERTYPECD = #{extordertypecd}
+		   AND HDDTDIV = #{hddtdiv}
+		   AND IFCOL = #{ifcol}
+	</update>
+	
+</mapper>

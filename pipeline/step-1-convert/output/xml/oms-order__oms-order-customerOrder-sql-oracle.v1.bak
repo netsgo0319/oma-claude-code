@@ -1,0 +1,1628 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.oms.order.mapper.CustomerOrderMapper">
+
+    <select id="selectCustomerOrderCount" resultType="java.lang.Integer">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderCount */
+        SELECT COUNT(1)
+        FROM TORDER_INFO_CO_HD A
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)" >
+            INNER JOIN(
+                SELECT MAX(X.COHDKEY) AS COHDKEY
+                    ,  X.OWKEY
+                FROM TORDER_INFO_CO_DT X
+                WHERE X.OWKEY = #{owkey}
+                  AND X.DLVYEXPCTDAY BETWEEN #{orHddateFr} AND  #{orHddateTo}
+                  AND X.ICKEY IN
+                <foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+                GROUP BY X.COHDKEY,X.OWKEY
+                ) B
+                    ON A.OWKEY = B.OWKEY AND A.COHDKEY = B.COHDKEY
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(iodiv)" >
+            LEFT OUTER JOIN TORDER_MST_ORTYPE OT
+						 ON A.OWKEY = OT.OWKEY 
+						AND A.ORDERTYPECD = OT.ORDERTYPECD 
+        </if>
+        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+            INNER JOIN TORDER_INFO_SO_WBLNO SW
+            			 ON A.OWKEY = SW.OWKEY
+            			AND A.COHDKEY = SW.COHDKEY
+        </if>
+        <where>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(iodiv) and "01".equals(iodiv)'>
+                    AND  OT.IBYN = 'Y' 
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(iodiv) and "02".equals(iodiv)'>
+                    AND  OT.OBYN = 'Y' 
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(wblno)'>
+                    AND  SW.WBLNO = #{wblno} 
+                </if>             
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(orType)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="orType" index="index" collection="orType"    open="(" separator="," close=")">
+                        #{orType}
+                    </foreach>
+                </if>
+			    <if test='@com.kns.framework.util.StringUtil@isNotEmpty(name) and @com.kns.framework.util.StringUtil@isNotEmpty(nameVal)'>
+				    <choose>
+				        <when test="'A.BUYER'.equals(name)">
+				            AND pkg_crypto$decrypt(A.BUYER, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				        <when test="'A.RECPNM'.equals(name)">
+				            AND pkg_crypto$decrypt(A.RECPNM, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				        <when test="'A.RECALLER'.equals(name)">
+				            AND pkg_crypto$decrypt(A.RECALLER, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				    </choose>
+				 </if>
+				 <if test='@com.kns.framework.util.StringUtil@isNotEmpty(info) and @com.kns.framework.util.StringUtil@isNotEmpty(infoVal)'>
+				    <choose>
+				        <when test="'A.BUYERTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERZIPCD'.equals(info)">
+				            AND A.BUYERZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERADDRHD||A.BUYERADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.BUYERADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPZIPCD'.equals(info)">
+				            AND A.RECPZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPADDRHD||A.RECPADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.RECPADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERZIPCD'.equals(info)">
+				            AND A.RECALLERZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERADDRHD||A.RECALLERADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.RECALLERADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				    </choose>
+				 </if>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectCustomerOrderList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderList */
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+        SELECT '0' AS CHK
+             , A.OWKEY
+             , B.OWNM AS OWNM
+             , A.DLVYEXPCTDAY
+             , A.ORDERISTDAY
+             , (
+                CASE WHEN OT.IBYN = 'Y' AND OT.OBYN = 'N' THEN '입고'
+                	 WHEN OT.IBYN = 'N' AND OT.OBYN = 'Y' THEN '출고'
+                ELSE '' END
+               ) AS IODIV
+             , A.ORDERTYPECD
+             , A.EXTORDERTYPECD
+             , A.WKSTATUS
+             , A.COHDKEY
+             , pkg_crypto$decrypt(A.BUYER, #{encKey}) AS BUYER
+             , pkg_crypto$decrypt(A.RECPNM, #{encKey}) AS RECPNM
+             , pkg_crypto$decrypt(A.RECALLER, #{encKey}) AS RECALLER
+             , A.ACKEY
+             , E.ACNM AS ACNM
+             , A.DLVYACKEY
+             , C.ACNM AS DLVYACNM
+             , A.DLVYMETHDCD
+             , A.NISCNLRNGDIV
+             , A.NISYN
+             , A.CLAIMNO
+             , A.RIRSNCD
+             , A.ADDCMT01
+             , A.CMT
+             , A.ORGORDERKEY
+             , A.ORDERERRCD
+             , A.ORDERERRCMT
+             , (SELECT X.SOHDKEY FROM TORDER_INFO_SO_HD X WHERE X.COHDKEY = A.COHDKEY AND X.WKSTATUS!=#{soCancelStatus}) AS SOHDKEY
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+        FROM TORDER_INFO_CO_HD A
+            LEFT OUTER JOIN TORDER_MST_OW B
+                         ON A.OWKEY = B.OWKEY
+            LEFT OUTER JOIN TORDER_MST_AC C
+                         ON A.OWKEY = C.OWKEY
+                        AND A.DLVYACKEY = C.ACKEY
+            LEFT OUTER JOIN TORDER_MST_AC D
+                         ON A.OWKEY = D.OWKEY
+                        AND A.STOREKEY = D.ACKEY
+            LEFT OUTER JOIN TORDER_MST_AC E
+                         ON A.OWKEY = E.OWKEY
+                        AND A.ACKEY = E.ACKEY
+            LEFT OUTER JOIN TORDER_MST_CT F
+                         ON A.FROMTOCTKEY = F.CTKEY
+            LEFT OUTER JOIN TORDER_MST_CT G
+                         ON A.CTKEY = G.CTKEY
+            LEFT OUTER JOIN TORDER_INFO_CO_HD H
+                         ON A.OWKEY = H.OWKEY
+                        AND A.COHDKEY = H.COHDKEY
+            LEFT OUTER JOIN TORDER_MST_ORTYPE OT
+                         ON A.OWKEY = OT.OWKEY
+                        AND A.ORDERTYPECD = OT.ORDERTYPECD
+			LEFT OUTER JOIN TORDER_INFO_ORTYPE_MAPPING OM
+			             ON A.OWKEY = OM.OWKEY
+			            AND A.EXTORDERTYPECD = OM.EXTORDERTYPECD
+			            AND A.ORDERTYPECD = OM.ORDERTYPECD        
+			            AND OM.DELYN = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(wblno)" >
+            INNER JOIN TORDER_INFO_SO_WBLNO SW
+            			 ON A.OWKEY = SW.OWKEY
+            			AND A.COHDKEY = SW.COHDKEY    
+			</if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ickeyArr)" >
+                INNER JOIN(
+                    SELECT MAX(X.COHDKEY) AS COHDKEY
+                        ,  X.OWKEY
+                    FROM TORDER_INFO_CO_DT X
+                    WHERE X.OWKEY = #{owkey}
+                      AND X.DLVYEXPCTDAY BETWEEN #{orHddateFr} AND  #{orHddateTo}
+                      AND X.ICKEY IN
+                        <foreach collection="ickeyArr" item="item" separator="," open="(" close=")">
+                            #{item}
+                        </foreach>
+                    GROUP BY X.COHDKEY,X.OWKEY
+                ) B
+                ON A.OWKEY = B.OWKEY AND A.COHDKEY = B.COHDKEY
+            </if>
+        <where>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                #{SEARCH_CONDITION}
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(isCancel) and "Y".equals(isCancel)'>
+                    AND  A.WKSTATUS != #{cancelYn}
+                </if>  
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(iodiv) and "01".equals(iodiv)'>
+                    AND  OT.IBYN = 'Y' 
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(iodiv) and "02".equals(iodiv)'>
+                    AND  OT.OBYN = 'Y' 
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(wblno)'>
+                    AND  SW.WBLNO = #{wblno} 
+                </if>        
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(orType)" >
+                    AND  A.ORDERTYPECD IN
+                    <foreach item="orType" index="index" collection="orType"    open="(" separator="," close=")">
+                        #{orType}
+                    </foreach>
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(name) and @com.kns.framework.util.StringUtil@isNotEmpty(nameVal)'>
+				    <choose>
+				        <when test="'A.BUYER'.equals(name)">
+				            AND pkg_crypto$decrypt(A.BUYER, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				        <when test="'A.RECPNM'.equals(name)">
+				            AND pkg_crypto$decrypt(A.RECPNM, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				        <when test="'A.RECALLER'.equals(name)">
+				            AND pkg_crypto$decrypt(A.RECALLER, #{encryptKeyOms}) LIKE '%' || #{nameVal} || '%'
+				        </when>
+				    </choose>
+				 </if>
+				 <if test='@com.kns.framework.util.StringUtil@isNotEmpty(info) and @com.kns.framework.util.StringUtil@isNotEmpty(infoVal)'>
+				    <choose>
+				        <when test="'A.BUYERTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERZIPCD'.equals(info)">
+				            AND A.BUYERZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.BUYERADDRHD||A.BUYERADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.BUYERADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.BUYERADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPZIPCD'.equals(info)">
+				            AND A.RECPZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECPADDRHD||A.RECPADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECPADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.RECPADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERTEL01'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERTEL01, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERTEL02'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERTEL02, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERZIPCD'.equals(info)">
+				            AND A.RECALLERZIPCD LIKE '%' || #{infoVal} || '%'
+				        </when>
+				        <when test="'A.RECALLERADDRHD||A.RECALLERADDRDT'.equals(info)">
+				            AND pkg_crypto$decrypt(A.RECALLERADDRHD, #{encryptKeyOms}) || pkg_crypto$decrypt(A.RECALLERADDRDT, #{encryptKeyOms}) LIKE '%' || #{infoVal} || '%'
+				        </when>
+				    </choose>
+				 </if>
+            </if>
+        </where>
+        ORDER BY A.UPDATEDATE DESC
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </select>
+    
+    <select id="selectOrMappType" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOrMappType */
+		SELECT ORDERTYPECD AS FIELD1
+		     , ORDERTYPECD||':'||ORDERTYPENM AS FIELD2
+		  FROM TORDER_MST_ORTYPE
+		 WHERE OWKEY = #{owkey}
+		   AND DELYN = 'N'		       
+		 ORDER BY ORDERTYPECD		 
+	</select>
+	
+	<select id="selectOwOrMappType" resultType="camelMap" >
+		/* oms-master-owOrTypeMapp-sql-oracle.xml selectOwOrMappType */
+		SELECT EXTORDERTYPECD AS FIELD1
+		     , EXTORDERTYPECD||':'||EXTORDERTYPENM AS FIELD2
+		  FROM TORDER_MST_EXTERN
+		 WHERE OWKEY = #{owkey}      
+		 ORDER BY EXTORDERTYPECD
+	</select>
+
+    <select id="selectCustomerOrderDetailList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderDetailList */
+        SELECT '0' AS CHK
+			 , A.OWKEY
+		     , A.COHDKEY
+			 , A.CODTKEY
+			 , A.WKSTATUS
+			 , A.ICKEY
+			 , MI.ICNM
+			 , SW.DLVRYCORP
+			 , SW.WBLNO
+			 , B.ORGORDERKEY
+			 , A.ORDERERRCD
+			 , A.ORDERERRCMT
+			 , A.DLVYCNTRUNIT
+			 , COALESCE(IR.REQORDERQTY, 0) AS REQORDERQTY
+			 , COALESCE(BO.B2BOBQTY, 0) AS B2BOBQTY
+			 , COALESCE(IH.RIIMPSQTY, 0) AS RIIMPSQTY
+			 , IH.HOLDRSNCD
+			 , IH.HOLDPRCSDTCONT
+			 , IH.PRCSISTTYPECD
+			 , IH.PRCSISTDTCONT
+			 , COALESCE(A.ORDERISTQTY, 0) AS ORDERISTQTY
+			 , COALESCE(A.MALBOXQTY, 0) AS MALBOXQTY
+			 , COALESCE(A.MALPCSQTY, 0) AS MALPCSQTY
+			 , COALESCE(SD.CNFRMQTY, 0) AS CNFRMQTY
+			 , COALESCE(SW.WBLCNT, 0) AS WBLCNT
+			 , COALESCE(II.IMGCNT, 0) AS IMGCNT
+		     , A.INSERTDATE
+		     , A.INSERTURKEY
+		     , A.UPDATEDATE
+		     , A.UPDATEURKEY
+		FROM TORDER_INFO_CO_DT A
+		INNER JOIN TORDER_INFO_CO_HD B
+		ON A.OWKEY = B.OWKEY
+		AND A.COHDKEY = B.COHDKEY
+		LEFT OUTER JOIN TORDER_INFO_SO_DT SD
+		ON A.OWKEY = SD.OWKEY
+		AND A.COHDKEY = SD.COHDKEY
+		AND A.CODTKEY  = SD.CODTKEY
+		AND SD.CNLYN = 'N'
+		LEFT OUTER JOIN TORDER_MST_IC MI
+		ON A.OWKEY = MI.OWKEY
+		AND A.ICKEY = MI.ICKEY 
+		LEFT OUTER JOIN
+        (
+         SELECT T.SOHDKEY
+              , T.OWKEY
+              , T.DLVRYCORP
+              , COUNT(T.WBLNO) AS WBLCNT
+              , CASE WHEN COUNT(1) > 1 THEN MIN(T.WBLNO)||' 외 '||(COUNT(1)-1)||'건' 
+			        ELSE MIN(T.WBLNO)
+			   END AS WBLNO
+         FROM (
+             SELECT X.OWKEY
+                  , X.SOHDKEY AS SOHDKEY
+                  , X.DLVRYCORP
+                  , X.WBLNO
+             FROM TORDER_INFO_SO_WBLNO X
+             WHERE X.OWKEY = 'DAISO'
+             GROUP BY X.SOHDKEY, X.OWKEY, X.WBLNO, X.DLVRYCORP
+         	) T GROUP BY T.SOHDKEY, T.OWKEY, T.DLVRYCORP
+         ) SW
+        ON A.OWKEY = SW.OWKEY AND SD.SOHDKEY = SW.SOHDKEY
+		LEFT OUTER JOIN TORDER_INFO_REQORDER IR
+		ON A.OWKEY = IR.OWKEY 
+		AND A.ICKEY = IR.ICKEY
+		AND B.CTKEY = IR.CTKEY
+		AND B.DLVYEXPCTDAY = IR.IBEXPCTDAY
+		AND B.ORGORDERKEY = IR.REQORDERNO
+		LEFT OUTER JOIN TORDER_INFO_B2B_ORDER BO
+		ON A.OWKEY = BO.OWKEY
+		AND A.REQORDERNO = BO.REQORDERNO
+		AND A.SHMISTNO = BO.SHMISTNO 
+		LEFT OUTER JOIN TORDER_INFO_HOLD IH
+		ON A.OWKEY = IH.OWKEY
+		AND A.COHDKEY = IH.COHDKEY 
+		AND A.CODTKEY = IH.CODTKEY 
+		AND B.CLAIMNO = IH.CLAIMNO
+		LEFT OUTER JOIN
+        (
+         SELECT T.COHDKEY
+              , T.OWKEY
+              , T.CLAIMNO
+              , COUNT(T.IMGURL) AS IMGCNT
+         FROM (
+             SELECT X.OWKEY
+                  , X.COHDKEY
+                  , X.CLAIMNO
+                  , X.IMGURL
+             FROM TORDER_INFO_IMG X
+             WHERE X.OWKEY = 'DAISO'
+             GROUP BY X.COHDKEY, X.OWKEY, X.IMGURL, X.CLAIMNO
+         	) T GROUP BY T.COHDKEY, T.OWKEY, T.CLAIMNO
+         ) II
+        ON A.OWKEY = II.OWKEY AND SD.COHDKEY = II.COHDKEY
+        WHERE 1 = 1
+          AND A.OWKEY = #{owkey}
+          AND A.COHDKEY = #{cohdkey}
+        ORDER BY LPAD(A.CODTKEY::TEXT, 20, '0') ASC , A.UPDATEDATE DESC
+    </select>
+    
+    <select id="selectCoWblIcInfo" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCoWblIcInfo */
+        SELECT CD.COMDTNM AS DLVRYCORP
+		     , B.WBLNO 
+		     , B.ICKEY 
+		     , C.ICNM
+		     , B.DLVRYQTY 
+		     , A.INSERTDATE 
+		     , A.INSERTURKEY 
+		     , A.UPDATEDATE 
+		     , A.UPDATEURKEY 
+		FROM TORDER_INFO_CO_DT A
+		INNER JOIN TORDER_INFO_SO_WBLNO B
+		ON A.OWKEY = B.OWKEY 
+		AND A.COHDKEY = B.COHDKEY
+		AND (A.OLNICKEY = B.ICKEY OR B.ICKEY IS NULL)
+		INNER JOIN TORDER_MST_IC C
+		ON A.OWKEY = C.OWKEY 
+		AND A.ICKEY = C.ICKEY
+		INNER JOIN TORDER_INFO_SO_DT D
+		ON A.OWKEY = D.OWKEY 
+		AND A.COHDKEY = D.COHDKEY
+		AND A.CODTKEY = D.CODTKEY
+		AND B.SOHDKEY = D.SOHDKEY 
+		LEFT OUTER JOIN TORDER_MST_COM_DT CD
+		ON A.OWKEY = CD.OWKEY 
+		AND B.DLVRYCORP = CD.COMDTKEY 
+		AND CD.COMHDKEY = 'CD_00414'  
+		WHERE 1 = 1
+		AND A.OWKEY = #{owkey}
+		AND A.COHDKEY = #{cohdkey}
+		<if test='@com.kns.framework.util.StringUtil@isNotEmpty(codtkey)'>
+		AND A.CODTKEY = #{codtkey}
+		</if>
+    </select>
+    
+    <select id="selectRiImgInfo" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectRiImgInfo */
+		WITH T_CODT AS (
+			SELECT CD.OWKEY, CD.COHDKEY, CD.ICKEY, MI.ICNM
+			     , COUNT(*) OVER(ORDER BY CD.CODTKEY) AS NUM
+			     , CD.INSERTDATE 
+			     , CD.INSERTURKEY 
+			     , CD.UPDATEDATE 
+			     , CD.UPDATEURKEY 
+			  FROM TORDER_INFO_CO_DT CD
+			 INNER JOIN TORDER_MST_IC MI
+				ON CD.OWKEY = MI.OWKEY 
+			   AND CD.ICKEY = MI.ICKEY
+			 WHERE 1 = 1
+			   AND CD.OWKEY = #{owkey}
+			   AND CD.COHDKEY = #{cohdkey}
+			 ), T_IMG AS (
+			 	SELECT CH.OWKEY, CH.COHDKEY, II.IMGSEQ, II.IMGURL, II.INSPECABNORYN
+			 	     , COUNT(*) OVER(ORDER BY II.IMGSEQ) AS NUM
+				  FROM TORDER_INFO_CO_HD CH
+				  LEFT JOIN TORDER_INFO_IMG II
+				 	ON CH.OWKEY = II.OWKEY 
+				   AND CH.COHDKEY = II.COHDKEY
+				 WHERE 1 = 1
+				   AND CH.OWKEY = #{owkey}
+				   AND CH.COHDKEY = #{cohdkey}
+			 )
+		SELECT COALESCE(CD.OWKEY, IMG.OWKEY) AS OWKEY
+			 , COALESCE(CD.COHDKEY, IMG.COHDKEY) AS COHDKEY
+			 , CD.ICKEY
+			 , CD.ICNM
+			 , IMG.INSPECABNORYN
+			 , IMG.IMGURL
+			 , CD.INSERTDATE 
+		     , CD.INSERTURKEY 
+		     , CD.UPDATEDATE 
+		     , CD.UPDATEURKEY 
+		  FROM T_CODT CD
+		  FULL OUTER JOIN T_IMG IMG
+			ON IMG.OWKEY = CD.OWKEY
+		   AND IMG.COHDKEY = CD.COHDKEY
+		   AND IMG.NUM = CD.NUM
+    </select>
+
+    <insert id="insertCustomerOrderHeaderList">
+        /* oms-order-customerOrder-sql-oracle.xml - insertCustomerOrderHeaderList */
+        INSERT INTO TORDER_INFO_CO_HD (
+              OWKEY
+			, COHDKEY
+			, EXTORDERTYPECD
+			, ORDERTYPECD
+			, DLVYEXPCTDAY
+			, ORDERISTDAY
+			, WKSTATUS
+			, DLVYACKEY
+			, STOREKEY
+			, BILLKEY
+			, PAYERKEY
+			, ACKEY
+			, POTYPE
+			, PRERFRNCDIV
+			, RFRNCKEY
+			, ORGORDERKEY
+			, SALESEMPID
+			, DLVYEMPID
+			, CMT
+			, CNLYN
+			, CNLID
+			, ORDERERRCD
+			, ORDERERRCMT
+			, EDIYN
+			, FROMTOCTKEY
+			, CTKEY
+			, ERPSNDFAILYN
+			, IFID
+			, ERPSNDSEQ
+			, SPLITORDERYN
+			, ERPRESPONSECD
+			, ADDCMT01
+			, FAILCNT
+			, RECPNM
+			, RECPADDRHD
+			, RECPADDRDT
+			, RECPZIPCD
+			, RECPTEL01
+			, RECPTEL02
+			, BUYER
+			, BUYERADDRHD
+			, BUYERADDRDT
+			, BUYERZIPCD
+			, BUYERTEL01
+			, BUYERTEL02
+			, RECALLER
+			, RECALLERADDRHD
+			, RECALLERADDRDT
+			, RECALLERZIPCD
+			, RECALLERTEL01
+			, RECALLERTEL02
+			, CNLREQRSNCD
+			, CNLREQRSNCMT
+			, RIRSNCD
+			, CLAIMNO
+			, DLVYMETHDCD
+			, DLVYMETHDDTCD
+			, MALORDERDIV
+			, NISYN
+			, NISCNLRNGDIV
+			, PAYMTCOMPLDAY
+			, PARTERID
+			, ACCESSKEY
+			, ADDCMT02
+			, SHMISTNO
+			, REQORDERNO
+			, IFYN
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+        ) VALUES (
+              #{owkey}
+            , #{cohdkey}
+			, #{extordertypecd}
+			, #{ordertypecd}
+			, #{dlvyexpctday}
+			, #{orderistday}
+			, #{wkstatus}
+			, #{dlvyackey}
+			, #{storekey}
+			, #{billkey}
+			, #{payerkey}
+			, #{ackey}
+			, #{potype}
+			, #{prerfrncdiv}
+			, #{rfrnckey}
+			, #{orgorderkey}
+			, #{salesempid}
+			, #{dlvyempid}
+			, #{cmt}
+			, #{cnlyn}
+			, #{cnlid}
+			, #{ordererrcd}
+			, #{ordererrcmt}
+			, #{ediyn}
+			, #{fromtoctkey}
+			, #{ctkey}
+			, #{erpsndfailyn}
+			, #{ifid}
+			, #{erpsndseq}
+			, #{splitorderyn}
+			, #{erpresponsecd}
+			, #{addcmt01}
+			, #{failcnt}
+			, pkg_crypto$encrypt(#{recpnm}, #{encKey})
+			, pkg_crypto$encrypt(#{recpaddrhd}, #{encKey})
+			, pkg_crypto$encrypt(#{recpaddrdt}, #{encKey})
+			, #{recpzipcd}
+			, pkg_crypto$encrypt(#{recptel01}, #{encKey})
+			, pkg_crypto$encrypt(#{recptel02}, #{encKey})
+			, pkg_crypto$encrypt(#{buyer}, #{encKey})
+			, pkg_crypto$encrypt(#{buyeraddrhd}, #{encKey})
+			, pkg_crypto$encrypt(#{buyeraddrdt}, #{encKey})
+			, #{buyerzipcd}
+			, pkg_crypto$encrypt(#{buyertel01}, #{encKey})
+			, pkg_crypto$encrypt(#{buyertel02}, #{encKey})
+			, pkg_crypto$encrypt(#{recaller}, #{encKey})
+			, pkg_crypto$encrypt(#{recalleraddrhd}, #{encKey})
+			, pkg_crypto$encrypt(#{recalleraddrdt}, #{encKey})
+			, #{recallerzipcd}
+			, pkg_crypto$encrypt(#{recallertel01}, #{encKey})
+			, pkg_crypto$encrypt(#{recallertel02}, #{encKey})
+			, #{cnlreqrsncd}
+			, #{cnlreqrsncmt}
+			, #{rirsncd}
+			, #{claimno}
+			, #{dlvymethdcd}
+			, #{dlvymethddtcd}
+			, #{malorderdiv}
+			, #{nisyn}
+			, #{niscnlrngdiv}
+			, #{paymtcomplday}
+			, #{parterid}
+			, pkg_crypto$encrypt(#{accesskey}, #{encKey})
+			, #{addcmt02}
+			, #{shmistno}
+			, #{reqorderno}
+			, 'N'
+			, #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+
+    </insert>
+
+    <insert id="insertCustomerOrderDetailList">
+        /* oms-order-customerOrder-sql-oracle.xml - insertCustomerOrderDetailList */
+        INSERT INTO TORDER_INFO_CO_DT (
+              OWKEY
+            , COHDKEY
+			, CODTKEY
+			, EXTORDERTYPECD
+			, WKSTATUS
+			, ICKEY
+			, OLNICKEY
+			, ORDERISTDAY
+			, DLVYEXPCTDAY
+			, ORDERISTQTY
+			, UNIT
+			, CNVRTQTY
+			, PRDCTLOT
+			, PRDCTDAY
+			, TTWEIGHT
+			, WEIGHTUNIT
+			, VOL
+			, VOLUNIT
+			, LOGGRPCD
+			, ORGORDERKEY
+			, ORGORDERDTKEY
+			, CMT
+			, CNLYN
+			, CNLID
+			, PRERFRNCDIV
+			, RFRNCKEY
+			, RFRNCDTKEY
+			, ORDERERRCD
+			, ORDERERRCMT
+			, DLVYCNTRUNIT
+			, MALBOXQTY
+			, MALPCSQTY
+			, REQORDERNO
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+        ) VALUES (
+              #{owkey}
+            , #{cohdkey}
+			, #{codtkey}
+			, #{extordertypecd}
+			, #{wkstatus}
+			, #{ickey}
+			, #{olnickey}
+			, #{orderistday}
+			, #{dlvyexpctday}
+			, #{orderistqty}
+			, #{unit}
+			, #{cnvrtqty}
+			, #{prdctlot}
+			, #{prdctday}
+			, #{ttweight}
+			, #{weightunit}
+			, #{vol}
+			, #{volunit}
+			, #{loggrpcd}
+			, #{orgorderkey}
+			, #{orgorderdtkey}
+			, #{cmt}
+			, #{cnlyn}
+			, #{cnlid}
+			, #{prerfrncdiv}
+			, #{rfrnckey}
+			, #{rfrncdtkey}
+			, #{ordererrcd}
+			, #{ordererrcmt}
+			, #{dlvycntrunit}
+			, #{malboxqty}
+			, #{malpcsqty}
+			, #{reqorderno}
+            , #{sysdate}
+            , #{surkey}
+            , #{sysdate}
+            , #{surkey}
+        )
+    </insert>
+
+    <select id="selectItemCodeUnitType" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectItemCodeUnitType */
+        SELECT A.ICUNITTYPE AS FIELD1
+             , B.ADCDDTNM AS FIELD2
+             , A.ICKEY AS FIELD3
+             , COALESCE(A.DEPTH, A.DEPTH) AS FIELD4
+             , COALESCE(A.WIDTH, A.WIDTH) AS FIELD5
+             , COALESCE(A.HEIGHT, A.HEIGHT) AS FIELD6
+             , COALESCE(A.WEIGHT, A.WEIGHT) AS FIELD7
+             , COALESCE(A.VOL, A.VOL) AS FIELD8
+             , A.ICUNITQTY AS FIELD9
+        FROM TORDER_MST_ICUTXTYPE A
+            LEFT JOIN TORDER_MST_ICXCT B
+                   ON A.OWKEY   = B.OWKEY
+                  AND A.ICKEY = B.ICKEY
+                  AND B.CTKEY  = #{fromtoctkey}
+            LEFT OUTER JOIN (
+                SELECT B.ADCDDTKEY
+                     , B.ADCDDTNM
+                FROM TADMIN_MST_ADCD_HD A
+                     INNER JOIN TADMIN_MST_ADCD_DT B
+                             ON A.ADCDHDKEY = B.ADCDHDKEY
+                            AND A.ADCDHDKEY ='ICUTTYPE'
+                            AND B.LAKEY = #{slakey}
+            ) B
+                           ON A.ICUNITTYPE = B.ADCDDTKEY
+        WHERE A.OWKEY = #{owkey}
+          AND A.ICKEY = #{icutkey}
+    </select>
+
+    <select id="selectItemCodeUnitTypeShow" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectItemCodeUnitType */
+        SELECT A.ICUNITTYPE AS FIELD1
+             , B.ADCDDTNM AS FIELD2
+             , A.ICUNITKEY AS FIELD3
+        FROM TADMIN_MST_ICUTXTYPE A
+                 LEFT OUTER JOIN (
+                    SELECT B.ADCDDTKEY
+                         , B.ADCDDTNM
+                    FROM TADMIN_MST_ADCD_HD A
+                         INNER JOIN TADMIN_MST_ADCD_DT B
+                                 ON A.ADCDHDKEY = B.ADCDHDKEY
+                                AND A.ADCDHDKEY ='ICUTTYPE'
+                                AND B.LAKEY = #{slakey}
+                ) B
+                                 ON A.ICUNITTYPE = B.ADCDDTKEY
+        WHERE A.OWKEY = #{owkey}
+    </select>
+
+    <select id="selectOrderTypeCodeCheck" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectOrderTypeCodeCheck */
+        SELECT OWKEY
+             , ORDERTYPECD 
+             , HDDTDIV 
+             , COCOLUMN
+             , REQRDYN
+             , DELYN
+        FROM TORDER_INFO_CO_CHK
+        WHERE DELYN = 'N'
+          AND REQRDYN = 'Y'
+          AND OWKEY = #{owkey}
+    </select>
+
+    <select id="selectCoExcelHeaderList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCoExcelHeaderList */
+        SELECT '0' AS CHK
+             , UPLOADKEY
+             , ACKEY
+             , DELIVERY_KEY
+             , STORE_KEY
+             , CTKEY
+             , DELIVERY_HD_DT
+             , OR_HD_DT
+             , OR_TYPE_CD
+             , EXTORDERTYPECD
+             , COMMENTS
+             , EXTERNORDERKEY    /*고객주문번호*/
+			 , TO_CTKEY    /*TO_센터*/
+			 , SALESPERSON_ID    /*영업사원ID*/
+			 , DELIVERY_PERSON_ID    /*배송사원ID*/
+             , MAX(ORDER_ERROR_CD) AS ORDER_ERROR_CD
+             , MAX(ORDER_ERROR_COMMENTS) AS ORDER_ERROR_COMMENTS
+        FROM TORDER_UPLOAD_CUSTOMER
+        WHERE UPLOADKEY = #{uploadkey}
+          AND DELYN = 'N'
+        GROUP BY UPLOADKEY, ACKEY , DELIVERY_KEY , STORE_KEY , CTKEY ,DELIVERY_HD_DT ,OR_HD_DT ,OR_TYPE_CD , EXTORDERTYPECD , COMMENTS
+               , EXTERNORDERKEY    /*고객주문번호*/
+			   , TO_CTKEY    /*TO_센터*/
+			   , SALESPERSON_ID    /*영업사원ID*/
+			   , DELIVERY_PERSON_ID    /*배송사원ID*/
+        ORDER BY DELIVERY_HD_DT
+    </select>
+
+    <select id="selectCoExcelErrorHeader" resultType="camelMap">
+        /* oms-common-sql-oracle.xml - selectCoExcelHeaderList */
+        SELECT '0' AS CHK
+	        , UPLOADKEY
+	        , ACKEY
+	        , DELIVERY_KEY
+	        , STORE_KEY
+	        , CTKEY
+	        , DELIVERY_HD_DT
+	        , OR_HD_DT
+	        , OR_TYPE_CD
+	        , EXTORDERTYPECD
+	        , COMMENTS
+	        , EXTERNORDERKEY    /*고객주문번호*/
+			, TO_CTKEY    /*TO_센터*/
+			, SALESPERSON_ID    /*영업사원ID*/
+			, DELIVERY_PERSON_ID    /*배송사원ID*/
+	        , MAX(ORDER_ERROR_CD) AS ORDER_ERROR_CD
+	        , MAX(ORDER_ERROR_COMMENTS) AS ORDER_ERROR_COMMENTS
+        FROM TORDER_UPLOAD_CUSTOMER
+        WHERE UPLOADKEY = #{uploadkey}
+          AND DELYN = 'N'
+          AND ORDER_ERROR_CD IS NOT NULL
+        GROUP BY UPLOADKEY, ACKEY , DELIVERY_KEY , STORE_KEY , CTKEY ,DELIVERY_HD_DT ,OR_HD_DT ,OR_TYPE_CD , EXTORDERTYPECD , COMMENTS
+               , EXTERNORDERKEY    /*고객주문번호*/
+			   , TO_CTKEY    /*TO_센터*/
+			   , SALESPERSON_ID    /*영업사원ID*/
+			   , DELIVERY_PERSON_ID    /*배송사원ID*/
+        ORDER BY DELIVERY_HD_DT
+    </select>
+
+    <select id="selectCoExcelDetailList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCoExcelDetailList */
+        SELECT '0' AS CHK
+             , UPLOADKEY
+             , UPLOADSEQ
+             , ACKEY
+             , DELIVERY_KEY
+             , STORE_KEY
+             , CTKEY
+             , DELIVERY_HD_DT
+             , OR_HD_DT
+             , OR_TYPE_CD
+             , EXTORDERTYPECD
+             , COMMENTS
+             , ICKEY
+             , UNIT
+             , ORDERQTY
+             , DT_COMMENTS
+             , EXTERNORDERKEY    /*고객주문번호*/
+			 , EXTERNORDERDETAILKEY    /*고객주문상세번호*/
+			 , TO_CTKEY    /*TO_센터*/
+			 , SALESPERSON_ID    /*영업사원ID*/
+			 , DELIVERY_PERSON_ID    /*배송사원ID*/
+			 , IC_RATE    /*행사상품비율*/
+			 , BONUS_IC_RATE    /*덤상품비율*/
+             , ORDER_ERROR_CD
+             , ORDER_ERROR_COMMENTS
+        FROM TORDER_UPLOAD_CUSTOMER
+        WHERE UPLOADKEY = #{uploadkey}
+          AND COALESCE(ACKEY, 'X') = COALESCE(#{ackey}, 'X')
+          AND COALESCE(STORE_KEY, 'X') = COALESCE(#{storeKey}, 'X')
+          AND COALESCE(DELIVERY_KEY, 'X') = COALESCE(#{deliveryKey}, 'X')
+          AND COALESCE(CTKEY, 'X') = COALESCE(#{ctkey}, 'X')
+          AND COALESCE(DELIVERY_HD_DT, 'X') = COALESCE(#{deliveryHdDt}, 'X')
+          AND COALESCE(OR_HD_DT, 'X') = COALESCE(#{orHdDt}, 'X')
+          AND COALESCE(OR_TYPE_CD, 'X') = COALESCE(#{orTypeCd}, 'X')
+          AND COALESCE(EXTORDERTYPECD, 'X') = COALESCE(#{extordertypecd}, 'X')
+          AND COALESCE(COMMENTS, 'X') = COALESCE(#{comments}, 'X')
+          AND COALESCE(EXTERNORDERKEY, 'X') = COALESCE(#{externorderkey}, 'X')
+		  AND COALESCE(TO_CTKEY, 'X') = COALESCE(#{toCtkey}, 'X')
+		  AND COALESCE(SALESPERSON_ID, 'X') = COALESCE(#{salespersonId}, 'X')
+		  AND COALESCE(DELIVERY_PERSON_ID, 'X') = COALESCE(#{deliveryPersonId}, 'X')
+          AND DELYN = 'N'
+    </select>
+
+
+    <update id="deleteExcelTempList">
+        /* oms-order-customerOrder-sql-oracle.xml - deleteExcelTempList */
+        UPDATE TORDER_UPLOAD_CUSTOMER TUM
+           SET DELYN = 'Y'
+        WHERE TUM.UPLOADKEY = #{uploadkey}
+          AND EXISTS (
+                SELECT 1
+                FROM (
+                    <foreach collection="excelList" item="item" separator="UNION ALL">
+                        SELECT #{item.uploadkey} AS UPLOADKEY
+                             , #{item.ackey}        AS ACKEY
+                             , #{item.storeKey}     AS STORE_KEY
+                             , #{item.deliveryKey}  AS DELIVERY_KEY
+                             , #{item.ctkey}        AS CTKEY
+                             , #{item.deliveryHdDt} AS DELIVERY_HD_DT
+                             , #{item.orHdDt}       AS OR_HD_DT
+                             , #{item.orTypeCd}     AS OR_TYPE_CD
+                             , #{item.extordertypecd}  AS EXTORDERTYPECD
+                             , #{item.comments}     AS COMMENTS
+                             , #{item.externorderkey} AS EXTERNORDERKEY    /*고객주문번호*/
+							 , #{item.toCtkey} AS TO_CTKEY    /*TO_센터*/
+							 , #{item.salespersonId} AS SALESPERSON_ID    /*영업사원ID*/
+							 , #{item.deliveryPersonId} AS DELIVERY_PERSON_ID    /*배송사원ID*/
+                    </foreach> ) T
+                WHERE T.UPLOADKEY                = TUM.UPLOADKEY
+                  AND COALESCE(T.ACKEY, 'X')          = COALESCE(TUM.ACKEY, 'X')
+                  AND COALESCE(T.STORE_KEY, 'X')      = COALESCE(TUM.STORE_KEY, 'X')
+                  AND COALESCE(T.DELIVERY_KEY, 'X')   = COALESCE(TUM.DELIVERY_KEY, 'X')
+                  AND COALESCE(T.CTKEY, 'X')          = COALESCE(TUM.CTKEY, 'X')
+                  AND COALESCE(T.DELIVERY_HD_DT, 'X') = COALESCE(TUM.DELIVERY_HD_DT, 'X')
+                  AND COALESCE(T.OR_HD_DT, 'X')       = COALESCE(TUM.OR_HD_DT, 'X')
+                  AND COALESCE(T.OR_TYPE_CD, 'X')     = COALESCE(TUM.OR_TYPE_CD, 'X')
+                  AND COALESCE(T.EXTORDERTYPECD, 'X')    = COALESCE(TUM.EXTORDERTYPECD, 'X')
+                  AND COALESCE(T.COMMENTS, 'X')      = COALESCE(TUM.COMMENTS, 'X')
+                  AND COALESCE(T.EXTERNORDERKEY, 'X') 	= COALESCE(TUM.EXTERNORDERKEY, 'X') 	
+				  AND COALESCE(T.TO_CTKEY, 'X') 		= COALESCE(TUM.TO_CTKEY, 'X') 			
+				  AND COALESCE(T.SALESPERSON_ID, 'X') 	= COALESCE(TUM.SALESPERSON_ID, 'X') 	
+				  AND COALESCE(T.DELIVERY_PERSON_ID, 'X') = COALESCE(TUM.DELIVERY_PERSON_ID, 'X')
+        )
+    </update>
+
+    <update id="deleteExcelTempDetailList">
+        /* oms-order-customerOrder-sql-oracle.xml - deleteExcelTempDetailList */
+        UPDATE TORDER_UPLOAD_CUSTOMER TUM
+           SET DELYN = ( SELECT TB.DELYN
+                         FROM ( SELECT 'Y' AS DELYN
+                                     , T.UPLOADKEY
+                                     , T.UPLOADSEQ
+                                FROM (
+                                    <foreach collection="excelList" item="item" separator="UNION ALL">
+                                        SELECT #{item.uploadkey} AS UPLOADKEY
+                                             , #{item.uploadseq} AS UPLOADSEQ
+                                    </foreach> ) T ) TB
+                                WHERE TB.UPLOADKEY = TUM.UPLOADKEY
+                                AND TB.UPLOADSEQ = TUM.UPLOADSEQ )
+        WHERE TUM.UPLOADKEY = #{uploadkey}
+          AND EXISTS (
+            SELECT 1
+            FROM (
+                <foreach collection="excelList" item="item" separator="UNION ALL">
+                    SELECT #{item.uploadkey} AS UPLOADKEY
+                    , #{item.uploadseq} AS UPLOADSEQ
+                </foreach> ) T
+            WHERE T.UPLOADSEQ = TUM.UPLOADSEQ
+        )
+    </update>
+
+    <delete id="deleteExcelTemp">
+        /* oms-order-customerOrder-sql-oracle.xml - deleteExcelTemp */
+        DELETE FROM TORDER_UPLOAD_CUSTOMER
+        WHERE UPLOADKEY = #{uploadkey}
+    </delete>
+
+    <insert id="insertCustomerOrderExcelHeader">
+        /* oms-order-customerOrder-sql-oracle.xml - insertCustomerOrderExcelHeader */
+        INSERT INTO TORDER_INFO_CO_HD
+        (
+        	  OWKEY
+			, CUSTOMERORDERKEY
+			, EXTORDERTYPECD
+			, OR_TYPE_CD
+			, DELIVERY_HD_DT
+			, OR_HD_DT
+			, WKSTATUS
+			, DELIVERY_KEY
+			, STORE_KEY
+			, ACKEY
+			, REFERENCEKEY
+			, EXTERNORDERKEY
+			, SALESPERSON_ID
+			, DELIVERY_PERSON_ID
+			, COMMENTS
+			, CANCEL_YN
+			, TO_CTKEY
+			, CTKEY
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+			, SAPTRANSFAILYN
+			, OCCURRENCE_ORDER_YN
+        )
+        SELECT #{owkey} AS OWKEY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || #{orderNoType} || LPAD(nextval('seq_torder_info_co_hd')::TEXT, 6, '0') AS CUSTOMERORDERKEY
+             , A.EXTORDERTYPECD
+             , A.OR_TYPE_CD
+             , A.DELIVERY_HD_DT
+             , A.OR_HD_DT
+             , #{wkstatus} AS WKSTATUS
+             , A.DELIVERY_KEY
+             , A.STORE_KEY
+             , A.ACKEY
+             , A.UPLOADKEY AS REFERENCEKEY
+             , A.EXTERNORDERKEY
+             , A.SALESPERSON_ID
+             , A.DELIVERY_PERSON_ID
+             , A.COMMENTS
+             , 'N' AS CANCEL_YN
+             , A.TO_CTKEY
+             , A.CTKEY
+             , #{sysdate} AS INSERTDATE
+             , #{surkey} AS INSERTURKEY
+             , #{sysdate} AS UPDATEDATE
+             , #{surkey} AS UPDATEURKEY
+             , 'N' AS SAPTRANSFAILYN
+             , 'N' AS OCCURRENCE_ORDER_YN
+        FROM (SELECT UPLOADKEY
+                   , ACKEY
+                   , DELIVERY_KEY
+                   , STORE_KEY
+                   , CTKEY
+                   , DELIVERY_HD_DT
+                   , OR_HD_DT
+                   , OR_TYPE_CD
+                   , EXTORDERTYPECD
+                   , COMMENTS
+                   , EXTERNORDERKEY    /*고객주문번호*/
+                   , TO_CTKEY    /*TO_센터*/
+				   , SALESPERSON_ID    /*영업사원ID*/
+				   , DELIVERY_PERSON_ID    /*배송사원ID*/
+              FROM TORDER_UPLOAD_CUSTOMER
+              WHERE UPLOADKEY = #{uploadkey}
+                AND ORDER_ERROR_CD IS NULL
+                AND ORDER_ERROR_COMMENTS IS NULL
+                AND DELYN = 'N'
+              GROUP BY  UPLOADKEY , ACKEY , DELIVERY_KEY , STORE_KEY , CTKEY ,DELIVERY_HD_DT ,OR_HD_DT ,OR_TYPE_CD , EXTORDERTYPECD , COMMENTS
+                     , EXTERNORDERKEY    /*고객주문번호*/
+					 , TO_CTKEY    /*TO_센터*/
+					 , SALESPERSON_ID    /*영업사원ID*/
+					 , DELIVERY_PERSON_ID    /*배송사원ID*/
+             ) A
+    </insert>
+
+    <insert id="insertCustomerOrderExcelDetail">
+        /* oms-order-customerOrder-sql-oracle.xml - insertCustomerOrderExcelDetail */
+        INSERT INTO TORDER_INFO_CO_DT
+        (
+        	  OWKEY
+			, CUSTOMERORDERKEY
+			, CUSTOMERORDERDTKEY
+			, EXTORDERTYPECD
+			, WKSTATUS
+			, ICKEY
+			, OR_HD_DT
+			, DELIVERY_HD_DT
+			, ORDERQTY
+			, UNIT
+			, CONVERTQTY
+			, SALEUNIT
+			, OB_COSTPRICE
+			, INDIAMT
+			, VAT
+			, EXTDT
+			, PRODUCT_LOT
+			, PRODUCT_DT
+			, TOTALWEIGHT
+			, WEIGHTUNIT
+			, VOLUME
+			, VOLUMEUNIT
+			, LOGGRPCD
+			, EXTERNORDERKEY
+			, EXTERNORDERDETAILKEY
+			, COMMENTS
+			, CANCEL_YN
+			, CANCEL_ID
+			, REFERENCETYPE
+			, REFERENCEKEY
+			, REFERENCEDTKEY
+			, IC_RATE
+			, BONUS_IC_RATE
+			, ORDER_ERROR_CD
+			, ORDER_ERROR_COMMENTS
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+        )
+        SELECT B.OWKEY
+             , B.CUSTOMERORDERKEY
+             , ROW_NUMBER() OVER(PARTITION BY B.CUSTOMERORDERKEY ORDER BY A.ICKEY ) * 10 AS CUSTOMERORDERDTKEY
+             , B.EXTORDERTYPECD
+             , B.WKSTATUS
+             , A.ICKEY
+             , B.OR_HD_DT
+             , B.DELIVERY_HD_DT
+             , A.ORDERQTY
+             , A.UNIT
+             , A.ORDERQTY * D.ICUTQTY AS CONVERTQTY
+             , '' AS SALEUNIT
+             , '' AS OB_COSTPRICE
+             , '' AS INDIAMT
+             , '' AS VAT
+             , '' AS EXTDT
+             , '' AS PRODUCT_LOT
+             , '' AS PRODUCT_DT
+             , A.ORDERQTY * COALESCE(MU.WEIGHT, COALESCE(D.WEIGHT, 0)) AS TOTAL_WEIGHT
+             , 'G' AS WEIGHTUNIT
+             , A.ORDERQTY * COALESCE(MU.VOL, COALESCE(D.VOL, 0)) AS TOTAL_VOLUME
+             , 'MM3' AS VOLUMEUNIT
+             , C.UDF2 /* 온도 */
+             , A.EXTERNORDERKEY
+             , A.EXTERNORDERDETAILKEY
+             , A.DT_COMMENTS
+             , 'N' AS CANCEL_YN
+             , '' AS CANCEL_ID
+             , '' AS REFERENCETYPE
+             , #{uploadkey} AS REFERENCEKEY
+             , ROW_NUMBER() OVER(PARTITION BY B.CUSTOMERORDERKEY ORDER BY A.ICKEY ) * 10 AS REFERENCEDTKEY
+             , A.IC_RATE
+			 , A.BONUS_IC_RATE
+	         , '' AS ORDER_ERROR_CD
+             , '' AS ORDER_ERROR_COMMENTS
+             , A.INSERTDATE
+             , A.INSERTURKEY
+             , A.UPDATEDATE
+             , A.UPDATEURKEY
+        FROM TORDER_UPLOAD_CUSTOMER A
+       INNER JOIN TORDER_INFO_CO_HD B
+          ON COALESCE(A.ACKEY, 'XX')   = COALESCE(B.ACKEY, 'XX')
+         AND COALESCE(A.DELIVERY_KEY, 'XX')   = COALESCE(B.DELIVERY_KEY, 'XX')
+         AND COALESCE(A.STORE_KEY, 'XX')   = COALESCE(B.STORE_KEY, 'XX')
+         AND COALESCE(A.CTKEY, 'XX')       = COALESCE(B.CTKEY, 'XX')
+         AND A.DELIVERY_HD_DT            = B.DELIVERY_HD_DT
+         AND A.OR_HD_DT                  = B.OR_HD_DT
+         AND A.OR_TYPE_CD                = B.OR_TYPE_CD
+         AND A.EXTORDERTYPECD               = B.EXTORDERTYPECD
+         AND COALESCE(A.COMMENTS, 'XX')       = COALESCE(B.COMMENTS, 'XX')
+         AND COALESCE(A.EXTERNORDERKEY, 'X') = COALESCE(B.EXTERNORDERKEY, 'X') 	
+		 AND COALESCE(A.TO_CTKEY, 'X') 		 = COALESCE(B.TO_CTKEY, 'X') 			
+		 AND COALESCE(A.SALESPERSON_ID, 'X') = COALESCE(B.SALESPERSON_ID, 'X') 	
+		 AND COALESCE(A.DELIVERY_PERSON_ID, 'X') = COALESCE(B.DELIVERY_PERSON_ID, 'X')
+        LEFT OUTER JOIN TADMIN_MST_IC C
+          ON B.OWKEY = C.OWKEY
+         AND A.ICKEY = C.ICKEY
+        LEFT OUTER JOIN TADMIN_MST_ICUTXTYPE D
+          ON B.OWKEY   = D.OWKEY
+         AND C.ICUNITKEY = D.ICUNITKEY
+         AND A.UNIT    = D.ICUNITTYPE
+        LEFT JOIN TADMIN_MST_ICMEASUREMENT MU
+	      ON D.OWKEY   = MU.OWKEY
+	     AND D.ICUNITKEY = MU.ICUNITKEY
+	     AND D.ICUNITTYPE= MU.ICUNITTYPE
+	     AND A.CTKEY   = MU.CTKEY
+       WHERE A.UPLOADKEY = #{uploadkey}
+         AND B.REFERENCEKEY = #{uploadkey}
+         AND A.DELYN = 'N'
+         AND A.ORDER_ERROR_CD IS NULL
+         AND A.ORDER_ERROR_COMMENTS IS NULL
+    </insert>
+
+    <select id="selectExcelErrorCount" resultType="java.lang.Integer">
+        /* oms-order-customerOrder-sql-oracle.xml - selectExcelErrorCount */
+        SELECT COUNT(1)
+        FROM TORDER_UPLOAD_CUSTOMER
+        WHERE UPLOADKEY = #{uploadkey}
+          AND DELYN = 'N'
+          AND ORDER_ERROR_CD IS NOT NULL
+    </select>
+
+    <select id="selectCustomerOrderExcelList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderExcelList */
+        SELECT #{owkey} AS OWKEY
+             , T.UPLOADKEY
+             , T.UPLOADSEQ
+             , RANK() OVER(ORDER BY T.UPLOADKEY
+			                   , T.ACKEY             
+			                   , T.STORE_KEY         
+			                   , T.DELIVERY_KEY      
+			                   , T.CTKEY             
+			                   , T.DELIVERY_HD_DT    
+			                   , T.OR_HD_DT          
+			                   , T.OR_TYPE_CD        
+			                   , T.EXTORDERTYPECD       
+			                   , T.COMMENTS          
+			                   , T.EXTERNORDERKEY    
+			                   , T.TO_CTKEY          
+			                   , T.SALESPERSON_ID    
+			                   , T.DELIVERY_PERSON_ID
+			                   ) AS UPLOADGRPKEY
+             , T.ACKEY
+             , T.DELIVERY_KEY
+             , T.STORE_KEY
+             , T.CTKEY
+             , T.TO_CTKEY
+             , T.DELIVERY_HD_DT
+             , T.OR_HD_DT
+             , T.OR_TYPE_CD
+             , T.EXTORDERTYPECD
+             , T.COMMENTS
+             , T.ICKEY
+             , T.UNIT
+             , T.ORDERQTY
+             , T.DT_COMMENTS
+             , T.EXTERNORDERKEY
+           	 , T.EXTERNORDERDETAILKEY
+			 , T.SALESPERSON_ID    /*영업사원ID*/
+			 , T.DELIVERY_PERSON_ID    /*배송사원ID*/
+			 , T.IC_RATE    /*행사상품비율*/
+			 , T.BONUS_IC_RATE    /*덤상품비율*/
+			 , T.ICRATETYPE
+             , COALESCE(DP.ORDER_ERROR_CD, T.ORDER_ERROR_CD) AS ERROR_CODE
+             , COALESCE(DP.ORDER_ERROR_COMMENTS, T.ORDER_ERROR_COMMENTS) AS SERVER_MESSAGE
+             , CASE WHEN DP.ORDER_ERROR_CD IS NULL THEN 'true' ELSE 'false' END AS IS_SUCCESS
+             , T.DELYN
+             , T.INSERTDATE
+             , T.INSERTURKEY
+             , T.UPDATEDATE
+             , T.UPDATEURKEY
+          FROM TORDER_UPLOAD_CUSTOMER T
+          LEFT JOIN (
+  			  		SELECT EXTERNORDERKEY
+  			  		     , EXTERNORDERDETAILKEY
+  			  		     , #{duplErrorCode} AS ORDER_ERROR_CD
+  			  		     , #{duplErrorMessage} AS ORDER_ERROR_COMMENTS
+          			  FROM TORDER_UPLOAD_CUSTOMER
+          			 WHERE UPLOADKEY = #{uploadkey}
+          			   AND EXTERNORDERKEY IS NOT NULL
+          			   AND EXTERNORDERDETAILKEY IS NOT NULL
+          			 GROUP BY EXTERNORDERKEY
+          			        , EXTERNORDERDETAILKEY
+          			 HAVING COUNT(1) > 1
+          			) DP
+            ON T.EXTERNORDERKEY = DP.EXTERNORDERKEY
+           AND T.EXTERNORDERDETAILKEY = DP.EXTERNORDERDETAILKEY
+         WHERE T.UPLOADKEY = #{uploadkey}
+    </select>
+
+    <select id="selectCoHeaderList" resultType="camelMap">
+        SELECT OWKEY
+            ,  CUSTOMERORDERKEY
+            ,  EXTORDERTYPECD
+            ,  OR_TYPE_CD
+            ,  DELIVERY_HD_DT
+            ,  OR_HD_DT
+            ,  WKSTATUS
+            ,  DELIVERY_KEY
+            ,  STORE_KEY
+            ,  BILLKEY
+            ,  PAYERKEY
+            ,  ACKEY
+            ,  DELIVERY_NO
+            ,  PO_TYPE
+            ,  REFERENCETYPE
+            ,  REFERENCEKEY
+            ,  EXTERNORDERKEY
+            ,  SALESPERSON_ID
+            ,  DELIVERY_PERSON_ID
+            ,  COMMENTS
+            ,  ADDCOMMENTS
+            ,  CANCEL_YN
+            ,  CANCEL_ID
+            ,  ORDER_ERROR_CD
+            ,  ORDER_ERROR_COMMENTS
+            ,  EDI_YN
+            ,  TO_CTKEY
+            ,  CTKEY
+            ,  INSERTDATE
+            ,  INSERTURKEY
+            ,  UPDATEDATE
+            ,  UPDATEURKEY
+        FROM TORDER_INFO_CO_HD
+        WHERE OWKEY = #{owkey}
+          AND REFERENCEKEY = #{uploadkey}
+    </select>
+
+    <select id="selectCustomerOrderReturnHd" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderReturnHd */
+        SELECT A.OWKEY
+             , F.OWNM AS OWNAME
+             , A.CUSTOMERORDERKEY
+             , A.DELIVERY_HD_DT AS PRE_OR_HD_DT
+             , A.DELIVERY_KEY
+             , C.ACNM AS DELIVERY_NAME
+             , A.STORE_KEY
+             , D.ACNM AS STORE_NAME
+             , A.STORE_KEY AS RECEIVEKEY
+             , D.ACNM AS RECEIVENAME
+             , NULL AS COMMENTS
+             , A.CTKEY
+             , A.TO_CTKEY AS MV_CTKEY
+        FROM TORDER_INFO_CO_HD A
+             LEFT OUTER JOIN TADMIN_MST_CUSTOMER C
+                          ON A.OWKEY = C.OWKEY
+                         AND A.DELIVERY_KEY = C.ACKEY
+             LEFT OUTER JOIN TADMIN_MST_CUSTOMER D
+                          ON A.OWKEY = D.OWKEY
+                         AND A.STORE_KEY = D.ACKEY
+             LEFT OUTER JOIN TADMIN_MST_OW F
+                          ON A.OWKEY = F.OWKEY
+        WHERE A.OWKEY = #{owkey}
+          AND A.CUSTOMERORDERKEY = #{customerorderkey}
+          AND A.DELIVERY_HD_DT = #{deliveryHdDt}
+    </select>
+
+    <select id="selectCustomerOrderReturnDt" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderReturnDt */
+        SELECT '0' AS CHK
+             , A.OWKEY
+             , A.CUSTOMERORDERKEY AS ORG_CUSTOMERORDERKEY
+             , A.CUSTOMERORDERDTKEY AS ORG_CUSTOMERORDERDTKEY
+             , A.ICKEY
+             , B.ICNM
+             , A.EXTERNORDERKEY
+             , A.EXTERNORDERDETAILKEY
+             , CASE WHEN COALESCE(C.ICUNITQTY, 0)=0 THEN 0 ELSE TRUNC(SD.CFQTY / C.ICUNITQTY, 3) END AS ORGCFQTY
+             , A.UNIT AS ORG_UNIT
+             , C.ICUNITQTY
+             , SD.CFQTY AS CONVERTQTY
+             , '0' AS COVQTY
+             , '0' AS EXQTY
+        FROM TORDER_INFO_CO_DT A
+        JOIN TORDER_INFO_SO_DT SD
+          ON A.OWKEY = SD.OWKEY
+         AND A.CUSTOMERORDERKEY = SD.CUSTOMERORDERKEY
+         AND A.CUSTOMERORDERDTKEY = SD.CUSTOMERORDERDTKEY
+         AND COALESCE(SD.OR_CANCEL_YN, 'N') = 'N'
+	    LEFT JOIN TADMIN_MST_IC B
+          ON A.OWKEY = B.OWKEY
+         AND A.ICKEY = B.ICKEY
+	    LEFT JOIN TADMIN_MST_ICUTXTYPE C
+          ON B.OWKEY = C.OWKEY
+         AND B.ICKEY = C.ICUNITKEY
+         AND A.UNIT  = C.ICUNITTYPE
+        WHERE A.OWKEY = #{owkey}
+          AND A.CUSTOMERORDERKEY = #{customerorderkey}
+    </select>
+
+    <select id="selectOwnerOrderType" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectOwnerOrderType */
+        SELECT A.OWKEY
+             , A.EXTERN_OR_TYPE_CD AS FIELD1
+             , A.EXTERN_OR_TYPE_CD||':'||A.EXTERN_OR_TYPE_NM AS FIELD2
+          FROM TORDER_MST_EXTERN A
+         WHERE A.OWKEY = #{owkey}
+           AND A.DELYN ='N'
+  		   AND A.PREORDERYN = 'Y'
+    </select>
+
+    <insert id="saveCustomerOrderReturn" parameterType="java.util.HashMap">
+        /* oms-order-customerOrder-sql-oracle.xml - saveCustomerOrderReturn */
+        INSERT INTO TORDER_INFO_PREORDERS (
+                  OWKEY
+                , PREKEY
+                , ORG_CUSTOMERORDERKEY
+                , ORG_CUSTOMERORDERDTKEY
+                , EXTERNORDERKEY
+                , EXTERNORDERDETAILKEY
+                , RECEIVEKEY
+                , DELIVERY_KEY
+                , STORE_KEY
+                , ACKEY
+                , CTKEY
+                , MV_CTKEY
+                , PRE_OR_HD_DT
+                , EXTERN_OR_TYPE_CD
+                , ICKEY
+                , EXQTY
+                , COVQTY
+                , ORG_UNIT
+                , COMMENTS
+                , SAPTRANSYN
+                , SAPTRANSFAILYN
+                , INSERTDATE
+                , INSERTURKEY
+                , UPDATEDATE
+                , UPDATEURKEY
+                , OR_HDDATE
+        )
+        SELECT TB.OWKEY
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || #{orderNoType} || LPAD(nextval('seq_torder_info_preorders')::TEXT, 8, '0') AS PREKEY
+             , TB.ORG_CUSTOMERORDERKEY
+             , TB.ORG_CUSTOMERORDERDTKEY
+             , TB.EXTERNORDERKEY
+             , TB.EXTERNORDERDETAILKEY
+             , TB.RECEIVEKEY
+             , TB.DELIVERY_KEY
+             , TB.STORE_KEY
+             , TB.ACKEY
+             , TB.CTKEY
+             , TB.MV_CTKEY
+             , TB.PRE_OR_HD_DT
+             , TB.EXTERN_OR_TYPE_CD
+             , TB.ICKEY
+             , TB.EXQTY
+             , TB.COVQTY
+             , TB.ORG_UNIT
+             , TB.COMMENTS
+             , TB.SAPTRANSYN
+             , TB.SAPTRANSFAILYN
+             , TB.INSERTDATE
+             , TB.INSERTURKEY
+             , TB.UPDATEDATE
+             , TB.UPDATEURKEY
+             , TB.OR_HDDATE
+        FROM
+        <foreach collection="rtnList" item="item" index="index" separator="UNION ALL" open="(" close=")">
+            SELECT #{item.owkey} AS OWKEY
+                , #{item.orgCustomerorderkey} AS ORG_CUSTOMERORDERKEY
+                , #{item.orgCustomerorderdtkey} AS ORG_CUSTOMERORDERDTKEY
+                , #{item.externorderkey} AS EXTERNORDERKEY
+                , #{item.externorderdetailkey} AS EXTERNORDERDETAILKEY
+                , #{receivekey} AS RECEIVEKEY
+                , #{deliveryKey} AS DELIVERY_KEY
+                , #{storeKey} AS STORE_KEY
+                , #{ackey} AS ACKEY
+                , #{ctkey} AS CTKEY
+                , #{mvCtkey} AS MV_CTKEY
+                , #{item.preOrHdDt} AS PRE_OR_HD_DT
+                , #{item.externOrTypeCd} AS EXTERN_OR_TYPE_CD
+                , #{item.ickey} AS ICKEY
+                , #{item.exqty} AS EXQTY
+                , #{item.covqty} AS COVQTY
+                , #{item.orgUnit} AS ORG_UNIT
+                , #{comments} AS COMMENTS
+                , #{saptransyn} AS SAPTRANSYN
+                , #{saptransfailyn} AS SAPTRANSFAILYN
+                , #{surkey} AS INSERTURKEY
+                , #{sysdate} AS INSERTDATE
+                , #{surkey} AS UPDATEURKEY
+                , #{sysdate} AS UPDATEDATE
+                , #{preOrHdDt} AS OR_HDDATE
+        </foreach> TB
+    </insert>
+
+    <update id="updateCustomerOrderReturn">
+        /* oms-order-customerOrder-sql-oracle.xml - updateCustomerOrderReturn */
+        UPDATE TORDER_INFO_CO_HD
+           SET OCCURRENCE_ORDER_YN = 'Y'
+        WHERE CUSTOMERORDERKEY = #{customerorderkey}
+    </update>
+
+    <select id="getOrderNum" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectCustomerOrderNumList */
+        SELECT ORDER_GROUP
+             , TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || #{orderNoType} || LPAD(nextval('seq_torder_info_co_hd')::TEXT, 6, '0') AS CUSTOMERORDERKEY
+        FROM (
+            SELECT T.ORDER_GROUP
+            FROM ( <foreach collection="list" item="item" index="index" separator="UNION ALL">
+                        SELECT #{item.orderGroup} AS ORDER_GROUP
+                    </foreach> ) T
+            ORDER BY LPAD(T.ORDER_GROUP::TEXT, 10, 0) ASC
+             )
+    </select>
+
+    <insert id="insertCustomerOrderDtSplitList">
+        /* oms-order-customerOrder-sql-oracle.xml - insertCustomerOrderDtSplitList */
+        INSERT INTO TORDER_INFO_CO_DT
+        (
+        	  OWKEY    /*사용자 ID*/
+			, CUSTOMERORDERKEY    /*사용자 명*/
+			, CUSTOMERORDERDTKEY    /*사용자 그룹 코드*/
+			, EXTORDERTYPECD    /*사용자 암호*/
+			, WKSTATUS    /*유효 일자*/
+			, ICKEY    /*국가별 언어 코드*/
+			, OR_HD_DT    /*로그인실패카운터*/
+			, DELIVERY_HD_DT    /*표준 시간대 코드*/
+			, ORDERQTY    /*일광 절약 시간*/
+			, UNIT    /*센터 코드*/
+			, CONVERTQTY    /*화주 코드(M)*/
+			, SALEUNIT    /*E-MAIL*/
+			, OB_COSTPRICE    /*휴대폰 번호*/
+			, INDIAMT    /*종료 일시*/
+			, VAT    /*입력 일시*/
+			, EXTDT    /*입력 사용자 ID*/
+			, PRODUCT_LOT    /*수정 일시*/
+			, PRODUCT_DT    /*수정 사용자 ID*/
+			, TOTALWEIGHT    /*구분*/
+			, WEIGHTUNIT    /*상저온코드*/
+			, VOLUME    /*사용자구분("0": 내부사용자,  그 외:외부사용자) - 관리기준코드:USRTYP*/
+			, VOLUMEUNIT    /*Division 제약*/
+			, LOGGRPCD    /**/
+			, EXTERNORDERKEY    /**/
+			, EXTERNORDERDETAILKEY    /**/
+			, COMMENTS    /**/
+			, CANCEL_YN    /**/
+			, CANCEL_ID    /**/
+			, IC_RATE    /*행사상품비율*/
+			, BONUS_IC_RATE    /*덤상품비율*/
+			, REFERENCETYPE    /**/
+			, REFERENCEKEY    /**/
+			, REFERENCEDTKEY    /**/
+			, ORDER_ERROR_CD    /**/
+			, ORDER_ERROR_COMMENTS    /**/
+			, INSERTDATE    /**/
+			, INSERTURKEY    /**/
+			, UPDATEDATE    /*배차여부*/
+			, UPDATEURKEY    /*행사유형*/
+        )
+        SELECT CD.OWKEY
+             , CD.CUSTOMERORDERKEY
+             , ROW_NUMBER() OVER(PARTITION BY CD.CUSTOMERORDERKEY ORDER BY CD.CUSTOMERORDERKEY) * 10 AS CUSTOMERORDERDTKEY
+             , CD.EXTORDERTYPECD
+             , CD.WKSTATUS
+             , CD.ICKEY
+             , CH.OR_HD_DT
+             , CH.DELIVERY_HD_DT
+             , CD.ORDERQTY
+             , CD.UNIT
+             , CD.ORDERQTY * IU.ICUNITQTY AS CONVERTQTY
+             , CD.SALEUNIT
+             , CD.OB_COSTPRICE
+             , CD.ORDERQTY * IU.ICUNITQTY * CD.OB_COSTPRICE AS INDIAMT
+             , CASE WHEN CD.VAT>0 THEN ROUND(CD.ORDERQTY * IU.ICUNITQTY * CD.OB_COSTPRICE / 10, 0) ELSE 0 END AS VAT
+             , CD.EXTDT
+             , CD.PRODUCT_LOT
+             , CD.PRODUCT_DT
+             , CD.TOTALWEIGHT * 1000 AS TOTALWEIGHT /* 중량 G 단위로 인서트 */
+             , 'G' AS WEIGHTUNIT
+             , CD.VOLUME * 1000000000 AS VOLUME /* CBM -> MM3로 변환해서 인서트 */
+             , CD.VOLUMEUNIT
+             , CD.LOGGRPCD
+             , CD.EXTERNORDERKEY
+             , CD.EXTERNORDERDETAILKEY
+             , CD.COMMENTS
+             , 'N' AS CANCEL_YN
+             , NULL AS CANCEL_ID
+             , CD.IC_RATE    /*행사상품비율*/
+			 , CD.BONUS_IC_RATE    /*덤상품비율*/
+             , CD.REFERENCETYPE
+             , CD.REFERENCEKEY
+             , CD.REFERENCEDTKEY
+             , NULL AS ORDER_ERROR_CD
+             , NULL AS ORDER_ERROR_COMMENTS
+             , CD.INSERTDATE
+             , CD.INSERTURKEY
+             , CD.UPDATEDATE
+             , CD.UPDATEURKEY
+        FROM (
+        <foreach collection="list" item="item" index="index" separator="UNION ALL">
+            SELECT #{item.owkey} AS OWKEY
+                 , #{item.customerorderkey} AS CUSTOMERORDERKEY
+                 , #{item.customerorderdtkey} AS CUSTOMERORDERDTKEY
+                 , #{item.extordertypecd} AS EXTORDERTYPECD
+                 , #{item.wkstatus} AS WKSTATUS
+                 , #{item.ickey} AS ICKEY
+                 , #{item.orHdDt} AS OR_HD_DT
+                 , #{item.deliveryHdDt} AS DELIVERY_HD_DT
+                 , #{item.splitqty} AS ORDERQTY
+                 , #{item.icuttype} AS UNIT
+                 , #{item.convertqty} AS CONVERTQTY
+                 , #{item.saleunit} AS SALEUNIT
+                 , #{item.obCostprice} AS OB_COSTPRICE
+                 , #{item.indiamt} AS INDIAMT
+                 , #{item.vat} AS VAT
+                 , #{item.extdt} AS EXTDT
+                 , #{item.productLot} AS PRODUCT_LOT
+                 , #{item.productDt} AS PRODUCT_DT
+                 , #{item.totalweight} AS TOTALWEIGHT
+                 , #{item.weightunit} AS WEIGHTUNIT
+                 , #{item.volume} AS VOLUME
+                 , #{item.volumeunit} AS VOLUMEUNIT
+                 , #{item.loggrpcd} AS LOGGRPCD
+                 , #{item.externorderkey} AS EXTERNORDERKEY
+                 , #{item.externorderdetailkey} AS EXTERNORDERDETAILKEY
+                 , #{item.comments} AS COMMENTS
+                 , #{cancleYn} AS CANCEL_YN
+                 , #{item.cancleId} AS CANCEL_ID
+                 , #{item.icRate} AS IC_RATE    /*행사상품비율*/
+				 , #{item.bonusIcRate} AS BONUS_IC_RATE    /*덤상품비율*/
+                 , #{item.referencetype} AS REFERENCETYPE
+                 , #{item.referencekey} AS REFERENCEKEY
+                 , #{item.referencedtkey} AS REFERENCEDTKEY
+                 , #{item.orderErrorCd} AS ORDER_ERROR_CD
+                 , #{item.orderErrorComments} AS ORDER_ERROR_COMMENTS
+                 , #{sysdate} AS INSERTDATE
+                 , #{surkey} AS INSERTURKEY
+                 , #{sysdate} AS UPDATEDATE
+                 , #{surkey} AS UPDATEURKEY
+        </foreach> ) CD
+            INNER JOIN TORDER_INFO_CO_HD CH
+                    ON CD.OWKEY = CH.OWKEY
+                   AND CD.CUSTOMERORDERKEY = CH.CUSTOMERORDERKEY
+            INNER JOIN TADMIN_MST_IC IC
+               ON CD.OWKEY = IC.OWKEY
+              AND CD.ICKEY = IC.ICKEY
+            INNER JOIN TADMIN_MST_ICUTXTYPE IU
+               ON IC.OWKEY = IU.OWKEY
+              AND IC.ICUNITKEY = IU.ICUNITKEY
+              AND CD.UNIT = IU.ICUNITTYPE
+    </insert>
+    
+    <select id="selectMultiCustomerOrderList" resultType="camelMap">
+		/* oms-order-customerOrder-sql-oracle.xml selectMultiCustomerOrderList */
+		SELECT CH.EXTERNORDERKEY
+		     , COUNT(1) AS CNT
+		  FROM TORDER_INFO_CO_HD CH
+		  JOIN TORDER_INFO_CO_HD RCH
+		    ON CH.OWKEY = RCH.OWKEY
+		   AND CH.EXTERNORDERKEY = RCH.EXTERNORDERKEY
+		   AND RCH.WKSTATUS NOT IN
+		<foreach item="status" index="index" collection="cancelStatuses" open="(" separator="," close=")">
+            #{status}
+        </foreach>
+		 WHERE CH.OWKEY = #{owkey}
+		   AND CH.CUSTOMERORDERKEY IN 
+		<foreach item="customerorderkey" index="index" collection="coList" open="(" separator="," close=")">
+            #{customerorderkey}
+        </foreach>		   
+		 GROUP BY CH.EXTERNORDERKEY
+		HAVING COUNT(1) > 1
+	</select>
+	
+	<select id="selectSendedOrderList" resultType="camelMap">
+        /* oms-order-customerOrder-sql-oracle.xml - selectSendedOrderList */
+        SELECT CH.OWKEY
+             , CH.COHDKEY             
+             , CASE WHEN CH.WKSTATUS=#{completeStatus} THEN 'Y' ELSE 'N' END AS SAVEYN
+             , CASE WHEN CH.ERPSNDFAILYN = 'P' THEN 'N'  /*보류해제*/
+                    ELSE 'P'  /*보류*/
+                END AS ERPSNDFAILYN
+             , CH.WKSTATUS
+             , SH.SOHDKEY
+          FROM (
+				<foreach collection="orders" item="item" separator="UNION ALL">
+		        SELECT #{item.cohdkey} AS COHDKEY 
+				</foreach>
+	       	   ) T
+		  JOIN TORDER_INFO_CO_HD CH
+		    ON T.COHDKEY = CH.COHDKEY
+		   AND CH.OWKEY = #{owkey}
+		  LEFT JOIN TORDER_INFO_SO_HD SH
+		    ON CH.OWKEY = SH.OWKEY
+		   AND CH.COHDKEY = SH.COHDKEY
+		   AND SH.CNLYN = 'N'		   
+    </select>
+</mapper>

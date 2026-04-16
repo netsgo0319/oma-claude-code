@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.purchaseorder.mapper.HeadApprovalRequestMapper">
+
+	<resultMap id="headApprovalRequestRefMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />	
+		<result property="owname" column="OWNAME" />	
+		<result property="reqhdtype" column="REQHDTYPE" />
+		<result property="reqhdtype_desc" column="REQHDTYPE_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="approvalyn" column="APPROVALYN" />
+		<result property="approvalyn_desc" column="APPROVALYN_DESC" typeHandler="CodeDescTypeHandler" />	
+		<result property="rejectreason" column="REJECTREASON" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />			
+		<result property="reqhdkey" column="REQHDKEY" />
+		<result property="reqreason" column="REQREASON" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="loggrpcd_desc" column="LOGGRPCD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="dckey" column="DCKEY" />
+		<result property="dckey_desc" column="DCKEY_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ifstatus" column="IFSTATUS" />
+		<result property="ifstatus_desc" column="IFSTATUS_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="store_key" column="STORE_KEY" />
+		<result property="store_name" column="STORE_NAME" />
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="fr_ctkey" column="FR_CTKEY" />
+		<result property="fr_ctkey_name" column="FR_CTKEY_NAME" />
+		<result property="to_ctkey" column="TO_CTKEY" />
+		<result property="to_ctkey_name" column="TO_CTKEY_NAME" />
+		<result property="fromtoctkey" column="FROMTOCTKEY" />
+		
+		<!-- DT 영역 -->
+		<result property="reqdtkey" column="REQDTKEY" />
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="uom" column="UOM" />
+		<result property="uom_desc" column="UOM_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="countermeasure_cd" column="COUNTERMEASURE_CD" />
+		<result property="countermeasure_cd_desc" column="COUNTERMEASURE_CD_DESC" typeHandler="CodeDescTypeHandler" />
+		<result property="icutqty" column="ICUTQTY" />
+		<result property="obhdkey" column="OBHDKEY" />
+		<result property="icname" column="ICNAME" />
+		<result property="icgrkey" column="ICGRKEY" />
+		<result property="icgrtype" column="ICGRTYPE" />
+		<result property="chitid" column="CHITID" />
+		<result property="chitid_desc" column="CHITID_DESC" typeHandler="CodeDescTypeHandler" />
+	</resultMap>
+	
+	<resultMap id="headApprovalRequestMap" type="java.util.HashMap" extends="headApprovalRequestRefMap" >
+		<result property="requestdate" column="REQUESTDATE" typeHandler="GmtDateFormatTypeHandler" />
+		<result property="ifdate" column="IFDATE" typeHandler="GmtDateTimeTypeHandler"/>
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="updatedate" column="UPDATEDATE"/>
+	</resultMap>
+	
+	<sql id="selectHeadApprovalRequestHdRefSql">
+		SELECT 	A.CTKEY
+		        ,A.OWKEY
+		        ,(SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY = A.OWKEY) AS OWNAME
+			    ,A.REQUESTDATE
+			    ,A.REQHDTYPE
+			    ,A.CTKEY || ';' || 'REQHDTYPE' || ';' || A.REQHDTYPE AS REQHDTYPE_DESC
+			    ,A.APPROVALYN
+			    ,A.CTKEY || ';' || 'YESORNO' || ';' || A.APPROVALYN AS APPROVALYN_DESC
+			    ,A.REJECTREASON
+			    ,A.EXTERNORDERKEY
+			    ,A.REQHDKEY
+			    ,A.REQREASON
+			    ,A.LOGGRPCD
+			    ,A.CTKEY || ';' || 'LOGGRPCD' || ';' || A.LOGGRPCD AS LOGGRPCD_DESC      
+   			    ,A.DCKEY
+			    ,A.CTKEY || ';' || 'DCKEY' || ';' || A.DCKEY AS DCKEY_DESC      
+			    ,A.IFSTATUS
+			    ,A.CTKEY || ';' || 'HAR_IFSTATUS' || ';' || A.IFSTATUS AS IFSTATUS_DESC  
+			    ,A.IFDATE
+			    ,A.ACKEY
+			    ,B.ACNAME
+			    ,A.IBHDKEY
+			    ,A.STORE_KEY
+			    ,C.STORE_NAME
+			    ,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.UPDATEURKEY
+				,D.OBHDKEY
+				,A.FR_CTKEY
+				,(SELECT CTNAME FROM TWORK_MST_CT WHERE CTKEY = A.FR_CTKEY) AS FR_CTKEY_NAME
+				,A.TO_CTKEY
+				,(SELECT CTNAME FROM TWORK_MST_CT WHERE CTKEY = A.TO_CTKEY) AS TO_CTKEY_NAME
+		  FROM 	TWORK_INFO_REQ_HD A
+		  	   LEFT JOIN TWORK_MST_AC B ON A.CTKEY = B.CTKEY AND A.ACKEY = B.ACKEY AND A.OWKEY = B.OWKEY
+		  	   LEFT JOIN TWORK_MST_STORE C ON A.CTKEY = C.CTKEY AND A.STORE_KEY = C.STORE_KEY AND A.DCKEY = C.DCKEY
+		  	   LEFT JOIN TWORK_INFO_OB_HD D ON A.CTKEY = D.CTKEY AND A.REQHDKEY = D.EXTERNORDERKEY
+		 WHERE
+			   A.CTKEY = #{ctkey}	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+           AND 	#{SEARCH_CONDITION}
+	  	</if>		  
+	</sql>
+	
+	<sql id="selectHeadApprovalRequestDtRefSql">
+		SELECT 	A.CTKEY
+				,A.REQHDKEY
+				,A.REQDTKEY
+				,A.EXTERNORDERKEY
+				,A.EXTERNORDERLINENUM
+				,A.ICKEY
+				,C.ICNAME
+				,A.OWKEY
+				,(SELECT OWNAME FROM TWORK_MST_OW WHERE OWKEY = A.OWKEY) AS OWNAME
+				,A.ICUTKEY
+				,A.EXQTY / B.ICUTQTY AS EXQTY
+				,B.ICUTQTY
+				,A.UOM
+			    ,A.CTKEY || ';' || 'ICUTTYPE' || ';' || A.UOM AS UOM_DESC  
+				,A.COSTPRICE
+				,A.SALEPRICE
+				,A.IFSTATUS
+			    ,A.CTKEY || ';' || 'HAR_IFSTATUS' || ';' || A.IFSTATUS AS IFSTATUS_DESC  
+			    ,A.COUNTERMEASURE_CD
+			    ,A.CTKEY || ';' || 'OM_EMERGENCY_PO_REQ' || ';' || A.COUNTERMEASURE_CD AS COUNTERMEASURE_CD_DESC  
+			    ,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.UPDATEURKEY
+				,A.ACKEY
+				,A.LOGGRPCD
+				,A.ICGRKEY
+				,A.ICGRTYPE
+				,A.CHITID
+				,A.CTKEY || ';' || '70-WMS' || ';' || A.CHITID AS CHITID_DESC  
+				,D.REQHDTYPE
+		  FROM 	TWORK_INFO_REQ_HD D
+		  		,TWORK_INFO_REQ_DT A
+		  	   	,TWORK_MST_ICUTXTYPE B
+		  	   	,TWORK_MST_IC C 
+		 WHERE 	
+		 		A.CTKEY = #{ctkey}
+		   AND  A.OWKEY = #{owkey}      
+		   AND 	A.REQHDKEY = #{reqhdkey}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqdtkey)" >
+			   AND 	A.REQDTKEY = #{reqdtkey}
+			</if>
+		   AND  D.CTKEY = A.CTKEY
+		   AND  D.REQHDKEY = A.REQHDKEY
+		   AND  A.CTKEY = B.CTKEY
+		   AND  A.OWKEY = B.OWKEY
+		   AND  A.ICUTKEY = B.ICUTKEY
+		   AND  A.UOM = B.ICUTTYPE
+		   AND A.CTKEY = C.CTKEY
+		   AND A.ICKEY = C.ICKEY
+		   AND A.OWKEY = C.OWKEY
+	</sql>
+	
+	
+
+	<select id="selectHeadApprovalRequestHdCnt" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		  FROM (
+			<include refid="selectHeadApprovalRequestHdRefSql"/>
+		  )
+		 
+	</select>
+	
+	<select id="selectHeadApprovalRequestHd" resultMap="headApprovalRequestMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT *
+			  FROM (
+				<include refid="selectHeadApprovalRequestHdRefSql"/>
+			  )
+			<choose>
+				<when test='sortValue !=null and sortValue != ""'>	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>		
+	
+	<select id="selectMapHeadApprovalRequestHd" resultMap="headApprovalRequestMap" >
+		SELECT 	A.CTKEY
+		        ,A.OWKEY
+			    ,A.REQUESTDATE
+			    ,A.REQHDTYPE
+			    ,A.CTKEY || ';' || 'REQHDTYPE' || ';' || A.REQHDTYPE AS REQHDTYPE_DESC
+			    ,A.APPROVALYN
+			    ,A.CTKEY || ';' || 'YESORNO' || ';' || A.APPROVALYN AS APPROVALYN_DESC
+			    ,A.REJECTREASON
+			    ,A.EXTERNORDERKEY
+			    ,A.REQHDKEY
+			    ,A.REQREASON
+			    ,A.LOGGRPCD
+			    ,A.CTKEY || ';' || 'LOGGRPCD' || ';' || A.LOGGRPCD AS LOGGRPCD_DESC      
+   			    ,A.DCKEY
+			    ,A.CTKEY || ';' || 'DCKEY' || ';' || A.DCKEY AS DCKEY_DESC      
+			    ,A.IFSTATUS
+			    ,A.CTKEY || ';' || 'HAR_IFSTATUS' || ';' || A.IFSTATUS AS IFSTATUS_DESC  
+			    ,A.IFDATE
+			    ,A.ACKEY
+			    ,B.ACNAME
+			    ,A.STORE_KEY
+			    ,C.STORE_NAME
+			    ,A.INSERTDATE
+				,A.INSERTURKEY
+				,A.UPDATEDATE
+				,A.UPDATEURKEY
+				,A.IBHDKEY
+				,A.FR_CTKEY||A.TO_CTKEY AS FROMTOCTKEY
+				,A.FR_CTKEY
+				,(SELECT CTNAME FROM TWORK_MST_CT WHERE CTKEY = A.FR_CTKEY) AS FR_CTKEY_NAME
+				,A.TO_CTKEY
+				,(SELECT CTNAME FROM TWORK_MST_CT WHERE CTKEY = A.TO_CTKEY) AS TO_CTKEY_NAME
+		  FROM  TWORK_INFO_REQ_HD A
+		  		LEFT JOIN TWORK_MST_AC B ON A.CTKEY = B.CTKEY AND A.ACKEY = B.ACKEY AND A.OWKEY = B.OWKEY
+		  		LEFT JOIN TWORK_MST_STORE C ON A.CTKEY = C.CTKEY AND A.STORE_KEY = C.STORE_KEY
+		 WHERE
+				A.CTKEY = #{ctkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqhdkey)" >
+		   AND 	A.REQHDKEY = #{reqhdkey}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqhdkeyList)" >
+		   AND 	A.REQHDKEY IN 
+			<foreach item="reqhdkeyList" index="index" collection="reqhdkeyList" open="(" separator="," close=")">
+				#{reqhdkeyList}
+			</foreach>
+		</if>	
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>
+	</select>
+	
+	<select id="selectHeadApprovalRequestDtCnt" resultType="java.lang.Integer">
+		SELECT 	COUNT(1)
+		  FROM 	(
+		  	<include refid="selectHeadApprovalRequestDtRefSql"/>
+		)
+	</select>
+	
+	<select id="selectHeadApprovalRequestDt" resultMap="headApprovalRequestMap">
+		<include refid="selectHeadApprovalRequestDtRefSql"/>
+		 ORDER BY 
+		 	UPDATEDATE DESC
+	</select>
+	
+	<select id="selectMapHeadApprovalRequestDt" resultMap="headApprovalRequestMap" >
+		<include refid="selectHeadApprovalRequestDtRefSql"/>
+	</select>
+	
+	<resultMap id="selectTWokInfoReqHdxObhdkeyMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="reqhdkey" column="REQHDKEY" />
+		<result property="owkey" column="OWKEY" />
+		<result property="reqhdtype" column="REQHDTYPE" />
+		<result property="requestdate" column="REQUESTDATE" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="approvalyn" column="APPROVALYN" />
+		<result property="rejectreason" column="REJECTREASON" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="reqreason" column="REQREASON" />
+		<result property="ifstatus" column="IFSTATUS" />
+		<result property="ackey" column="ACKEY" />
+		<result property="acname" column="ACNAME" />
+		<result property="store_key" column="STORE_KEY" />
+		<result property="dckey" column="DCKEY" />
+		<result property="ifdate" column="IFDATE" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="icgrkey" column="ICGRKEY" />
+		<result property="icgrtype" column="ICGRTYPE" />
+		<result property="obhdkey" column="OBHDKEY" />	
+		<result property="reqdtkey" column="REQDTKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="uom" column="UOM" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="lckey" column="LCKEY" />
+		<result property="ivatkey" column="IVATKEY" />
+		<result property="chitid" column="CHITID" />
+		<result property="erpstlc" column="ERPSTLC" />
+		<result property="obdtkey" column="OBDTKEY" />
+		<result property="obhdkey" column="OBHDKEY" />
+		<result property="ickey" column="ICKEY" />
+		<result property="to_ctkey" column="TO_CTKEY" />
+	</resultMap>
+	
+	<select id="selectTWokInfoReqHdxObhdkey" resultMap="selectTWokInfoReqHdxObhdkeyMap" >
+        SELECT 
+               A.CTKEY
+              ,A.REQHDKEY
+              ,A.OWKEY
+              ,A.REQHDTYPE
+              ,A.REQUESTDATE
+              ,A.LOGGRPCD
+              ,A.APPROVALYN
+              ,A.REJECTREASON
+              ,A.REQHDKEY AS EXTERNORDERKEY 
+              ,A.REQREASON
+              ,A.IFSTATUS
+              ,A.ACKEY
+              ,A.ACNAME
+              ,A.STORE_KEY
+              ,A.DCKEY
+              ,A.IFDATE
+              ,A.IBHDKEY
+              ,A.ICGRKEY
+              ,B.OBHDKEY        
+              ,A.TO_CTKEY
+          FROM TWORK_INFO_REQ_HD A
+              LEFT JOIN TWORK_INFO_OB_HD B ON A.CTKEY = B.CTKEY AND A.REQHDKEY = B.EXTERNORDERKEY
+         WHERE
+               1=1
+		   AND A.CTKEY = #{ctkey}
+		   AND A.REQHDKEY = #{reqhdkey}	
+	</select>	
+
+	<insert id="insertHeadApprovalRequestHd">
+		INSERT INTO TWORK_INFO_REQ_HD	(
+		    CTKEY
+			,OWKEY
+			,REQHDKEY
+			,REQHDTYPE
+			,REQUESTDATE
+			,LOGGRPCD
+			,EXTERNORDERKEY
+			,REQREASON    
+			,IFSTATUS
+			,ACKEY
+			,STORE_KEY
+			,DCKEY
+			,IBHDKEY
+			,ICGRKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,FR_CTKEY
+			,TO_CTKEY			
+		)VALUES(
+		    #{ctkey}
+			,#{owkey}
+			,#{reqhdkey}
+			,#{reqhdtype}
+			,#{requestdate, typeHandler=GmtDateTimeFormatTypeHandler}
+			,#{loggrpcd}
+			,#{externorderkey}
+			,#{reqreason}	
+			,'10'	
+			,#{ackey}
+			,#{store_key}
+			,#{dckey}
+			,#{ibhdkey}
+			,#{icgrkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,CASE #{reqhdtype} WHEN '100' THEN #{fromtoctkey} ELSE '' END
+			,CASE #{reqhdtype} WHEN '110' THEN #{fromtoctkey} WHEN '70' THEN #{fromtoctkey} ELSE '' END
+		)		
+	</insert>
+	
+	<insert id="insertHeadApprovalRequestDt">
+		INSERT INTO TWORK_INFO_REQ_DT	(
+			CTKEY
+			,REQHDKEY
+			,REQDTKEY
+			,EXTERNORDERKEY
+			,EXTERNORDERLINENUM
+			,ICKEY
+			,OWKEY
+			,ICUTKEY
+			,EXQTY
+			,UOM
+			,COSTPRICE
+            ,SALEPRICE
+            ,CHITID
+            ,ERPSTLC
+            ,LCKEY
+			,IBHDKEY
+			,IBDTKEY
+			,IFSTATUS
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,ACKEY
+			,LOGGRPCD
+			,ICGRKEY
+			,ICGRTYPE
+		)	VALUES	(
+			#{ctkey}
+			,#{reqhdkey}
+			,#{reqdtkey}
+			,#{externorderkey}
+			,#{externorderlinenum}
+			,#{ickey}
+			,#{owkey}
+			,#{icutkey}
+			,#{exqty}
+			,#{uom}
+			,#{costprice}
+			,#{saleprice}
+			,#{chitid}
+			,#{erpstlc}
+			,#{to_lckey}
+			,#{ibhdkey}
+			,#{ibdtkey}
+			,'10'	
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{ackey}
+			,#{loggrpcd}
+			,#{icgrkey}
+			,#{icgrtype}
+		)		
+	</insert>
+
+	<update id="updateHeadApprovalRequestHd">
+		UPDATE 	TWORK_INFO_REQ_HD 
+		   SET	REQUESTDATE    	= #{requestdate, typeHandler=GmtDateTimeFormatTypeHandler}
+		   		,REQHDTYPE      = #{reqhdtype}
+				,LOGGRPCD		= #{loggrpcd}
+				,EXTERNORDERKEY = #{externorderkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqreason)" >
+		   		,REQREASON      = #{reqreason}
+				</if>
+				,FR_CTKEY       = CASE #{reqhdtype} WHEN '100' THEN #{fromtoctkey} ELSE '' END
+				,TO_CTKEY       = CASE #{reqhdtype} WHEN '110' THEN #{fromtoctkey} WHEN '70' THEN #{fromtoctkey} ELSE '' END
+				,ACKEY     		= #{ackey}
+				,STORE_KEY      = #{store_key}
+				,DCKEY      	= #{dckey}
+				,UPDATEDATE		= #{sysdate}
+				,UPDATEURKEY	= #{surkey}
+		WHERE 
+				CTKEY         	= #{ctkey}
+		  AND   OWKEY        	= #{owkey}
+		  AND 	REQHDKEY      	= #{reqhdkey}
+		  AND   IFSTATUS IN ('10', '50') 
+	</update>
+	
+	<update id="updateHeadApprovalRequestDt">
+		UPDATE 	TWORK_INFO_REQ_DT 
+		   SET	EXTERNORDERLINENUM = #{externorderlinenum}
+				,ICKEY             = #{ickey}
+				,ICUTKEY           = #{icutkey}
+				,EXQTY             = #{exqty}
+				,UOM               = #{uom}
+				,CHITID            = #{chitid}
+				,UPDATEDATE		   = #{sysdate}
+				,UPDATEURKEY	   = #{surkey}
+		 WHERE 	
+		 		CTKEY         = #{ctkey}
+		   AND  OWKEY         = #{owkey}
+		   AND 	REQHDKEY      = #{reqhdkey} 
+		   AND 	REQDTKEY      = #{reqdtkey} 
+	</update>
+	
+	<update id="updateHeadApprovalRequestHdIfStatus">
+		UPDATE 	TWORK_INFO_REQ_HD 
+		   SET	IFSTATUS = #{ifstatus}
+		   		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ifdate)" >
+				   ,IFDATE      = #{ifdate}
+				</if>
+				,UPDATEDATE		= #{sysdate}
+				,UPDATEURKEY	= #{surkey}
+		WHERE 
+				CTKEY         	= #{ctkey}
+		  AND   OWKEY        	= #{owkey}
+		  AND 	REQHDKEY      	= #{reqhdkey} 
+	</update>
+	
+	<update id="updateHeadApprovalRequestDtIfStatus">
+		UPDATE 	TWORK_INFO_REQ_DT 
+		   SET	IFSTATUS = #{ifstatus}
+				,UPDATEDATE		= #{sysdate}
+				,UPDATEURKEY	= #{surkey}
+		 WHERE 	
+		 		CTKEY         = #{ctkey}
+		   AND  OWKEY         = #{owkey}
+		   AND 	REQHDKEY      = #{reqhdkey} 
+	</update>
+	
+	<delete id="deleteHeadApprovalRequestHd">
+		DELETE 
+		  FROM 	TWORK_INFO_REQ_HD
+		 WHERE 	
+		 		CTKEY		= #{ctkey}
+		   AND  OWKEY       = #{owkey}
+		   AND 	REQHDKEY	= #{reqhdkey} 
+	</delete>
+	
+	<delete id="deleteHeadApprovalRequestDt">
+		DELETE 
+		  FROM 	TWORK_INFO_REQ_DT
+		 WHERE 	
+		 		CTKEY         = #{ctkey}
+		   AND  OWKEY         = #{owkey}
+		   AND 	REQHDKEY      = #{reqhdkey} 
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(reqdtkey)" >
+		   AND 	REQDTKEY      = #{reqdtkey} 
+		</if>
+	</delete>
+
+</mapper>	

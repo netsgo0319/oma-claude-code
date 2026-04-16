@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.system.mapper.ExcelHistoryMapper">
+	<select id="selectExcelHistoryCount" resultType="java.lang.Integer" >
+		/* adm-system-excelhistory-sql-oracle.xml - selectExcelHistoryCount */
+		SELECT COUNT(1)
+		  FROM TADMIN_INFO_EXCEL_JOB JOB
+		 INNER JOIN TADMIN_MST_UR UR
+				 ON UR.URKEY = JOB.INSERTURKEY
+				AND UR.DELYN = 'N'
+		 INNER JOIN TADMIN_MST_ME ME
+				 ON ME.MEKEY = JOB.MEKEY
+				AND ME.DELYN = 'N'
+		 INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+				 ON MUDT.MULAAPMSGHDKEY = ME.MENM
+				AND MUDT.MSGTYPE = 'MENU'
+				AND MUDT.LAKEY = #{slakey}
+		 WHERE	1 = 1
+		   AND  JOB.INSERTURKEY = #{surkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+	</select>
+
+	<select id="selectExcelHistoryList" resultType="camelMap">
+		/* adm-system-excelhistory-sql-oracle.xml - selectExcelHistory */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT JOB.JOBID
+					 , JOB.INSERTURKEY AS URKEY
+					 , UR.URNM
+					 , JOB.MEKEY
+					 , MUDT.DISPLAYMSG AS MENM
+					 , JOB.SEARCHCOND
+					 , JOB.STATUS
+					 , JOB.DOWNLOADYN
+					 , JOB.ERRMSG
+					 , JOB.INSERTDATE
+					 , JOB.FILENM
+				  FROM TADMIN_INFO_EXCEL_JOB JOB
+				 INNER JOIN TADMIN_MST_UR UR
+						 ON UR.URKEY = JOB.INSERTURKEY
+						AND UR.DELYN = 'N'
+				 INNER JOIN TADMIN_MST_ME ME
+						 ON ME.MEKEY = JOB.MEKEY
+						AND ME.DELYN = 'N'
+				 INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+						 ON MUDT.MULAAPMSGHDKEY = ME.MENM
+						AND MUDT.MSGTYPE = 'MENU'
+						AND MUDT.LAKEY = #{slakey}
+				 WHERE	1 = 1
+				   AND  JOB.INSERTURKEY = #{surkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+					AND #{SEARCH_CONDITION}
+				</if>
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY INSERTDATE DESC
+					</otherwise>
+				</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<update id="updateDownloadSuccess">
+		/* adm-system-excelhistory-sql-oracle.xml - updateDownloadSuccess */
+		UPDATE TADMIN_INFO_EXCEL_JOB
+		   SET DOWNLOADYN  = 'Y'
+			 , UPDATEDATE  = #{sysdate}
+			 , UPDATEURKEY = #{surkey}
+		 WHERE JOBID = #{jobid}
+	</update>
+
+	<select id="selectExcelHistory" resultType="camelMap">
+		/* adm-system-excelhistory-sql-oracle.xml - selectExcelHistory */
+		SELECT JOB.JOBID
+			 , JOB.INSERTURKEY AS URKEY
+			 , UR.URNM
+			 , JOB.MEKEY
+			 , MUDT.DISPLAYMSG AS MENM
+			 , JOB.SEARCHCOND
+			 , JOB.STATUS
+			 , JOB.DOWNLOADYN
+			 , JOB.ERRMSG
+			 , JOB.INSERTDATE
+			 , JOB.FILENM
+		  FROM TADMIN_INFO_EXCEL_JOB JOB
+		 INNER JOIN TADMIN_MST_UR UR
+				 ON UR.URKEY = JOB.INSERTURKEY
+				AND UR.DELYN = 'N'
+		 INNER JOIN TADMIN_MST_ME ME
+				 ON ME.MEKEY = JOB.MEKEY
+				AND ME.DELYN = 'N'
+		 INNER JOIN TADMIN_MST_MULAAPMSG_DT MUDT
+				 ON MUDT.MULAAPMSGHDKEY = ME.MENM
+				AND MUDT.MSGTYPE = 'MENU'
+				AND MUDT.LAKEY = #{slakey}
+		 WHERE	1 = 1
+		   AND JOB.JOBID = #{jobid}
+	</select>
+
+
+</mapper>	

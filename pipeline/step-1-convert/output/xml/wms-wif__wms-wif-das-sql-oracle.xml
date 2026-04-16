@@ -1,0 +1,1792 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.wif.mapper.DasIfMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<select id="selectDasClassifPlanWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanWaveCount 분류계획 Wave 정보(WEB) Count 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT  WA.WASEQ, WA.CTKEY, WA.OWKEY, WA.WAHDKEY, WA.WAHDDAY, WA.DASEQTYPE, WA.WKDATE, WA.ORD, WA.IFID
+					   ,WA.IFREQDT, WA.IFPRCSDATE, WA.INSERTURKEY, WA.INSERTDATE, WA.UPDATEURKEY, WA.UPDATEDATE
+				  FROM TWIF_DAS_CLASSIFPLAN_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_DAS_CLASSIFPLAN_ORDER ORD
+					    INNER JOIN TWIF_DAS_CLASSIFPLAN_IC IC
+					       ON ORD.WASEQ 	= IC.WASEQ
+					      AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+					    WHERE WA.WASEQ 		= ORD.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				   AND WA.IFPRCSDATE IS NOT NULL
+				)
+	</select>
+
+	<select id="selectDasClassifPlanWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanWaveList 분류계획 Wave 정보(WEB) 조회 */
+		SELECT  '0' AS CHK
+			   ,WA.WASEQ
+			   ,WA.CTKEY
+			   ,CT.CTNM
+			   ,WA.OWKEY
+			   ,OW.OWNM
+			   ,WA.WAHDKEY
+			   ,WA.WAHDDAY
+			   ,WA.DASEQTYPE
+			   ,CDDT2.CTCDDTNM AS DASEQTYPENM
+			   ,WA.WKDATE
+			   ,WA.WASNDEMP
+			   ,WA.IFCD
+			   ,EQIF.IFNM
+			   ,WA.ORD
+			   ,WA.WIFIFID
+			   ,WA.IFID
+			   ,WA.IFREQDT
+			   ,WA.IFPRCSDATE
+			   ,WA.IFTYPE
+			   ,CDDT.CTCDDTNM AS IFTYPENM
+			   ,WA.IFSRCMODULE
+			   ,WA.IFTGTMODULE
+			   ,WA.IFSTATUS
+			   ,CDDT1.CTCDDTNM AS IFSTATUSNM
+			   ,WA.IFERRCD
+			   ,WA.IFERRMSG
+			   ,WA.INSERTURKEY
+			   ,WA.INSERTDATE
+			   ,WA.UPDATEURKEY
+			   ,WA.UPDATEDATE
+			   ,WA.IFRETRYYN
+			   ,WA.IFRETRYIFID
+		  FROM TWIF_DAS_CLASSIFPLAN_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+		    ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+		    ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+		    ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+		    ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT2
+		    ON WA.CTKEY  		= CDDT2.CTKEY
+		   AND CDDT2.CTCDHDKEY 	= 'FACTYPE'
+		   AND WA.DASEQTYPE		= CDDT2.CTCDDTKEY
+		   AND CDDT2.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+		         FROM TWIF_DAS_CLASSIFPLAN_ORDER ORD
+				INNER JOIN TWIF_DAS_CLASSIFPLAN_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+			    WHERE ORD.WASEQ 	= WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		   AND WA.IFPRCSDATE IS NOT NULL
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDasClassifPlanOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanOrderCount 분류계획 Order 정보(WEB) Count 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_CLASSIFPLAN_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectDasClassifPlanOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanOrderList 분류계획 Order 정보(WEB) 조회 */
+		SELECT
+				WASEQ
+				,ORDERSEQ
+				,CTKEY
+				,OWKEY
+				,WAHDKEY
+				,OBHDKEY
+				,DASCELLBRCD
+				,MIDGRP
+				,PCKGBOXSIZE
+				,DFSHPICEXISTYN
+				,WBLNO
+				,DPRTSPOTTMNLNM
+				,DPRTSPOTTMNLCD
+				,DESTSPOTTMNLNM
+				,DESTSPOTTMNLCD
+				,POSTOFICCD
+				,POSTOFICNM
+				,RGONTYPE
+				,HUBCD
+				,MDLCD
+				,DLVYEMPTYPECD
+				,DLVYEMPCD
+				,DLVYEMPNM
+				,PAY
+				,MEMO
+				,pkg_crypto$decrypt(RCVPRSNADDR, #{encKey}) 	AS RCVPRSNADDR
+				,pkg_crypto$decrypt(RCVPRSNADDR1, #{encKey}) 	AS RCVPRSNADDR1
+				,pkg_crypto$decrypt(RCVPRSNADDRABBR, #{encKey}) AS RCVPRSNADDRABBR
+				,pkg_crypto$decrypt(RCVPRSNNM, #{encKey}) 		AS RCVPRSNNM
+				,pkg_crypto$decrypt(RCVPRSNTEL, #{encKey}) 		AS RCVPRSNTEL
+				,pkg_crypto$decrypt(RCVPRSNHP, #{encKey}) 		AS RCVPRSNHP
+				,SENDPRSNADDR
+				,SENDPRSNNM
+				,SENDPRSNTEL
+				,SENDPRSNHP
+				,WEIGHT
+				,ORD
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+		  FROM TWIF_DAS_CLASSIFPLAN_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD
+	</select>
+
+	<select id="selectDasClassifPlanItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanItemCount 분류계획 Item 정보(WEB) Count 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_CLASSIFPLAN_IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectDasClassifPlanItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifPlanItemList 분류계획 Item 정보(WEB) 조회 */
+		SELECT
+				WASEQ
+				,ORDERSEQ
+				,ITEMSEQ
+				,CTKEY
+				,OWKEY
+				,WAHDKEY
+				,OBHDKEY
+				,ICKEY
+				,ICNM
+				,ICBRCD
+				,ICBRCD2
+				,ORDQTY
+				,LCKEY
+				,DFSHPICYN
+				,ORD
+				,INSERTDATE
+				,INSERTURKEY
+				,UPDATEDATE
+				,UPDATEURKEY
+		  FROM TWIF_DAS_CLASSIFPLAN_IC
+		 WHERE WASEQ = #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+		 ORDER BY ORD
+	</select>
+
+	<select id="selectDasClassifToteMappingWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteMappingWaveCount 분류Tote 매핑 Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT  '0' AS CHK
+						, WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.IFCD
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_DAS_CLASSIFTOTE_MAPP_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_DAS_CLASSIFTOTE_MAPP_ORDER ORD
+						WHERE ORD.WASEQ = WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				   AND WA.IFPRCSDATE IS NOT NULL
+			   ) AA
+	</select>
+
+	<select id="selectDasClassifToteMappingWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteMappingWaveList 분류Tote 매핑 리스트 (WEB) 조회 */
+		SELECT  '0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.IFCD
+				, EQIF.IFNM AS IFCDNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_DAS_CLASSIFTOTE_MAPP_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_DAS_CLASSIFTOTE_MAPP_ORDER ORD
+				WHERE WA.WASEQ 	= ORD.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		   AND WA.IFPRCSDATE IS NOT NULL
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDasClassifToteMappingOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteMappingOrderCount 분류Tote 매핑 ORDER COUNT (WEB) 조회 */
+		SELECT
+				COUNT(1)
+		  FROM TWIF_DAS_CLASSIFTOTE_MAPP_ORDER ORD
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectDasClassifToteMappingOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteMappingOrderCount 분류Tote 매핑 ORDER LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORD.ORDERSEQ
+				, ORD.CTKEY
+				, ORD.OWKEY
+				, ORD.WAHDKEY
+				, ORD.OBHDKEY
+				, ORD.DASCELLBRCD
+				, ORD.CLASSIFTOTEBRCD
+				, ORD.EMPNOBRCD
+				, ORD.FINGERSCANNERID
+				, ORD.WKPRCSDATE
+				, ORD.ORD
+				, ORD.INSERTDATE
+				, ORD.INSERTURKEY
+				, ORD.UPDATEDATE
+				, ORD.UPDATEURKEY
+		  FROM TWIF_DAS_CLASSIFTOTE_MAPP_ORDER ORD
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD
+	</select>
+
+	<select id="selectDasClassifResultWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultWaveCount 분류실적 WAVE COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.DASDIV
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_DAS_PRCSRSLT_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_DAS_PRCSRSLT_ORDER ORD
+						INNER JOIN TWIF_DAS_PRCSRSLT_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+				   		  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+					    WHERE ORD.WASEQ 	= WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+					      AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				   AND WA.IFPRCSDATE IS NOT NULL
+				) AA
+	</select>
+
+	<select id="selectDasClassifResultWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultWaveList 분류실적 WAVE LIST (WEB) 조회 */
+		SELECT  '0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.DASDIV
+				, CDDT2.CTCDDTNM AS DASDIVNM
+				, WA.IFCD
+				, EQIF.IFNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_DAS_PRCSRSLT_WA WA
+		 INNER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT2
+			ON WA.CTKEY  		= CDDT2.CTKEY
+		   AND WA.DASDIV		= CDDT2.CTCDDTKEY
+		   AND CDDT2.CTCDHDKEY 	= 'DASDIV'
+		   AND CDDT2.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_DAS_PRCSRSLT_ORDER ORD
+				INNER JOIN TWIF_DAS_PRCSRSLT_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE ORD.WASEQ 	= WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		   AND WA.IFPRCSDATE IS NOT NULL
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDasClassifResultOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultOrderCount 분류실적 ORDER COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WASEQ
+						, ORDERSEQ
+						, CTKEY
+						, OWKEY
+						, WAHDKEY
+						, OBHDKEY
+						, DASCELLBRCD
+						, WKPRCSDATE
+						, ORD
+						, INSERTDATE
+						, INSERTURKEY
+						, UPDATEDATE
+						, UPDATEURKEY
+				  FROM TWIF_DAS_PRCSRSLT_ORDER ORD
+				 WHERE ORD.WASEQ = #{waseq}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+				   AND OBHDKEY = #{OBHDKEY}
+				</if>
+				) AA
+	</select>
+
+	<select id="selectDasClassifResultOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultOrderList 분류실적 ORDER LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, DASCELLBRCD
+				, WKPRCSDATE
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_PRCSRSLT_ORDER ORD
+		 WHERE ORD.WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectDasClassifResultItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultItemCount 분류실적 ITEM COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WASEQ
+						, ORDERSEQ
+						, ITEMSEQ
+						, CTKEY
+						, OWKEY
+						, WAHDKEY
+						, OBHDKEY
+						, ICKEY
+						, ICNM
+						, ICBRCD
+						, ICBRCD2
+						, QTY
+						, EMPNOBRCD
+						, ORD
+						, INSERTDATE
+						, INSERTURKEY
+						, UPDATEDATE
+						, UPDATEURKEY
+				  FROM TWIF_DAS_PRCSRSLT_IC IC
+				 WHERE IC.WASEQ 	= #{waseq}
+				   AND IC.ORDERSEQ 	= #{orderseq}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+				   AND ICKEY = #{ICKEY}
+				</if>
+				) AA
+	</select>
+
+	<select id="selectDasClassifResultItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifResultItemList 분류실적 ITEM LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, ITEMSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, ICKEY
+				, ICNM
+				, ICBRCD
+				, ICBRCD2
+				, QTY
+				, EMPNOBRCD
+				, FINGERSCANNERID
+				, WKPRCSDATE1
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_PRCSRSLT_IC IC
+		 WHERE IC.WASEQ 	= #{waseq}
+		   AND IC.ORDERSEQ 	= #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+		 ORDER BY IC.ORD ASC
+	</select>
+
+	<select id="selectDasClassifToteCloseWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseWaveCount 분류토트 마감 WAVE COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_DAS_CLASSIFTOTE_CLOS_ORDER ORD
+						INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+						  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+						WHERE ORD.WASEQ 	= WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				) AA
+	</select>
+
+	<select id="selectDasClassifToteCloseWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseWaveList 분류토트 마감 WAVE LIST (WEB) 조회 */
+		SELECT  '0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, WA.WAHDKEY
+				, WA.IFCD
+				, EQIF.IFNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_DAS_CLASSIFTOTE_CLOS_WA WA
+		 INNER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		 INNER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_DAS_CLASSIFTOTE_CLOS_ORDER ORD
+				INNER JOIN TWIF_DAS_CLASSIFTOTE_CLOS_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE ORD.WASEQ 	= WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDasClassifToteCloseOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseOrderCount 분류토트 마감 ORDER COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_CLASSIFTOTE_CLOS_ORDER ORD
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectDasClassifToteCloseOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseOrderList 분류토트 마감 ORDER LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, DASCELLBRCD
+				, CLASSIFTOTEBRCD
+				, WKPRCSDATE
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_CLASSIFTOTE_CLOS_ORDER ORD
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectDasClassifToteCloseItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseItemCount 분류토트 마감 ITEM COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_CLASSIFTOTE_CLOS_IC IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectDasClassifToteCloseItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasClassifToteCloseItemList 분류토트 마감 ITEM LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, ITEMSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, ICKEY
+				, ICNM
+				, ICBRCD
+				, ICBRCD2
+				, QTY
+				, EMPNOBRCD
+				, FINGERSCANNERID
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_CLASSIFTOTE_CLOS_IC IC
+		 WHERE WASEQ 		= #{waseq}
+		   AND ORDERSEQ 	= #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultWaveCount ROBOT DAS ASSORT RESULT WAVE Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.WAHDDAY
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_ROBDAS_PRCSRSLT_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_ROBDAS_PRCSRSLT_ORDER ORD
+						INNER JOIN TWIF_ROBDAS_PRCSRSLT_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+						  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+						WHERE ORD.WASEQ 	= WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				) AA
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultWaveList ROBOT DAS ASSORT RESULT WAVE List (WEB) 조회 */
+		SELECT
+				'0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.WAHDDAY
+				, WA.IFCD
+				, EQIF.IFNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_ROBDAS_PRCSRSLT_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_ROBDAS_PRCSRSLT_ORDER ORD
+				INNER JOIN TWIF_ROBDAS_PRCSRSLT_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE ORD.WASEQ 	= WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultOrderCount ROBOT DAS ASSORT RESULT ORDER Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_PRCSRSLT_ORDER ORD
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultOrderList ROBOT DAS ASSORT RESULT ORDER List (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, WBLNO
+				, WKPRCSDATE
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_ROBDAS_PRCSRSLT_ORDER ORD
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultItemCount ROBOT DAS ASSORT RESULT ITEM Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_PRCSRSLT_IC
+		 WHERE WASEQ 		= #{waseq}
+		   AND ORDERSEQ 	= #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasAssortPrcsResultItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasAssortPrcsResultItemList ROBOT DAS ASSORT RESULT ITEM List (WEB) 조회 */
+			SELECT
+					WASEQ
+					, ORDERSEQ
+					, ITEMSEQ
+					, CTKEY
+					, OWKEY
+					, WAHDKEY
+					, OBHDKEY
+					, ICKEY
+					, ICNM
+					, ICBRCD
+					, ICBRCD2
+					, QTY
+					, SEEDWALL
+					, DASLOC
+					, ROBNO
+					, INDUCTNM
+					, EMPNOBRCD
+					, ORD
+					, INSERTDATE
+					, INSERTURKEY
+					, UPDATEDATE
+					, UPDATEURKEY
+			  FROM TWIF_ROBDAS_PRCSRSLT_IC
+			 WHERE WASEQ 		= #{waseq}
+			   AND ORDERSEQ 	= #{orderseq}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+			   AND ICKEY = #{ICKEY}
+			</if>
+			 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasIntegResultWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultWaveCount ROBOT DAS 이형물/미출 실적 WAVE Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.WAHDDAY
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_ROBDAS_RSLTXNIS_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_ROBDAS_RSLTXNIS_ORDER ORD
+						INNER JOIN TWIF_ROBDAS_RSLTXNIS_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+						  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+						WHERE ORD.WASEQ 	= WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				) AA
+	</select>
+
+	<select id="selectRobDasIntegResultWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultWaveList ROBOT DAS 이형물/미출 실적 WAVE List (WEB) 조회 */
+		SELECT
+				'0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.WAHDDAY
+				, WA.IFCD
+				, EQIF.IFNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_ROBDAS_RSLTXNIS_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_ROBDAS_RSLTXNIS_ORDER ORD
+				INNER JOIN TWIF_ROBDAS_RSLTXNIS_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE ORD.WASEQ 	= WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectRobDasIntegResultOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultOrderCount ROBOT DAS 이형물/미출 실적 ORDER Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_RSLTXNIS_ORDER ORD
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasIntegResultOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultOrderList ROBOT DAS 이형물/미출 실적 ORDER List (WEB) 조회 */
+		SELECT
+				ORD.WASEQ
+				, ORD.ORDERSEQ
+				, ORD.CTKEY
+				, ORD.OWKEY
+				, ORD.WAHDKEY
+				, ORD.OBHDKEY
+				, ORD.WBLNO
+				, ORD.BOXSIZE
+				, ORD.ROBDASRSLTTYPE
+				, CDDT.CTCDDTNM AS ROBDASRSLTTYPENM
+				, ORD.WKPRCSDATE
+				, ORD.ORD
+				, ORD.INSERTDATE
+				, ORD.INSERTURKEY
+				, ORD.UPDATEDATE
+				, ORD.UPDATEURKEY
+		  FROM TWIF_ROBDAS_RSLTXNIS_ORDER ORD
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+		    ON ORD.CTKEY  			= CDDT.CTKEY
+		   AND ORD.ROBDASRSLTTYPE 	= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 		= 'ROBDASRSLTTYPE'
+		   AND CDDT.LAKEY			= #{lakey}
+		 WHERE 1 = 1
+		   AND WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasIntegResultItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultItemCount ROBOT DAS 이형물/미출 실적 ITEM Count (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_RSLTXNIS_IC
+		 WHERE WASEQ 		= #{waseq}
+		   AND ORDERSEQ 	= #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasIntegResultItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasIntegResultItemList ROBOT DAS 이형물/미출 실적 ITEM List (WEB) 조회 */
+			SELECT
+					WASEQ
+					, ORDERSEQ
+					, ITEMSEQ
+					, CTKEY
+					, OWKEY
+					, WAHDKEY
+					, OBHDKEY
+					, ICKEY
+					, ICNM
+					, ICBRCD
+					, ICBRCD2
+					, QTY
+					, EMPNOBRCD
+					, ORD
+					, INSERTDATE
+					, INSERTURKEY
+					, UPDATEDATE
+					, UPDATEURKEY
+			  FROM TWIF_ROBDAS_RSLTXNIS_IC
+			 WHERE WASEQ 		= #{waseq}
+			   AND ORDERSEQ 	= #{orderseq}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+			   AND ICKEY = #{ICKEY}
+			</if>
+			 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasBoxAddReqWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqWaveCount ROBOT DAS 박스추가 요청 WAVE COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						'0' AS CHK
+						, WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.WAHDDAY
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_ROBDAS_BOXADD_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_ROBDAS_BOXADD_ORDER ORD
+						 LEFT OUTER JOIN TWIF_ROBDAS_BOXADD_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+				   		  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+						WHERE WA.WASEQ 		= ORD.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				) AA
+	</select>
+
+	<select id="selectRobDasBoxAddReqWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqWaveList ROBOT DAS 박스추가 요청 WAVE List (WEB) 조회 */
+		SELECT
+				'0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.WAHDDAY
+				, WA.IFCD
+				, EQIF.IFNM
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_ROBDAS_BOXADD_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWIF_CMM_EQIF_MGMT EQIF
+			ON WA.CTKEY 		= EQIF.CTKEY
+		   AND WA.OWKEY 		= EQIF.OWKEY
+		   AND WA.IFCD 			= EQIF.IFCD
+		 WHERE 1 = 1
+		   AND EXISTS ( 
+			   SELECT 1
+				 FROM TWIF_ROBDAS_BOXADD_ORDER ORD
+				 LEFT OUTER JOIN TWIF_ROBDAS_BOXADD_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE WA.WASEQ 		= ORD.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectRobDasBoxAddReqOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqOrderCount ROBOT DAS 박스추가 요청 ORDER COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_BOXADD_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasBoxAddReqOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqOrderList ROBOT DAS 박스추가 요청 ORDER List (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, WBLNO
+				, BFOBHDKEY
+				, BFWBLNO
+				, PCKGBOXSIZE
+				, WKPRCSDATE
+				, BFPCKGBOXSIZE
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_ROBDAS_BOXADD_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasBoxAddReqItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqItemCount ROBOT DAS 박스추가 요청 ITEM COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_BOXADD_IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasBoxAddReqItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasBoxAddReqItemList ROBOT DAS 박스추가 요청 ITEM List (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, ITEMSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, ICKEY
+				, ICNM
+				, ICBRCD
+				, ICBRCD2
+				, QTY
+				, EMPNOBRCD
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_ROBDAS_BOXADD_IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasPackCompleteWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteWaveCount ROBOT DAS 포장완료 WAVE COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						'0' AS CHK
+						, WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.WAHDDAY
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_ROBDAS_PAKCOMPL_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_ROBDAS_PAKCOMPL_ORDER ORD
+						INNER JOIN TWIF_ROBDAS_PAKCOMPL_IC IC
+						   ON ORD.WASEQ 	= IC.WASEQ
+						  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+						WHERE WA.WASEQ 		= ORD.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+				) AA
+	</select>
+
+	<select id="selectRobDasPackCompleteWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteWaveList ROBOT DAS 포장완료 WAVE List (WEB) 조회 */
+		SELECT
+				'0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.WAHDDAY
+				, WA.IFCD
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_ROBDAS_PAKCOMPL_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_ROBDAS_PAKCOMPL_ORDER ORD
+				INNER JOIN TWIF_ROBDAS_PAKCOMPL_IC IC
+				   ON ORD.WASEQ 	= IC.WASEQ
+				  AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+				WHERE WA.WASEQ 		= ORD.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectRobDasPackCompleteOrderCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteOrderCount ROBOT DAS 포장완료 ORDER COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_PAKCOMPL_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasPackCompleteOrderList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteOrderList ROBOT DAS 포장완료 ORDER LIST (WEB) 조회 */
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, WBLNO
+				, BOXSIZE
+				, WKPRCSDATE
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_ROBDAS_PAKCOMPL_ORDER
+		 WHERE WASEQ = #{waseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(OBHDKEY)">
+		   AND OBHDKEY = #{OBHDKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectRobDasPackCompleteItemCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteItemCount ROBOT DAS 포장완료 ITEM COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_ROBDAS_PAKCOMPL_IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND ICKEY = #{ICKEY}
+		</if>
+	</select>
+
+	<select id="selectRobDasPackCompleteItemList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectRobDasPackCompleteItemList ROBOT DAS 포장완료 ITEM LIST (WEB) 조회 */
+		SELECT
+				IC.WASEQ
+				, IC.ORDERSEQ
+				, IC.ITEMSEQ
+				, IC.CTKEY
+				, IC.OWKEY
+				, IC.WAHDKEY
+				, IC.OBHDKEY
+				, IC.ICKEY
+				, ICMST.ICNM
+				, IC.ICBRCD
+				, IC.ICBRCD2
+				, IC.QTY
+				, IC.EMPNOBRCD
+				, IC.ORD
+				, IC.INSERTDATE
+				, IC.INSERTURKEY
+				, IC.UPDATEDATE
+				, IC.UPDATEURKEY
+		  FROM TWIF_ROBDAS_PAKCOMPL_IC IC
+		  LEFT OUTER JOIN TWORK_MST_IC ICMST
+		    ON IC.CTKEY = ICMST.CTKEY
+		   AND IC.OWKEY = ICMST.OWKEY
+		   AND IC.ICKEY = ICMST.ICKEY
+		   AND ICMST.DELYN = 'N'
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ICKEY)">
+		   AND IC.ICKEY = #{ICKEY}
+		</if>
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectDasMidLocWaveCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasMidLocWaveCount DAS 중분류 로케이션 지정 WAVE List (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM (
+				SELECT
+						WA.WASEQ
+						, WA.CTKEY
+						, WA.OWKEY
+						, WA.WAHDKEY
+						, WA.WAHDDAY
+						, WA.DASEQTYPE
+						, WA.IFCD
+						, WA.WIFIFID
+						, WA.IFID
+						, WA.IFREQDT
+						, WA.IFTYPE
+						, WA.IFSRCMODULE
+						, WA.IFTGTMODULE
+						, WA.IFSTATUS
+						, WA.IFERRCD
+						, WA.IFERRMSG
+						, WA.IFPRCSDATE
+						, WA.ORD
+						, WA.INSERTDATE
+						, WA.INSERTURKEY
+						, WA.UPDATEDATE
+						, WA.UPDATEURKEY
+				  FROM TWIF_DAS_MIDLOC_DSN_WA WA
+				 WHERE 1 = 1
+				   AND EXISTS (
+					   SELECT 1
+						 FROM TWIF_DAS_MIDLOC_DSN_SMLSTN SML
+						INNER JOIN TWIF_DAS_MIDLOC_DSN_MIDCELL MID
+						   ON SML.WASEQ = MID.WASEQ
+				   		  AND SML.SMLSTNSEQ = MID.SMLSTNSEQ
+						WHERE SML.WASEQ = WA.WASEQ
+						<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+						   AND  #{SEARCH_CONDITION}
+						</if>
+				   )
+			   ) AA
+	</select>
+
+	<select id="selectDasMidLocWaveList" resultType="camelMap">
+		<include refid="sql_pagingTop"/>
+		/* wms-wif-das-sql-oracle.xml - selectDasMidLocWaveList DAS 중분류 로케이션 지정 WAVE List (WEB) 조회 */
+		SELECT
+				'0' AS CHK
+				, WA.WASEQ
+				, WA.CTKEY
+				, CT.CTNM
+				, WA.OWKEY
+				, OW.OWNM
+				, WA.WAHDKEY
+				, WA.WAHDDAY
+				, WA.DASEQTYPE
+				, CDDT2.CTCDDTNM AS DASEQTYPENM
+				, WA.IFCD
+				, WA.WIFIFID
+				, WA.IFID
+				, WA.IFREQDT
+				, WA.IFTYPE
+				, CDDT.CTCDDTNM AS IFTYPENM
+				, WA.IFSRCMODULE
+				, WA.IFTGTMODULE
+				, WA.IFSTATUS
+				, CDDT1.CTCDDTNM AS IFSTATUSNM
+				, WA.IFERRCD
+				, WA.IFERRMSG
+				, WA.IFPRCSDATE
+				, WA.ORD
+				, WA.INSERTDATE
+				, WA.INSERTURKEY
+				, WA.UPDATEDATE
+				, WA.UPDATEURKEY
+				, WA.IFRETRYYN
+				, WA.IFRETRYIFID
+		  FROM TWIF_DAS_MIDLOC_DSN_WA WA
+		  LEFT OUTER JOIN TWORK_MST_CT CT
+			ON WA.CTKEY  		= CT.CTKEY
+		  LEFT OUTER JOIN TWORK_MST_OW OW
+			ON WA.OWKEY 		= OW.OWKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT
+			ON WA.CTKEY  		= CDDT.CTKEY
+		   AND WA.IFTYPE 		= CDDT.CTCDDTKEY
+		   AND CDDT.CTCDHDKEY 	= 'IFTYPE'
+		   AND CDDT.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT1
+			ON WA.CTKEY  		= CDDT1.CTKEY
+		   AND CDDT1.CTCDHDKEY 	= 'IFSTATUS'
+		   AND WA.IFSTATUS 		= CDDT1.CTCDDTKEY
+		   AND CDDT1.LAKEY		= #{lakey}
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT CDDT2
+			ON WA.CTKEY  		= CDDT2.CTKEY
+		   AND CDDT2.CTCDHDKEY 	= 'FACTYPE'
+		   AND WA.DASEQTYPE		= CDDT2.CTCDDTKEY
+		   AND CDDT2.LAKEY		= #{lakey}
+ 		 WHERE 1 = 1
+		   AND EXISTS (
+			   SELECT 1
+				 FROM TWIF_DAS_MIDLOC_DSN_SMLSTN SML
+				INNER JOIN TWIF_DAS_MIDLOC_DSN_MIDCELL MID
+				   ON SML.WASEQ = MID.WASEQ
+				  AND SML.SMLSTNSEQ = MID.SMLSTNSEQ
+				WHERE SML.WASEQ = WA.WASEQ
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				   AND  #{SEARCH_CONDITION}
+				</if>
+		   )
+		 ORDER BY WA.WASEQ DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectDasSmlStnCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasSmlStnCount DAS 소분류 스테이션 COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_MIDLOC_DSN_SMLSTN
+		 WHERE WASEQ = #{waseq}
+	</select>
+
+	<select id="selectDasSmlStnList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasSmlStnList DAS 소분류 스테이션 COUNT (WEB) 조회 */
+		SELECT
+				WASEQ
+				, SMLSTNSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, SMLSTN
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_MIDLOC_DSN_SMLSTN
+		 WHERE WASEQ = #{waseq}
+		 ORDER BY ORD ASC
+	</select>
+
+	<select id="selectDasMidLocCount" resultType="java.lang.Integer">
+		/* wms-wif-das-sql-oracle.xml - selectDasMidLocCount DAS 중분류 셀 바코드 COUNT (WEB) 조회 */
+		SELECT COUNT(1)
+		  FROM TWIF_DAS_MIDLOC_DSN_MIDCELL
+		 WHERE WASEQ 	= #{waseq}
+		   AND SMLSTNSEQ = #{smlstnseq}
+	</select>
+
+	<select id="selectDasMidLocList" resultType="camelMap">
+		/* wms-wif-das-sql-oracle.xml - selectDasMidLocList DAS 중분류 셀 바코드 COUNT (WEB) 조회 */
+		SELECT
+				WASEQ
+				, SMLSTNSEQ
+				, MIDCELLSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, SMLSTN
+				, MIDCELLBRCD
+				, ORD
+				, INSERTDATE
+				, INSERTURKEY
+				, UPDATEDATE
+				, UPDATEURKEY
+		  FROM TWIF_DAS_MIDLOC_DSN_MIDCELL MID
+		 WHERE 1 = 1
+		   AND MID.WASEQ = #{waseq}
+		   AND MID.SMLSTNSEQ = #{smlstnseq}
+		 ORDER BY ORD
+	</select>
+
+	<select id="selectClassifPlanWave" resultType="camelMap">
+		SELECT
+				WASEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, WAHDDAY
+				, DASEQTYPE
+				, WKDATE
+				, WASNDEMP
+				, IFID
+		 FROM TWIF_DAS_CLASSIFPLAN_WA
+		WHERE CTKEY 	= #{ctkey}
+		  AND OWKEY 	= #{owkey}
+		  AND IFID 		= #{ifid}
+		  AND IFPRCSDATE IS NOT NULL
+ 		ORDER BY ORD
+	</select>
+
+	<select id="selectClassifPlanOrder" resultType="camelMap">
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, DASCELLBRCD
+				, MIDGRP
+				, PCKGBOXSIZE
+				, DFSHPICEXISTYN
+				, WBLNO
+				, DPRTSPOTTMNLNM
+				, DPRTSPOTTMNLCD
+				, DESTSPOTTMNLNM
+				, DESTSPOTTMNLCD
+				, POSTOFICCD
+				, POSTOFICNM
+				, RGONTYPE
+				, HUBCD
+				, MDLCD
+				, DLVYEMPTYPECD
+				, DLVYEMPCD
+				, DLVYEMPNM
+				, PAY
+				, MEMO
+				, RCVPRSNADDR
+				, RCVPRSNADDR1
+				, RCVPRSNADDRABBR
+				, RCVPRSNNM
+				, RCVPRSNTEL
+				, RCVPRSNHP
+				, SENDPRSNADDR
+				, SENDPRSNNM
+				, SENDPRSNTEL
+				, SENDPRSNHP
+				, WEIGHT
+		  FROM TWIF_DAS_CLASSIFPLAN_ORDER
+		 WHERE WASEQ = #{waseq}
+ 		 ORDER BY ORD
+	</select>
+
+	<select id="selectClassifPlanItem" resultType="camelMap">
+		SELECT
+				WASEQ
+				, ORDERSEQ
+				, ITEMSEQ
+				, CTKEY
+				, OWKEY
+				, WAHDKEY
+				, OBHDKEY
+				, ICKEY
+				, ICNM
+				, ICBRCD
+				, ICBRCD2
+				, ORDQTY
+				, LCKEY
+				, DFSHPICYN
+		  FROM TWIF_DAS_CLASSIFPLAN_IC
+		 WHERE WASEQ 	= #{waseq}
+		   AND ORDERSEQ = #{orderseq}
+		 ORDER BY ORD
+	</select>
+
+</mapper>

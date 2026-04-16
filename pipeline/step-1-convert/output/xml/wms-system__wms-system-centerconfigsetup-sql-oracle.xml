@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.system.mapper.CenterConfigSetupMapper">
+
+	<sql id="sql_pagingTop">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+	</sql>
+
+	<sql id="sql_pagingBottom">
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</sql>
+
+	<sql id="sql_selectCtcsList">
+		  FROM TWORK_SET_CTCS CTCS
+		 INNER JOIN TWORK_MST_CT CT
+			ON CT.CTKEY = CTCS.CTKEY
+
+		<where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)">
+				AND #{SEARCH_CONDITION}
+			</if>
+		</where>
+	</sql>
+
+	<select id="selectCtcsCount" resultType="java.lang.Integer">
+		/* wms-system-centerconfigsetup-sql-oracle.xml - selectCtcsCount */
+		SELECT COUNT(1)
+		<include refid="sql_selectCtcsList"/>
+	</select>
+
+	<select id="selectCtcsList" resultType="camelMap">
+		/* wms-system-centerconfigsetup-sql-oracle.xml - selectCtcsList */
+		<include refid="sql_pagingTop"/>
+		SELECT '0' AS CHK
+			 , CTCS.CTKEY
+			 , CT.CTNM
+		     , CTCS.CTCSKEY
+			 , CTCS.CTCSNM
+			 , CTCS.DEFAULTVALUE
+			 , CTCS.VALUE1
+			 , CTCS.VALUE2
+			 , CTCS.INSERTDATE
+			 , CTCS.INSERTURKEY
+			 , CTCS.UPDATEDATE
+			 , CTCS.UPDATEURKEY
+		<include refid="sql_selectCtcsList"/>
+		 ORDER BY
+			   CTCS.UPDATEURKEY DESC
+		<include refid="sql_pagingBottom"/>
+	</select>
+
+	<select id="selectCtcsDupCheckCount" resultType="java.lang.Integer">
+		/* wms-system-centerconfigsetup-sql-oracle.xml - selectCtcsDupCheckCount */
+		SELECT COUNT(1)
+		  FROM TWORK_SET_CTCS
+		 WHERE CTKEY = #{ctkey}
+		   AND CTCSKEY = #{ctcskey}
+	</select>
+
+	<insert id="insertCtcs" >
+		/* wms-system-centerconfigsetup-sql-oracle.xml - insertCtcs */
+		INSERT INTO TWORK_SET_CTCS (
+			   CTKEY
+		     , CTCSKEY
+			 , CTCSNM
+			 , DEFAULTVALUE
+			 , VALUE1
+			 , VALUE2
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+	 		 )
+	    VALUES (
+			   #{ctkey}
+			 , #{ctcskey}
+			 , #{ctcsnm}
+			 , #{defaultvalue}
+			 , #{value1}
+			 , #{value2}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<update id="updateCtcs">
+		/* wms-system-centerconfigsetup-sql-oracle.xml - updateCtcs */
+		UPDATE TWORK_SET_CTCS
+		   SET CTCSNM = #{ctcsnm}
+			 , DEFAULTVALUE = #{defaultvalue}
+			 , VALUE1 = #{value1}
+			 , VALUE2 = #{value2}
+		     , UPDATEDATE = #{sysdate}
+		     , UPDATEURKEY = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND CTCSKEY = #{ctcskey}
+	</update>
+	
+	<delete id="deleteCtcs">
+		/* wms-system-centerconfigsetup-sql-oracle.xml - deleteCtcs */
+		DELETE 
+		  FROM TWORK_SET_CTCS
+		 WHERE CTKEY = #{ctkey}
+		   AND CTCSKEY = #{ctcskey}
+	</delete>
+	
+</mapper>

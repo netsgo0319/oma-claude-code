@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.system.mapper.AppDownSetupMapper">
+
+	<resultMap id="selectAppDownSetupMap" type="java.util.HashMap">
+		<result property="appdownkey" column="APPDOWNKEY" />
+		<result property="appversion" column="APPVERSION" />
+		<result property="filenm" column="FILENM" />
+		<result property="filepath" column="FILEPATH" />
+		<result property="appdown_yn" column="APPDOWN_YN" />
+		<result property="appdown_yn_desc" column="APPDOWN_YN_DESC" typeHandler="CodeDescTypeHandler"/>
+		<result property="insertdate" column="INSERTDATE"/>
+		<result property="inserturkey" column="INSERTURKEY" />
+		<result property="updatedate" column="UPDATEDATE"/>
+		<result property="updateurkey" column="UPDATEURKEY" />
+		<result property="version_chk" column="VERSION_CHK" />
+	</resultMap> 
+
+	<sql id="selectAppDownSetup">
+	   SELECT  APPDOWNKEY
+		      ,APPVERSION
+		      ,FILENM
+		      ,FILEPATH
+		      ,APPDOWN_YN
+		      ,#{ctkey} || ';'|| 'YESORNO' || ';' || APPDOWN_YN AS APPDOWN_YN_DESC
+		      ,INSERTDATE
+		      ,INSERTURKEY
+		      ,UPDATEDATE
+		      ,UPDATEURKEY
+		  FROM TWORK_INFO_APP_DOWN
+		 WHERE 
+		       1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND #{SEARCH_CONDITION}
+		</if>
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(appdownkey)" >
+		   AND APPDOWNKEY = #{appdownkey}
+		</if>		
+	</sql>
+	
+	<select id="selectPkAppDownSetup" resultMap="selectAppDownSetupMap">
+		<include refid="selectAppDownSetup"/>
+	</select>
+	
+	<select id="selectListAppDownSetup" resultMap="selectAppDownSetupMap">
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+			SELECT * 
+			  FROM (
+	     		<include refid="selectAppDownSetup"/>
+	     	)   
+			<choose>
+				<when test='sortValue !=null and sortValue != ""' >	
+					<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+					</if>
+					<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+					</if>	
+				</when>	
+				<otherwise>
+					ORDER BY UPDATEDATE DESC
+				</otherwise>
+			</choose>						 
+	    #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectAppDownSetupCount" resultType="java.lang.Integer" >
+		SELECT 	COUNT(1)
+		  FROM 	(
+		  	<include refid="selectAppDownSetup"/>
+		)
+	</select>
+            	
+	<insert id="insertAppDownSetup">
+		INSERT INTO TWORK_INFO_APP_DOWN
+		(
+			 APPDOWNKEY
+			,APPVERSION
+			,FILENM
+			,FILEPATH
+			,APPDOWN_YN
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		)
+		VALUES 
+		(
+			 #{appdownkey}
+			,#{appversion}
+			,#{filenm}
+			,#{filepath}
+			,#{appdown_yn}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)	
+	</insert>
+
+
+	<update id="updateAppDownSetup">
+		UPDATE TWORK_INFO_APP_DOWN
+		   SET APPVERSION = #{appversion}
+		      ,FILENM = #{filenm}
+		      ,FILEPATH = #{filepath}
+		      ,APPDOWN_YN = #{appdown_yn}
+			  ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE  
+		      APPDOWNKEY = #{appdownkey}
+	</update>
+
+	<update id="updateAppDownYnAllN">
+		UPDATE TWORK_INFO_APP_DOWN
+		   SET APPDOWN_YN = 'N'
+			  ,UPDATEDATE = #{sysdate}
+			  ,UPDATEURKEY = #{surkey}
+		 WHERE  
+		      APPDOWNKEY != #{appdownkey}
+          AND APPDOWN_YN = 'Y'		      
+	</update>
+	
+
+	<select id="selectAppDownSetupValidation" resultMap="selectAppDownSetupMap">
+		SELECT CASE WHEN MAX(APPVERSION) >= #{appversion} THEN 'ERROR' ELSE 'NORMAL' END AS VERSION_CHK  
+		  FROM TWORK_INFO_APP_DOWN
+		 WHERE APPDOWN_YN = 'Y'
+	</select>
+
+	<select id="selectMobAppDownSetup" resultMap="selectAppDownSetupMap">
+		SELECT APPVERSION
+		      ,FILENM
+		      ,FILEPATH
+		  FROM (
+		        SELECT * 
+		          FROM TWORK_INFO_APP_DOWN
+		         WHERE 
+		               APPDOWN_YN = 'Y'
+		           AND EQTYPE = #{eqtype} 
+		         ORDER BY UPDATEDATE DESC 
+		  )
+		WHERE 
+		      ROWNUM <![CDATA[ < ]]>  2
+	</select>
+
+	<delete id="deleteAppDownSetup">
+		DELETE 
+		  FROM TWORK_INFO_APP_DOWN 
+		 WHERE 
+		       APPDOWNKEY = #{appdownkey}
+	</delete>
+	
+</mapper>	

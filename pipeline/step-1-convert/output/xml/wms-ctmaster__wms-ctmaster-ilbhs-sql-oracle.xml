@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.IlbhsMapper">
+
+	<select id="selectIlbhs" resultType="camelMap">
+	/* wms-ctmaster-ilbhs-sql-oracle.xml - "selectIlbhs" - 입고 라벨 출력(재발행) 조회  SQL */
+	
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		 SELECT	'1' AS PRTNUM
+			  , '0' AS CHK
+		      , A.CTKEY
+		      , E.CTNAME
+			  , A.ILBHSKEY
+			  , A.IVATKEY
+			  , A.ULCKEY
+			  , A.OWKEY
+			  , F.OWNAME
+			  , A.IBHDKEY
+			  , A.IBDTKEY
+			  , G.ORHDKEY
+			  , G.ORDTKEY
+			  , G.EXTERNORDERKEY
+			  , G.EXTERNORDERLINENUM
+			  , ROUND(A.QTY / COALESCE(D.ICUTQTY, 1), 2) AS QTY_UNIT
+			  , A.QTY 
+			  , A.LPN
+			  , (SELECT COALESCE(SUM(AVQTY), 0) FROM TWORK_INFO_IVATXLCXULC WHERE CTKEY = A.CTKEY AND IVATKEY = A.IVATKEY AND ULCKEY = A.ULCKEY) / COALESCE(D.ICUTQTY, 1) AS AVQTY_UNIT
+			  , (SELECT COALESCE(SUM(AVQTY), 0) FROM TWORK_INFO_IVATXLCXULC WHERE CTKEY = A.CTKEY AND IVATKEY = A.IVATKEY AND ULCKEY = A.ULCKEY) AS AVQTY
+			  , B.PRODUCTLOT
+			  , B.EXPIREDATE
+			  , A.INSERTDATE
+			  , A.INSERTURKEY
+			  , A.UPDATEDATE
+			  , A.UPDATEURKEY
+		   FROM	TWORK_INFO_ILBHS A
+		  INNER JOIN TWORK_INFO_IVAT B 
+		     ON A.CTKEY = B.CTKEY
+            AND A.IVATKEY = B.IVATKEY	
+          INNER JOIN TWORK_MST_IC C
+             ON A.CTKEY = C.CTKEY
+            AND A.OWKEY = C.OWKEY
+            AND A.ICKEY = C.ICKEY
+           LEFT OUTER JOIN TWORK_MST_ICUTXTYPE D
+             ON C.CTKEY = D.CTKEY
+		    AND C.OWKEY = D.OWKEY
+		    AND C.ICUTKEY = D.ICUTKEY
+		    AND B.UOM = D.ICUTTYPE
+		  INNER JOIN TWORK_MST_CT E
+       		 ON A.CTKEY = E.CTKEY
+       	  INNER JOIN TWORK_MST_OW F
+	  	     ON A.OWKEY = F.OWKEY
+	  	  INNER JOIN TWORK_INFO_IB_DT G
+	  	     ON A.CTKEY = G.CTKEY
+	  	    AND A.OWKEY = G.OWKEY
+	  	    AND A.IBHDKEY = G.IBHDKEY
+	  	    AND A.IBDTKEY = G.IBDTKEY
+		  WHERE 1=1
+		 	AND COALESCE(A.DEL_YN, 'N') = 'N'
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+		   AND 	#{SEARCH_CONDITION}
+		</if>	
+		<choose>
+			<when test='sortValue != null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+				ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+				ORDER BY #{colName} ASC
+				</if>	
+			</when>	
+			<otherwise>
+				ORDER BY A.ULCKEY
+			</otherwise>
+		</choose>	       
+		 #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectIlbhsCount" resultType="java.lang.Integer" >
+		 SELECT	COUNT(1) 
+		   FROM	TWORK_INFO_ILBHS A
+		  INNER JOIN TWORK_INFO_IVAT B 
+		     ON A.CTKEY = B.CTKEY
+            AND A.IVATKEY = B.IVATKEY
+		  INNER JOIN TWORK_INFO_IB_DT G
+			ON A.CTKEY = G.CTKEY
+		   AND A.OWKEY = G.OWKEY
+		   AND A.IBHDKEY = G.IBHDKEY
+		   AND A.IBDTKEY = G.IBDTKEY
+		  WHERE 1=1
+            AND COALESCE(A.DEL_YN, 'N') = 'N'
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			   AND #{SEARCH_CONDITION}
+			</if>	
+	</select>
+
+</mapper>

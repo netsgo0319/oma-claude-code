@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.ctmaster.mapper.StrategyPlcmMapper">
+
+	<sql id="selectListStgPlcmHdsql">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectListStgPlcmHdsql - 적치 전략 헤더 조회  SQL */
+		SELECT '0' AS CHK
+			 , A.CTKEY
+			 , B.CTNM
+			 , A.PLCMSTGHDKEY
+			 , A.PLCMSTGNM
+			 , A.PLCMSTGDIVCD
+			 , A.USEYN
+			 , A.CMT
+			 , A.INSERTDATE
+			 , A.INSERTURKEY
+			 , A.UPDATEDATE
+			 , A.UPDATEURKEY
+		  FROM TWORK_MST_PLCM_STG_HD A
+		 INNER JOIN TWORK_MST_CT B
+			ON A.CTKEY = B.CTKEY
+		 WHERE 1=1
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			AND #{SEARCH_CONDITION}
+		</if>
+
+	</sql>
+
+	<select id="selectListStgPlcmHdCount" resultType="java.lang.Integer" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectListStgPlcmHdCount - 적치전략 헤더 건수 조회  SQL */
+		SELECT COUNT(1)
+		  FROM (
+				<include refid="selectListStgPlcmHdsql"/>
+				)
+	</select>
+
+	<select id="selectListStgPlcmHd" resultType="camelMap">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectListStgPlcmHd - 적치 전략 헤더 조회  SQL */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+		<include refid="selectListStgPlcmHdsql"/>
+		<choose>
+			<when test='sortValue !=null and sortValue != ""'>
+				<if test='sortValue == "DESC" and colName !=null'>
+					ORDER BY #{colName} DESC
+				</if>
+				<if test='sortValue == "ASC" and colName !=null'>
+					ORDER BY #{colName} ASC
+				</if>
+			</when>
+			<otherwise>
+				ORDER BY UPDATEDATE DESC
+			</otherwise>
+		</choose>
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>
+
+	<select id="selectStgPlcmHdMap" resultType="camelMap" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectStgPlcmHdMap - 적치전략 조회 */
+		SELECT *
+		  FROM TWORK_MST_PLCM_STG_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND PLCMSTGHDKEY = #{plcmstghdkey}
+	</select>
+
+
+	<insert id="insertStgPlcmHd"  parameterType="mstPlcmStgHdVO">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - insertStgPlcmHd - 적치 전략 생성  */
+		INSERT INTO TWORK_MST_PLCM_STG_HD (
+			   CTKEY
+			 , PLCMSTGHDKEY
+			 , PLCMSTGNM
+			 , PLCMSTGDIVCD
+			 , USEYN
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES
+			 ( #{ctkey}
+			 , #{plcmstghdkey}
+			 , #{plcmstgnm}
+			 , #{plcmstgdivcd}
+			 , #{useyn}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+		)
+	</insert>
+
+	<update id="updateStgPlcmHd" parameterType="mstPlcmStgHdVO">
+		/* wms-ctmaster-strategyplcmsql-oracle.xml - updateStgPlcmHd - 적치 전략 수정 */
+		UPDATE TWORK_MST_PLCM_STG_HD
+		   SET PLCMSTGNM 	= #{plcmstgnm}
+			 , PLCMSTGDIVCD	= #{plcmstgdivcd}
+			 , USEYN   	 	= #{useyn}
+			 , CMT   	 	= #{cmt}
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY 	= #{surkey}
+		 WHERE CTKEY   		= #{ctkey}
+		   AND PLCMSTGHDKEY = #{plcmstghdkey}
+	</update>
+
+	<delete id="deleteStgPlcmHd" parameterType="mstPlcmStgHdVO">
+		/* wms-ctmaster-strategyplcmsql-oracle.xml - deleteStgPlcmHd - 적치 전략 삭제 */
+		DELETE FROM TWORK_MST_PLCM_STG_HD
+		 WHERE CTKEY   		= #{ctkey}
+		   AND PLCMSTGHDKEY = #{plcmstghdkey}
+	</delete>
+
+
+	<select id="selectListStgPlcmDt" resultType="camelMap">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectListStgPlcmDt - 적치 전략 상세 조회  SQL */
+		SELECT CTKEY
+			 , PLCMSTGHDKEY
+			 , DTSEQNO
+			 , PLCMSTGATCD
+			 , PLCMSTGATDIVCD
+			 , ATVALUE1
+			 , ATVALUE2
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM TWORK_MST_PLCM_STG_DT
+		 WHERE CTKEY   		= #{ctkey}
+		   AND PLCMSTGHDKEY = #{plcmstghdkey}
+	</select>
+
+	<delete id="deleteStgPlcmDt" >
+		/* wms-ctmaster-strategyplcmsql-oracle.xml - deleteStgPlcmDt - 적치 전략 상세 삭제 */
+		DELETE FROM TWORK_MST_PLCM_STG_DT
+		 WHERE CTKEY   		= #{ctkey}
+		   AND PLCMSTGHDKEY = #{plcmstghdkey}
+	</delete>
+
+	<insert id="insertStgPlcmDt"  parameterType="mstPlcmStgDtVO">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - insertStgPlcmDt - 적치 전략 생성  */
+		INSERT INTO TWORK_MST_PLCM_STG_DT (
+			   CTKEY
+			 , PLCMSTGHDKEY
+			 , DTSEQNO
+			 , PLCMSTGATCD
+			 , PLCMSTGATDIVCD
+			 , ATVALUE1
+			 , ATVALUE2
+			 , CMT
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+			 ) VALUES
+			 ( #{ctkey}
+			 , #{plcmstghdkey}
+			 , #{dtseqno}
+			 , #{plcmstgatcd}
+			 , #{plcmstgatdivcd}
+			 , #{atvalue1}
+			 , #{atvalue2}
+			 , #{cmt}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 )
+	</insert>
+
+	<select id="selectStgPlcmList" resultType="camelMap" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectStgPlcmList - 적치전략 조회 */
+		SELECT *
+		  FROM TWORK_MST_PLCM_STG_HD A
+	     INNER JOIN TWORK_MST_PLCM_STG_DT B
+		  	ON A.CTKEY = B.CTKEY
+		   AND A.PLCMSTGHDKEY = B.PLCMSTGHDKEY
+	     WHERE A.CTKEY = #{ctkey}
+		   AND A.PLCMSTGDIVCD = #{plcmstgdivcd}
+	</select>
+
+	<select id="selectIcLcRecomMap" resultType="camelMap" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectIcLcRecomMap - 상품 대표로케이션 추천 정보 조회 */
+		SELECT A.ICKEY
+			 , A.LCKEY
+			 , B.*
+			 , C.ARNM
+			 , D.ZNNM
+			 , E.CTCDDTNM AS LCSTORGTYPENM
+		  FROM TWORK_INFO_IC_LC_RECOM A
+		 INNER JOIN TWORK_MST_LC B
+			ON A.CTKEY = B.CTKEY
+		   AND A.LCKEY = B.LCKEY
+		 INNER JOIN TWORK_MST_AR C
+			ON A.CTKEY = C.CTKEY
+		   AND B.ZNKEY = C.ZNKEY
+		   AND B.ARKEY = C.ARKEY
+		 INNER JOIN TWORK_MST_ZN D
+			ON A.CTKEY = D.CTKEY
+		   AND B.ZNKEY = D.ZNKEY
+		  LEFT OUTER JOIN TWORK_MST_CTCD_DT E
+			ON A.CTKEY      	= E.CTKEY
+		   AND B.LCSTORGTYPECD  = E.CTCDDTKEY
+		   AND E.CTCDHDKEY  	= 'LCSTORGTYPECD'
+		   AND E.LAKEY      	= 'KOR'
+		 WHERE A.CTKEY = #{ctkey}
+		   AND A.ICKEY = #{ickey}
+		   AND A.CRITDAY = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+	</select>
+
+	<select id="selectIcLcRecomList" resultType="string">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectIcLcRecomCheck - 상품 대표로케이션 추천 정보 확인 */
+		SELECT LCKEY
+		  FROM TWORK_INFO_IC_LC_RECOM
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND CRITDAY = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+	</select>
+
+	<select id="selectIcLcRecomCheck" resultType="camelMap">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectIcLcRecomCheck - 상품 대표로케이션 추천 정보 확인 */
+		SELECT *
+		  FROM TWORK_INFO_IC_LC_RECOM
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<insert id="insertIcLcRecom">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - insertIcLcRecom - 상품 대표로케이션 추천 정보 등록 */
+		INSERT INTO TWORK_INFO_IC_LC_RECOM
+		(
+			CTKEY
+			, OWKEY
+			, ICKEY
+			, LCKEY
+			, CRITDAY
+			, CMT
+			, INSERTDATE
+			, INSERTURKEY
+			, UPDATEDATE
+			, UPDATEURKEY
+		) VALUES
+		(
+			#{ctkey}
+			, #{owkey}
+			, #{ickey}
+			, #{lckey}
+			, TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+			, #{cmt}
+			, #{sysdate}
+			, #{surkey}
+			, #{sysdate}
+			, #{surkey}
+		)
+
+	</insert>
+
+	<update id="updateIcLcRecom">
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - updateIcLcRecom - 상품 대표로케이션 추천 정보 수정 */
+		UPDATE TWORK_INFO_IC_LC_RECOM
+		   SET LCKEY = #{lckey}
+			 , CRITDAY = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')
+			 , UPDATEDATE 	= #{sysdate}
+			 , UPDATEURKEY  = #{surkey}
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND ICKEY = #{ickey}
+	</update>
+
+	<select id="selectMstIcutxtype" resultType="camelMap" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectMstIcutxtype - 상품 단위 유형 조회 */
+		SELECT *
+		 FROM TWORK_MST_ICUTXTYPE
+		WHERE CTKEY = #{ctkey}
+		  AND OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		  AND ICUNITTYPECD = 'EA'
+	</select>
+
+	<select id="selectMstIcLckey" resultType="string" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectMstIcLckey - 상품 대표로케이션 조회 */
+		SELECT LCKEY
+		  FROM TWORK_MST_IC
+		 WHERE CTKEY = #{ctkey}
+		   AND ICKEY = #{ickey}
+	</select>
+
+	<select id="selectStgPlcmLckey" resultType="camelMap" >
+		/* wms-ctmaster-strategyplcm-sql-oracle.xml - selectStgPlcmLckey - 로케이션 조회 */
+		WITH IV_SUM AS (
+						SELECT CTKEY, LCKEY
+						  FROM TWORK_INFO_IVATXLC
+						 GROUP BY CTKEY, LCKEY
+						HAVING SUM(TOTQTY) > 0
+		),
+		REPLOC AS (
+					SELECT IC.CTKEY
+					  	 , IC.LCKEY AS REP_LCKEY
+					  	 , LC.RACKNO AS REP_RACK
+					  	 , LC.ROWNO  AS REP_ROW
+					  	 , LC.TIERNO AS REP_TIER
+					  	 , LC.ZNKEY  AS REP_ZNKEY
+					  	 , LC.ARKEY  AS REP_ARKEY
+					  FROM TWORK_MST_IC IC
+                      LEFT JOIN TWORK_MST_LC LC
+						ON IC.CTKEY = LC.CTKEY
+					   AND IC.LCKEY = LC.LCKEY
+					 WHERE IC.CTKEY = #{ctkey}
+					   AND IC.ICKEY = #{ickey}
+		),
+        IC_CBM AS (
+                    SELECT IC.CTKEY
+                         , IC.OWKEY
+                         , IC.ICKEY
+                         , EA_ICUT.VOL  AS EA_CBM
+                         , INN_ICUT.VOL  AS INN_CBM
+                         , CTN_ICUT.VOL  AS CTN_CBM
+                         , INN_ICUT.ICUNITQTY  AS INN_ICUNITQTY
+                         , CTN_ICUT.ICUNITQTY  AS CTN_ICUNITQTY
+                      FROM TWORK_MST_IC IC
+                     INNER JOIN TWORK_MST_ICUTXTYPE EA_ICUT
+                        ON IC.CTKEY = EA_ICUT.CTKEY
+                       AND IC.OWKEY = EA_ICUT.OWKEY
+                       AND IC.ICKEY = EA_ICUT.ICKEY
+                       AND EA_ICUT.ICUNITTYPECD = 'EA'
+                     INNER JOIN TWORK_MST_ICUTXTYPE INN_ICUT
+                        ON IC.CTKEY = INN_ICUT.CTKEY
+                       AND IC.OWKEY = INN_ICUT.OWKEY
+                       AND IC.ICKEY = INN_ICUT.ICKEY
+                       AND INN_ICUT.ICUNITTYPECD = 'INN'
+                     INNER JOIN TWORK_MST_ICUTXTYPE CTN_ICUT
+                        ON IC.CTKEY = CTN_ICUT.CTKEY
+                       AND IC.OWKEY = CTN_ICUT.OWKEY
+                       AND IC.ICKEY = CTN_ICUT.ICKEY
+                       AND CTN_ICUT.ICUNITTYPECD = 'CTN'
+                      LEFT JOIN TWORK_MST_LC LC
+                        ON IC.CTKEY = LC.CTKEY
+                       AND IC.LCKEY = LC.LCKEY
+                     WHERE IC.CTKEY = #{ctkey}
+                       AND IC.ICKEY = #{ickey}
+        ),
+        DAY_AVG AS (
+                    SELECT A.CTKEY
+                         , A.OWKEY
+                         , A.ICKEY
+                         , A.CRITDAY
+                         , A.OBQTY
+                         , A.DAYAVGOBQTY
+                         , A.CNVRTOBQTY
+                         , EA_ICUT.VOL  AS EA_CBM
+                         , INN_ICUT.VOL  AS INN_CBM
+                         , CTN_ICUT.VOL  AS CTN_CBM
+                         , INN_ICUT.ICUNITQTY  AS INN_ICUNITQTY
+                         , CTN_ICUT.ICUNITQTY  AS CTN_ICUNITQTY
+                         , ROUND((A.CNVRTOBQTY / CTN_ICUT.ICUNITQTY * CTN_ICUT.VOL),6) AS CNVRTCBM
+                         , CASE WHEN (SELECT COUNT(1)
+                                        FROM TWORK_MST_LC LC
+                                       WHERE LC.CTKEY = #{ctkey}
+                                         AND LC.ZNKEY IN ('H','P')
+                                         AND ROUND((A.CNVRTOBQTY / CTN_ICUT.ICUNITQTY * CTN_ICUT.VOL),6) BETWEEN CBMSTARTRNG AND CBMCLOSRNG
+                                        ) > 0 THEN 'Y'
+                                ELSE 'N'
+                         END  AS  PLT_ABLE_YN
+                      FROM TWORK_INFO_DAY_AVG_OBQTY A
+                     INNER JOIN
+                           (
+                            SELECT CTKEY
+                                 , OWKEY
+                                 , ICKEY
+                                 , MAX(CRITDAY) AS CRITDAY
+                              FROM TWORK_INFO_DAY_AVG_OBQTY
+                             WHERE CTKEY = #{ctkey}
+                               AND ICKEY = #{ickey}
+                             GROUP BY
+                                   CTKEY
+                                 , OWKEY
+                                 , ICKEY
+                           ) B
+                        ON A.CTKEY = B.CTKEY
+                       AND A.OWKEY = B.OWKEY
+                       AND A.ICKEY = B.ICKEY
+                       AND A.CRITDAY = B.CRITDAY
+                     INNER JOIN TWORK_MST_ICUTXTYPE EA_ICUT
+                        ON A.CTKEY = EA_ICUT.CTKEY
+                       AND A.OWKEY = EA_ICUT.OWKEY
+                       AND A.ICKEY = EA_ICUT.ICKEY
+                       AND EA_ICUT.ICUNITTYPECD = 'EA'
+                     INNER JOIN TWORK_MST_ICUTXTYPE INN_ICUT
+                        ON A.CTKEY = INN_ICUT.CTKEY
+                       AND A.OWKEY = INN_ICUT.OWKEY
+                       AND A.ICKEY = INN_ICUT.ICKEY
+                       AND INN_ICUT.ICUNITTYPECD = 'INN'
+                     INNER JOIN TWORK_MST_ICUTXTYPE CTN_ICUT
+                        ON A.CTKEY = CTN_ICUT.CTKEY
+                       AND A.OWKEY = CTN_ICUT.OWKEY
+                       AND A.ICKEY = CTN_ICUT.ICKEY
+                       AND CTN_ICUT.ICUNITTYPECD = 'CTN'
+                     WHERE A.CTKEY = #{ctkey}
+                       AND A.ICKEY = #{ickey}
+        )
+        SELECT TT.*
+          FROM (
+                SELECT ROW_NUMBER() OVER(ORDER BY PRIORITY ASC, DISTANCE ASC, ZNKEY ASC, ARKEY ASC
+                                        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby1)'>
+                                            , ${orderby1} ${sort1}
+                                        </if>
+                                        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby2)'>
+                                            , ${orderby2} ${sort2}
+                                        </if>
+                                        <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby3)'>
+                                            , ${orderby3} ${sort3}
+                                        </if>
+                                        ) AS RN
+                     , T.*
+                  FROM (
+                        SELECT LC.*
+                             , AR.ARNM
+                             , ZN.ZNNM
+                             , LCTYP.CTCDDTNM AS LCSTORGTYPENM
+                             , LCDS.DSBTGRADECD
+                             , CASE WHEN LC.LCKEY = R.REP_LCKEY THEN 1
+                                    ELSE 2
+                                     END AS PRIORITY
+                             , CASE
+                                    WHEN R.REP_LCKEY IS NOT NULL THEN
+                                                                      CASE
+                                                                            WHEN LC.RACKNO = R.REP_RACK AND LC.ROWNO = R.REP_ROW THEN ABS(LC.TIERNO - R.REP_TIER)
+                                                                            WHEN LC.RACKNO = R.REP_RACK THEN ABS(LC.ROWNO - R.REP_ROW) * 100 + ABS(LC.TIERNO - R.REP_TIER)
+                                                                            ELSE ABS(LC.RACKNO - R.REP_RACK) * 10000 + ABS(LC.ROWNO - R.REP_ROW) * 100 + ABS(LC.TIERNO - R.REP_TIER)
+                                                                       END
+                                     ELSE 999999
+                                END AS DISTANCE 										/* 거리 계산: RACKNO 동일 > ROWNO 동일 > TIERNO 차이 */
+                          FROM TWORK_MST_LC LC
+                         INNER JOIN TWORK_MST_AR AR
+                            ON LC.CTKEY = AR.CTKEY
+                           AND LC.ZNKEY = AR.ZNKEY
+                           AND LC.ARKEY = AR.ARKEY
+                         INNER JOIN TWORK_MST_ZN ZN
+                            ON LC.CTKEY = ZN.CTKEY
+                           AND LC.ZNKEY = ZN.ZNKEY
+                          LEFT OUTER JOIN TWORK_MST_LC_DSBTGRADE LCDS
+                            ON LC.CTKEY = LCDS.CTKEY
+                           AND LC.LCKEY = LCDS.LCKEY
+                          LEFT OUTER JOIN TWORK_MST_CTCD_DT LCTYP /* 로케이션유형 */
+                            ON LCTYP.CTKEY      = LC.CTKEY
+                           AND LCTYP.CTCDHDKEY  = 'LCSTORGTYPECD'
+                           AND LCTYP.CTCDDTKEY  = LC.LCSTORGTYPECD
+                           AND LCTYP.LAKEY      = 'KOR'
+                          LEFT JOIN IV_SUM IVS
+                            ON LC.CTKEY = IVS.CTKEY
+                           AND LC.LCKEY = IVS.LCKEY
+                          LEFT JOIN REPLOC R
+                            ON LC.CTKEY = R.CTKEY
+                           AND LC.LCKEY = R.REP_LCKEY
+                          LEFT JOIN IC_CBM ICBM
+                            ON LC.CTKEY = ICBM.CTKEY
+                          LEFT JOIN DAY_AVG DAVG
+                            ON LC.CTKEY = DAVG.CTKEY
+                         WHERE IVS.LCKEY IS NULL
+                <if test="plcmstgdivcd == '10'" >
+                           AND ZN.ZNTYPECD = '10'
+                           AND ZN.ZNKEY IN ('H','P')
+                           -- AND (R.REP_LCKEY IS NULL OR (REP_ZNKEY = ZN.ZNKEY AND REP_ARKEY = AR.ARKEY))
+                           /* 약 2일간의 입고예정정보에 해당하는 다른 상품의 대표로케이션은 제외처리 */
+                           AND LC.LCKEY NOT IN (
+                                                SELECT IC.LCKEY
+                                                  FROM TWORK_INFO_IB_HD IH
+                                                       INNER JOIN
+                                                       TWORK_INFO_IB_DT ID
+                                                         ON IH.CTKEY = ID.CTKEY
+                                                        AND IH.OWKEY = ID.OWKEY
+                                                        AND IH.IBHDKEY = ID.IBHDKEY
+                                                       INNER JOIN
+                                                       TWORK_MST_IC IC
+                                                         ON ID.CTKEY = IC.CTKEY
+                                                        AND ID.OWKEY = IC.OWKEY
+                                                        AND ID.ICKEY = IC.ICKEY
+                                                  WHERE IH.CTKEY = #{ctkey}
+                                                    AND IH.OWKEY = #{owkey}
+                                                    AND IH.IBHDTYPECD = '30'
+                                                    AND IH.IBEXPCTDATE BETWEEN TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '2 days','YYYYMMDD')||'000000' AND TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDD')||'000000'
+                                                    AND (
+                                                        ID.IBDTSTATUSCD = '00'
+                                                        OR
+                                                        ID.PLCMSTATUSCD = '00'
+                                                        )
+                                                    AND ID.IBDTSTATUSCD NOT IN ('91','92','99')
+                                                    AND ID.ICKEY <![CDATA[<>]]> #{ickey}
+                                                    AND IC.LCKEY IS NOT NULL
+                                                  GROUP BY
+                                                        IC.LCKEY
+                                               )
+                           AND COALESCE(COALESCE(DAVG.CNVRTCBM, ICBM.CTN_CBM), 0) BETWEEN (CASE WHEN COALESCE(DAVG.PLT_ABLE_YN, 'Y') = 'Y' THEN LC.CBMSTARTRNG ELSE COALESCE(COALESCE(DAVG.CNVRTCBM, ICBM.CTN_CBM), 0) END)
+                                                                          AND (CASE WHEN COALESCE(DAVG.PLT_ABLE_YN, 'Y') = 'Y' THEN LC.CBMCLOSRNG ELSE COALESCE(COALESCE(DAVG.CNVRTCBM, ICBM.CTN_CBM), 0) END)
+                           AND LC.ZNKEY IN (
+                                            SELECT (CASE WHEN COALESCE(DAVG.PLT_ABLE_YN, 'Y') = 'Y' THEN 'H' ELSE 'P' END) AS ZNKEY UNION ALL
+                                            SELECT 'P' AS ZNKEY
+                                            )
+                </if>
+                <if test="plcmstgdivcd == '20'" >
+                           AND ZN.ZNTYPECD = '10'
+                           AND ZN.ZNKEY = 'P'
+                </if>
+                        ) T
+                 WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listLcType)" >
+                    AND LCTYPECD IN	<!-- 로케이션 유형 적용  -->
+                    <foreach item="listLcType" index="index" collection="listLcType" open="(" separator="," close=")">
+                        #{listLcType}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listIncludeLc)" >
+                    AND LCKEY IN
+                    <foreach item="listIncludeLc" index="index" collection="listIncludeLc" open="(" separator="," close=")">
+                        #{listIncludeLc}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listExcludeLc)" >
+                    AND LCKEY NOT IN
+                    <foreach item="listExcludeLc" index="index" collection="listExcludeLc" open="(" separator="," close=")">
+                        #{listExcludeLc}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listIncludeArea)" >
+                    AND ARKEY IN
+                    <foreach item="listIncludeArea" index="index" collection="listIncludeArea" open="(" separator="," close=")">
+                        #{listIncludeArea}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listExcludeArea)" >
+                    AND ARKEY NOT IN
+                    <foreach item="listExcludeArea" index="index" collection="listExcludeArea" open="(" separator="," close=")">
+                        #{listExcludeArea}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icplcmdivcd)" >
+                    AND ICPLCMDIVCD = #{icplcmdivcd}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(icardivcd)" >
+                    AND ICARDIVCD = #{icardivcd}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(dsbtgradecd)" >
+                    AND DSBTGRADECD = #{dsbtgradecd}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(vol)" >
+                    AND #{vol} BETWEEN CBMSTARTRNG AND CBMCLOSRNG
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(listIcLcRecom)" >
+                    AND LCKEY NOT IN
+                    <foreach item="listIcLcRecom" index="index" collection="listIcLcRecom" open="(" separator="," close=")">
+                        #{listIcLcRecom}
+                    </foreach>
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lcstorgtypecd)" >
+                    AND LCSTORGTYPECD = #{lcstorgtypecd}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(arkey)" >
+                    AND ARKEY = #{arkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtaleno)" >
+                    AND ALTMTALENO = #{altmtaleno}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(altmtarno)" >
+                    AND ALTMTARNO = #{altmtarno}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(lckey)" >
+                    AND LCKEY = #{lckey}
+                </if>
+                    ORDER BY PRIORITY ASC
+                           , DISTANCE ASC
+                           , ZNKEY ASC
+                           , ARKEY ASC
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby1)'>
+                    , ${orderby1} ${sort1}
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby2)'>
+                    , ${orderby2} ${sort2}
+                </if>
+                <if test='@com.kns.framework.util.StringUtil@isNotEmpty(orderby3)'>
+                    , ${orderby3} ${sort3}
+                </if>
+            ) TT
+        <if test="plcmstgdivcd == '10'" >
+          WHERE TT.RN = 1
+        </if>
+	</select>
+</mapper>

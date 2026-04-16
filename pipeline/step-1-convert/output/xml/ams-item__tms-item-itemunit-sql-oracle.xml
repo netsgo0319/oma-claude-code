@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemUnitTmsMapper">
+
+	<delete id="deleteTTMstIcutxtype" >
+		/* tms-item-itemunit-sql-oracle.xml - deleteTTMstIcutxtype */
+		DELETE
+		  FROM 	TT_MST_ICUTXTYPE
+	     WHERE	OWKEY = #{owkey}
+	       AND	ICUTKEY = #{icutkey}
+		   AND 	ICUTTYPE = #{icuttype} 
+	</delete>
+	
+	<insert id="insertTTMstIcutxtype">
+		/* tms-item-itemunit-sql-oracle.xml - insertTTMstIcutxtype */
+		INSERT INTO TT_MST_ICUTXTYPE
+		(
+			OWKEY
+			,ICUTKEY
+			,ICUTTYPE
+			,ICUTORDER
+			,ICUTQTY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,LENGTH
+			,WIDTH
+			,HEIGHT
+			,WEIGHT
+			,VOLUME
+			,SIZEUNIT
+			,VOLUMEUNIT
+			,WEIGHTUNIT
+		 )	VALUES	(
+		 	 #{owkey}
+			,#{icutkey}
+			,#{icuttype}
+			,#{icutorder}
+			,#{icutqty}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{lengthUom}
+			,#{width}
+			,#{height}
+			,#{weight}
+			,#{volume}
+			,#{sizeUnit}
+			,#{volumeUnit}
+			,#{weightUnit}
+		 )	
+	</insert>
+
+	<insert id="insertTTMstIcut">
+		/* tms-item-itemunit-sql-oracle.xml - insertTTMstIcut */
+		INSERT INTO TT_MST_ICUT
+		(
+		      OWKEY    /*화주 코드*/
+		    , ICUTKEY    /*상품 단위 코드*/
+		    , CLOSDATE    /*종료 일시*/
+		    , INSERTDATE    /*입력 일시*/
+		    , INSERTURKEY    /*입력 사용자 ID*/
+		    , UPDATEDATE    /*수정 일시*/
+		    , UPDATEURKEY    /*수정 사용자 ID*/
+		)
+		SELECT OWKEY    /*화주 코드*/
+		     , ICUTKEY    /*상품 단위 코드*/
+		     , SUBSTR(#{closdate}, 0, 14)
+		     , #{surkey}
+			 , #{sysdate}
+			 , #{surkey}
+			 , #{sysdate}
+		  FROM (
+		  		SELECT T.OWKEY
+		  		     , T.ICUTKEY
+		  		     , CASE WHEN IU.ICUTKEY IS NULL THEN 'Y' ELSE 'N' END AS SAVEYN
+		  		  FROM (
+		  		  		SELECT #{owkey} AS OWKEY
+		  		  		     , #{icutkey} AS ICUTKEY
+		  		  	   ) T
+		  		  LEFT JOIN TT_MST_ICUT IU
+		  		    ON T.OWKEY = IU.OWKEY
+		  		   AND T.ICUTKEY = IU.ICUTKEY
+		  	   ) TT
+		 WHERE SAVEYN = 'Y'
+	</insert>
+	
+	<select id="selectTTMstIcutxtype" resultType="camelMap">
+		/* tms-item-itemunit-sql-oracle.xml - selectTTMstIcutxtype */
+		SELECT 
+		         UPDATEURKEY
+		        ,UPDATEDATE
+		        ,INSERTURKEY
+		        ,INSERTDATE
+		        ,ICUTTYPE
+		        ,ICUTQTY
+		        ,ICUTKEY
+		        ,OWKEY
+		  FROM TT_MST_ICUTXTYPE
+		 WHERE OWKEY = #{owkey}
+		   AND ICUTKEY = #{icutkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icuttype)" >
+		   AND ICUTTYPE = #{icuttype}
+		</if>
+	</select>
+	
+	<update id="updateTTMstIcutxtype">
+		/* tms-item-itemunit-sql-oracle.xml - updateTTMstIcutxtype */
+		UPDATE TT_MST_ICUTXTYPE
+		   SET ICUTQTY = #{icutqty}
+			  ,UPDATEURKEY = #{surkey}
+			  ,UPDATEDATE = #{sysdate}
+			  ,ICUTORDER = #{icutorder}		      
+		 WHERE OWKEY = #{owkey}
+		   AND ICUTKEY = #{icutkey}
+		   AND ICUTTYPE = #{icuttype} 
+	</update>
+	
+	<update id="updateTTMstIcut">
+		/* tms-item-itemunit-sql-oracle.xml - updateTTMstIcut */
+		UPDATE TT_MST_ICUT
+		   SET CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+			  ,UPDATEURKEY = #{surkey}
+			  ,UPDATEDATE = #{sysdate}
+		 WHERE OWKEY = #{owkey}
+		   AND ICUTKEY = #{icutkey}
+	</update>
+	
+	<delete id="deleteTTMstIcutxtypexct">
+		/* tms-item-itemunit-sql-oracle.xml - deleteTTMstIcutxtypexct */
+		DELETE 
+		  FROM 	TT_MST_ICUTXTYPEXCT
+		 WHERE 	OWKEY = #{owkey}
+		   AND	ICUTKEY = #{icutkey}
+		   AND 	ICUTTYPE =  #{icuttype}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+		   AND 	CTKEY = #{ctkey}
+		</if>
+	</delete>
+	
+	<insert id="insertTTMstIcutxtypexct">
+		/* tms-item-itemunit-sql-oracle.xml - insertTTMstIcutxtypexct */
+		INSERT INTO TT_MST_ICUTXTYPEXCT
+		(
+			OWKEY
+			,ICUTKEY
+			,ICUTTYPE
+			,CTKEY
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		 )	VALUES	(
+		 	#{owkey}
+		 	,#{icutkey}
+			,#{icuttype}
+			,#{ctkey}
+		 	,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		 )	
+	</insert>
+
+	<insert id="mergeTTMstIcutxtype">
+		/* tms-item-itemunit-sql-oracle.xml - mergeTAdminMstIcuttype */
+		/* Converted from: MERGE INTO TT_MST_ICUTXTYPE ON CONFLICT */
+		INSERT INTO TT_MST_ICUTXTYPE (
+					OWKEY, ICUTKEY, ICUTTYPE, ICUTORDER, ICUTQTY
+					,INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+					,LENGTH, WIDTH, HEIGHT, WEIGHT, VOLUME, SIZEUNIT, VOLUMEUNIT, WEIGHTUNIT
+				) VALUES (
+					 #{owkey}, #{icutkey}, #{icuttype}, #{icutorder}, #{icutqty}
+					,#{sysdate}, #{surkey}, #{sysdate}, #{surkey}
+					,#{unitLength}, #{unitWidth}, #{unitHeight}, #{weight}, #{volume}, #{sizeunit}, #{volumeunit}, 'G'
+				)
+		ON CONFLICT (OWKEY, ICUTKEY, ICUTTYPE) DO UPDATE SET
+					ICUTQTY 		= #{icutqty}
+					, ICUTORDER 	= #{icutorder}
+					, LENGTH    	= #{unitLength}
+					, WIDTH	    	= #{unitWidth}
+					, HEIGHT 		= #{unitHeight}
+					, WEIGHT 		= #{weight}
+					, VOLUME 		= #{volume}
+					, WEIGHTUNIT    = 'G'
+					, UPDATEURKEY 	= #{surkey}
+					, UPDATEDATE  	= #{sysdate}
+	</insert>
+
+	<insert id="mergeTTMstIcutxtypexct">
+		/* tms-item-itemunit-sql-oracle.xml - mergeTTMstIcutxtypexct */
+		/* Converted from: MERGE INTO TT_MST_ICUTXTYPEXCT ON CONFLICT */
+		INSERT INTO TT_MST_ICUTXTYPEXCT (
+					 OWKEY, ICUTKEY, ICUTTYPE, CTKEY
+					,INSERTDATE, INSERTURKEY, UPDATEDATE, UPDATEURKEY
+				) VALUES (
+					 #{owkey}, #{icutkey}, #{icuttype}, #{ctkey}
+					,#{sysdate}, #{surkey}, #{sysdate}, #{surkey}
+				)
+		ON CONFLICT (OWKEY, CTKEY, ICUTKEY, ICUTTYPE) DO UPDATE SET
+					UPDATEDATE	= #{sysdate}
+					,UPDATEURKEY 	= #{surkey}
+	</insert>
+</mapper>	

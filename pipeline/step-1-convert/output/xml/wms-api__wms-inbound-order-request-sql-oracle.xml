@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.api.out.mapper.InboundOrderRequestApiMapper">
+
+	<select id="selectObHdInfo" resultType="camelMap">
+		/* wms-inbound-iborder-request-sql-oracle.xml - selectObHdInfo - 입고반품 - 파손반송처리 - 출고 조회 */
+		SELECT *
+		  FROM TWORK_INFO_OB_HD
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+		   AND OBHDKEY = #{obhdkey}
+	</select>
+
+</mapper>

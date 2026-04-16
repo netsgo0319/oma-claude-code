@@ -1,0 +1,2167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="com.daiso.wms.report.mapper.ObPeriodStatusStatisticsMapper">
+
+    <sql id="sql_pagingTop">
+        #{GRIDPAGING_ROWNUMTYPE_TOP}
+    </sql>
+
+    <sql id="sql_pagingBottom">
+        #{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+    </sql>
+
+    <select id="selectObPeriodStatusStatisticsCount" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObPeriodStatusStatisticsCount - 기간별 출고현황 통계 - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObPeriodStatusStatisticsSql"/>
+        )
+    </select>
+
+    <select id="selectObPeriodStatusStatisticsList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObPeriodStatusStatisticsList - 기간별 출고현황 통계 - 조회 리스트 */
+        FROM (
+            <include refid="selectObPeriodStatusStatisticsSql"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObPeriodStatusStatisticsSql">
+        <if test='"10".equals(div)' >
+            SELECT
+                CTKEY,
+                OWKEY,
+                OBHDYEAR,
+                OBHDMONTH,
+                NULL AS OBHDDAY,
+                SUM(INITORDCNT) AS INITORDCNT,
+                SUM(INITWBLCNT) AS INITWBLCNT,
+                SUM(INITSKU) AS INITSKU,
+                SUM(INITQTY) AS INITQTY,
+                SUM(INITAMT) AS INITAMT,
+                SUM(CNFRMORDCNT) AS CNFRMORDCNT,
+                SUM(CNFRMWBLCNT) AS CNFRMWBLCNT,
+                SUM(CNFRMSKU) AS CNFRMSKU,
+                SUM(CNFRMQTY) AS CNFRMQTY,
+                SUM(CNFRMAMT) AS CNFRMAMT,
+                SUM(CNFRMQTYDW) AS CNFRMQTYDW,
+                SUM(CNFRMQTYRW) AS CNFRMQTYRW,
+                SUM(CNFRMQTYPW) AS CNFRMQTYPW,
+                SUM(CNFRMQTYUW) AS CNFRMQTYUW,
+                SUM(CNFRMQTYET) AS CNFRMQTYET,
+                SUM(CNFRMQTYDAY) AS CNFRMQTYDAY,
+                SUM(CNFRMQTYDWDAY) AS CNFRMQTYDWDAY,
+                SUM(CNFRMQTYRWDAY) AS CNFRMQTYRWDAY,
+                SUM(CNFRMQTYPWDAY) AS CNFRMQTYPWDAY,
+                SUM(CNFRMQTYUWDAY) AS CNFRMQTYUWDAY,
+                SUM(CNFRMQTYETDAY) AS CNFRMQTYETDAY,
+                SUM(CNFRMQTYNGT) AS CNFRMQTYNGT,
+                SUM(CNFRMQTYDWNGT) AS CNFRMQTYDWNGT,
+                SUM(CNFRMQTYRWNGT) AS CNFRMQTYRWNGT,
+                SUM(CNFRMQTYPWNGT) AS CNFRMQTYPWNGT,
+                SUM(CNFRMQTYUWNGT) AS CNFRMQTYUWNGT,
+                SUM(CNFRMQTYETNGT) AS CNFRMQTYETNGT,
+                ROUND(AVG(CNFRMSKUAVG), 2) AS CNFRMSKUAVG,
+                ROUND(AVG(CNFRMQTYAVG), 2) AS CNFRMQTYAVG,
+                ROUND(AVG(CNFRMAMTAVG), 2) AS CNFRMAMTAVG
+            FROM (
+        </if>
+            SELECT
+                A.CTKEY,
+                A.OWKEY,
+                SUBSTR(A.OBHDDAY, 0, 4) AS OBHDYEAR,
+                SUBSTR(A.OBHDDAY, 5, 2) AS OBHDMONTH,
+                A.OBHDDAY,
+                TO_CHAR(TO_DATE(A.OBHDDAY, 'YYYYMMDD'), 'DY') || '요일' AS OBHDWKDAY,
+                B.INITORDCNT,
+                C.INITWBLCNT,
+                A.INITSKU,
+                A.INITQTY,
+                A.INITAMT,
+                B.CNFRMORDCNT,
+                C.CNFRMWBLCNT,
+                A.CNFRMSKU,
+                A.CNFRMQTY,
+                A.CNFRMAMT,
+                A.CNFRMQTYDW,
+                A.CNFRMQTYRW,
+                A.CNFRMQTYPW,
+                A.CNFRMQTYUW,
+                A.CNFRMQTYET,
+                A.CNFRMQTYDWDAY + A.CNFRMQTYRWDAY + A.CNFRMQTYPWDAY + A.CNFRMQTYUWDAY + A.CNFRMQTYETDAY AS CNFRMQTYDAY,
+                A.CNFRMQTYDWDAY,
+                A.CNFRMQTYRWDAY,
+                A.CNFRMQTYPWDAY,
+                A.CNFRMQTYUWDAY,
+                A.CNFRMQTYETDAY,
+                A.CNFRMQTYDWNGT + A.CNFRMQTYRWNGT + A.CNFRMQTYPWNGT + A.CNFRMQTYUWNGT + A.CNFRMQTYETNGT AS CNFRMQTYNGT,
+                A.CNFRMQTYDWNGT,
+                A.CNFRMQTYRWNGT,
+                A.CNFRMQTYPWNGT,
+                A.CNFRMQTYUWNGT,
+                A.CNFRMQTYETNGT,
+                ROUND(A.CNFRMSKUAVG) AS CNFRMSKUAVG,
+                ROUND(A.CNFRMQTYAVG) AS CNFRMQTYAVG,
+                ROUND(A.CNFRMAMTAVG) AS CNFRMAMTAVG
+            FROM (
+                SELECT
+                     A.CTKEY
+                    ,A.OWKEY
+                    ,A.OBHDDAY -- 출고희망일자
+                    ,SUM(INITSKU) AS INITSKU
+                    ,SUM(INITQTY) AS INITQTY
+                    ,SUM(INITAMT) AS INITAMT
+                    ,SUM(CNFRMSKU) AS CNFRMSKU
+                    ,SUM(CNFRMQTY) AS CNFRMQTY
+                    ,SUM(CNFRMAMT) AS CNFRMAMT
+                    ,SUM(A.CNFRMQTYDW) AS CNFRMQTYDW
+                    ,SUM(A.CNFRMQTYRW) AS CNFRMQTYRW
+                    ,SUM(A.CNFRMQTYPW) AS CNFRMQTYPW
+                    ,SUM(A.CNFRMQTYUW) AS CNFRMQTYUW
+                    ,SUM(A.CNFRMQTYET) AS CNFRMQTYET
+                    ,SUM(A.CNFRMQTYDWDAY) AS CNFRMQTYDWDAY
+                    ,SUM(A.CNFRMQTYRWDAY) AS CNFRMQTYRWDAY
+                    ,SUM(A.CNFRMQTYPWDAY) AS CNFRMQTYPWDAY
+                    ,SUM(A.CNFRMQTYUWDAY) AS CNFRMQTYUWDAY
+                    ,SUM(A.CNFRMQTYETDAY) AS CNFRMQTYETDAY
+                    ,SUM(A.CNFRMQTYDWNGT) AS CNFRMQTYDWNGT
+                    ,SUM(A.CNFRMQTYRWNGT) AS CNFRMQTYRWNGT
+                    ,SUM(A.CNFRMQTYPWNGT) AS CNFRMQTYPWNGT
+                    ,SUM(A.CNFRMQTYUWNGT) AS CNFRMQTYUWNGT
+                    ,SUM(A.CNFRMQTYETNGT) AS CNFRMQTYETNGT
+                    ,AVG(A.CNFRMSKU) AS CNFRMSKUAVG
+                    ,AVG(A.CNFRMQTY) AS CNFRMQTYAVG
+                    ,AVG(A.CNFRMAMT) AS CNFRMAMTAVG
+                FROM (
+                    SELECT OH.CTKEY /*센터코드*/
+                    , OH.OWKEY /*화주코드*/
+                    -- , OH.OBREQDATE /*주문지시일시*/
+                    -- , SUBSTR(OH.OBHDDAY, 0, 4) AS OBHDYEAR /*출고희망연도*/
+                    -- , SUBSTR(OH.OBHDDAY, 5, 2) AS OBHDMONTH /*출고희망월*/
+                    , SUBSTR(OH.OBHDDAY, 0, 8) AS OBHDDAY /*출고희망일자*/
+                    --, TO_CHAR(TO_DATE(SUBSTR(OH.OBHDDAY, 0, 8), 'YYYYMMDD'), 'DY') || '요일' AS OBHDWKDAY /*출고희망요일*/
+                    , OH.OBORDKEY /*오더코드*/
+                    -- , OH.WBLNO /*송장번호*/
+                    , COUNT(*) AS INITSKU /*주문량-SKU*/
+                    , SUM(OD.INITQTY) AS INITQTY /*주문량-EA*/
+                    , SUM(COALESCE(OD.INITQTY, 0) * COALESCE(IC.SLPRC, 0)) AS INITAMT /*주문량-금액*/
+                    , SUM(CASE WHEN OH.OBSTATUSCD IN('65', '70') THEN 1 ELSE 0 END) AS CNFRMSKU /*출고량-SKU*/
+                    , SUM(OD.CNFRMQTY) AS CNFRMQTY /*출고량-EA*/
+                    , SUM(COALESCE(OD.CNFRMQTY, 0) * COALESCE(IC.SLPRC, 0)) AS CNFRMAMT /*출고량-금액*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'DW' THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYDW /*출고건수-DAS*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'RW' THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYRW /*출고건수-로봇*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'PW' THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYPW /*출고건수-덕용*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'UW' THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYUW /*출고건수-단포*/
+                    , SUM(CASE WHEN OH.WKTYPECD NOT IN ('DW', 'RW', 'PW', 'UW') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYET /*출고건수-수작업*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'DW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYDWDAY /*주간출고건수-DAS*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'RW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYRWDAY /*주간출고건수-로봇*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'PW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYPWDAY /*주간출고건수-덕용*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'UW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYUWDAY /*주간출고건수-수작업*/
+                    , SUM(CASE WHEN OH.WKTYPECD NOT IN ('DW', 'RW', 'PW', 'UW') AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYETDAY /*주간출고건수-단포*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'DW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) NOT BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYDWNGT /*야간출고건수-DAS*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'RW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) NOT BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYRWNGT /*야간출고건수-로봇*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'PW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) NOT BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYPWNGT /*야간출고건수-덕용*/
+                    , SUM(CASE WHEN OH.WKTYPECD = 'UW' AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) NOT BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYUWNGT /*야간출고건수-단포*/
+                    , SUM(CASE WHEN OH.WKTYPECD NOT IN ('DW', 'RW', 'PW', 'UW') AND (SUBSTR(OH.OBCNFRMDATE, 9, 6) NOT BETWEEN '090000' AND '205959') THEN OD.CNFRMQTY ELSE 0 END) AS CNFRMQTYETNGT /*주간출고건수-수작업*/
+                FROM TWORK_INFO_OB_HD OH
+                INNER JOIN TWORK_INFO_OB_DT OD
+                ON OH.CTKEY = OD.CTKEY
+                AND OH.OWKEY = OD.OWKEY
+                AND OH.OBHDKEY = OD.OBHDKEY
+                INNER JOIN TWORK_MST_CT CT
+                ON OH.CTKEY = CT.CTKEY
+                INNER JOIN TWORK_MST_IC IC
+                ON OD.CTKEY = IC.CTKEY
+                AND OD.OWKEY = IC.OWKEY
+                AND OD.ICKEY = IC.ICKEY
+                WHERE 1=1
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                    AND OH.OWKEY = #{owkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                    AND OH.CTKEY = #{ctkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                    AND OH.OBHDDAY BETWEEN #{wrkStartDate} || '000000' AND #{wrkEndDate} || '235959'
+                </if>
+                GROUP BY  OH.CTKEY /*센터코드*/
+                        , OH.OWKEY /*화주코드*/
+                        , OH.OBHDDAY /*출고희망일자*/
+                        , OH.OBORDKEY
+                ) A GROUP BY  A.CTKEY /*센터코드*/
+                            , A.OWKEY /*화주코드*/
+                            , A.OBHDDAY /*출고희망일자*/
+            ) A
+            INNER JOIN
+            (
+                SELECT  CTKEY,
+                        OWKEY,
+                        OBHDDAY,
+                        SUM(FLAG1) INITORDCNT, /*주문건수-주문단위*/
+                        SUM(FLAG2) CNFRMORDCNT /*출고건수-주문단위*/
+                FROM (
+                    SELECT
+                        OH.CTKEY,
+                        OH.OWKEY,
+                        SUBSTR(OH.OBHDDAY, 0, 8) AS OBHDDAY, /*출고희망일자*/
+                        OH.OBORDKEY,
+                        1 AS FLAG1, /*주문수-SKU*/
+                        CASE WHEN SUM(CASE WHEN OH.OBSTATUSCD IN ('65', '70') THEN 1 ELSE 0 END) = SUM(1) THEN 1 ELSE 0 END AS FLAG2 /*주문수-SKU*/
+                    FROM TWORK_INFO_OB_HD OH
+                    INNER JOIN TWORK_MST_CT CT
+                    ON OH.CTKEY = CT.CTKEY
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                        AND OH.OWKEY = #{owkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                        AND OH.CTKEY = #{ctkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                        AND OH.OBHDDAY BETWEEN #{wrkStartDate} || '000000' AND #{wrkEndDate} || '235959'
+                    </if>
+                    GROUP BY OH.CTKEY,
+                             OH.OWKEY,
+                             SUBSTR(OH.OBHDDAY, 0, 8),
+                             OH.OBORDKEY
+                )
+                GROUP BY CTKEY,
+                OWKEY,
+                OBHDDAY
+            ) B
+            ON A.CTKEY = B.CTKEY
+            AND A.OWKEY = B.OWKEY
+            AND A.OBHDDAY = B.OBHDDAY
+            INNER JOIN
+            (
+                SELECT  CTKEY,
+                        OWKEY,
+                        OBHDDAY,
+                        SUM(FLAG1) INITWBLCNT, /*주문건수-주문단위*/
+                        SUM(FLAG2) CNFRMWBLCNT /*출고건수-주문단위*/
+                FROM (
+                    SELECT
+                        OH.CTKEY,
+                        OH.OWKEY,
+                        SUBSTR(OH.OBHDDAY, 0, 8) AS OBHDDAY, /*출고희망일자*/
+                        OH.WBLNO,
+                        1 AS FLAG1, /*주문수-SKU*/
+                        CASE WHEN SUM(CASE WHEN OH.OBSTATUSCD IN ('65', '70') THEN 1 ELSE 0 END) = SUM(1) THEN 1 ELSE 0 END AS FLAG2 /*주문수-SKU*/
+                    FROM TWORK_INFO_OB_HD OH
+                    INNER JOIN TWORK_MST_CT CT
+                    ON OH.CTKEY = CT.CTKEY
+                    WHERE 1=1
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)" >
+                        AND OH.OWKEY = #{owkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+                        AND OH.CTKEY = #{ctkey}
+                    </if>
+                    <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wrkStartDate+wrkEndDate)" >
+                        AND OH.OBHDDAY BETWEEN #{wrkStartDate} || '000000' AND #{wrkEndDate} || '235959'
+                    </if>
+                    GROUP BY OH.CTKEY,
+                                OH.OWKEY,
+                                SUBSTR(OH.OBHDDAY, 0, 8),
+                                OH.WBLNO
+                )
+                GROUP BY CTKEY,
+                         OWKEY,
+                         OBHDDAY
+            ) C
+            ON A.CTKEY = C.CTKEY
+            AND B.CTKEY = C.CTKEY
+            AND A.OWKEY = C.OWKEY
+            AND B.OWKEY = C.OWKEY
+            AND A.OBHDDAY = C.OBHDDAY
+            AND B.OBHDDAY = C.OBHDDAY
+            ORDER BY A.OBHDDAY
+        <if test='"10".equals(div)' >
+            )
+            GROUP BY CTKEY, OWKEY, OBHDYEAR, OBHDMONTH
+        </if>
+    </sql>
+
+    <select id="selectObProcStatusHdCount1" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusHdCount1 - 출고 현황 진척 현황 헤더 (통합구분 X) - 카운트 조회 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObProcStatusHdSql1"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusHdList1" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusHdList1 - 출고 현황 진척 현황 헤더 (통합구분 X) - 리스트 조회 */
+            FROM (
+                <include refid="selectObProcStatusHdSql1"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusHdSql1">
+        WITH WH_BASE AS (
+            SELECT *
+            FROM TWORK_INFO_WA_HD WH
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+            AND  #{SEARCH_CONDITION}
+            </if>
+        ), A AS (
+            SELECT /* hint: LEADING(WH PH OH OD PD TPD) USE_HASH(OH OD PH PD TPD) */
+                WH.OWKEY, WH.CTKEY, WH.WAHDDAY, WH.WAHDKEY, WH.PIHDKEY, PH.PIHDNM,
+                WH.WKTYPECD, WH.WARND, WH.WAHDNM, WH.WAWKSTATUSCD,
+                COUNT(DISTINCT OH.OBHDKEY1) AS EXOBORDCNT,
+                COUNT(DISTINCT TPD.LCKEY) AS EXOBCELLCNT,
+                COUNT(DISTINCT OD.ICKEY) AS EXOBSKU,
+                SUM(OD.EXPCTQTY) AS EXOBQTY,
+                SUM(CASE WHEN OD.ROBSORTERICYN = 'Y' THEN OD.EXPCTQTY ELSE 0 END) AS REXOBQTY,
+                SUM(CASE WHEN OD.ROBSORTERICYN = 'N' THEN OD.EXPCTQTY ELSE 0 END) AS DEXOBQTY,
+                COUNT(DISTINCT CASE WHEN TPD.PKCNFRMDATE IS NOT NULL THEN TPD.LCKEY END) AS PROCCELLCNT,
+                COUNT(DISTINCT CASE WHEN (OH.PCKGDATE IS NOT NULL OR OH.OBHDKEY2 IS NOT NULL) AND OH.WKTYPECD != 'RW' THEN OH.OBHDKEY1 END) AS DPAKOBORDCNT,
+                COUNT(DISTINCT CASE WHEN (OH.PCKGDATE IS NOT NULL OR OH.OBHDKEY2 IS NOT NULL) AND OH.WKTYPECD = 'RW' THEN OH.OBHDKEY1 END) AS RPAKOBORDCNT
+            FROM WH_BASE WH
+            LEFT JOIN TWORK_INFO_PI_HD PH
+            ON WH.OWKEY = PH.OWKEY AND WH.CTKEY = PH.CTKEY AND WH.PIHDKEY = PH.PIHDKEY
+            LEFT JOIN (
+                SELECT OH.OWKEY,
+                        OH.CTKEY,
+                        OH.WAHDKEY,
+                        OH.WKTYPECD,
+                        OH.OBHDKEY AS OBHDKEY1,
+                        OH.PCKGDATE AS PCKGDATE,
+                        NH.OBHDKEY AS OBHDKEY2
+                FROM TWORK_INFO_OB_HD OH
+                LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NH
+                ON OH.OWKEY = NH.OWKEY
+                AND OH.CTKEY = NH.CTKEY
+                AND OH.OBHDKEY = NH.OBHDKEY
+            ) OH
+            ON WH.OWKEY = OH.OWKEY AND WH.CTKEY = OH.CTKEY AND WH.WAHDKEY = OH.WAHDKEY
+            LEFT JOIN TWORK_INFO_OB_DT OD
+            ON OH.OWKEY = OD.OWKEY AND OH.CTKEY = OD.CTKEY AND OH.OBHDKEY1 = OD.OBHDKEY
+            LEFT JOIN TWORK_INFO_PI_DT PD
+            ON OD.OWKEY = PD.OWKEY AND OD.CTKEY = PD.CTKEY AND OD.OBHDKEY = PD.OBHDKEY
+            AND OD.OBDTKEY = PD.OBDTKEY AND OD.ICKEY = PD.ICKEY
+            LEFT JOIN TWORK_INFO_PI_TOT_DT TPD
+            ON TPD.OWKEY = PD.OWKEY AND TPD.CTKEY = PD.CTKEY AND TPD.PIHDKEY = PD.PIHDKEY
+            AND TPD.ICKEY = PD.ICKEY AND TPD.LCKEY = PD.LCKEY AND TPD.IVATKEY = PD.IVATKEY
+            GROUP BY
+            WH.OWKEY, WH.CTKEY, WH.WAHDDAY, WH.WAHDKEY, WH.PIHDKEY, PH.PIHDNM,
+            WH.WKTYPECD, WH.WARND, WH.WAHDNM, WH.WAWKSTATUSCD
+        ),
+        B AS (
+            SELECT
+                X.OWKEY, X.CTKEY, X.WAHDKEY,
+                SUM(X.SCLASSIFSQTY) AS SCLASSIFSQTY,
+                SUM(X.RCLASSIFSQTY) AS RCLASSIFSQTY,
+                SUM(X.DCLASSIFSQTY) AS DCLASSIFSQTY
+            FROM (
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, SUM(C.QTY) AS SCLASSIFSQTY, 0 AS RCLASSIFSQTY, 0 AS DCLASSIFSQTY
+                FROM TWIF_DAS_PRCSRSLT_WA A
+                JOIN TWIF_DAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_DAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.DASDIV='3' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+                UNION ALL
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, 0, SUM(C.QTY), 0
+                FROM TWIF_ROBDAS_PRCSRSLT_WA A
+                JOIN TWIF_ROBDAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_ROBDAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+                UNION ALL
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, 0, 0, SUM(C.QTY)
+                FROM TWIF_ROBDAS_RSLTXNIS_WA A
+                JOIN TWIF_ROBDAS_RSLTXNIS_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_ROBDAS_RSLTXNIS_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.IFTYPE='R' AND A.IFSTATUS='90' AND ROBDASRSLTTYPE = '1'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+            ) X
+            GROUP BY X.OWKEY, X.CTKEY, X.WAHDKEY
+        ),
+        C AS (
+            SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, SUM(C.QTY) AS MCLASSIFSQTY
+            FROM TWIF_DAS_PRCSRSLT_WA A
+            JOIN TWIF_DAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+            JOIN TWIF_DAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+            WHERE A.CTKEY = '09' AND A.DASDIV='2' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+            GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+        )
+        SELECT
+            A.OWKEY, A.CTKEY, A.WAHDDAY, A.WAHDKEY, A.PIHDKEY, A.PIHDNM, A.WKTYPECD, A.WARND, A.WAHDNM, A.WAWKSTATUSCD,
+            /*출고예정정보 > 주문건수 / 피킹셀수 / SKU / EA*/
+            A.EXOBORDCNT, A.EXOBCELLCNT, A.EXOBSKU, A.EXOBQTY,
+            /*총량피킹 (CELL) > 완료 / 잔여 / 진척율 */
+            A.PROCCELLCNT, GREATEST(COALESCE(A.EXOBCELLCNT - A.PROCCELLCNT, 0), 0) AS RMCELLCNT,
+            ROUND(A.PROCCELLCNT / NULLIF(A.EXOBCELLCNT, 0) * 100, 1) AS PROCCELLPCT,
+            /*중분류 (EA) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD = 'DW' THEN COALESCE(C.MCLASSIFSQTY, 0) ELSE 0 END AS MCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(A.EXOBQTY - COALESCE(C.MCLASSIFSQTY, 0), 0) ELSE 0 END AS RMMCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'DW' THEN ROUND(COALESCE(C.MCLASSIFSQTY, 0) / NULLIF(A.EXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCMCLASSIFSPCT,
+            /*소분류 (EA) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD = 'DW' THEN COALESCE(B.SCLASSIFSQTY, 0) ELSE 0 END AS SCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'DW' THEN GREATEST(A.EXOBQTY - COALESCE(B.SCLASSIFSQTY, 0), 0) ELSE 0 END AS RMSCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'DW' THEN ROUND(COALESCE(B.SCLASSIFSQTY, 0) / NULLIF(A.EXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCSCLASSIFSPCT,
+            /*DAS검수 (건수) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD != 'RW' THEN A.DPAKOBORDCNT ELSE 0 END AS DPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD != 'RW' THEN GREATEST(COALESCE(A.EXOBORDCNT - A.DPAKOBORDCNT, 0), 0) ELSE 0 END AS RMDPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD != 'RW' THEN ROUND(A.DPAKOBORDCNT / NULLIF(A.EXOBORDCNT, 0) * 100, 1) ELSE 0 END AS PROCDPAKOBORDPCT,
+            /*로봇투입 (EA) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD = 'RW' THEN COALESCE(B.RCLASSIFSQTY, 0) ELSE 0 END AS RCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(A.REXOBQTY - COALESCE(B.RCLASSIFSQTY, 0), 0) ELSE 0 END AS RMRCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(COALESCE(B.RCLASSIFSQTY, 0) / NULLIF(A.REXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCRCLASSIFSPCT,
+            /*로봇검수 (건수) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD = 'RW' THEN A.RPAKOBORDCNT ELSE 0 END AS RPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(COALESCE(A.EXOBORDCNT - A.RPAKOBORDCNT, 0), 0) ELSE 0 END AS RMRPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(A.RPAKOBORDCNT / NULLIF(A.EXOBORDCNT, 0) * 100, 1) ELSE 0 END AS PROCRPAKOBORDPCT,
+            /*로봇이형물 (EA) > 완료 / 잔여 / 진척율 */
+            CASE WHEN A.WKTYPECD = 'RW' THEN COALESCE(B.DCLASSIFSQTY, 0) ELSE 0 END AS DCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(A.DEXOBQTY - COALESCE(B.DCLASSIFSQTY, 0), 0) ELSE 0 END AS RMDCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(COALESCE(B.DCLASSIFSQTY, 0) / NULLIF(A.DEXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCDCLASSIFSPCT
+        FROM A
+        LEFT JOIN B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WAHDKEY=B.WAHDKEY
+        LEFT JOIN C ON A.OWKEY=C.OWKEY AND A.CTKEY=C.CTKEY AND A.WAHDKEY=C.WAHDKEY
+        ORDER BY A.WAHDKEY
+    </sql>
+
+    <select id="selectObProcStatusHdCount2" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusHdCount2 - 출고 현황 진척 현황 헤더 (통합구분 O) - 카운트 조회 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObProcStatusHdSql2"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusHdList2" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusHdList2 - 출고 현황 진척 현황 헤더 (통합구분 O) - 리스트 조회 */
+        FROM (
+            <include refid="selectObProcStatusHdSql2"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusHdSql2">
+        WITH WH_BASE AS (
+            SELECT *
+            FROM TWORK_INFO_WA_HD WH
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+                AND  #{SEARCH_CONDITION}
+            </if>
+        ), A AS (
+            SELECT /* hint: LEADING(WH PH OH OD PD TPD) USE_HASH(OH OD PH PD TPD) */
+                WH.OWKEY, WH.CTKEY, WH.WAHDDAY, WH.WAHDKEY, WH.PIHDKEY, PH.PIHDNM,
+                WH.WKTYPECD, WH.WARND, WH.WAHDNM, WH.WAWKSTATUSCD,
+                COUNT(DISTINCT OH.OBHDKEY1) AS EXOBORDCNT,
+                COUNT(DISTINCT OD.ICKEY) AS EXOBSKU,
+                SUM(OD.EXPCTQTY) AS EXOBQTY,
+                SUM(CASE WHEN OD.ROBSORTERICYN = 'Y' THEN OD.EXPCTQTY ELSE 0 END) AS REXOBQTY,
+                SUM(CASE WHEN OD.ROBSORTERICYN = 'N' THEN OD.EXPCTQTY ELSE 0 END) AS DEXOBQTY,
+                COUNT(DISTINCT CASE WHEN (OH.PCKGDATE IS NOT NULL OR OH.OBHDKEY2 IS NOT NULL) AND OH.WKTYPECD != 'RW' THEN OH.OBHDKEY1 END) AS DPAKOBORDCNT,
+                COUNT(DISTINCT CASE WHEN (OH.PCKGDATE IS NOT NULL OR OH.OBHDKEY2 IS NOT NULL) AND OH.WKTYPECD = 'RW' THEN OH.OBHDKEY1 END) AS RPAKOBORDCNT
+            FROM WH_BASE WH
+            LEFT JOIN TWORK_INFO_PI_HD PH
+            ON WH.OWKEY = PH.OWKEY AND WH.CTKEY = PH.CTKEY AND WH.PIHDKEY = PH.PIHDKEY
+            LEFT JOIN (
+                SELECT OH.OWKEY,
+                    OH.CTKEY,
+                    OH.WAHDKEY,
+                    OH.WKTYPECD,
+                    OH.OBHDKEY AS OBHDKEY1,
+                    OH.PCKGDATE AS PCKGDATE,
+                    NH.OBHDKEY AS OBHDKEY2
+                FROM TWORK_INFO_OB_HD OH
+                LEFT OUTER JOIN TWORK_INFO_OB_NIS_HD NH
+                ON OH.OWKEY = NH.OWKEY
+                AND OH.CTKEY = NH.CTKEY
+                AND OH.OBHDKEY = NH.OBHDKEY
+            ) OH
+            ON WH.OWKEY = OH.OWKEY AND WH.CTKEY = OH.CTKEY AND WH.WAHDKEY = OH.WAHDKEY
+            LEFT JOIN TWORK_INFO_OB_DT OD
+            ON OH.OWKEY = OD.OWKEY AND OH.CTKEY = OD.CTKEY AND OH.OBHDKEY1 = OD.OBHDKEY
+            LEFT JOIN TWORK_INFO_PI_DT PD
+            ON OD.OWKEY = PD.OWKEY AND OD.CTKEY = PD.CTKEY AND OD.OBHDKEY = PD.OBHDKEY
+            AND OD.OBDTKEY = PD.OBDTKEY AND OD.ICKEY = PD.ICKEY
+            GROUP BY
+            WH.OWKEY, WH.CTKEY, WH.WAHDDAY, WH.WAHDKEY, WH.PIHDKEY, PH.PIHDNM,
+            WH.WKTYPECD, WH.WARND, WH.WAHDNM, WH.WAWKSTATUSCD
+        ),
+        B AS (
+            SELECT
+                X.OWKEY, X.CTKEY, X.WAHDKEY,
+                SUM(X.SCLASSIFSQTY) AS SCLASSIFSQTY,
+                SUM(X.RCLASSIFSQTY) AS RCLASSIFSQTY,
+                SUM(X.DCLASSIFSQTY) AS DCLASSIFSQTY
+            FROM (
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, SUM(C.QTY) AS SCLASSIFSQTY, 0 AS RCLASSIFSQTY, 0 AS DCLASSIFSQTY
+                FROM TWIF_DAS_PRCSRSLT_WA A
+                JOIN TWIF_DAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_DAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.DASDIV='3' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+                UNION ALL
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, 0, SUM(C.QTY), 0
+                FROM TWIF_ROBDAS_PRCSRSLT_WA A
+                JOIN TWIF_ROBDAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_ROBDAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+                UNION ALL
+                SELECT A.OWKEY, A.CTKEY, A.WAHDKEY, 0, 0, SUM(C.QTY)
+                FROM TWIF_ROBDAS_RSLTXNIS_WA A
+                JOIN TWIF_ROBDAS_RSLTXNIS_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+                JOIN TWIF_ROBDAS_RSLTXNIS_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+                WHERE A.CTKEY = '09' AND A.IFTYPE='R' AND A.IFSTATUS='90' AND ROBDASRSLTTYPE = '1'
+                GROUP BY A.OWKEY, A.CTKEY, A.WAHDKEY
+            ) X
+            GROUP BY X.OWKEY, X.CTKEY, X.WAHDKEY
+        ),
+        C AS (
+            SELECT WH.OWKEY, WH.CTKEY, WH.PIHDKEY, SUM(C.QTY) AS MCLASSIFSQTY
+            FROM TWORK_INFO_WA_HD WH
+            JOIN TWIF_DAS_PRCSRSLT_WA A ON A.OWKEY=WH.OWKEY AND A.CTKEY=WH.CTKEY AND A.WAHDKEY=WH.WAHDKEY
+            JOIN TWIF_DAS_PRCSRSLT_ORDER B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WASEQ=B.WASEQ
+            JOIN TWIF_DAS_PRCSRSLT_IC C ON B.OWKEY=C.OWKEY AND B.CTKEY=C.CTKEY AND B.WASEQ=C.WASEQ AND B.ORDERSEQ=C.ORDERSEQ
+            WHERE A.CTKEY = '09' AND A.DASDIV='2' AND A.IFTYPE='R' AND A.IFSTATUS='90'
+            GROUP BY WH.OWKEY, WH.CTKEY, WH.PIHDKEY
+        ),
+        D AS (
+            SELECT TPD.OWKEY, TPD.CTKEY, TPD.PIHDKEY,
+            COUNT(TPD.LCKEY) AS EXOBCELLCNT, COUNT(DISTINCT CASE WHEN TPD.PKCNFRMDATE IS NOT NULL THEN TPD.LCKEY END) AS PROCCELLCNT
+            FROM TWORK_INFO_PI_TOT_DT TPD
+            GROUP BY TPD.OWKEY, TPD.CTKEY, TPD.PIHDKEY
+        )
+        SELECT
+            A.OWKEY, A.CTKEY, A.WAHDDAY, A.WAHDKEY, A.PIHDKEY, A.PIHDNM, A.WKTYPECD, A.WARND, A.WAHDNM, A.WAWKSTATUSCD,
+            A.EXOBORDCNT, D.EXOBCELLCNT, A.EXOBSKU, A.EXOBQTY,
+            D.PROCCELLCNT, GREATEST(COALESCE(D.EXOBCELLCNT - D.PROCCELLCNT, 0), 0) AS RMCELLCNT,
+            ROUND(D.PROCCELLCNT / NULLIF(D.EXOBCELLCNT, 0) * 100, 1) AS PROCCELLPCT,
+            CASE WHEN A.WKTYPECD IN ('RW', 'DW') THEN COALESCE(C.MCLASSIFSQTY, 0) ELSE 0 END AS MCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD IN ('RW', 'DW') THEN GREATEST(A.EXOBQTY - COALESCE(C.MCLASSIFSQTY, 0), 0) ELSE 0 END AS RMMCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD IN ('RW', 'DW') THEN ROUND(COALESCE(C.MCLASSIFSQTY, 0) / NULLIF(A.EXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCMCLASSIFSPCT,
+
+            CASE WHEN A.WKTYPECD = 'DW' THEN COALESCE(B.SCLASSIFSQTY, 0) ELSE 0 END AS SCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'DW' THEN GREATEST(A.EXOBQTY - COALESCE(B.SCLASSIFSQTY, 0), 0) ELSE 0 END AS RMSCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'DW' THEN ROUND(COALESCE(B.SCLASSIFSQTY, 0) / NULLIF(A.EXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCSCLASSIFSPCT,
+
+            CASE WHEN A.WKTYPECD != 'RW' THEN A.DPAKOBORDCNT ELSE 0 END AS DPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD != 'RW' THEN GREATEST(COALESCE(A.EXOBORDCNT - A.DPAKOBORDCNT, 0), 0) ELSE 0 END AS RMDPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD != 'RW' THEN ROUND(A.DPAKOBORDCNT / NULLIF(A.EXOBORDCNT, 0) * 100, 1) ELSE 0 END AS PROCDPAKOBORDPCT,
+
+            CASE WHEN A.WKTYPECD = 'RW' THEN COALESCE(B.RCLASSIFSQTY, 0) ELSE 0 END AS RCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(A.REXOBQTY - COALESCE(B.RCLASSIFSQTY, 0), 0) ELSE 0 END AS RMRCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(COALESCE(B.RCLASSIFSQTY, 0) / NULLIF(A.REXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCRCLASSIFSPCT,
+
+            CASE WHEN A.WKTYPECD = 'RW' THEN A.RPAKOBORDCNT ELSE 0 END AS RPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(COALESCE(A.EXOBORDCNT - A.RPAKOBORDCNT, 0), 0) ELSE 0 END AS RMRPAKOBORDCNT,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(A.RPAKOBORDCNT / NULLIF(A.EXOBORDCNT, 0) * 100, 1) ELSE 0 END AS PROCRPAKOBORDPCT,
+
+            CASE WHEN A.WKTYPECD = 'RW' THEN COALESCE(B.DCLASSIFSQTY, 0) ELSE 0 END AS DCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN GREATEST(A.DEXOBQTY - COALESCE(B.DCLASSIFSQTY, 0), 0) ELSE 0 END AS RMDCLASSIFSQTY,
+            CASE WHEN A.WKTYPECD = 'RW' THEN ROUND(COALESCE(B.DCLASSIFSQTY, 0) / NULLIF(A.DEXOBQTY, 0) * 100, 1) ELSE 0 END AS PROCDCLASSIFSPCT
+        FROM A
+        LEFT JOIN B ON A.OWKEY=B.OWKEY AND A.CTKEY=B.CTKEY AND A.WAHDKEY=B.WAHDKEY
+        LEFT JOIN C ON A.OWKEY=C.OWKEY AND A.CTKEY=C.CTKEY AND A.PIHDKEY=C.PIHDKEY
+        LEFT JOIN D ON A.OWKEY=D.OWKEY AND A.CTKEY=D.CTKEY AND A.PIHDKEY=D.PIHDKEY
+        ORDER BY A.WAHDKEY
+    </sql>
+
+    <select id="selectObProcStatusDtPkCount1" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPkCount1 - 출고 진척 현황 > 총량피킹 TAB (통합구분 X) - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObProcStatusDtPkSql1"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtPkList1" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPkList1 - 출고 진척 현황 > 총량피킹 TAB (통합구분 X) - 조회 리스트 */
+            FROM (
+                <include refid="selectObProcStatusDtPkSql1"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtPkSql1">
+        WITH A AS (
+            SELECT
+                PD.OWKEY,
+                PD.CTKEY,
+                PD.PIHDKEY,
+                PD.LCKEY,
+                PD.IVATKEY,
+                PD.ICKEY,
+                SUM(CASE WHEN WH.WKTYPECD = 'RW' AND PD.ROBSORTERICYN = 'Y' THEN PD.EXPCTQTY ELSE 0 END) AS EXRBQTY,
+                SUM(CASE WHEN WH.WKTYPECD = 'RW' AND PD.ROBSORTERICYN = 'N' THEN PD.EXPCTQTY ELSE 0 END) AS EXDFQTY,
+                SUM(CASE WHEN WH.WKTYPECD != 'RW' THEN PD.EXPCTQTY ELSE 0 END) AS EXDASQTY
+            FROM TWORK_INFO_WA_HD WH
+            INNER JOIN TWORK_INFO_WA_DT WD
+            ON WH.OWKEY = WD.OWKEY
+            AND WH.CTKEY = WD.CTKEY
+            AND WH.WAHDKEY = WD.WAHDKEY
+            INNER JOIN TWORK_INFO_PI_DT PD
+            ON PD.OWKEY = WD.OWKEY
+            AND PD.CTKEY = WD.CTKEY
+            AND PD.OBHDKEY = WD.OBHDKEY
+            AND PD.PIHDKEY = WH.PIHDKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND WH.PIHDKEY = #{pihdkey}
+            </if>
+            GROUP BY
+            PD.OWKEY,
+            PD.CTKEY,
+            PD.PIHDKEY,
+            PD.LCKEY,
+            PD.IVATKEY,
+            PD.ICKEY
+        ), B AS (
+            SELECT
+                TPD.OWKEY,
+                TPD.CTKEY,
+                TPD.PIHDKEY,
+                TPD.IVATKEY,
+                TPD.LCKEY,
+                TPD.ICKEY,
+                SUM(TPD.EXPCTQTY) AS EXPCTQTY,
+                SUM(TPD.CNFRMQTY) AS CNFRMQTY,
+                TO_DATE(MIN(TPD.PKCNFRMDATE), 'YYYYMMDDHH24MISS') AS STARTDATE
+            FROM TWORK_INFO_PI_TOT_DT TPD
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND TPD.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND TPD.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND TPD.PIHDKEY = #{pihdkey}
+            </if>
+            GROUP BY
+            TPD.OWKEY,
+            TPD.CTKEY,
+            TPD.PIHDKEY,
+            TPD.LCKEY,
+            TPD.IVATKEY,
+            TPD.ICKEY
+        ), C AS (
+                SELECT  CTKEY, ZNKEY, ARKEY, TIERNO,
+                    COUNT(DISTINCT URKEY) AS USRCNT,
+                    TO_DATE(MIN(PKCNFRMDATE),  'YYYYMMDDHH24MISS') AS ENDDATE
+                    FROM (
+                    SELECT
+                    L.CTKEY,
+                    L.ZNKEY,
+                    L.ARKEY,
+                    L.TIERNO,
+                    TPD.PKCNFRMDATE,
+                    REPLACE(TPD.PKCNFRMURKEY, 'AD', '') URKEY,
+                    RANK() OVER (PARTITION BY REPLACE(TPD.PKCNFRMURKEY, 'AD', '') ORDER BY TPD.PKCNFRMDATE DESC) RNK
+                FROM TWORK_INFO_WA_DT WD
+                INNER JOIN TWORK_INFO_PI_DT PD
+                ON WD.OWKEY = PD.OWKEY
+                AND WD.CTKEY = PD.CTKEY
+                AND WD.OBHDKEY = PD.OBHDKEY
+                INNER JOIN TWORK_INFO_PI_TOT_DT TPD
+                ON PD.OWKEY = TPD.OWKEY
+                AND PD.CTKEY = TPD.CTKEY
+                AND PD.PIHDKEY = TPD.PIHDKEY
+                AND PD.ICKEY = TPD.ICKEY
+                AND PD.IVATKEY = TPD.IVATKEY
+                AND PD.LCKEY = TPD.LCKEY
+                INNER JOIN TWORK_MST_LC L
+                ON TPD.CTKEY = L.CTKEY
+                AND TPD.LCKEY = L.LCKEY
+                WHERE TPD.PKCNFRMURKEY IS NOT NULL
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                    AND WD.OWKEY = #{owkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                    AND WD.CTKEY = #{ctkey}
+                </if>
+                <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                    AND WD.WAHDKEY = #{wahdkey}
+                </if>
+                GROUP BY L.CTKEY, L.ZNKEY, L.ARKEY, L.TIERNO, TPD.PKCNFRMDATE, REPLACE(TPD.PKCNFRMURKEY, 'AD', '')
+            ) WHERE RNK = 1
+            GROUP BY ROLLUP(CTKEY, ZNKEY, ARKEY, TIERNO)
+            HAVING (ZNKEY = 'H' AND ARKEY IS NOT NULL AND TIERNO IS NULL)
+            OR (ZNKEY = 'P' AND ARKEY IS NOT NULL)
+        ) SELECT
+            /*구역, 단*/
+            COALESCE(B.ARKEY, A.ARKEY) AS ARKEY
+            <if test='"P".equals(znkey)'> ,COALESCE(B.TIERNO, '합계') AS TIERNO </if>
+            <if test='"H".equals(znkey)'> ,'합계' AS TIERNO </if>
+            /*진척현황 > 예정 (CELL, SKU, EA)*/
+            , EXLCCNT, EXICCNT, EXQTY
+            /*진척현황 > 실적 (CELL, SKU, EA)*/
+            , CFLCCNT, CFICCNT, CFQTY
+            /*진척현황 > 진척율 (CELL, SKU, EA)*/
+            , CASE WHEN EXLCCNT = 0 THEN 0 ELSE ROUND(CFLCCNT / EXLCCNT * 100, 1) END AS PROCLC
+            , CASE WHEN EXICCNT = 0 THEN 0 ELSE ROUND(CFICCNT / EXICCNT * 100, 1) END AS PROCIC
+            , CASE WHEN EXQTY = 0 THEN 0 ELSE ROUND(CFQTY / EXQTY * 100, 1) END AS PROCQTY
+            /*예정 > 로봇일반 (CELL, SKU, EA)*/
+            , EXRBLCCNT, EXRBICCNT, EXRBQTY
+            /*예정 > 로봇이형물 (CELL, SKU, EA)*/
+            , EXDFLCCNT, EXDFICCNT, EXDFQTY
+            /*예정 > DAS (CELL, SKU, EA)*/
+            , EXDASLCCNT, EXDASICCNT, EXDASQTY
+            /*예정 > 합계 (CELL, SKU, EA)*/
+            , (EXRBLCCNT + EXDFLCCNT + EXDASLCCNT) EXTOTLCCNT
+            , (EXDFLCCNT + EXDFICCNT + EXDFQTY) EXTOTICCNT
+            , (EXRBQTY + EXDFQTY + EXDASQTY) EXTOTQTY
+            /*실적 > 로봇일반 (CELL, SKU, EA)*/
+            , CFRBLCCNT, CFRBICCNT, CFRBQTY
+            /*실적 > 로봇이형물 (CELL, SKU, EA)*/
+            , CFDFLCCNT, CFDFICCNT, CFDFQTY
+            /*실적 > DAS (CELL, SKU, EA)*/
+            , CFDASLCCNT, CFDASICCNT, CFDASQTY
+            /*실적 > 합계 (CELL, SKU, EA)*/
+            , CFRBLCCNT + CFDFLCCNT + CFDASLCCNT AS CFTOTLCCNT
+            , CFRBICCNT + CFDFICCNT + CFDASICCNT AS CFTOTICCNT
+            , CFRBQTY + CFDFQTY + CFDASQTY AS CFTOTQTY
+            , C.usrcnt
+            ,TO_CHAR(A.startdate, 'YYYY-MM-DD HH24:MI:SS') AS startdate
+            ,TO_CHAR(C.enddate, 'YYYY-MM-DD HH24:MI:SS') AS enddate
+            ,LPAD(TRUNC((C.ENDDATE - A.STARTDATE) * 24)::TEXT, 2, '0') || ':' ||
+             LPAD(TRUNC(MOD((C.ENDDATE - A.STARTDATE) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+             LPAD(TRUNC(MOD((C.ENDDATE - A.STARTDATE) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS
+             timediff
+            ,(C.ENDDATE - A.STARTDATE) * 24 * 60 * 60 AS timediff2
+        FROM (
+            SELECT
+                L.ARKEY, L.TIERNO,
+                COUNT(DISTINCT A.LCKEY) AS EXLCCNT,
+                COUNT(DISTINCT A.ICKEY) AS EXICCNT,
+                <if test='"RW".equals(wktypecd)'>
+                    SUM(A.EXRBQTY) +
+                    SUM(A.EXDFQTY)
+                </if>
+                <if test='!"RW".equals(wktypecd)'>
+                    SUM(A.EXDASQTY)
+                </if> AS EXQTY,
+                COUNT(DISTINCT CASE WHEN B.STARTDATE IS NOT NULL THEN A.LCKEY END) AS CFLCCNT,
+                COUNT(DISTINCT CASE WHEN B.STARTDATE IS NOT NULL THEN A.ICKEY END) AS CFICCNT,
+                <if test='"RW".equals(wktypecd)'>
+                    SUM(CASE WHEN A.EXRBQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXRBQTY END) +
+                    SUM(CASE WHEN A.EXDFQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXDFQTY END)
+                </if>
+                <if test='!"RW".equals(wktypecd)'>
+                    SUM( CASE WHEN A.EXDASQTY > 0 AND B.STARTDATE IS NOT NULL THEN
+                    (CASE WHEN B.CNFRMQTY > A.EXRBQTY + A.EXDFQTY THEN B.CNFRMQTY - A.EXRBQTY - A.EXDFQTY
+                    ELSE 0
+                    END)
+                    ELSE 0
+                    END
+                    )
+                </if>
+                AS CFQTY,
+
+                <if test='"RW".equals(wktypecd)'>
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 THEN A.LCKEY END) AS EXRBLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 THEN A.ICKEY END) AS EXRBICCNT,
+                SUM(A.EXRBQTY) AS EXRBQTY,
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 THEN A.LCKEY END) AS EXDFLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 THEN A.ICKEY END) AS EXDFICCNT,
+                SUM(A.EXDFQTY) AS EXDFQTY,
+                    0 as EXDASLCCNT, 0 as EXDASICCNT, 0 as EXDASQTY,
+                </if>
+                <if test='!"RW".equals(wktypecd)'>
+                    0 as EXRBLCCNT, 0 as EXRBICCNT, 0 as EXRBQTY,
+                    0 as EXDFLCCNT, 0 as EXDFICCNT, 0 as EXDFQTY,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 THEN A.LCKEY END) AS EXDASLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 THEN A.ICKEY END) AS EXDASICCNT,
+                SUM(A.EXDASQTY) AS EXDASQTY,
+                </if>
+                -- 로봇 일반 (미처리 CELL/SKU, 처리EA)
+                <if test='"RW".equals(wktypecd)'>
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.LCKEY END) AS CFRBLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.ICKEY END) AS CFRBICCNT,
+                SUM(CASE WHEN A.EXRBQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXRBQTY END) AS CFRBQTY,
+                -- 로봇 이형물 (미처리 CELL/SKU, 처리EA)
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.LCKEY END) AS CFDFLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.ICKEY END) AS CFDFICCNT,
+                SUM(CASE WHEN A.EXDFQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXDFQTY END) AS CFDFQTY,
+                    0 AS CFDASLCCNT, 0 AS CFDASICCNT, 0 AS CFDASQTY,
+                </if>
+                <if test='!"RW".equals(wktypecd)'>
+                -- DAS (미처리 CELL/SKU, 처리EA)
+                    0 AS CFRBLCCNT, 0 AS CFRBICCNT, 0 AS CFRBQTY,
+                    0 AS CFDFLCCNT, 0 AS CFDFICCNT, 0 AS CFDFQTY,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.LCKEY END) AS CFDASLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 AND B.STARTDATE IS NOT NULL THEN A.ICKEY END) AS CFDASICCNT,
+                SUM( CASE WHEN A.EXDASQTY > 0 AND B.STARTDATE IS NOT NULL THEN
+                        (CASE WHEN B.CNFRMQTY > A.EXRBQTY + A.EXDFQTY THEN B.CNFRMQTY - A.EXRBQTY - A.EXDFQTY
+                            ELSE 0
+                        END)
+                        ELSE 0
+                    END
+                ) AS CFDASQTY,
+                </if>
+                MIN(B.STARTDATE) AS startdate
+            FROM A INNER JOIN B
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.PIHDKEY = B.PIHDKEY
+            AND A.IVATKEY = B.IVATKEY
+            AND A.LCKEY = B.LCKEY
+            AND A.ICKEY = B.ICKEY
+            INNER JOIN TWORK_MST_LC L
+            ON B.CTKEY = L.CTKEY
+            AND B.LCKEY = L.LCKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+                AND L.ZNKEY = #{znkey}
+            </if>
+            GROUP BY ROLLUP(L.ZNKEY, L.ARKEY, L.TIERNO)
+            HAVING (L.ZNKEY = 'H' AND L.ARKEY IS NOT NULL AND L.TIERNO IS NULL)
+            OR (L.ZNKEY = 'P' AND L.ARKEY IS NOT NULL)
+        ) A
+        INNER JOIN C
+        ON A.ARKEY = C.ARKEY
+        AND COALESCE(A.TIERNO, '합계') = COALESCE(C.TIERNO, '합계')
+        FULL OUTER JOIN (
+            SELECT ARKEY <if test='"P".equals(znkey)'> ,TIERNO </if>
+            FROM TWORK_MST_LC
+            WHERE ZNKEY IN ('H', 'P')
+            AND LCTYPECD = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+                AND ZNKEY = #{znkey}
+            </if>
+            GROUP BY ARKEY <if test='"P".equals(znkey)'> ,TIERNO </if>
+        ) B
+        ON A.ARKEY = B.ARKEY
+        <if test='"P".equals(znkey)'>
+            AND A.TIERNO = B.TIERNO
+        </if>
+        ORDER BY COALESCE(B.ARKEY, A.ARKEY) <if test='"P".equals(znkey)'>, B.TIERNO </if>
+    </sql>
+
+    <select id="selectObProcStatusDtPkCount2" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPkCount2 - 출고 진척 현황 > 총량피킹 TAB (통합구분 O) - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObProcStatusDtPkSql2"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtPkList2" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPkList2 - 출고 진척 현황 > 총량피킹 TAB (통합구분 O) - 조회 리스트 */
+        FROM (
+        <include refid="selectObProcStatusDtPkSql2"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtPkSql2">
+        WITH A AS (
+            SELECT
+                PD.OWKEY,
+                PD.CTKEY,
+                PD.PIHDKEY,
+                PD.LCKEY,
+                PD.IVATKEY,
+                PD.ICKEY,
+                SUM(CASE WHEN WH.WKTYPECD = 'RW' AND PD.ROBSORTERICYN = 'Y' THEN PD.EXPCTQTY ELSE 0 END) AS EXRBQTY,
+                SUM(CASE WHEN WH.WKTYPECD = 'RW' AND PD.ROBSORTERICYN = 'N' THEN PD.EXPCTQTY ELSE 0 END) AS EXDFQTY,
+                SUM(CASE WHEN WH.WKTYPECD != 'RW' THEN PD.EXPCTQTY ELSE 0 END) AS EXDASQTY
+            FROM TWORK_INFO_WA_HD WH
+            INNER JOIN TWORK_INFO_WA_DT WD
+            ON WH.OWKEY = WD.OWKEY
+            AND WH.CTKEY = WD.CTKEY
+            AND WH.WAHDKEY = WD.WAHDKEY
+            INNER JOIN TWORK_INFO_PI_DT PD
+            ON PD.OWKEY = WD.OWKEY
+            AND PD.CTKEY = WD.CTKEY
+            AND PD.OBHDKEY = WD.OBHDKEY
+            AND PD.PIHDKEY = WH.PIHDKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND WH.PIHDKEY = #{pihdkey}
+            </if>
+            GROUP BY
+            PD.OWKEY,
+            PD.CTKEY,
+            PD.PIHDKEY,
+            PD.LCKEY,
+            PD.IVATKEY,
+            PD.ICKEY
+        ), B AS (
+            SELECT
+                TPD.OWKEY,
+                TPD.CTKEY,
+                TPD.PIHDKEY,
+                TPD.IVATKEY,
+                TPD.LCKEY,
+                TPD.ICKEY,
+                SUM(TPD.EXPCTQTY) AS EXPCTQTY,
+                SUM(TPD.CNFRMQTY) AS CNFRMQTY,
+                TO_DATE(MIN(TPD.PKCNFRMDATE), 'YYYYMMDDHH24MISS') AS STARTDATE
+            FROM TWORK_INFO_PI_TOT_DT TPD
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND TPD.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND TPD.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND TPD.PIHDKEY = #{pihdkey}
+            </if>
+            GROUP BY
+            TPD.OWKEY,
+            TPD.CTKEY,
+            TPD.PIHDKEY,
+            TPD.LCKEY,
+            TPD.IVATKEY,
+            TPD.ICKEY
+        ), C AS (
+            SELECT  CTKEY, ZNKEY, ARKEY, TIERNO,
+                    COUNT(DISTINCT URKEY) AS USRCNT,
+                    TO_DATE(MIN(PKCNFRMDATE),  'YYYYMMDDHH24MISS') AS ENDDATE
+                    FROM (
+                    SELECT
+                    L.CTKEY,
+                    L.ZNKEY,
+                    L.ARKEY,
+                    L.TIERNO,
+                    TPD.PKCNFRMDATE,
+                    REPLACE(TPD.PKCNFRMURKEY, 'AD', '') URKEY,
+                    RANK() OVER (PARTITION BY REPLACE(TPD.PKCNFRMURKEY, 'AD', '') ORDER BY TPD.PKCNFRMDATE DESC) RNK
+            FROM TWORK_INFO_PI_TOT_DT TPD
+            INNER JOIN TWORK_MST_LC L
+            ON TPD.CTKEY = L.CTKEY
+            AND TPD.LCKEY = L.LCKEY
+            WHERE PKCNFRMURKEY IS NOT NULL
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND TPD.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND TPD.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND TPD.PIHDKEY = #{pihdkey}
+            </if>
+            GROUP BY L.CTKEY, L.ZNKEY, L.ARKEY, L.TIERNO, PKCNFRMDATE, REPLACE(PKCNFRMURKEY, 'AD', '')
+            ) WHERE RNK = 1
+            GROUP BY ROLLUP(CTKEY, ZNKEY, ARKEY, TIERNO)
+            HAVING (ZNKEY = 'H' AND ARKEY IS NOT NULL AND TIERNO IS NULL)
+            OR (ZNKEY = 'P' AND ARKEY IS NOT NULL)
+        ) SELECT
+            /*구역, 단*/
+            COALESCE(B.ARKEY, A.ARKEY) AS ARKEY
+            <if test='"P".equals(znkey)'> ,COALESCE(B.TIERNO, '합계') AS TIERNO </if>
+            <if test='"H".equals(znkey)'> ,'합계' AS TIERNO </if>
+
+            /*진척현황 > 예정 (CELL, SKU, EA)*/
+            , EXLCCNT, EXICCNT, EXQTY
+            /*진척현황 > 실적 (CELL, SKU, EA)*/
+            , EXLCCNT - RMLCCNT AS CFLCCNT, EXICCNT - RMICCNT AS CFICCNT, CFQTY
+            /*진척현황 > 진척율 (CELL, SKU, EA)*/
+            , CASE WHEN EXLCCNT = 0 THEN 0 ELSE ROUND((EXLCCNT - RMLCCNT) / EXLCCNT * 100, 1) END AS PROCLC
+            , CASE WHEN EXICCNT = 0 THEN 0 ELSE ROUND((EXICCNT - RMICCNT) / EXICCNT * 100, 1) END AS PROCIC
+            , CASE WHEN EXQTY = 0 THEN 0 ELSE ROUND(CFQTY / EXQTY * 100, 1) END AS PROCQTY
+
+            /*예정 > 로봇일반 (CELL, SKU, EA)*/
+            , EXRBLCCNT, EXRBICCNT, EXRBQTY
+            /*예정 > 로봇이형물 (CELL, SKU, EA)*/
+            , EXDFLCCNT, EXDFICCNT, EXDFQTY
+            /*예정 > DAS (CELL, SKU, EA)*/
+            , EXDASLCCNT, EXDASICCNT, EXDASQTY
+            /*예정 > 합계 (CELL, SKU, EA)*/
+            , (EXRBLCCNT + EXDFLCCNT + EXDASLCCNT) EXTOTLCCNT
+            , (EXDFLCCNT + EXDFICCNT + EXDFQTY) EXTOTICCNT
+            , (EXRBQTY + EXDFQTY + EXDASQTY) EXTOTQTY
+
+            /*실적 > 로봇일반 (CELL, SKU, EA)*/
+            , GREATEST(COALESCE(EXRBLCCNT - RMRBLCCNT, 0), 0) AS CFRBLCCNT, GREATEST(COALESCE(EXRBICCNT - RMRBICCNT, 0), 0) AS CFRBICCNT, CFRBQTY
+            /*실적 > 로봇이형물 (CELL, SKU, EA)*/
+            , GREATEST(COALESCE(EXDFLCCNT - RMDFLCCNT, 0), 0) AS CFDFLCCNT, GREATEST(COALESCE(EXDFICCNT - RMDFICCNT, 0), 0) AS CFDFICCNT, CFDFQTY
+            /*실적 > DAS (CELL, SKU, EA)*/
+            , GREATEST(COALESCE(EXDASLCCNT - RMDASLCCNT, 0), 0) AS CFDASLCCNT, GREATEST(COALESCE(EXDASICCNT - RMDASICCNT, 0), 0) AS CFDASICCNT, CFDASQTY
+            /*실적 > 합계 (CELL, SKU, EA)*/
+            , GREATEST(COALESCE(EXRBLCCNT - RMRBLCCNT, 0), 0) + GREATEST(COALESCE(EXDFLCCNT - RMDFLCCNT, 0), 0) + GREATEST(COALESCE(EXDASLCCNT - RMDASLCCNT, 0), 0) AS CFTOTLCCNT
+            , GREATEST(COALESCE(EXRBICCNT - RMRBICCNT, 0), 0) + GREATEST(COALESCE(EXDFICCNT - RMDFICCNT, 0), 0) + GREATEST(COALESCE(EXDASICCNT - RMDASICCNT, 0), 0) AS CFTOTICCNT
+            , CFRBQTY + CFDFQTY + CFDASQTY AS CFTOTQTY
+            , C.usrcnt
+            ,TO_CHAR(A.startdate, 'YYYY-MM-DD HH24:MI:SS') AS startdate
+            ,TO_CHAR(C.enddate, 'YYYY-MM-DD HH24:MI:SS') AS enddate
+            ,LPAD(TRUNC((C.ENDDATE - A.STARTDATE) * 24)::TEXT, 2, '0') || ':' ||
+            LPAD(TRUNC(MOD((C.ENDDATE - A.STARTDATE) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+            LPAD(TRUNC(MOD((C.ENDDATE - A.STARTDATE) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS
+            timediff
+            ,(C.ENDDATE - A.STARTDATE) * 24 * 60 * 60 AS timediff2
+        FROM (
+            SELECT
+                L.ARKEY, L.TIERNO,
+                COUNT(DISTINCT A.LCKEY) AS EXLCCNT,
+                COUNT(DISTINCT A.ICKEY) AS EXICCNT,
+                SUM(B.EXPCTQTY) AS EXQTY,
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.LCKEY END) AS RMLCCNT,
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.ICKEY END) AS RMICCNT,
+                SUM(B.CNFRMQTY) AS CFQTY,
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 THEN A.LCKEY END) AS EXRBLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXRBQTY > 0 THEN A.ICKEY END) AS EXRBICCNT,
+                SUM(A.EXRBQTY) AS EXRBQTY,
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 THEN A.LCKEY END) AS EXDFLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDFQTY > 0 THEN A.ICKEY END) AS EXDFICCNT,
+                SUM(A.EXDFQTY) AS EXDFQTY,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 THEN A.LCKEY END) AS EXDASLCCNT,
+                COUNT(DISTINCT CASE WHEN A.EXDASQTY > 0 THEN A.ICKEY END) AS EXDASICCNT,
+                SUM(A.EXDASQTY) AS EXDASQTY,
+                -- 로봇 일반 (미처리 CELL/SKU, 처리EA)
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.LCKEY END) AS RMRBLCCNT,
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.ICKEY END) AS RMRBICCNT,
+                SUM(CASE WHEN A.EXRBQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXRBQTY END) AS CFRBQTY,
+                -- 로봇 이형물 (미처리 CELL/SKU, 처리EA)
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.LCKEY END) AS RMDFLCCNT,
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY = 0 THEN A.ICKEY END) AS RMDFICCNT,
+                SUM(CASE WHEN A.EXDFQTY > B.CNFRMQTY THEN B.CNFRMQTY ELSE A.EXDFQTY END) AS CFDFQTY,
+                -- DAS (미처리 CELL/SKU, 처리EA)
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY > (CASE WHEN A.EXRBQTY > 0 THEN A.EXRBQTY ELSE A.EXDFQTY END) THEN A.LCKEY END) AS RMDASLCCNT,
+                COUNT(DISTINCT CASE WHEN B.CNFRMQTY > (CASE WHEN A.EXRBQTY > 0 THEN A.EXRBQTY ELSE A.EXDFQTY END) THEN A.ICKEY END) AS RMDASICCNT,
+                SUM( CASE WHEN A.EXDASQTY > 0 AND B.STARTDATE IS NOT NULL THEN
+                        CASE WHEN (CASE WHEN A.EXRBQTY > 0 THEN A.EXRBQTY ELSE A.EXDFQTY END) > B.CNFRMQTY THEN 0 ELSE  B.CNFRMQTY - (CASE WHEN A.EXRBQTY > 0 THEN A.EXRBQTY ELSE A.EXDFQTY END) END
+                    ELSE 0
+                    END
+                ) AS CFDASQTY,
+                MIN(B.STARTDATE) AS startdate
+            FROM A INNER JOIN B
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.PIHDKEY = B.PIHDKEY
+            AND A.IVATKEY = B.IVATKEY
+            AND A.LCKEY = B.LCKEY
+            AND A.ICKEY = B.ICKEY
+            INNER JOIN TWORK_MST_LC L
+            ON B.CTKEY = L.CTKEY
+            AND B.LCKEY = L.LCKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+                AND L.ZNKEY = #{znkey}
+            </if>
+            GROUP BY ROLLUP(L.ZNKEY, L.ARKEY, L.TIERNO)
+            HAVING (L.ZNKEY = 'H' AND L.ARKEY IS NOT NULL AND L.TIERNO IS NULL)
+            OR (L.ZNKEY = 'P' AND L.ARKEY IS NOT NULL)
+        ) A
+        INNER JOIN C
+        ON A.ARKEY = C.ARKEY
+        AND COALESCE(A.TIERNO, '합계') = COALESCE(C.TIERNO, '합계')
+        FULL OUTER JOIN (
+            SELECT ARKEY <if test='"P".equals(znkey)'> ,TIERNO </if>
+            FROM TWORK_MST_LC
+            WHERE ZNKEY IN ('H', 'P')
+            AND LCTYPECD = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(znkey)">
+                AND ZNKEY = #{znkey}
+            </if>
+            GROUP BY ARKEY <if test='"P".equals(znkey)'>, TIERNO </if>
+        ) B
+        ON A.ARKEY = B.ARKEY
+        <if test='"P".equals(znkey)'>
+            AND A.TIERNO = B.TIERNO
+        </if>
+        ORDER BY COALESCE(B.ARKEY, A.ARKEY) <if test='"P".equals(znkey)'> ,B.TIERNO </if>
+    </sql>
+
+    <select id="selectObProcStatusDtMidCfCount1" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtMidCfCount1 - 출고 진척 현황 > 중분류 TAB (통합구분 X) - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObProcStatusDtMidCfSql1"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtMidCfList1" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtMidCfList1 - 출고 진척 현황 > 중분류 TAB (통합구분 X) - 조회 리스트 */
+            FROM (
+                <include refid="selectObProcStatusDtMidCfSql1"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtMidCfSql1">
+        WITH BASE AS (
+            SELECT
+                WH.OWKEY,
+                WH.CTKEY,
+                COALESCE(WL.MDLCLASSIFSTNBARCODE, '로봇 이형물') AS MIDSTN,
+                C.ICKEY,
+                C.EMPNOBRCD,
+                C.QTY,
+                TO_DATE(C.INSERTDATE, 'YYYYMMDDHH24MISS') AS INSERT_DT
+            FROM TWORK_INFO_WA_HD WH
+            JOIN TWIF_DAS_PRCSRSLT_WA A
+            ON A.OWKEY = WH.OWKEY
+            AND A.CTKEY = WH.CTKEY
+            AND A.WAHDKEY = WH.WAHDKEY
+            JOIN TWIF_DAS_PRCSRSLT_ORDER B
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.WASEQ = B.WASEQ
+            JOIN TWIF_DAS_PRCSRSLT_IC C
+            ON B.OWKEY = C.OWKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.WASEQ = C.WASEQ
+            AND B.ORDERSEQ = C.ORDERSEQ
+            LEFT JOIN TWORK_INFO_WA_DAS_STN_LC WL
+            ON B.OWKEY = WL.OWKEY
+            AND B.CTKEY = WL.CTKEY
+            AND B.WAHDKEY = WL.WAHDKEY
+            AND B.DASCELLBRCD = WL.MDLCLASSIFCELLBARCODE
+            WHERE A.DASDIV = '2'
+            AND A.IFTYPE = 'R'
+            AND A.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WH.WAHDKEY = #{wahdkey}
+            </if>
+        ),
+        PROC_SUM AS (
+            SELECT
+            OWKEY,
+            CTKEY,
+            MIDSTN,
+            COUNT(DISTINCT ICKEY) AS CFICCNT,
+            MIN(INSERT_DT) AS START_DT,
+            MAX(INSERT_DT) AS END_DT,
+            SUM(QTY) AS DCLFRMQTY
+            FROM BASE
+            GROUP BY OWKEY, CTKEY, MIDSTN
+        ),
+        EMP_SUM AS (
+            SELECT
+                OWKEY,
+                CTKEY,
+                MIDSTN,
+                COUNT(DISTINCT EMPNOBRCD) AS EMPCNT
+            FROM (
+                SELECT
+                    OWKEY,
+                    CTKEY,
+                    MIDSTN,
+                    EMPNOBRCD,
+                    ROW_NUMBER() OVER (
+                    PARTITION BY OWKEY, CTKEY, MIDSTN, EMPNOBRCD
+                    ORDER BY INSERT_DT DESC
+                    ) AS RN
+                FROM BASE
+                WHERE EMPNOBRCD IS NOT NULL
+            )
+            WHERE RN = 1
+            GROUP BY OWKEY, CTKEY, MIDSTN
+        ),
+        EXPECT_SUM AS (
+            SELECT
+                PD.OWKEY,
+                PD.CTKEY,
+                CASE ARKEY
+                WHEN 'PA' THEN 'MD01'
+                WHEN 'HA' THEN 'MD02'
+                WHEN 'HB' THEN 'MD03'
+                WHEN 'HC' THEN 'MD04'
+                WHEN 'HD' THEN 'MD05'
+                WHEN 'HE' THEN 'MD06'
+                WHEN 'HF' THEN 'MD07'
+                WHEN 'HG' THEN 'MD08'
+                WHEN 'PB' THEN 'MD09'
+                ELSE '로봇 이형물'
+                END AS MIDSTN,
+                CASE WHEN LC.ARKEY NOT IN ('PA', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'PB') THEN '-' ELSE LC.ARKEY END AS ARKEY,
+                COUNT(DISTINCT PD.ICKEY) AS EXICCNT,
+                SUM(PD.EXPCTQTY) AS EXPCTQTY
+            FROM TWORK_INFO_WA_HD WH
+            INNER JOIN TWORK_INFO_OB_HD OH
+            ON WH.OWKEY = OH.OWKEY
+            AND WH.CTKEY = OH.CTKEY
+            AND WH.WAHDKEY = OH.WAHDKEY
+            INNER JOIN TWORK_INFO_PI_DT PD
+            ON OH.OWKEY = PD.OWKEY
+            AND OH.CTKEY = PD.CTKEY
+            AND OH.OBHDKEY = PD.OBHDKEY
+            JOIN TWORK_MST_LC LC
+            ON PD.CTKEY = LC.CTKEY
+            AND PD.LCKEY = LC.LCKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WH.WAHDKEY = #{wahdkey}
+            </if>
+            AND LC.ZNKEY IN ('H','P')
+            AND 1 = (
+                CASE WHEN WH.WKTYPECD = 'RW' THEN (CASE WHEN PD.ROBSORTERICYN = 'N' THEN 1 ELSE 0 END) ELSE 1 END
+            )
+            GROUP BY PD.OWKEY, PD.CTKEY, LC.ARKEY
+        ),
+        STN_BASE AS (
+            (
+                SELECT
+                CASE ARKEY
+                    WHEN 'PA' THEN 'MD01'
+                    WHEN 'HA' THEN 'MD02'
+                    WHEN 'HB' THEN 'MD03'
+                    WHEN 'HC' THEN 'MD04'
+                    WHEN 'HD' THEN 'MD05'
+                    WHEN 'HE' THEN 'MD06'
+                    WHEN 'HF' THEN 'MD07'
+                    WHEN 'HG' THEN 'MD08'
+                    WHEN 'PB' THEN 'MD09'
+                END AS MIDSTN,
+                ARKEY
+                FROM TWORK_MST_AR
+                WHERE 1=1
+                AND CTKEY = '09'
+                AND ZNKEY IN ('H','P')
+                AND ARKEY IN ('PA', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'PB')
+            )
+            UNION ALL
+            ( SELECT '로봇 이형물', '-' )
+        )
+        SELECT
+            S.MIDSTN,
+            S.ARKEY,
+            P.EXICCNT,
+            P.EXPCTQTY,
+            P.CFICCNT AS CFICCNT,
+            P.DCLFRMQTY AS DCLFRMQTY,
+            CASE WHEN P.EXICCNT = 0 THEN 0 ELSE ROUND(P.CFICCNT / P.EXICCNT * 100, 1) END AS SKUPROC,
+            CASE WHEN P.EXPCTQTY = 0 THEN 0 ELSE ROUND(P.DCLFRMQTY / P.EXPCTQTY * 100, 1) END AS EAPROC,
+            COALESCE(E.EMPCNT, 0) AS EMPCNT,
+            TO_CHAR(P.START_DT, 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+            TO_CHAR(P.END_DT,   'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+        LPAD(TRUNC((P.END_DT - P.START_DT) * 24)::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((P.END_DT - P.START_DT) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((P.END_DT - P.START_DT) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS TIMEDIFF,
+            (END_DT - START_DT) * 24 * 60 * 60 AS TIMEDIFF2
+        FROM STN_BASE S
+        LEFT JOIN EMP_SUM E
+        ON S.MIDSTN = E.MIDSTN
+        LEFT JOIN (
+            SELECT
+                COALESCE(S.MIDSTN, '로봇 이형물') AS MIDSTN,
+                COALESCE(S.EXICCNT, 0) AS EXICCNT,
+                COALESCE(S.EXPCTQTY, 0) AS EXPCTQTY,
+                P.CFICCNT,
+                P.DCLFRMQTY,
+                P.START_DT,
+                P.END_DT
+            FROM PROC_SUM P
+            LEFT JOIN EXPECT_SUM S
+            ON P.OWKEY = S.OWKEY
+            AND P.CTKEY = S.CTKEY
+            AND P.MIDSTN = S.MIDSTN
+        ) P
+        ON S.MIDSTN = P.MIDSTN
+        ORDER BY S.MIDSTN
+    </sql>
+
+    <select id="selectObProcStatusDtMidCfCount2" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtMidCfCount2 - 출고 진척 현황 > 중분류 TAB (통합구분 O) - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObProcStatusDtMidCfSql1"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtMidCfList2" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtMidCfList2 - 출고 진척 현황 > 중분류 TAB (통합구분 O) - 조회 리스트 */
+        FROM (
+        <include refid="selectObProcStatusDtMidCfSql2"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtMidCfSql2">
+        WITH BASE AS (
+            SELECT
+                WH.OWKEY,
+                WH.CTKEY,
+                COALESCE(WL.MDLCLASSIFSTNBARCODE, '로봇 이형물') AS MIDSTN,
+                C.ICKEY,
+                C.EMPNOBRCD,
+                C.QTY,
+                TO_DATE(C.INSERTDATE, 'YYYYMMDDHH24MISS') AS INSERT_DT
+            FROM TWORK_INFO_WA_HD WH
+            JOIN TWIF_DAS_PRCSRSLT_WA A
+            ON A.OWKEY = WH.OWKEY
+            AND A.CTKEY = WH.CTKEY
+            AND A.WAHDKEY = WH.WAHDKEY
+            JOIN TWIF_DAS_PRCSRSLT_ORDER B
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.WASEQ = B.WASEQ
+            JOIN TWIF_DAS_PRCSRSLT_IC C
+            ON B.OWKEY = C.OWKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.WASEQ = C.WASEQ
+            AND B.ORDERSEQ = C.ORDERSEQ
+            LEFT JOIN TWORK_INFO_WA_DAS_STN_LC WL
+            ON B.OWKEY = WL.OWKEY
+            AND B.CTKEY = WL.CTKEY
+            AND B.WAHDKEY = WL.WAHDKEY
+            AND B.DASCELLBRCD = WL.MDLCLASSIFCELLBARCODE
+            WHERE A.DASDIV = '2'
+            AND A.IFTYPE = 'R'
+            AND A.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND WH.PIHDKEY = #{pihdkey}
+            </if>
+        ),
+        PROC_SUM AS (
+            SELECT
+                OWKEY,
+                CTKEY,
+                MIDSTN,
+                COUNT(DISTINCT ICKEY) AS CFICCNT,
+                MIN(INSERT_DT) AS START_DT,
+                MAX(INSERT_DT) AS END_DT,
+                SUM(QTY) AS DCLFRMQTY
+            FROM BASE
+            GROUP BY OWKEY, CTKEY, MIDSTN
+        ),
+        EMP_SUM AS (
+            SELECT
+                OWKEY,
+                CTKEY,
+                MIDSTN,
+                COUNT(DISTINCT EMPNOBRCD) AS EMPCNT
+            FROM (
+                SELECT
+                    OWKEY,
+                    CTKEY,
+                    MIDSTN,
+                    EMPNOBRCD,
+                    ROW_NUMBER() OVER (
+                    PARTITION BY OWKEY, CTKEY, MIDSTN, EMPNOBRCD
+                    ORDER BY INSERT_DT DESC
+                    ) AS RN
+                FROM BASE
+                WHERE EMPNOBRCD IS NOT NULL
+            )
+            WHERE RN = 1
+            GROUP BY OWKEY, CTKEY, MIDSTN
+        ),
+        EXPECT_SUM AS (
+            SELECT
+                PD.OWKEY,
+                PD.CTKEY,
+                CASE ARKEY
+                WHEN 'PA' THEN 'MD01'
+                WHEN 'HA' THEN 'MD02'
+                WHEN 'HB' THEN 'MD03'
+                WHEN 'HC' THEN 'MD04'
+                WHEN 'HD' THEN 'MD05'
+                WHEN 'HE' THEN 'MD06'
+                WHEN 'HF' THEN 'MD07'
+                WHEN 'HG' THEN 'MD08'
+                WHEN 'PB' THEN 'MD09'
+                ELSE '로봇 이형물'
+                END AS MIDSTN,
+                CASE WHEN LC.ARKEY NOT IN ('PA', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'PB') THEN '-' ELSE LC.ARKEY END AS ARKEY,
+                COUNT(DISTINCT PD.ICKEY) AS EXICCNT,
+                SUM(PD.EXPCTQTY) AS EXPCTQTY
+            FROM TWORK_INFO_WA_HD WH
+            INNER JOIN TWORK_INFO_OB_HD OH
+            ON WH.OWKEY = OH.OWKEY
+            AND WH.CTKEY = OH.CTKEY
+            AND WH.WAHDKEY = OH.WAHDKEY
+            INNER JOIN TWORK_INFO_PI_DT PD
+            ON OH.OWKEY = PD.OWKEY
+            AND OH.CTKEY = PD.CTKEY
+            AND OH.OBHDKEY = PD.OBHDKEY
+            JOIN TWORK_MST_LC LC
+            ON PD.CTKEY = LC.CTKEY
+            AND PD.LCKEY = LC.LCKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND PD.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND PD.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(pihdkey)">
+                AND PD.PIHDKEY = #{pihdkey}
+            </if>
+            AND LC.ZNKEY IN ('H','P')
+            AND 1 = (
+                CASE WHEN WH.WKTYPECD = 'RW' THEN (CASE WHEN PD.ROBSORTERICYN = 'N' THEN 1 ELSE 0 END) ELSE 1 END
+            )
+            GROUP BY PD.OWKEY, PD.CTKEY, LC.ARKEY
+        ),
+        STN_BASE AS (
+            (
+                SELECT
+                    CASE ARKEY
+                    WHEN 'PA' THEN 'MD01'
+                    WHEN 'HA' THEN 'MD02'
+                    WHEN 'HB' THEN 'MD03'
+                    WHEN 'HC' THEN 'MD04'
+                    WHEN 'HD' THEN 'MD05'
+                    WHEN 'HE' THEN 'MD06'
+                    WHEN 'HF' THEN 'MD07'
+                    WHEN 'HG' THEN 'MD08'
+                    WHEN 'PB' THEN 'MD09'
+                    END AS MIDSTN,
+                    ARKEY
+                FROM TWORK_MST_AR
+                WHERE 1=1
+                AND CTKEY = '09'
+                AND ZNKEY IN ('H','P')
+                AND ARKEY IN ('PA', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'PB')
+            )
+            UNION ALL
+            ( SELECT '로봇 이형물', '-')
+        )
+        SELECT
+            S.MIDSTN,
+            S.ARKEY,
+            P.EXICCNT,
+            P.EXPCTQTY,
+            P.CFICCNT AS CFICCNT,
+            P.DCLFRMQTY AS DCLFRMQTY,
+            CASE WHEN P.EXICCNT = 0 THEN 0 ELSE ROUND(P.CFICCNT / P.EXICCNT * 100, 1) END AS SKUPROC,
+            CASE WHEN P.EXPCTQTY = 0 THEN 0 ELSE ROUND(P.DCLFRMQTY / P.EXPCTQTY * 100, 1) END AS EAPROC,
+            COALESCE(E.EMPCNT, 0) AS EMPCNT,
+            TO_CHAR(P.START_DT, 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+            TO_CHAR(P.END_DT,   'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+        LPAD(TRUNC((P.END_DT - P.START_DT) * 24)::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((P.END_DT - P.START_DT) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((P.END_DT - P.START_DT) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS TIMEDIFF,
+            (END_DT - START_DT) * 24 * 60 * 60 AS TIMEDIFF2
+        FROM STN_BASE S
+        LEFT JOIN EMP_SUM E
+        ON S.MIDSTN = E.MIDSTN
+        LEFT JOIN (
+            SELECT
+                COALESCE(S.MIDSTN, '로봇 이형물') AS MIDSTN,
+                COALESCE(S.EXICCNT, 0) AS EXICCNT,
+                COALESCE(S.EXPCTQTY, 0) AS EXPCTQTY,
+                P.CFICCNT,
+                P.DCLFRMQTY,
+                P.START_DT,
+                P.END_DT
+            FROM PROC_SUM P
+            LEFT JOIN EXPECT_SUM S
+            ON P.OWKEY = S.OWKEY
+            AND P.CTKEY = S.CTKEY
+            AND P.MIDSTN = S.MIDSTN
+        ) P
+        ON S.MIDSTN = P.MIDSTN
+        ORDER BY S.MIDSTN
+    </sql>
+
+    <select id="selectObProcStatusDtSmlCfCount" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtSmlCfList - 출고 진척 현황 > 소분류 TAB - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObProcStatusDtSmlCfSql"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtSmlCfList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+        SELECT *
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtSmlCfList - 출고 진척 현황 > 소분류 TAB - 조회 리스트 */
+        FROM (
+        <include refid="selectObProcStatusDtSmlCfSql"/>
+        )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtSmlCfSql">
+        WITH EX AS ( -- 분류계획
+            SELECT  A.OWKEY,
+                    A.CTKEY,
+                    SUBSTR(B.DASCELLBRCD, 0, 3) STNFAC, -- 셀바코드 (소분류)
+                    COUNT(DISTINCT B.OBHDKEY) AS EXORCNT,
+                    COUNT(DISTINCT C.ICKEY) AS EXICCNT, -- 상품코드
+                    SUM(C.ORDQTY) AS exordqty-- 주문수량
+            FROM TWIF_DAS_CLASSIFPLAN_WA A -- 분류계획/웨이브
+            INNER JOIN TWIF_DAS_CLASSIFPLAN_ORDER B -- 분류계획/주문
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.WASEQ = B.WASEQ
+            INNER JOIN TWIF_DAS_CLASSIFPLAN_IC C -- 분류계획/상품
+            ON B.OWKEY = C.OWKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.WASEQ = C.WASEQ
+            AND B.ORDERSEQ = C.ORDERSEQ
+            INNER JOIN TWORK_MST_STNWKCELL SW
+            ON B.CTKEY = SW.CTKEY
+            AND B.DASCELLBRCD = REPLACE(SW.CELLBARCODE, '-', '')
+            WHERE A.IFTYPE = 'S'
+            AND A.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND A.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND A.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND A.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY  A.OWKEY,
+                    A.CTKEY,
+                    SUBSTR(B.DASCELLBRCD, 0, 3)
+        ), PR AS ( -- 처리실적 (중/소 분류)
+            SELECT A.OWKEY,
+                A.CTKEY,
+                SUBSTR(CASE WHEN A.DASDIV = '2' THEN C.OBHDKEY ELSE B.DASCELLBRCD END, 0, 3) STNFAC,
+                -- SUM(CASE WHEN A.IFTYPE = 'R' AND A.DASDIV = '2' THEN 1 ELSE 0 END) AS MIDPRORCNT,
+                COUNT(DISTINCT CASE WHEN A.DASDIV = '3' THEN B.OBHDKEY END) AS SRTPRORCNT,
+                COUNT(DISTINCT CASE WHEN A.DASDIV = '2' THEN C.ICKEY ELSE NULL END) AS MIDPRICCNT,
+                COUNT(DISTINCT CASE WHEN A.DASDIV = '3' THEN C.ICKEY ELSE NULL END) AS SRTPRICCNT,
+                SUM(CASE WHEN A.DASDIV = '2' THEN C.QTY ELSE 0 END) AS MIDCNFRMQTY, -- 중분류처리실적
+                SUM(CASE WHEN A.DASDIV = '3' THEN C.QTY ELSE 0 END) AS SRTCNFRMQTY, -- 소분류처리실적
+                MAX(CASE WHEN A.DASDIV = '3' THEN A.INSERTDATE ELSE NULL END) AS SRTMAXCNFRMDATE,
+                TO_DATE(MAX(CASE WHEN A.DASDIV = '3' THEN A.INSERTDATE ELSE NULL END), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(CASE WHEN A.DASDIV = '3' THEN A.INSERTDATE ELSE NULL END), 'YYYYMMDDHH24MISS') AS TIMEDIFF
+            FROM TWIF_DAS_PRCSRSLT_WA A -- 분류처리/웨이브
+            INNER JOIN TWIF_DAS_PRCSRSLT_ORDER B -- 분류처리/주문
+            ON A.OWKEY = B.OWKEY
+            AND A.CTKEY = B.CTKEY
+            AND A.WASEQ = B.WASEQ
+            INNER JOIN TWIF_DAS_PRCSRSLT_IC C -- 분류처리/상품
+            ON B.OWKEY = C.OWKEY
+            AND B.CTKEY = C.CTKEY
+            AND B.WASEQ = C.WASEQ
+            AND B.ORDERSEQ = C.ORDERSEQ
+            WHERE A.DASDIV IN ('2', '3')
+            AND A.IFTYPE = 'R'
+            AND A.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND A.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND A.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND A.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY A.OWKEY,
+            A.CTKEY,
+            SUBSTR(CASE WHEN A.DASDIV = '2' THEN C.OBHDKEY ELSE B.DASCELLBRCD END, 0, 3)
+        ), TT AS ( -- 분류토트발생수
+            SELECT  WA.OWKEY,
+            WA.CTKEY,
+            'D' || SUBSTR(ORD.DASCELLBRCD, 2, 2) AS STNFAC,
+            MIN(WA.INSERTDATE) AS SRTMINCNFRMDATE, -- 소분류처리시간
+            COUNT(DISTINCT ORD.CLASSIFTOTEBRCD) AS CLASSIFTOTEBRCDCNT
+            FROM TWIF_DAS_CLASSIFTOTE_MAPP_WA WA
+            INNER JOIN TWIF_DAS_CLASSIFTOTE_MAPP_ORDER ORD
+            ON WA.WASEQ = ORD.WASEQ
+            WHERE 1 = 1
+            AND WA.IFTYPE = 'R'
+            AND WA.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WA.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WA.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WA.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY WA.OWKEY,
+            WA.CTKEY,
+            SUBSTR(ORD.DASCELLBRCD, 2, 2)
+        ), EP AS ( -- 작업자 수
+            SELECT OWKEY, CTKEY, STNFAC, COUNT(DISTINCT EMPNOBRCD) EMPCNT
+            FROM (
+                SELECT OWKEY, CTKEY, STNFAC, EMPNOBRCD
+                FROM (
+                    SELECT OWKEY, CTKEY, STNFAC, EMPNOBRCD,
+                    RANK() OVER (PARTITION BY OWKEY, CTKEY, EMPNOBRCD ORDER BY MAXCNFRMDATE) RNK
+                    FROM (
+                        SELECT  A.OWKEY,
+                                A.CTKEY,
+                                SUBSTR(B.DASCELLBRCD, 0, 3) AS STNFAC,  -- 셀바코드
+                                C.EMPNOBRCD,
+                                MAX(A.INSERTDATE) AS MAXCNFRMDATE
+                        FROM TWIF_DAS_PRCSRSLT_WA A -- 분류처리/웨이브
+                        INNER JOIN TWIF_DAS_PRCSRSLT_ORDER B -- 분류처리/주문
+                        ON A.OWKEY = B.OWKEY
+                        AND A.CTKEY = B.CTKEY
+                        AND A.WASEQ = B.WASEQ
+                        INNER JOIN TWIF_DAS_PRCSRSLT_IC C -- 분류처리/상품
+                        ON B.OWKEY = C.OWKEY
+                        AND B.CTKEY = C.CTKEY
+                        AND B.WASEQ = C.WASEQ
+                        AND B.ORDERSEQ = C.ORDERSEQ
+                        WHERE A.DASDIV = '3'
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                            AND A.OWKEY = #{owkey}
+                        </if>
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                            AND A.CTKEY = #{ctkey}
+                        </if>
+                        <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                            AND A.WAHDKEY = #{wahdkey}
+                        </if>
+                        GROUP BY A.OWKEY,
+                        A.CTKEY,
+                        SUBSTR(B.DASCELLBRCD, 0, 3),
+                        C.OBHDKEY,
+                        C.EMPNOBRCD
+                    )
+                ) WHERE RNK = 1
+            ) GROUP BY  OWKEY, CTKEY, STNFAC
+        ), TS AS ( -- 소분류 스테이션 별 토트박스 규격 정보
+            SELECT
+                WS.OWKEY,
+                WS.CTKEY,
+                ST.STNFACNO AS STNFAC,
+                WS.CLASSIFSPECCD
+            FROM TWORK_INFO_WA_DAS_STN WS
+            INNER JOIN TWORK_MST_STN ST
+            ON WS.CTKEY = ST.CTKEY
+            AND WS.STNBARCODE = ST.STNBARCODE
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WS.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WS.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WS.WAHDKEY = #{wahdkey}
+            </if>
+        ), TM AS ( -- 토트박스 매핑
+            -- 토트박스 매핑 (웨이브)
+            SELECT A.OWKEY, A.CTKEY, SUBSTR(B.DASCELLBRCD, 0, 3) AS STNFAC, COUNT(DISTINCT B.CLASSIFTOTEBRCD) AS STRCNT
+            FROM TWIF_DAS_CLASSIFTOTE_MAPP_WA A
+            JOIN TWIF_DAS_CLASSIFTOTE_MAPP_ORDER B
+            ON A.WASEQ = B.WASEQ
+            WHERE A.IFTYPE = 'S'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND A.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND A.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND A.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY A.OWKEY, A.CTKEY, SUBSTR(B.DASCELLBRCD, 0, 3)
+        ), BS AS ( -- 스테이션정보 (베이스)
+            SELECT
+            'DAISO' AS OWKEY, CTKEY, STNFACNO AS STNFAC
+            FROM TWORK_MST_STN
+            WHERE STNDIVCD = '10'
+        ) SELECT
+            BS.OWKEY,
+            BS.CTKEY,
+            SUBSTR(BS.STNFAC, 2, 2) AS stnfacno,
+            COALESCE(TS.CLASSIFSPECCD, '') AS CLASSIFSPECCD,
+            COALESCE(PR.MIDPRICCNT, 0) AS MIDPRICCNT,
+            COALESCE(PR.MIDCNFRMQTY, 0) AS MIDCNFRMQTY,
+            COALESCE(EX.EXORCNT, 0) AS exobcnt,
+            COALESCE(EX.EXICCNT, 0) AS EXICCNT,
+            COALESCE(EX.exordqty, 0) AS exqty,
+            COALESCE(PR.SRTPRORCNT, 0) AS cfobcnt,
+            COALESCE(PR.SRTPRICCNT, 0) AS cficcnt,
+            COALESCE(PR.SRTCNFRMQTY, 0) AS cfqty,
+            COALESCE(TT.CLASSIFTOTEBRCDCNT, 0) AS cftotcnt,
+            CASE WHEN EX.EXORCNT = 0 THEN 0 ELSE COALESCE(ROUND(PR.SRTPRORCNT / EX.EXORCNT * 100), 0) END AS procob,
+            CASE WHEN EX.exordqty = 0 THEN 0 ELSE COALESCE(ROUND(PR.SRTPRICCNT / EX.EXICCNT * 100), 0) END AS procic,
+            CASE WHEN EX.exordqty = 0 THEN 0 ELSE COALESCE(ROUND(PR.SRTCNFRMQTY / EX.exordqty * 100), 0) END AS procqty ,
+            COALESCE(EP.EMPCNT, 0) AS EMPCNT,
+            TO_CHAR(TO_DATE(TT.SRTMINCNFRMDATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS startdate,
+            TO_CHAR(TO_DATE(PR.SRTMAXCNFRMDATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS enddate,
+            -- 소요시간
+            CASE WHEN PR.TIMEDIFF IS NOT NULL THEN
+        LPAD(TRUNC((PR.TIMEDIFF) * 24)::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((PR.TIMEDIFF) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((PR.TIMEDIFF) * 24 * 60 * 60, 60))::TEXT, 2, '0')
+            ELSE ''
+            END AS TIMEDIFF,
+            (PR.TIMEDIFF) * 24 * 60 * 60 AS TIMEDIFF2
+        FROM BS
+        LEFT JOIN EX ON BS.OWKEY = EX.OWKEY AND BS.CTKEY = EX.CTKEY AND BS.STNFAC = EX.STNFAC
+        LEFT JOIN PR ON BS.OWKEY = PR.OWKEY AND BS.CTKEY = PR.CTKEY AND BS.STNFAC = PR.STNFAC
+        LEFT JOIN TT ON BS.OWKEY = TT.OWKEY AND BS.CTKEY = TT.CTKEY AND BS.STNFAC = TT.STNFAC
+        LEFT JOIN TM ON BS.OWKEY = TM.OWKEY AND BS.CTKEY = TM.CTKEY AND BS.STNFAC = TM.STNFAC
+        LEFT JOIN EP ON BS.OWKEY = EP.OWKEY AND BS.CTKEY = EP.CTKEY AND BS.STNFAC = EP.STNFAC
+        LEFT JOIN TS ON BS.OWKEY = TS.OWKEY AND BS.CTKEY = TS.CTKEY AND BS.STNFAC = TS.STNFAC
+        ORDER BY SUBSTR(BS.STNFAC, 2, 2)
+    </sql>
+
+    <select id="selectObProcStatusDtPakCount" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPakCount - 출고 진척 현황 > 포장 TAB - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+        <include refid="selectObProcStatusDtPakSql"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtPakList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtPakList - 출고 진척 현황 > 포장 TAB - 조회 리스트 */
+            FROM (
+                <include refid="selectObProcStatusDtPakSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtPakSql">
+        SELECT
+            B.DIV,
+            A.EXORDCNT, A.EXOBCNT, A.EXICCNT, A.EXQTY,
+            A.CFORDCNT, A.CFOBCNT, A.CFICCNT, A.CFQTY, A.CFPROC,
+            A.HLDORDCNT, A.HLDOBCNT, A.HLDICCNT, A.HLDQTY,
+            A.URCNT, A.STARTDATE, A.ENDDATE, A.TIMEDIFF, A.TIMEDIFF2
+        FROM (
+        (
+            SELECT
+                OH.OWKEY,
+                OH.CTKEY,
+                OH.WAHDKEY,
+                '포장' AS DIV,
+                COUNT(DISTINCT CASE WHEN OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS EXORDCNT,
+                COUNT(DISTINCT OH.OBHDKEY) AS EXOBCNT,
+                COUNT(DISTINCT OD.ICKEY) AS EXICCNT,
+                SUM(OD.EXPCTQTY) AS EXQTY,
+                COUNT(DISTINCT CASE WHEN (OH.PCKGDATE IS NOT NULL OR NH.OBHDKEY IS NOT NULL) AND OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS CFORDCNT, -- 검수완료주문
+                COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL OR NH.OBHDKEY IS NOT NULL THEN OH.OBHDKEY END) AS CFOBCNT,   -- 검수완료
+                COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL OR NH.OBHDKEY IS NOT NULL THEN OD.ICKEY END) AS CFICCNT,     -- 포장 대기 품번
+                SUM(OD.PAKQTY) AS CFQTY, -- 포장 완료 수량
+                CASE WHEN COUNT(DISTINCT OH.OBHDKEY) = 0 THEN 0
+                    ELSE ROUND((COUNT(DISTINCT OH.OBHDKEY) - COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NULL THEN OH.OBHDKEY END)) / COUNT(DISTINCT OH.OBHDKEY) * 100, 1)
+                END AS CFPROC, -- 진척율(건수)
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'N' AND OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS HLDORDCNT, -- 결품 보류 주문
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'N' THEN OH.OBHDKEY END) AS HLDOBCNT,   -- 결품 보류 릴리즈
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'N' THEN NH.ICKEY END) AS HLDICCNT,   -- 결품 보류 품번
+                SUM(CASE WHEN NH.CNFRMYN = 'N' THEN COALESCE(NH.CNFRMQTY, 0) ELSE 0 END) AS HLDQTY,  -- 결품 보류 수량
+                COUNT(DISTINCT OH.PCKGURKEY) AS URCNT, -- 포장작업인원
+                TO_CHAR(TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+                TO_CHAR(TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+                LPAD(TRUNC((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+                LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+                LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS timediff,
+                (TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS TIMEDIFF2
+            FROM TWORK_INFO_OB_HD OH
+            INNER JOIN TWORK_INFO_OB_DT OD
+            ON OH.OWKEY = OD.OWKEY
+            AND OH.CTKEY = OD.CTKEY
+            AND OH.OBHDKEY = OD.OBHDKEY
+            LEFT OUTER JOIN (
+                SELECT NH.OWKEY, NH.CTKEY, NH.OBHDKEY, NH.CNFRMYN, ND.ICKEY, ND.CNFRMQTY
+                FROM TWORK_INFO_OB_NIS_HD NH
+                INNER JOIN TWORK_INFO_OB_NIS_DT ND
+                ON NH.OWKEY = ND.OWKEY
+                AND NH.CTKEY = ND.CTKEY
+                AND NH.OBNISNO = ND.OBNISNO
+            ) NH
+            ON OD.OWKEY = NH.OWKEY
+            AND OD.CTKEY = NH.CTKEY
+            AND OD.OBHDKEY = NH.OBHDKEY
+            AND OD.ICKEY = NH.ICKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND OH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND OH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND OH.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY OH.OWKEY,
+            OH.CTKEY,
+            OH.WAHDKEY
+        ) UNION (
+            SELECT
+                OH.OWKEY,
+                OH.CTKEY,
+                OH.WAHDKEY,
+                '결품보류 완료' AS DIV,
+                COUNT(DISTINCT CASE WHEN OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS EXORDCNT, /*총 주문 수*/
+                COUNT(DISTINCT OH.OBHDKEY) AS EXOBCNT, /*총 릴리즈 수*/
+                COUNT(DISTINCT ND.ICKEY) AS EXICCNT, /*총 상품 수*/
+                SUM(COALESCE(ND.EXPCTQTY, 0)) AS EXQTY, /*총 예정수량*/
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'Y' AND OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS CFORDCNT, /*확정 주문 수*/
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'Y' THEN OH.OBHDKEY END) AS CFOBCNT, /*확정 릴리즈 수*/
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'Y' THEN ND.ICKEY END) AS CFICCNT, /*확정 상품 수*/
+                SUM(CASE WHEN NH.CNFRMYN = 'Y' THEN COALESCE(ND.CNFRMQTY, 0) ELSE 0 END) AS CFQTY, /*확정 수량*/
+                CASE WHEN COUNT(DISTINCT OH.OBHDKEY) = 0 THEN 0
+                    ELSE ROUND(COUNT(DISTINCT CASE WHEN NH.CNFRMYN = 'Y' THEN OH.OBHDKEY END) / COUNT(DISTINCT OH.OBHDKEY) * 100, 1)
+                END AS CFPROC, -- 진척율(건수)
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN != 'Y' AND OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS HLDORDCNT, /*결품 보류 대기 주문 수*/
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN != 'Y' THEN OH.OBHDKEY END) AS HLDOBCNT, /*결품 보류 대기 릴리즈 수*/
+                COUNT(DISTINCT CASE WHEN NH.CNFRMYN != 'Y' THEN ND.ICKEY END) AS HLDICCNT, /*결품 보류 대기 상품 수*/
+                SUM(CASE WHEN NH.CNFRMYN != 'Y' THEN COALESCE(ND.CNFRMQTY, 0) ELSE 0 END) AS HLDQTY, /*결품 보류 대기 수량*/
+                COUNT(DISTINCT NH.CNFRMURKEY) AS URCNT, -- 포장작업인원
+                TO_CHAR(TO_DATE(MIN(NH.CNFRMDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+                TO_CHAR(TO_DATE(MAX(NH.CNFRMDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+        LPAD(TRUNC((TO_DATE(MAX(NH.CNFRMDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(NH.CNFRMDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((TO_DATE(MAX(NH.CNFRMDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(NH.CNFRMDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((TO_DATE(MAX(NH.CNFRMDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(NH.CNFRMDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0')
+        AS timediff,
+                (TO_DATE(MAX(NH.CNFRMDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(NH.CNFRMDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS TIMEDIFF2
+            FROM TWORK_INFO_OB_NIS_HD NH
+            INNER JOIN TWORK_INFO_OB_NIS_DT ND
+            ON NH.OWKEY = ND.OWKEY
+            AND NH.CTKEY = ND.CTKEY
+            AND NH.OBNISNO = ND.OBNISNO
+            LEFT OUTER JOIN TWORK_INFO_OB_HD OH
+            ON NH.OWKEY = OH.OWKEY
+            AND NH.CTKEY = OH.CTKEY
+            AND ( NH.OBHDKEY = OH.OBHDKEY OR NH.REWKOBHDKEY = OH.OBHDKEY )
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND OH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND OH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND OH.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY OH.OWKEY,
+            OH.CTKEY,
+            OH.WAHDKEY
+        )
+    ) A RIGHT OUTER JOIN (
+        SELECT '포장' AS DIV
+        UNION
+        SELECT '결품보류 완료' AS DIV
+    ) B
+    ON A.DIV = B.DIV
+    ORDER BY B.DIV DESC
+    </sql>
+
+    <select id="selectObProcStatusDtRbCfCount" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtRbCfCount - 출고 진척 현황 > 로봇분류 TAB - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObProcStatusDtRbCfSql"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtRbCfList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtRbCfList - 출고 진척 현황 > 로봇분류 TAB - 조회 리스트 */
+            FROM (
+                <include refid="selectObProcStatusDtRbCfSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtRbCfSql">
+        WITH PROC AS (
+            SELECT    WA.OWKEY
+                    , WA.CTKEY
+                    , 'Y' AS ROBSORTERICYN
+                    , '로봇 투입' AS FLAG
+                    , COUNT(DISTINCT ORD.WBLNO) AS CNFRMORDCNT
+                    , COUNT(DISTINCT IC.ICKEY) AS CNFRMSKU
+                    , SUM(IC.QTY) AS CNFRMQTY
+                    , COUNT(DISTINCT IC.EMPNOBRCD) AS CNFRMURCNT
+                    , TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') AS STARTDATE
+                    , TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') AS ENDDATE
+                    , LPAD(TRUNC((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+                      LPAD(TRUNC(MOD((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+                      LPAD(TRUNC(MOD((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS timediff
+                    , (TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS TIMEDIFF2
+            FROM TWIF_ROBDAS_PRCSRSLT_WA WA
+            INNER JOIN TWIF_ROBDAS_PRCSRSLT_ORDER ORD
+            ON WA.OWKEY = ORD.OWKEY
+            AND WA.CTKEY = ORD.CTKEY
+            AND WA.WASEQ = ORD.WASEQ
+            INNER JOIN TWIF_ROBDAS_PRCSRSLT_IC IC
+            ON ORD.OWKEY 	= IC.OWKEY
+            AND ORD.CTKEY 	= IC.CTKEY
+            AND ORD.WASEQ 	= IC.WASEQ
+            AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+            WHERE 1=1
+            AND WA.IFSTATUS = '90'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WA.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WA.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WA.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY WA.OWKEY,
+            WA.CTKEY,
+            WA.WAHDKEY
+            UNION
+            SELECT    WA.OWKEY
+                    , WA.CTKEY
+                    , 'N' AS ROBSORTERICYN
+                    , '로봇 이형물' AS FLAG
+                    , COUNT(DISTINCT ORD.WBLNO) AS CNFRMORDCNT
+                    , COUNT(DISTINCT IC.ICKEY) AS CNFRMSKU
+                    , SUM(IC.QTY) AS CNFRMQTY
+                    , COUNT(DISTINCT IC.EMPNOBRCD) AS CNFRMURCNT
+                    , TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') AS STARTDATE
+                    , TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') AS ENDDATE
+                    , LPAD(TRUNC((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+                      LPAD(TRUNC(MOD((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+                      LPAD(TRUNC(MOD((TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS timediff
+                    , (TO_DATE(MAX(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(WA.IFPRCSDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS timediff2
+            FROM TWIF_ROBDAS_RSLTXNIS_WA WA
+            INNER JOIN TWIF_ROBDAS_RSLTXNIS_ORDER ORD
+            ON WA.OWKEY = ORD.OWKEY
+            AND WA.CTKEY = ORD.CTKEY
+            AND WA.WASEQ = ORD.WASEQ
+            INNER JOIN TWIF_ROBDAS_RSLTXNIS_IC IC
+            ON ORD.OWKEY 	= IC.OWKEY
+            AND ORD.CTKEY 	= IC.CTKEY
+            AND ORD.WASEQ 	= IC.WASEQ
+            AND ORD.ORDERSEQ 	= IC.ORDERSEQ
+            WHERE 1=1
+            AND WA.IFSTATUS = '90'
+            AND ORD.ROBDASRSLTTYPE = '1' -- 이형물 조회
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND WA.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND WA.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND WA.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY WA.CTKEY,
+            WA.OWKEY,
+            WA.WAHDKEY
+        ), EX AS (
+            SELECT  OH.OWKEY,
+                OH.CTKEY,
+                OD.ROBSORTERICYN,
+                COUNT(DISTINCT OD.OBHDKEY) AS EXORDCNT,
+                COUNT(DISTINCT CASE WHEN OD.ROBSORTERICYN = 'N' THEN OD.ICKEY END) AS EXSKU,
+                SUM(OD.EXPCTQTY) AS EXQTY
+            FROM TWORK_INFO_OB_HD OH
+            INNER JOIN TWORK_INFO_OB_DT OD
+            ON OH.CTKEY = OD.CTKEY
+            AND OH.OWKEY = OD.OWKEY
+            AND OH.OBHDKEY = OD.OBHDKEY
+            WHERE 1=1
+            AND OH.ORDSEPTYPECD IN ('30', '40')
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND OH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND OH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND OH.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY OH.OWKEY,
+            OH.CTKEY,
+            OH.WAHDKEY,
+            OD.ROBSORTERICYN
+        ) SELECT
+            BASE.FLAG,
+            EX.EXORDCNT,
+            EX.EXSKU,
+            EX.EXQTY,
+            PROC.CNFRMORDCNT,
+            PROC.CNFRMSKU,
+            PROC.CNFRMQTY,
+            CASE WHEN EX.EXORDCNT = 0 THEN 0 ELSE ROUND(PROC.CNFRMORDCNT / EX.EXORDCNT * 100, 1) END AS PROCOB,
+            CASE WHEN EX.EXQTY = 0 THEN 0 ELSE ROUND(PROC.CNFRMQTY / EX.EXQTY * 100, 1) END AS PROCQTY,
+            PROC.CNFRMURCNT,
+            TO_CHAR(PROC.STARTDATE, 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+            TO_CHAR(PROC.ENDDATE, 'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+            PROC.TIMEDIFF,
+            PROC.TIMEDIFF2
+        FROM EX
+        INNER JOIN PROC
+        ON EX.OWKEY = PROC.OWKEY
+        AND EX.CTKEY = PROC.CTKEY
+        AND EX.ROBSORTERICYN = PROC.ROBSORTERICYN
+        RIGHT OUTER JOIN (
+            SELECT 'Y' ROBSORTERICYN, '로봇 투입' AS FLAG UNION
+            SELECT 'N' ROBSORTERICYN, '로봇 이형물' AS FLAG
+        ) BASE
+        ON BASE.FLAG = PROC.FLAG
+        AND BASE.ROBSORTERICYN = PROC.ROBSORTERICYN
+        ORDER BY BASE.FLAG DESC,  BASE.ROBSORTERICYN
+    </sql>
+
+    <select id="selectObProcStatusDtRbPakCount" resultType="java.lang.Integer">
+        /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtRbPakCount - 출고 진척 현황 > 로봇포장 TAB - 조회 카운트 */
+        SELECT COUNT(1)
+        FROM (
+            <include refid="selectObProcStatusDtRbPakSql"/>
+        )
+    </select>
+
+    <select id="selectObProcStatusDtRbPakList" resultType="camelMap">
+        <include refid="sql_pagingTop"/>
+            SELECT *
+            /* wms-report-obPeriodStatusStatisticsMapper-sql-oracle.xml - selectObProcStatusDtRbPakList - 출고 진척 현황 > 로봇포장 TAB - 조회 리스트 */
+            FROM (
+                <include refid="selectObProcStatusDtRbPakSql"/>
+            )
+        <include refid="sql_pagingBottom"/>
+    </select>
+
+    <sql id="selectObProcStatusDtRbPakSql">
+        SELECT
+            B.DIV,
+            A.EXORDCNT, A.EXOBCNT, A.EXICCNT, A.EXQTY,
+            A.CFORDCNT, A.CFOBCNT, A.CFICCNT, A.CFQTY,
+            A.CFPROC,
+            A.PCKURCNT, A.STARTDATE, A.ENDDATE, TIMEDIFF, COALESCE(TIMEDIFF2, 0) AS TIMEDIFF2
+        FROM (
+            -- (포장 건)
+            SELECT
+                OH.OWKEY, OH.CTKEY, OH.WAHDKEY,
+                '포장' AS DIV,
+                COUNT(DISTINCT CASE WHEN OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS EXORDCNT,
+                COUNT(DISTINCT OH.OBHDKEY) AS EXOBCNT,
+                COUNT(DISTINCT OD.ICKEY) AS EXICCNT,
+                SUM(OD.EXPCTQTY) AS EXQTY,
+                COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL AND OH.PREOBHDKEY IS NULL THEN OH.OBHDKEY END) AS CFORDCNT,
+                COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL THEN OH.OBHDKEY END) AS CFOBCNT,
+                COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL THEN OD.ICKEY END) AS CFICCNT,
+                SUM(CASE WHEN OH.PCKGDATE IS NOT NULL THEN OD.PAKQTY ELSE 0 END) AS CFQTY,
+                CASE WHEN COUNT(DISTINCT OH.OBHDKEY) = 0 THEN 0
+                     ELSE ROUND(COUNT(DISTINCT CASE WHEN OH.PCKGDATE IS NOT NULL THEN OH.OBHDKEY END) / COUNT(DISTINCT OH.OBHDKEY) * 100, 1)
+                END AS CFPROC,
+                COUNT(DISTINCT OH.PCKGURKEY) PCKURCNT,
+                TO_CHAR(TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+                TO_CHAR(TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+                LPAD(TRUNC((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+                LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+                LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS TIMEDIFF,
+                (TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS timediff2
+            FROM TWORK_INFO_OB_HD OH
+            INNER JOIN TWORK_INFO_OB_DT OD
+            ON OH.CTKEY = OD.CTKEY
+            AND OH.OWKEY = OD.OWKEY
+            AND OH.OBHDKEY = OD.OBHDKEY
+            WHERE 1=1
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND OH.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND OH.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND OH.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY OH.OWKEY,
+            OH.CTKEY,
+            OH.WAHDKEY
+            UNION
+            -- (미출 건)
+            SELECT
+                A.OWKEY, A.CTKEY, A.WAHDKEY,
+                '미출' AS DIV,
+                COUNT(DISTINCT CASE WHEN OH.PREOBHDKEY IS NULL THEN B.OBHDKEY END) AS EXORDCNT,
+                COUNT(DISTINCT B.OBHDKEY) AS EXOBCNT,
+                COUNT(DISTINCT C.ICKEY) AS EXICCNT,
+                SUM(C.QTY) AS EXQTY,
+                COUNT(DISTINCT CASE WHEN OH.OBCNFRMDATE IS NOT NULL AND OH.PREOBHDKEY IS NULL THEN B.OBHDKEY END) AS CFORDCNT,
+                COUNT(DISTINCT CASE WHEN OH.OBCNFRMDATE IS NOT NULL THEN B.OBHDKEY END) AS CFOBCNT,
+                COUNT(DISTINCT CASE WHEN OH.OBCNFRMDATE IS NOT NULL THEN C.ICKEY END) AS CFICCNT,
+                SUM(CASE WHEN OH.OBCNFRMDATE IS NOT NULL THEN C.QTY - OD.NISQTY ELSE 0 END) AS CFQTY,
+                CASE WHEN COUNT(DISTINCT B.OBHDKEY) = 0 THEN 0
+                     ELSE ROUND(COUNT(DISTINCT CASE WHEN OH.OBCNFRMDATE IS NOT NULL THEN B.OBHDKEY END) / COUNT(DISTINCT B.OBHDKEY) * 100, 1)
+                END AS CFPROC,
+                COUNT(DISTINCT OH.PCKGURKEY) PCKURCNT,
+                TO_CHAR(TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS STARTDATE,
+                TO_CHAR(TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') AS ENDDATE,
+        LPAD(TRUNC((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24)::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60, 60))::TEXT, 2, '0') || ':' ||
+        LPAD(TRUNC(MOD((TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60, 60))::TEXT, 2, '0') AS TIMEDIFF,
+                (TO_DATE(MAX(OH.PCKGDATE), 'YYYYMMDDHH24MISS') - TO_DATE(MIN(OH.PCKGDATE), 'YYYYMMDDHH24MISS')) * 24 * 60 * 60 AS timediff2
+            FROM TWIF_ROBDAS_RSLTXNIS_WA A
+            INNER JOIN TWIF_ROBDAS_RSLTXNIS_ORDER B
+            ON A.CTKEY = B.CTKEY
+            AND A.OWKEY = B.OWKEY
+            AND A.WASEQ = B.WASEQ
+            INNER JOIN TWIF_ROBDAS_RSLTXNIS_IC C
+            ON B.CTKEY = C.CTKEY
+            AND B.OWKEY = C.OWKEY
+            AND B.WASEQ = C.WASEQ
+            AND B.ORDERSEQ = C.ORDERSEQ
+            INNER JOIN TWORK_INFO_OB_HD OH
+            ON B.CTKEY = OH.CTKEY
+            AND B.OWKEY = OH.OWKEY
+            AND B.OBHDKEY = OH.OBHDKEY
+            INNER JOIN TWORK_INFO_OB_DT OD
+            ON OH.CTKEY = OD.CTKEY
+            AND OH.OWKEY = OD.OWKEY
+            AND OH.OBHDKEY = OD.OBHDKEY
+            AND C.ICKEY = OD.ICKEY
+            WHERE B.ROBDASRSLTTYPE = '2'
+            AND A.IFTYPE = 'R'
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(owkey)">
+                AND A.OWKEY = #{owkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)">
+                AND A.CTKEY = #{ctkey}
+            </if>
+            <if test="@com.kns.framework.util.StringUtil@isNotEmpty(wahdkey)">
+                AND A.WAHDKEY = #{wahdkey}
+            </if>
+            GROUP BY A.OWKEY,
+            A.CTKEY,
+            A.WAHDKEY
+        ) A RIGHT OUTER JOIN (
+            SELECT '포장' AS DIV
+            UNION
+            SELECT '미출' AS DIV
+        ) B
+        ON A.DIV = B.DIV
+        ORDER BY B.DIV DESC
+    </sql>
+</mapper>

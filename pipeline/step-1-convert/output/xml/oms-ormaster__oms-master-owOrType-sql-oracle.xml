@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.oms.ormaster.mapper.OwOrTypeIcomMapper">
+	
+	<select id="selectOrTypeCount" resultType="java.lang.Integer" >
+		/* oms-master-owOrType-sql-oracle.xml selectOrTypeCount */
+        SELECT COUNT(1)
+          FROM TORDER_MST_EXTERN A
+	    <where>
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+			 	   #{SEARCH_CONDITION}
+			</if>	
+		</where>	
+	</select>
+	
+	<select id="selectOrTypeList" resultType="camelMap" >
+		/* oms-master-owOrType-sql-oracle.xml selectOrTypeList */
+		#{GRIDPAGING_ROWNUMTYPE_TOP}
+				SELECT '0' AS CHK
+				     , A.OWKEY
+				     , O.OWNM AS OWKEYNM
+				     , A.EXTORDERTYPECD
+				     , A.EXTORDERTYPENM
+				     , COALESCE(A.DELYN, 'N') AS DELYN
+				     , A.INSERTDATE
+				     , A.INSERTURKEY
+				     , A.UPDATEDATE
+				     , A.UPDATEURKEY
+				     --, COALESCE(A.PREORDERYN, 'N') AS PREORDERYN
+				  FROM TORDER_MST_EXTERN A
+				  LEFT JOIN TORDER_MST_OW O
+				    ON A.OWKEY = O.OWKEY
+				 WHERE 1=1
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(SEARCH_CONDITION)" >
+				       AND #{SEARCH_CONDITION}
+				</if>
+				<if test="owkey != null">
+		    	  	   AND A.OWKEY = #{owkey}
+		    	</if>	
+		    	<if test="orTypeCd != null">
+		    	  	   AND A.EXTORDERTYPECD = #{extordertypecd}
+		    	</if>	
+				<choose>
+					<when test='sortValue !=null and sortValue != ""'>	
+						<if test='sortValue == "DESC" and colName !=null'>
+						ORDER BY #{colName} DESC
+						</if>
+						<if test='sortValue == "ASC" and colName !=null'>
+						ORDER BY #{colName} ASC
+						</if>	
+					</when>	
+					<otherwise>
+						ORDER BY A.EXTORDERTYPECD
+					</otherwise>
+				</choose> 
+		#{GRIDPAGING_ROWNUMTYPE_BOTTOM}
+	</select>		
+	
+	<select id="checkOrTypeInfo" resultType="java.lang.Integer" >
+	/* oms-master-owOrType-sql-oracle.xml checkOrTypeInfo */
+		SELECT COUNT(1)
+		  FROM TORDER_MST_EXTERN	
+    	 WHERE OWKEY = #{owkey}
+    	   AND EXTORDERTYPECD = #{extordertypecd}
+	</select>	
+	
+	<insert id="insertOrType">
+	/* oms-master-owOrType-sql-oracle.xml insertOrType */
+		INSERT INTO TORDER_MST_EXTERN
+		(
+		      OWKEY
+		    , EXTORDERTYPECD
+		    , EXTORDERTYPENM
+		    , DELYN
+		    , INSERTDATE
+		    , INSERTURKEY
+		    , UPDATEDATE
+		    , UPDATEURKEY
+		    --, PREORDERYN
+		)
+		VALUES
+		(
+		      #{owkey}
+		    , #{extordertypecd}
+		    , #{extordertypenm}
+		    , #{delyn}
+		    , #{sysdate}
+		    , #{surkey}
+		    , #{sysdate}
+		    , #{surkey}
+		)
+	</insert>
+	
+	<update id="updateOrType">
+	/* oms-master-owOrType-sql-oracle.xml updateOrType */
+		UPDATE TORDER_MST_EXTERN
+		   SET EXTORDERTYPENM = #{extordertypenm}
+		     , DELYN        = #{delyn}
+		     , UPDATEDATE   = #{sysdate}
+		     , UPDATEURKEY  = #{surkey}
+		 WHERE OWKEY = #{owkey}
+		   AND EXTORDERTYPECD = #{extordertypecd}
+	</update>
+	
+</mapper>

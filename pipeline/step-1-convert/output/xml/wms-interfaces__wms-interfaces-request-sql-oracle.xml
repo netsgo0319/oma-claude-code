@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.interfaces.mapper.IfIcomWmsRequestMapper">
+	
+	<resultMap id="headApprovalRequestIfMap" type="java.util.HashMap">
+		<result property="ctkey" column="CTKEY" />
+		<result property="owkey" column="OWKEY" />		
+		<result property="ibhdtype" column="IBHDTYPE" />
+		<result property="obhdtype" column="OBHDTYPE" />
+		<result property="requestdate" column="REQUESTDATE" />
+		<result property="reqhdtype" column="REQHDTYPE" />
+		<result property="approvalyn" column="APPROVALYN" />
+		<result property="rejectreason" column="REJECTREASON" />
+		<result property="externorderkey" column="EXTERNORDERKEY" />			
+		<result property="reqhdkey" column="REQHDKEY" />
+		<result property="reqreason" column="REQREASON" />
+		<result property="loggrpcd" column="LOGGRPCD" />
+		<result property="icgrkey" column="ICGRKEY" />
+		<result property="ifdate" column="IFDATE" />
+		<result property="ackey" column="ACKEY" />
+		<result property="store_key" column="STORE_KEY" />
+		<result property="dckey" column="DCKEY" />
+		<result property="ibhdkey" column="IBHDKEY" />
+		<result property="fr_ctkey" column="FR_CTKEY" />
+		<result property="to_ctkey" column="TO_CTKEY" />
+		<!-- DT 영역 -->
+		<result property="ibdtkey" column="IBDTKEY" />
+		<result property="reqdtkey" column="REQDTKEY" />
+		<result property="externorderlinenum" column="EXTERNORDERLINENUM" />
+		<result property="ickey" column="ICKEY" />
+		<result property="icutkey" column="ICUTKEY" />
+		<result property="exqty" column="EXQTY" />
+		<result property="uom" column="UOM" />
+		<result property="costprice" column="COSTPRICE" />
+		<result property="saleprice" column="SALEPRICE" />
+		<result property="chitid" column="CHITID" />
+		<result property="erpstlc" column="ERPSTLC" />
+		<result property="lckey" column="LCKEY" />
+		<result property="countermeasure_cd" column="COUNTERMEASURE_CD" />
+		<result property="obrequestdate" column="OBREQUESTDATE" />
+		<result property="ackeydtl" column="ACKEYDTL" />
+		<result property="icgrkeydtl" column="ICGRKEYDTL" />
+		<result property="icgrtype" column="ICGRTYPE" />
+	</resultMap>
+	
+	<select id="selectListHeadApprovalRequestInterface" resultMap="headApprovalRequestIfMap">
+		SELECT 	A.CTKEY
+				,A.OWKEY
+				,A.REQUESTDATE
+				,A.REQHDTYPE
+				,A.APPROVALYN
+				,A.REJECTREASON
+				,A.EXTERNORDERKEY
+				,A.REQHDKEY
+				,A.REQREASON
+				,A.LOGGRPCD 
+				,A.ACKEY
+				,A.STORE_KEY
+				,A.DCKEY
+				,A.IBHDKEY
+				,#{a, typeHandler=GmtDateTimeTypeHandler} AS IFDATE
+				,B.IBDTKEY
+				,B.REQDTKEY
+				,B.EXTERNORDERLINENUM
+				,B.ICKEY
+				,B.ICUTKEY
+				,B.EXQTY
+				,B.UOM
+				,B.COSTPRICE
+				,B.SALEPRICE    
+				,B.COUNTERMEASURE_CD
+				,B.CHITID
+				,B.ERPSTLC
+				,B.LCKEY
+				,A.FR_CTKEY
+				,A.TO_CTKEY
+				,B.ACKEY AS ACKEYDTL
+				,B.ICGRKEY AS ICGRKEYDTL
+				,'CATEGORY' AS ICGRTYPE
+		  FROM 	TWORK_INFO_REQ_HD A
+		  		,TWORK_INFO_REQ_DT B
+		 WHERE 
+		 		A.CTKEY = #{ctkey}        
+		   AND  A.REQHDKEY = #{reqhdkey}
+		   AND  A.CTKEY = B.CTKEY     
+		   AND  A.OWKEY = B.OWKEY   
+		   AND  A.REQHDKEY = B.REQHDKEY     
+	</select>
+</mapper>	

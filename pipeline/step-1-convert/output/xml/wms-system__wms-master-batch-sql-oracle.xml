@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.wms.system.mapper.BatchManagementMapper">
+
+	<select id="selectBatchInfo" parameterType="map" resultType="camelMap">
+		/* wms-master-batch-sql-oracle.xml - selectBatchInfo */
+		SELECT APKEY
+		     , BATID
+			 , BATNM
+			 , BATDESCRPT
+			 , BATJOBCLASSNM
+			 , BATEXECSTADATE
+			 , BATEXECENDDATE
+			 , CRONEXPSMETH
+			 , BATPARAM
+			 , ERRSNDCD
+			 , BATEXECYN
+			 , INSERTDATE
+			 , INSERTURKEY
+			 , UPDATEDATE
+			 , UPDATEURKEY
+		  FROM BATCH_MANAGE
+		 WHERE BATID = #{batId}
+	</select>
+
+</mapper>

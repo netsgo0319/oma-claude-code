@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.SubstitutionTmsMapper">
+
+ 	<select id="selectPkCountTtMstIcsb" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TT_MST_ICSB
+		 WHERE OWKEY = #{owkey}
+	 	   AND ICKEY = #{ickey}
+		   AND SBKEY = #{sbkey}	      
+	</select>
+	
+	
+	<insert id="insertTTMstIcsb" >	
+		INSERT INTO TT_MST_ICSB	(
+    		OWKEY
+			,ICKEY
+			,SBKEY
+			,ICUTTYPE
+			,UDF1
+			,UDF2
+			,UDF3
+			,CLOSDATE
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+		) VALUES (
+			#{owkey}
+			,#{ickey}
+			,#{sbkey}
+			,#{icuttype}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,SUBSTR(#{closdate}, 0, 14)
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+		)			
+	</insert>
+	
+		<insert id="insertTTMstxCtIcsb">
+		INSERT INTO TT_MST_ICSBXCT ( 
+			CTKEY
+			,OWKEY
+			,ICKEY
+			,SBKEY
+			,UDF1		  
+			,UPDATEURKEY
+			,UPDATEDATE
+			,INSERTURKEY
+			,INSERTDATE
+		) VALUES ( 
+			#{ctkey}
+			,#{owkey}
+			,#{ickey}
+			,#{sbkey}
+			,#{udf1}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+		) 	 	
+	</insert>
+	
+	<update id="updateTTMstIcsb">	
+		UPDATE 	TT_MST_ICSB 
+		   SET	ICUTTYPE = #{icuttype}
+           		,UDF1 = #{udf1}
+           		,UDF2 = #{udf2}
+           		,UDF3 = #{udf3}
+           		,CLOSDATE = SUBSTR(#{closdate}, 0, 14)
+		        ,UPDATEDATE = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		 WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+		   AND	SBKEY = #{sbkey}
+	</update>
+ 	
+ 	<delete id="deleteTTMstIcsb">
+ 		UPDATE 	TT_MST_ICSB
+		SET      DELYN 				= 'Y'
+				,CLOSDATE		= #{sysdate}
+		WHERE	OWKEY = #{owkey}
+		   AND	ICKEY = #{ickey}
+		<if test="sbkey != null">
+		   AND	SBKEY = #{sbkey}	
+		</if> 	
+ 	</delete>
+ 	
+ 	<select id="selectPkCountTtMstIcsbxct" resultType="java.lang.Integer" >
+		SELECT COUNT(1)
+	  	  FROM TT_MST_ICSBXCT
+		 WHERE CTKEY = #{ctkey}
+		   AND OWKEY = #{owkey}
+	 	   AND ICKEY = #{ickey}
+		   AND SBKEY = #{sbkey}	
+		   AND UDF1 = #{udf1}          
+	</select>
+ 	
+ 	
+ 	<insert id="insertTTMstIcsbxct" >	
+			INSERT INTO TT_MST_ICSBXCT(
+			     	OWKEY
+                	,ICKEY
+                    ,SBKEY
+                    ,CTKEY
+                    ,INSERTDATE
+                    ,INSERTURKEY
+                    ,UPDATEDATE
+                    ,UPDATEURKEY
+                    ,UDF1
+			    ) VALUES (
+					#{owkey}
+					,#{ickey}
+					,#{sbkey}
+					,#{ctkey}
+					,#{sysdate}
+					,#{surkey}
+					,#{sysdate}
+					,#{surkey}
+					,#{udf1}
+				)			
+	</insert>
+	
+	<update id="updateTTMstIcsbxct">
+		UPDATE	TT_MST_ICSBXCT
+		SET		OWKEY = #{owkey}
+				,ICKEY = #{ickey}
+				,SBKEY = #{sbkey}
+				,CTKEY = #{ctkey}
+				,UDF1 = #{udf1}        		      		        
+		        ,UPDATEDATE = #{sysdate}
+		        ,UPDATEURKEY = #{surkey}
+		WHERE	OWKEY = #{owkey}
+		  AND	ICKEY = #{ickey}		
+		  AND	SBKEY = #{sbkey}
+		  AND	CTKEY = #{ctkey}	
+		  AND	UDF1 = #{udf1}			
+	</update>
+	
+	
+	<delete id="deleteTTMstIcsbxct">	
+			DELETE 
+			 FROM	TT_MST_ICSBXCT
+			WHERE	OWKEY = #{owkey}
+			  AND	ICKEY = #{ickey}
+			<if test="sbkey != null">
+			  AND	SBKEY = #{sbkey}	
+			</if> 
+			<if test="ctkey != null">
+	 	  	  AND   CTKEY = #{ctkey}
+	    	</if> 
+	    	<if test="udf1 != null">
+	 	  	  AND   UDF1 = #{udf1}
+	    	</if> 					
+	</delete>
+	 
+</mapper>	

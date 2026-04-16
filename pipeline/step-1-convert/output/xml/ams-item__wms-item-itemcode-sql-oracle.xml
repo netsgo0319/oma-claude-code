@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.daiso.ams.item.mapper.ItemCodeWmsMapper">
+
+	<delete id="deleteTWorkMstIc">
+		/* wms-item-itemcode-sql-oracle.xml - deleteTWorkMstIc */
+		UPDATE 	TWORK_MST_IC
+		   SET   DELYN 				= #{delYn}
+				,CLOSDATE		= #{sysdate}
+		WHERE OWKEY = #{owkey}
+		  AND ICKEY = #{ickey}
+		  <if test="ctkey != null">
+		   	AND CTKEY = #{ctkey}
+		  </if>
+	</delete>
+	
+	<insert id="insertTWorkMstIc">
+		/* wms-item-itemcode-sql-oracle.xml - insertTWorkMstIc */
+		INSERT INTO TWORK_MST_IC	( 
+			CTKEY
+			,OWKEY
+			,ICKEY
+			,ICNAME
+			,ICGRKEY
+			,ICGRTYPE
+			,ICUTKEY
+			,UOM
+			,WIDTH
+			,LENGTH
+			,HEIGHT
+			,WIDTHPI
+			,LENGTHPI
+			,HEIGHTPI
+			,WEIGHT
+			,VOLUME
+			,BRANDCODE
+			,SHELFLIFEINDICATOR
+			,SHELFLIFE
+			,SHELFLIFECODETYPE
+			,UDF1
+			,UDF2
+			,UDF3
+			,UDF4
+			,UDF5
+			,CLOSDATE
+			,SERIALINPUTTYPE
+			,ACKEY
+			,SPEC
+			,BOXPRICE
+			,BOTTLEPRICE	
+			,CTGKEY
+			,DELYN
+			,RETURNOR	
+			,RELEASEDAYS	
+			,LO_NON_STOCK_TYPE	
+			,DISPSHELFKEY
+			,ACCSTOCKTYPE 
+			,RFIDBOX   
+			,RFIDBOTTLE   
+			,ICTYPE    
+			,MINORDQTY    
+			,MAXORDQTY  
+			,INSERTDATE
+			,INSERTURKEY
+			,UPDATEDATE
+			,UPDATEURKEY
+			,PO_LEADTIME
+			,ACCSTOCKDATE
+			,ORDSTARTDATE
+			,ORDSTOPDATE
+			,REGDATE
+			,FOODYN
+			,CHITTYPE
+			,COSTPRICE
+			,SALEPRICE
+			,SHELFDAY
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+			,LOGGRPCD
+			</if>
+			,WGT_CF_YN
+			,BOL_WIDTH
+			,BOL_LENGTH
+			,BOL_HEIGHT
+			,BOL_VOLUME
+			,BOL_WEIGHT
+		) 
+		VALUES	( 
+			#{ctkey}
+			,#{owkey}
+			,#{ickey}
+			,#{icnm}
+			,#{icgrpkey}
+			,'CATEGORY'
+			,#{icunitkey}
+			,#{uom}
+			,#{width}
+			,#{length}
+			,#{height}
+			,#{widthpi}
+			,#{lengthpi}
+			,#{heightpi}
+			,#{weight}
+			,#{vol}
+			,#{brandcd}
+			,#{expckyn}
+			,#{shelflife}
+			,#{expcktype}
+			,#{udf1}
+			,#{udf2}
+			,#{udf3}
+			,#{udf4}
+			,#{udf5}
+			,#{closdate}
+			,#{serialinputtype}
+			,#{ackey}
+			,#{spec}
+			,#{boxprice}
+			,#{bottleprice}	
+			,#{ctgkey}
+			,'N'
+			,#{returnor}	
+			,#{obdays}
+			,#{lononstocktype}
+			,#{dispshelfkey}
+			,#{accstocktype} 
+			,#{rfidbox}
+			,#{rfidbottle}   
+			,#{ictype}
+			,#{minordqty}    
+			,#{maxordqty} 
+			,#{sysdate}
+			,#{surkey}
+			,#{sysdate}
+			,#{surkey}
+			,#{po_leadtime}
+			,#{accstockdate}
+			,#{ordstartdate}
+			,#{ordstopdate}
+			,#{regdate}
+			,#{foodyn}
+			,#{chittype}
+			,0
+			,0
+			,#{shelfday}
+			<if test="@com.kns.framework.util.StringUtil@isNotEmpty(loggrpcd)" >
+			,#{loggrpcd}
+			</if>
+			,#{wgtcfyn}
+			,#{bolwidth}
+			,#{bollength}
+			,#{bolheight}
+			,#{bolvol}
+			,#{bolweight}
+		 ) 
+	</insert>
+	
+	<update id="updateTWorkMstIc">
+		/* wms-item-itemcode-sql-oracle.xml - updateTWorkMstIc */
+ 		UPDATE 	TWORK_MST_IC
+ 		   SET 	ICNAME             = #{icnm}
+				,ICGRKEY            = #{icgrpkey}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icgrptype)" >
+				,ICGRTYPE           = #{icgrptype}
+				</if> 
+				,ICUTKEY            = #{icunitkey}
+				,UOM                = #{uom}
+				,WIDTH              = #{width}
+				,LENGTH             = #{length}
+				,HEIGHT             = #{height}
+				,WIDTHPI            = #{widthpi}
+				,LENGTHPI           = #{lengthpi}
+				,HEIGHTPI           = #{heightpi}
+				,WEIGHT             = #{weight}
+				,VOLUME             = #{vol}
+				,BRANDCODE          = #{brandcd}
+				,SHELFLIFEINDICATOR	= #{expckyn}
+				,SHELFLIFE          = #{shelflife}
+				,SHELFLIFECODETYPE  = #{expcktype}
+				,UDF1               = #{udf1}
+				,UDF2               = #{udf2}
+				,UDF3               = #{udf3}
+				,UDF4               = #{udf4}
+				,UDF5               = #{udf5}
+				,CLOSDATE        	= #{closdate}
+				,SERIALINPUTTYPE    = #{serialinputtype}
+ 				,ACKEY              = #{ackey}
+				,SPEC               = #{spec}
+				,TAXYN              = #{taxyn}
+				,BOXPRICE           = #{boxprice}
+				,BOTTLEPRICE        = #{bottleprice}	
+				,CTGKEY             = #{ctgkey}
+				,RETURNOR           = #{returnor}	
+				,RELEASEDAYS        = #{obdays}
+				,LO_NON_STOCK_TYPE  = #{lononstocktype}
+				,DISPSHELFKEY       = #{dispshelfkey}
+				,ACCSTOCKTYPE       = #{accstocktype} 
+				,RFIDBOX            = #{rfidbox}
+				,RFIDBOTTLE         = #{rfidbottle}   
+				,ICTYPE             = #{ictype}
+				,MINORDQTY          = #{minordqty}    
+				,MAXORDQTY          = #{maxordqty}  
+				,UPDATEDATE         = #{sysdate}
+				,UPDATEURKEY        = #{surkey}
+				,SHELFDAY			= #{shelfday}
+				<if test="@com.kns.framework.util.StringUtil@isNotEmpty(po_leadtime)" >
+				,PO_LEADTIME 		= #{po_leadtime}   
+				</if> 
+				,ACCSTOCKDATE       = #{accstockdate}
+				,ORDSTARTDATE       = #{ordstartdate}
+				,ORDSTOPDATE        = #{ordstopdate}
+				,REGDATE       		= #{regdate}
+				,FOODYN             = #{foodyn}  
+				,CHITTYPE           = #{chittype}
+				,LOGGRPCD           = #{udf2}
+				,WGT_CF_YN          = #{wgtcfyn}
+				,BOL_WIDTH			= #{bolwidth}
+				,BOL_LENGTH			= #{bollength}
+				,BOL_HEIGHT			= #{bolheight}
+				,BOL_VOLUME			= #{bolvol}
+				,BOL_WEIGHT			= #{bolweight}
+ 		   	 	,DELYN 				= #{delyn}
+		 WHERE 	OWKEY = #{owkey}
+		   AND 	ICKEY = #{ickey}
+		   <if test="@com.kns.framework.util.StringUtil@isNotEmpty(ctkey)" >
+				AND CTKEY 		    = #{ctkey}   
+		   </if> 
+	</update>
+
+	<delete id="deleteTworkItemCodeUnitType">
+		/* wms-item-itemcode-sql-oracle.xml - deleteTworkItemCodeUnitType */
+		DELETE FROM TWORK_MST_ICUTXTYPE
+		WHERE OWKEY = #{owkey}
+		  AND ICUTKEY = #{icunitkey}
+		<if test="@com.kns.framework.util.StringUtil@isNotEmpty(icunittype)">
+			AND ICUTTYPE = #{icunittype}
+		</if>
+	</delete>
+
+</mapper>	

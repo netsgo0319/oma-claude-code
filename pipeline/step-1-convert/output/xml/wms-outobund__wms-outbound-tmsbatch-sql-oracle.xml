@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.daiso.wms.tms.mapper.TmsManagerMapper">
+
+    <update id="updateShpmDetlQtyVol">
+	/** wms-outbound-tms-sql-oracle.xml  : updateShpmDetlQtyVol **/
+     UPDATE TT_SHPM_DETL_T DT
+        SET   DT.RCVDQTY = #{rcvdqty} 	/* 인수수량  */
+        	, DT.RCVDVOL = #{rcvdvol}	/* 인수 볼륨  */
+        	, DT.RCVDWGT = #{rcvdwgt}  	/* 인수 무게  */
+        	, DT.QTY = #{rcvdqty} 		/* 수량  */
+        	, DT.VOL = #{rcvdvol} 		/* 볼륨  */
+<!--        	, DT.WGT = #{rcvdwgt}  		/* 무게  */-->
+        	, DT.DCLVAL = (#{rcvdqty} * TO_NUMBER (COALESCE(ATTRIBUTE6, 0)))
+            , DT.ODRVAL = (#{rcvdqty} * TO_NUMBER (COALESCE(ATTRIBUTE7, 0)))
+        	, DT.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+        	, DT.UPDATEURKEY = #{surkey}
+      WHERE DT.SHPMDETLID = #{shpmdetlid}
+        AND DT.SHPMNO = #{shpmno}
+    </update>
+
+    <update id="updateShpmLegQtyVol">
+	/** wms-outbound-tms-sql-oracle.xml  : updateShpmLegQtyVol - 주문상세 수량,볼륨 조정 **/
+	UPDATE TT_SHPM_LEG_T SL
+      SET   SL.WGT = #{wgt}
+          , SL.VOL = #{vol}
+          , SL.QTY = #{qty}
+          , SL.RCVDQTY = #{rcvdqty}
+          , SL.RCVDVOL = #{rcvdvol}
+          , SL.RCVDWGT = #{rcvdwgt}
+          , SL.ODRVAL = #{odrval}
+          , SL.DCLVAL = #{dclval}
+          , SL.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          , SL.UPDATEURKEY = #{surkey}
+    WHERE SL.SHPMID = #{shpmid}
+      AND SL.SHPMNO = #{shpmno}
+    </update>
+    
+    <update id="updateShpmQtyVol">
+	/** wms-outbound-tms-sql-oracle.xml - updateShpmQtyVol - 주문 수량,볼륨 조정 **/
+	UPDATE TT_SHPM_T SH
+      SET   SH.WGT = #{wgt}
+          , SH.VOL = #{vol}
+          , SH.QTY = #{qty}
+          , SH.ODRVAL = #{odrval}
+          , SH.DCLVAL = #{dclval}
+          , SH.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+          , SH.UPDATEURKEY = #{surkey}
+    WHERE SH.SHPMID = #{shpmid}
+      AND SH.SHPMNO = #{shpmno}
+    </update>
+    
+    <update id="updateLoadQtyVol">
+	/** wms-outbound-tms-sql-oracle.xml - updateLoadQtyVol - 배차 수량,볼륨 조정 **/
+	UPDATE TT_LOAD_T LD
+     SET   LD.WGT = #{wgt}
+         , LD.VOL = #{vol}
+         , LD.TOTPCE = #{qty}
+         , LD.ATTRIBUTE8 = #{attribute8}  /*박스수량*/
+         , LD.ODRVAL = #{odrval}
+         , LD.DCLVAL = #{dclval}
+         , LD.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+         , LD.UPDATEURKEY = #{surkey}
+	 WHERE LD.LDLEGID = #{ldlegid}
+    </update>
+    
+    <update id="updateStopQtyVol">
+	/** wms-outbound-tms-sql-oracle.xml  : updateStopQtyVol **/
+     UPDATE TT_STOP_T ST
+        SET   ST.PICKVOL = #{vol}	   		/* 상차 볼륨  */
+        	, ST.PICKWGT = #{wgt}  	    	/* 상차 무게  */
+        	, ST.PICKPCE = #{qty} 			/* 상차 수량  */
+        	, ST.PICKODRVAL = #{odrval}     /* 상차 원가  */
+    	    , ST.PICKDCLDVAL = #{dclval}    /* 상차 판매가  */
+        	, ST.UPDATEDATE = TO_CHAR(CURRENT_TIMESTAMP,'YYYYMMDDHH24MISS')
+        	, ST.UPDATEURKEY = #{surkey}
+        	<if test="qty == '0'">
+            , ST.DELYN = 'Y'
+            </if>
+      WHERE ST.STOPID = #{stopid}
+    </update>
+</mapper>
