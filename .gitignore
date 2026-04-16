@@ -15,6 +15,9 @@ workspace/logs/
 .DS_Store
 Thumbs.db
 
+# Shared fix registry (runtime, not committed)
+pipeline/step-3-validate-fix/shared-fixes.jsonl
+
 # Java build artifacts
 tools/mybatis-sql-extractor/build/
 tools/mybatis-sql-extractor/.gradle/

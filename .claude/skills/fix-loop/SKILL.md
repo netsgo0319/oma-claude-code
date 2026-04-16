@@ -52,14 +52,29 @@ FAIL SQL에 Oracle 패턴(NVL, DECODE, SYSDATE, FROM DUAL)이 있으면:
 
 ```
 for attempt in 1..3:
+  0) ★ shared-fixes 확인 (다른 배치가 이미 발견한 패턴)
+     python3 -c "
+     from shared_fix_registry import load_fixes, match_error_to_fix
+     fixes = load_fixes()
+     match = match_error_to_fix('{에러메시지}', fixes)
+     if match: print(f'Known fix: {match[\"pattern_id\"]} → {match[\"replacement\"][:60]}')
+     "
+     → 매칭되면 바로 적용 (시도 횟수 소비 안 함)
+
   1) 에러 분석 (conversion_history 참조 + 이전과 다른 접근)
   2) 수정 전 백업:
      cp pipeline/step-1-convert/output/xml/{file}.xml \
         pipeline/step-3-validate-fix/output/xml-fixes/{file}.v{attempt}.bak
   3) output XML 수정 (Edit tool)
   4) 재검증: validate-pipeline 스킬의 1~2단계 재실행
-  5) PASS → 종료 / FAIL → 시도 기록, 다음
-  6) 3회 실패 → FAIL_ESCALATED
+  5) PASS → 종료 + ★ 수정 패턴 공유:
+     python3 -c "
+     from shared_fix_registry import record_fix
+     record_fix('{패턴ID}', r'{regex}', r'{replacement}',
+                source_query='{file}::{qid}', agent='{batch_name}')
+     "
+  6) FAIL → 시도 기록, 다음
+  7) 3회 실패 → FAIL_ESCALATED
 ```
 
 ## 시도 기록

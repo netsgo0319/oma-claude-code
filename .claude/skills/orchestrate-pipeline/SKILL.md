@@ -46,12 +46,32 @@ Agent({ subagent_type: "tc-generator", prompt: "
   완료 시 handoff.json 생성." })
 ```
 
-### Step 3: validate-and-fix
+### Step 3: validate-and-fix (Scout → Broadcast)
+
+**3a: Scout (복잡한 파일 선별, 2배치)**
+complexity L3/L4 파일 + 패턴 다양한 파일 30개를 2배치로 먼저 실행.
 ```
 Agent({ subagent_type: "validate-and-fix", prompt: "
-  할당 파일: {파일목록}
+  할당 파일: {L3/L4 파일 15개}
   validate-pipeline 스킬을 따라라.
   FAIL은 fix-loop 스킬로 수정.
+  ★ 수정 성공 시 shared_fix_registry.record_fix()로 패턴 기록.
+  완료 시 handoff.json 생성." })
+```
+
+**3b: Pre-apply (scout 결과 일괄 적용)**
+Scout에서 발견된 수정 패턴을 나머지 파일에 일괄 적용.
+```bash
+python3 tools/shared_fix_registry.py pre-apply \
+  --xml-dir pipeline/step-1-convert/output/xml
+```
+
+**3c: Validate 나머지 (N배치 병렬)**
+```
+Agent({ subagent_type: "validate-and-fix", prompt: "
+  할당 파일: {나머지 파일목록}
+  validate-pipeline 스킬을 따라라.
+  ★ fix-loop 전에 shared-fixes.jsonl 확인 (알려진 패턴 우선 적용).
   완료 시 handoff.json 생성 (gate_checks 포함)." })
 ```
 
