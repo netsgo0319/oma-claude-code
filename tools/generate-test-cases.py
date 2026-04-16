@@ -870,12 +870,18 @@ def main():
                     tc_out_path = parsed_path.parent / 'test-cases.json'
                 if tc_out_path.exists():
                     existing = json.loads(tc_out_path.read_text(encoding='utf-8'))
-                    for qid, tcs in llm_results.items():
+                else:
+                    existing = {}
+                    tc_out_path.parent.mkdir(parents=True, exist_ok=True)
+                for qid, tcs in llm_results.items():
+                    # 이 파일의 쿼리만 병합 (다른 파일 쿼리 제외)
+                    file_qids = {q.get('query_id','') for q in parsed.get('queries',[])}
+                    if qid in file_qids:
                         if qid in existing:
                             existing[qid].extend(tcs)
                         else:
                             existing[qid] = tcs
-                    tc_out_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding='utf-8')
+                tc_out_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding='utf-8')
             print(f"  LLM TC done: {source_counts.get('LLM', 0)} TCs for {len(files_updated)} files")
         elif not LLM_TC_ENABLED:
             print(f"\n  LLM TC disabled (set LLM_TC_ENABLED=1)")
@@ -937,7 +943,14 @@ def main():
         # output-dir 지정 시 per-file TC 경로도 확인
         tc_paths = [parsed_path.parent / 'test-cases.json']
         if output_dir:
+            # source_file(xxx.xml)과 디렉토리명(xxx) 양쪽 시도
+            try:
+                source_file = json.loads(parsed_path.read_text(encoding='utf-8')).get('source_file', '')
+            except Exception:
+                source_file = ''
             tc_paths.insert(0, output_dir / filename_base / 'v1' / 'test-cases.json')
+            if source_file and source_file != filename_base:
+                tc_paths.insert(0, output_dir / source_file / 'v1' / 'test-cases.json')
         tc_path = None
         for tp in tc_paths:
             if tp.exists():
