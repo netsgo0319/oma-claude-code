@@ -582,9 +582,16 @@ def generate_step3(args):
         blockers.append(f'NOT_TESTED {not_tested_total}/{len(queries)} ({round(not_tested_total/len(queries)*100,1)}%) — psql 출력 캡처 실패 의심. 재실행 필요.')
     handoff['_blockers'] = blockers
 
-    # Recommendation
+    # Recommendation + HARD BLOCK
     if blockers:
         handoff['_recommendation'] = 'retry'
+        handoff['status'] = 'blocked'
+        # ★ HARD BLOCK: blocker가 있으면 status=blocked로 강제
+        # 슈퍼바이저는 blocked를 보면 재위임해야 함
+        print(f"\n  ★ BLOCKED — handoff status를 'blocked'로 설정:")
+        for b in blockers:
+            print(f"    - {b}")
+        print(f"  에이전트는 수정 루프를 수행한 후 다시 handoff를 생성해야 합니다.")
     else:
         handoff['_recommendation'] = 'proceed'
 
