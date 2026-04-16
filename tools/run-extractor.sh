@@ -233,7 +233,7 @@ echo ""
 echo "--- Extracting Oracle SQL (input XML, with TC params) ---"
 mkdir -p "$EXTRACTED_DIR"
 
-run_extractor_with_stubs "$INPUT_DIR" "$EXTRACTED_DIR"
+run_extractor_with_stubs "$INPUT_DIR" "$EXTRACTED_DIR" || echo "  WARNING: Oracle extraction had errors (continuing to PG extraction)"
 
 # Step 4b: Extract PG SQL variants from converted output XML
 PG_EXTRACTED_DIR="$PROJECT_DIR/workspace/results/_extracted_pg"
@@ -241,7 +241,7 @@ echo ""
 echo "--- Extracting PG SQL variants (output XML, with TC params) ---"
 mkdir -p "$PG_EXTRACTED_DIR"
 
-run_extractor_with_stubs "$OUTPUT_DIR" "$PG_EXTRACTED_DIR"
+run_extractor_with_stubs "$OUTPUT_DIR" "$PG_EXTRACTED_DIR" || echo "  WARNING: PG extraction had errors (continuing)"
 
 PG_EXTRACTED_COUNT=$(ls "$PG_EXTRACTED_DIR"/*-extracted.json 2>/dev/null | wc -l)
 echo "PG output files: $PG_EXTRACTED_COUNT"
