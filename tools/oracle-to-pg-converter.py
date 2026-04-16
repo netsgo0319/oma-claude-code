@@ -535,8 +535,9 @@ class OracleToPgConverter:
         return new_sql
 
     def _convert_from_dual(self, sql):
-        """FROM DUAL -> remove."""
-        new_sql = re.sub(r'\s+FROM\s+DUAL\b', '', sql, flags=re.IGNORECASE)
+        """FROM DUAL -> remove. Handles whitespace variants (tabs, newlines) and subqueries."""
+        # Match FROM DUAL with any whitespace (including newlines, tabs)
+        new_sql = re.sub(r'\s+FROM\s+DUAL\b', '', sql, flags=re.IGNORECASE | re.DOTALL)
         if new_sql != sql:
             self._count_rule('FROM_DUAL->removed')
         return new_sql
@@ -1629,6 +1630,11 @@ class OracleToPgConverter:
                 'regex': r'\bMODEL\b\s+',
                 'name': 'MODEL clause',
                 'suggestion': 'Rewrite using window functions or procedural logic',
+            },
+            {
+                'regex': r'\bFROM\s+DUAL\b',
+                'name': 'FROM DUAL (residual)',
+                'suggestion': 'Remove FROM DUAL — PostgreSQL does not need it',
             },
             {
                 'regex': r'\bFETCH\s+FIRST\b',

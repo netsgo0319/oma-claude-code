@@ -78,6 +78,16 @@ class QueryValidator:
                 dirs.append(str(qt.parent))
             return dirs
         else:
+            td = Path(tracking_dir)
+            # First try to scan for per-file query-tracking.json files under subdirectories
+            dirs = []
+            for qt in td.glob('*/v*/query-tracking.json'):
+                dirs.append(str(qt.parent))
+            if dirs:
+                return dirs
+            # If no subdirectory structure, check if the path itself has one
+            if (td / 'query-tracking.json').exists():
+                return [tracking_dir]
             return [tracking_dir]
 
     def load_oracle_queries(self):
@@ -1168,6 +1178,20 @@ SET HEADING ON
                         bound_parts.append("'1'")
                     bound_parts.append(parts[i])
                 bound_sql = ''.join(bound_parts)
+
+                # GRIDPAGING cleanup: remove empty pagination wrapper artifacts
+                # #{GRIDPAGING_ROWNUMTYPE_TOP/BOTTOM} binds as '' → produces '' SELECT ... ''
+                has_gridpaging = any('gridpaging' in (p or '').lower() for p in param_names)
+                if has_gridpaging:
+                    # Strip leading/trailing empty-string artifacts from pagination wrapper
+                    bound_sql = re.sub(r"^''\s*", '', bound_sql.strip())
+                    bound_sql = re.sub(r"\s*''$", '', bound_sql.strip())
+                    bound_sql = re.sub(r"''\s*SELECT", 'SELECT', bound_sql, flags=re.IGNORECASE)
+                    # Remove dangling WHERE ROWNUM clauses from pagination
+                    bound_sql = re.sub(r"\)\s*WHERE\s+ROWNUM\s*<=\s*\d+\s*\)\s*WHERE\s+\w+\s*(?:>=?|>)\s*\d+",
+                                       ')', bound_sql, flags=re.IGNORECASE)
+                    bound_sql = bound_sql.strip()
+
                 test_id = f"{fname}.{qid}.{variant_name}" if variant_name else f"{fname}.{qid}.default"
                 all_tests.append({
                     'test_id': test_id,
@@ -1177,6 +1201,7 @@ SET HEADING ON
                     'case': variant_name or 'extracted',
                     'bound_sql': bound_sql,
                     'from_extracted': True,
+                    'has_gridpaging': has_gridpaging,
                 })
 
                 explain_lines.append(f"\\echo === {test_id} ===")
@@ -1867,6 +1892,12 @@ SET HEADING ON
         else:
             print("[full] Step 2/5: SKIP EXPLAIN (PG_HOST/PG_DATABASE not set or no script)")
 
+        # Prepare paths for execute and oracle scripts (needed by Step 2.5 filtering)
+        execute_sql = output_path / 'execute_test.sql'
+        execute_out = output_path / 'execute_results.txt'
+        oracle_sql = output_path / 'oracle_compare.sql'
+        oracle_out = output_path / 'oracle_results.txt'
+
         # Step 2.5: Filter EXPLAIN failures from Execute/Compare scripts
         # Queries that fail EXPLAIN will also fail Execute — skip them to save DB time
         explain_failed = self._parse_explain_failures(explain_out)
@@ -1877,8 +1908,6 @@ SET HEADING ON
             print(f"  Removed: {removed_exec} from execute_test.sql, {removed_ora} from oracle_compare.sql")
 
         # Step 3: Execute
-        execute_sql = output_path / 'execute_test.sql'
-        execute_out = output_path / 'execute_results.txt'
         if pg_host and pg_db and execute_sql.exists():
             print("[full] Step 3/5: Running Execute via psql...")
             run_psql(execute_sql, execute_out, timeout=600)
@@ -1886,8 +1915,6 @@ SET HEADING ON
             print("[full] Step 3/5: SKIP Execute (PG_HOST/PG_DATABASE not set or no script)")
 
         # Step 4: Oracle Compare
-        oracle_sql = output_path / 'oracle_compare.sql'
-        oracle_out = output_path / 'oracle_results.txt'
         ora_host = os.environ.get('ORACLE_HOST', '')
         if ora_host and oracle_sql.exists():
             print("[full] Step 4/5: Running Oracle Compare...")
@@ -1984,7 +2011,7 @@ SET HEADING ON
                                         q['final_state'] = 'FAIL_FUNCTION_MISSING'
                                     else:
                                         q['final_state'] = 'FAIL_SCHEMA_MISSING'
-                                elif 'type' in err_text and 'mismatch' in err_text:
+                                elif 'type' in err_text and ('mismatch' in err_text or 'invalid input syntax' in err_text):
                                     q['final_state'] = 'FAIL_TC_TYPE_MISMATCH'
                                 elif 'operator' in err_text:
                                     q['final_state'] = 'FAIL_TC_OPERATOR'
@@ -2283,6 +2310,7 @@ def main():
     parser.add_argument('--files', default=None, help='Comma-separated list of XML filenames to process (for parallel batching)')
     parser.add_argument('--results-dir', default='workspace/results', help='Results directory')
     parser.add_argument('--extracted', default=None, help='Extracted SQL dir from mybatis-sql-extractor (Phase 3.5)')
+    parser.add_argument('--extracted-pg', default=None, help='PG-converted extracted SQL dir (takes priority over --extracted for EXPLAIN/Execute)')
     parser.add_argument('--tracking-dir', default=None, help='Path to results dir for query-level tracking, or "auto"')
 
     args = parser.parse_args()
@@ -2304,16 +2332,20 @@ def main():
     def load_queries_with_extracted_priority():
         """Always try load_extracted() first. Supplement missing queries from static XML."""
         # Auto-detect extracted dir if not specified
-        extracted_dir = args.extracted
+        # Priority: --extracted-pg > --extracted > auto-detect (_extracted_pg > _extracted)
+        extracted_dir = args.extracted_pg or args.extracted
         if not extracted_dir:
-            # Search common locations for extracted SQL
+            # Search common locations — PG-converted extraction takes priority
             candidates = [
+                Path(args.results_dir) / '_extracted_pg',
+                Path('workspace/results/_extracted_pg'),
                 Path(args.results_dir) / '_extracted',
                 Path('workspace/results/_extracted'),
             ]
             for c in candidates:
                 if c.exists() and list(c.glob('*-extracted.json')):
                     extracted_dir = str(c)
+                    print(f"  Auto-detected extracted dir: {c}")
                     break
 
         extracted_count = 0

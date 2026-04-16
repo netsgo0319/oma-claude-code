@@ -32,11 +32,20 @@ TypeHandler/OGNL 에러는 스크립트가 자동 처리 (stub 생성+재빌드)
 ```bash
 python3 tools/validate-queries.py --full \
   --files {할당된 파일} \
-  --extracted pipeline/step-3-validate-fix/output/extracted_pg/ \
-  --output pipeline/step-3-validate-fix/output/validation/ \
-  --tracking-dir pipeline/step-1-convert/output/results/
+  --xml-dir workspace/output \
+  --input-dir pipeline/shared/input \
+  --results-dir pipeline/step-1-convert/output/results \
+  --extracted workspace/results/_extracted_pg \
+  --output pipeline/step-3-validate-fix/output/validation/{batch이름} \
+  --tracking-dir pipeline/step-1-convert/output/results
 ```
 EXPLAIN + Execute + Compare를 한번에. 다른 방법 금지.
+
+**★ `--extracted` 경로 주의:**
+- **`_extracted_pg`** (PG 변환 XML에서 추출) → EXPLAIN/Execute에 사용 (**반드시 이것**)
+- `_extracted` (Oracle 원본에서 추출) → 사용하면 NVL/DECODE 등 Oracle SQL이 PG에 테스트됨 → 대량 실패
+- 지정하지 않으면 자동 감지 (`_extracted_pg` 우선)
+
 **성능 최적화**: EXPLAIN 실패 쿼리는 Execute/Compare에서 자동 제외. Compare는 배치 실행(DB 세션 1회).
 
 ### 3단계: 결과 확인

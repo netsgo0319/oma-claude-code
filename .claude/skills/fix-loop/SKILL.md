@@ -31,8 +31,22 @@ FAIL 쿼리를 받아 **분석 → 수정 → 재검증** 루프를 최대 3회 
 | operator_mismatch | `operator does not exist` | 캐스트 추가 |
 | residual_oracle | SYSDATE, NVL, ROWNUM 잔존 | 룰 재적용 |
 | compare_diff | Oracle↔PG 행수 불일치 | SQL 수정 + 재검증 |
+| extraction_artifact | 에러 SQL에 NVL/DECODE 있지만 xml_after에는 COALESCE/CASE | **★ 아래 판별 절차** |
 
 **DBA 3종 외 모든 FAIL은 반드시 수정 시도.**
+
+## ★ 추출 아티팩트 판별 (수정 루프 전 반드시 확인)
+
+FAIL SQL에 Oracle 패턴(NVL, DECODE, SYSDATE, FROM DUAL)이 있으면:
+
+1. 해당 쿼리의 **xml_after**(변환된 XML)를 확인
+2. xml_after에 COALESCE, CASE, CURRENT_TIMESTAMP 등 PG 구문이 있으면 → **추출 아티팩트**
+   - 원인: `--extracted`에 Oracle SQL(_extracted)이 사용됨
+   - **XML 수정 불필요** → `--extracted workspace/results/_extracted_pg`로 재검증
+3. xml_after에도 NVL/DECODE 등 Oracle 패턴이 남아있으면 → **실제 변환 버그** → 수정 루프 진입
+
+이 판별 없이 "추출 아티팩트라서 수정 불필요"로 보고하면 안 된다.
+반드시 xml_after를 확인하고, 아티팩트면 재검증, 실제 버그면 수정.
 
 ## 루프 절차 (쿼리당 최대 3회)
 
