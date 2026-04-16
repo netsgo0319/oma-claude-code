@@ -80,7 +80,7 @@ workspace/                           하위 호환 (심링크 뷰)
 |---------|------|------|
 | **converter** | **Opus[1M]** | Oracle→PG 변환. batch-process.sh 룰 변환 + LLM 복합 변환. 11개 스킬 preload |
 | **tc-generator** | Sonnet | TC 생성. 커스텀바인드 > **LLM(Bedrock Sonnet, 3 workers 병렬)** — infer_value 제거됨 |
-| **validate-and-fix** | **Sonnet** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
+| **validate-and-fix** | **Opus[1M]** | 검증+수정. run-extractor → --full → fix-loop(3회). 10개 스킬 preload |
 | **reporter** | Sonnet | 보고서. query-matrix.json → HTML 4탭 (Overview/Explorer/DBA/Log) |
 
 ## 환경변수

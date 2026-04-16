@@ -66,7 +66,7 @@ flowchart TB
 | **DBA 에러 즉시 분리** | relation/column/function_missing → 수정 루프 진입 안 함 |
 | **UTC timestamp** | 로그는 UTC Unix int. 보고서 JS에서 로컬 시간 표시 |
 | **스킬 기반 실행** | 26개 스킬 (6 파이프라인 + 20 도메인). 에이전트 skills: 필드로 자동 inject |
-| **모델 배치** | supervisor+converter: opus[1m], **validate-and-fix+tc-generator+reporter: sonnet** |
+| **모델 배치** | supervisor+converter+validate-and-fix: **opus[1m]**, tc-generator+reporter: sonnet |
 | **LLM TC 메인 엔진** | infer_value() 제거 → Bedrock Sonnet이 SQL 문맥 기반 TC 생성 (3 workers 병렬, 멀티리전) |
 | **Scout → Broadcast** | Step 3에서 복잡 파일 선행 검증 → 발견 패턴 일괄 적용 → 나머지 병렬 |
 | **iBatis 2.x 호환** | parse-xml, validate-queries, generate-test-cases에서 #param# + 동적 태그 지원 |

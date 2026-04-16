@@ -57,12 +57,24 @@ export LLM_TC_WORKERS=3                    # 동시 API 호출 수
 - 각 Step의 병렬 실행은 **Subagents**로 (결과만 리턴, 서로 대화 불필요)
 - Agent Teams(tmux 모드)는 서로 협력이 필요한 경우에만
 
-### ★ GATE (Step 3→4)
+### ★ GATE (Step 3→4) — 슈퍼바이저가 반드시 검증
+
+**각 배치 에이전트의 handoff.json을 전부 읽고, 아래 조건 하나라도 FAIL이면 Step 4 진행 금지:**
 
 - `fix_loop_executed.status == "fail"` → 재위임: "수정 루프 0회. 반드시 수정."
 - `compare_coverage.status == "fail"` → 재위임: "Compare 미실행. --full 재실행."
 - `NOT_TESTED 50% 이상` → 재위임: "검증 자체가 안 됨. 재실행."
-- `fix_attempted == 0` AND 비-DBA FAIL → 재위임: "수정 0건 불허."
+- `fix_attempted == 0` AND 비-DBA FAIL 존재 → 재위임: "수정 0건 불허. Edit+재검증 반복."
+
+**★ 슈퍼바이저 추가 검증 (에이전트 결과 신뢰하지 마라):**
+```
+각 배치에 대해:
+1) handoff.json의 fix_attempted 확인 — DBA 아닌 FAIL이 있는데 0이면 BLOCK
+2) "분석만 하고 수정 안 함" 패턴 감지:
+   - attempts 배열이 비어있는 FAIL 쿼리 → 수정 루프 안 돈 것
+   - state_counts에서 FAIL_SYNTAX + FAIL_COMPARE_DIFF가 높은데 fix_attempted가 낮으면 → BLOCK
+3) BLOCK된 배치만 재위임 (나머지는 유지)
+```
 
 ## 병렬 분배 기준
 
