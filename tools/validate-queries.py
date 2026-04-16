@@ -2200,6 +2200,26 @@ SET HEADING ON
                             q['explain_status'] = exp['status']
                             if cmp is not None:
                                 q['compare_status'] = 'pass' if cmp else 'fail'
+
+                            # ★ FAIL 쿼리 자동 attempts 기록 (에이전트 record-attempt 누락 대비)
+                            fs = q.get('final_state', '')
+                            if fs.startswith('FAIL_') and not q.get('attempts'):
+                                err_cat = fs.replace('FAIL_', '')
+                                if fs == 'FAIL_COMPARE_DIFF':
+                                    err_detail = f'Oracle↔PG 결과 불일치'
+                                else:
+                                    err_detail = exp.get('error', '')[:200] if exp.get('error') else ''
+                                if 'attempts' not in q:
+                                    q['attempts'] = []
+                                q['attempts'].append({
+                                    'attempt': 1,
+                                    'ts': datetime.now().isoformat(),
+                                    'error_category': err_cat,
+                                    'error_detail': err_detail,
+                                    'fix_applied': '',
+                                    'result': 'fail',
+                                })
+
                             updated_count += 1
 
                     tm._save()
