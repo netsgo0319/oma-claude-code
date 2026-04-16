@@ -19,7 +19,7 @@ from pathlib import Path
 
 LLM_TC_MODEL = os.environ.get('LLM_TC_MODEL', 'global.anthropic.claude-sonnet-4-6')
 LLM_TC_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-LLM_TC_MAX_BATCH = int(os.environ.get('LLM_TC_MAX_QUERIES_PER_BATCH', '10'))
+LLM_TC_MAX_BATCH = int(os.environ.get('LLM_TC_MAX_QUERIES_PER_BATCH', '20'))
 LLM_TC_ENABLED = os.environ.get('LLM_TC_ENABLED', '1') == '1'
 LLM_TC_MAX_TCS = int(os.environ.get('LLM_TC_MAX_TCS_PER_QUERY', '3'))
 LLM_TC_WORKERS = int(os.environ.get('LLM_TC_WORKERS', '3'))  # 동시 API 호출 수
@@ -152,7 +152,7 @@ def _call_bedrock(prompt, query_ids, max_retries=2, region=None):
 
     body = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "temperature": 0.3,
         "messages": [
             {"role": "user", "content": prompt}
