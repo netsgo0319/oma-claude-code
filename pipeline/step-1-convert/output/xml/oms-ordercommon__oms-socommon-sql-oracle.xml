@@ -517,7 +517,7 @@
 
    <select id="selectSoChk" resultType="camelMap">
       /* oms-socommon-sql-oracle.xml selectSoChk */
-      SELECT LOWER(SUBSTR(REPLACE(INITCAP(A.SOCOLUMN),'_'),1,1))||SUBSTR(REPLACE(INITCAP(A.SOCOLUMN),'_'),2) AS SOCOLUMN
+      SELECT LOWER(SUBSTR(REPLACE(INITCAP(A.SOCOLUMN), '_', ''),1,1))||SUBSTR(REPLACE(INITCAP(A.SOCOLUMN), '_', ''),2) AS SOCOLUMN
            , COALESCE(B.COMMENTS, A.SOCOLUMN) AS COLNAME
            , A.ORDERTYPECD AS OR_TYPE_CD
            , A.HDDTDIV

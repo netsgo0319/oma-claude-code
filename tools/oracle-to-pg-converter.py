@@ -320,6 +320,7 @@ class OracleToPgConverter:
         # 22. TO_CHAR single arg: TO_CHAR(expr) → (expr)::TEXT
         # PG TO_CHAR requires format arg; single-arg = cast to text
         sql = self._convert_to_char_single(sql)
+        sql = self._convert_replace_two_arg(sql)
 
         if sql != original:
             self.stats['total_replacements'] += 1
@@ -1114,6 +1115,30 @@ class OracleToPgConverter:
             wrap_args, sql, flags=re.IGNORECASE
         )
         return new_sql
+
+    def _convert_replace_two_arg(self, sql):
+        """Oracle REPLACE(str, old) (2 args, removes old) -> PG REPLACE(str, old, '')."""
+        pattern = re.compile(r'\bREPLACE\s*\(', re.IGNORECASE)
+        result = []
+        last_end = 0
+        for match in pattern.finditer(sql):
+            start = match.start()
+            paren_start = match.end() - 1
+            end = self._find_matching_paren(sql, paren_start)
+            if end == -1:
+                continue
+            inner = sql[paren_start + 1:end]
+            args = self._split_args(inner)
+            if len(args) == 2:
+                result.append(sql[last_end:paren_start + 1])
+                result.append(f"{args[0]}, {args[1]}, ''")
+                result.append(')')
+                last_end = end + 1
+                self._count_rule('REPLACE_2arg->3arg')
+        if result:
+            result.append(sql[last_end:])
+            return ''.join(result)
+        return sql
 
     def _convert_bitand(self, sql):
         """BITAND(a, b) -> (a & b)."""

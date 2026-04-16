@@ -97,10 +97,10 @@ def _get_pg_col_types():
 _PG_TYPE_TO_SQL = {
     'integer': '1', 'bigint': '1', 'smallint': '1', 'numeric': '1', 'real': '1.0',
     'double precision': '1.0', 'decimal': '1',
-    'character varying': "'TEST'", 'character': "'T'", 'text': "'TEST'",
+    'character varying': "'1'", 'character': "'Y'", 'text': "'1'",
     'boolean': 'TRUE',
-    'date': "'20260115'", 'timestamp without time zone': "'20260115 10:30:00'",
-    'timestamp with time zone': "'20260115 10:30:00'",
+    'date': "'20260115'", 'timestamp without time zone': "'2026-01-15 10:30:00'",
+    'timestamp with time zone': "'2026-01-15 10:30:00'",
     'bytea': "''", 'uuid': "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'",
 }
 
@@ -1229,11 +1229,28 @@ SET HEADING ON
                     tc_binds = best_tcs[0].get('params', best_tcs[0].get('binds', {}))
 
                 # Replace ? with TC values positionally
+                # ★ SQL 문맥 인식: ? 앞 SQL을 보고 타입 추론
+                def _infer_type_from_context(sql_before_placeholder):
+                    """? 직전 SQL 문맥에서 기대 타입을 추론."""
+                    ctx = sql_before_placeholder.rstrip().upper()
+                    if re.search(r'TO_DATE\s*\(\s*$', ctx): return 'date'
+                    if re.search(r'TO_TIMESTAMP\s*\(\s*$', ctx): return 'date'
+                    if re.search(r'TO_NUMBER\s*\(\s*$', ctx): return 'numeric'
+                    if re.search(r'CAST\s*\(\s*$', ctx): return 'text'
+                    if re.search(r'DATE_TRUNC\s*\(\s*$', ctx): return 'text'
+                    if re.search(r'INTERVAL\s+$', ctx): return 'interval'
+                    if re.search(r'::\s*INTEGER\s*$', ctx): return 'numeric'
+                    if re.search(r'::\s*NUMERIC\s*$', ctx): return 'numeric'
+                    return None
+                _CTX_TYPE_DEFAULTS = {
+                    'date': "'20260115'", 'numeric': '1', 'text': "'1'", 'interval': "'1 day'"
+                }
                 parts = sql.split('?')
                 placeholder_count = len(parts) - 1
                 if param_names and len(param_names) != placeholder_count:
                     print(f"  WARN: {qid} param_names({len(param_names)}) != placeholders({placeholder_count})")
                 bound_parts = [parts[0]]
+                pg_types = _get_pg_col_types()
                 for i in range(1, len(parts)):
                     pname = param_names[i-1] if i-1 < len(param_names) else ''
                     val = tc_binds.get(pname)
@@ -1241,8 +1258,35 @@ SET HEADING ON
                         # GRIDPAGING params → empty (pagination wrapper)
                         if 'gridpaging' in pname.lower():
                             bound_parts.append('')
+                        elif 'search_condition' in pname.lower() or 'colname' in pname.lower():
+                            bound_parts.append('')
                         else:
-                            bound_parts.append("'1'")  # fallback
+                            # ★ 타입 인식 fallback: SQL문맥 → PG컬럼타입 → 파라미터명 순
+                            pname_lower = pname.lower()
+                            pname_upper = pname.upper()
+                            # 1순위: SQL 문맥 (TO_DATE(?), TO_NUMBER(?) 등)
+                            ctx_type = _infer_type_from_context(parts[i-1] if i > 0 else '')
+                            if ctx_type and ctx_type in _CTX_TYPE_DEFAULTS:
+                                bound_parts.append(_CTX_TYPE_DEFAULTS[ctx_type])
+                                bound_parts.append(parts[i])
+                                continue
+                            # 2순위: PG 컬럼 타입
+                            pg_type = pg_types.get(pname_upper, '') if pg_types else ''
+                            if pg_type:
+                                for tp, sql_val in _PG_TYPE_TO_SQL.items():
+                                    if pg_type.startswith(tp):
+                                        bound_parts.append(sql_val)
+                                        break
+                                else:
+                                    bound_parts.append("'1'")
+                            elif any(kw in pname_lower for kw in ('cnt', 'count', 'num', 'seq', 'qty', 'amt', 'idx', 'size', 'page', 'limit', 'offset')):
+                                bound_parts.append("'1'")
+                            elif any(kw in pname_lower for kw in ('date', 'dt', 'ymd', 'yyyymmdd')):
+                                bound_parts.append("'20260115'")
+                            elif any(kw in pname_lower for kw in ('yn', 'flag', 'delyn', 'useyn')):
+                                bound_parts.append("'Y'")
+                            else:
+                                bound_parts.append("'1'")
                     elif isinstance(val, (int, float)):
                         bound_parts.append(str(val))
                     elif isinstance(val, str):
