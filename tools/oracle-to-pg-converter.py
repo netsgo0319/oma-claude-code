@@ -321,6 +321,15 @@ class OracleToPgConverter:
         # PG TO_CHAR requires format arg; single-arg = cast to text
         sql = self._convert_to_char_single(sql)
 
+        # 23. REGEXP_INSTR(col, pattern) > 0 → col ~ pattern
+        sql = self._convert_regexp_instr(sql)
+
+        # 24. SUBSTRB(expr, start, len) → SUBSTRING(expr FROM start FOR len)
+        sql = self._convert_substrb(sql)
+
+        # 25. COUNT 쿼리 ORDER BY 제거 (무의미, PG 에러 가능)
+        sql = self._convert_count_order_by(sql)
+
         if sql != original:
             self.stats['total_replacements'] += 1
 
@@ -1557,6 +1566,48 @@ class OracleToPgConverter:
         if new_sql != sql:
             self._count_rule('OFFSET_FETCH->LIMIT_OFFSET')
         return new_sql
+
+    def _convert_regexp_instr(self, sql):
+        """REGEXP_INSTR(col, pattern) > 0 → col ~ pattern.
+        REGEXP_INSTR(col, pattern) = 0 → col !~ pattern.
+        20+ 건 반복 수동 수정됨 → 룰 승격."""
+        # REGEXP_INSTR(expr, 'pattern') > 0 → expr ~ 'pattern'
+        new_sql = re.sub(
+            r'\bREGEXP_INSTR\s*\(\s*([^,]+?)\s*,\s*(\x27[^\x27]+\x27)\s*\)\s*>\s*0',
+            r'\1 ~ \2', sql, flags=re.IGNORECASE)
+        # REGEXP_INSTR(expr, 'pattern') = 0 → expr !~ 'pattern'
+        new_sql = re.sub(
+            r'\bREGEXP_INSTR\s*\(\s*([^,]+?)\s*,\s*(\x27[^\x27]+\x27)\s*\)\s*=\s*0',
+            r'\1 !~ \2', new_sql, flags=re.IGNORECASE)
+        if new_sql != sql:
+            self._count_rule('REGEXP_INSTR->~')
+        return new_sql
+
+    def _convert_substrb(self, sql):
+        """SUBSTRB(expr, start, len) → SUBSTRING(expr FROM start FOR len).
+        SUBSTRB는 byte 단위지만 PG UTF-8에서는 SUBSTRING으로 충분."""
+        new_sql = re.sub(
+            r'\bSUBSTRB\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^)]+?)\s*\)',
+            r'SUBSTRING(\1 FROM \2 FOR \3)', sql, flags=re.IGNORECASE)
+        # 2인자 SUBSTRB(expr, start)
+        new_sql = re.sub(
+            r'\bSUBSTRB\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)',
+            r'SUBSTRING(\1 FROM \2)', new_sql, flags=re.IGNORECASE)
+        if new_sql != sql:
+            self._count_rule('SUBSTRB->SUBSTRING')
+        return new_sql
+
+    def _convert_count_order_by(self, sql):
+        """SELECT COUNT(*) ... ORDER BY → ORDER BY 제거.
+        COUNT 쿼리에 ORDER BY는 무의미하며 일부 PG 버전에서 에러."""
+        # SELECT COUNT로 시작하고 ORDER BY로 끝나는 패턴
+        if re.search(r'\bSELECT\s+COUNT\s*\(', sql, re.IGNORECASE):
+            new_sql = re.sub(
+                r'\s+ORDER\s+BY\s+[^)]+$', '', sql, flags=re.IGNORECASE)
+            if new_sql != sql:
+                self._count_rule('COUNT_ORDER_BY->removed')
+                return new_sql
+        return sql
 
     # ========== Residual Pattern Scanner ==========
 

@@ -598,13 +598,19 @@ SET HEADING ON
 
     @staticmethod
     def _extract_sql_text(elem, sql_fragments=None):
-        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags."""
+        """Extract SQL text from an XML element, resolving <include refid> and stripping MyBatis tags.
+        selectKey는 분리 (INSERT와 합쳐지면 syntax error)."""
         if sql_fragments is None:
             sql_fragments = {}
         parts = []
         if elem.text:
             parts.append(elem.text)
         for child in elem:
+            # selectKey는 별도 실행 SQL이므로 제외 (합치면 syntax error)
+            if child.tag == 'selectKey':
+                if child.tail:
+                    parts.append(child.tail)
+                continue
             if child.tag == 'include':
                 refid = child.get('refid', '')
                 if refid and refid in sql_fragments:
@@ -935,6 +941,16 @@ SET HEADING ON
             return "'1'"
         result = re.sub(r'\$\{[^}]+\}', _dollar_replace, result)
         result = re.sub(r'\$(\w+)\$', _dollar_replace, result)
+
+        # 후처리: 빈 WHERE 제거 (MyBatis <where> 태그가 없을 때 발생)
+        result = re.sub(r'\bWHERE\s*$', '', result, flags=re.IGNORECASE)
+        result = re.sub(r'\bWHERE\s+ORDER\b', 'ORDER', result, flags=re.IGNORECASE)
+        result = re.sub(r'\bWHERE\s+GROUP\b', 'GROUP', result, flags=re.IGNORECASE)
+        result = re.sub(r'\bWHERE\s+HAVING\b', 'HAVING', result, flags=re.IGNORECASE)
+        result = re.sub(r'\bWHERE\s+LIMIT\b', 'LIMIT', result, flags=re.IGNORECASE)
+        # 빈 AND/OR 제거 (모든 <if> 스킵 시)
+        result = re.sub(r'\bWHERE\s+AND\b', 'WHERE', result, flags=re.IGNORECASE)
+        result = re.sub(r'\bWHERE\s+OR\b', 'WHERE', result, flags=re.IGNORECASE)
 
         return result
 
