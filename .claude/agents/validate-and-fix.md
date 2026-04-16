@@ -79,10 +79,19 @@ python3 tools/validate-queries.py --full \
 수정 루프 재검증 시에도 같은 디렉토리에 덮어쓴다 (validated.json이 최신 결과로 갱신).
 **임의 디렉토리명(validation_batchXX_v2, vf_agent1_... 등)을 만들지 마라.**
 
+### ★ --extracted 경로 주의
+
+검증 명령에서 **반드시 `_extracted_pg`를 사용하라**:
+```bash
+--extracted workspace/results/_extracted_pg
+```
+`_extracted`(Oracle)를 사용하면 Oracle SQL이 PG에 테스트되어 대량 실패한다.
+
 ### 2. FAIL 분류 + 수정 루프
 
 **fix-loop 스킬을 따라라:**
 - DBA 3종 → 즉시 스킵
+- **추출 아티팩트** → xml_after 확인 후 `_extracted_pg`로 재검증 (fix-loop 스킬 참조)
 - 나머지 FAIL → 최대 3회 수정 루프
 - 매 시도 `record-attempt.sh`로 기록
 - 분석만 하고 멈추지 마라. XML Edit + 재검증 필수.
