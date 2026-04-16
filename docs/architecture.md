@@ -65,8 +65,10 @@ flowchart TB
 | **모든 쿼리 TC 기반 검증** | 0건==0건도 PASS. 스킵 없음 |
 | **DBA 에러 즉시 분리** | relation/column/function_missing → 수정 루프 진입 안 함 |
 | **UTC timestamp** | 로그는 UTC Unix int. 보고서 JS에서 로컬 시간 표시 |
-| **스킬 기반 실행** | 24개 스킬 (6 파이프라인 + 18 도메인). 에이전트 skills: 필드로 자동 inject |
-| **모델**: opus[1m] | 슈퍼바이저 + converter + validate-and-fix. tc-generator/reporter는 sonnet |
+| **스킬 기반 실행** | 26개 스킬 (6 파이프라인 + 20 도메인). 에이전트 skills: 필드로 자동 inject |
+| **모델 배치** | supervisor+converter: opus[1m], **validate-and-fix+tc-generator+reporter: sonnet** |
+| **LLM TC 메인 엔진** | infer_value() 제거 → Bedrock Sonnet이 SQL 문맥 기반 TC 생성 (3 workers 병렬, 멀티리전) |
+| **Scout → Broadcast** | Step 3에서 복잡 파일 선행 검증 → 발견 패턴 일괄 적용 → 나머지 병렬 |
 | **iBatis 2.x 호환** | parse-xml, validate-queries, generate-test-cases에서 #param# + 동적 태그 지원 |
 
 ---
@@ -94,8 +96,8 @@ flowchart LR
 |------|----------|------|--------|-------------|
 | **0** | 슈퍼바이저 | generate-sample-data.py | samples/, env-check.json | xml_file_count, env_checks |
 | **1** | **converter** | batch-process.sh, converter.py | output/xml/, query-tracking.json | queries_total, complexity_dist |
-| **2** | **tc-generator** | generate-test-cases.py | merged-tc.json | queries_with_tc, tc_source_dist |
-| **3** | **validate-and-fix** | validate-queries.py | validated.json, compare.json | **gate_checks** (fix_loop + compare) |
+| **2** | **tc-generator** | generate-test-cases.py + llm_tc_generator.py | merged-tc.json | queries_with_tc, LLM 3 workers 병렬 |
+| **3** | **validate-and-fix** | run-extractor.sh + validate-queries.py | validated.json, compare.json | **gate_checks** + Scout→Broadcast |
 | **4** | **reporter** | generate-query-matrix.py, generate-report.py | csv, json, html | validation (fields complete) |
 
 ### Step 3 → 4 GATE (★)
@@ -130,14 +132,23 @@ Step 2:
   WRITE: pipeline/step-2-tc-generate/output/merged-tc.json
          pipeline/step-2-tc-generate/handoff.json
 
-Step 3:
-  READ:  pipeline/step-1-convert/output/xml/{file}.xml
-         pipeline/step-2-tc-generate/output/merged-tc.json
-         pipeline/shared/input/*.xml (Compare용)
-  WRITE: pipeline/step-3-validate-fix/output/validation/
-         pipeline/step-3-validate-fix/output/extracted_pg/
-         pipeline/step-1-convert/output/results/{file}/v1/query-tracking.json  ← cross-write
-         pipeline/step-3-validate-fix/handoff.json (gate_checks)
+Step 3 (Scout → Broadcast):
+  3a Scout:
+    READ:  같은 (L3/L4 복잡 파일 30개 선별)
+    WRITE: pipeline/step-3-validate-fix/shared-fixes.jsonl  ← 발견 패턴 공유
+  3b Pre-apply:
+    READ:  shared-fixes.jsonl
+    WRITE: pipeline/step-1-convert/output/xml/*.xml  ← 패턴 일괄 적용
+  3c Validate:
+    READ:  pipeline/step-1-convert/output/xml/{file}.xml
+           pipeline/step-2-tc-generate/output/merged-tc.json
+           workspace/results/_extracted_pg/  ← ★ _extracted가 아님
+           pipeline/shared/input/*.xml (Compare용)
+           shared-fixes.jsonl (fix-loop 전 조회)
+    WRITE: pipeline/step-3-validate-fix/output/validation/batch{N}/
+           pipeline/step-3-validate-fix/output/extracted_pg/
+           pipeline/step-1-convert/output/results/{file}/v1/query-tracking.json  ← cross-write
+           pipeline/step-3-validate-fix/handoff.json (gate_checks)
 
 Step 4:
   READ:  ALL query-tracking.json + validated.json + compare.json + extracted
@@ -160,8 +171,10 @@ Step 4:
 | attempts | Step 3 | query-tracking.json (Step 3이 갱신) |
 | explain_status | Step 3 | validated.json → query-tracking.json |
 | compare_status | Step 3 | compare_validated.json |
-| final_state | Step 4 | generate-query-matrix.py가 계산 |
+| final_state | Step 3 → Step 4 | tracking_utils가 설정 → generate-query-matrix.py가 보충 |
 | complexity | Step 1 | complexity-scores.json |
+| mybatis_extracted | Step 3 | 'both'/'oracle_only'/'pg_only'/'no' |
+| fail_by_extraction | Step 4 | MyBatis 렌더링 vs 정적 추출별 FAIL 분류 |
 
 ---
 
@@ -264,9 +277,9 @@ stateDiagram-v2
 
 | 탭 | 내용 |
 |----|------|
-| **Overview** | 6카드 + Step Progress |
-| **Explorer** | 파일→쿼리 트리 + MyBatis XML diff + 렌더링 SQL diff + Attempt History |
-| **DBA** | 누락 오브젝트 그룹핑 + 0건 3분류 (양쪽0/Oracle만0/PG만0) |
+| **Overview** | 6카드 + 15-state 상세 테이블 + FAIL 원인 분석 (추출경로별: MyBatis 렌더링 vs 정적 추출) |
+| **Explorer** | 파일→쿼리 트리 + 15-state 아이콘/라벨 + SQL diff + TC 결과(바인드값+행수) + Attempt History + **검색어 하이라이트** |
+| **DBA** | 누락 오브젝트(DB/테이블/컬럼 명시, 매퍼 파일 위치) + 0건 3분류 (**"재변환 대상" 명시**) |
 | **Log** | activity-log.jsonl 타임라인 |
 
 ### 산출물
@@ -325,7 +338,38 @@ stateDiagram-v2
     {"type": "table", "name": "taddr", "action": "CREATE TABLE taddr",
      "affected_queries": [{"query_id": "selectAddr", "file": "AddrMapper.xml"}]}
   ],
-  "dba_zero_rows": [{"query_id": "selectOld", "file": "OldMapper.xml"}],
+  "dba_zero_rows": {"both_zero": [...], "oracle_only_zero": [...], "pg_only_zero": [...]},
   "compare_fail_types": {"oracle_error": 55, "row_mismatch": 4, "pg_error": 4}
 }
+```
+
+---
+
+## 7. 성능 최적화
+
+| 기능 | 도구 | 효과 |
+|------|------|------|
+| **LLM TC 병렬화** | llm_tc_generator.py | 3 workers (ThreadPoolExecutor) + 멀티리전 라운드로빈. 25분→8분 |
+| **EXPLAIN 사전 필터** | validate-queries.py | EXPLAIN 실패 쿼리를 Execute/Compare에서 제거 |
+| **Compare 배치 실행** | validate-queries.py | 쿼리별 subprocess → DB 세션 1회 (oracledb/psql) |
+| **Scout → Broadcast** | shared_fix_registry.py | 복잡 파일 선행 검증 → 패턴 공유 → 나머지 일괄 적용 |
+| **pre-scan stubs** | pre-scan-stubs.py | XML 사전 스캔 → Java stub 자동 생성 → 빌드 1회로 완료 |
+| **PG 타입 인식 바인딩** | validate-queries.py | TC 값과 PG 컬럼 타입 자동 조정 (varchar↔integer) |
+
+---
+
+## 8. 학습 루프
+
+```
+/learn (수동 실행)
+  │
+  ├── learn-from-results.py → pipeline/learning/
+  │     ├── run-{date}.json          이번 실행 분석
+  │     ├── cumulative.json          패턴별 누적 카운트
+  │     └── promotion-candidates.md  승격 후보 (사람 검토)
+  │
+  └── 승격 기준:
+        3회+ 반복 + regex 가능 → oracle-to-pg-converter.py 룰 추가
+        3회+ 반복 + LLM 필요 → oracle-pg-rules.md 가이드 추가
+        1~2회 → edge-cases.md 기록
 ```
