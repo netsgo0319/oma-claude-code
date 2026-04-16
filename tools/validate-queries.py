@@ -59,6 +59,51 @@ def _load_dotenv():
 
 _load_dotenv()
 
+# ── PG column type cache (타입 안전 바인딩용) ──────
+_PG_COL_TYPES_CACHE = None  # lazy init
+
+def _get_pg_col_types():
+    """PG information_schema에서 컬럼 타입 조회. {COLUMN_NAME_UPPER: data_type}."""
+    global _PG_COL_TYPES_CACHE
+    if _PG_COL_TYPES_CACHE is not None:
+        return _PG_COL_TYPES_CACHE
+    _PG_COL_TYPES_CACHE = {}
+    pg_host = os.environ.get('PG_HOST', '')
+    pg_db = os.environ.get('PG_DATABASE', '')
+    pg_user = os.environ.get('PG_USER', '')
+    pg_schema = os.environ.get('PG_SCHEMA', pg_user)
+    if not (pg_host and pg_db):
+        return _PG_COL_TYPES_CACHE
+    try:
+        import shutil
+        if not shutil.which('psql'):
+            return _PG_COL_TYPES_CACHE
+        sql = f"""SELECT column_name || '|' || data_type FROM information_schema.columns WHERE table_schema = '{pg_schema}' ORDER BY column_name;"""
+        env = dict(os.environ, PGPASSWORD=os.environ.get('PG_PASSWORD', ''))
+        r = subprocess.run(
+            ['psql', '-h', pg_host, '-p', os.environ.get('PG_PORT', '5432'),
+             '-U', pg_user, '-d', pg_db, '-t', '-A', '-c', sql],
+            capture_output=True, text=True, timeout=30, env=env)
+        for line in r.stdout.strip().split('\n'):
+            parts = line.strip().split('|')
+            if len(parts) == 2 and parts[0]:
+                _PG_COL_TYPES_CACHE[parts[0].strip().upper()] = parts[1].strip().lower()
+        if _PG_COL_TYPES_CACHE:
+            print(f"  [validate] PG column types loaded: {len(_PG_COL_TYPES_CACHE)} columns")
+    except Exception as e:
+        print(f"  WARNING: PG column type lookup failed: {e}")
+    return _PG_COL_TYPES_CACHE
+
+_PG_TYPE_TO_SQL = {
+    'integer': '1', 'bigint': '1', 'smallint': '1', 'numeric': '1', 'real': '1.0',
+    'double precision': '1.0', 'decimal': '1',
+    'character varying': "'TEST'", 'character': "'T'", 'text': "'TEST'",
+    'boolean': 'TRUE',
+    'date': "'20260115'", 'timestamp without time zone': "'20260115 10:30:00'",
+    'timestamp with time zone': "'20260115 10:30:00'",
+    'bytea': "''", 'uuid': "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'",
+}
+
 
 class QueryValidator:
     def __init__(self, output_dir='workspace/output', results_dir='workspace/results',
@@ -293,6 +338,7 @@ SET HEADING ON
                     bound_pg = self._bind_positional(pg_sql, param_names, binds)
                 else:
                     bound_pg = self.bind_params(pg_sql, binds)
+                # ★ Oracle 바인딩도 동일한 타입 인식 적용 (execution_error 방지)
                 bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
                 if qtype in ('insert', 'update', 'delete'):
@@ -797,19 +843,38 @@ SET HEADING ON
 
     def bind_params(self, sql, params_dict, default_unbound='NULL'):
         """Replace #{param} with actual values from test case.
-        default_unbound: value for unbound params ('NULL' or "'1'" to match PG fallback)."""
+        default_unbound: value for unbound params ('NULL' or "'1'" to match PG fallback).
+        ★ PG 컬럼 타입을 참조하여 타입 안전 바인딩."""
         result = sql
+        pg_types = _get_pg_col_types()
         for key, value in params_dict.items():
             pattern = rf'#\{{{key}(?:,[^}}]*)?\}}'
+            pg_col_type = pg_types.get(key.upper(), '') if pg_types else ''
             if value is None:
                 replacement = 'NULL'
             elif isinstance(value, bool):
                 replacement = 'TRUE' if value else 'FALSE'
             elif isinstance(value, (int, float)):
-                replacement = str(value)
+                # ★ PG 컬럼이 varchar/text인데 숫자값이면 문자열로 바인딩
+                if pg_col_type and pg_col_type.startswith(('character', 'text')):
+                    replacement = f"'{value}'"
+                else:
+                    replacement = str(value)
             elif isinstance(value, str):
                 safe_value = value.replace("'", "''")
-                replacement = f"'{safe_value}'"
+                # ★ PG 컬럼이 숫자형인데 문자열이 숫자면 숫자로 바인딩
+                if pg_col_type and pg_col_type in ('integer', 'bigint', 'smallint', 'numeric', 'real', 'double precision', 'decimal'):
+                    try:
+                        float(value)
+                        replacement = value  # 숫자 문자열은 따옴표 없이
+                    except (ValueError, TypeError):
+                        replacement = f"'{safe_value}'"
+                # ★ 값 길이가 character(N) 고정길이 초과하면 잘라냄
+                # character varying은 가변길이이므로 절단하지 않음
+                elif pg_col_type == 'character' and len(safe_value) > 1:
+                    replacement = f"'{safe_value[:1]}'"
+                else:
+                    replacement = f"'{safe_value}'"
             elif isinstance(value, list):
                 # For foreach - join as comma-separated
                 items = ', '.join(f"'{v}'" if isinstance(v, str) else str(v) for v in value)
@@ -835,8 +900,16 @@ SET HEADING ON
         def _unbound_replace(m):
             full = m.group(0)[2:-1]  # strip #{ and }
             pname = full.split(',')[0].strip().lower()
+            pname_upper = pname.upper()
             if 'gridpaging' in pname or 'colname' in pname or 'search_condition' in pname:
                 return ''
+            # ★ PG 컬럼 타입 기반 추론 (가장 정확)
+            pg_types = _get_pg_col_types()
+            if pg_types and pname_upper in pg_types:
+                pg_type = pg_types[pname_upper]
+                for tp, sql_val in _PG_TYPE_TO_SQL.items():
+                    if pg_type.startswith(tp):
+                        return sql_val
             # Type-aware: 숫자형 파라미터명 → 숫자값
             if any(kw in pname for kw in ('cnt', 'count', 'num', 'seq', 'qty', 'amt', 'idx', 'size', 'page', 'limit', 'offset')):
                 return '1'
