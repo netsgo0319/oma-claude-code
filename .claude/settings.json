@@ -39,8 +39,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'input=$(cat); ts=$(date +%s); mkdir -p workspace/logs; echo \"{\\\"ts\\\": $ts, \\\"type\\\": \\\"SubagentStop\\\"}\" >> workspace/logs/activity-log.jsonl; python3 tools/check-fix-loop-ran.py 2>/dev/null'",
-            "timeout": 10
+            "command": "bash -c 'input=$(cat); ts=$(date +%s); mkdir -p workspace/logs; echo \"{\\\"ts\\\": $ts, \\\"type\\\": \\\"SubagentStop\\\"}\" >> workspace/logs/activity-log.jsonl; python3 tools/check-fix-loop-ran.py 2>/dev/null; python3 tools/check-tc-coverage.py 2>/dev/null'",
+            "timeout": 15
           }
         ]
       }

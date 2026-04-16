@@ -61,6 +61,12 @@ python3.11 -c "import boto3" 2>/dev/null || python3 -c "import boto3" || echo "E
 - 각 Step의 병렬 실행은 **Subagents**로 (결과만 리턴, 서로 대화 불필요)
 - Agent Teams(tmux 모드)는 서로 협력이 필요한 경우에만
 
+### ★ GATE (Step 2→3) — TC 커버리지 검증
+
+- `tc_coverage < 80%` → 재위임: "TC 부족. generate-test-cases.py 재실행."
+- `LLM TC 0건` AND 쿼리 100+ → 재위임: "LLM TC 미생성. boto3/LLM_TC_REGIONS 확인."
+- handoff.json `status: "blocked"` → Step 3 진행 금지
+
 ### ★ GATE (Step 3→4) — 슈퍼바이저가 반드시 검증
 
 **각 배치 에이전트의 handoff.json을 전부 읽고, 아래 조건 하나라도 FAIL이면 Step 4 진행 금지:**

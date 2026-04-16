@@ -386,18 +386,50 @@ def generate_step2(args):
                 src = tc.get('source', 'INFERRED')
                 source_dist[src] += 1
 
-    return {
+    # TC 커버리지 GATE
+    tc_coverage_pct = round(queries_with_tc / total_queries * 100, 1) if total_queries else 0
+    blockers = []
+    if total_queries > 0 and tc_coverage_pct < 80:
+        blockers.append(f'TC 커버리지 {tc_coverage_pct}% ({queries_with_tc}/{total_queries}) — 80% 미만. TC 재생성 필요.')
+    if source_dist.get('LLM', 0) == 0 and total_queries > 100:
+        blockers.append(f'LLM TC 0건 — LLM_TC_ENABLED=1, LLM_TC_REGIONS, boto3 확인.')
+
+    status = 'blocked' if blockers else 'success'
+    if blockers:
+        print(f"\n  ★ BLOCKED — TC 커버리지 부족:")
+        for b in blockers:
+            print(f"    - {b}")
+
+    handoff = {
         'summary': {
+            'queries_total': total_queries,
             'queries_with_tc': queries_with_tc,
             'queries_without_tc': queries_without_tc,
+            'tc_coverage_pct': tc_coverage_pct,
             'total_test_cases': total_tcs,
             'tc_source_distribution': dict(source_dist),
         },
+        'gate_checks': {
+            'tc_coverage': {
+                'status': 'fail' if tc_coverage_pct < 80 else 'pass',
+                'coverage_pct': tc_coverage_pct,
+                'queries_with_tc': queries_with_tc,
+                'queries_without_tc': queries_without_tc,
+            },
+            'llm_tc_generated': {
+                'status': 'fail' if source_dist.get('LLM', 0) == 0 and total_queries > 100 else 'pass',
+                'llm_count': source_dist.get('LLM', 0),
+            },
+        },
+        '_blockers': blockers,
+        '_recommendation': 'retry' if blockers else 'proceed',
         'outputs': {
             'merged_tc': 'pipeline/step-2-tc-generate/output/merged-tc.json',
             'per_file_tc_dir': 'pipeline/step-2-tc-generate/output/per-file/',
         },
     }
+    handoff['status'] = status
+    return handoff
 
 
 def generate_step3(args):

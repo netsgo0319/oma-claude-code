@@ -21,7 +21,7 @@ LLM_TC_MODEL = os.environ.get('LLM_TC_MODEL', 'global.anthropic.claude-sonnet-4-
 LLM_TC_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 LLM_TC_MAX_BATCH = int(os.environ.get('LLM_TC_MAX_QUERIES_PER_BATCH', '20'))
 LLM_TC_ENABLED = os.environ.get('LLM_TC_ENABLED', '1') == '1'
-LLM_TC_MAX_TCS = int(os.environ.get('LLM_TC_MAX_TCS_PER_QUERY', '3'))
+LLM_TC_MAX_TCS = int(os.environ.get('LLM_TC_MAX_TCS_PER_QUERY', '2'))
 LLM_TC_WORKERS = int(os.environ.get('LLM_TC_WORKERS', '3'))  # 동시 API 호출 수
 # 멀티리전 fallback (throttling 시 다른 리전으로)
 LLM_TC_REGIONS = os.environ.get('LLM_TC_REGIONS', LLM_TC_REGION).split(',')  # e.g., "us-east-1,us-west-2,eu-west-1"
