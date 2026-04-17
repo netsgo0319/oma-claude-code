@@ -677,17 +677,23 @@ class OracleToPgConverter:
         result.append(sql[last_end:])
         return ''.join(result)
 
+    # 날짜 컬럼 힌트 — 이름에 date/dt/time/day 포함이면 날짜
+    _DATE_HINTS = re.compile(r'DATE|_DT$|_DT\b|TIME|_DAY|SYSDATE|CURRENT_TIMESTAMP|NOW\(\)', re.I)
+    # 숫자 컬럼 힌트 — 이름에 qty/amt/cnt/price/rate/seq/num 포함이면 숫자
+    _NUM_HINTS = re.compile(r'QTY|AMT|CNT|PRICE|PRC|RATE|SEQ|NUM|IDX|SIZE|LEN|WEIGHT|COST|TOTAL|SUM\(|AVG\(|COUNT\(', re.I)
+    # 날짜 포맷 문자열 — 2인자가 이것이면 날짜 TRUNC
+    _DATE_FORMATS = {'MM', 'MONTH', 'DD', 'DAY', 'YEAR', 'YY', 'YYYY', 'Q', 'HH', 'HH24', 'MI', 'SS', 'IW', 'WW'}
+
     def _convert_trunc_date(self, sql):
-        """TRUNC(expr) -> DATE_TRUNC('day', expr)::DATE for date context.
-        Handles complex expressions like TRUNC(o.ORDERED_AT), TRUNC(MAX(o.DATE))."""
+        """TRUNC 변환 — 날짜/숫자 문맥 인식.
+        1인자: 날짜 힌트 → DATE_TRUNC, 숫자 힌트 → 유지, 불확실 → 유지(안전)
+        2인자: 포맷 문자열('MM' 등) → DATE_TRUNC, 숫자 → 유지"""
         pattern = re.compile(r'\bTRUNC\s*\(', re.IGNORECASE | re.DOTALL)
         result = []
         last_end = 0
 
         for match in pattern.finditer(sql):
-            # Skip if preceded by DATE_ (already DATE_TRUNC)
             start = match.start()
-            # Skip matches inside already-converted regions
             if start < last_end:
                 continue
             if start >= 5 and sql[start-5:start].upper() == 'DATE_':
@@ -702,16 +708,33 @@ class OracleToPgConverter:
             args = self._split_args(args_str)
 
             if len(args) == 1:
-                # TRUNC(date_expr) -> DATE_TRUNC('day', date_expr)::DATE
-                date_expr = args[0].strip()
-                result.append(sql[last_end:start])
-                result.append(f"DATE_TRUNC('day', {date_expr})::DATE")
-                last_end = paren_end + 1
-                self._count_rule('TRUNC->DATE_TRUNC')
+                expr = args[0].strip()
+                # 날짜 힌트가 있으면 DATE_TRUNC
+                if self._DATE_HINTS.search(expr):
+                    result.append(sql[last_end:start])
+                    result.append(f"DATE_TRUNC('day', {expr})::DATE")
+                    last_end = paren_end + 1
+                    self._count_rule('TRUNC->DATE_TRUNC')
+                elif self._NUM_HINTS.search(expr):
+                    # 숫자 힌트 → 유지 (PG TRUNC(numeric) 그대로 동작)
+                    pass
+                else:
+                    # 불확실 → 유지 (숫자 TRUNC이 안전. 날짜면 수정 루프에서 처리)
+                    pass
             elif len(args) == 2:
-                # TRUNC(number, precision) -> TRUNC(number, precision) — numeric TRUNC, keep as-is
-                # PostgreSQL has TRUNC(numeric, int) natively
-                pass
+                expr = args[0].strip()
+                fmt = args[1].strip().strip("'\"").upper()
+                if fmt in self._DATE_FORMATS:
+                    # TRUNC(date, 'MM') → DATE_TRUNC('month', date)::DATE
+                    pg_fmt = {'MM': 'month', 'MONTH': 'month', 'DD': 'day', 'DAY': 'day',
+                              'YEAR': 'year', 'YY': 'year', 'YYYY': 'year', 'Q': 'quarter',
+                              'HH': 'hour', 'HH24': 'hour', 'MI': 'minute', 'SS': 'second',
+                              'IW': 'week', 'WW': 'week'}.get(fmt, 'day')
+                    result.append(sql[last_end:start])
+                    result.append(f"DATE_TRUNC('{pg_fmt}', {expr})::DATE")
+                    last_end = paren_end + 1
+                    self._count_rule('TRUNC->DATE_TRUNC')
+                # else: TRUNC(number, precision) → 유지
 
         result.append(sql[last_end:])
         return ''.join(result) if result else sql
