@@ -138,6 +138,23 @@ class OracleToPgConverter:
 
         return report
 
+    def convert_sql(self, sql):
+        """단일 SQL 변환. /convert-query 스킬용.
+        Returns: (converted_sql, report_dict)"""
+        self.stats = {
+            'total_replacements': 0,
+            'rules_applied': {},
+            'unconverted': [],
+        }
+        converted = self._apply_all_rules(sql)
+        residual = self._scan_residual_patterns(converted)
+        report = {
+            'rules_applied': dict(self.stats.get('rules_applied', {})),
+            'residual_oracle_patterns': residual,
+            'changed': sql.strip() != converted.strip(),
+        }
+        return converted, report
+
     def convert_xml_content(self, content, filename=""):
         """Convert XML content, handling CDATA blocks and regular text."""
         self.stats = {
