@@ -158,12 +158,23 @@ def collect_data(base_dir):
         'execution': None,
         'comparison': None,
         'query_matrix': None,
+        'migration_config': None,
         'extracted': [],
         'activity_log': [],
         'input_files': [],
         'output_files': [],
         'summary': {},
     }
+
+    # migration-config.json (Phase 1 결과 — 있으면 Schema Migration 탭에 표시)
+    for mc_path in ['migration-config.json', '../migration-config.json',
+                    str(Path(base_dir) / 'migration-config.json')]:
+        if Path(mc_path).exists():
+            try:
+                data['migration_config'] = json.loads(Path(mc_path).read_text(encoding='utf-8'))
+            except Exception:
+                pass
+            break
 
     ws = Path(base_dir) / 'workspace'
 
@@ -505,6 +516,7 @@ def build_embedded_data(data):
         'execution': data.get('execution'),
         'comparison': data.get('comparison'),
         'query_matrix': data.get('query_matrix'),
+        'migration_config': data.get('migration_config'),
         'files': {},
     }
 
@@ -752,6 +764,7 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
   <button class="tab-btn active" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="explorer">Explorer</button>
   <button class="tab-btn" data-tab="dba">DBA</button>
+  <button class="tab-btn" data-tab="schema">Schema Migration</button>
   <button class="tab-btn" data-tab="log">Log</button>
 </div>
 
@@ -782,6 +795,11 @@ th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;lett
 <!-- ========== DBA TAB ========== -->
 <div class="tab-content" id="tab-dba">
   <div class="sec" id="dba-content"></div>
+</div>
+
+<!-- ========== SCHEMA MIGRATION TAB (Phase 1) ========== -->
+<div class="tab-content" id="tab-schema">
+  <div class="sec" id="schema-content"></div>
 </div>
 
 <!-- ========== LOG TAB ========== -->
@@ -975,6 +993,20 @@ function renderOverview(){
     stateTableHtml+=`<td>${Object.entries(staticFails).slice(0,3).map(([k,v])=>k.replace('FAIL_','')+':'+v).join(', ')}</td>`;
     stateTableHtml+=`<td style="color:var(--dim)">동적 태그 미평가 → 불완전 SQL</td></tr>`;
     stateTableHtml+=`</table></div>`;
+  }
+
+  // Phase 1 요약 배너 (migration-config 있으면)
+  let mc=DATA.migration_config||{};
+  let p1=mc.phase1||{};
+  if(p1.status && p1.status!=='not_started'){
+    let p1Color=p1.status==='completed'?'var(--success)':'var(--warn)';
+    stateTableHtml+=`<div style="margin-top:16px;padding:12px;background:rgba(255,255,255,.03);border-left:3px solid ${p1Color};border-radius:4px">`;
+    stateTableHtml+=`<strong>Phase 1 (Schema Migration):</strong> <span style="color:${p1Color}">${esc(p1.status)}</span>`;
+    if(p1.tables_total)stateTableHtml+=` — ${p1.tables_success||p1.tables_total}/${p1.tables_total} tables`;
+    if(p1.data_total_rows)stateTableHtml+=`, ${(p1.data_total_rows).toLocaleString()} rows`;
+    if(p1.total_duration_seconds)stateTableHtml+=` (${Math.round(p1.total_duration_seconds/60)}분)`;
+    stateTableHtml+=` <a href="#" onclick="document.querySelector('[data-tab=schema]').click();return false" style="color:var(--accent2);margin-left:8px">상세보기 →</a>`;
+    stateTableHtml+=`</div>`;
   }
 
   document.getElementById('summary-cards').insertAdjacentHTML('afterend',stateTableHtml);
@@ -1799,6 +1831,87 @@ function expSelectQuery(fname, qid){
   document.getElementById('exp-panel-detail').innerHTML=html;
 }
 try{renderDBA();}catch(e){console.error("renderDBA:",e);}
+
+// ========== Schema Migration Tab (Phase 1 결과) ==========
+function renderSchema(){
+  let mc=DATA.migration_config||{};
+  let p1=mc.phase1||{};
+  let html='';
+
+  if(!p1.status || p1.status==='not_started'){
+    html='<h2>Schema Migration (Phase 1)</h2>';
+    html+='<p style="color:var(--dim)">Phase 1 결과 없음. migration-config.json이 없거나 Phase 1 미실행.</p>';
+    document.getElementById('schema-content').innerHTML=html;
+    return;
+  }
+
+  let stColor=p1.status==='completed'?'var(--success)':'var(--fail)';
+  html+=`<h2>Phase 1: Schema Migration</h2>`;
+  html+=`<div style="padding:10px;background:rgba(255,255,255,.03);border-left:3px solid ${stColor};border-radius:4px;margin-bottom:16px">`;
+  html+=`<strong style="color:${stColor}">${esc(p1.status.toUpperCase())}</strong>`;
+  if(p1.migration_id)html+=` <span style="color:var(--dim)">ID: ${esc(p1.migration_id)}</span>`;
+  if(p1.completed_at)html+=` <span style="color:var(--dim)">완료: ${esc(p1.completed_at)}</span>`;
+  if(p1.total_duration_seconds)html+=` <span style="color:var(--dim)">(${Math.round(p1.total_duration_seconds/60)}분)</span>`;
+  html+=`</div>`;
+
+  // 요약 카드
+  html+=`<div class="cards">`;
+  if(p1.tables_total!=null)html+=`<div class="card"><div class="lbl">테이블</div><div class="val">${p1.tables_success||p1.tables_total}/${p1.tables_total}</div></div>`;
+  if(p1.functions_total!=null)html+=`<div class="card"><div class="lbl">함수</div><div class="val">${p1.functions_total}</div></div>`;
+  if(p1.data_tables_migrated!=null)html+=`<div class="card"><div class="lbl">데이터 이관</div><div class="val">${p1.data_tables_migrated} tables</div><div class="det">${(p1.data_total_rows||0).toLocaleString()} rows</div></div>`;
+  html+=`</div>`;
+
+  // Phase 1 상세 (schema_migration, data_migration 있으면)
+  let sm=p1.schema_migration||{};
+  let dm=p1.data_migration||{};
+  let dv=p1.data_verification||{};
+
+  if(Object.keys(sm).length>0){
+    html+=`<h3 style="margin-top:16px">스키마 변환 상세</h3>`;
+    html+=`<table style="font-size:12px;width:100%"><tr><th>항목</th><th>값</th></tr>`;
+    for(let [k,v] of Object.entries(sm)){
+      if(typeof v!=='object')html+=`<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`;
+    }
+    html+=`</table>`;
+  }
+
+  if(Object.keys(dm).length>0){
+    html+=`<h3 style="margin-top:16px">데이터 이관 상세</h3>`;
+    html+=`<table style="font-size:12px;width:100%"><tr><th>항목</th><th>값</th></tr>`;
+    for(let [k,v] of Object.entries(dm)){
+      if(typeof v!=='object')html+=`<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`;
+    }
+    html+=`</table>`;
+  }
+
+  if(Object.keys(dv).length>0){
+    html+=`<h3 style="margin-top:16px">데이터 검증</h3>`;
+    html+=`<table style="font-size:12px;width:100%"><tr><th>항목</th><th>결과</th></tr>`;
+    for(let [k,v] of Object.entries(dv)){
+      if(typeof v!=='object')html+=`<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`;
+    }
+    html+=`</table>`;
+  }
+
+  // 실패 오브젝트
+  let failed=p1.failed_objects||[];
+  if(failed.length){
+    html+=`<h3 style="margin-top:16px;color:var(--warn)">실패 오브젝트 (${failed.length}건)</h3>`;
+    html+=`<table style="font-size:12px;width:100%"><tr><th>Type</th><th>Name</th><th>Reason</th></tr>`;
+    for(let o of failed){
+      html+=`<tr><td>${esc(o.type||'')}</td><td style="font-family:var(--mono)">${esc(o.name||'')}</td><td style="color:var(--dim)">${esc(o.reason||'')}</td></tr>`;
+    }
+    html+=`</table>`;
+  }
+
+  // S3 링크
+  if(p1.s3_path){
+    html+=`<div style="margin-top:16px;color:var(--dim)">S3: <code>${esc(p1.s3_path)}</code></div>`;
+  }
+
+  document.getElementById('schema-content').innerHTML=html;
+}
+try{renderSchema();}catch(e){console.error("renderSchema:",e);}
 try{renderLog();}catch(e){console.error("renderLog:",e);}
 
 
