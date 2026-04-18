@@ -140,9 +140,19 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 bash tools/reset-workspace.sh --force
 ```
 
-## 학습 (선택)
+## Phase 전환 (Phase 1 → Phase 2)
 
-파이프라인 완료 후 `/learn`으로 결과 분석. 반복 패턴 추출 → 에지케이스→룰 승격 제안.
+Phase 1(스키마 마이그레이션) 완료 후 이 디렉토리(app-migration)에서 작업 시:
+1. `/preflight` — PG 스키마 검증 + Phase 1 결과 확인 + 환경 체크
+2. `/convert` 또는 "변환해줘" — 파이프라인 시작
+
+migration-config.json이 있으면 Phase 1 결과를 자동으로 읽어 DBA FAIL 사전 예측.
+
+## 파이프라인 완료 후
+
+1. `/learn` — 패턴 학습 + 룰 승격 제안
+2. `/diagnose` — 실패 원인 5분류 + 개선 액션
+3. `python3 tools/upload-to-s3.py` — S3 업로드
 
 ## 참조
 
