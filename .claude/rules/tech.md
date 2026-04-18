@@ -7,8 +7,8 @@ inclusion: always
 ## 에이전트 런타임
 - Claude Code CLI + Custom Agent (Markdown)
 - 모델:
-  - 오케스트레이터/분석: claude-opus-4.6 (1M context)
-  - 변환/검증: claude-sonnet-4.6 (1M context)
+  - 오케스트레이터/분석: opus[1m] (최신 Opus, 1M context)
+  - 변환/검증: sonnet (최신 Sonnet)
 
 ## DB 연결
 - Oracle: sqlplus CLI (db-oracle 스킬 참조)
