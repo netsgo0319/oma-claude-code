@@ -121,26 +121,23 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 - [ ] Step 2: tc-generator 위임 → handoff.json 확인
 - [ ] Step 3: validate-and-fix 위임 → gate_checks 확인 (★)
 - [ ] GATE: fix_loop=pass AND compare=pass AND NOT_TESTED<50%
-- [ ] Step 4: reporter 위임 → 산출물 3개 확인
-- [ ] ★ 사용자에게 결과 보고 + Step 5 진행 여부 확인
-- [ ] (선택) Step 5: /deep-agent-retranslate → handoff 확인
-- [ ] (선택) Step 5 후: generate-report.py 재실행 → 최종 보고서
+- [ ] Step 4: reporter 위임 → 산출물 3개 확인 (중간 보고서)
+- [ ] Step 5: /deep-agent-retranslate → handoff 확인
+- [ ] Step 5 후: generate-report.py 재실행 → 최종 보고서
 - [ ] (선택) /diagnose → 실패 진단 + 개선 액션
 - [ ] (선택) /learn → 패턴 학습 + 룰 승격
 ```
 
-### Step 4 완료 후: 사용자 확인 (★ 필수)
+### Step 4 → Step 5: 자동 진행
 
-Step 4 결과를 보고하고, 사용자에게 Step 5 진행 여부를 반드시 확인:
+Step 4 완료 후 중간 결과를 보고하고 **자동으로 Step 5 진행:**
 ```
 "Step 4 완료. PASS: N건, FAIL: M건, NOT_TESTED: K건.
- Step 5 (Deep Agent Retranslate)로 FAIL 쿼리를 Strands Agent가 재시도할 수 있습니다.
- 진행하시겠습니까? (예/아니오)"
+ Step 5 (Deep Agent Retranslate)로 FAIL 쿼리 재시도를 진행합니다."
 ```
-- **"예" / "이어서" / "진행"** → Step 5 실행
-- **"아니오" / 응답 없음** → Step 4 보고서가 최종, /diagnose 또는 /learn 안내
+사용자가 "Step 5 건너뛰기"라고 명시하지 않는 한 항상 실행.
 
-### Step 5: Deep Agent Retranslate (사용자 승인 후)
+### Step 5: Deep Agent Retranslate (필수)
 
 **Claude Code 서브에이전트가 아닌 독립 Python 프로세스.** Strands Agents SDK가 LLM 호출.
 ```bash
