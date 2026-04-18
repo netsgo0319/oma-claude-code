@@ -65,7 +65,7 @@ flowchart TB
 | **모든 쿼리 TC 기반 검증** | 0건==0건도 PASS. 스킵 없음 |
 | **DBA 에러 즉시 분리** | relation/column/function_missing → 수정 루프 진입 안 함 |
 | **UTC timestamp** | 로그는 UTC Unix int. 보고서 JS에서 로컬 시간 표시 |
-| **스킬 기반 실행** | 26개 스킬 (6 파이프라인 + 20 도메인). 에이전트 skills: 필드로 자동 inject |
+| **스킬 기반 실행** | 31개 스킬 (6 파이프라인 + 25 도메인). 에이전트 skills: 필드로 자동 inject |
 | **모델 배치** | supervisor+converter+validate-and-fix: **opus[1m]**, tc-generator+reporter: sonnet |
 | **LLM TC 메인 엔진** | Bedrock Sonnet이 SQL 문맥 기반 TC 생성 (3 workers 병렬, 멀티리전, 쿼리당 최대 3 TC) |
 | **Scout → Broadcast** | Step 3에서 복잡 파일 선행 검증 → 발견 패턴 일괄 적용 → 나머지 병렬 |
@@ -95,7 +95,7 @@ flowchart LR
 | Step | 실행 주체 | 도구 | 산출물 | handoff 핵심 |
 |------|----------|------|--------|-------------|
 | **0** | 슈퍼바이저 | generate-sample-data.py | samples/, env-check.json | xml_file_count, env_checks |
-| **1** | **converter** | batch-process.sh, converter.py | output/xml/, query-tracking.json | queries_total, complexity_dist |
+| **1** | **converter** | batch-process.sh, oracle-to-pg-converter.py | output/xml/, query-tracking.json | queries_total, complexity_dist |
 | **2** | **tc-generator** | generate-test-cases.py + llm_tc_generator.py | merged-tc.json | queries_with_tc, LLM 3 workers 병렬 |
 | **3** | **validate-and-fix** | run-extractor.sh + validate-queries.py | validated.json, compare.json | **gate_checks** + Scout→Broadcast |
 | **4** | **reporter** | generate-query-matrix.py, generate-report.py | csv, json, html | validation (fields complete) |
@@ -258,7 +258,7 @@ stateDiagram-v2
       validate-and-fix.md              # Step 3 + gate_checks
       reporter.md                      # Step 4 + assemble
     rules/                             # 공유 규칙 (항상 로드)
-    skills/                            # 스킬 (26개: 6 파이프라인 + 20 도메인)
+    skills/                            # 스킬 (31개: 6 파이프라인 + 25 도메인)
     commands/                          # CLI 명령
     settings.json                      # hooks (DDL차단, SubagentStop 검증) + permissions
 
@@ -268,11 +268,14 @@ stateDiagram-v2
     pre-scan-stubs.py                  # ★ XML 스캔 → Java stub 자동 생성
     check-fix-loop-ran.py              # ★ SubagentStop hook — 수정 루프 검증
     learn-from-results.py              # 결과 학습 + 룰 승격
-    shared_fix_registry.py             # 배치 간 수정 패턴 공유 (feat 브랜치)
+    pre-resolve-includes.py            # cross-file <include refid> 인라인 해결
+    preflight-check.py                 # Phase 2 PG 스키마 검증 + migration-config 읽기
+    upload-to-s3.py                    # Phase 1/2 결과 S3 업로드
     assemble-workspace.sh              # pipeline → workspace 심링크 조립
 
   schemas/
     handoff.schema.json                # ★ handoff 스키마
+    migration-config.schema.json       # Phase 1→2 핸드오프 계약
 
   pipeline/                            # ★ Step별 디렉토리
     supervisor-state.json              # 슈퍼바이저 상태 (compaction 복구)
@@ -367,7 +370,7 @@ stateDiagram-v2
 | **LLM TC 병렬화** | llm_tc_generator.py | 3 workers (ThreadPoolExecutor) + 멀티리전 라운드로빈. 25분→8분 |
 | **EXPLAIN 사전 필터** | validate-queries.py | EXPLAIN 실패 쿼리를 Execute/Compare에서 제거 |
 | **Compare 배치 실행** | validate-queries.py | 쿼리별 subprocess → DB 세션 1회 (oracledb/psql) |
-| **Scout → Broadcast** | shared_fix_registry.py | 복잡 파일 선행 검증 → 패턴 공유 → 나머지 일괄 적용 |
+| **Scout → Broadcast** | validate-queries.py | 복잡 파일 선행 검증 → 패턴 공유 → 나머지 일괄 적용 |
 | **pre-scan stubs** | pre-scan-stubs.py | XML 사전 스캔 → Java stub 자동 생성 → 빌드 1회로 완료 |
 | **PG 타입 인식 바인딩** | validate-queries.py | TC 값과 PG 컬럼 타입 자동 조정 (varchar↔integer) |
 

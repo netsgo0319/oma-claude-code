@@ -1,7 +1,10 @@
 # Runtime artifacts
-workspace/results/
-workspace/progress.json
-workspace/logs/
+workspace/
+pipeline/shared/input/*.xml
+pipeline/step-*/handoff.json
+pipeline/step-*/output/**
+!pipeline/step-*/output/.gitkeep
+!pipeline/step-*/output/**/.gitkeep
 
 # Secrets
 .env

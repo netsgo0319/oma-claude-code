@@ -13,11 +13,12 @@ MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 ## 파이프라인 요약
 
 ```
-Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  /learn (수동)
-환경점검          converter → tc-generator → validator → reporter   학습
+Step 0 (직접)  →  Step 1~4 (서브에이전트 위임)  →  [끊기]  →  Step 5 (선택)  →  /learn (수동)
+환경점검          converter → tc-generator → validate-and-fix → reporter   deep-retranslate   학습
 ```
 
 각 Step 완료 시 `pipeline/step-{N}-*/handoff.json` 생성 → 슈퍼바이저가 읽고 판단.
+**Step 4 완료 후 사용자에게 결과 보고. 사용자가 "이어서" 또는 "Step 5 진행" 하면 Step 5 실행.**
 
 ### Step 0: 환경점검 (직접)
 
@@ -94,6 +95,25 @@ python3.11 -c "import boto3" 2>/dev/null || python3 -c "import boto3" || echo "E
 | Step 2 | 50이하→1개, 50+→2~3개 병렬 |
 | Step 3 | 20이하→1개, 21~100→2~5개, 100+→10~15파일 단위 |
 | Step 4 | 단일 |
+| Step 5 | 단일 (독립 Python 프로세스) |
+
+### ★ Step 5: Deep Agent Retranslate (선택 — Step 4 후 사용자 확인)
+
+Step 4 완료 후 **슈퍼바이저가 결과를 보고하고 사용자에게 확인**:
+- "Step 4 완료. FAIL N건, PASS M건. Step 5 (Deep Retranslate)를 진행하시겠습니까?"
+- 사용자가 "진행" / "이어서" → Step 5 실행
+- 사용자가 "아니오" / 응답 없음 → Step 4 보고서가 최종
+
+**Step 5는 Claude Code 서브에이전트가 아니라 독립 Python 프로세스 (Strands Agents SDK).**
+```bash
+/deep-agent-retranslate [--dry-run] [--limit N]
+# 또는: bash tools/deep-agent-retranslate.sh
+```
+
+- 입력: `pipeline/step-4-report/output/query-matrix.json`
+- 타겟: 6개 FAIL 상태 (FAIL_SYNTAX, FAIL_COMPARE_DIFF, FAIL_TC_TYPE_MISMATCH, FAIL_TC_OPERATOR, FAIL_ESCALATED, NOT_TESTED_NO_RENDER)
+- 출력: `pipeline/step-5-deep-retranslate/output/query-matrix-updated.json` + `handoff.json`
+- **Step 5 완료 후**: `generate-report.py`를 한 번 더 실행 → updated matrix 자동 감지 → 최종 보고서 갱신
 
 ## 디렉토리 구조
 
@@ -105,6 +125,7 @@ pipeline/
   step-2-tc-generate/    ← TC (merged-tc.json)
   step-3-validate-fix/   ← 검증 결과 + 수정 XML
   step-4-report/         ← 보고서 3개 (csv, json, html)
+  step-5-deep-retranslate/ ← (선택) Strands Agent 재변환 결과
   supervisor-state.json  ← 슈퍼바이저 상태
 ```
 

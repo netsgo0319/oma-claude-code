@@ -122,18 +122,48 @@ cat pipeline/supervisor-state.json 2>/dev/null | python3 -m json.tool
 - [ ] Step 3: validate-and-fix 위임 → gate_checks 확인 (★)
 - [ ] GATE: fix_loop=pass AND compare=pass AND NOT_TESTED<50%
 - [ ] Step 4: reporter 위임 → 산출물 3개 확인
-- [ ] Step 5: 실패 진단 (/diagnose) → 개선 액션 확인
+- [ ] ★ 사용자에게 결과 보고 + Step 5 진행 여부 확인
+- [ ] (선택) Step 5: /deep-agent-retranslate → handoff 확인
+- [ ] (선택) Step 5 후: generate-report.py 재실행 → 최종 보고서
+- [ ] (선택) /diagnose → 실패 진단 + 개선 액션
 - [ ] (선택) /learn → 패턴 학습 + 룰 승격
 ```
 
-### Step 5: 실패 진단 (Step 4 완료 후 자동 또는 /diagnose)
+### Step 4 완료 후: 사용자 확인 (★ 필수)
+
+Step 4 결과를 보고하고, 사용자에게 Step 5 진행 여부를 반드시 확인:
+```
+"Step 4 완료. PASS: N건, FAIL: M건, NOT_TESTED: K건.
+ Step 5 (Deep Agent Retranslate)로 FAIL 쿼리를 Strands Agent가 재시도할 수 있습니다.
+ 진행하시겠습니까? (예/아니오)"
+```
+- **"예" / "이어서" / "진행"** → Step 5 실행
+- **"아니오" / 응답 없음** → Step 4 보고서가 최종, /diagnose 또는 /learn 안내
+
+### Step 5: Deep Agent Retranslate (사용자 승인 후)
+
+**Claude Code 서브에이전트가 아닌 독립 Python 프로세스.** Strands Agents SDK가 LLM 호출.
+```bash
+/deep-agent-retranslate [--dry-run] [--limit N]
+# 또는: bash tools/deep-agent-retranslate.sh
+```
+- 입력: `pipeline/step-4-report/output/query-matrix.json`
+- 타겟: FAIL_SYNTAX, FAIL_COMPARE_DIFF, FAIL_TC_TYPE_MISMATCH, FAIL_TC_OPERATOR, FAIL_ESCALATED, NOT_TESTED_NO_RENDER
+- 출력: `pipeline/step-5-deep-retranslate/output/query-matrix-updated.json` + `handoff.json`
+
+**Step 5 완료 후 → 최종 보고서 재생성:**
+```bash
+python3 tools/generate-report.py
+# generate-report.py가 Step 5 updated matrix를 자동 감지하여 최종 보고서 갱신
+```
+
+### 실패 진단 (/diagnose — Step 4 또는 5 이후)
 ```bash
 python3 tools/diagnose-failures.py \
   --matrix pipeline/step-4-report/output/query-matrix.json \
   --output pipeline/diagnose/
 ```
 FAIL/NOT_TESTED 근본 원인 5+3분류 → 우선순위별 개선 액션 생성.
-`improvement-actions.md`를 읽고 다음 실행에 반영.
 
 ## 참조 문서
 

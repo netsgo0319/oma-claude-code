@@ -142,6 +142,33 @@ def _build_dba_objects(rows):
     return sorted(objects.values(), key=lambda x: -len(x['affected_queries']))
 
 
+def _compute_zero_row_flags(compare_detail):
+    """compare_detail로부터 0건 플래그 계산. 상태와 무관하게 태깅."""
+    if not compare_detail:
+        return None
+    has_both_zero = False
+    has_oracle_zero = False
+    has_pg_zero = False
+    for d in compare_detail:
+        ora = d.get('oracle_rows')
+        pg = d.get('pg_rows')
+        if ora is None or pg is None:
+            continue
+        if ora == 0 and pg == 0:
+            has_both_zero = True
+        elif ora == 0 and pg > 0:
+            has_oracle_zero = True
+        elif ora > 0 and pg == 0:
+            has_pg_zero = True
+    if not (has_both_zero or has_oracle_zero or has_pg_zero):
+        return None
+    return {
+        'both_zero': has_both_zero,
+        'oracle_zero': has_oracle_zero,
+        'pg_zero': has_pg_zero,
+    }
+
+
 def _build_zero_rows(rows):
     """0건 쿼리를 3가지로 분류. DBA 탭용."""
     both_zero = []     # Oracle=0, PG=0 (TC 바인드값 문제 또는 데이터 없음)
@@ -698,6 +725,7 @@ def main():
                 '_xml_before': xml_before_bodies.get((fname.replace('.xml', ''), qid), ''),
                 '_xml_after': xml_after_bodies.get((fname.replace('.xml', ''), qid), ''),
                 '_compare_detail': compare_detail,
+                '_zero_row_flags': _compute_zero_row_flags(compare_detail),
                 '_conversion_history': conv_history,
                 '_attempts': json_attempts,
                 '_test_cases': json_test_cases,
@@ -775,6 +803,7 @@ def main():
                 ('missing_object', r.get('_missing_object')),
                 ('compare_status', r['compare_status']),
                 ('compare_detail', r.get('_compare_detail', [])),
+                ('zero_row_flags', r.get('_zero_row_flags')),
                 ('complexity', r['complexity']),
             ])
             json_queries.append(entry)

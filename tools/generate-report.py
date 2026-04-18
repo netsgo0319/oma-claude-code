@@ -179,13 +179,19 @@ def collect_data(base_dir):
     ws = Path(base_dir) / 'workspace'
 
     # ★ 핵심: query-matrix.json이 유일한 데이터 소스
-    qm_path = ws / 'reports' / 'query-matrix.json'
-    # pipeline 모드 fallback
-    if not qm_path.exists():
-        qm_path = Path('pipeline/step-4-report/output/query-matrix.json')
-    if not qm_path.exists():
+    # 우선순위: Step 5 updated > workspace > Step 4 original
+    qm_candidates = [
+        Path('pipeline/step-5-deep-retranslate/output/query-matrix-updated.json'),
+        ws / 'reports' / 'query-matrix.json',
+        Path('pipeline/step-4-report/output/query-matrix.json'),
+    ]
+    qm_path = None
+    for candidate in qm_candidates:
+        if candidate.exists():
+            qm_path = candidate
+            break
+    if not qm_path:
         print("ERROR: query-matrix.json not found. Run generate-query-matrix.py --json first.")
-        # Fallback: 기존 로직으로 derive (하위 호환)
         return _collect_data_legacy(base_dir)
 
     qm_data = load_json(qm_path)
@@ -194,6 +200,15 @@ def collect_data(base_dir):
         return _collect_data_legacy(base_dir)
 
     data['query_matrix'] = qm_data
+    data['matrix_source'] = str(qm_path)
+
+    # Step 5 handoff (있으면 Overview에 배너 표시)
+    step5_handoff_path = Path('pipeline/step-5-deep-retranslate/handoff.json')
+    if step5_handoff_path.exists():
+        try:
+            data['step5_handoff'] = json.loads(step5_handoff_path.read_text(encoding='utf-8'))
+        except Exception:
+            pass
 
     # 1. Step progress — query-matrix.json의 step_progress 또는 handoff에서
     step_progress = qm_data.get('step_progress', {})
@@ -517,6 +532,8 @@ def build_embedded_data(data):
         'comparison': data.get('comparison'),
         'query_matrix': data.get('query_matrix'),
         'migration_config': data.get('migration_config'),
+        'matrix_source': data.get('matrix_source', ''),
+        'step5_handoff': data.get('step5_handoff'),
         'files': {},
     }
 
@@ -1006,6 +1023,51 @@ function renderOverview(){
     if(p1.data_total_rows)stateTableHtml+=`, ${(p1.data_total_rows).toLocaleString()} rows`;
     if(p1.total_duration_seconds)stateTableHtml+=` (${Math.round(p1.total_duration_seconds/60)}분)`;
     stateTableHtml+=` <a href="#" onclick="document.querySelector('[data-tab=schema]').click();return false" style="color:var(--accent2);margin-left:8px">상세보기 →</a>`;
+    stateTableHtml+=`</div>`;
+  }
+
+  // Step 5 Deep Retranslate 배너 (handoff 있으면)
+  let s5=DATA.step5_handoff;
+  if(s5 && s5.summary){
+    let s5s=s5.summary;
+    let s5Color=s5.status==='success'?'var(--success)':'var(--warn)';
+    stateTableHtml+=`<div style="margin-top:16px;padding:12px;background:rgba(168,85,247,.08);border-left:3px solid var(--purple);border-radius:4px">`;
+    stateTableHtml+=`<strong style="color:var(--purple)">Step 5: Deep Agent Retranslate</strong> <span style="color:${s5Color}">${esc(s5.status||'')}</span>`;
+    if(s5s.queries_total)stateTableHtml+=` — ${s5s.queries_succeeded||0}/${s5s.queries_total} 성공`;
+    if(s5s.queries_attempted)stateTableHtml+=` (${s5s.queries_attempted} 시도)`;
+    if(s5s.needs_app_config_count)stateTableHtml+=` <span style="color:var(--warn)">| ${s5s.needs_app_config_count}건 앱 설정 필요</span>`;
+    // 상태 전환 상위 3개
+    let trans=s5s.state_transitions||{};
+    let topTrans=Object.entries(trans).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    if(topTrans.length){
+      stateTableHtml+=`<div style="margin-top:6px;font-size:11px;color:var(--dim)">`;
+      topTrans.forEach(([k,v])=>{stateTableHtml+=`${k}: ${v}건 `;});
+      stateTableHtml+=`</div>`;
+    }
+    stateTableHtml+=`</div>`;
+  }
+
+  // Matrix 소스 표시
+  if(DATA.matrix_source && DATA.matrix_source.includes('step-5')){
+    stateTableHtml+=`<div style="margin-top:8px;font-size:11px;color:var(--dim);padding:4px 8px;background:rgba(168,85,247,.05);border-radius:4px">📊 Data Source: Step 5 updated matrix</div>`;
+  }
+
+  // 0건 쿼리 집계 배너 (상태와 무관)
+  let zeroQueries=(DATA.query_matrix||{}).queries||[];
+  let bothZeroCnt=0,oraZeroCnt=0,pgZeroCnt=0;
+  zeroQueries.forEach(q=>{
+    let zf=q.zero_row_flags;
+    if(!zf)return;
+    if(zf.both_zero)bothZeroCnt++;
+    if(zf.oracle_zero)oraZeroCnt++;
+    if(zf.pg_zero)pgZeroCnt++;
+  });
+  if(bothZeroCnt+oraZeroCnt+pgZeroCnt>0){
+    stateTableHtml+=`<div style="margin-top:12px;padding:12px;background:rgba(234,179,8,.08);border-left:3px solid var(--warn);border-radius:4px">`;
+    stateTableHtml+=`<strong style="color:var(--warn)">0건 쿼리 경고</strong> <span style="color:var(--dim)">(상태와 무관)</span><br>`;
+    if(bothZeroCnt)stateTableHtml+=`<span style="margin-right:16px">양쪽 0건: <strong>${bothZeroCnt}</strong> (TC 바인드값 검토)</span>`;
+    if(oraZeroCnt)stateTableHtml+=`<span style="margin-right:16px;color:var(--orange)">Oracle만 0건: <strong>${oraZeroCnt}</strong></span>`;
+    if(pgZeroCnt)stateTableHtml+=`<span style="color:var(--fail)">PG만 0건: <strong>${pgZeroCnt}</strong> (변환 오류 가능)</span>`;
     stateTableHtml+=`</div>`;
   }
 
