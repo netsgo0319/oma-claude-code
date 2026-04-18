@@ -16,19 +16,19 @@ MyBatis/iBatis XML 기반 Oracle SQL → PostgreSQL 자동 변환·검증.
 Step 사이에 암묵적으로 넘어가지 마라. 사용자가 지금 어디인지 항상 알 수 있어야 한다.
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 파이프라인 진행 현황
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[✅] Step 0: 환경점검       — {xml_count} XML, {query_count} 쿼리
-[✅] Step 1: 변환           — {converted}/{total} 변환 ({duration})
-[✅] Step 2: TC 생성        — {tc_count} TC (LLM {llm_count})
-[🔄] Step 3: 검증+수정      — 진행 중 (배치 {current}/{total})
-[⏳] Step 4: 보고서         — 대기
-[⏳] Step 5: Deep Retranslate — 대기 (선택)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-다음: {next_action}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+== Pipeline Progress ========================================
+ ● Step 0: 환경점검       -- {xml_count} XML, {query_count} 쿼리
+ ● Step 1: 변환           -- {converted}/{total} 변환 ({duration})
+ ● Step 2: TC 생성        -- {tc_count} TC (LLM {llm_count})
+ ◐ Step 3: 검증+수정      -- 진행 중 (배치 {current}/{total})
+ ○ Step 4: 보고서         -- 대기
+ ○ Step 5: Deep Retranslate -- 대기 (선택)
+=========================================================
+ >>> 다음: {next_action}
+=========================================================
 ```
+
+- `●` 완료  `◐` 진행 중  `○` 대기
 
 **보고 시점:**
 - 각 Step 시작 전: "Step N을 시작합니다" + 현황
