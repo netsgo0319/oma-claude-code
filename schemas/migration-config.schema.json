@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Migration Config",
+  "description": "Phase 1→2 핸드오프 계약. Phase 1(스키마) 완료 시 생성, Phase 2(앱) Step 0에서 읽음.",
+  "type": "object",
+  "required": ["project", "phase1"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "description": "프로젝트명 (e.g., daiso-2026Q2)" },
+        "customer": { "type": "string", "description": "고객사명" },
+        "s3_bucket": { "type": "string", "description": "S3 버킷명" },
+        "bind_samples_dir": { "type": "string", "description": "고객 바인드변수 리스트 경로" },
+        "created_at": { "type": "string" }
+      }
+    },
+    "phase1": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["completed", "partial", "failed", "not_started"] },
+        "completed_at": { "type": "string" },
+        "migration_id": { "type": "string" },
+        "schema_mapping": {
+          "type": "object",
+          "properties": {
+            "source_schema": { "type": "string" },
+            "target_schema": { "type": "string" }
+          }
+        },
+        "objects_created": {
+          "type": "object",
+          "properties": {
+            "tables": { "type": "integer" },
+            "sequences": { "type": "integer" },
+            "functions": { "type": "integer" },
+            "indexes": { "type": "integer" },
+            "constraints": { "type": "integer" }
+          }
+        },
+        "failed_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "name": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "data_migration": {
+          "type": "object",
+          "properties": {
+            "tables_transferred": { "type": "integer" },
+            "total_rows": { "type": "integer" },
+            "verification": { "type": "string" }
+          }
+        },
+        "report_path": { "type": "string" },
+        "s3_path": { "type": "string" }
+      }
+    },
+    "db": {
+      "type": "object",
+      "properties": {
+        "oracle": {
+          "type": "object",
+          "properties": {
+            "host": { "type": "string" },
+            "port": { "type": "integer" },
+            "sid": { "type": "string" },
+            "schema": { "type": "string" }
+          }
+        },
+        "pg": {
+          "type": "object",
+          "properties": {
+            "host": { "type": "string" },
+            "port": { "type": "integer" },
+            "database": { "type": "string" },
+            "schema": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
