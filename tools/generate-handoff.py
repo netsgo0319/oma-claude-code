@@ -573,9 +573,9 @@ def generate_step3(args):
                           else 'All queries rendered successfully',
             },
             'test_coverage': {
-                'status': 'fail' if (sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) > len(queries) * 0.5) else 'pass',
+                'status': 'fail' if (len(queries) > 0 and sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) > len(queries) * 0.5) else 'pass',
                 'not_tested_count': sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')),
-                'not_tested_pct': round(sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) / max(len(queries), 1) * 100, 1),
+                'not_tested_pct': round(sum(v for k, v in state_counts.items() if k.startswith('NOT_TESTED')) / max(len(queries), 1) * 100, 1) if len(queries) > 0 else 0,
                 'detail': f'NOT_TESTED {sum(v for k,v in state_counts.items() if k.startswith("NOT_TESTED"))}건 '
                           f'({round(sum(v for k,v in state_counts.items() if k.startswith("NOT_TESTED"))/max(len(queries),1)*100,1)}%) — '
                           f'50% 초과 시 psql 출력 캡처 실패 의심. 재실행 필요.'
