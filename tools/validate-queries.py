@@ -329,7 +329,7 @@ SET HEADING ON
         warnings = []
 
         # ── Phase 1: Collect all test cases ──
-        test_specs = []  # [(test_id, qid, qtype, case_name, exec_oracle, exec_pg)]
+        test_specs = []  # [(test_id, qid, qtype, case_name, exec_oracle, exec_pg, ora_bind_values)]
 
         for query in self.queries:
             qid = query['id']
@@ -363,9 +363,11 @@ SET HEADING ON
                     bound_pg = self._bind_positional(pg_sql, param_names, binds)
                 else:
                     bound_pg = self.bind_params(pg_sql, binds)
-                # ★ Oracle 바인딩: extracted(?)면 positional, 아니면 #{param}
+                # ★ Oracle 바인딩: extracted(?)면 DB-level bind, 아니면 #{param} 텍스트 치환
+                ora_bind_values = ()
                 if '?' in oracle_sql and '#{' not in oracle_sql:
-                    bound_oracle = self._bind_positional(oracle_sql, param_names, binds)
+                    # DB-level positional bind (? → :1, :2, ...) — oracledb에서 사용
+                    bound_oracle, ora_bind_values = self._prepare_oracle_bind(oracle_sql, param_names, binds)
                 else:
                     bound_oracle = self.bind_params(oracle_sql, binds, default_unbound="'1'")
 
@@ -389,15 +391,15 @@ SET HEADING ON
                         exec_oracle = safe_ora + ';'
 
                 test_id = f"{query['file'].replace('.xml','')}.{qid}.{case_name}"
-                test_specs.append((test_id, qid, qtype, case_name, exec_oracle, exec_pg))
+                test_specs.append((test_id, qid, qtype, case_name, exec_oracle, exec_pg, ora_bind_values))
 
         if not test_specs:
             print("  No test cases to compare")
 
         # ── Phase 2: Batch execute (single session per DB) ──
         if test_specs:
-            oracle_batch = [(tid, sql_o) for tid, _, _, _, sql_o, _ in test_specs]
-            pg_batch = [(tid, sql_p) for tid, _, _, _, _, sql_p in test_specs]
+            oracle_batch = [(tid, sql_o, bv) for tid, _, _, _, sql_o, _, bv in test_specs]
+            pg_batch = [(tid, sql_p) for tid, _, _, _, _, sql_p, _ in test_specs]
             print(f"  Batch executing: {len(test_specs)} tests (1 Oracle + 1 PG session)...")
             ora_outputs = self._batch_execute_with_markers(oracle_batch, 'oracle')
             pg_outputs = self._batch_execute_with_markers(pg_batch, 'pg')
@@ -406,7 +408,7 @@ SET HEADING ON
             ora_outputs, pg_outputs = {}, {}
 
         # ── Phase 3: Compare results ──
-        for test_id, qid, qtype, case_name, _, _ in test_specs:
+        for test_id, qid, qtype, case_name, _, _, _ in test_specs:
             ora_output = ora_outputs.get(test_id, '')
             pg_output = pg_outputs.get(test_id, '')
 
@@ -985,6 +987,7 @@ SET HEADING ON
         return result
 
     @staticmethod
+    @staticmethod
     def _bind_positional(sql, param_names, binds):
         """Replace ? placeholders positionally using param_names + binds dict."""
         parts = sql.split('?')
@@ -1002,6 +1005,37 @@ SET HEADING ON
                 bound_parts.append("'1'")
             bound_parts.append(parts[i])
         return ''.join(bound_parts)
+
+    @staticmethod
+    def _prepare_oracle_bind(sql, param_names, binds):
+        """Convert ? placeholders to Oracle :1,:2,... named binds.
+        Returns (prepared_sql, bind_values_tuple) for cursor.execute(sql, vals).
+        This avoids text substitution bugs (e.g., '1' SELECT ...) by using
+        proper DB-level parameter binding."""
+        parts = sql.split('?')
+        if len(parts) <= 1:
+            return sql, ()
+        prepared_parts = [parts[0]]
+        bind_values = []
+        for i in range(1, len(parts)):
+            pname = param_names[i-1] if i-1 < len(param_names) else ''
+            val = binds.get(pname) if pname else None
+            if val is None:
+                # Framework params → skip (empty string, not a bind)
+                if any(kw in (pname or '').lower() for kw in ('gridpaging', 'search_condition', 'colname', 'sortvalue')):
+                    prepared_parts.append('')
+                    prepared_parts.append(parts[i])
+                    continue
+                bind_values.append('1')
+            elif isinstance(val, (int, float)):
+                bind_values.append(val)
+            elif isinstance(val, str):
+                bind_values.append(val)
+            else:
+                bind_values.append('1')
+            prepared_parts.append(f":{len(bind_values)}")
+            prepared_parts.append(parts[i])
+        return ''.join(prepared_parts), tuple(bind_values)
 
     @staticmethod
     def _extract_dml_where(sql):
@@ -1113,13 +1147,22 @@ SET HEADING ON
                     password=os.environ.get('ORACLE_PASSWORD', ''), dsn=dsn)
                 cur = conn.cursor()
                 out_lines = []
-                for test_id, sql in queries_with_ids:
+                for entry in queries_with_ids:
+                    # Support both (test_id, sql) and (test_id, sql, bind_values)
+                    if len(entry) == 3:
+                        test_id, sql, bind_values = entry
+                    else:
+                        test_id, sql = entry
+                        bind_values = ()
                     out_lines.append(f"=== {test_id} ===")
                     stmt = self._flatten_sql(sql).rstrip(';')
                     if stmt.upper().startswith(('SET ', 'ALTER ', 'PROMPT', 'EXIT')):
                         continue
                     try:
-                        cur.execute(stmt)
+                        if bind_values:
+                            cur.execute(stmt, bind_values)
+                        else:
+                            cur.execute(stmt)
                         if cur.description:
                             rows = cur.fetchall()
                             for row in rows:
