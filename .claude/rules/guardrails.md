@@ -6,6 +6,12 @@ inclusion: always
 
 ## 절대 금지 행동
 
+### 장시간 프로세스 보호
+- **Step 5, Phase 1 프로세스를 kill/terminate 하지 마라.** 수 시간 정상이다.
+- Bash 실행 시 timeout 파라미터를 걸지 마라 (Step 5, Phase 1 실행 시).
+- "응답 없음" "멈춤"으로 판단하여 중단하지 마라. check 스크립트로 상태만 확인하라.
+- 사용자가 명시적으로 "중단해" "kill해"라고 하지 않는 한 프로세스에 손대지 마라.
+
 ### SQL 안전
 - **DML은 PG: BEGIN/ROLLBACK + 5s timeout, Oracle: SELECT COUNT(*) WHERE**
 - DROP, TRUNCATE, ALTER, CREATE, GRANT, REVOKE 실행 금지
